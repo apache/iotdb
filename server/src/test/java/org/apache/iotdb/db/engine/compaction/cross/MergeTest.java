@@ -130,35 +130,35 @@ abstract class MergeTest {
       File file = new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, i));
       mkdirs(file);
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i);
       tsFileResource.setMaxPlanIndex(i);
       tsFileResource.setVersion(i);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
+      tsFileResource.setClosed(true);
     }
     for (int i = 0; i < unseqFileNum; i++) {
       File file = new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, i + seqFileNum));
       mkdirs(file);
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i + seqFileNum);
       tsFileResource.setMaxPlanIndex(i + seqFileNum);
       tsFileResource.setVersion(i + seqFileNum);
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
+      tsFileResource.setClosed(true);
     }
 
     File file =
         new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, seqFileNum + unseqFileNum));
     mkdirs(file);
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setClosed(true);
     tsFileResource.setMinPlanIndex(seqFileNum + unseqFileNum);
     tsFileResource.setMaxPlanIndex(seqFileNum + unseqFileNum);
     tsFileResource.setVersion(seqFileNum + unseqFileNum);
     unseqResources.add(tsFileResource);
     prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
+    tsFileResource.setClosed(true);
   }
 
   void removeFiles(List<TsFileResource> seqResList, List<TsFileResource> unseqResList)

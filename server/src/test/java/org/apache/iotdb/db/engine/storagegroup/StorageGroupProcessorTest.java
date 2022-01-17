@@ -662,47 +662,56 @@ public class StorageGroupProcessorTest {
 
     processor.syncCloseAllWorkingTsFileProcessors();
     processor.merge(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
-    long totalWaitingTime = 0;
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
-      // wait
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+    Thread t = new Thread(() -> CompactionTaskManager.getInstance().submitTaskFromTaskQueue());
+    t.start();
+    try {
+      Thread.sleep(500);
+      long totalWaitingTime = 0;
+      while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
+        // wait
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        totalWaitingTime += 100;
+        if (totalWaitingTime % 1000 == 0) {
+          logger.warn("has waited for {} seconds", totalWaitingTime / 1000);
+        }
+        if (totalWaitingTime > 120_000) {
+          Assert.fail();
+          break;
+        }
       }
-      totalWaitingTime += 100;
-      if (totalWaitingTime % 1000 == 0) {
-        logger.warn("has waited for {} seconds", totalWaitingTime / 1000);
-      }
-      if (totalWaitingTime > 120_000) {
-        Assert.fail();
-        break;
-      }
-    }
 
-    QueryDataSource queryDataSource =
-        processor.query(
-            Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
-            context,
-            null,
-            null);
-    Assert.assertEquals(1, queryDataSource.getSeqResources().size());
-    for (TsFileResource resource : queryDataSource.getSeqResources()) {
-      Assert.assertTrue(resource.isClosed());
+      QueryDataSource queryDataSource =
+          processor.query(
+              Collections.singletonList(new PartialPath(deviceId, measurementId)),
+              deviceId,
+              context,
+              null,
+              null);
+      Assert.assertEquals(1, queryDataSource.getSeqResources().size());
+      for (TsFileResource resource : queryDataSource.getSeqResources()) {
+        Assert.assertTrue(resource.isClosed());
+      }
+      for (TsFileResource resource : queryDataSource.getUnseqResources()) {
+        Assert.assertTrue(resource.isClosed());
+      }
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(originCandidateFileNum);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(originEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(originEnableUnseqSpaceCompaction);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    } finally {
+      t.interrupt();
     }
-    for (TsFileResource resource : queryDataSource.getUnseqResources()) {
-      Assert.assertTrue(resource.isClosed());
-    }
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(originCandidateFileNum);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(originEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(originEnableUnseqSpaceCompaction);
   }
 
   @Test

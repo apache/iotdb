@@ -57,7 +57,7 @@ public class InnerCompactionSchedulerTest {
   }
 
   @Test
-  public void testFileSelector1() {
+  public void testFileSelector1() throws InterruptedException {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
@@ -79,19 +79,20 @@ public class InnerCompactionSchedulerTest {
         tsFileResources,
         true,
         new FakedInnerSpaceCompactionTaskFactory());
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+    Thread t = new Thread(() -> CompactionTaskManager.getInstance().submitTaskFromTaskQueue());
+    t.start();
 
     try {
       Thread.sleep(5000);
-    } catch (Exception e) {
+      Assert.assertEquals(3, tsFileResources.size());
 
+      List<TsFileResource> resources = tsFileResources.getArrayList();
+      Assert.assertEquals(90L, resources.get(0).getTsFileSize());
+      Assert.assertEquals(100L, resources.get(1).getTsFileSize());
+      Assert.assertEquals(110L, resources.get(2).getTsFileSize());
+    } finally {
+      t.interrupt();
     }
-    Assert.assertEquals(3, tsFileResources.size());
-
-    List<TsFileResource> resources = tsFileResources.getArrayList();
-    Assert.assertEquals(90L, resources.get(0).getTsFileSize());
-    Assert.assertEquals(100L, resources.get(1).getTsFileSize());
-    Assert.assertEquals(110L, resources.get(2).getTsFileSize());
   }
 
   @Test
@@ -110,26 +111,30 @@ public class InnerCompactionSchedulerTest {
         tsFileResources,
         true,
         new FakedInnerSpaceCompactionTaskFactory());
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-
-    long waitingTime = 0;
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() != 0) {
-      try {
-        Thread.sleep(100);
-        waitingTime += 100;
-        if (waitingTime > MAX_WAITING_TIME) {
-          Assert.fail();
-          break;
+    Thread t = new Thread(() -> CompactionTaskManager.getInstance().submitTaskFromTaskQueue());
+    t.start();
+    try {
+      long waitingTime = 0;
+      while (CompactionTaskManager.getInstance().getExecutingTaskCount() != 0) {
+        try {
+          Thread.sleep(100);
+          waitingTime += 100;
+          if (waitingTime > MAX_WAITING_TIME) {
+            Assert.fail();
+            break;
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
         }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
       }
-    }
-    Assert.assertEquals(3, tsFileResources.size());
+      Assert.assertEquals(3, tsFileResources.size());
 
-    List<TsFileResource> resources = tsFileResources.getArrayList();
-    Assert.assertEquals(30L, resources.get(0).getTsFileSize());
-    Assert.assertEquals(40L, resources.get(1).getTsFileSize());
-    Assert.assertEquals(40L, resources.get(2).getTsFileSize());
+      List<TsFileResource> resources = tsFileResources.getArrayList();
+      Assert.assertEquals(30L, resources.get(0).getTsFileSize());
+      Assert.assertEquals(40L, resources.get(1).getTsFileSize());
+      Assert.assertEquals(40L, resources.get(2).getTsFileSize());
+    } finally {
+      t.interrupt();
+    }
   }
 }

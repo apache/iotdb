@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionTest;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
@@ -56,50 +57,60 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
-    SizeTieredCompactionTask task1 =
-        new SizeTieredCompactionTask(
-            "root.compactionTest",
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
-    SizeTieredCompactionTask task2 =
-        new SizeTieredCompactionTask(
-            "root.compactionTest",
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
-    tsFileManager.writeLock("test");
-    CompactionTaskManager manager = CompactionTaskManager.getInstance();
+    int concurrentThreadNum =
+        IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
+    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     try {
-      Assert.assertTrue(manager.addTaskToWaitingQueue(task1));
-      Assert.assertEquals(manager.getTotalTaskCount(), 1);
-      // a same task should not be submitted compaction task manager
-      Assert.assertFalse(manager.addTaskToWaitingQueue(task2));
-      Assert.assertEquals(manager.getTotalTaskCount(), 1);
-      manager.submitTaskFromTaskQueue();
+      SizeTieredCompactionTask task1 =
+          new SizeTieredCompactionTask(
+              "root.compactionTest",
+              "0",
+              0,
+              tsFileManager,
+              tsFileManager.getSequenceListByTimePartition(0),
+              seqResources,
+              true,
+              new AtomicInteger(0));
+      SizeTieredCompactionTask task2 =
+          new SizeTieredCompactionTask(
+              "root.compactionTest",
+              "0",
+              0,
+              tsFileManager,
+              tsFileManager.getSequenceListByTimePartition(0),
+              seqResources,
+              true,
+              new AtomicInteger(0));
+      tsFileManager.writeLock("test");
+      CompactionTaskManager manager = CompactionTaskManager.getInstance();
+      Thread t = new Thread(() -> manager.submitTaskFromTaskQueue());
+      try {
+        Assert.assertTrue(manager.addTaskToWaitingQueue(task1));
+        Assert.assertEquals(manager.getTotalTaskCount(), 1);
+        // a same task should not be submitted compaction task manager
+        Assert.assertFalse(manager.addTaskToWaitingQueue(task2));
+        Assert.assertEquals(manager.getTotalTaskCount(), 1);
+        t.start();
+        Thread.sleep(500);
+      } finally {
+        tsFileManager.writeUnlock();
+        t.interrupt();
+      }
+      Thread.sleep(5000);
+      Assert.assertEquals(0, manager.getTotalTaskCount());
+      long waitingTime = 0;
+      while (manager.getRunningCompactionTaskList().size() > 0) {
+        Thread.sleep(100);
+        waitingTime += 100;
+        if (waitingTime % 10000 == 0) {
+          logger.warn("{}", manager.getRunningCompactionTaskList());
+        }
+        if (waitingTime > MAX_WAITING_TIME) {
+          Assert.fail();
+        }
+      }
     } finally {
-      tsFileManager.writeUnlock();
-    }
-    Thread.sleep(5000);
-    Assert.assertEquals(0, manager.getTotalTaskCount());
-    long waitingTime = 0;
-    while (manager.getRunningCompactionTaskList().size() > 0) {
-      Thread.sleep(100);
-      waitingTime += 100;
-      if (waitingTime % 10000 == 0) {
-        logger.warn("{}", manager.getRunningCompactionTaskList());
-      }
-      if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
-      }
+      IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(concurrentThreadNum);
     }
   }
 
@@ -130,16 +141,18 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             true,
             new AtomicInteger(0));
     tsFileManager.writeLock("test");
+    CompactionTaskManager manager = CompactionTaskManager.getInstance();
+    Thread t = new Thread(() -> manager.submitTaskFromTaskQueue());
     try {
-      CompactionTaskManager manager = CompactionTaskManager.getInstance();
       manager.addTaskToWaitingQueue(task1);
-      manager.submitTaskFromTaskQueue();
+      t.start();
       Thread.sleep(2000);
       // When a same compaction task is executing, the compaction task should not be submitted!
       Assert.assertEquals(manager.getExecutingTaskCount(), 1);
       Assert.assertFalse(manager.addTaskToWaitingQueue(task2));
     } finally {
       tsFileManager.writeUnlock();
+      t.interrupt();
     }
     long waitingTime = 0;
     while (CompactionTaskManager.getInstance().getRunningCompactionTaskList().size() > 0) {
@@ -182,25 +195,30 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             new AtomicInteger(0));
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     manager.addTaskToWaitingQueue(task1);
-    manager.submitTaskFromTaskQueue();
-    while (manager.getTotalTaskCount() > 0) {
-      Thread.sleep(10);
-    }
-    tsFileManager.writeLock("test");
-    // an invalid task can be submitted to waiting queue, but should not be submitted to thread pool
-    Assert.assertTrue(manager.addTaskToWaitingQueue(task2));
-    manager.submitTaskFromTaskQueue();
-    Assert.assertEquals(manager.getExecutingTaskCount(), 0);
-    long waitingTime = 0;
-    while (manager.getRunningCompactionTaskList().size() > 0) {
-      Thread.sleep(100);
-      waitingTime += 100;
-      if (waitingTime % 10000 == 0) {
-        logger.warn("{}", manager.getRunningCompactionTaskList());
+    Thread t = new Thread(() -> manager.submitTaskFromTaskQueue());
+    t.start();
+    try {
+      while (manager.getTotalTaskCount() > 0) {
+        Thread.sleep(10);
       }
-      if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
+      tsFileManager.writeLock("test");
+      // an invalid task can be submitted to waiting queue, but should not be submitted to thread
+      // pool
+      Assert.assertTrue(manager.addTaskToWaitingQueue(task2));
+      Assert.assertEquals(manager.getExecutingTaskCount(), 0);
+      long waitingTime = 0;
+      while (manager.getRunningCompactionTaskList().size() > 0) {
+        Thread.sleep(100);
+        waitingTime += 100;
+        if (waitingTime % 10000 == 0) {
+          logger.warn("{}", manager.getRunningCompactionTaskList());
+        }
+        if (waitingTime > MAX_WAITING_TIME) {
+          Assert.fail();
+        }
       }
+    } finally {
+      t.interrupt();
     }
   }
 
@@ -221,10 +239,11 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             true,
             new AtomicInteger(0));
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
+    Thread t = new Thread(() -> manager.submitTaskFromTaskQueue());
     tsFileManager.writeLock("test");
     try {
       manager.addTaskToWaitingQueue(task1);
-      manager.submitTaskFromTaskQueue();
+      t.start();
       Thread.sleep(5000);
       List<AbstractCompactionTask> runningList = manager.getRunningCompactionTaskList();
       // compaction task should add itself to running list
@@ -232,6 +251,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
       Assert.assertTrue(runningList.contains(task1));
     } finally {
       tsFileManager.writeUnlock();
+      t.interrupt();
     }
     // after execution, task should remove itself from running list
     Thread.sleep(5000);

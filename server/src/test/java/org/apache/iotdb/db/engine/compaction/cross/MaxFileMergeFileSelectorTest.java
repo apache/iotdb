@@ -262,8 +262,8 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
                         + 0
                         + ".tsfile"));
         TsFileResource fileResource = new TsFileResource(file);
-        fileResource.setClosed(true);
         prepareFile(fileResource, i, 1, 0);
+        fileResource.setClosed(true);
         seqList.add(fileResource);
       }
       int unseqFileNum = 3;
@@ -282,12 +282,14 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
                         + 0
                         + ".tsfile"));
         TsFileResource fileResource = new TsFileResource(file);
-        fileResource.setClosed(true);
         unseqList.add(fileResource);
       }
       prepareFile(unseqList.get(0), 0, 1, 10);
       prepareFile(unseqList.get(1), 0, 100, 20);
       prepareFile(unseqList.get(2), 99, 1, 30);
+      for (int i = 0; i < unseqFileNum; ++i) {
+        unseqList.get(i).setClosed(true);
+      }
 
       CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqList, unseqList);
       // the budget is enough to select unseq0 and unseq2, but not unseq1
