@@ -27,9 +27,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This is a priority blocking queue with a maximum size. If the queue's size is larger than the max
- * size, the element with min priority will be kick out.
+ * size, the element with max priority will be kick out.
  */
-public class PriorityBlockingQueueWithMaxSize<T> {
+public class FixedPriorityBlockingQueue<T> {
   private int maxSize;
   private Comparator<T> comparator;
   private MinMaxPriorityQueue<T> queue;
@@ -37,7 +37,7 @@ public class PriorityBlockingQueueWithMaxSize<T> {
   private ReentrantLock lock = new ReentrantLock();
   private Condition notEmpty = lock.newCondition();
 
-  public PriorityBlockingQueueWithMaxSize(int maxSize, Comparator<T> comparator) {
+  public FixedPriorityBlockingQueue(int maxSize, Comparator<T> comparator) {
     this.maxSize = maxSize;
     this.comparator = comparator;
     this.queue = MinMaxPriorityQueue.orderedBy(comparator).maximumSize(maxSize).create();
@@ -54,6 +54,13 @@ public class PriorityBlockingQueueWithMaxSize<T> {
     }
   }
 
+  /**
+   * Return the element with min priority. If the queue is empty, the thread will be blocked util
+   * there are some elements inserted into the queue.
+   *
+   * @return
+   * @throws InterruptedException
+   */
   public T take() throws InterruptedException {
     final ReentrantLock lock = this.lock;
     lock.lockInterruptibly();
@@ -61,7 +68,27 @@ public class PriorityBlockingQueueWithMaxSize<T> {
       while (queue.size() == 0) {
         notEmpty.await();
       }
-      return queue.poll();
+      return queue.pollFirst();
+    } finally {
+      this.lock.unlock();
+    }
+  }
+
+  /**
+   * Return the element with max priority. If the queue is empty, the thread will be blocked util
+   * there are some elements inserted into the queue.
+   *
+   * @return
+   * @throws InterruptedException
+   */
+  public T takeMax() throws InterruptedException {
+    final ReentrantLock lock = this.lock;
+    lock.lockInterruptibly();
+    try {
+      while (queue.size() == 0) {
+        notEmpty.await();
+      }
+      return queue.pollLast();
     } finally {
       this.lock.unlock();
     }
@@ -82,6 +109,16 @@ public class PriorityBlockingQueueWithMaxSize<T> {
     lock.lock();
     try {
       return queue.size();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public void clear() {
+    final ReentrantLock lock = this.lock;
+    lock.lock();
+    try {
+      queue.clear();
     } finally {
       lock.unlock();
     }

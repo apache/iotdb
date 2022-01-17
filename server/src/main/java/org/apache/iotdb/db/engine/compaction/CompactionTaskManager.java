@@ -32,7 +32,7 @@ import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.db.utils.datastructure.PriorityBlockingQueueWithMaxSize;
+import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
 
@@ -64,8 +64,8 @@ public class CompactionTaskManager implements IService {
   // is 10.
   private WrappedScheduledExecutorService taskExecutionPool;
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
-  private PriorityBlockingQueueWithMaxSize<AbstractCompactionTask> candidateCompactionTaskQueue =
-      new PriorityBlockingQueueWithMaxSize<>(1000, new CompactionTaskComparator());
+  private FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
+      new FixedPriorityBlockingQueue<>(1000, new CompactionTaskComparator());
   // <logicalStorageGroupName,futureSet>, it is used to terminate all compaction tasks under the
   // logicalStorageGroup
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
