@@ -39,6 +39,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 
@@ -51,7 +52,7 @@ public class TsFilePipeLog {
 
   private DataOutputStream historyOutputStream;
 
-  private BlockingQueue<Long> realTimePipeLogStartNumber;
+  private BlockingDeque<Long> realTimePipeLogStartNumber;
   private DataOutputStream realTimeOutputStream;
   private long currentPipeLogSize;
 
@@ -106,7 +107,7 @@ public class TsFilePipeLog {
   }
 
   /** tsfile pipe data log */
-  public void addHistoryTsFilePipeData(TsFilePipeData pipeData) throws IOException {
+  public void addHistoryPipeData(TsFilePipeData pipeData) throws IOException {
     getHistoryOutputStream();
     pipeData.serialize(historyOutputStream);
   }
@@ -124,34 +125,53 @@ public class TsFilePipeLog {
     historyOutputStream = new DataOutputStream(new FileOutputStream(historyPipeLog));
   }
 
-  public void addRealTimeTsFilePipeData(TsFilePipeData pipeData) throws IOException {
-    getRealTimeOutputStream();
+  public void addRealTimePipeData(TsFilePipeData pipeData) throws IOException {
+    getRealTimeOutputStream(pipeData.getSerialNumber());
+    currentPipeLogSize += pipeData.serialize(realTimeOutputStream);
   }
 
-  private void getRealTimeOutputStream() throws IOException {
-    if (realTimeOutputStream != null) {
-      return;
+  private void getRealTimeOutputStream(long serialNumber) throws IOException {
+    if (realTimeOutputStream == null) {
+      // recover real time pipe log
+      realTimePipeLogStartNumber = new LinkedBlockingDeque<>();
+      File logDir = new File(pipeLogDir);
+      List<Long> startTimes = new ArrayList<>();
+
+      logDir.mkdirs();
+      for (File file : logDir.listFiles())
+        if (file.getName().endsWith(SenderConf.realTimePipeLogNameSuffix)) {
+          startTimes.add(SenderConf.getSerialNumberFromPipeLogName(file.getName()));
+        }
+      if (startTimes.size() != 0) {
+        Collections.sort(startTimes);
+        for (Long startTime : startTimes) {
+          realTimePipeLogStartNumber.offer(startTime);
+        }
+        File writingPipeLog =
+            new File(SenderConf.getRealTimePipeLogName(startTimes.get(startTimes.size() - 1)));
+        realTimeOutputStream = new DataOutputStream(new FileOutputStream(writingPipeLog));
+        currentPipeLogSize = writingPipeLog.length();
+      } else {
+        moveToNextPipeLog(serialNumber);
+      }
     }
 
-    // recover real time pipe log
-    realTimePipeLogStartNumber = new LinkedBlockingDeque<>();
-    File logDir = new File(pipeLogDir);
-    List<Long> startTimes = new ArrayList<>();
+    if (currentPipeLogSize > SenderConf.defaultPipeLogSizeInByte) {
+      moveToNextPipeLog(serialNumber);
+    }
+  }
 
-    logDir.mkdirs();
-    for (File file : logDir.listFiles())
-      if (file.getName().endsWith(SenderConf.realTimePipeLogNameSuffix)) {
-        startTimes.add(SenderConf.getSerialNumberFromPipeLogName(file.getName()));
-      }
-    if (startTimes.size() != 0) {
-      Collections.sort(startTimes);
-      for (Long startTime : startTimes) {
-        realTimePipeLogStartNumber.offer(startTime);
-      }
-      File writingPipeLog =
-          new File(SenderConf.getRealTimePipeLogName(startTimes.get(startTimes.size() - 1)));
-      realTimeOutputStream = new DataOutputStream(new FileOutputStream(writingPipeLog));
-      currentPipeLogSize = writingPipeLog.length();
+  private void moveToNextPipeLog(long startSerialNumber) throws IOException {
+    File newPipeLog = new File(SenderConf.getRealTimePipeLogName(startSerialNumber));
+    createFile(newPipeLog);
+
+    realTimeOutputStream = new DataOutputStream(new FileOutputStream(newPipeLog));
+    realTimePipeLogStartNumber.offer(startSerialNumber);
+    currentPipeLogSize = 0;
+  }
+
+  public void removePipeData(long serialNumber) {
+    while (!realTimePipeLogStartNumber.isEmpty() && realTimePipeLogStartNumber.peek() < serialNumber) {
     }
   }
 

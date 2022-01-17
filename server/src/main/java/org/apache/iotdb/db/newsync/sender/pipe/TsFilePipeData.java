@@ -119,8 +119,11 @@ public class TsFilePipeData {
     return bytes;
   }
 
-  public void serialize(DataOutputStream stream) throws IOException {
+  public long serialize(DataOutputStream stream) throws IOException {
+    long serializeSize = 0;
+
     stream.writeLong(serialNumber);
+    serializeSize += Long.BYTES;
     if (tsFilePath != null) {
       stream.writeByte((byte) Type.TSFILE.ordinal());
     } else if (deletion != null) {
@@ -130,10 +133,14 @@ public class TsFilePipeData {
     } else {
       logger.error(String.format("Null tsfile pipe data with serialNumber %d.", serialNumber));
     }
+    serializeSize += Byte.BYTES;
 
     byte[] bytes = getBytes();
     stream.writeInt(bytes.length);
     stream.write(bytes);
+    serializeSize += Integer.BYTES;
+    serializeSize += bytes.length;
+    return serializeSize;
   }
 
   public static TsFilePipeData deserialize(DataInputStream stream)
