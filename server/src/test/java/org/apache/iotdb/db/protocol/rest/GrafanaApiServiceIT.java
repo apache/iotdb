@@ -136,12 +136,12 @@ public class GrafanaApiServiceIT {
     }
   }
 
-  public void expressionWithControl(CloseableHttpClient httpClient) {
+  public void expressionWithGroupByInterval(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
       String sql =
-          "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232133960,\"endTime\":1635232163960,\"control\":\"group by([1635232133960,1635232163960),20s)\"}";
+          "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232133960,\"endTime\":1635232163960,\"interval\":\"20s\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -174,12 +174,12 @@ public class GrafanaApiServiceIT {
     }
   }
 
-  public void expressionWithConditionControl(CloseableHttpClient httpClient) {
+  public void expressionWithGroupBy(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
       String sql =
-          "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"condition\":\"timestamp=1635232143960\",\"startTime\":1635232133960,\"endTime\":1635232163960,\"control\":\"group by([1635232133960,1635232163960),20s)\"}";
+          "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232133960,\"endTime\":1635232163960,\"interval\":\"30s\",\"slidingStep\":\"30s\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -187,15 +187,87 @@ public class GrafanaApiServiceIT {
       ObjectMapper mapper = new ObjectMapper();
       Map<String, List> map = mapper.readValue(message, Map.class);
       String[] expressionsResult = {"sum(root.sg25.s4)", "avg(root.sg25.s5)"};
-      Long[] timestamps = {1635232133960L, 1635232153960L};
-      Object[] values1 = {11.0, null};
-      Object[] values2 = {15.0, null};
+      Long[] timestamps = {1635232133960L};
+      Object[] values1 = {13.0};
+      Object[] values2 = {14.0};
       Assert.assertArrayEquals(expressionsResult, map.get("expressions").toArray(new String[] {}));
       Assert.assertArrayEquals(timestamps, (map.get("timestamps")).toArray(new Long[] {}));
       Assert.assertArrayEquals(
           values1, ((List) (map.get("values")).get(0)).toArray(new Object[] {}));
       Assert.assertArrayEquals(
           values2, ((List) (map.get("values")).get(1)).toArray(new Object[] {}));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void expressionWithGroupByFill(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
+      String sql =
+          "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232133960,\"endTime\":1635232163960,\"interval\":\"30s\",\"slidingStep\":\"30s\",\"fills\":\"pervious\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map<String, List> map = mapper.readValue(message, Map.class);
+      String[] expressionsResult = {"sum(root.sg25.s4)", "avg(root.sg25.s5)"};
+      Long[] timestamps = {1635232133960L};
+      Object[] values1 = {13.0};
+      Object[] values2 = {14.0};
+      Assert.assertArrayEquals(expressionsResult, map.get("expressions").toArray(new String[] {}));
+      Assert.assertArrayEquals(timestamps, (map.get("timestamps")).toArray(new Long[] {}));
+      Assert.assertArrayEquals(
+          values1, ((List) (map.get("values")).get(0)).toArray(new Object[] {}));
+      Assert.assertArrayEquals(
+          values2, ((List) (map.get("values")).get(1)).toArray(new Object[] {}));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+
+  public void expressionWithControlGroupBy(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
+      String sql =
+          "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232133960,\"endTime\":1635232163960,\"interval\":\"30s\",\"slidingStep\":\"30s\",\"control\":\"slimit 1\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map<String, List> map = mapper.readValue(message, Map.class);
+      String[] expressionsResult = {"sum(root.sg25.s4)"};
+      Long[] timestamps = {1635232133960L};
+      Object[] values1 = {13.0};
+      Assert.assertArrayEquals(expressionsResult, map.get("expressions").toArray(new String[] {}));
+      Assert.assertArrayEquals(timestamps, (map.get("timestamps")).toArray(new Long[] {}));
+      Assert.assertArrayEquals(
+          values1, ((List) (map.get("values")).get(0)).toArray(new Object[] {}));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -240,10 +312,10 @@ public class GrafanaApiServiceIT {
   }
 
   @Test
-  public void expressionWithConditionControlTest() {
+  public void expressionexpressionWithGroupByTest() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     rightInsertTablet(httpClient);
-    expressionWithConditionControl(httpClient);
+    expressionWithGroupBy(httpClient);
     try {
       httpClient.close();
     } catch (IOException e) {
@@ -257,6 +329,10 @@ public class GrafanaApiServiceIT {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     rightInsertTablet(httpClient);
     expression(httpClient);
+    expressionWithControlGroupBy(httpClient);
+    expressionWithGroupBy(httpClient);
+    expressionWithGroupByInterval(httpClient);
+    expressionWithGroupByFill(httpClient);
     try {
       httpClient.close();
     } catch (IOException e) {
@@ -266,10 +342,10 @@ public class GrafanaApiServiceIT {
   }
 
   @Test
-  public void expressionWithControlTest() {
+  public void expressionWithGroupByIntervalTest() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     rightInsertTablet(httpClient);
-    expressionWithControl(httpClient);
+    expressionWithGroupByInterval(httpClient);
     try {
       httpClient.close();
     } catch (IOException e) {
