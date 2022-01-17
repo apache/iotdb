@@ -85,7 +85,7 @@ public class TemplateManager {
     }
   }
 
-  public synchronized void dropSchemaTemplate(DropTemplatePlan plan) {
+  public void dropSchemaTemplate(DropTemplatePlan plan) {
     templateMap.remove(plan.getName());
   }
 
