@@ -22,7 +22,6 @@ import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.itbase.category.RemoteTest;
-import org.apache.iotdb.jdbc.Constant;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -165,22 +164,6 @@ public class IoTDBSyntaxConventionIT {
   }
 
   @Test
-  public void testIllegalExpression1inV12() {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.1 with datatype = INT32");
-      boolean hasResult = statement.execute("SELECT 1 FROM root.sg1.d1");
-      Assert.assertTrue(hasResult);
-
-      ResultSet resultSet = statement.getResultSet();
-      Assert.assertFalse(resultSet.next());
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail();
-    }
-  }
-
-  @Test
   public void testExpression2() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -231,22 +214,6 @@ public class IoTDBSyntaxConventionIT {
       statement.execute("SELECT sin(1) FROM root.sg1.d1");
       fail();
     } catch (SQLException ignored) {
-    }
-  }
-
-  @Test
-  public void testIllegalExpression3inV12() {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.1 with datatype = INT64");
-      boolean hasResult = statement.execute("SELECT sin(1) FROM root.sg1.d1");
-      Assert.assertTrue(hasResult);
-
-      ResultSet resultSet = statement.getResultSet();
-      Assert.assertFalse(resultSet.next());
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail();
     }
   }
 
