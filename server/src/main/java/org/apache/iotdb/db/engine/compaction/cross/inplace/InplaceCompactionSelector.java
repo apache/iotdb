@@ -31,7 +31,6 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.MergeException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,19 +131,21 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
       // cached during selection
       mergeResource.setCacheDeviceMeta(true);
 
-      AbstractCompactionTask compactionTask =
-          taskFactory.createTask(
-              logicalStorageGroupName,
-              virtualGroupId,
-              timePartition,
-              mergeResource,
-              storageGroupDir,
-              sequenceFileList,
-              unsequenceFileList,
-              mergeFiles[0],
-              mergeFiles[1],
-              fileSelector.getConcurrentMergeNum());
-      CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
+      if (mergeFiles[0].size() > 0 && mergeFiles[1].size() > 0) {
+        AbstractCompactionTask compactionTask =
+            taskFactory.createTask(
+                logicalStorageGroupName,
+                virtualGroupId,
+                timePartition,
+                mergeResource,
+                storageGroupDir,
+                sequenceFileList,
+                unsequenceFileList,
+                mergeFiles[0],
+                mergeFiles[1],
+                fileSelector.getConcurrentMergeNum());
+        CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
+      }
       taskSubmitted = true;
       LOGGER.info(
           "{} [Compaction] submit a task with {} sequence file and {} unseq files",
