@@ -66,6 +66,9 @@ public class TsFileSplitTool {
   private final long chunkPointNumLowerBoundInCompaction =
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
 
+  private final double targetSplitFileSize =
+      IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+
   /** Maximum index of plans executed within this TsFile. */
   protected long maxPlanIndex = Long.MIN_VALUE;
 
@@ -100,24 +103,29 @@ public class TsFileSplitTool {
         for (Path path : pathIterator.next()) {
           String deviceId = path.getDevice();
           if (devices.add(deviceId)) {
-            if (writer != null) {
-              // seal last TsFile
-              TsFileResource resource = endFileAndGenerateResource(writer);
-              resource.close();
-            }
-
-            filePathSplit[filePathSplit.length - 3] = String.valueOf(versionIndex);
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < filePathSplit.length; i++) {
-              sb.append(filePathSplit[i]);
-              if (i != filePathSplit.length - 1) {
-                sb.append("-");
+            if (writer != null && writer.getPos() < targetSplitFileSize) {
+              writer.endChunkGroup();
+              writer.startChunkGroup(deviceId);
+            } else {
+              if (writer != null) {
+                // seal last TsFile
+                TsFileResource resource = endFileAndGenerateResource(writer);
+                resource.close();
               }
+
+              filePathSplit[filePathSplit.length - 3] = String.valueOf(versionIndex);
+              StringBuilder sb = new StringBuilder();
+              for (int i = 0; i < filePathSplit.length; i++) {
+                sb.append(filePathSplit[i]);
+                if (i != filePathSplit.length - 1) {
+                  sb.append("-");
+                }
+              }
+              // open a new TsFile
+              writer = new TsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(sb.toString()));
+              versionIndex++;
+              writer.startChunkGroup(deviceId);
             }
-            // open a new TsFile
-            writer = new TsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(sb.toString()));
-            versionIndex++;
-            writer.startChunkGroup(deviceId);
           }
 
           List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(path);
@@ -184,7 +192,6 @@ public class TsFileSplitTool {
         }
       }
 
-      logger.info("TsFile {} is split into {} new files.", filename, devices.size());
       if (writer != null) {
         // seal last TsFile
         TsFileResource resource = endFileAndGenerateResource(writer);
