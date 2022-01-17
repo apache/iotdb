@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
@@ -86,7 +87,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -273,7 +273,7 @@ public class StorageEngine implements IService {
 
     recover();
 
-    ttlCheckThread = Executors.newSingleThreadScheduledExecutor();
+    ttlCheckThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TTL-Check");
     ttlCheckThread.scheduleAtFixedRate(
         this::checkTTL, TTL_CHECK_INTERVAL, TTL_CHECK_INTERVAL, TimeUnit.MILLISECONDS);
     logger.info("start ttl check thread successfully.");
@@ -296,7 +296,9 @@ public class StorageEngine implements IService {
   private void startTimedService() {
     // timed flush sequence memtable
     if (config.isEnableTimedFlushSeqMemtable()) {
-      seqMemtableTimedFlushCheckThread = Executors.newSingleThreadScheduledExecutor();
+      seqMemtableTimedFlushCheckThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+              ThreadName.TIMED_FlUSH_SEQ_MEMTABLE.getName());
       seqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
           this::timedFlushSeqMemTable,
           config.getSeqMemtableFlushCheckInterval(),
@@ -306,7 +308,9 @@ public class StorageEngine implements IService {
     }
     // timed flush unsequence memtable
     if (config.isEnableTimedFlushUnseqMemtable()) {
-      unseqMemtableTimedFlushCheckThread = Executors.newSingleThreadScheduledExecutor();
+      unseqMemtableTimedFlushCheckThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+              ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE.getName());
       unseqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
           this::timedFlushUnseqMemTable,
           config.getUnseqMemtableFlushCheckInterval(),
@@ -316,7 +320,9 @@ public class StorageEngine implements IService {
     }
     // timed close tsfile
     if (config.isEnableTimedCloseTsFile()) {
-      tsFileTimedCloseCheckThread = Executors.newSingleThreadScheduledExecutor();
+      tsFileTimedCloseCheckThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+              ThreadName.TIMED_CLOSE_TSFILE.getName());
       tsFileTimedCloseCheckThread.scheduleAtFixedRate(
           this::timedCloseTsFileProcessor,
           config.getCloseTsFileCheckInterval(),
@@ -362,10 +368,12 @@ public class StorageEngine implements IService {
       storageGroupManager.stopCompactionSchedulerPool();
     }
     syncCloseAllProcessor();
-    stopTimedService(ttlCheckThread, "TTlCheckThread");
-    stopTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
-    stopTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
-    stopTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
+    stopTimedService(ttlCheckThread, ThreadName.TTL_CHECK_SERVICE.getName());
+    stopTimedService(
+        seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_SEQ_MEMTABLE.getName());
+    stopTimedService(
+        unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE.getName());
+    stopTimedService(tsFileTimedCloseCheckThread, ThreadName.TIMED_CLOSE_TSFILE.getName());
     recoveryThreadPool.shutdownNow();
     for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
       this.releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroup);
@@ -901,7 +909,7 @@ public class StorageEngine implements IService {
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
       throws StorageEngineException, LoadFileException, IllegalPathException {
-    getProcessorDirectly(new PartialPath(getSgByEngineFile(newTsFileResource.getTsFile())))
+    getProcessorDirectly(new PartialPath(getSgByEngineFile(newTsFileResource.getTsFile(), false)))
         .loadNewTsFileForSync(newTsFileResource);
   }
 
@@ -919,19 +927,19 @@ public class StorageEngine implements IService {
 
   public boolean deleteTsfileForSync(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile)))
+    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile, false)))
         .deleteTsfile(deletedTsfile);
   }
 
   public boolean deleteTsfile(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile)))
+    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile, true)))
         .deleteTsfile(deletedTsfile);
   }
 
   public boolean unloadTsfile(File tsfileToBeUnloaded, File targetDir)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(tsfileToBeUnloaded)))
+    return getProcessorDirectly(new PartialPath(getSgByEngineFile(tsfileToBeUnloaded, true)))
         .unloadTsfile(tsfileToBeUnloaded, targetDir);
   }
 
@@ -940,10 +948,28 @@ public class StorageEngine implements IService {
    * files which are not loaded.
    *
    * @param file internal file
+   * @param needCheck check if the tsfile is an internal TsFile. If you make sure it is inside, no
+   *     need to check
    * @return sg name
+   * @throws IllegalPathException throw if tsfile is not an internal TsFile
    */
-  public String getSgByEngineFile(File file) {
-    return file.getParentFile().getParentFile().getParentFile().getName();
+  public String getSgByEngineFile(File file, boolean needCheck) throws IllegalPathException {
+    if (needCheck) {
+      File dataDir =
+          file.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile();
+      if (dataDir.exists()) {
+        String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+        for (String dir : dataDirs) {
+          File f = new File(dir);
+          if (dataDir.getAbsolutePath().equals(f.getAbsolutePath())) {
+            return file.getParentFile().getParentFile().getParentFile().getName();
+          }
+        }
+      }
+      throw new IllegalPathException(file.getAbsolutePath(), "it's not an internal tsfile.");
+    } else {
+      return file.getParentFile().getParentFile().getParentFile().getName();
+    }
   }
 
   /** @return TsFiles (seq or unseq) grouped by their storage group and partition number. */

@@ -104,6 +104,7 @@ import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnloadFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnsetTemplateOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CqGroupByTimeClauseContext;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
@@ -333,36 +334,34 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private void parseTemplateMeasurementClause(
       IoTDBSqlParser.TemplateMeasurementClauseContext ctx,
       CreateTemplateOperator createTemplateOperator) {
-    String schemaName;
     List<String> measurements = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     List<TSEncoding> encodings = new ArrayList<>();
     List<CompressionType> compressors = new ArrayList<>();
     if (ctx instanceof IoTDBSqlParser.AlignedTemplateMeasurementContext) {
       // aligned measurement
+      String alignedSuffixPath =
+          ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).suffixPath().getText();
       List<IoTDBSqlParser.NodeNameWithoutWildcardContext> measurementList =
           ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).nodeNameWithoutWildcard();
       List<IoTDBSqlParser.AttributeClausesContext> attributeList =
           ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).attributeClauses();
-      schemaName = measurementList.get(0).getText();
       for (int i = 0; i < attributeList.size(); i++) {
-        measurements.add(measurementList.get(i + 1).getText());
+        measurements.add(
+            alignedSuffixPath.concat(
+                TsFileConstant.PATH_SEPARATOR + measurementList.get(i).getText()));
         parseAttributeClause(attributeList.get(i), dataTypes, encodings, compressors);
       }
     } else {
       // non-aligned template measurement
-      schemaName =
-          ((IoTDBSqlParser.NonAlignedTemplateMeasurementContext) ctx)
-              .nodeNameWithoutWildcard()
-              .getText();
-      measurements.add(schemaName);
+      measurements.add(
+          ((IoTDBSqlParser.NonAlignedTemplateMeasurementContext) ctx).suffixPath().getText());
       parseAttributeClause(
           ((IoTDBSqlParser.NonAlignedTemplateMeasurementContext) ctx).attributeClauses(),
           dataTypes,
           encodings,
           compressors);
     }
-    createTemplateOperator.addSchemaName(schemaName);
     createTemplateOperator.addMeasurements(measurements);
     createTemplateOperator.addDataTypes(dataTypes);
     createTemplateOperator.addEncodings(encodings);
@@ -523,7 +522,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public void parseCqSelectIntoClause(
       IoTDBSqlParser.CqSelectIntoClauseContext ctx,
       CreateContinuousQueryOperator createContinuousQueryOperator) {
-
     queryOp = new GroupByQueryOperator();
 
     parseSelectClause(ctx.selectClause());
@@ -532,12 +530,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (queryOp.getSelectComponent().getResultColumns().size() > 1) {
       throw new SQLParserException("CQ: CQ currently does not support multiple result columns.");
     }
-
     if (queryOp.getFromComponent().getPrefixPaths().size() > 1) {
       throw new SQLParserException("CQ: CQ currently does not support multiple series.");
     }
 
-    parseCqGroupByTimeClause(ctx.cqGroupByTimeClause());
+    parseCqGroupByTimeClause(ctx.cqGroupByTimeClause(), createContinuousQueryOperator);
 
     if (queryOp.isGroupByLevel()) {
       int[] groupByQueryLevels = queryOp.getSpecialClauseComponent().getLevels();
@@ -551,12 +548,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     createContinuousQueryOperator.setQueryOperator(queryOp);
   }
 
-  public void parseCqGroupByTimeClause(IoTDBSqlParser.CqGroupByTimeClauseContext ctx) {
-
+  public void parseCqGroupByTimeClause(
+      CqGroupByTimeClauseContext ctx, CreateContinuousQueryOperator createContinuousQueryOperator) {
     GroupByClauseComponent groupByClauseComponent = new GroupByClauseComponent();
 
-    groupByClauseComponent.setUnit(
-        parseTimeUnitOrSlidingStep(ctx.DURATION_LITERAL().getText(), true, groupByClauseComponent));
+    long groupByInterval =
+        parseTimeUnitOrSlidingStep(ctx.DURATION_LITERAL().getText(), true, groupByClauseComponent);
+    groupByClauseComponent.setUnit(groupByInterval);
+    createContinuousQueryOperator.setGroupByTimeInterval(groupByInterval);
+    createContinuousQueryOperator.setGroupByTimeIntervalString(ctx.DURATION_LITERAL().getText());
 
     groupByClauseComponent.setSlidingStep(groupByClauseComponent.getUnit());
     groupByClauseComponent.setSlidingStepByMonth(groupByClauseComponent.isIntervalByMonth());
@@ -576,7 +576,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   public void parseResampleClause(
       IoTDBSqlParser.ResampleClauseContext ctx, CreateContinuousQueryOperator operator) {
-
     if (ctx.DURATION_LITERAL().size() == 1) {
       if (ctx.EVERY() != null) {
         operator.setEveryInterval(
@@ -590,6 +589,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           DatetimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL(0).getText()));
       operator.setForInterval(
           DatetimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL(1).getText()));
+    }
+
+    if (ctx.BOUNDARY() != null) {
+      operator.setFirstExecutionTimeBoundary(parseDateExpression(ctx.dateExpression()));
     }
   }
 
@@ -2785,7 +2788,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private Map<String, String> extractMap(
       List<IoTDBSqlParser.PropertyClauseContext> property2,
       IoTDBSqlParser.PropertyClauseContext property3) {
-    String value;
     Map<String, String> tags = new HashMap<>(property2.size());
     if (property3 != null) {
       for (IoTDBSqlParser.PropertyClauseContext property : property2) {

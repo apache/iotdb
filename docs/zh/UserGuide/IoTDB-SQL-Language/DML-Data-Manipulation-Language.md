@@ -274,6 +274,8 @@ It costs 0.016s
 
 ### 算数运算查询
 
+> 请注意，目前对齐时间序列(Aligned Timeseries)尚不支持算数运算查询。算数运算所选时间序列包含对齐时间序列时，会提示错误。
+
 #### 一元算数运算符
 
 支持的运算符：`+`, `-`
@@ -321,6 +323,8 @@ It costs 0.014s
 时间序列生成函数可接受若干原始时间序列作为输入，产生一列时间序列输出。与聚合函数不同的是，时间序列生成函数的结果集带有时间戳列。
 
 所有的时间序列生成函数都可以接受 * 作为输入，都可以与原始查询混合进行。
+
+> 请注意，目前对齐时间序列(Aligned Timeseries)尚不支持内置函数查询。使用内置函数时，如果自变量包含对齐时间序列，会提示错误。
 
 #### 数学函数
 
@@ -560,6 +564,8 @@ It costs 0.078s
 
 IoTDB 支持在 `select` 字句中执行由**数字常量，时间序列、算数运算表达式和时间序列生成函数（包括用户自定义函数）**组成的任意嵌套表达式。
 
+> 请注意，目前对齐时间序列(Aligned Timeseries)尚不支持嵌套表达式查询。使用嵌套表达式时，如果操作数包含对齐时间序列，会提示错误。
+
 #### 语法
 
 下面是 `select` 子句的语法定义：
@@ -644,7 +650,7 @@ IoTDB 目前支持 previous, linear, value 三种空值填充方式，数据类�
 
 - Previous 方式
 
-当查询的时间戳值为空时，将使用前一个时间戳的值来填充空白。 形式化的先前方法如下：
+当查询的时间戳下数据为空时，将使用前一个时间戳的值来填充空白。 形式化的先前方法如下：
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(previous(, <before_range>)?)
@@ -701,7 +707,7 @@ It costs 0.004s
 
 - Linear 方法
 
-当查询的时间戳值为空时，将使用前一个和下一个时间戳的值来填充空白。 形式化线性方法如下：
+当查询的时间戳下数据为空时，将使用前一个和下一个时间戳的值来填充空白。 形式化线性方法如下：
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(linear(, <before_range>, <after_range>)?)
@@ -750,7 +756,7 @@ It costs 0.017s
 
 - Value方法
 
-当查询的时间戳值为空时，将使用给定的值来填充空白。 特定值填充方法如下：
+当查询的时间戳下数据为空时，将使用给定的值来填充空白。 特定值填充方法如下：
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(constant)
@@ -817,6 +823,14 @@ It costs 0.007s
 
 本章节主要介绍聚合查询的相关示例，
 主要使用的是 IoTDB SELECT 语句的聚合查询函数。
+
+> 需要注意的是，聚合查询和时间序列查询不能混合使用。下述语句就是不支持的：
+>
+> ```sql
+> select a, count(a) from root.sg
+> select sin(a), count(a) from root.sg
+> select a, count(a) from root.sg group by ([10,100),10ms)
+> ```
 
 #### 统计总点数
 

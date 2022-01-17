@@ -820,21 +820,25 @@ public class MTree implements Serializable {
    */
   public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
       throws MetadataException {
-    return collectStorageGroups(pathPattern, true);
+    return collectStorageGroups(pathPattern, false, true);
   }
 
   /**
-   * Get all storage group that the given path pattern matches.
+   * Get all storage group that the given path pattern matches. If using prefix match, the path
+   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
+   * collected.
    *
    * @param pathPattern a path pattern or a full path
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return a list contains all storage group names under given path pattern
    */
-  public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern)
+  public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return collectStorageGroups(pathPattern, false);
+    return collectStorageGroups(pathPattern, isPrefixMatch, false);
   }
 
-  private List<PartialPath> collectStorageGroups(PartialPath pathPattern, boolean collectInternal)
+  private List<PartialPath> collectStorageGroups(
+      PartialPath pathPattern, boolean isPrefixMatch, boolean collectInternal)
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
     StorageGroupCollector<List<PartialPath>> collector =
@@ -845,6 +849,7 @@ public class MTree implements Serializable {
           }
         };
     collector.setCollectInternal(collectInternal);
+    collector.setPrefixMatch(isPrefixMatch);
     collector.traverse();
     return result;
   }
@@ -932,6 +937,7 @@ public class MTree implements Serializable {
             }
           }
         };
+    collector.setPrefixMatch(plan.isPrefixMatch());
     collector.traverse();
     return res;
   }
@@ -952,24 +958,41 @@ public class MTree implements Serializable {
 
   // region Interfaces for timeseries, measurement and schema info Query
   /**
+   * Get all measurement paths matching the given path pattern. If using prefix match, the path
+   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
+   * collected and return.
+   *
+   * @param pathPattern a path pattern or a full path, may contain wildcard.
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   */
+  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch).left;
+  }
+
+  /**
    * Get all measurement paths matching the given path pattern
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard.
    */
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
       throws MetadataException {
-    return getMeasurementPathsWithAlias(pathPattern, 0, 0).left;
+    return getMeasurementPaths(pathPattern, false);
   }
 
   /**
-   * Get all measurement paths matching the given path pattern
+   * Get all measurement paths matching the given path pattern If using prefix match, the path
+   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
+   * collected and return.
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return Pair.left contains all the satisfied paths Pair.right means the current offset or zero
    *     if we don't set offset.
    */
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset) throws MetadataException {
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      throws MetadataException {
     List<MeasurementPath> result = new LinkedList<>();
     MeasurementCollector<List<PartialPath>> collector =
         new MeasurementCollector<List<PartialPath>>(root, pathPattern, limit, offset) {
@@ -983,9 +1006,22 @@ public class MTree implements Serializable {
             result.add(path);
           }
         };
+    collector.setPrefixMatch(isPrefixMatch);
     collector.traverse();
     offset = collector.getCurOffset() + 1;
     return new Pair<>(result, offset);
+  }
+
+  /**
+   * Get all measurement paths matching the given path pattern
+   *
+   * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @return Pair.left contains all the satisfied paths Pair.right means the current offset or zero
+   *     if we don't set offset.
+   */
+  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
+      PartialPath pathPattern, int limit, int offset) throws MetadataException {
+    return getMeasurementPathsWithAlias(pathPattern, limit, offset, false);
   }
 
   /**
@@ -996,7 +1032,7 @@ public class MTree implements Serializable {
   public List<Pair<PartialPath, String[]>> getAllMeasurementSchemaByHeatOrder(
       ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
     List<Pair<PartialPath, String[]>> allMatchedNodes =
-        collectMeasurementSchema(plan.getPath(), 0, 0, queryContext, true);
+        collectMeasurementSchema(plan.getPath(), 0, 0, queryContext, true, plan.isPrefixMatch());
 
     Stream<Pair<PartialPath, String[]>> sortedStream =
         allMatchedNodes.stream()
@@ -1021,11 +1057,17 @@ public class MTree implements Serializable {
    */
   public List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan)
       throws MetadataException {
-    return collectMeasurementSchema(plan.getPath(), plan.getLimit(), plan.getOffset(), null, false);
+    return collectMeasurementSchema(
+        plan.getPath(), plan.getLimit(), plan.getOffset(), null, false, plan.isPrefixMatch());
   }
 
   private List<Pair<PartialPath, String[]>> collectMeasurementSchema(
-      PartialPath pathPattern, int limit, int offset, QueryContext queryContext, boolean needLast)
+      PartialPath pathPattern,
+      int limit,
+      int offset,
+      QueryContext queryContext,
+      boolean needLast,
+      boolean isPrefixMatch)
       throws MetadataException {
     List<Pair<PartialPath, String[]>> result = new LinkedList<>();
     MeasurementCollector<List<Pair<PartialPath, String[]>>> collector =
@@ -1046,6 +1088,7 @@ public class MTree implements Serializable {
             result.add(temp);
           }
         };
+    collector.setPrefixMatch(isPrefixMatch);
     collector.traverse();
     return result;
   }
@@ -1219,8 +1262,34 @@ public class MTree implements Serializable {
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
-  public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
+  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
     CounterTraverser counter = new MeasurementCounter(root, pathPattern);
+    counter.setPrefixMatch(isPrefixMatch);
+    counter.traverse();
+    return counter.getCount();
+  }
+
+  /**
+   * Get the count of timeseries matching the given path.
+   *
+   * @param pathPattern a path pattern or a full path, may contain wildcard
+   */
+  public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
+    return getAllTimeseriesCount(pathPattern, false);
+  }
+
+  /**
+   * Get the count of devices matching the given path. If using prefix match, the path pattern is
+   * used to match prefix path. All timeseries start with the matched prefix path will be counted.
+   *
+   * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   */
+  public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    CounterTraverser counter = new EntityCounter(root, pathPattern);
+    counter.setPrefixMatch(isPrefixMatch);
     counter.traverse();
     return counter.getCount();
   }
@@ -1231,7 +1300,21 @@ public class MTree implements Serializable {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
-    CounterTraverser counter = new EntityCounter(root, pathPattern);
+    return getDevicesNum(pathPattern, false);
+  }
+
+  /**
+   * Get the count of storage group matching the given path. If using prefix match, the path pattern
+   * is used to match prefix path. All timeseries start with the matched prefix path will be
+   * counted.
+   *
+   * @param pathPattern a path pattern or a full path, may contain wildcard.
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   */
+  public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    CounterTraverser counter = new StorageGroupCounter(root, pathPattern);
+    counter.setPrefixMatch(isPrefixMatch);
     counter.traverse();
     return counter.getCount();
   }
@@ -1242,7 +1325,18 @@ public class MTree implements Serializable {
    * @param pathPattern a path pattern or a full path, may contain wildcard.
    */
   public int getStorageGroupNum(PartialPath pathPattern) throws MetadataException {
-    CounterTraverser counter = new StorageGroupCounter(root, pathPattern);
+    return getStorageGroupNum(pathPattern, false);
+  }
+
+  /**
+   * Get the count of nodes in the given level matching the given path. If using prefix match, the
+   * path pattern is used to match prefix path. All timeseries start with the matched prefix path
+   * will be counted.
+   */
+  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
+      throws MetadataException {
+    MNodeLevelCounter counter = new MNodeLevelCounter(root, pathPattern, level);
+    counter.setPrefixMatch(isPrefixMatch);
     counter.traverse();
     return counter.getCount();
   }
@@ -1250,17 +1344,21 @@ public class MTree implements Serializable {
   /** Get the count of nodes in the given level matching the given path. */
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
       throws MetadataException {
-    MNodeLevelCounter counter = new MNodeLevelCounter(root, pathPattern, level);
+    return getNodesCountInGivenLevel(pathPattern, level, false);
+  }
+
+  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
+    MeasurementGroupByLevelCounter counter =
+        new MeasurementGroupByLevelCounter(root, pathPattern, level);
+    counter.setPrefixMatch(isPrefixMatch);
     counter.traverse();
-    return counter.getCount();
+    return counter.getResult();
   }
 
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level) throws MetadataException {
-    MeasurementGroupByLevelCounter counter =
-        new MeasurementGroupByLevelCounter(root, pathPattern, level);
-    counter.traverse();
-    return counter.getResult();
+    return getMeasurementCountGroupByLevel(pathPattern, level, false);
   }
 
   // endregion
@@ -1585,6 +1683,9 @@ public class MTree implements Serializable {
       upperTemplate = cur.getSchemaTemplate() != null ? cur.getSchemaTemplate() : upperTemplate;
       if (!cur.hasChild(fullPathNodes[index])) {
         if (upperTemplate != null) {
+          // for this fullPath, cur is the last node on MTree
+          // since upperTemplate exists, need to find the matched suffix path of fullPath and
+          // template
           String suffixPath =
               new PartialPath(Arrays.copyOfRange(fullPathNodes, index, fullPathNodes.length))
                   .toString();
@@ -1595,7 +1696,8 @@ public class MTree implements Serializable {
             return index - 1;
           }
 
-          // overlap with template, cast exception for now
+          // if suffix doesn't match, but first node name matched, it's an overlap with template
+          // cast exception for now
           if (upperTemplate.getDirectNode(fullPathNodes[index]) != null) {
             throw new TemplateImcompatibeException(
                 measurementPath.getFullPath(), upperTemplate.getName(), fullPathNodes[index]);

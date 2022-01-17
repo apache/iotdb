@@ -47,38 +47,4 @@ After applying schema template, the following picture illustrates the new data m
 
 ## Usage
 
-Currently, only Session API supports Schema Template usage.
-
-* Create a schema template
-```
-
-* name: template name
-* measurements: List of measurements, if it is a single measurement, just put it's name
-*     into a list and add to measurements if it is a vector measurement, put all measurements of
-*     the vector into a list and add to measurements
-* dataTypes: List of datatypes, if it is a single measurement, just put it's type into a
-*     list and add to dataTypes if it is a vector measurement, put all types of the vector
-*     into a list and add to dataTypes
-* encodings: List of encodings, if it is a single measurement, just put it's encoding into
-*     a list and add to encodings if it is a vector measurement, put all encodings of the
-*     vector into a list and add to encodings
-* compressors: List of compressors                            
-void createSchemaTemplate(
-      String templateName,
-      List<String> schemaName,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<CompressionType> compressors)
-```
-* Set the device template named `templateName` at path `prefixPath`. You should firstly create the template using
-
-``` 
-
-void setSchemaTemplate(String templateName, String prefixPath)
-
-```
-
-After setting schema template，data could be inserted directly to the according timeseries. For example, suppose there's storage group root.sg and template t1(s1,s2) has been set to root.sg.car，then timeseries like root.sg.car.d1.s1 and root.sg.car.d1.s2 are available and data can be inserted。
-
-For examples of schema template, you can refer to example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java
+Java Native API, C++ Native API, and IoTDB-SQL have supported Schema Template usage.

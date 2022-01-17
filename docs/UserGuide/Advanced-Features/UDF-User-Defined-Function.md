@@ -448,6 +448,12 @@ The usage of UDF is similar to that of built-in aggregation functions.
 
 
 
+### Queries with Aligned Timeseries 
+
+Aligned Timeseries has not been supported in UDF queries yet. An error message is expected if you use UDF functions with Aligned Timeseries selected.
+
+
+
 ### Queries with * in SELECT Clauses
 
 Assume that there are 2 time series (`root.sg.d1.s1` and `root.sg.d1.s2`)  in the system.

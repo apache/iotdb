@@ -23,24 +23,29 @@
 
 为方便 IoTDB Server 的配置与管理，IoTDB Server 为用户提供三种配置项，使得用户可以在启动服务或服务运行时对其进行配置。
 
-三种配置项的配置文件均位于 IoTDB 安装目录：`$IOTDB_HOME/conf`文件夹下，其中涉及 server 配置的共有 2 个文件，分别为：`iotdb-env.sh`, `iotdb-engine.properties`。用户可以通过更改其中的配置项对系统运行的相关配置项进行配置。
+三种配置项的配置文件均位于 IoTDB 安装目录：`$IOTDB_HOME/conf`文件夹下，其中涉及 server 配置的共有 2 个文件，分别为：`iotdb-env.sh`, `iotdb-engine.properties`
+。用户可以通过更改其中的配置项对系统运行的相关配置项进行配置。
 
 配置文件的说明如下：
 
 * `iotdb-env.sh`：环境配置项的默认配置文件。用户可以在文件中配置 JAVA-JVM 的相关系统配置项。
 
-* `iotdb-engine.properties`：IoTDB 引擎层系统配置项的默认配置文件。用户可以在文件中配置 IoTDB 引擎运行时的相关参数，如 JDBC 服务监听端口 (`rpc_port`)、overflow 数据文件存储目录 (`overflow_data_dir`) 等。此外，用户可以在文件中配置 IoTDB 存储时 TsFile 文件的相关信息，如每次将内存中的数据写入到磁盘时的数据大小 (`group_size_in_byte`)，内存中每个列打一次包的大小 (`page_size_in_byte`) 等。
+* `iotdb-engine.properties`：IoTDB 引擎层系统配置项的默认配置文件。用户可以在文件中配置 IoTDB 引擎运行时的相关参数，如 JDBC 服务监听端口 (`rpc_port`)、overflow
+  数据文件存储目录 (`overflow_data_dir`) 等。此外，用户可以在文件中配置 IoTDB 存储时 TsFile 文件的相关信息，如每次将内存中的数据写入到磁盘时的数据大小 (`group_size_in_byte`)
+  ，内存中每个列打一次包的大小 (`page_size_in_byte`) 等。
 
 ## 热修改配置项
 
-为方便用户使用，IoTDB Server 为用户提供了热修改功能，即在系统运行过程中修改`iotdb-engine.properties`中部分配置参数并即时应用到系统中。下面介绍的参数中，改后
-生效方式为`触发生效`的均为支持热修改的配置参数。
+为方便用户使用，IoTDB Server 为用户提供了热修改功能，即在系统运行过程中修改`iotdb-engine.properties`中部分配置参数并即时应用到系统中。下面介绍的参数中，改后 生效方式为`触发生效`
+的均为支持热修改的配置参数。
 
-触发方式：客户端发送```load configuration```命令至 IoTDB Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://iotdb.apache.org/zh/UserGuide/Master/CLI/Command-Line-Interface.html)
+触发方式：客户端发送```load configuration```命令至 IoTDB
+Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://iotdb.apache.org/zh/UserGuide/Master/CLI/Command-Line-Interface.html)
 
 ## 环境配置项
 
-环境配置项主要用于对 IoTDB Server 运行的 Java 环境相关参数进行配置，如 JVM 相关配置。IoTDB Server 启动时，此部分配置会被传给 JVM。用户可以通过查看 `iotdb-env.sh`（或`iotdb-env.bat`) 文件查看环境配置项内容。详细配置项说明如下：
+环境配置项主要用于对 IoTDB Server 运行的 Java 环境相关参数进行配置，如 JVM 相关配置。IoTDB Server 启动时，此部分配置会被传给 JVM。用户可以通过查看 `iotdb-env.sh`
+（或`iotdb-env.bat`) 文件查看环境配置项内容。详细配置项说明如下：
 
 * JMX\_LOCAL
 
@@ -80,7 +85,8 @@
 
 ## 系统配置项
 
-系统配置项是 IoTDB Server 运行的核心配置，它主要用于设置 IoTDB Server 文件层和引擎层的参数，便于用户根据自身需求调整 Server 的相关配置，以达到较好的性能表现。系统配置项可分为两大模块：文件层配置项和引擎层配置项。用户可以通过`iotdb-engine.properties`, 文件查看和修改两种配置项的内容。在 0.7.0 版本中字符串类型的配置项大小写敏感。
+系统配置项是 IoTDB Server 运行的核心配置，它主要用于设置 IoTDB Server 文件层和引擎层的参数，便于用户根据自身需求调整 Server
+的相关配置，以达到较好的性能表现。系统配置项可分为两大模块：文件层配置项和引擎层配置项。用户可以通过`iotdb-engine.properties`, 文件查看和修改两种配置项的内容。在 0.7.0 版本中字符串类型的配置项大小写敏感。
 
 ### RPC配置
 
@@ -147,7 +153,25 @@
 |默认值| 1024 |
 |改后生效方式|重启服务生效|
 
+### InfluxDB 协议适配器配置
 
+* enable_influxdb_rpc_service
+
+|     名字     | enable_influxdb_rpc_service  |
+| :----------: | :--------------------------- |
+|     描述     | 是否开启InfluxDB RPC service |
+|     类型     | Boolean                      |
+|    默认值    | true                         |
+| 改后生效方式 | 重启服务生效                 |
+
+* influxdb_rpc_port
+
+|     名字     | influxdb_rpc_port            |
+| :----------: | :--------------------------- |
+|     描述     | influxdb rpc service占用端口 |
+|     类型     | INT32                        |
+|    默认值    | 8086                         |
+| 改后生效方式 | 重启服务生效                 |
 ### 写前日志配置
 
 * enable\_wal
@@ -498,11 +522,29 @@
 
 * concurrent\_query\_thread
 
-|名字| concurrent\_query\_thread |
-|:---:|:---|
-|描述| 当 IoTDB 对内存中的数据进行查询时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。默认值为 0。|
-|类型| Int32 |
-|默认值| 0 |
+|名字| concurrent\_query\_thread                                                   |
+|:---:|:----------------------------------------------------------------------------|
+|描述| 当 IoTDB 对内存中的数据进行查询时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。默认值为 16。 |
+|类型| Int32                                                                       |
+|默认值| 16                                                                          |
+|改后生效方式| 重启服务生效                                                                      |
+
+* concurrent\_sub\_rawQuery\_thread
+
+|名字| concurrent\_sub\_rawQuery\_thread | 
+|:---:|:--| 
+|描述| 原始数据查询时，最多启动多少个线程来执行该操作。如果设置小于等于 0，会采用机器 CPU 核数。| 
+|类型| Int32 | 
+|默认值| 8 | 
+|改后生效方式|重启服务生效|
+
+* raw\_query\_blocking\_queue\_capacity
+
+|名字| raw\_query\_blocking\_queue\_capacity | 
+|:---:|:--| 
+|描述| 原始数据查询中，读任务的阻塞队列长度。默认值为 5。| 
+|类型| Int32 | 
+|默认值| 5 |
 |改后生效方式|重启服务生效|
 
 * chunk\_buffer\_pool\_enable
@@ -531,6 +573,15 @@
 |类型| Int32 |
 |默认值| 700 |
 |改后生效方式|仅允许在第一次启动服务前修改|
+
+* tag\_attribute\_flush\_interval
+
+|名字| tag\_attribute\_flush\_interval |
+|:---:|:--------------------------------|
+|描述| 标签和属性记录的间隔数，达到此记录数量时将强制刷盘       |
+|类型| Int32                           |
+|默认值| 1000                            |
+|改后生效方式| 仅允许在第一次启动服务前修改                  |
 
 * enable\_partial\_insert
 
@@ -568,15 +619,6 @@
 |默认值| 3600 |
 |改后生效方式|重启服务生效|
 
-* virtual\_storage\_group\_num
-
-|名字| virtual\_storage\_group\_num |
-|:---:|:---|
-|描述| 每个用户定义的虚拟存储组数 |
-|类型| Int64 |
-|默认值| 1 |
-|改后生效方式|仅允许在第一次启动服务前修改|
-
 * time\_index\_level
 
 |名字| time\_index\_level |
@@ -599,12 +641,12 @@
 
 * write\_read\_schema\_free\_memory\_proportion
 
-|名字| write\_read\_schema\_free\_memory\_proportion |
-|:---:|:---|
-|描述| 读写内存分配比率。 参数形式为a:b:c:d，其中a、b、c、d为整数。如“1:1:1:1”、“6:2:1:1”，如果你的写入压力大而读取压力小，请调整为“6:1:1:2” |
-|类型| String |
-|默认值| 4:3:1:2 |
-|改后生效方式|重启服务生效|
+|名字| write\_read\_schema\_free\_memory\_proportion                                                |
+|:---:|:---------------------------------------------------------------------------------------------|
+|描述| 读写内存分配比率。 参数形式为a : b : c : d，其中a、b、c、d为整数。如“1:1:1:1”、“6:2:1:1”，如果你的写入压力大而读取压力小，请调整为“6:1:1:2” |
+|类型| String                                                                                       |
+|默认值| 4:3:1:2                                                                                      |
+|改后生效方式| 重启服务生效                                                                                       |
 
 * primary\_array\_size
 
@@ -617,19 +659,28 @@
 
 * flush\_proportion
 
-|名字| flush\_proportion |
-|:---:|:---|
+|名字| flush\_proportion                                                   |
+|:---:|:--------------------------------------------------------------------|
 |描述| 调用flush disk的写入内存比例，默认0.4,若有极高的写入负载力（比如batch=1000），可以设置为低于默认值，比如0.2 |
-|类型| Float |
-|默认值| 0.4 |
-|改后生效方式|重启服务生效|
+|类型| Double                                                              |
+|默认值| 0.4                                                                 |
+|改后生效方式| 重启服务生效                                                              |
+
+* time\_index\_memory\_proportion
+
+|名字| time\_index\_memory\_proportion |
+|:---:|:--------------------------------|
+|描述| 分配给读 timeIndex 的内存占比            |
+|类型| Double                           |
+|默认值| 0.2                             |
+|改后生效方式| 重启服务生效                          |
 
 * buffered\_arrays\_memory\_proportion
 
 |名字| buffered\_arrays\_memory\_proportion |
 |:---:|:---|
 |描述| 为缓冲数组分配的写入内存比例，默认为0.6 |
-|类型| Float |
+|类型| Double |
 |默认值| 0.6 |
 |改后生效方式|重启服务生效|
 
@@ -638,7 +689,7 @@
 |名字| reject\_proportion |
 |:---:|:---|
 |描述| 拒绝插入的写入内存比例，默认0.8，若有极高的写入负载力（比如batch=1000）并且物理内存足够大，它可以设置为高于默认值，如0.9 |
-|类型| Float |
+|类型| Double |
 |默认值| 0.8 |
 |改后生效方式|重启服务生效|
 
@@ -697,7 +748,7 @@
 |改后生效方式|重启服务生效|
 
 ### 升级配置
- 
+
 * update\_thread\_num
 
 |名字| update\_thread\_num |
@@ -718,106 +769,171 @@
 |默认值| -1 |
 |改后生效方式|重启服务生效|
 
+* group_by_fill_cache_size_in_mb
+
+|     名字     | group_by_fill_cache_size_in_mb     |
+| :----------: | :--------------------------------- |
+|     描述     | 填充查询中使用的缓存大小，单位是MB |
+|     类型     | Float                              |
+|    默认值    | 1.0                                |
+| 改后生效方式 | 重启服务生效                       |
+
+### 插入配置
+
+- insert_multi_tablet_enable_multithreading_column_threshold
+
+|     名字     | insert_multi_tablet_enable_multithreading_column_threshold |
+| :----------: | :--------------------------------------------------------- |
+|     描述     | 插入时启用多线程插入列数的阈值                             |
+|     类型     | Int32                                                      |
+|    默认值    | 10                                                         |
+| 改后生效方式 | 重启服务生效                                               |
+
 ### 合并配置
 
-* compaction\_strategy
+* concurrent\_compaction\_thread
 
-|名字| compaction\_strategy |
+|名字| concurrent\_compaction\_thread |
 |:---:|:---|
-|描述| 默认开启合并，可根据需求开启合并或关闭合并（LEVEL_COMPACTION, NO_COMPACTION） |
-|类型| String |
-|默认值| LEVEL_COMPACTION |
+|描述| 执行合并任务的线程数目 |
+|类型| Integer |
+|默认值| 10 |
 |改后生效方式|重启服务生效|
 
-* enable\_unseq_compaction
+* compaction\_schedule\_interval
 
-|名字| enable\_unseq_compaction |
+|名字| compaction\_schedule\_interval |
 |:---:|:---|
-|描述| 是否将unseq文件合并为seq文件。仅当compaction_strategy为LEVEL_COMPACTION时有效。 |
+|描述| 合并调度的时间间隔 |
+|类型| Long，单位为毫秒 |
+|默认值| 60000，建议不要设置的太小 |
+|改后生效方式|重启服务生效|
+
+* compaction\_submission\_interval
+
+|名字| compaction\_submission\_interval |
+|:---:|:---|
+|描述| 合并任务提交的间隔 |
+|类型| Long，单位为毫秒 |
+|默认值| 60000，建议不要设置的太小 |
+|改后生效方式|重启服务生效|
+
+* enable\_seq\_space\_compaction
+
+|名字| enable\_seq\_space\_compaction |
+|:---:|:---|
+|描述| 顺序空间内合并，开启顺序文件之间的合并 |
 |类型| Boolean |
 |默认值| true |
-|改后生效方式|仅开启合并后，重启服务生效|
+|改后生效方式|重启服务生效|
 
-* compaction\_interval
+* enable\_unseq\_space\_compaction
 
-|名字| compaction\_interval |
+|名字| enable\_unseq\_space\_compaction |
 |:---:|:---|
-|描述| 设置延迟时间开始压缩任务，单位是：ms |
-|类型| Int32 |
-|默认值| 30000 |
-|改后生效方式|仅开启合并后，重启服务生效|
+|描述| 乱序空间内合并，开启乱序文件之间的合并 |
+|类型| Boolean |
+|默认值| false |
+|改后生效方式|重启服务生效|
 
-* seq\_file\_num\_in\_each\_level
+* enable\_cross\_space\_compaction
 
-|名字| seq\_file\_num\_in\_each\_level |
+|名字| enable\_cross\_space\_compaction |
 |:---:|:---|
-|描述| 顺序每层级文件最大数 |
-|类型| Int32 |
-|默认值| 6 |
-|改后生效方式| 重启服务生效|
+|描述| 跨空间合并，开启将乱序文件合并到顺序文件中 |
+|类型| Boolean |
+|默认值| true |
+|改后生效方式|重启服务生效|
 
-* seq\_level\_num
+* cross\_compaction\_strategy
 
-|名字| seq\_level\_num |
+|名字| cross\_compaction\_strategy |
 |:---:|:---|
-|描述| 顺序最大层级数 |
-|类型| Int32 |
-|默认值| 3 |
-|改后生效方式| 重启服务生效|
+|描述| 跨空间合并的策略 |
+|类型| String，暂时只有 INPLACE_COMPACTION 一个策略可选 |
+|默认值| inplace_compaction |
+|改后生效方式|重启服务生效|
 
-* unseq\_file\_num\_in\_each\_level
+* inner\_compaction\_strategy
 
-|名字| unseq\_file\_num\_in\_each\_level |
+|名字| cross\_compaction\_strategy |
 |:---:|:---|
-|描述| 乱序每层级文件最大数 |
-|类型| Int32 |
-|默认值| 10 |
-|改后生效方式| 重启服务生效|
+|描述| 空间内合并的策略 |
+|类型| String，暂时只有 SIZE_TIERED_COMPACTION 一个策略可选 |
+|默认值| size_tiered_compaction |
+|改后生效方式|重启服务生效|
 
-* unseq\_level\_num
+* compaction\_priority
 
-|名字| unseq\_level\_num |
+|名字| compaction\_priority |
 |:---:|:---|
-|描述| 乱序最大层级数 |
-|类型| Int32 |
-|默认值| 1 |
-|改后生效方式| 重启服务生效|
+|描述| 合并时的优先级，BALANCE 各种合并平等，INNER_CROSS 优先进行顺序文件和顺序文件或乱序文件和乱序文件的合并，CROSS_INNER 优先将乱序文件合并到顺序文件中 |
+|类型| String |
+|默认值| inner_cross，有 inner_cross、balance、cross_inner 三种可选 |
+|改后生效方式|重启服务生效|
 
-* max\_select\_unseq\_file\_num\_in\_each\_unseq\_compaction
+* target\_compaction\_file\_size
 
-|名字| max\_select\_unseq\_file\_num\_in\_each\_unseq\_compaction |
+|名字| target\_compaction\_file\_size |
 |:---:|:---|
-|描述| 每个无序压缩任务中的最大打开文件数，仅当compaction_strategy为LEVEL_COMPACTION时有效。此参数必须远小于操作系统控制的每个进程允许的最大打开文件数（大多数系统为65535）。|
-|类型| Int32 |
-|默认值| 2000 |
-|改后生效方式| 重启服务生效|
+|描述| 空间内合并的目标文件大小 |
+|类型| Long，单位为字节|
+|默认值| 1073741824，即 1GB |
+|改后生效方式|重启服务生效|
 
-* merge\_chunk\_point\_number
+* max\_compaction\_candidate\_file\_num
 
-|名字| merge\_chunk\_point\_number |
+|名字| max\_compaction\_candidate\_file\_num |
 |:---:|:---|
-|描述| 在目标文件中chunk的平均点数值达到值时，将文件合并到顶层。仅当compaction_strategy为LEVEL_COMPACTION时有效。在合并过程中，如果一个chunk的点数少于该参数，则该chunk将被与其后续的块合并，即使它没有溢出，直到合并的chunk到达这个阈值和新的块将被刷新。若小于0时，此机制将被禁用。|
-|类型| Int32 |
+|描述| 一次合并最多参与的文件数 |
+|类型| Integer |
+|默认值| 30，建议不要过小，过小容易导致系统性能变差 |
+|改后生效方式|重启服务生效|
+
+* target\_chunk\_size
+
+|名字| target\_chunk\_size |
+|:---:|:---|
+|描述| 合并时 Chunk 的目标大小 |
+|类型| Long，单位为字节|
+|默认值| 1048576，即 1MB |
+|改后生效方式|重启服务生效|
+
+* target\_chunk\_point\_num
+
+|名字| target\_chunk\_point\_num |
+|:---:|:---|
+|描述| 合并时 Chunk 的目标点数 |
+|类型| Integer |
 |默认值| 100000 |
-|改后生效方式| 重启服务生效|
+|改后生效方式|重启服务生效|
 
-* merge\_page\_point\_number
+* chunk\_size\_lower\_bound\_in\_compaction
 
-|名字| merge\_page\_point\_number |
+|名字| chunk\_size\_lower\_bound\_in\_compaction |
 |:---:|:---|
-|描述| 当一个页面的点数达到该值时，使用“追加合并”而不是“反序列化合并”。仅当compaction_strategy为LEVEL_COMPACTION时有效。|
-|类型| Int32 |
+|描述| 合并时源 Chunk 的大小小于这个值，将被解开成点进行合并 |
+|类型| Long，单位为字节 |
+|默认值| 128 |
+|改后生效方式|重启服务生效|
+
+* chunk\_point\_num\_lower\_bound\_in\_compaction
+
+|名字| chunk\_point\_num\_lower\_bound\_in\_compaction |
+|:---:|:---|
+|描述| 合并时源 Chunk 的点数小于这个值，将被解开成点进行合并 |
+|类型| Integer |
 |默认值| 100 |
-|改后生效方式| 重启服务生效|
+|改后生效方式|重启服务生效|
 
-* merge\_chunk\_subthread\_num
+* compaction\_write\_throughput\_mb\_per\_sec\
 
-|名字| merge\_chunk\_subthread\_num |
+|名字| compaction\_write\_throughput\_mb\_per\_sec\ |
 |:---:|:---|
-|描述| 设置多少个线程来执行乱序合并块子任务，默认为 4。若小于等于0时设置为1。|
-|类型| Int32 |
-|默认值| 4 |
-|改后生效方式| 重启服务生效|
+|描述| 合并时写入的速率，这个速率为所有线程的写入速率之和 |
+|类型| Integer，单位为 MB/s |
+|默认值| 8，建议不要设置的过大 |
+|改后生效方式|重启服务生效|
 
 * merge\_fileSelection\_time\_budget
 
@@ -895,12 +1011,12 @@
 
 * chunk\_timeseriesmeta\_free\_memory\_proportion
 
-|名字| chunk\_timeseriesmeta\_free\_memory\_proportion |
-|:---:|:---|
-|描述| 读取内存分配比例，ChunkCache、TimeseriesMetadataCache、数据集查询的内存和可用内存的查询。参数形式为a:b:c:d，其中a、b、c、d为整数。 例如“1:1:1:1” ，“1:2:3:4” 。|
-|类型|String|
-|默认值| 1:2:3:4 |
-|改后生效方式| 重启服务生效|
+|名字| chunk\_timeseriesmeta\_free\_memory\_proportion                                                                                                                           |
+|:---:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|描述| 读取内存分配比例，BloomFilterCache、ChunkCache、TimeseriesMetadataCache、数据集查询的内存和可用内存的查询。参数形式为a : b : c : d : e，其中a、b、c、d、e为整数。 例如“1 : 1 : 1 : 1 : 1” ，“1 : 100 : 200 : 300 : 400” 。 |
+|类型| String                                                                                                                                                                    |
+|默认值| 1 : 100 : 200 : 300 : 400                                                                                                                                                 |
+|改后生效方式| 重启服务生效                                                                                                                                                                    |
 
 * metadata\_node\_cache\_size
 
@@ -911,7 +1027,7 @@
 |默认值| 300000 |
 |改后生效方式|重启服务生效|
 
-## 最新点缓存配置
+### 最新点缓存配置
 
 * enable\_last\_stat
 
@@ -952,7 +1068,7 @@
 |类型| Int32 |
 |默认值| 10000 |
 |改后生效方式|重启服务生效|
- 
+
 * max\_wal\_bytebuffer\_num\_for\_each\_partition
 
 |名字| max\_wal\_bytebuffer\_num\_for\_each\_partition |
@@ -1022,23 +1138,14 @@
 |默认值| true |
 |改后生效方式|重启服务生效|
 
-* performance\_stat\_display\_interval
+* tracing\_dir
 
-|名字| performance\_stat\_display\_interval |
-|:---:|:---|
-|描述| 显示统计结果的间隔，单位为毫秒ms。 |
-|类型| Int32 |
-|默认值| 60000 |
-|改后生效方式|重启服务生效|
-
-* performance\_stat\_memory\_in\_kb
-
-|名字| performance\_stat\_memory\_in\_kb |
-|:---:|:---|
-|描述| 设置性能状态内存（以 kb 为单位）。 |
-|类型| Int32 |
-|默认值| 20 |
-|改后生效方式|重启服务生效|
+|名字| tracing\_dir              |
+|:---:|:--------------------------|
+|描述| 取消注释用以下字段来配置 tracing 根目录。 |
+|类型| String                    |
+|默认值| data/tracing(Windows:data\\tracing) |
+|改后生效方式| 重启服务生效                    |
 
 ### 水印模块配置
 
@@ -1226,15 +1333,6 @@
 |默认值| 1048576 |
 |改后生效方式|触发生效|
 
-* time\_series\_data\_type
-
-|名字| time\_series\_data\_type |
-|:---:|:---|
-|描述| 数据类型配置，输入时间戳数据类型，支持INT32或INT64 |
-|类型| String |
-|默认值| INT64 |
-|改后生效方式|触发生效|
-
 * max\_string\_length
 
 |名字| max\_string\_length |
@@ -1407,11 +1505,11 @@
 * udf\_reader\_transformer\_collector\_memory\_proportion
 
 |名字| udf\_reader\_transformer\_collector\_memory\_proportion |
-|:---:|:---|
-|描述| UDF内存分配比例。参数形式为a:b:c，其中a、b、c为整数。 |
-|类型| String |
-|默认值| 1:1:1 |
-|改后生效方式|重启服务生效|
+|:---:|:--------------------------------------------------------|
+|描述| UDF内存分配比例。参数形式为a : b : c，其中a、b、c为整数。                    |
+|类型| String                                                  |
+|默认值| 1:1:1                                                   |
+|改后生效方式| 重启服务生效                                                  |
 
 * udf\_root\_dir
 
@@ -1421,6 +1519,8 @@
 |类型| String |
 |默认值| ext/udf(Windows:ext\\udf) |
 |改后生效方式|重启服务生效|
+
+### 索引配置
 
 * index\_root\_dir
 
@@ -1471,7 +1571,7 @@
 
 |名字| enable\_partition |
 |:---:|:---|
-|描述| 是否开启将数据按时间分区存储的功能，如果关闭，所有数据都属于分区 0|
+|描述| 是否开启将数据按时间分区存储的功能，如果关闭，所有数据都属于分区 0 (不建议开启此功能。 如果打开，请计算合适的 concurrent_writing_time_partition 和 wal_buffer_size)|
 |类型| Boolean |
 |默认值| false |
 |改后生效方式|仅允许在第一次启动服务前修改|
@@ -1548,14 +1648,75 @@
 |默认值| root |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
+### SELECT-INTO配置
+
+* select_into_insert_tablet_plan_row_limit
+
+|     名字     | select_into_insert_tablet_plan_row_limit                     |
+| :----------: | :----------------------------------------------------------- |
+|     描述     | 执行 select-into 语句时，一个 insert-tablet-plan 中可以处理的最大行数 |
+|     类型     | Int32                                                        |
+|    默认值    | 10000                                                        |
+| 改后生效方式 | 触发生效                                                     |
+
+### 触发器配置
+
+- concurrent_window_evaluation_thread
+
+|     名字     | concurrent_window_evaluation_thread |
+| :----------: | :---------------------------------- |
+|     描述     | 窗口计算线程池的默认线程数          |
+|     类型     | Int32                               |
+|    默认值    | CPU核数                             |
+| 改后生效方式 | 重启服务生效                        |
+
+- max_pending_window_evaluation_tasks
+
+|     名字     | max_pending_window_evaluation_tasks |
+| :----------: | :---------------------------------- |
+|     描述     | 最多允许堆积的窗口计算任务          |
+|     类型     | Int32                               |
+|    默认值    | 64                                  |
+| 改后生效方式 | 重启服务生效                        |
+
+### 连续查询配置
+
+- continuous_query_execution_thread
+
+|     名字     | continuous_query_execution_thread |
+| :----------: | :-------------------------------- |
+|     描述     | 执行连续查询任务的线程池的线程数  |
+|     类型     | Int32                             |
+|    默认值    | max(1, CPU 核数 / 2)              |
+| 改后生效方式 | 重启服务生效                      |
+
+- max_pending_continuous_query_tasks
+
+|     名字     | max_pending_continuous_query_tasks |
+| :----------: | :--------------------------------- |
+|     描述     | 队列中连续查询最大任务堆积数       |
+|     类型     | Int32                              |
+|    默认值    | 64                                 |
+| 改后生效方式 | 重启服务生效                       |
+
+- continuous_query_min_every_interval
+
+|     名字     | continuous_query_min_every_interval |
+| :----------: | :---------------------------------- |
+|     描述     | 连续查询执行时间间隔的最小值        |
+|     类型     | duration                            |
+|    默认值    | 1s                                  |
+| 改后生效方式 | 重启服务生效                        |
 
 ## 开启 GC 日志
+
 GC 日志默认是关闭的。为了性能调优，用户可能会需要收集 GC 信息。
 若要打开 GC 日志，则需要在启动 IoTDB Server 的时候加上"printgc"参数：
 
 ```bash
 nohup sbin/start-server.sh printgc >/dev/null 2>&1 &
 ```
+
 或者
 
 ```bash

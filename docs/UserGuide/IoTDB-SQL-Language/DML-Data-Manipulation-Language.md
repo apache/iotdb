@@ -265,6 +265,8 @@ It costs 0.016s
 
 ### Arithmetic Query
 
+> Please note that Aligned Timeseries has not been supported in Arithmetic Query yet. An error message is expected if you use Arithmetic Query with Aligned Timeseries selected.
+
 #### Unary Arithmetic Operators
 
 Supported operators: `+`, `-`
@@ -312,6 +314,8 @@ The time series generating function takes several time series as input and outpu
 All time series generating functions can accept * as input.
 
 IoTDB supports hybrid queries of time series generating function queries and raw data queries.
+
+> Please note that Aligned Timeseries has not been supported in queries with hybrid functions yet. An error message is expected if you use hybrid functions with Aligned Timeseries selected in a query statement.
 
 #### Mathematical Functions
 
@@ -548,6 +552,8 @@ Known Implementation UDF Libraries:
 
 IoTDB supports the execution of arbitrary nested expressions consisting of **numbers, time series, arithmetic expressions, and time series generating functions (including user-defined functions)** in the `select` clause.
 
+> Please note that Aligned Timeseries has not been supported in Nested Expressions yet. An error message is expected if you use Nested Expressions with Aligned Timeseries selected in a query statement.
+
 #### Syntax
 
 The following is the syntax definition of the `select` clause:
@@ -627,11 +633,11 @@ IoTDB supports previous, linear, and value fill methods. Table 3-1 lists the dat
 
 #### Single Fill Query
 
-When data for a particular timestamp is null, the null values can be filled using single fill, as described below:
+When data in a particular timestamp is null, the null values can be filled using single fill, as described below:
 
 * Previous Function
 
-When the value of the queried timestamp is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows:
+When the value in the queried timestamp is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows:
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(previous(, <before_range>)?)
@@ -687,7 +693,7 @@ It costs 0.004s
 
 * Linear Method
 
-When the value of the queried timestamp is null, the value of the previous and the next timestamp is used to fill the blank. The formalized linear method is as follows:
+When the value in the queried timestamp is null, the value of the previous and the next timestamp is used to fill the blank. The formalized linear method is as follows:
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(linear(, <before_range>, <after_range>)?)
@@ -731,7 +737,7 @@ It costs 0.017s
 
 * Value Method
 
-When the value of the queried timestamp is null, given fill value is used to fill the blank. The formalized value method is as follows:
+When the value in the queried timestamp is null, given fill value is used to fill the blank. The formalized value method is as follows:
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(constant)
@@ -795,6 +801,14 @@ It costs 0.007s
 ### Aggregate Query
 
 This section mainly introduces the related examples of aggregate query.
+
+> Please note that mixed use of `Aggregate Query` and `Timeseries Query` is not allowed. Below are examples for queries that are not allowed.
+>
+> ```
+> select a, count(a) from root.sg 
+> select sin(a), count(a) from root.sg
+> select a, count(a) from root.sg group by ([10,100),10ms)
+> ```
 
 #### Count Points
 
