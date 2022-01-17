@@ -20,8 +20,7 @@
 # whether enable the module
 enableMetric: false
 
-# Multiple reporter, options: [jmx, prometheus, iotdb]
-# iotdb is off by default
+# Multiple reporter, options: [jmx, prometheus, iotdb], iotdb is off by default
 metricReporterList:
   - jmx
   - prometheus
