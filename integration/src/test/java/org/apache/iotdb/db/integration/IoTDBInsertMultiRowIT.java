@@ -134,12 +134,12 @@ public class IoTDBInsertMultiRowIT {
     try {
       Statement st1 = connection.createStatement();
       st1.execute(
-          "insert into root.t1.wf01.wt01(timestamp, temperature) values(1, 1.0) (2, 'hello'), (3, true)");
+          "insert into root.t1.wf01.wt01(timestamp, s1) values(1, 1.0) (2, 'hello'), (3, true)");
       fail();
     } catch (SQLException e) {
       assertEquals(
-          "org.apache.iotdb.db.exception.StorageEngineException: failed to insert measurements [temperature] caused by For input string: \"'hello'\";"
-              + "org.apache.iotdb.db.exception.StorageEngineException: failed to insert measurements [temperature] caused by For input string: \"true\";",
+          "org.apache.iotdb.db.exception.StorageEngineException: failed to insert measurements [s1] caused by For input string: \"'hello'\";"
+              + "org.apache.iotdb.db.exception.StorageEngineException: failed to insert measurements [s1] caused by For input string: \"true\";",
           e.getMessage());
     }
   }
