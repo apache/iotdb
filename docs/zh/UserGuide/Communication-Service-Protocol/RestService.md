@@ -419,9 +419,9 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 COUNT TIMESERIES:
+请求示例 count timeseries:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"COUNT TIMESERIES root.**"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"count timeseries root.**"}' http://127.0.0.1:18080/rest/v1/query
 ```
 
 响应示例:
@@ -650,6 +650,38 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
       0,
       0,
       0
+    ]
+  ]
+}
+```
+
+请求示例 last:
+```shell
+curl -H "Content-Type:application/json"  -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select last s3 from root.sg27"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "expressions": null,
+  "columnNames": [
+    "timeseries",
+    "value",
+    "dataType"
+  ],
+  "timestamps": [
+    1635232143960
+  ],
+  "values": [
+    [
+      "root.sg27.s3"
+    ],
+    [
+      "11"
+    ],
+    [
+      "INT32"
     ]
   ]
 }
