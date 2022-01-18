@@ -75,7 +75,7 @@ wildcard
     ;
 ```
 
-其中，对 `id` 的定义可以参考[语法约定](../IoTDB-SQL-Language/Syntax-Conventions.md)。
+其中，对 `id` 的定义可以参考[语法约定](../Reference/Syntax-Conventions.md)。
 
 我们称一个路径中由 `'.'` 分割的部分叫做层级（`layer_name`）。例如：`root.a.b.c`为一个层级为 4 的路径。
 
