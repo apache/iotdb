@@ -107,6 +107,7 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     outputStream.writeInt(offset);
     outputStream.writeBoolean(orderByHeat);
     outputStream.writeLong(index);
+    outputStream.writeBoolean(isPrefixMatch());
   }
 
   @Override
@@ -119,6 +120,7 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     offset = buffer.getInt();
     orderByHeat = buffer.get() == 1;
     this.index = buffer.getLong();
+    setPrefixMatch(buffer.get() == 1);
   }
 
   /**

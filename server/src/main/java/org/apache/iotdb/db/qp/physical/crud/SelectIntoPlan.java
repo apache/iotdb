@@ -73,6 +73,7 @@ public class SelectIntoPlan extends PhysicalPlan {
     }
 
     outputStream.writeByte(isIntoPathsAligned ? 1 : 0);
+    outputStream.writeBoolean(isPrefixMatch());
   }
 
   @Override
@@ -89,6 +90,7 @@ public class SelectIntoPlan extends PhysicalPlan {
     }
 
     buffer.put((byte) (isIntoPathsAligned ? 1 : 0));
+    buffer.put(isPrefixMatch() ? (byte) 1 : (byte) 0);
   }
 
   @Override
@@ -104,6 +106,7 @@ public class SelectIntoPlan extends PhysicalPlan {
     }
 
     isIntoPathsAligned = buffer.get() == (byte) 1;
+    setPrefixMatch(buffer.get() == 1);
   }
 
   /** mainly for query auth. */

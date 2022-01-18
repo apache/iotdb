@@ -50,6 +50,7 @@ public class ShowDevicesPlan extends ShowPlan {
     outputStream.writeInt(offset);
     outputStream.writeLong(index);
     outputStream.writeBoolean(hasSgCol);
+    outputStream.writeBoolean(isPrefixMatch());
   }
 
   @Override
@@ -59,6 +60,7 @@ public class ShowDevicesPlan extends ShowPlan {
     offset = buffer.getInt();
     index = buffer.getLong();
     hasSgCol = buffer.get() == 1;
+    setPrefixMatch(buffer.get() == 1);
   }
 
   public boolean hasSgCol() {

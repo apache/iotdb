@@ -148,6 +148,7 @@ public class DeletePlan extends PhysicalPlan {
     }
 
     stream.writeLong(index);
+    stream.writeBoolean(isPrefixMatch());
   }
 
   @Override
@@ -162,6 +163,7 @@ public class DeletePlan extends PhysicalPlan {
     }
 
     buffer.putLong(index);
+    buffer.put(isPrefixMatch() ? (byte) 1 : (byte) 0);
   }
 
   @Override
@@ -175,5 +177,6 @@ public class DeletePlan extends PhysicalPlan {
     }
 
     this.index = buffer.getLong();
+    setPrefixMatch(buffer.get() == 1);
   }
 }

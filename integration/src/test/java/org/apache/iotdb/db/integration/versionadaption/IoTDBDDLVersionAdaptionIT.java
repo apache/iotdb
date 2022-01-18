@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.integration.versionadaption;
 
 import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.integration.env.FiveNodeCluster1Env;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.itbase.category.RemoteTest;
@@ -318,6 +319,9 @@ public class IoTDBDDLVersionAdaptionIT {
 
   @Test
   public void testDeleteStorageGroup() throws Exception {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     executeDeleteAndCheckResult(
         "DELETE STORAGE GROUP root.ln.*",
         "SHOW STORAGE GROUP",
@@ -328,6 +332,9 @@ public class IoTDBDDLVersionAdaptionIT {
 
   @Test
   public void testDeleteTimeseries() throws Exception {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     executeDeleteAndCheckResult(
         "DELETE TIMESERIES root.ln.*",
         "SHOW TIMESERIES",
