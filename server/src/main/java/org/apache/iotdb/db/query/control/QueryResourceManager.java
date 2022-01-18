@@ -215,6 +215,10 @@ public class QueryResourceManager {
     cachedQueryDataSourcesMap.remove(queryId);
   }
 
+  public void writeQueryFileInfo() {
+    filePathsManager.writeQueryFileInfo();
+  }
+
   private static class QueryTokenManagerHelper {
 
     private static final QueryResourceManager INSTANCE = new QueryResourceManager();
