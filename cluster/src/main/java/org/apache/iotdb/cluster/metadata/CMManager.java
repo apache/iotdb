@@ -1127,7 +1127,7 @@ public class CMManager extends MManager {
           ClusterIoTDB.getInstance()
               .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       result =
-          SyncClientAdaptor.getAllPaths(client, header, pathsToQuery, isPrefixMatch, withAlias);
+          SyncClientAdaptor.getAllPaths(client, header, pathsToQuery, withAlias, isPrefixMatch);
     } else {
       SyncDataClient syncDataClient = null;
       try {
