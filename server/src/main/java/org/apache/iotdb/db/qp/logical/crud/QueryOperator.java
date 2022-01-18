@@ -244,8 +244,7 @@ public class QueryOperator extends Operator {
     // remove stars in fromPaths and get deviceId with deduplication
     List<PartialPath> devices = removeStarsInDeviceWithUnique(fromComponent.getPrefixPaths());
     devices.sort(null);
-    List<ResultColumn> resultColumns =
-        convertSpecialClauseValues(alignByDevicePlan, selectComponent.getResultColumns());
+    List<ResultColumn> resultColumns = selectComponent.getResultColumns();
     List<String> aggregationFuncs = selectComponent.getAggregationFunctions();
     // to record result measurement columns
     List<String> measurements = new ArrayList<>();
@@ -306,10 +305,17 @@ public class QueryOperator extends Operator {
         // therefore the final measurements is [s1,s2,s3,s1].
         measurements.addAll(measurementSetOfGivenSuffix);
       }
+
+      if (specialClauseComponent.hasSlimit()
+          && measurements.size()
+              >= specialClauseComponent.getSeriesLimit()
+                  + specialClauseComponent.getSeriesOffset()) {
+        break;
+      }
     }
 
     // assigns to alignByDevicePlan
-    alignByDevicePlan.setMeasurements(measurements);
+    alignByDevicePlan.setMeasurements(convertSpecialClauseValues(alignByDevicePlan, measurements));
     alignByDevicePlan.setPaths(paths);
     alignByDevicePlan.setAggregations(aggregations);
     alignByDevicePlan.setMeasurementInfoMap(measurementInfoMap);
@@ -346,16 +352,16 @@ public class QueryOperator extends Operator {
     }
   }
 
-  private List<ResultColumn> convertSpecialClauseValues(
-      QueryPlan queryPlan, List<ResultColumn> resultColumns) throws QueryProcessException {
+  private List<String> convertSpecialClauseValues(QueryPlan queryPlan, List<String> measurements)
+      throws QueryProcessException {
     convertSpecialClauseValues(queryPlan);
     // sLimit trim on the measurementColumnList
     if (specialClauseComponent.hasSlimit()) {
       int seriesSLimit = specialClauseComponent.getSeriesLimit();
       int seriesOffset = specialClauseComponent.getSeriesOffset();
-      return slimitTrimColumn(resultColumns, seriesSLimit, seriesOffset);
+      return slimitTrimColumn(measurements, seriesSLimit, seriesOffset);
     }
-    return resultColumns;
+    return measurements;
   }
 
   private List<PartialPath> removeStarsInDeviceWithUnique(List<PartialPath> paths)
@@ -392,10 +398,9 @@ public class QueryOperator extends Operator {
     return initialMeasurement;
   }
 
-  private List<ResultColumn> slimitTrimColumn(
-      List<ResultColumn> resultColumns, int seriesLimit, int seriesOffset)
-      throws QueryProcessException {
-    int size = resultColumns.size();
+  private List<String> slimitTrimColumn(
+      List<String> measurements, int seriesLimit, int seriesOffset) throws QueryProcessException {
+    int size = measurements.size();
 
     // check parameter range
     if (seriesOffset >= size) {
@@ -409,7 +414,7 @@ public class QueryOperator extends Operator {
     }
 
     // trim seriesPath list
-    return new ArrayList<>(resultColumns.subList(seriesOffset, endPosition));
+    return new ArrayList<>(measurements.subList(seriesOffset, endPosition));
   }
 
   // e.g. translate "select * from root.ln.d1, root.ln.d2 where s1 < 20 AND s2 > 10" to

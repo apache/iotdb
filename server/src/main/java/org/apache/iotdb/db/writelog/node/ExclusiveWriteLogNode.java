@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.ExecutorService;
@@ -271,8 +270,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       if (bufferedLogNum == 0) {
         return;
       }
-      switchBufferWorkingToFlushing();
       ILogWriter currWriter = getCurrentFileWriter();
+      switchBufferWorkingToFlushing();
       FLUSH_BUFFER_THREAD_POOL.submit(() -> flushBuffer(currWriter));
       bufferedLogNum = 0;
       logger.debug("Log node {} ends sync.", identifier);
@@ -289,19 +288,16 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private void flushBuffer(ILogWriter writer) {
     try {
       writer.write(logBufferFlushing);
-    } catch (ClosedChannelException e) {
-      // ignore
-    } catch (IOException e) {
-      logger.warn("Log node {} sync failed, change system mode to read-only", identifier, e);
+    } catch (Throwable e) {
+      logger.error("Log node {} sync failed, change system mode to read-only", identifier, e);
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
-      return;
-    }
-
-    // switch buffer flushing to idle and notify the sync thread
-    synchronized (switchBufferCondition) {
-      logBufferIdle = logBufferFlushing;
-      logBufferFlushing = null;
-      switchBufferCondition.notifyAll();
+    } finally {
+      // switch buffer flushing to idle and notify the sync thread
+      synchronized (switchBufferCondition) {
+        logBufferIdle = logBufferFlushing;
+        logBufferFlushing = null;
+        switchBufferCondition.notifyAll();
+      }
     }
   }
 

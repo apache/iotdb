@@ -136,6 +136,7 @@ public class ModificationFile implements AutoCloseable {
 
   public void remove() throws IOException {
     close();
+    logger.debug("Modification file {} removed", filePath);
     FSFactoryProducer.getFSFactory().getFile(filePath).delete();
   }
 

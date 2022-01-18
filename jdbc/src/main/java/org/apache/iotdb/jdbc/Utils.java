@@ -102,7 +102,7 @@ public class Utils {
       switch (key) {
         case RPC_COMPRESS:
           if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
-            Config.rpcThriftCompressionEnable = Boolean.getBoolean(value);
+            Config.rpcThriftCompressionEnable = Boolean.parseBoolean(value);
           } else {
             return false;
           }

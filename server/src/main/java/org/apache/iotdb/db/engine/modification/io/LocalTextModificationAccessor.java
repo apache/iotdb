@@ -62,7 +62,7 @@ public class LocalTextModificationAccessor
   public Collection<Modification> read() {
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
     if (!file.exists()) {
-      logger.debug("No modification has been written to this file");
+      logger.debug("No modification has been written to this file {}", filePath);
       return new ArrayList<>();
     }
 

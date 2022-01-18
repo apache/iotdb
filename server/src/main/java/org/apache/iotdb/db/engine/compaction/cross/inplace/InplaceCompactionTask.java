@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.inplace;
 
-import java.util.Collection;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
@@ -36,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -193,8 +193,11 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
       seqFile.removeModFile();
       ModificationFile compactionModificationFile = ModificationFile.getCompactionMods(seqFile);
       Collection<Modification> modifications = compactionModificationFile.getModifications();
-      LOGGER.debug("Writing {} modifications from {} to {}", modifications.size(),
-          compactionModificationFile, seqFile);
+      LOGGER.debug(
+          "Writing {} modifications from {} to {}",
+          modifications.size(),
+          compactionModificationFile,
+          seqFile);
       for (Modification modification : modifications) {
         seqFile.getModFile().write(modification);
       }
@@ -202,8 +205,11 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
         ModificationFile compactionUnseqModificationFile =
             ModificationFile.getCompactionMods(unseqFile);
         modifications = compactionUnseqModificationFile.getModifications();
-        LOGGER.debug("Writing {} modifications from {} to {}", modifications.size(),
-            compactionUnseqModificationFile, seqFile);
+        LOGGER.debug(
+            "Writing {} modifications from {} to {}",
+            modifications.size(),
+            compactionUnseqModificationFile,
+            seqFile);
         for (Modification modification : modifications) {
           seqFile.getModFile().write(modification);
         }
