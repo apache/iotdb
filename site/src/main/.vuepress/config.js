@@ -679,7 +679,6 @@ var config = {
 					{
 						title: 'API',
 						children: [
-							['API/Programming-Thrift','Thrift'],
 							['API/Programming-Java-Native-API','Java Native API'],
 							['API/Programming-Python-Native-API','Python Native API'],
 							['API/Programming-Cpp-Native-API','C++ Native API'],
@@ -720,9 +719,7 @@ var config = {
 						title: 'Process Data',
 						children: [
 							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
-							['Process-Data/UDF-Get-Started', 'UDF Library'],
-							['Process-Data/UDF-Data-Quality', 'UDF Data Quality'],
-							['Process-Data/UDF-Data-Repair', 'UDF Data Repairing'],
+							['Process-Data/UDF-Library', 'UDF Library'],
 							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
 							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
 							['Process-Data/Triggers','Triggers'],
@@ -1468,7 +1465,6 @@ var config = {
 					{
 						title: '应用编程接口',
 						children: [
-							['API/Programming-Thrift','Thrift'],
 							['API/Programming-Java-Native-API','Java 原生接口'],
 							['API/Programming-Python-Native-API','Python 原生接口'],
 							['API/Programming-Cpp-Native-API','C++ 原生接口'],
@@ -1513,9 +1509,7 @@ var config = {
 						title: '数据处理',
 						children: [
 							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
-							['Process-Data/UDF-Get-Started', 'UDF 函数库'],
-							['Process-Data/UDF-Data-Quality', 'UDF 数据质量'],
-							['Process-Data/UDF-Data-Repair', 'UDF 数据修复'],
+							['Process-Data/UDF-Library', 'UDF 函数库'],
 							['Process-Data/Select-Into','查询写回(SELECT INTO)'],
 							['Process-Data/Continuous-Query','连续查询(CQ)'],
 							['Process-Data/Triggers','触发器'],
