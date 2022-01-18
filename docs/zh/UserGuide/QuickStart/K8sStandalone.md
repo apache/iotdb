@@ -29,8 +29,8 @@ under the License.
 
 ## 安装步骤
 
-1. 下载iotdb源码，进入kubernetes/helm/standalone目录
-2. 一般情况下，我们只需要修改values.yaml中的配置即可，如有特殊需要，可以把需要修改的iotdb的配置文件（如iotdb-engine.properties）放到conf目录下
+1. 下载iotdb源码，执行```mvn clean package -pl kubernetes```, 然后进入kubernetes/helm/standalone目录
+2. 一般情况下，我们只需要修改values.yaml中的配置即可，如有特殊需要，可以把修改好的iotdb的配置文件（如iotdb-engine.properties、iotdb-env.sh）放到conf目录下
 
 ### values配置文件
 

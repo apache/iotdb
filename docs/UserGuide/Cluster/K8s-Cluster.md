@@ -29,8 +29,8 @@ under the License.
 
 ## Steps
 
-1. Download iotdb's source code，cd kubernetes/helm/standalone
-2. Generally，you only need to modify the ***values.yaml***，if need do more configuration，please put the modified config files, e.g. iotdb-engine.properties, into conf directory
+1. Download iotdb's source code，execute ```mvn clean package -pl kubernetes```, then cd kubernetes/helm/cluster
+2. Generally，you only need to modify the ***values.yaml***，if need do more configuration，please put the modified config files, e.g. iotdb-engine.properties/iotdb-env.sh, into conf directory
 
 ***Description of values.yaml***
 
