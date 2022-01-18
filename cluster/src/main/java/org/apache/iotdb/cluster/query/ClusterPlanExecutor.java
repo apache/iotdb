@@ -143,10 +143,12 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected int getDevicesNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
     // adapt to prefix match of IoTDB v0.12
-    return getDevicesNum(path)
-        + (isPrefixMatch
-            ? getDevicesNum(path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD))
-            : 0);
+    int cnt = getDevicesNum(path);
+    if (isPrefixMatch && !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(path.getTailNode())) {
+      // adapt to prefix match of IoTDB v0.12
+      cnt += getDevicesNum(path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+    }
+    return cnt;
   }
 
   protected int getDevicesNum(PartialPath path) throws MetadataException {
@@ -283,12 +285,18 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected int getPathsNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
-    if (isPrefixMatch) {
-      path = path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
-    }
+
     Map<String, List<PartialPath>> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(path);
     try {
-      return getPathCount(sgPathMap, -1);
+      int pathCount = getPathCount(sgPathMap, -1);
+
+      if (isPrefixMatch && !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(path.getTailNode())) {
+        path = path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+        sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(path);
+        pathCount += getPathCount(sgPathMap, -1);
+      }
+
+      return pathCount;
     } catch (CheckConsistencyException
         | PartitionTableUnavailableException
         | NotInSameGroupException e) {
@@ -301,7 +309,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
       throws MetadataException {
     List<PartialPath> ret = getNodesList(path, level);
     int cnt = ret.size();
-    if (isPrefixMatch) {
+    if (isPrefixMatch && !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(path.getTailNode())) {
       // adapt to prefix match of IoTDB v0.12
       cnt += getNodesList(path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD), level).size();
     }
