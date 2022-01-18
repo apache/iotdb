@@ -35,9 +35,6 @@ import java.util.HashMap;
 
 /** calculate the approximate percentile */
 public class UDAFPercentile implements UDTF {
-  //public static HashMap<Integer, Long> intDic;
-  //public static HashMap<Long, Long> longDic;
-  //public static HashMap<Float, Long> floatDic;
   public static HashMap<Double, Long> Dic;
   private ExactOrderStatistics statistics;
   private GKArray sketch;
@@ -73,7 +70,7 @@ public class UDAFPercentile implements UDTF {
       statistics = new ExactOrderStatistics(parameters.getDataType(0));
     } else {
       sketch = new GKArray(error);
-      Dic = new HashMap<Double,Long>();
+      Dic = new HashMap<>();
     }
   }
 
@@ -82,21 +79,21 @@ public class UDAFPercentile implements UDTF {
     if (exact) {
       statistics.insert(row);
     } else {
-      double res=Util.getValueAsDouble(row);
+      double res = Util.getValueAsDouble(row);
       sketch.insert(res);
-      Long time=row.getTime();
-      Dic.put(res,time);
+      Long time = row.getTime();
+      Dic.put(res, time);
     }
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
     if (exact) {
-      double res=statistics.getPercentile(rank);
-      long time=Dic.get(res);
+      double res = statistics.getPercentile(rank);
+      long time = Dic.get(res);
       collector.putDouble(time, res);
     } else {
-      double res=sketch.query(rank);
+      double res = sketch.query(rank);
       collector.putDouble(0, res);
     }
   }
