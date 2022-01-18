@@ -35,11 +35,11 @@
 
 字符串字面值的使用场景：
 
-- `INSERT` 或者 `SELECT` 中用于表达 `TEXT` 类型数据的场景 
+- `INSERT` 或者 `SELECT` 中用于表达 `TEXT` 类型数据的场景
 - SQL 中 UDF 和 Trigger 的 Java 类全类名
-- `CREATE TRIGGER` 语句中描述触发器属性的键值对 
+- `CREATE TRIGGER` 语句中描述触发器属性的键值对
 - UDF 函数输入参数中的属性
-- `LOAD` / `REMOVE` / `SETTLE` 指令中的文件路径 
+- `LOAD` / `REMOVE` / `SETTLE` 指令中的文件路径
 - 用户密码
 
 通过以下几种方式可以在字符串内使用引号：
@@ -185,4 +185,3 @@ select `0` + 0 from root.sg.d  // 表达式，对时间序列 root.sg.d.0 的每
 词法文件：`antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.g4`
 
 语法文件：`antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlParser.g4`
-
