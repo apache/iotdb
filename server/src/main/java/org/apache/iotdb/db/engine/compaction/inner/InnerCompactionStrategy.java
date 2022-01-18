@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompacti
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
 import java.io.File;
 import java.util.List;
@@ -45,7 +44,6 @@ public enum InnerCompactionStrategy {
       String virtualStorageGroup,
       long timePartition,
       TsFileManager tsFileManager,
-      TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence) {
     switch (this) {
