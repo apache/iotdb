@@ -119,7 +119,7 @@ public class InnerUnseqCompactionTest {
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
     Thread.currentThread().setName(oldThreadName);
-    CompactionClearUtils.deleteTestDir(new File("target"));
+    CompactionClearUtils.deleteEmptyDir(new File("target"));
   }
 
   // unseq space only do deserialize page

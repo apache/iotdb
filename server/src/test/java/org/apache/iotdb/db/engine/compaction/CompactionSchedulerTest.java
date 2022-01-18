@@ -125,7 +125,7 @@ public class CompactionSchedulerTest {
     } catch (InterruptedException e) {
 
     } finally {
-      CompactionClearUtils.deleteTestDir(new File("target"));
+      CompactionClearUtils.deleteEmptyDir(new File("target"));
     }
   }
 

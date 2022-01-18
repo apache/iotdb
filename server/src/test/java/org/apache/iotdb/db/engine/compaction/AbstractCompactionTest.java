@@ -258,7 +258,7 @@ public class AbstractCompactionTest {
     }
   }
 
-  private void removeFiles() throws IOException {
+  private void removeFiles() {
     for (TsFileResource tsFileResource : seqResources) {
       if (tsFileResource.getTsFile().exists()) {
         tsFileResource.remove();

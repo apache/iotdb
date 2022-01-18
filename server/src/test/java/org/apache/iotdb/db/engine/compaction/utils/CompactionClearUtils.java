@@ -41,6 +41,7 @@ public class CompactionClearUtils {
 
   /** Clear all generated and merged files in the test directory */
   public static void clearAllCompactionFiles() throws IOException {
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     deleteAllFilesInOneDirBySuffix("target", TsFileConstant.TSFILE_SUFFIX);
     deleteAllFilesInOneDirBySuffix("target", TsFileResource.RESOURCE_SUFFIX);
     deleteAllFilesInOneDirBySuffix("target", ModificationFile.FILE_SUFFIX);
@@ -79,12 +80,12 @@ public class CompactionClearUtils {
     }
   }
 
-  public static void deleteTestDir(File dir) {
+  public static void deleteEmptyDir(File dir) {
     if (!dir.isDirectory()) {
       return;
     }
     for (File f : dir.listFiles()) {
-      deleteTestDir(f);
+      deleteEmptyDir(f);
     }
     dir.delete();
   }
