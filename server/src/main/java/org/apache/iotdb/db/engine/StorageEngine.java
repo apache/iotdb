@@ -755,7 +755,7 @@ public class StorageEngine implements IService {
         }
 
         List<PartialPath> possiblePaths = path.alterPrefixPath(storageGroupPath);
-        logger.debug("Paths for {} under {}: {}", path, storageGroupPath, sgPaths);
+        logger.debug("Paths for {} under {}: {}", path, storageGroupPath, possiblePaths);
         for (PartialPath possiblePath : possiblePaths) {
           processorMap
               .get(storageGroupPath)
