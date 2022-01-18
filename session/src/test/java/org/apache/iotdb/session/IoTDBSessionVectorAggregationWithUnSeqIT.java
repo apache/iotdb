@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -51,6 +52,7 @@ public class IoTDBSessionVectorAggregationWithUnSeqIT {
     originCompactionThreadNum = CONFIG.getConcurrentCompactionThread();
     CONFIG.setConcurrentCompactionThread(0);
     EnvironmentUtils.envSetUp();
+    CompactionTaskManager.getInstance().restart();
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     createAlignedTimeseries();

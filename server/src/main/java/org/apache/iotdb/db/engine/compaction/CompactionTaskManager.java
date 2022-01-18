@@ -128,11 +128,15 @@ public class CompactionTaskManager implements IService {
   }
 
   public void acquireSemaphore() throws InterruptedException {
-    semaphore.acquire();
+    if (semaphore != null) {
+      semaphore.acquire();
+    }
   }
 
   public void releaseSemaphore() {
-    semaphore.release();
+    if (semaphore != null) {
+      semaphore.release();
+    }
   }
 
   @TestOnly
