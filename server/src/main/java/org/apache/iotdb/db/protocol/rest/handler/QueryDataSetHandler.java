@@ -126,7 +126,7 @@ public class QueryDataSetHandler {
     Iterator<Entry<String, AggregateResult>> iterator = groupPathsResultMap.entrySet().iterator();
     for (int i = 0; iterator.hasNext(); i++) {
       Entry<String, AggregateResult> next = iterator.next();
-      targetDataSet.addCloumnNamesItem(next.getKey());
+      targetDataSet.addColumnNamesItem(next.getKey());
       targetDataSet.addValuesItem(new ArrayList<>());
       targetDataSetIndexToSourceDataSetIndex[i] =
           sourcePathToSourceQueryDataSetIndex.get(next.getKey());
@@ -155,7 +155,7 @@ public class QueryDataSetHandler {
     if (sourceDataSet.getPaths() != null) {
       for (int i = 0; i < sourceDataSet.getPaths().size(); i++) {
         Path path = sourceDataSet.getPaths().get(i);
-        targetDataSet.addCloumnNamesItem(path.getFullPath());
+        targetDataSet.addColumnNamesItem(path.getFullPath());
         targetDataSet.addValuesItem(new ArrayList<>());
         targetDataSetIndexToSourceDataSetIndex[i] = i;
       }
@@ -169,6 +169,7 @@ public class QueryDataSetHandler {
       org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet)
       throws IOException {
     int fetched = 0;
+
     while (sourceDataSet.hasNext()) {
       if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
         return Response.ok()
@@ -227,7 +228,12 @@ public class QueryDataSetHandler {
       RowRecord sourceDataSetRowRecord,
       int[] targetDataSetIndexToSourceDataSetIndex,
       org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet) {
-    for (int i = 0; i < targetDataSet.getCloumnNames().size(); i++) {
+    final int columnSize =
+        targetDataSet.getColumnNames() != null
+            ? targetDataSet.getColumnNames().size()
+            : targetDataSet.getExpressions().size();
+
+    for (int i = 0; i < columnSize; i++) {
       List<Object> targetDataSetColumn = targetDataSet.getValues().get(i);
       Field sourceDataSetField =
           sourceDataSetRowRecord.getFields().get(targetDataSetIndexToSourceDataSetIndex[i]);

@@ -184,7 +184,7 @@ components:
           type: array
           items:
             type: string
-        cloumnNames:
+        columnNames:
           type: array
           items:
             type: string

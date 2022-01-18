@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @FixMethodOrder(MethodSorters.JVM)
@@ -303,77 +304,7 @@ public class IoTDBRestServiceIT {
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
-      ObjectMapper mapper = new ObjectMapper();
-      Map map = mapper.readValue(message, Map.class);
-      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
-      List<Long> expressionsResult = (List<Long>) map.get("expressions");
-      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-      Assert.assertTrue(map.size() > 0);
-      List<Object> expressions =
-          new ArrayList<Object>() {
-            {
-              add("root.sg25.s3");
-              add("root.sg25.s4");
-              add("root.sg25.s5");
-              add("root.sg25.s6");
-              add("root.sg25.s7");
-              add("root.sg25.s8");
-              add("root.sg25.s4 + 1");
-              add("root.sg25.s4 + 1");
-            }
-          };
-      List<Object> timestamps =
-          new ArrayList<Object>() {
-            {
-              add(1635232143960l);
-            }
-          };
-      List<Object> values1 =
-          new ArrayList<Object>() {
-            {
-              add("2aa");
-            }
-          };
-      List<Object> values2 =
-          new ArrayList<Object>() {
-            {
-              add(11);
-            }
-          };
-      List<Object> values3 =
-          new ArrayList<Object>() {
-            {
-              add(1635000012345555l);
-            }
-          };
-
-      List<Object> values4 =
-          new ArrayList<Object>() {
-            {
-              add(1.41);
-            }
-          };
-      List<Object> values5 =
-          new ArrayList<Object>() {
-            {
-              add(null);
-            }
-          };
-      List<Object> values6 =
-          new ArrayList<Object>() {
-            {
-              add(null);
-            }
-          };
-
-      Assert.assertEquals(expressions, expressionsResult);
-      Assert.assertEquals(timestamps, timestampsResult);
-      Assert.assertEquals(values1, valuesResult.get(0));
-      Assert.assertEquals(values2, valuesResult.get(1));
-      Assert.assertEquals(values3, valuesResult.get(2));
-      Assert.assertEquals(values4, valuesResult.get(3));
-      Assert.assertEquals(values5, valuesResult.get(4));
-      Assert.assertEquals(values6, valuesResult.get(5));
+      assertTrue(message.contains("row size exceeded the given max row size"));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -418,12 +349,12 @@ public class IoTDBRestServiceIT {
   }
 
   public void queryShowChildPaths(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show child paths root\",\"rowLimit\":1}";
+    String sql = "{\"sql\":\"show child paths root\"}";
     Map map = queryMetaData(httpClient, sql);
-    List<String> cloumnNamesResult = (List<String>) map.get("cloumnNames");
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
     Assert.assertTrue(map.size() > 0);
-    List<Object> cloumnNames =
+    List<Object> columnNames =
         new ArrayList<Object>() {
           {
             add("child paths");
@@ -436,17 +367,17 @@ public class IoTDBRestServiceIT {
           }
         };
 
-    Assert.assertEquals(cloumnNames, cloumnNamesResult);
+    Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
   }
 
   public void queryShowNodes(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"show child nodes root\",\"rowLimit\":1}";
     Map map = queryMetaData(httpClient, sql);
-    List<String> cloumnNamesResult = (List<String>) map.get("cloumnNames");
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
     Assert.assertTrue(map.size() > 0);
-    List<Object> cloumnNames =
+    List<Object> columnNames =
         new ArrayList<Object>() {
           {
             add("child nodes");
@@ -459,17 +390,17 @@ public class IoTDBRestServiceIT {
           }
         };
 
-    Assert.assertEquals(cloumnNames, cloumnNamesResult);
+    Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
   }
 
   public void showAllTTL(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"show all ttl\"}";
     Map map = queryMetaData(httpClient, sql);
-    List<String> cloumnNamesResult = (List<String>) map.get("cloumnNames");
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
     Assert.assertTrue(map.size() > 0);
-    List<Object> cloumnNames =
+    List<Object> columnNames =
         new ArrayList<Object>() {
           {
             add("storage group");
@@ -488,7 +419,7 @@ public class IoTDBRestServiceIT {
             add(null);
           }
         };
-    Assert.assertEquals(cloumnNames, cloumnNamesResult);
+    Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
     Assert.assertEquals(values2, valuesResult.get(1));
   }
@@ -496,10 +427,10 @@ public class IoTDBRestServiceIT {
   public void showStorageGroup(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"show storage group root.*\"}";
     Map map = queryMetaData(httpClient, sql);
-    List<String> cloumnNamesResult = (List<String>) map.get("cloumnNames");
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
     Assert.assertTrue(map.size() > 0);
-    List<Object> cloumnNames =
+    List<Object> columnNames =
         new ArrayList<Object>() {
           {
             add("storage group");
@@ -511,50 +442,26 @@ public class IoTDBRestServiceIT {
             add("root.sg25");
           }
         };
-    Assert.assertEquals(cloumnNames, cloumnNamesResult);
+    Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
   }
 
   public void showFunctions(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show functions\",\"rowLimit\":2}";
+    String sql = "{\"sql\":\"show functions\"}";
     Map map = queryMetaData(httpClient, sql);
-    List<String> cloumnNamesResult = (List<String>) map.get("cloumnNames");
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    Assert.assertTrue(map.size() > 0);
-    List<Object> cloumnNames =
-        new ArrayList<Object>() {
-          {
-            add("function name");
-            add("function type");
-            add("class name (UDF)");
-          }
-        };
-    List<Object> values1 =
-        new ArrayList<Object>() {
-          {
-            add("ABS");
-            add("ACOS");
-          }
-        };
-    List<Object> values2 =
-        new ArrayList<Object>() {
-          {
-            add("built-in UDTF");
-            add("built-in UDTF");
-          }
-        };
-    Assert.assertEquals(cloumnNames, cloumnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
-    Assert.assertEquals(values2, valuesResult.get(1));
+    assertEquals(3, columnNamesResult.size());
+    assertEquals(3, valuesResult.size());
   }
 
   public void showTimeseries(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"show timeseries\"}";
     Map map = queryMetaData(httpClient, sql);
-    List<String> cloumnNamesResult = (List<String>) map.get("cloumnNames");
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
     Assert.assertTrue(map.size() > 0);
-    List<Object> cloumnNames =
+    List<Object> columnNames =
         new ArrayList<Object>() {
           {
             add("timeseries");
@@ -601,7 +508,7 @@ public class IoTDBRestServiceIT {
           }
         };
 
-    Assert.assertEquals(cloumnNames, cloumnNamesResult);
+    Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
     Assert.assertEquals(values2, valuesResult.get(1));
     Assert.assertEquals(values3, valuesResult.get(2));
@@ -610,10 +517,10 @@ public class IoTDBRestServiceIT {
   public void showLastTimeseries(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"SHOW LATEST TIMESERIES\"}";
     Map map = queryMetaData(httpClient, sql);
-    List<String> cloumnNamesResult = (List<String>) map.get("cloumnNames");
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
     Assert.assertTrue(map.size() > 0);
-    List<Object> cloumnNames =
+    List<Object> columnNames =
         new ArrayList<Object>() {
           {
             add("timeseries");
@@ -660,7 +567,7 @@ public class IoTDBRestServiceIT {
           }
         };
 
-    Assert.assertEquals(cloumnNames, cloumnNamesResult);
+    Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
     Assert.assertEquals(values2, valuesResult.get(1));
     Assert.assertEquals(values3, valuesResult.get(2));
@@ -669,10 +576,10 @@ public class IoTDBRestServiceIT {
   public void countTimeseries(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"COUNT TIMESERIES root.** GROUP BY LEVEL=1\"}";
     Map map = queryMetaData(httpClient, sql);
-    List<String> cloumnNamesResult = (List<String>) map.get("cloumnNames");
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
     Assert.assertTrue(map.size() > 0);
-    List<Object> cloumnNames =
+    List<Object> columnNames =
         new ArrayList<Object>() {
           {
             add("column");
@@ -692,7 +599,7 @@ public class IoTDBRestServiceIT {
           }
         };
 
-    Assert.assertEquals(cloumnNames, cloumnNamesResult);
+    Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
     Assert.assertEquals(values2, valuesResult.get(1));
   }
@@ -700,10 +607,10 @@ public class IoTDBRestServiceIT {
   public void countNodes(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"count nodes root.** level=2\"}";
     Map map = queryMetaData(httpClient, sql);
-    List<String> cloumnNamesResult = (List<String>) map.get("cloumnNames");
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
     Assert.assertTrue(map.size() > 0);
-    List<Object> cloumnNames =
+    List<Object> columnNames =
         new ArrayList<Object>() {
           {
             add("count");
@@ -715,17 +622,17 @@ public class IoTDBRestServiceIT {
             add(6);
           }
         };
-    Assert.assertEquals(cloumnNames, cloumnNamesResult);
+    Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
   }
 
   public void showDevices(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"show devices\"}";
     Map map = queryMetaData(httpClient, sql);
-    List<String> cloumnNamesResult = (List<String>) map.get("cloumnNames");
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
     Assert.assertTrue(map.size() > 0);
-    List<Object> cloumnNames =
+    List<Object> columnNames =
         new ArrayList<Object>() {
           {
             add("devices");
@@ -744,7 +651,7 @@ public class IoTDBRestServiceIT {
             add(false);
           }
         };
-    Assert.assertEquals(cloumnNames, cloumnNamesResult);
+    Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
     // Assert.assertEquals(values2, valuesResult.get(1));
   }
@@ -752,10 +659,10 @@ public class IoTDBRestServiceIT {
   public void showDevicesWithStroage(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"show devices with storage group\"}";
     Map map = queryMetaData(httpClient, sql);
-    List<String> cloumnNamesResult = (List<String>) map.get("cloumnNames");
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
     Assert.assertTrue(map.size() > 0);
-    List<Object> cloumnNames =
+    List<Object> columnNames =
         new ArrayList<Object>() {
           {
             add("devices");
@@ -781,7 +688,7 @@ public class IoTDBRestServiceIT {
             add("false");
           }
         };
-    Assert.assertEquals(cloumnNames, cloumnNamesResult);
+    Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
     Assert.assertEquals(values2, valuesResult.get(1));
     Assert.assertEquals(values3, valuesResult.get(2));
@@ -790,10 +697,10 @@ public class IoTDBRestServiceIT {
   public void listUser(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"list user\"}";
     Map map = queryMetaData(httpClient, sql);
-    List<String> cloumnNamesResult = (List<String>) map.get("cloumnNames");
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
     Assert.assertTrue(map.size() > 0);
-    List<Object> cloumnNames =
+    List<Object> columnNames =
         new ArrayList<Object>() {
           {
             add("user");
@@ -805,17 +712,17 @@ public class IoTDBRestServiceIT {
             add("root");
           }
         };
-    Assert.assertEquals(cloumnNames, cloumnNamesResult);
+    Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
   }
 
   public void selectCount(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"select count(s3) from root.** group by level = 1\"}";
     Map map = queryMetaData(httpClient, sql);
-    List<String> cloumnNamesResult = (List<String>) map.get("cloumnNames");
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
     Assert.assertTrue(map.size() > 0);
-    List<Object> cloumnNames =
+    List<Object> columnNames =
         new ArrayList<Object>() {
           {
             add("count(root.sg25.s3)");
@@ -827,7 +734,7 @@ public class IoTDBRestServiceIT {
             add(2);
           }
         };
-    Assert.assertEquals(cloumnNames, cloumnNamesResult);
+    Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
   }
 }
