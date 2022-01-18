@@ -1461,7 +1461,7 @@ var config = {
 							['Data-Concept/Encoding','编码方式'],
 							['Data-Concept/Compression','压缩方式'],
 							['Data-Concept/Time-Partition','时间分区'],
-							['API/Time-zone','时区']
+							['Data-Concept/Time-zone','时区']
 						]
 					},
 					{
@@ -1473,8 +1473,8 @@ var config = {
 							['API/Programming-Cpp-Native-API','C++ 原生接口'],
 							['API/Programming-Go-Native-API','Go 原生接口'],
 							['API/Programming-JDBC','JDBC (不推荐)'],
-							['Communication-Service-Protocol/Programming-MQTT','MQTT'],
-							['Communication-Service-Protocol/RestService','REST'],
+							['API/Programming-MQTT','MQTT'],
+							['API/RestService','REST'],
 							['API/RestService','HTTP API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/InfluxDB-Protocol','InfluxDB 协议适配器（开发中)'],
@@ -1512,14 +1512,14 @@ var config = {
 					{
 						title: '数据处理',
 						children: [
-							['Advanced-Features/UDF-User-Defined-Function','用户定义函数(UDF)'],
+							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
 							['Process-Data/UDF-Get-Started', 'UDF 函数库'],
 							['Process-Data/UDF-Data-Quality', 'UDF 数据质量'],
 							['Process-Data/UDF-Data-Repair', 'UDF 数据修复'],
-							['Advanced-Features/Select-Into','查询写回(SELECT INTO)'],
-							['Advanced-Features/Continuous-Query','连续查询(CQ)'],
-							['Advanced-Features/Triggers','触发器'],
-							['Advanced-Features/Alerting','告警机制'],
+							['Process-Data/Select-Into','查询写回(SELECT INTO)'],
+							['Process-Data/Continuous-Query','连续查询(CQ)'],
+							['Process-Data/Triggers','触发器'],
+							['Process-Data/Alerting','告警机制'],
 						]
 					},
 					{
@@ -1558,12 +1558,7 @@ var config = {
 						]
 					},
 					{
-						title: '常见问题',
-						children: [
-						]
-					},
-					{
-						title: '参见',
+						title: '参考',
 						children: [
 							['Reference/Config-Manual','配置参数'],
 							['Reference/Keywords','关键字'],
