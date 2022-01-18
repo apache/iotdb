@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.inplace;
 
+import java.util.Collection;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
@@ -191,13 +192,19 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
       // remove old modifications and write modifications generated during merge
       seqFile.removeModFile();
       ModificationFile compactionModificationFile = ModificationFile.getCompactionMods(seqFile);
-      for (Modification modification : compactionModificationFile.getModifications()) {
+      Collection<Modification> modifications = compactionModificationFile.getModifications();
+      LOGGER.debug("Writing {} modifications from {} to {}", modifications.size(),
+          compactionModificationFile, seqFile);
+      for (Modification modification : modifications) {
         seqFile.getModFile().write(modification);
       }
       for (TsFileResource unseqFile : unseqFiles) {
         ModificationFile compactionUnseqModificationFile =
             ModificationFile.getCompactionMods(unseqFile);
-        for (Modification modification : compactionUnseqModificationFile.getModifications()) {
+        modifications = compactionUnseqModificationFile.getModifications();
+        LOGGER.debug("Writing {} modifications from {} to {}", modifications.size(),
+            compactionUnseqModificationFile, seqFile);
+        for (Modification modification : modifications) {
           seqFile.getModFile().write(modification);
         }
       }
