@@ -2442,5 +2442,9 @@ public class MManager {
     return result;
   }
 
+  public List<PhysicalPlan> getTimeseriesAsPlan(PartialPath pathPattern) throws MetadataException {
+    return mtree.getTimeseriesAsPlan(pathPattern);
+  }
+
   // endregion
 }

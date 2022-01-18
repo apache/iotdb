@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -68,6 +70,17 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     this.encodings = encodings;
     this.compressors = compressors;
     this.aliasList = aliasList;
+    this.canBeSplit = false;
+  }
+
+  public CreateAlignedTimeSeriesPlan(
+      PartialPath prefixPath, String measurement, MeasurementSchema schema) {
+    super(Operator.OperatorType.CREATE_ALIGNED_TIMESERIES);
+    this.prefixPath = prefixPath;
+    this.measurements = Collections.singletonList(measurement);
+    this.dataTypes = Collections.singletonList(schema.getType());
+    this.encodings = Collections.singletonList(schema.getEncodingType());
+    this.compressors = Collections.singletonList(schema.getCompressor());
     this.canBeSplit = false;
   }
 
