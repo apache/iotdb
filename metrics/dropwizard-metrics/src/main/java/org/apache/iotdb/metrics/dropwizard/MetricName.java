@@ -28,7 +28,7 @@ import java.util.Objects;
 
 /** the unique identifier of a metric, include a name and some tags. */
 public class MetricName {
-  public static final String SEPARATOR = ".";
+  public static final String SEPARATOR = ":";
   public static final Map<String, String> EMPTY_TAGS = Collections.emptyMap();
 
   private String name;
@@ -55,15 +55,16 @@ public class MetricName {
   }
 
   /**
-   * convert the metric name to flat string, like name.tagkey1.tagvalue1.tagkey2.tagvalue2.... and
-   * replace the space with _
+   * convert the metric name to flat string, like name[tag_key1=tag_value1,tag_key2=tag_value2....]
+   * and
    *
    * @return the flat string
    */
   public String toFlatString() {
-    StringBuilder stringBuilder = new StringBuilder(name);
-    tags.forEach((k, v) -> stringBuilder.append(k).append(SEPARATOR).append(v));
-    return stringBuilder.toString().replace(" ", "_");
+    StringBuilder stringBuilder = new StringBuilder(name).append("_");
+    tags.forEach((k, v) -> stringBuilder.append(k).append(SEPARATOR).append(v).append("_"));
+    stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+    return stringBuilder.toString();
   }
 
   /**
