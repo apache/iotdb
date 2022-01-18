@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import org.apache.commons.io.FileUtils;
@@ -71,11 +72,20 @@ public class CrossSpaceCompactionExceptionHandler {
         // all source files exists, remove target file
         handleSuccess =
             handleWhenAllSourceFilesExist(
-                storageGroup, targetResourceList, seqResourceList, unseqResourceList);
+                storageGroup,
+                targetResourceList,
+                seqResourceList,
+                unseqResourceList,
+                tsFileManager);
       } else {
         handleSuccess =
             handleWhenSomeSourceFilesLost(
-                storageGroup, targetResourceList, seqResourceList, unseqResourceList, logFile);
+                storageGroup,
+                targetResourceList,
+                seqResourceList,
+                unseqResourceList,
+                logFile,
+                tsFileManager);
       }
 
       if (!handleSuccess) {
@@ -117,7 +127,8 @@ public class CrossSpaceCompactionExceptionHandler {
       String storageGroup,
       List<TsFileResource> targetTsFiles,
       List<TsFileResource> seqFileList,
-      List<TsFileResource> unseqFileList)
+      List<TsFileResource> unseqFileList,
+      TsFileManager tsFileManager)
       throws IOException {
     for (TsFileResource seqFile : seqFileList) {
       ModificationFile compactionModFile = ModificationFile.getCompactionMods(seqFile);
@@ -148,7 +159,10 @@ public class CrossSpaceCompactionExceptionHandler {
     }
 
     boolean removeAllTargetFile = true;
+    TsFileResourceList list =
+        tsFileManager.getSequenceListByTimePartition(targetTsFiles.get(0).getTimePartition());
     for (TsFileResource targetTsFile : targetTsFiles) {
+      list.remove(targetTsFile);
       if (!targetTsFile.remove()) {
         LOGGER.error(
             "{} [Compaction][Exception] failed to delete target tsfile {} when handling exception",
@@ -170,7 +184,8 @@ public class CrossSpaceCompactionExceptionHandler {
       List<TsFileResource> targetResources,
       List<TsFileResource> seqFileList,
       List<TsFileResource> unseqFileList,
-      File logFile)
+      File logFile,
+      TsFileManager tsFileManager)
       throws IOException, WriteProcessException {
     long magicStringLength =
         RewriteCrossSpaceCompactionLogger.MAGIC_STRING.getBytes(StandardCharsets.UTF_8).length;
@@ -211,12 +226,25 @@ public class CrossSpaceCompactionExceptionHandler {
     CompactionUtils.moveTargetFile(targetResources, false, storageGroup);
 
     // delete the source files
+    TsFileResourceList unseqTsFileResourceList =
+        tsFileManager.getUnsequenceListByTimePartition(unseqFileList.get(0).getTimePartition());
+    TsFileResourceList seqTsFileResourceList =
+        tsFileManager.getSequenceListByTimePartition(seqFileList.get(0).getTimePartition());
     for (TsFileResource unseqFile : unseqFileList) {
       unseqFile.remove();
+      unseqFile.setDeleted(true);
+      unseqTsFileResourceList.remove(unseqFile);
     }
 
     for (TsFileResource seqFile : seqFileList) {
       seqFile.remove();
+      seqFile.setDeleted(true);
+      seqTsFileResourceList.remove(seqFile);
+    }
+
+    for (TsFileResource targetFile : targetResources) {
+      targetFile.setClosed(true);
+      seqTsFileResourceList.keepOrderInsert(targetFile);
     }
 
     // delete compaction mods files
