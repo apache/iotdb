@@ -82,7 +82,7 @@
 	| :-------: | :-----------------------------------: |
 	|  BOOLEAN  |              PLAIN, RLE               |
 	|   INT32   | PLAIN, RLE, TS_2DIFF, GORILLA, ZIGZAG |
-	|   INT64   | PLAIN, RLE, TS_2DIFF, GORILLA, ZIGZAG |
+	|   INT64   |    PLAIN, RLE, TS_2DIFF, GORILLA      |
 	|   FLOAT   |    PLAIN, RLE, TS_2DIFF, GORILLA	    |
 	|  DOUBLE   |    PLAIN, RLE, TS_2DIFF, GORILLA      |
 	|   TEXT    |          PLAIN, DICTIONARY            |
