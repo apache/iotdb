@@ -146,8 +146,8 @@ public class InternalMNode extends MNode {
 
     // newChildNode builds parent-child relationship
     IMNodeContainer grandChildren = oldChildNode.getChildren();
+    newChildNode.setChildren(grandChildren);
     if (!grandChildren.isEmpty()) {
-      newChildNode.setChildren(grandChildren);
       grandChildren.forEach(
           (grandChildName, grandChildNode) -> grandChildNode.setParent(newChildNode));
     }
@@ -155,15 +155,15 @@ public class InternalMNode extends MNode {
     if (newChildNode.isEntity() && oldChildNode.isEntity()) {
       Map<String, IMeasurementMNode> grandAliasChildren =
           oldChildNode.getAsEntityMNode().getAliasChildren();
+      newChildNode.getAsEntityMNode().setAliasChildren(grandAliasChildren);
       if (!grandAliasChildren.isEmpty()) {
-        newChildNode.getAsEntityMNode().setAliasChildren(grandAliasChildren);
         grandAliasChildren.forEach(
             (grandAliasChildName, grandAliasChild) -> grandAliasChild.setParent(newChildNode));
       }
-      newChildNode.getAsEntityMNode().setUseTemplate(oldChildNode.isUseTemplate());
     }
 
     newChildNode.setSchemaTemplate(oldChildNode.getSchemaTemplate());
+    newChildNode.setUseTemplate(oldChildNode.isUseTemplate());
 
     newChildNode.setParent(this);
 

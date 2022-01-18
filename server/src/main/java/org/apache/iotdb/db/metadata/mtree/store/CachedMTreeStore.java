@@ -72,7 +72,6 @@ public class CachedMTreeStore implements IMTreeStore {
         node = file.getChildNode(parent, name);
         if (node != null && cacheStrategy.isCached(parent)) {
           if (cacheMNodeInMemory(node)) {
-            parent.addChild(name, node);
             cacheStrategy.updateCacheStatusAfterRead(node);
           }
         }
@@ -95,7 +94,6 @@ public class CachedMTreeStore implements IMTreeStore {
         if (node != null) {
           pinMNodeInMemory(node);
           cacheStrategy.updateCacheStatusAfterRead(node);
-          parent.addChild(node);
         }
       }
     } else {
@@ -115,7 +113,6 @@ public class CachedMTreeStore implements IMTreeStore {
   public void addChild(IMNode parent, String childName, IMNode child) {
     child.setParent(parent);
     pinMNodeInMemory(child);
-    parent.addChild(childName, child);
     cacheStrategy.updateCacheStatusAfterAppend(child);
   }
 
@@ -186,6 +183,7 @@ public class CachedMTreeStore implements IMTreeStore {
       executeMemoryRelease();
       if (cacheStrategy.isCached(node.getParent())) {
         memManager.requestMemResource(node);
+        cacheStrategy.cacheMNode(node);
         return true;
       }
     }
@@ -215,9 +213,11 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private void pinMNodeInMemory(IMNode node) {
     if (!cacheStrategy.isPinned(node)) {
-      memManager.requestPinnedMemResource(node);
-    } else {
-      memManager.upgradeMemResource(node);
+      if (cacheStrategy.isCached(node)) {
+        memManager.upgradeMemResource(node);
+      } else {
+        memManager.requestPinnedMemResource(node);
+      }
     }
     cacheStrategy.pinMNode(node);
     if (!memManager.isUnderThreshold()) {

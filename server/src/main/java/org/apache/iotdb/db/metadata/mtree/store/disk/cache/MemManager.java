@@ -45,7 +45,7 @@ public class MemManager implements IMemManager {
 
   @Override
   public boolean requestMemResource(IMNode node) {
-    if (size < capacity - 1 - pinnedSize) {
+    if (size < capacity - pinnedSize) {
       size++;
       return true;
     }

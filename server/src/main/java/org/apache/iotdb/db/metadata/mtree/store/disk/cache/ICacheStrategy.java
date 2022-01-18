@@ -26,6 +26,8 @@ public interface ICacheStrategy {
 
   boolean isCached(IMNode node);
 
+  void cacheMNode(IMNode node);
+
   void updateCacheStatusAfterRead(IMNode node);
 
   void updateCacheStatusAfterAppend(IMNode node);

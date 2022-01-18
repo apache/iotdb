@@ -47,6 +47,10 @@ public interface ICachedMNodeContainer extends IMNodeContainer {
 
   void loadChildrenFromDisk(Map<String, IMNode> children);
 
+  void addChildToCache(IMNode node);
+
+  void appendMNode(IMNode node);
+
   void updateMNode(String name);
 
   void moveChildToCache(String name);

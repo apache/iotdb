@@ -305,6 +305,22 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
+  public void addChildToCache(IMNode node) {
+    if (childCache == null) {
+      childCache = new ConcurrentHashMap<>();
+    }
+    childCache.put(node.getName(), node);
+  }
+
+  @Override
+  public void appendMNode(IMNode node) {
+    if (newChildBuffer == null) {
+      newChildBuffer = new ConcurrentHashMap<>();
+    }
+    newChildBuffer.put(node.getName(), node);
+  }
+
+  @Override
   public void updateMNode(String name) {
     IMNode node = null;
     if (childCache != null) {

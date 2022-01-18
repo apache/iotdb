@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class CacheEntry {
 
-  protected volatile boolean isVolatile = true;
+  protected volatile boolean isVolatile = false;
 
   protected volatile AtomicInteger semaphore;
 
