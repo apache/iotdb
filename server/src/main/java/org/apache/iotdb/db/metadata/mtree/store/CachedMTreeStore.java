@@ -51,6 +51,7 @@ public class CachedMTreeStore implements IMTreeStore {
     MNodeContainers.IS_DISK_MODE = true;
     file = new MockSchemaFile();
     root = file.init();
+    cacheStrategy.cacheMNode(root);
     cacheStrategy.pinMNode(root);
   }
 
@@ -216,6 +217,7 @@ public class CachedMTreeStore implements IMTreeStore {
       if (cacheStrategy.isCached(node)) {
         memManager.upgradeMemResource(node);
       } else {
+        cacheStrategy.cacheMNode(node);
         memManager.requestPinnedMemResource(node);
       }
     }

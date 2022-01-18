@@ -44,12 +44,22 @@ public class CacheStrategy implements ICacheStrategy {
   @Override
   public void cacheMNode(IMNode node) {
     node.setCacheEntry(new CacheEntry());
-    getBelongedContainer(node).addChildToCache(node);
+    if (node.getParent() != null) {
+      getBelongedContainer(node).addChildToCache(node);
+    }
   }
 
   @Override
   public void updateCacheStatusAfterRead(IMNode node) {
-    // mock strategy means no status change after read
+    CacheEntry cacheEntry = new CacheEntry();
+    if (cacheEntry.isPinned()) {
+      return;
+    }
+    if (cacheEntry.isVolatile()) {
+      nodeBuffer.putIfAbsent(cacheEntry, node);
+    } else {
+      nodeCache.putIfAbsent(cacheEntry, node);
+    }
   }
 
   @Override
@@ -57,7 +67,9 @@ public class CacheStrategy implements ICacheStrategy {
     CacheEntry cacheEntry = node.getCacheEntry();
     cacheEntry.setVolatile(true);
     getBelongedContainer(node).appendMNode(node);
-    nodeBuffer.put(cacheEntry, node);
+    if (!cacheEntry.isPinned()) {
+      nodeBuffer.put(cacheEntry, node);
+    }
   }
 
   @Override
@@ -65,7 +77,7 @@ public class CacheStrategy implements ICacheStrategy {
     CacheEntry cacheEntry = node.getCacheEntry();
     if (!cacheEntry.isVolatile()) {
       cacheEntry.setVolatile(true);
-      if(!cacheEntry.isPinned()){
+      if (!cacheEntry.isPinned()) {
         nodeCache.remove(cacheEntry);
         nodeBuffer.put(cacheEntry, node);
       }
@@ -91,7 +103,7 @@ public class CacheStrategy implements ICacheStrategy {
     CacheEntry cacheEntry = node.getCacheEntry();
     cacheEntry.setVolatile(false);
     container.moveChildToCache(node.getName());
-    if(!cacheEntry.isPinned()){
+    if (!cacheEntry.isPinned()) {
       nodeBuffer.remove(cacheEntry);
       nodeCache.put(cacheEntry, node);
     }
@@ -188,15 +200,10 @@ public class CacheStrategy implements ICacheStrategy {
   @Override
   public void pinMNode(IMNode node) {
     CacheEntry cacheEntry = node.getCacheEntry();
-    if (cacheEntry == null) {
-      cacheEntry = new CacheEntry();
-      node.setCacheEntry(cacheEntry);
+    if (cacheEntry.isVolatile()) {
+      nodeBuffer.remove(cacheEntry);
     } else {
-      if (cacheEntry.isVolatile()) {
-        nodeBuffer.remove(cacheEntry);
-      } else {
-        nodeCache.remove(cacheEntry);
-      }
+      nodeCache.remove(cacheEntry);
     }
     if (!cacheEntry.isPinned()) {
       IMNode parent = node.getParent();
@@ -232,7 +239,7 @@ public class CacheStrategy implements ICacheStrategy {
 
   private void updateStatusAfterUnPinned(IMNode node) {
     CacheEntry cacheEntry = node.getCacheEntry();
-    if(cacheEntry.isPinned()){
+    if (cacheEntry.isPinned()) {
       return;
     }
     if (cacheEntry.isVolatile()) {
