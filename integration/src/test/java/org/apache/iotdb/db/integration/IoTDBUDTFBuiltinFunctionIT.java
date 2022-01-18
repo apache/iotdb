@@ -201,7 +201,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
           statement.executeQuery(
-              "select STRING_CONTAINS(s6, 's'='0'), STRING_MATCHES(s6, 'regex'='\\d') from root.sg.d1");
+              "select STRING_CONTAINS(s6, 's'='0'), STRING_MATCHES(s6, 'regex'='\\\\d') from root.sg.d1");
 
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 2, columnCount);

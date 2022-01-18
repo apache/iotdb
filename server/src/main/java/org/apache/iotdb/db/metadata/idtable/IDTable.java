@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 public interface IDTable {
@@ -137,6 +138,21 @@ public interface IDTable {
 
   /** clear id table and close file */
   void clear() throws IOException;
+
+  /**
+   * get device entry from device path
+   *
+   * @param deviceName device name of the time series
+   * @return device entry of the timeseries
+   */
+  public DeviceEntry getDeviceEntry(String deviceName);
+
+  /**
+   * get all device entries
+   *
+   * @return all device entries
+   */
+  public List<DeviceEntry> getAllDeviceEntry();
 
   /**
    * translate query path's device path to device id

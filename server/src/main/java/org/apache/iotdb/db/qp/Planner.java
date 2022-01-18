@@ -59,7 +59,7 @@ public class Planner {
       String sqlStr, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion)
       throws QueryProcessException {
     // from SQL to logical operator
-    Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
+    Operator operator = LogicalGenerator.generate(sqlStr, zoneId, clientVersion);
     return generatePhysicalPlanFromOperator(operator, clientVersion);
   }
 

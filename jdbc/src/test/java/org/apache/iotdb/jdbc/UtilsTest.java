@@ -18,18 +18,17 @@
  */
 package org.apache.iotdb.jdbc;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.util.Properties;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.util.Properties;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 public class UtilsTest {
 
@@ -124,5 +123,12 @@ public class UtilsTest {
       return;
     }
     fail();
+  }
+
+  @Test
+  public void testRpcCompress() throws IoTDBURLException {
+    Properties properties = new Properties();
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?rpc_compress=true", properties);
+    assertTrue(Config.rpcThriftCompressionEnable);
   }
 }
