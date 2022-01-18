@@ -107,7 +107,7 @@ public abstract class AbstractInnerSpaceCompactionTest {
   private int prevMergeChunkThreshold;
 
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataException {
+  public void setUp() throws IOException, WriteProcessException, MetadataException, Exception {
     tempSGDir =
         new File(
             TestConstant.BASE_OUTPUT_PATH

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
@@ -39,6 +41,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompactionTest {
+
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+    CompactionTaskManager.getInstance().stop();
+  }
 
   /**
    * Test when all source files exist, and target file is not complete. System should delete target
