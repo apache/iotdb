@@ -746,6 +746,7 @@ public class StorageEngine implements IService {
       throws StorageEngineException {
     try {
       List<PartialPath> sgPaths = IoTDB.metaManager.getBelongedStorageGroups(path);
+      logger.debug("SGs for {}: {}", path, sgPaths);
       for (PartialPath storageGroupPath : sgPaths) {
         // storage group has no data
         if (!processorMap.containsKey(storageGroupPath)) {
@@ -754,6 +755,7 @@ public class StorageEngine implements IService {
         }
 
         List<PartialPath> possiblePaths = path.alterPrefixPath(storageGroupPath);
+        logger.debug("Paths for {} under {}: {}", path, storageGroupPath, sgPaths);
         for (PartialPath possiblePath : possiblePaths) {
           processorMap
               .get(storageGroupPath)
