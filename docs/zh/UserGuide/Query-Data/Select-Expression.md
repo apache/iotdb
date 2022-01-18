@@ -51,7 +51,7 @@ selectExpr
 - 函数
   - 内置聚合函数，详见 [聚合查询](./Aggregate-Query.md) 。
   - 时间序列生成函数
-  - 用户自定义函数，详见 [UDF](../Advanced-Features/UDF-User-Defined-Function.md) 。
+  - 用户自定义函数，详见 [UDF](../Process-Data/UDF-User-Defined-Function.md) 。
 - 表达式
   - 算数运算表达式
   - 时间序列查询嵌套表达式

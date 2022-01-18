@@ -42,7 +42,7 @@
 常用的子句如下：
 
 - 每个 `selectExpr` 对应查询结果的一列，支持时间序列后缀、时间序列生成函数（包括用户自定义函数）、聚合函数、数字常量、算数运算表达式。每个 `SELECT` 语句至少应该包含一个 `selectExpr` 。关于 `selectExpr`，详见 [选择表达式](./Select-Expression.md) 。
-- `fromClause` 包含要查询的一个或多个时间序列前缀。
+- `fromClause` 包含要查询的一个或多个时间序列的前缀。
 - `whereClause`（可选）指定了查询的筛选条件 `queryFilter`。`queryFilter` 是一个逻辑表达式，查询结果返回计算结果为真的数据点。如果没有指定 `whereClaue`，则返回序列中所有数据点。关于 `queryFilter`，详见 [查询过滤条件](./Query-Filter.md) 。
 - 查询结果默认按照时间戳大小升序排列，可以通过 `ORDER BY TIME DESC` 指定结果集按照时间戳大小降序排列。
 - 当查询结果数据量很大时，可以使用 `LIMIT/SLIMIT` 及 `OFFSET/SOFFSET` 对结果集进行分页，详见 [查询结果分页](./Pagination.md) 。
@@ -209,7 +209,7 @@ It costs 0.016s
 
 数据查询语句支持在 SQL 命令行终端、JDBC、JAVA / C++ / Python / Go 等编程语言 API、RESTful API 中使用。
 
-- 在 SQL 命令行终端中执行查询语句：启动 SQL 命令行终端，直接输入查询语句执行即可，详见 [SQL 命令行终端](../CLI/Command-Line-Interface,md)。
+- 在 SQL 命令行终端中执行查询语句：启动 SQL 命令行终端，直接输入查询语句执行即可，详见 [SQL 命令行终端](../QuickStart/Command-Line-Interface,md)。
 
 - 在 JDBC 中执行查询语句，详见 [JDBC](../API/Programming-JDBC.md) 。
 
@@ -219,4 +219,4 @@ It costs 0.016s
   SessionDataSet executeQueryStatement(String sql)
   ```
 
-- 在 RESTful API 中使用，详见 [HTTP API](../Communication-Service-Protocol/RestService.md) 。
+- 在 RESTful API 中使用，详见 [HTTP API](../API/RestService.md) 。

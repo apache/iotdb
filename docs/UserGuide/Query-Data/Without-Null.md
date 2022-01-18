@@ -18,3 +18,20 @@
     under the License.
 
 -->
+
+# Null Value Filter
+
+In IoTDB, the `WITHOUT NULL` clause can be used to filter null values in the result set. There are two filtering strategies:
+
+1. IoTDB will join all the sensor value by its time, and if some sensors don't have values in that timestamp, we will fill it with null. In some analysis scenarios, we only need the row if all the columns of it have value.
+
+```sql
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
+```
+
+2. In group by query, we will fill null for any group by interval if the columns don't have values in that group by interval. However, if all columns in that group by interval are null, maybe users don't need that RowRecord, so we can use `WITHOUT NULL ALL` to filter that row.
+
+```sql
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
+```
+
