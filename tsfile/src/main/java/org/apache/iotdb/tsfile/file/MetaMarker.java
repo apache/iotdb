@@ -47,7 +47,6 @@ public class MetaMarker {
   public static final byte ONLY_ONE_PAGE_CHUNK_HEADER = 5;
 
   /** Time Chunk header marker and this chunk has more than one page. */
-
   public static final byte TIME_CHUNK_HEADER =
       (byte) (CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK);
 
@@ -62,7 +61,7 @@ public class MetaMarker {
   /** Value Chunk header marker and this chunk has only one page. */
   public static final byte ONLY_ONE_PAGE_VALUE_CHUNK_HEADER =
       (byte) (ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK);
-  
+
   private MetaMarker() {}
 
   public static void handleUnexpectedMarker(byte marker) throws IOException {
