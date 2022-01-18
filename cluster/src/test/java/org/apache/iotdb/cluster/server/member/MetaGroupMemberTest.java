@@ -1087,14 +1087,14 @@ public class MetaGroupMemberTest extends BaseMember {
     System.out.println("Start testGetMatchedPaths()");
     List<MeasurementPath> matchedPaths =
         ((CMManager) IoTDB.metaManager)
-            .getMatchedPaths(new PartialPath(TestUtils.getTestSg(0) + ".*"));
+            .getMatchedPaths(new PartialPath(TestUtils.getTestSg(0) + ".*"), false);
     assertEquals(20, matchedPaths.size());
     for (int j = 0; j < 10; j++) {
       assertTrue(matchedPaths.contains(new PartialPath(TestUtils.getTestSeries(0, j))));
     }
     matchedPaths =
         ((CMManager) IoTDB.metaManager)
-            .getMatchedPaths(new PartialPath(TestUtils.getTestSg(10) + ".*"));
+            .getMatchedPaths(new PartialPath(TestUtils.getTestSg(10) + ".*"), false);
     assertTrue(matchedPaths.isEmpty());
   }
 
