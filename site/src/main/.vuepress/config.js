@@ -702,9 +702,8 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Query-Data/Overview.md','Overview'],
-							['Query-Data/Query-Expression.md','Query Expression'],
+							['Query-Data/Select-Expression.md','Select Expression'],
 							['Query-Data/Query-Filter.md','Query Filter'],
-							['Query-Data/Order-By-Time.md','Order By Time'],
 							['Query-Data/Pagination.md','Pagination'],
 							['Query-Data/Result-Format.md','Query Result Formats'],
 							['Query-Data/Aggregate-Query.md','Aggregate Query'],
@@ -1525,9 +1524,8 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Query-Data/Overview.md','概述'],
-							['Query-Data/Query-Expression.md','查询表达式'],
+							['Query-Data/Select-Expression.md','选择表达式'],
 							['Query-Data/Query-Filter.md','查询过滤条件'],
-							['Query-Data/Order-By-Time.md','时间排序'],
 							['Query-Data/Pagination.md','查询结果分页'],
 							['Query-Data/Result-Format.md','查询结果对齐格式'],
 							['Query-Data/Aggregate-Query.md','聚合查询'],
