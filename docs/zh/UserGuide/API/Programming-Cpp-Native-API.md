@@ -125,7 +125,7 @@ git checkout rel/0.13
   
 - Windows
     ```shell
-    mvn package -P compile-cpp -pl client-cpp, server, example/client-cpp-example -am -Dcmake.generator="your cmake generator" -Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder} -DskipTests
+    mvn package -P compile-cpp -pl client-cpp,server,example/client-cpp-example -am -Dcmake.generator="your cmake generator" -Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder} -DskipTests
     ```
      - CMake 根据不同编译平台使用不同的生成器，需添加`-Dcmake.generator=""`选项来指定使用的生成器名称，例如： `-Dcmake.generator="Visual Studio 16 2019"`。（通过`cmake --help`命令可以查看 CMake 支持的生成器列表）
      - 为了帮助 CMake 找到本地安装好的 Boost，在编译命令中需添加相关参数，例如：`-DboostIncludeDir="C:\Program Files (x86)\boost_1_78_0" -DboostLibraryDir="C:\Program Files (x86)\boost_1_78_0\stage\lib"`

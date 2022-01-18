@@ -539,7 +539,7 @@ public class IoTDBUDFNestAggregationIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String query =
-          "SELECT avg(a)+1, 1+sum(a),count(a)*2+1" + "FROM root.st GROUP BY([10, 100), 10ms)";
+          "SELECT avg(a)+1, 1+sum(a),count(a)*2+1 FROM root.st GROUP BY([10, 100), 10ms)";
       boolean hasResultSet = statement.execute(query);
 
       Assert.assertTrue(hasResultSet);
@@ -588,8 +588,7 @@ public class IoTDBUDFNestAggregationIT {
 
       // query without 'without null all'
       query =
-          "SELECT avg(a)+1, count(a)+avg(a)"
-              + "FROM root.st GROUP BY([10, 100), 10ms) WITHOUT NULL ALL";
+          "SELECT avg(a) + 1, count(a) + avg(a) FROM root.st GROUP BY([10, 100), 10ms) WITHOUT NULL ALL";
       hasResultSet = statement.execute(query);
       Assert.assertTrue(hasResultSet);
       cnt = 0;
@@ -648,8 +647,7 @@ public class IoTDBUDFNestAggregationIT {
         Statement statement = connection.createStatement()) {
       // multi columns
       String query =
-          "SELECT avg(a)+1, count(a)+avg(a),count(a)*2+1"
-              + "FROM root.st GROUP BY([10, 100), 10ms)";
+          "SELECT avg(a)+1, count(a)+avg(a),count(a)*2+1 FROM root.st GROUP BY([10, 100), 10ms)";
       boolean hasResultSet = statement.execute(query);
 
       Assert.assertTrue(hasResultSet);

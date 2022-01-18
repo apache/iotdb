@@ -24,17 +24,17 @@ import java.util.Map;
 public interface ILastFlushTimeManager {
 
   // region set
-  void setLastTimeAll(long timePartitionId, Map<String, Long> lastTimeMap);
+  void setMultiDeviceLastTime(long timePartitionId, Map<String, Long> lastTimeMap);
 
-  void setLastTime(long timePartitionId, String path, long time);
+  void setOneDeviceLastTime(long timePartitionId, String path, long time);
 
-  void setFlushedTimeAll(long timePartitionId, Map<String, Long> flushedTimeMap);
+  void setMultiDeviceFlushedTime(long timePartitionId, Map<String, Long> flushedTimeMap);
 
-  void setFlushedTime(long timePartitionId, String path, long time);
+  void setOneDeviceFlushedTime(long timePartitionId, String path, long time);
 
-  void setGlobalFlushedTimeAll(Map<String, Long> globalFlushedTimeMap);
+  void setMultiDeviceGlobalFlushedTime(Map<String, Long> globalFlushedTimeMap);
 
-  void setGlobalFlushedTime(String path, long time);
+  void setOneDeviceGlobalFlushedTime(String path, long time);
   // endregion
 
   // region update

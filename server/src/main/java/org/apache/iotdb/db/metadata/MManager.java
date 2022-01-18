@@ -73,6 +73,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
@@ -482,6 +483,18 @@ public class MManager {
       case CREATE_TEMPLATE:
         CreateTemplatePlan createTemplatePlan = (CreateTemplatePlan) plan;
         createSchemaTemplate(createTemplatePlan);
+        break;
+      case DROP_TEMPLATE:
+        DropTemplatePlan dropTemplatePlan = (DropTemplatePlan) plan;
+        dropSchemaTemplate(dropTemplatePlan);
+        break;
+      case APPEND_TEMPLATE:
+        AppendTemplatePlan appendTemplatePlan = (AppendTemplatePlan) plan;
+        appendSchemaTemplate(appendTemplatePlan);
+        break;
+      case PRUNE_TEMPLATE:
+        PruneTemplatePlan pruneTemplatePlan = (PruneTemplatePlan) plan;
+        pruneSchemaTemplate(pruneTemplatePlan);
         break;
       case SET_TEMPLATE:
         SetTemplatePlan setTemplatePlan = (SetTemplatePlan) plan;
@@ -2241,6 +2254,47 @@ public class MManager {
   public List<String> getMeasurementsInTemplate(String templateName, String path)
       throws MetadataException {
     return templateManager.getTemplate(templateName).getMeasurementsUnderPath(path);
+  }
+
+  public Set<String> getAllTemplates() {
+    return templateManager.getAllTemplateName();
+  }
+
+  /**
+   * Get all paths set designated template
+   *
+   * @param templateName designated template name, blank string for any template exists
+   * @return paths set
+   */
+  public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
+    return new HashSet<>(mtree.getPathsSetOnTemplate(templateName));
+  }
+
+  public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
+    return new HashSet<>(mtree.getPathsUsingTemplate(templateName));
+  }
+
+  public void dropSchemaTemplate(DropTemplatePlan plan) throws MetadataException {
+    try {
+      String templateName = plan.getName();
+      // check whether template exists
+      if (!templateManager.getAllTemplateName().contains(templateName)) {
+        throw new UndefinedTemplateException(templateName);
+      }
+
+      if (mtree.isTemplateSetOnMTree(templateName)) {
+        throw new MetadataException(
+            String.format(
+                "Template [%s] has been set on MTree, cannot be dropped now.", templateName));
+      }
+
+      templateManager.dropSchemaTemplate(plan);
+      if (!isRecovering) {
+        logWriter.dropSchemaTemplate(plan);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
   }
 
   public synchronized void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
