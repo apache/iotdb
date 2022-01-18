@@ -51,6 +51,7 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.sync.MetadataSyncManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
@@ -203,6 +204,7 @@ public class MManager {
   private LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager = TagManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
+  private MetadataSyncManager syncManager = MetadataSyncManager.getInstance();
 
   // region MManager Singleton
   private static class MManagerHolder {
@@ -430,6 +432,7 @@ public class MManager {
         logWriter = null;
       }
       tagManager.clear();
+      syncManager.clear();
       initialized = false;
       if (config.isEnableMTreeSnapshot() && timedCreateMTreeSnapshotThread != null) {
         timedCreateMTreeSnapshotThread.shutdownNow();
@@ -2444,6 +2447,14 @@ public class MManager {
 
   public List<PhysicalPlan> getTimeseriesAsPlan(PartialPath pathPattern) throws MetadataException {
     return mtree.getTimeseriesAsPlan(pathPattern);
+  }
+
+  public void registerSyncTask() {
+    syncManager.registerSyncTask();
+  }
+
+  public void deregisterSyncTask() {
+    syncManager.deregisterSyncTask();
   }
 
   // endregion
