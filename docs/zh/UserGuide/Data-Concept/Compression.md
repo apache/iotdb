@@ -32,7 +32,7 @@ IoTDB 允许在创建一个时间序列的时候指定该列的压缩方式。�
 * LZ4 压缩
 * GZIP 压缩
 
-压缩方式的指定语法详见本文 [SQL 参考文档](../Appendix/SQL-Reference.md)。
+压缩方式的指定语法详见本文 [SQL 参考文档](../Reference/SQL-Reference.md)。
 
 ## 旋转门压缩
 
@@ -66,7 +66,7 @@ CompMaxTime 是测量两个存储的数据点之间的时间距离的参数。
 * FLOAT（单精度浮点数）
 * DOUBLE（双精度浮点数）
 
-SDT 的指定语法详见本文 [SQL 参考文档](../Appendix/SQL-Reference.md)。
+SDT 的指定语法详见本文 [SQL 参考文档](../Reference/SQL-Reference.md)。
 
 以下是使用 SDT 压缩的示例。
 
