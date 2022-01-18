@@ -57,6 +57,8 @@ public class IoTDBNewTsFileCompactionIT {
   // the unit is ns
   private static final long MAX_WAIT_TIME_FOR_MERGE = Long.MAX_VALUE;
   private static final float FLOAT_DELTA = 0.00001f;
+  long originSeqFileSize;
+  long originUnseqFileSize;
 
   @Before
   public void setUp() throws Exception {
@@ -75,7 +77,11 @@ public class IoTDBNewTsFileCompactionIT {
     IoTDBDescriptor.getInstance().getConfig().setSeqTsFileSize(1);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
-
+    CompactionTaskManager.getInstance().start();
+    originSeqFileSize = IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize();
+    originUnseqFileSize = IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize();
+    IoTDBDescriptor.getInstance().getConfig().setSeqTsFileSize(1);
+    IoTDBDescriptor.getInstance().getConfig().setUnSeqTsFileSize(1);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -98,6 +104,8 @@ public class IoTDBNewTsFileCompactionIT {
         .getConfig()
         .setMaxNumberOfPointsInPage(preMaxNumberOfPointsInPage);
     IoTDBDescriptor.getInstance().getConfig().setSeqTsFileSize(originSeqTsFileSize);
+    IoTDBDescriptor.getInstance().getConfig().setUnSeqTsFileSize(originUnseqFileSize);
+    CompactionTaskManager.getInstance().stop();
   }
 
   /**
@@ -1058,6 +1066,7 @@ public class IoTDBNewTsFileCompactionIT {
     TsFileManager resourceManager = virtualStorageGroupProcessor.getTsFileResourceManager();
 
     long startTime = System.nanoTime();
+    Thread.sleep(50);
     // get the size of level 1's tsfile list to judge whether merge is finished
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() != 0) {
       TimeUnit.MILLISECONDS.sleep(100);

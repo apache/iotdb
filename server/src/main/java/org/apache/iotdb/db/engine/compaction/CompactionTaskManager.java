@@ -273,7 +273,7 @@ public class CompactionTaskManager implements IService {
         }
       }
     } catch (InterruptedException e) {
-      logger.error("Exception occurs while submitting compaction task", e);
+      logger.error("[IgnoreMeInTest] Exception occurs while submitting compaction task", e);
     }
   }
 
