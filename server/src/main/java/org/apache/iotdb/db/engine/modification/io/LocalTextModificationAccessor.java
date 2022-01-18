@@ -91,7 +91,7 @@ public class LocalTextModificationAccessor
       try (FileOutputStream outputStream = new FileOutputStream(file, true)) {
         outputStream.getChannel().truncate(truncatedSize);
       } catch (FileNotFoundException e) {
-        logger.debug("No modification has been written to this file");
+        logger.debug("No modification has been written to this file {}", filePath);
       } catch (IOException e) {
         logger.error(
             "An error occurred when truncating modifications to size {}.", truncatedSize, e);

@@ -2031,13 +2031,14 @@ public class VirtualStorageGroupProcessor {
         tsFileResource.getCompactionModFile().write(deletion);
         // remember to close mod file
         tsFileResource.getCompactionModFile().close();
-      } else {
-        deletion.setFileOffset(tsFileResource.getTsFileSize());
-        // write deletion into modification file
-        tsFileResource.getModFile().write(deletion);
-        // remember to close mod file
-        tsFileResource.getModFile().close();
       }
+
+      deletion.setFileOffset(tsFileResource.getTsFileSize());
+      // write deletion into modification file
+      tsFileResource.getModFile().write(deletion);
+      // remember to close mod file
+      tsFileResource.getModFile().close();
+
       logger.info(
           "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
           deletion.getPath(),
