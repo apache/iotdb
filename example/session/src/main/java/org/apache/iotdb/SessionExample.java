@@ -27,6 +27,7 @@ import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.session.SessionDataSet.DataIterator;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.Template;
+import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -57,7 +58,13 @@ public class SessionExample {
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
     session =
-        new Session.Builder().host(LOCAL_HOST).port(6667).username("root").password("root").build();
+        new Session.Builder()
+            .host(LOCAL_HOST)
+            .port(6667)
+            .username("root")
+            .password("root")
+            .version(Version.V_0_13)
+            .build();
     session.open(false);
 
     // set session fetchSize

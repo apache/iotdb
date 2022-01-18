@@ -79,8 +79,11 @@ session =
         .thriftDefaultBufferSize(int thriftDefaultBufferSize)
         .thriftMaxFrameSize(int thriftMaxFrameSize)
         .enableCacheLeader(boolean enableCacheLeader)
+        .version(Version version)
         .build();
 ```
+
+Version represents the SQL semantic version used by the client, which is used to be compatible with the SQL semantics of 0.12 when upgrading 0.13. The possible values are: `V_0_12`, `V_0_13`.
 
 * Open a Session
 
