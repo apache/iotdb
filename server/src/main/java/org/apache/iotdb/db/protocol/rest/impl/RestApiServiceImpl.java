@@ -38,7 +38,6 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.dataset.ShowDevicesDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
@@ -123,7 +122,7 @@ public class RestApiServiceImpl extends RestApiService {
       final int actualRowSizeLimit =
           sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit();
 
-      final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
+      final long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
       try {
         QueryContext queryContext =
             serviceProvider.genQueryContext(
