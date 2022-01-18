@@ -895,8 +895,8 @@ public class MTree implements Serializable {
           }
         };
     collector.setCollectInternal(true);
-    collector.traverse();
     collector.setPrefixMatch(isPrefixMatch);
+    collector.traverse();
     return result;
   }
   // endregion
