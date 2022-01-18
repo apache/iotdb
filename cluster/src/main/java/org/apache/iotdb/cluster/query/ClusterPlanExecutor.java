@@ -852,6 +852,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
       return;
     }
     for (PartialPath path : deletePlan.getPaths()) {
+      logger.debug("Deleting {}", path);
       delete(
           path,
           deletePlan.getDeleteStartTime(),

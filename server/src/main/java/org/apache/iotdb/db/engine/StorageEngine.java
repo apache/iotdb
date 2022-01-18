@@ -749,6 +749,7 @@ public class StorageEngine implements IService {
       for (PartialPath storageGroupPath : sgPaths) {
         // storage group has no data
         if (!processorMap.containsKey(storageGroupPath)) {
+          logger.debug("No storage group {}", storageGroupPath);
           continue;
         }
 
