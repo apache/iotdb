@@ -1274,63 +1274,65 @@ public class TsFileSequenceReader implements AutoCloseable {
             Statistics<? extends Serializable> chunkStatistics =
                 Statistics.getStatsByType(dataType);
             int dataSize = chunkHeader.getDataSize();
-            if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.CHUNK_HEADER) {
-              while (dataSize > 0) {
-                // a new Page
-                PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), true);
-                chunkStatistics.mergeStatistics(pageHeader.getStatistics());
-                this.skipPageData(pageHeader);
-                dataSize -= pageHeader.getSerializedPageSize();
+            if (dataSize > 0) {
+              if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.CHUNK_HEADER) {
+                while (dataSize > 0) {
+                  // a new Page
+                  PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), true);
+                  chunkStatistics.mergeStatistics(pageHeader.getStatistics());
+                  this.skipPageData(pageHeader);
+                  dataSize -= pageHeader.getSerializedPageSize();
+                  chunkHeader.increasePageNums(1);
+                }
+              } else {
+                // only one page without statistic, we need to iterate each point to generate
+                // statistic
+                PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), false);
+                Decoder valueDecoder =
+                        Decoder.getDecoderByType(
+                                chunkHeader.getEncodingType(), chunkHeader.getDataType());
+                ByteBuffer pageData = readPage(pageHeader, chunkHeader.getCompressionType());
+                Decoder timeDecoder =
+                        Decoder.getDecoderByType(
+                                TSEncoding.valueOf(
+                                        TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+                                TSDataType.INT64);
+                PageReader reader =
+                        new PageReader(
+                                pageHeader,
+                                pageData,
+                                chunkHeader.getDataType(),
+                                valueDecoder,
+                                timeDecoder,
+                                null);
+                BatchData batchData = reader.getAllSatisfiedPageData();
+                while (batchData.hasCurrent()) {
+                  switch (dataType) {
+                    case INT32:
+                      chunkStatistics.update(batchData.currentTime(), batchData.getInt());
+                      break;
+                    case INT64:
+                      chunkStatistics.update(batchData.currentTime(), batchData.getLong());
+                      break;
+                    case FLOAT:
+                      chunkStatistics.update(batchData.currentTime(), batchData.getFloat());
+                      break;
+                    case DOUBLE:
+                      chunkStatistics.update(batchData.currentTime(), batchData.getDouble());
+                      break;
+                    case BOOLEAN:
+                      chunkStatistics.update(batchData.currentTime(), batchData.getBoolean());
+                      break;
+                    case TEXT:
+                      chunkStatistics.update(batchData.currentTime(), batchData.getBinary());
+                      break;
+                    default:
+                      throw new IOException("Unexpected type " + dataType);
+                  }
+                  batchData.next();
+                }
                 chunkHeader.increasePageNums(1);
               }
-            } else {
-              // only one page without statistic, we need to iterate each point to generate
-              // statistic
-              PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), false);
-              Decoder valueDecoder =
-                  Decoder.getDecoderByType(
-                      chunkHeader.getEncodingType(), chunkHeader.getDataType());
-              ByteBuffer pageData = readPage(pageHeader, chunkHeader.getCompressionType());
-              Decoder timeDecoder =
-                  Decoder.getDecoderByType(
-                      TSEncoding.valueOf(
-                          TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-                      TSDataType.INT64);
-              PageReader reader =
-                  new PageReader(
-                      pageHeader,
-                      pageData,
-                      chunkHeader.getDataType(),
-                      valueDecoder,
-                      timeDecoder,
-                      null);
-              BatchData batchData = reader.getAllSatisfiedPageData();
-              while (batchData.hasCurrent()) {
-                switch (dataType) {
-                  case INT32:
-                    chunkStatistics.update(batchData.currentTime(), batchData.getInt());
-                    break;
-                  case INT64:
-                    chunkStatistics.update(batchData.currentTime(), batchData.getLong());
-                    break;
-                  case FLOAT:
-                    chunkStatistics.update(batchData.currentTime(), batchData.getFloat());
-                    break;
-                  case DOUBLE:
-                    chunkStatistics.update(batchData.currentTime(), batchData.getDouble());
-                    break;
-                  case BOOLEAN:
-                    chunkStatistics.update(batchData.currentTime(), batchData.getBoolean());
-                    break;
-                  case TEXT:
-                    chunkStatistics.update(batchData.currentTime(), batchData.getBinary());
-                    break;
-                  default:
-                    throw new IOException("Unexpected type " + dataType);
-                }
-                batchData.next();
-              }
-              chunkHeader.increasePageNums(1);
             }
             currentChunk =
                 new ChunkMetadata(measurementID, dataType, fileOffsetOfChunk, chunkStatistics);
