@@ -23,7 +23,6 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -59,8 +58,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Collections.sort(this.tsFileResources, TsFileResource::compareFileName);
     try {
       for (TsFileResource tsFileResource : this.tsFileResources) {
-        TsFileSequenceReader reader =
-            FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
+        TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
         readerMap.put(tsFileResource, reader);
         deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
       }
@@ -208,7 +206,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
-    // do nothing
+    for (TsFileSequenceReader reader : readerMap.values()) {
+      reader.close();
+    }
   }
 
   public class AlignedMeasurmentIterator {
