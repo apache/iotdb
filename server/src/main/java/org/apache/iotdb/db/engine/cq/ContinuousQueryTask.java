@@ -34,7 +34,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -98,7 +97,7 @@ public class ContinuousQueryTask extends WrappedRunnable {
     }
 
     // construct query dataset
-    final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
+    final long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
     try {
       final QueryContext queryContext =
           serviceProvider.genQueryContext(
