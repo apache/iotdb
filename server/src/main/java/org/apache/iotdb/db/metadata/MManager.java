@@ -57,6 +57,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.monitor.MonitorConstants;
+import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -615,6 +616,7 @@ public class MManager {
         }
         plan.setTagOffset(offset);
         logWriter.createTimeseries(plan);
+        syncManager.syncMetadataPlan(plan);
       }
       leafMNode.setOffset(offset);
 
@@ -712,6 +714,7 @@ public class MManager {
       // write log
       if (!isRecovering) {
         logWriter.createAlignedTimeseries(plan);
+        syncManager.syncMetadataPlan(plan);
       }
     } catch (IOException e) {
       throw new MetadataException(e);
@@ -799,6 +802,7 @@ public class MManager {
         }
         deleteTimeSeriesPlan.setDeletePathList(Collections.singletonList(p));
         logWriter.deleteTimeseries(deleteTimeSeriesPlan);
+        syncManager.syncMetadataPlan(deleteTimeSeriesPlan);
       }
     } catch (DeleteFailedException e) {
       failedNames.add(e.getName());
@@ -858,6 +862,7 @@ public class MManager {
       }
       if (!isRecovering) {
         logWriter.setStorageGroup(storageGroup);
+        syncManager.syncMetadataPlan(new SetStorageGroupPlan(storageGroup));
       }
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
@@ -872,6 +877,7 @@ public class MManager {
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     try {
       for (PartialPath storageGroup : storageGroups) {
+        DeleteTimeSeriesPlan plansForSync = splitDeleteTimeseriesPlanByDevice(storageGroup);
         totalSeriesNumber.addAndGet(
             -mtree.getAllTimeseriesCount(storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD)));
         // clear cached MNode
@@ -898,6 +904,7 @@ public class MManager {
         // if success
         if (!isRecovering) {
           logWriter.deleteStorageGroup(storageGroup);
+          syncManager.syncMetadataPlan(plansForSync);
         }
       }
     } catch (IOException e) {
@@ -2449,12 +2456,22 @@ public class MManager {
     return mtree.getTimeseriesAsPlan(pathPattern);
   }
 
-  public void registerSyncTask() {
-    syncManager.registerSyncTask();
+  public void registerSyncTask(TsFilePipe syncPipe) {
+    syncManager.registerSyncTask(syncPipe);
   }
 
   public void deregisterSyncTask() {
     syncManager.deregisterSyncTask();
+  }
+
+  private DeleteTimeSeriesPlan splitDeleteTimeseriesPlanByDevice(PartialPath pathPattern)
+      throws MetadataException {
+    Set<PartialPath> devices = mtree.getDevicesByTimeseries(pathPattern);
+    List<PartialPath> resultPathPattern = new LinkedList<>();
+    for (PartialPath device : devices) {
+      resultPathPattern.addAll(pathPattern.alterPrefixPath(device));
+    }
+    return new DeleteTimeSeriesPlan(resultPathPattern);
   }
 
   // endregion

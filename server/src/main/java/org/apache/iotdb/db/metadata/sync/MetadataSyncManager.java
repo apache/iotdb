@@ -18,9 +18,12 @@
  */
 package org.apache.iotdb.db.metadata.sync;
 
+import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 public class MetadataSyncManager {
+
+  private TsFilePipe syncPipe = null;
 
   private static class MetadataSyncManagerHolder {
 
@@ -35,15 +38,21 @@ public class MetadataSyncManager {
     return MetadataSyncManager.MetadataSyncManagerHolder.INSTANCE;
   }
 
-  public void registerSyncTask() {}
+  public void registerSyncTask(TsFilePipe syncPipe) {
+    this.syncPipe = syncPipe;
+  }
 
-  public void deregisterSyncTask() {}
+  public void deregisterSyncTask() {
+    this.syncPipe = null;
+  }
 
   public boolean isEnableSync() {
-    return false;
+    return syncPipe != null;
   }
 
   public void syncMetadataPlan(PhysicalPlan plan) {}
 
-  public void clear() {}
+  public void clear() {
+    this.syncPipe = null;
+  }
 }
