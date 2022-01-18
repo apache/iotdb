@@ -947,7 +947,7 @@ public class CMManager extends MManager {
   @Override
   public Set<PartialPath> getMatchedDevices(PartialPath originPath, boolean isPrefixMatch)
       throws MetadataException {
-    Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(originPath);
+    Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(originPath, isPrefixMatch);
     Set<PartialPath> ret;
     try {
       ret = getMatchedDevices(sgPathMap, isPrefixMatch);
@@ -1037,10 +1037,10 @@ public class CMManager extends MManager {
    * @param originPath a path potentially with wildcard
    * @return all paths after removing wildcards in the path
    */
-  public List<MeasurementPath> getMatchedPaths(PartialPath originPath)
+  public List<MeasurementPath> getMatchedPaths(PartialPath originPath, boolean isPrefixMatch)
       throws MetadataException, PartitionTableUnavailableException, NotInSameGroupException {
-    Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(originPath);
-    List<MeasurementPath> ret = getMatchedPaths(sgPathMap, false, false);
+    Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(originPath, isPrefixMatch);
+    List<MeasurementPath> ret = getMatchedPaths(sgPathMap, false, isPrefixMatch);
     logger.debug("The paths of path {} are {}", originPath, ret);
     return ret;
   }
@@ -1289,28 +1289,7 @@ public class CMManager extends MManager {
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
       throws MetadataException {
-    Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(pathPattern);
-
-    if (isPrefixMatch) {
-      // adapt to prefix match of IoTDB v0.12
-      Map<String, List<PartialPath>> prefixSgPathMap =
-          groupPathByStorageGroup(pathPattern.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
-      List<PartialPath> originPaths;
-      List<PartialPath> addedPaths;
-      for (String sg : prefixSgPathMap.keySet()) {
-        originPaths = sgPathMap.get(sg);
-        addedPaths = prefixSgPathMap.get(sg);
-        if (originPaths == null) {
-          sgPathMap.put(sg, addedPaths);
-        } else {
-          for (PartialPath path : addedPaths) {
-            if (!originPaths.contains(path)) {
-              originPaths.add(path);
-            }
-          }
-        }
-      }
-    }
+    Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(pathPattern, isPrefixMatch);
 
     List<MeasurementPath> result;
     try {
@@ -1345,7 +1324,7 @@ public class CMManager extends MManager {
    *     original paths
    */
   public Pair<List<PartialPath>, List<PartialPath>> getMatchedPaths(
-      List<? extends PartialPath> originalPaths) {
+      List<? extends PartialPath> originalPaths, boolean isPrefixMatch) {
     ConcurrentSkipListSet<PartialPath> fullPaths = new ConcurrentSkipListSet<>();
     ConcurrentSkipListSet<PartialPath> nonExistPaths = new ConcurrentSkipListSet<>();
     // TODO it is not suitable for register and deregister an Object to JMX to such a frequent
@@ -1357,7 +1336,7 @@ public class CMManager extends MManager {
       getAllPathsService.submit(
           () -> {
             try {
-              List<MeasurementPath> fullPathStrs = getMatchedPaths(pathStr);
+              List<MeasurementPath> fullPathStrs = getMatchedPaths(pathStr, isPrefixMatch);
               if (fullPathStrs.isEmpty()) {
                 nonExistPaths.add(pathStr);
                 logger.debug("Path {} is not found.", pathStr);
@@ -1429,7 +1408,7 @@ public class CMManager extends MManager {
     metaGroupMember.syncLeaderWithConsistencyCheck(false);
 
     Pair<List<PartialPath>, List<PartialPath>> getMatchedPathsRet =
-        getMatchedPaths(plan.getPaths());
+        getMatchedPaths(plan.getPaths(), plan.isPrefixMatch());
     List<PartialPath> fullPaths = getMatchedPathsRet.left;
     List<PartialPath> nonExistPath = getMatchedPathsRet.right;
     plan.setPaths(fullPaths);
@@ -1532,7 +1511,7 @@ public class CMManager extends MManager {
             THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
 
     Map<String, List<PartialPath>> sgPartitionGroupMap =
-        IoTDB.metaManager.groupPathByStorageGroup(plan.getPath());
+        IoTDB.metaManager.groupPathByStorageGroup(plan.getPath(), plan.isPrefixMatch());
     if (sgPartitionGroupMap.isEmpty()) {
       return Collections.emptyList();
     }
@@ -1850,20 +1829,21 @@ public class CMManager extends MManager {
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
       throws MetadataException {
     try {
-      return getMatchedPaths(pathPattern);
+      return getMatchedPaths(pathPattern, false);
     } catch (PartitionTableUnavailableException | NotInSameGroupException e) {
       throw new MetadataException(e);
     }
   }
 
   @Override
-  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
+  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path,
+      boolean isPrefixMatch)
       throws MetadataException {
     try {
       metaGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new MetadataException(e);
     }
-    return super.groupPathByStorageGroup(path);
+    return super.groupPathByStorageGroup(path, isPrefixMatch);
   }
 }

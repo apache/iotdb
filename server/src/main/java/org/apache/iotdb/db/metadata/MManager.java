@@ -1776,9 +1776,10 @@ public class MManager {
    * @return StorageGroupName-FullPath pairs
    * @apiNote :for cluster
    */
-  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
+  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path,
+      boolean isPrefixMatch)
       throws MetadataException {
-    Map<String, List<PartialPath>> sgPathMap = mtree.groupPathByStorageGroup(path);
+    Map<String, List<PartialPath>> sgPathMap = mtree.groupPathByStorageGroup(path, isPrefixMatch);
     if (logger.isDebugEnabled()) {
       logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
     }
