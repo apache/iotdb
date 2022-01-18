@@ -74,14 +74,14 @@ public class InnerSpaceCompactionExceptionHandler {
     } else {
       // some source file does not exists
       // it means we start to delete source file
-      LOGGER.info(
+      LOGGER.error(
           "{} [Compaction][ExceptionHandler] some source files {} is lost",
           fullStorageGroupName,
           lostSourceFiles);
       if (!targetTsFile.getTsFile().exists()) {
         // some source files are missed, and target file not exists
         // some data is lost, set the system to read-only
-        LOGGER.warn(
+        LOGGER.error(
             "{} [Compaction][ExceptionHandler] target file {} does not exist either, do nothing. Set system to read-only",
             fullStorageGroupName,
             targetTsFile);
@@ -104,7 +104,7 @@ public class InnerSpaceCompactionExceptionHandler {
           fullStorageGroupName);
       tsFileManager.setAllowCompaction(false);
     } else {
-      LOGGER.info(
+      LOGGER.error(
           "{} [Compaction][ExceptionHandler] Handle exception successfully, delete log file {}",
           fullStorageGroupName,
           logFile);
@@ -138,7 +138,7 @@ public class InnerSpaceCompactionExceptionHandler {
       TsFileResource targetTsFile,
       List<TsFileResource> selectedTsFileResourceList) {
     // all source file exists, delete the target file
-    LOGGER.info(
+    LOGGER.error(
         "{} [Compaction][ExceptionHandler] all source files {} exists, delete target file {}",
         fullStorageGroupName,
         selectedTsFileResourceList,
@@ -167,7 +167,7 @@ public class InnerSpaceCompactionExceptionHandler {
     if (!tmpTargetTsFile.remove()) {
       // failed to remove tmp target tsfile
       // system should not carry out the subsequent compaction in case of data redundant
-      LOGGER.warn(
+      LOGGER.error(
           "{} [Compaction][ExceptionHandler] failed to remove target file {}",
           fullStorageGroupName,
           tmpTargetTsFile);
@@ -176,7 +176,7 @@ public class InnerSpaceCompactionExceptionHandler {
     if (!targetTsFile.remove()) {
       // failed to remove target tsfile
       // system should not carry out the subsequent compaction in case of data redundant
-      LOGGER.warn(
+      LOGGER.error(
           "{} [Compaction][ExceptionHandler] failed to remove target file {}",
           fullStorageGroupName,
           targetTsFile);
@@ -205,13 +205,13 @@ public class InnerSpaceCompactionExceptionHandler {
     try {
       if (TsFileUtils.isTsFileComplete(targetTsFile.getTsFile())) {
         // target file is complete, delete source files
-        LOGGER.info(
+        LOGGER.error(
             "{} [Compaction][ExceptionHandler] target file {} is complete, delete remaining source files",
             fullStorageGroupName,
             targetTsFile);
         for (TsFileResource sourceFile : selectedTsFileResourceList) {
           if (!sourceFile.remove()) {
-            LOGGER.warn(
+            LOGGER.error(
                 "{} [Compaction][ExceptionHandler] failed to remove source file {}",
                 fullStorageGroupName,
                 sourceFile);
@@ -230,7 +230,7 @@ public class InnerSpaceCompactionExceptionHandler {
       } else {
         // target file is not complete, and some source file is lost
         // some data is lost
-        LOGGER.warn(
+        LOGGER.error(
             "{} [Compaction][ExceptionHandler] target file {} is not complete, and some source files {} is lost, do nothing. Set allowCompaction to false",
             fullStorageGroupName,
             targetTsFile,

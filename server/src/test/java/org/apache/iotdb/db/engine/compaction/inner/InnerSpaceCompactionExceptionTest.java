@@ -28,8 +28,11 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.h2.store.fs.FileUtils;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -39,6 +42,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompactionTest {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(InnerSpaceCompactionExceptionTest.class);
 
   /**
    * Test when all source files exist, and target file is not complete. System should delete target
@@ -48,6 +53,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
    */
   @Test
   public void testWhenAllSourceExistsAndTargetNotComplete() throws Exception {
+    LOGGER.error("Running testWhenAllSourceExistsAndTargetNotComplete");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     TsFileResource targetResource =
@@ -95,6 +101,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
    */
   @Test
   public void testWhenAllSourceExistsAndTargetComplete() throws Exception {
+    LOGGER.error("Running testWhenAllSourceExistsAndTargetComplete");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     TsFileResource targetResource =
@@ -138,6 +145,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
    */
   @Test
   public void testWhenSomeSourceLostAndTargetComplete() throws Exception {
+    LOGGER.error("Running testWhenSomeSourceLostAndTargetComplete");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     TsFileResource targetResource =
@@ -154,8 +162,11 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
         SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
     InnerSpaceCompactionUtils.compact(targetResource, seqResources, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
+    FileUtils.delete(seqResources.get(0).getTsFile().getPath());
     seqResources.get(0).remove();
     compactionLogger.close();
+    Assert.assertTrue(targetResource.getTsFile().exists());
+    Assert.assertTrue(targetResource.resourceFileExists());
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         logFile,
@@ -185,6 +196,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
    */
   @Test
   public void testWhenSomeSourceLostAndTargetNotComplete() throws Exception {
+    LOGGER.error("Running testWhenSomeSourceLostAndTargetNotComplete");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     TsFileResource targetResource =
@@ -207,6 +219,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
       channel.truncate(targetResource.getTsFileSize() - 10);
     }
     compactionLogger.close();
+    Assert.assertTrue(targetResource.getTsFile().exists());
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         logFile,
@@ -236,6 +249,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
    */
   @Test
   public void testHandleWithCompactionMods() throws Exception {
+    LOGGER.error("Running testHandleWithCompactionMods");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     TsFileResource targetResource =
@@ -264,6 +278,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     seqResources.get(0).remove();
     compactionLogger.close();
 
+    Assert.assertTrue(targetResource.getTsFile().exists());
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         logFile,
@@ -300,6 +315,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
    */
   @Test
   public void testHandleWithNormalMods() throws Exception {
+    LOGGER.error("Running testHandleWithNormalMods");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     TsFileResource targetResource =
@@ -327,6 +343,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     seqResources.get(0).remove();
     compactionLogger.close();
 
+    Assert.assertTrue(targetResource.getTsFile().exists());
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         logFile,
@@ -357,6 +374,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
    */
   @Test
   public void testHandleWithCompactionModsAndNormalMods() throws Exception {
+    LOGGER.error("Running testHandleWithCompactionModsAndNormalMods");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     TsFileResource targetResource =
