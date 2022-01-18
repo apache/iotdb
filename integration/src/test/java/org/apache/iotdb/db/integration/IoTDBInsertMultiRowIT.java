@@ -38,6 +38,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 /**
  * @Author: Architect @Date: 2021-03-30 18:36 @Description: This class is initially intend to test
  * the issue of IOTDB-924
@@ -124,5 +127,20 @@ public class IoTDBInsertMultiRowIT {
   public void testInsertWithTimesColumns() throws SQLException {
     Statement st1 = connection.createStatement();
     st1.execute("insert into root.t1.wf01.wt01(timestamp) values(1)");
+  }
+
+  @Test
+  public void testInsertMultiRowWithMisMatchDataType() {
+    try {
+      Statement st1 = connection.createStatement();
+      st1.execute(
+          "insert into root.t1.wf01.wt01(timestamp, s1) values(1, 1.0) (2, 'hello'), (3, true)");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "org.apache.iotdb.db.exception.StorageEngineException: failed to insert measurements [s1] caused by For input string: \"'hello'\";"
+              + "org.apache.iotdb.db.exception.StorageEngineException: failed to insert measurements [s1] caused by For input string: \"true\";",
+          e.getMessage());
+    }
   }
 }

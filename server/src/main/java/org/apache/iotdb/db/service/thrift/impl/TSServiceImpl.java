@@ -53,6 +53,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
@@ -86,6 +87,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
+import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
@@ -1901,6 +1903,20 @@ public class TSServiceImpl implements TSIService.Iface {
           resp.setQueryType(TemplateQueryType.SHOW_MEASUREMENTS.ordinal());
           resp.setMeasurements(IoTDB.metaManager.getMeasurementsInTemplate(req.name, path));
           break;
+        case SHOW_TEMPLATES:
+          resp.setQueryType(TemplateQueryType.SHOW_TEMPLATES.ordinal());
+          resp.setMeasurements(new ArrayList<>(IoTDB.metaManager.getAllTemplates()));
+          break;
+        case SHOW_SET_TEMPLATES:
+          path = req.getName();
+          resp.setQueryType(TemplateQueryType.SHOW_SET_TEMPLATES.ordinal());
+          resp.setMeasurements(new ArrayList<>(IoTDB.metaManager.getPathsSetTemplate(path)));
+          break;
+        case SHOW_USING_TEMPLATES:
+          path = req.getName();
+          resp.setQueryType(TemplateQueryType.SHOW_USING_TEMPLATES.ordinal());
+          resp.setMeasurements(new ArrayList<>(IoTDB.metaManager.getPathsUsingTemplate(path)));
+          break;
       }
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully"));
       return resp;
@@ -1937,13 +1953,31 @@ public class TSServiceImpl implements TSIService.Iface {
 
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
-          "Session-{} unset device template {}.{}",
+          "Session-{} unset schema template {}.{}",
           SESSION_MANAGER.getCurrSessionId(),
           req.getPrefixPath(),
           req.getTemplateName());
     }
 
     UnsetTemplatePlan plan = new UnsetTemplatePlan(req.prefixPath, req.templateName);
+    TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+    return status != null ? status : executeNonQueryPlan(plan);
+  }
+
+  @Override
+  public TSStatus dropSchemaTemplate(TSDropSchemaTemplateReq req) throws TException {
+    if (!serviceProvider.checkLogin(req.getSessionId())) {
+      return getNotLoggedInStatus();
+    }
+
+    if (AUDIT_LOGGER.isDebugEnabled()) {
+      AUDIT_LOGGER.debug(
+          "Session-{} drop schema template {}.",
+          SESSION_MANAGER.getCurrSessionId(),
+          req.getTemplateName());
+    }
+
+    DropTemplatePlan plan = new DropTemplatePlan(req.templateName);
     TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
   }

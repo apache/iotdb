@@ -123,10 +123,11 @@ public class IoTDBQueryWithIDTableIT {
   public static void tearDown() throws Exception {
     ConfigFactory.getConfig().setEnableIDTable(isEnableIDTable);
     ConfigFactory.getConfig().setDeviceIDTransformationMethod(originalDeviceIDTransformationMethod);
-    // reset id method
-    DeviceIDFactory.getInstance().reset();
 
     EnvFactory.getEnv().cleanAfterClass();
+
+    // reset id method
+    DeviceIDFactory.getInstance().reset();
   }
 
   private static void insertData() {

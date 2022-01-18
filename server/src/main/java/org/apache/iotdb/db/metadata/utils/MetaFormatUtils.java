@@ -80,7 +80,9 @@ public class MetaFormatUtils {
 
   /** check whether the node name uses "." correctly */
   private static void checkNameFormat(String name) throws MetadataException {
-    if (name.contains(".")) {
+    if (!((name.startsWith("'") && name.endsWith("'"))
+            || (name.startsWith("\"") && name.endsWith("\"")))
+        && name.contains(".")) {
       throw new MetadataException(String.format("%s is an illegal name.", name));
     }
   }

@@ -261,7 +261,7 @@ public class VirtualStorageGroupProcessor {
   // DEFAULT_POOL_TRIM_INTERVAL_MILLIS
   private long timeWhenPoolNotEmpty = Long.MAX_VALUE;
 
-  private LastFlushTimeManager lastFlushTimeManager = new LastFlushTimeManager();
+  private ILastFlushTimeManager lastFlushTimeManager;
 
   /**
    * record the insertWriteLock in SG is being hold by which method, it will be empty string if on
@@ -398,13 +398,16 @@ public class VirtualStorageGroupProcessor {
       logger.error("create Storage Group system Directory {} failed", storageGroupSysDir.getPath());
     }
 
-    // use id table
+    // if use id table, we use id table flush time manager
     if (config.isEnableIDTable()) {
       try {
         idTable = IDTableManager.getInstance().getIDTable(new PartialPath(logicalStorageGroupName));
+        lastFlushTimeManager = new IDTableFlushTimeManager(idTable);
       } catch (IllegalPathException e) {
         logger.error("failed to create id table");
       }
+    } else {
+      lastFlushTimeManager = new LastFlushTimeManager();
     }
     // recover tsfiles
     recover();
@@ -529,9 +532,9 @@ public class VirtualStorageGroupProcessor {
         long endTime = resource.getEndTime(deviceId);
         endTimeMap.put(deviceId, endTime);
       }
-      lastFlushTimeManager.setLastTimeAll(timePartitionId, endTimeMap);
-      lastFlushTimeManager.setFlushedTimeAll(timePartitionId, endTimeMap);
-      lastFlushTimeManager.setGlobalFlushedTimeAll(endTimeMap);
+      lastFlushTimeManager.setMultiDeviceLastTime(timePartitionId, endTimeMap);
+      lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
+      lastFlushTimeManager.setMultiDeviceGlobalFlushedTime(endTimeMap);
     }
 
     // recover and start timed compaction thread
@@ -658,13 +661,13 @@ public class VirtualStorageGroupProcessor {
       for (String deviceId : resource.getDevices()) {
         long endTime = resource.getEndTime(deviceId);
         long endTimePartitionId = StorageEngine.getTimePartition(endTime);
-        lastFlushTimeManager.setLastTime(endTimePartitionId, deviceId, endTime);
-        lastFlushTimeManager.setGlobalFlushedTime(deviceId, endTime);
+        lastFlushTimeManager.setOneDeviceLastTime(endTimePartitionId, deviceId, endTime);
+        lastFlushTimeManager.setOneDeviceGlobalFlushedTime(deviceId, endTime);
 
         // set all the covered partition's LatestFlushedTime
         long partitionId = StorageEngine.getTimePartition(resource.getStartTime(deviceId));
         while (partitionId <= endTimePartitionId) {
-          lastFlushTimeManager.setFlushedTime(partitionId, deviceId, endTime);
+          lastFlushTimeManager.setOneDeviceFlushedTime(partitionId, deviceId, endTime);
           if (!timePartitionIdVersionControllerMap.containsKey(partitionId)) {
             File directory =
                 SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, String.valueOf(partitionId));
@@ -3230,5 +3233,10 @@ public class VirtualStorageGroupProcessor {
 
   public IDTable getIdTable() {
     return idTable;
+  }
+
+  @TestOnly
+  public ILastFlushTimeManager getLastFlushTimeManager() {
+    return lastFlushTimeManager;
   }
 }

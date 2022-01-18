@@ -345,4 +345,18 @@ public class IOTDBInsertAlignedValuesIT {
       Assert.assertEquals(100, rowCount);
     }
   }
+
+  @Test
+  public void testInsertAlignedValuesWithThreeLevelPath() throws SQLException {
+    Statement st0 = connection.createStatement();
+    st0.execute("insert into root.sg_device(time, status) aligned values (4000, true)");
+    st0.close();
+
+    Statement st1 = connection.createStatement();
+
+    ResultSet rs = st1.executeQuery("select ** from root");
+    rs.next();
+    Assert.assertEquals(true, rs.getBoolean(2));
+    st1.close();
+  }
 }
