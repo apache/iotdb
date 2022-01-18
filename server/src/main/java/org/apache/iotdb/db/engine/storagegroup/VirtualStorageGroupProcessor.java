@@ -2023,6 +2023,12 @@ public class VirtualStorageGroupProcessor {
         continue;
       }
 
+      deletion.setFileOffset(tsFileResource.getTsFileSize());
+      // write deletion into modification file
+      tsFileResource.getModFile().write(deletion);
+      // remember to close mod file
+      tsFileResource.getModFile().close();
+
       if (tsFileResource.isMerging) {
         // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
         // change after compaction
@@ -2032,12 +2038,6 @@ public class VirtualStorageGroupProcessor {
         // remember to close mod file
         tsFileResource.getCompactionModFile().close();
       }
-
-      deletion.setFileOffset(tsFileResource.getTsFileSize());
-      // write deletion into modification file
-      tsFileResource.getModFile().write(deletion);
-      // remember to close mod file
-      tsFileResource.getModFile().close();
 
       logger.info(
           "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
