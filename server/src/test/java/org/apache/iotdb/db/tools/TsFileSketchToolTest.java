@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -56,6 +57,7 @@ public class TsFileSketchToolTest {
           .concat("1-0-0-0.tsfile");
   String sketchOut = "sketch.out";
   String device = "root.device_0";
+  String alignedDevice = "root.device_1";
 
   @Before
   public void setUp() throws Exception {
@@ -83,19 +85,26 @@ public class TsFileSketchToolTest {
             new Path(device),
             new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
       }
+      // add aligned measurements into file schema
+      List<MeasurementSchema> schemas = new ArrayList<>();
+      List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
+      for (int i = 0; i < sensorNum; i++) {
+        MeasurementSchema schema1 =
+            new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.RLE);
+        schemas.add(schema1);
+        alignedMeasurementSchemas.add(schema1);
+      }
+      MeasurementGroup group = new MeasurementGroup(true, schemas);
+      schema.registerMeasurementGroup(new Path(alignedDevice), group);
 
       // add measurements into TSFileWriter
       try (TsFileWriter tsFileWriter = new TsFileWriter(f, schema)) {
-
         // construct the tablet
         Tablet tablet = new Tablet(device, measurementSchemas);
-
         long[] timestamps = tablet.timestamps;
         Object[] values = tablet.values;
-
         long timestamp = 1;
         long value = 1000000L;
-
         for (int r = 0; r < rowNum; r++, value++) {
           int row = tablet.rowSize++;
           timestamps[row] = timestamp++;
@@ -112,6 +121,34 @@ public class TsFileSketchToolTest {
         // write Tablet to TsFile
         if (tablet.rowSize != 0) {
           tsFileWriter.write(tablet);
+          tablet.reset();
+        }
+      }
+
+      // add aligned measurements into TSFileWriter
+      try (TsFileWriter tsFileWriter = new TsFileWriter(f, schema)) {
+        // construct the tablet
+        Tablet tablet = new Tablet(alignedDevice, alignedMeasurementSchemas);
+        long[] timestamps = tablet.timestamps;
+        Object[] values = tablet.values;
+        long timestamp = 1;
+        long value = 1000000L;
+        for (int r = 0; r < rowNum; r++, value++) {
+          int row = tablet.rowSize++;
+          timestamps[row] = timestamp++;
+          for (int i = 0; i < sensorNum; i++) {
+            long[] sensor = (long[]) values[i];
+            sensor[row] = value;
+          }
+          // write Tablet to TsFile
+          if (tablet.rowSize == tablet.getMaxRowNumber()) {
+            tsFileWriter.writeAligned(tablet);
+            tablet.reset();
+          }
+        }
+        // write Tablet to TsFile
+        if (tablet.rowSize != 0) {
+          tsFileWriter.writeAligned(tablet);
           tablet.reset();
         }
       }

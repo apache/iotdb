@@ -1252,6 +1252,8 @@ public class TsFileSequenceReader implements AutoCloseable {
       while ((marker = this.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
+          case (byte) (MetaMarker.CHUNK_HEADER | 0x80):
+          case (byte) (MetaMarker.CHUNK_HEADER | 0x40):
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
           case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | 0x80):
           case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | 0x40):
