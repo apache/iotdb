@@ -182,10 +182,13 @@ public class DeletePlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    return "DeletePlan{" +
-        "deleteStartTime=" + deleteStartTime +
-        ", deleteEndTime=" + deleteEndTime +
-        ", paths=" + paths +
-        '}';
+    return "DeletePlan{"
+        + "deleteStartTime="
+        + deleteStartTime
+        + ", deleteEndTime="
+        + deleteEndTime
+        + ", paths="
+        + paths
+        + '}';
   }
 }

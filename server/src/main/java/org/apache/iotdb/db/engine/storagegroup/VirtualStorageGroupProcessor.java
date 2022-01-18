@@ -2012,6 +2012,7 @@ public class VirtualStorageGroupProcessor {
           deletion.getStartTime(),
           deletion.getEndTime(),
           timePartitionFilter)) {
+        logger.debug("{} is skipped for {}", deletion, tsFileResource);
         continue;
       }
 
