@@ -128,15 +128,6 @@ public class IoTDBDescriptor {
       logger.info("Start to read config file {}", url);
       Properties properties = new Properties();
       properties.load(inputStream);
-      conf.setEnableStatMonitor(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_stat_monitor", Boolean.toString(conf.isEnableStatMonitor()))));
-
-      conf.setEnableMonitorSeriesWrite(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_monitor_series_write", Boolean.toString(conf.isEnableStatMonitor()))));
 
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
       replaceHostnameWithIP();

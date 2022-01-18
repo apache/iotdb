@@ -155,17 +155,10 @@ public class EnvironmentUtils {
     FileUtils.deleteDirectory(new File(dir));
   }
 
-  /** disable the system monitor</br> this function should be called before all code in the setup */
-  public static void closeStatMonitor() {
-    config.setEnableStatMonitor(false);
-  }
-
   /** disable memory control</br> this function should be called before all code in the setup */
   public static void envSetUp() throws StartupException {
     IoTDB.metaManager.init();
     createAllDir();
-    // disable the system monitor
-    config.setEnableStatMonitor(false);
     IAuthorizer authorizer;
     try {
       authorizer = BasicAuthorizer.getInstance();

@@ -46,7 +46,6 @@ public class IOTDBInsertAlignedValuesIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
     Class.forName(Config.JDBC_DRIVER_NAME);
