@@ -41,6 +41,7 @@ public class FileReaderManager {
 
   private static final Logger logger = LoggerFactory.getLogger(FileReaderManager.class);
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   /** max number of file streams being cached, must be lower than 65535. */
   private static final int MAX_CACHED_FILE_SIZE = 30000;
@@ -232,6 +233,17 @@ public class FileReaderManager {
   public synchronized boolean contains(TsFileResource tsFile, boolean isClosed) {
     return (isClosed && closedFileReaderMap.containsKey(tsFile.getTsFilePath()))
         || (!isClosed && unclosedFileReaderMap.containsKey(tsFile.getTsFilePath()));
+  }
+
+  public void writeFileReferenceInfo() {
+    DEBUG_LOGGER.info("[closedReferenceMap]\n");
+    for (Map.Entry<String, AtomicInteger> entry : closedReferenceMap.entrySet()) {
+      DEBUG_LOGGER.info(String.format("\t%s: %d\n", entry.getKey(), entry.getValue().get()));
+    }
+    DEBUG_LOGGER.info("[unclosedReferenceMap]\n");
+    for (Map.Entry<String, AtomicInteger> entry : unclosedReferenceMap.entrySet()) {
+      DEBUG_LOGGER.info(String.format("\t%s: %d", entry.getKey(), entry.getValue().get()));
+    }
   }
 
   private static class FileReaderManagerHelper {

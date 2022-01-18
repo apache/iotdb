@@ -34,7 +34,6 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -110,7 +109,7 @@ public class RestApiServiceImpl extends RestApiService {
         return response;
       }
 
-      final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
+      final long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
       try {
         QueryContext queryContext =
             serviceProvider.genQueryContext(
