@@ -158,4 +158,9 @@ public class CreateTriggerPlan extends PhysicalPlan {
       attributes.put(key, value);
     }
   }
+
+  @Override
+  public List<? extends PartialPath> getAuthPaths() {
+    return Collections.singletonList(fullPath);
+  }
 }

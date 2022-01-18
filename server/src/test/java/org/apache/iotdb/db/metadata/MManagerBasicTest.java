@@ -31,6 +31,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
@@ -917,6 +918,80 @@ public class MManagerBasicTest {
     } catch (PathNotExistException e) {
       assertEquals("Path [root.sg1.d1.s100] does not exist", e.getMessage());
     }
+  }
+
+  @Test
+  public void testTemplateWithUnsupportedTypeEncoding() throws MetadataException {
+    CreateTemplatePlan plan;
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("d1.s1"));
+    measurementList.add(Collections.singletonList("s2"));
+    measurementList.add(Arrays.asList("GPS.x", "GPS.y"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+    dataTypeList.add(Arrays.asList(TSDataType.TEXT, TSDataType.FLOAT));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.GORILLA));
+    encodingList.add(Collections.singletonList(TSEncoding.GORILLA));
+    encodingList.add(Arrays.asList(TSEncoding.RLE, TSEncoding.RLE));
+
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    compressionTypes.add(Collections.singletonList(CompressionType.SDT));
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
+    compressionTypes.add(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
+
+    try {
+      plan =
+          new CreateTemplatePlan(
+              "treeTemplate", measurementList, dataTypeList, encodingList, compressionTypes);
+      IoTDB.metaManager.createSchemaTemplate(plan);
+    } catch (MetadataException e) {
+      assertEquals("encoding RLE does not support TEXT", e.getMessage());
+    }
+
+    dataTypeList.get(2).set(0, TSDataType.FLOAT);
+    CreateTemplatePlan planb =
+        new CreateTemplatePlan(
+            "treeTemplate", measurementList, dataTypeList, encodingList, compressionTypes);
+
+    IoTDB.metaManager.createSchemaTemplate(planb);
+    Template template = IoTDB.metaManager.getTemplate("treeTemplate");
+    assertEquals("[d1.s1, GPS.x, GPS.y, s2]", template.getAllMeasurementsPaths().toString());
+
+    List<String> appendMeasurements = Arrays.asList("a1", "a2");
+    List<TSDataType> appendDataTypes = Arrays.asList(TSDataType.TEXT, TSDataType.FLOAT);
+    List<TSEncoding> appendEncodings = Arrays.asList(TSEncoding.RLE, TSEncoding.RLE);
+    List<CompressionType> appendCompressor =
+        Arrays.asList(CompressionType.SNAPPY, CompressionType.LZ4);
+    AppendTemplatePlan plana =
+        new AppendTemplatePlan(
+            "treeTemplate",
+            false,
+            appendMeasurements,
+            appendDataTypes,
+            appendEncodings,
+            appendCompressor);
+    try {
+      IoTDB.metaManager.appendSchemaTemplate(plana);
+    } catch (MetadataException e) {
+      assertEquals("encoding RLE does not support TEXT", e.getMessage());
+    }
+
+    appendDataTypes.set(0, TSDataType.FLOAT);
+    AppendTemplatePlan planab =
+        new AppendTemplatePlan(
+            "treeTemplate",
+            false,
+            appendMeasurements,
+            appendDataTypes,
+            appendEncodings,
+            appendCompressor);
+    IoTDB.metaManager.appendSchemaTemplate(planab);
+    assertEquals(
+        "[a1, a2, d1.s1, GPS.x, GPS.y, s2]", template.getAllMeasurementsPaths().toString());
   }
 
   @Test

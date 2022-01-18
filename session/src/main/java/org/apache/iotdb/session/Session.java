@@ -29,6 +29,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
+import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -42,10 +43,12 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.session.util.ThreadUtils;
+import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -129,6 +132,9 @@ public class Session {
 
   protected boolean enableQueryRedirection = false;
 
+  // The version number of the client which used for compatibility in the server
+  protected Version version;
+
   public Session(String host, int rpcPort) {
     this(
         host,
@@ -139,7 +145,8 @@ public class Session {
         null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
   }
 
   public Session(String host, String rpcPort, String username, String password) {
@@ -152,7 +159,8 @@ public class Session {
         null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
   }
 
   public Session(String host, int rpcPort, String username, String password) {
@@ -165,7 +173,8 @@ public class Session {
         null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
   }
 
   public Session(String host, int rpcPort, String username, String password, int fetchSize) {
@@ -178,7 +187,8 @@ public class Session {
         null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
   }
 
   public Session(
@@ -197,7 +207,8 @@ public class Session {
         null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
     this.queryTimeoutInMs = queryTimeoutInMs;
   }
 
@@ -211,7 +222,8 @@ public class Session {
         zoneId,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
   }
 
   public Session(
@@ -225,7 +237,8 @@ public class Session {
         null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        enableCacheLeader);
+        enableCacheLeader,
+        Config.DEFAULT_VERSION);
   }
 
   public Session(
@@ -245,7 +258,8 @@ public class Session {
         zoneId,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        enableCacheLeader);
+        enableCacheLeader,
+        Config.DEFAULT_VERSION);
   }
 
   @SuppressWarnings("squid:S107")
@@ -258,7 +272,8 @@ public class Session {
       ZoneId zoneId,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean enableCacheLeader) {
+      boolean enableCacheLeader,
+      Version version) {
     this.defaultEndPoint = new EndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
@@ -267,6 +282,7 @@ public class Session {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableCacheLeader = enableCacheLeader;
+    this.version = version;
   }
 
   public Session(List<String> nodeUrls, String username, String password) {
@@ -278,7 +294,8 @@ public class Session {
         null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
   }
 
   /**
@@ -295,7 +312,8 @@ public class Session {
         null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
   }
 
   public Session(List<String> nodeUrls, String username, String password, ZoneId zoneId) {
@@ -307,7 +325,8 @@ public class Session {
         zoneId,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
   }
 
   public Session(
@@ -318,7 +337,8 @@ public class Session {
       ZoneId zoneId,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean enableCacheLeader) {
+      boolean enableCacheLeader,
+      Version version) {
     this.nodeUrls = nodeUrls;
     this.username = username;
     this.password = password;
@@ -327,6 +347,7 @@ public class Session {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableCacheLeader = enableCacheLeader;
+    this.version = version;
   }
 
   public void setFetchSize(int fetchSize) {
@@ -335,6 +356,14 @@ public class Session {
 
   public int getFetchSize() {
     return this.fetchSize;
+  }
+
+  public Version getVersion() {
+    return version;
+  }
+
+  public void setVersion(Version version) {
+    this.version = version;
   }
 
   public synchronized void open() throws IoTDBConnectionException {
@@ -1900,6 +1929,84 @@ public class Session {
   }
 
   /**
+   * Create a template with flat measurements, not tree structured. Need to specify datatype,
+   * encoding and compressor of each measurement, and alignment of these measurements at once.
+   *
+   * @oaram templateName name of template to create
+   * @param measurements flat measurements of the template, cannot contain character dot
+   * @param dataTypes datatype of each measurement in the template
+   * @param encodings encodings of each measurement in the template
+   * @param compressors compression type of each measurement in the template
+   * @param isAligned specify whether these flat measurements are aligned
+   */
+  public void createSchemaTemplate(
+      String templateName,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      boolean isAligned)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    Template temp = new Template(templateName, isAligned);
+    int len = measurements.size();
+    if (len != dataTypes.size() || len != encodings.size() || len != compressors.size()) {
+      throw new StatementExecutionException(
+          "Different length of measurements, datatypes, encodings "
+              + "or compressors when create schema tempalte.");
+    }
+    for (int idx = 0; idx < measurements.size(); idx++) {
+      MeasurementNode mNode =
+          new MeasurementNode(
+              measurements.get(idx), dataTypes.get(idx), encodings.get(idx), compressors.get(idx));
+      temp.addToTemplate(mNode);
+    }
+    createSchemaTemplate(temp);
+  }
+
+  /**
+   * Compatible for rel/0.12, this method will create an unaligned flat template as a result. Notice
+   * that there is no aligned concept in 0.12, so only the first measurement in each nested list
+   * matters.
+   *
+   * @param name name of the template
+   * @param schemaNames it works as a virtual layer inside template in 0.12, and makes no difference
+   *     after 0.13
+   * @param measurements the first measurement in each nested list will constitute the final flat
+   *     template
+   * @param dataTypes the data type of each measurement, only the first one in each nested list
+   *     matters as above
+   * @param encodings the encoding of each measurement, only the first one in each nested list
+   *     matters as above
+   * @param compressors the compressor of each measurement
+   * @throws IoTDBConnectionException
+   * @throws StatementExecutionException
+   */
+  @Deprecated
+  public void createSchemaTemplate(
+      String name,
+      List<String> schemaNames,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<CompressionType> compressors)
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> flatMeasurements = new ArrayList<>();
+    List<TSDataType> flatDataTypes = new ArrayList<>();
+    List<TSEncoding> flatEncodings = new ArrayList<>();
+    for (int idx = 0; idx < measurements.size(); idx++) {
+      flatMeasurements.add(measurements.get(idx).get(0));
+      flatDataTypes.add(dataTypes.get(idx).get(0));
+      flatEncodings.add(encodings.get(idx).get(0));
+    }
+    try {
+      createSchemaTemplate(
+          name, flatMeasurements, flatDataTypes, flatEncodings, compressors, false);
+    } catch (IOException e) {
+      throw new StatementExecutionException(e.getMessage());
+    }
+  }
+
+  /**
    * @param templateName Template to add aligned measurements.
    * @param measurementsPath If measurements get different prefix, or the prefix already exists in
    *     template but not aligned, throw exception.
@@ -2056,10 +2163,46 @@ public class Session {
     return resp.getMeasurements();
   }
 
+  /** @return All template names. */
+  public List<String> showAllTemplates()
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSQueryTemplateReq req = new TSQueryTemplateReq();
+    req.setName("");
+    req.setQueryType(TemplateQueryType.SHOW_TEMPLATES.ordinal());
+    TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
+    return resp.getMeasurements();
+  }
+
+  /** @return All paths have been set to designated template. */
+  public List<String> showPathsTemplateSetOn(String templateName)
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSQueryTemplateReq req = new TSQueryTemplateReq();
+    req.setName(templateName);
+    req.setQueryType(TemplateQueryType.SHOW_SET_TEMPLATES.ordinal());
+    TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
+    return resp.getMeasurements();
+  }
+
+  /** @return All paths are using designated template. */
+  public List<String> showPathsTemplateUsingOn(String templateName)
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSQueryTemplateReq req = new TSQueryTemplateReq();
+    req.setName(templateName);
+    req.setQueryType(TemplateQueryType.SHOW_USING_TEMPLATES.ordinal());
+    TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
+    return resp.getMeasurements();
+  }
+
   public void unsetSchemaTemplate(String prefixPath, String templateName)
       throws IoTDBConnectionException, StatementExecutionException {
     TSUnsetSchemaTemplateReq request = getTSUnsetSchemaTemplateReq(prefixPath, templateName);
     defaultSessionConnection.unsetSchemaTemplate(request);
+  }
+
+  public void dropSchemaTemplate(String templateName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSDropSchemaTemplateReq request = getTSDropSchemaTemplateReq(templateName);
+    defaultSessionConnection.dropSchemaTemplate(request);
   }
 
   private TSSetSchemaTemplateReq getTSSetSchemaTemplateReq(String templateName, String prefixPath) {
@@ -2073,6 +2216,12 @@ public class Session {
       String prefixPath, String templateName) {
     TSUnsetSchemaTemplateReq request = new TSUnsetSchemaTemplateReq();
     request.setPrefixPath(prefixPath);
+    request.setTemplateName(templateName);
+    return request;
+  }
+
+  private TSDropSchemaTemplateReq getTSDropSchemaTemplateReq(String templateName) {
+    TSDropSchemaTemplateReq request = new TSDropSchemaTemplateReq();
     request.setTemplateName(templateName);
     return request;
   }
@@ -2169,6 +2318,8 @@ public class Session {
     private int thriftDefaultBufferSize = Config.DEFAULT_INITIAL_BUFFER_CAPACITY;
     private int thriftMaxFrameSize = Config.DEFAULT_MAX_FRAME_SIZE;
     private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
+    private Version version = Config.DEFAULT_VERSION;
+
     List<String> nodeUrls = null;
 
     public Builder host(String host) {
@@ -2221,6 +2372,11 @@ public class Session {
       return this;
     }
 
+    public Builder version(Version version) {
+      this.version = version;
+      return this;
+    }
+
     public Session build() {
       if (nodeUrls != null
           && (!Config.DEFAULT_HOST.equals(host) || rpcPort != Config.DEFAULT_PORT)) {
@@ -2237,7 +2393,8 @@ public class Session {
             zoneId,
             thriftDefaultBufferSize,
             thriftMaxFrameSize,
-            enableCacheLeader);
+            enableCacheLeader,
+            version);
       }
 
       return new Session(
@@ -2249,7 +2406,8 @@ public class Session {
           zoneId,
           thriftDefaultBufferSize,
           thriftMaxFrameSize,
-          enableCacheLeader);
+          enableCacheLeader,
+          version);
     }
   }
 }

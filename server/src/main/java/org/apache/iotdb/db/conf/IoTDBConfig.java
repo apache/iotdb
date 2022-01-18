@@ -57,7 +57,7 @@ public class IoTDBConfig {
 
   // e.g., a31+/$%#&[]{}3e4
   private static final String ID_MATCHER =
-      "([a-zA-Z0-9/\"`[ ],:@#$%&{}()*=?!~\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
+      "([a-zA-Z0-9/\"'`[ ],:@#$%&{}()*=?!~\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
 
   private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\-\\u2E80-\\u9FFF]+)";
 
@@ -306,13 +306,11 @@ public class IoTDBConfig {
   /** index directory. */
   private String indexRootFolder = "data" + File.separator + "index";
 
-  /** When a TsFile's file size (in byte) exceed this, the TsFile is forced closed. Unit: byte */
-  private long tsFileSizeThreshold = 1L;
   /** When a unSequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
-  private long unSeqTsFileSize = 1L;
+  private long unSeqTsFileSize = 0L;
 
   /** When a sequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
-  private long seqTsFileSize = 1L;
+  private long seqTsFileSize = 0L;
 
   /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. Unit: byte */
   private long memtableSizeThreshold = 1024 * 1024 * 1024L;
@@ -430,10 +428,10 @@ public class IoTDBConfig {
   private int mergePagePointNumberThreshold = 100;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
-  private long compactionScheduleInterval = 10_000L;
+  private long compactionScheduleInterval = 60_000L;
 
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
-  private long compactionSubmissionInterval = 1_000L;
+  private long compactionSubmissionInterval = 60_000L;
 
   /**
    * The max open file num in each unseq compaction task. We use the unseq file num as the open file
@@ -609,7 +607,7 @@ public class IoTDBConfig {
   private boolean forceFullMerge = true;
 
   /** The limit of compaction merge can reach per second */
-  private int mergeWriteThroughputMbPerSec = 8;
+  private int compactionWriteThroughputMbPerSec = 8;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
@@ -1649,12 +1647,12 @@ public class IoTDBConfig {
         insertMultiTabletEnableMultithreadingColumnThreshold;
   }
 
-  public int getMergeWriteThroughputMbPerSec() {
-    return mergeWriteThroughputMbPerSec;
+  public int getCompactionWriteThroughputMbPerSec() {
+    return compactionWriteThroughputMbPerSec;
   }
 
-  public void setMergeWriteThroughputMbPerSec(int mergeWriteThroughputMbPerSec) {
-    this.mergeWriteThroughputMbPerSec = mergeWriteThroughputMbPerSec;
+  public void setCompactionWriteThroughputMbPerSec(int compactionWriteThroughputMbPerSec) {
+    this.compactionWriteThroughputMbPerSec = compactionWriteThroughputMbPerSec;
   }
 
   public boolean isEnableMemControl() {
@@ -2185,14 +2183,6 @@ public class IoTDBConfig {
 
   public void setThriftServerAwaitTimeForStopService(int thriftServerAwaitTimeForStopService) {
     this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
-  }
-
-  public int getQueryCacheSizeInMetric() {
-    return queryCacheSizeInMetric;
-  }
-
-  public void setQueryCacheSizeInMetric(int queryCacheSizeInMetric) {
-    this.queryCacheSizeInMetric = queryCacheSizeInMetric;
   }
 
   public boolean isEnableMQTTService() {

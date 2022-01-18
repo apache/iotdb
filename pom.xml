@@ -109,7 +109,7 @@
         <module>client-cpp</module>
         <module>metrics</module>
         <module>integration</module>
-        <module>library-udf</module>
+<!--        <module>library-udf</module>-->
         <module>kubernetes</module>
     </modules>
     <!-- Properties Management -->

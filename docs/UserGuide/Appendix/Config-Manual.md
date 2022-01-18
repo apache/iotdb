@@ -54,7 +54,7 @@ The detail of each variables are as follows:
 |Description|The maximum heap memory size that IoTDB can use at startup.|
 |Type|String|
 |Default| On Linux or MacOS, the default is one quarter of the memory. On Windows, the default value for 32-bit systems is 512M, and the default for 64-bit systems is 2G.|
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * HEAP\_NEWSIZE
 
@@ -63,7 +63,7 @@ The detail of each variables are as follows:
 |Description|The minimum heap memory size that IoTDB can use at startup.|
 |Type|String|
 |Default| On Linux or MacOS, the default is min{cores * 100M, one quarter of MAX\_HEAP\_SIZE}. On Windows, the default value for 32-bit systems is 512M, and the default for 64-bit systems is 2G.|
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * JMX\_LOCAL
 
@@ -72,7 +72,7 @@ The detail of each variables are as follows:
 |Description|JMX monitoring mode, configured as yes to allow only local monitoring, no to allow remote monitoring|
 |Type|Enum String: "true", "false"|
 |Default|true|
-|Effective|After restart system|
+|Effective|After restarting system|
 
 
 * JMX\_PORT
@@ -82,7 +82,7 @@ The detail of each variables are as follows:
 |Description|JMX listening port. Please confirm that the port is not a system reserved port and is not occupied|
 |Type|Short Int: [0,65535]|
 |Default|31999|
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * JMX\_IP
 
@@ -91,7 +91,7 @@ The detail of each variables are as follows:
 |Description|JMX listening address. Only take effect if JMX\_LOCAL=false. 0.0.0.0 is never allowed|
 |Type|String|
 |Default|127.0.0.1|
-|Effective|After restart system|
+|Effective|After restarting system|
 
 ## JMX Authorization
 
@@ -194,7 +194,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| The false positive rate of bloom filter in each TsFile. Bloom filter checks whether a given time series is in the tsfile before loading metadata. This can improve the performance of loading metadata and skip the tsfile that doesn't contain specified time series. If you want to learn more about its mechanism, you can refer to: [wiki page of bloom filter](https://en.wikipedia.org/wiki/Bloom_filter).|
 |Type|float, (0, 1)|
 |Default| 0.05 |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 
 
@@ -207,7 +207,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| The jdbc service listens on the address.|
 |Type|String|
 |Default| "0.0.0.0" |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * rpc\_port
 
@@ -216,7 +216,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| The jdbc service listens on the port. Please confirm that the port is not a system reserved port and is not occupied.|
 |Type|Short Int : [0,65535]|
 |Default| 6667 |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * rpc\_thrift\_compression\_enable
 
@@ -225,7 +225,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Whether enable thrift's compression (using GZIP).|
 |Type|Boolean|
 |Default| false |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * rpc\_advanced\_compression\_enable
 
@@ -234,7 +234,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Whether enable thrift's advanced compression.|
 |Type|Boolean|
 |Default| false |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 
 * time\_zone
@@ -253,7 +253,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| The IoTDB system folder. It is recommended to use an absolute path. |
 |Type|String|
 |Default| data |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * data\_dirs
 
@@ -271,7 +271,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Write Ahead Log storage path. It is recommended to use an absolute path. |
 |Type|String|
 |Default| data/wal |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * enable\_wal
 
@@ -289,7 +289,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| enable memory control to avoid OOM|
 |Type|Bool|
 |Default| true |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * memtable\_size\_threshold
 
@@ -298,7 +298,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| max memtable size|
 |Type|Long|
 |Default| 1073741824 |
-|Effective| when enable\_mem\_control is false & After restart system|
+|Effective| when enable\_mem\_control is false & After restarting system |
 
 * enable\_timed\_flush\_seq\_memtable
 
@@ -388,7 +388,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| max average number of point of each series in memtable|
 |Type|Int32|
 |Default| 10000 |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * tsfile\_size\_threshold
 
@@ -397,13 +397,13 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| max tsfile size|
 |Type|Long|
 |Default| 536870912 |
-|Effective| After restart system|
+|Effective| After restarting system |
 
 * enable\_partition
 
 |Name| enable\_partition |
 |:---:|:---|
-|Description| Whether enable time partition for data, if disabled, all data belongs to partition 0 |
+|Description| Whether enable time partition for data, if disabled, all data belongs to partition 0 (it's not recommend to open this function. If open, please calculate appropriate concurrent_writing_time_partition and wal_buffer_size)|
 |Type|Bool|
 |Default| false |
 |Effective|Only allowed to be modified in first start up|
@@ -425,7 +425,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| This config decides how many time partitions in a storage group can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
 |Type|Int32|
 |Default| 1 |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * multi\_dir\_strategy
 
@@ -443,7 +443,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| When a TsFile size on the disk exceeds this threshold, the TsFile is closed and open a new TsFile to accept data writes. The unit is byte and the default value is 2G.|
 |Type| Int64 |
 |Default| 536870912 |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * tag\_attribute\_total\_size
 
@@ -454,6 +454,15 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 700 |
 |Effective|Only allowed to be modified in first start up|
 
+* tag\_attribute\_flush\_interval
+
+|Name| tag\_attribute\_flush\_interval                                                                                                                                                                                                                |
+|:---:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| interval num for tag and attribute records when force flushing to disk. When a certain amount of tag and attribute records is reached, they will be force flushed to disk. It is possible to lose at most tag_attribute_flush_interval records |
+|Type| Int32                                                                                                                                                                                                                                          |
+|Default| 1000                                                                                                                                                                                                                                           |
+|Effective| Only allowed to be modified in first start up                                                                                                                                                                                                  |
+
 * enable\_partial\_insert
 
 |Name| enable\_partial\_insert |
@@ -461,7 +470,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Whether continue to write other measurements if some measurements are failed in one insertion.|
 |Type| Bool |
 |Default| true |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * mtree\_snapshot\_interval
 
@@ -470,7 +479,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| The least interval line numbers of mlog.txt when creating a checkpoint and saving snapshot of MTree. Unit: line numbers|
 |Type| Int32 |
 |Default| 100000 |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * flush\_wal\_threshold
 
@@ -497,15 +506,153 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| The amount of data read each time in batch (the number of data strips, that is, the number of different timestamps.) |
 |Type|Int32|
 |Default| 10000 |
+|Effective|After restarting system|
+
+### Compaction Config
+
+* concurrent\_compaction\_thread
+
+|Name| concurrent\_compaction\_thread |
+|:---:|:---|
+|Description| thread num to execute compaction |
+|Type| Integer |
+|Default| 10 |
 |Effective|After restart system|
 
-* merge\_concurrent\_threads
+* compaction\_schedule\_interval
 
-|Name| merge\_concurrent\_threads |
+|Name| compaction\_schedule\_interval |
 |:---:|:---|
-|Description| THe max threads which can be used when unsequence data is merged. The larger it is, the more IO and CPU cost. The smaller the value, the more the disk is occupied when the unsequence data is too large, the reading will be slower. |
-|Type|Int32|
-|Default| 0 |
+|Description| interval of scheduling compaction |
+|Type| Long, the unit is millisecond |
+|Default| 60000, don't set it a small value |
+|Effective|After restart system|
+
+* compaction\_submission\_interval
+
+|Name| compaction\_submission\_interval |
+|:---:|:---|
+|Description| interval of submitting compaction task |
+|Type| Long, the unit is millisecond |
+|Default| 60000, don't set it a small value |
+|Effective|After restart system|
+
+* enable\_seq\_space\_compaction
+
+|Name| enable\_seq\_space\_compaction |
+|:---:|:---|
+|Description| enable the compaction between sequence files |
+|Type| Boolean |
+|Default| true |
+|Effective|After restart system|
+
+* enable\_unseq\_space\_compaction
+
+|Name| enable\_unseq\_space\_compaction |
+|:---:|:---|
+|Description| enable the compaction between unsequence files |
+|Type| Boolean |
+|Default| false |
+|Effective|After restart system|
+
+* enable\_cross\_space\_compaction
+
+|Name| enable\_cross\_space\_compaction |
+|:---:|:---|
+|Description| enable the compaction between sequence files and unsequence files |
+|Type| Boolean |
+|Default| true |
+|Effective|After restart system|
+
+* cross\_compaction\_strategy
+
+|Name| cross\_compaction\_strategy |
+|:---:|:---|
+|Description| strategy of cross space compaction |
+|Type| String |
+|Default| inplace_compaction, current option is only inplace_compaction |
+|Effective|After restart system|
+
+* inner\_compaction\_strategy
+
+|Name| inner\_compaction\_strategy |
+|:---:|:---|
+|Description| strategy of inner space compaction |
+|Type| String |
+|Default| size_tiered_compaction, current option is only size_tiered_compaction |
+|Effective|After restart system|
+
+* compaction\_priority
+
+|Name| compaction\_priority |
+|:---:|:---|
+|Description| Priority of compaction task. When it is balance, system executes all types of compaction equally; when it is inner_cross, system takes precedence over executing inner space compaction task; when it is cross_inner, system takes precedence over executing cross space compaction task |
+|Type| String |
+|Default| inner_cross, options are inner_cross, balance, cross_inner |
+|Effective|After restart system|
+
+
+* target\_compaction\_file\_size
+
+|Name| target\_compaction\_file\_size |
+|:---:|:---|
+|Description| The target file is in inner space compaction |
+|Type| Long, the unit is byte |
+|Default| 1073741824 (1GB) |
+|Effective|After restart system|
+
+* max\_compaction\_candidate\_file\_num
+
+|Name| max\_compaction\_candidate\_file\_num |
+|:---:|:---|
+|Description| The max num of files encounter in compaction |
+|Type| Integer |
+|Default| 30, don't set it a small value |
+|Effective|After restart system|
+
+* target\_chunk\_size
+
+|Name| target\_chunk\_size |
+|:---:|:---|
+|Description| The target size of compacted chunk |
+|Type| Long, the unit is byte |
+|Default| 1048576 (1MB) |
+|Effective|After restart system|
+
+* target\_chunk\_point\_num
+
+|Name| target\_chunk\_point\_num |
+|:---:|:---|
+|Description| The target point number of compacted chunk |
+|Type| Integer |
+|Default| 100000 |
+|Effective|After restart system|
+
+* chunk\_size\_lower\_bound\_in\_compaction
+
+|Name| chunk\_size\_lower\_bound\_in\_compaction |
+|:---:|:---|
+|Description| A source chunk will be deserialized in compaction when its size is less than this value |
+|Type| Long, the unit is byte |
+|Default| 128 |
+|Effective|After restart system|
+
+* chunk\_point\_num\_lower\_bound\_in\_compaction
+
+|Name| chunk\_size\_lower\_bound\_in\_compaction |
+|:---:|:---|
+|Description| A source chunk will be deserialized in compaction when its point num is less than this value |
+|Type| Integer |
+|Default| 100 |
+|Effective|After restart system|
+
+* compaction\_write\_throughput\_mb\_per\_sec\
+
+|Name| compaction\_write\_throughput\_mb\_per\_sec\ |
+|:---:|:---|
+|Description| The write rate of all compaction tasks in MB/s |
+|Type| Integer |
+|Default| 8, don't set it a large value|
 |Effective|After restart system|
 
 * enable\_stat\_monitor
@@ -515,7 +662,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Whether to enable background statistics|
 |Type| Boolean |
 |Default| false |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * concurrent\_flush\_thread
 
@@ -524,7 +671,25 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| The thread number used to perform the operation when IoTDB writes data in memory to disk. If the value is less than or equal to 0, then the number of CPU cores installed on the machine is used. The default is 0.|
 |Type| Int32 |
 |Default| 0 |
-|Effective|After restart system|
+|Effective|After restarting system|
+
+* concurrent\_query\_thread
+
+|Name| concurrent\_query\_thread                                                                                            |
+|:---:|:---------------------------------------------------------------------------------------------------------------------|
+|Description| The thread number which can concurrently execute query statement. When <= 0, use CPU core number. The default is 16. |
+|Type| Int32                                                                                                                |
+|Default| 16                                                                                                                   |
+|Effective| After restarting system                                                                                              |
+
+* concurrent\_sub\_rawQuery\_thread
+
+|Name| concurrent\_sub\_rawQuery\_thread                                                                                        |
+|:---:|:-------------------------------------------------------------------------------------------------------------------------|
+|Description| The thread number which can concurrently read data for raw data query. When <= 0, use CPU core number. The default is 8. |
+|Type| Int32                                                                                                                    |
+|Default| 8                                                                                                                        |
+|Effective| After restarting system                                                                                                  |
 
 * tsfile\_storage\_fs
 
@@ -542,7 +707,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Absolute file path of core-site.xml if Tsfile and related data files are stored in HDFS.|
 |Type| String |
 |Default|/etc/hadoop/conf/core-site.xml |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * hdfs\_site\_path
 
@@ -551,7 +716,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Absolute file path of hdfs-site.xml if Tsfile and related data files are stored in HDFS.|
 |Type| String |
 |Default|/etc/hadoop/conf/hdfs-site.xml |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * hdfs\_ip
 
@@ -560,7 +725,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| IP of HDFS if Tsfile and related data files are stored in HDFS. **If there are more than one hdfs\_ip in configuration, Hadoop HA is used.**|
 |Type| String |
 |Default|localhost |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * hdfs\_port
 
@@ -569,7 +734,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Port of HDFS if Tsfile and related data files are stored in HDFS|
 |Type| String |
 |Default|9000 |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * dfs\_nameservices
 
@@ -578,7 +743,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Nameservices of HDFS HA if using Hadoop HA|
 |Type| String |
 |Default|hdfsnamespace |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * dfs\_ha\_namenodes
 
@@ -587,7 +752,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Namenodes under DFS nameservices of HDFS HA if using Hadoop HA|
 |Type| String |
 |Default|nn1,nn2 |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * dfs\_ha\_automatic\_failover\_enabled
 
@@ -596,7 +761,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Whether using automatic failover if using Hadoop HA|
 |Type| Boolean |
 |Default|true |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * dfs\_client\_failover\_proxy\_provider
 
@@ -605,7 +770,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Proxy provider if using Hadoop HA and enabling automatic failover|
 |Type| String |
 |Default|org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 
 * hdfs\_use\_kerberos
@@ -615,7 +780,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Whether use kerberos to authenticate hdfs|
 |Type| String |
 |Default|false |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * kerberos\_keytab\_file_path
 
@@ -624,7 +789,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Full path of kerberos keytab file|
 |Type| String |
 |Default|/path |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * kerberos\_principal
 
@@ -633,7 +798,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Kerberos pricipal|
 |Type| String |
 |Default|your principal |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 
 * authorizer\_provider\_class
@@ -643,7 +808,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| the class name of the authorization service|
 |Type| String |
 |Default|org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer |
-|Effective|After restart system|
+|Effective|After restarting system|
 |Other available values| org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer |
 
 * openID\_url
@@ -653,7 +818,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| the openID server if OpenIdAuthorizer is enabled|
 |Type| String (a http url) |
 |Default|no |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * thrift\_max\_frame\_size
 
@@ -662,10 +827,60 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| the max bytes in a RPC request/response|
 |Type| long |
 |Default| 67108864 (should >= 8 * 1024 * 1024) |
-|Effective|After restart system|
+|Effective|After restarting system|
 
+### InfluxDB-Protocol Adaptor
 
-## Automatic Schema Creation and Type Inference
+* enable_influxdb_rpc_service
+
+|    Name     | enable_influxdb_rpc_service            |
+| :---------: | :------------------------------------- |
+| Description | Whether to enable InfluxDB RPC service |
+|    Type     | Boolean                                |
+|   Default   | true                                   |
+|  Effective  | After restarting system                |
+
+* influxdb_rpc_port
+
+|    Name     | influxdb_rpc_port                     |
+| :---------: | :------------------------------------ |
+| Description | The port used by InfluxDB RPC service |
+|    Type     | INT32                                 |
+|   Default   | 8086                                  |
+|  Effective  | After restarting system               |
+
+###  Query
+
+* default\_fill\_interval
+
+|    Name     | default\_fill\_interval                         |
+| :---------: | :---------------------------------------------- |
+| Description | Default interval of `group by fill` query in ms |
+|    Type     | Int32                                           |
+|   Default   | -1                                              |
+|  Effective  | After restarting system                         |
+
+* group_by_fill_cache_size_in_mb
+
+|    Name     | group_by_fill_cache_size_in_mb      |
+| :---------: | :---------------------------------- |
+| Description | Cache size of `group by fill` query |
+|    Type     | Float                               |
+|   Default   | 1.0                                 |
+|  Effective  | After restarting system             |
+
+### Insertion
+
+- insert_multi_tablet_enable_multithreading_column_threshold
+
+|    Name     | insert_multi_tablet_enable_multithreading_column_threshold   |
+| :---------: | :----------------------------------------------------------- |
+| Description | When the insert plan column count reaches the specified threshold, multi-threading is enabled. |
+|    Type     | Int32                                                        |
+|   Default   | 10                                                           |
+|  Effective  | After restarting system                                      |
+
+### Automatic Schema Creation and Type Inference
 
 * enable\_auto\_create\_schema
 
@@ -674,7 +889,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| whether auto create the time series when a non-existed time series data comes|
 |Type| true or false |
 |Default|true |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * default\_storage\_group\_level
 
@@ -683,7 +898,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Storage group level when creating schema automatically is enabled. For example, if we receives a data point from root.sg0.d1.s2, we will set root.sg0 as the storage group if storage group level is 1. (root is level 0)|
 |Type| integer |
 |Default|1 |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * boolean\_string\_infer\_type
 
@@ -692,7 +907,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| To which type the values "true" and "false" should be reslved|
 |Type| BOOLEAN or TEXT |
 |Default|BOOLEAN |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * integer\_string\_infer\_type
 
@@ -701,7 +916,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| To which type an integer string like "67" in a query should be resolved|
 |Type| INT32, INT64, DOUBLE, FLOAT or TEXT |
 |Default|DOUBLE |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * nan\_string\_infer\_type
 
@@ -710,7 +925,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| To which type the value NaN in a query should be resolved|
 |Type| DOUBLE, FLOAT or TEXT |
 |Default|FLOAT |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * floating\_string\_infer\_type
 
@@ -719,7 +934,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| To which type a floating number string like "6.7" in a query should be resolved|
 |Type| DOUBLE, FLOAT or TEXT |
 |Default|FLOAT |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * enable\_partition
 
@@ -755,7 +970,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| whether to use id table. ATTENTION: id table is not compatible with alias |
 |Type| bool |
 |Default| false |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * device\_id\_transformation\_method
 
@@ -773,9 +988,108 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| whether create mapping file of id table. This file can map device id in tsfile to device path |
 |Type| bool |
 |Default| false |
-|Effective|After restart system|
+|Effective|After restarting system|
+
+### UDF
+
+* udf\_initial\_byte\_array\_length\_for\_memory\_control
+
+|    Name     | udf\_initial\_byte\_array\_length\_for\_memory\_control      |
+| :---------: | :----------------------------------------------------------- |
+| Description | Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this value to be slightly larger than the average length of all texts. |
+|    Type     | Int32                                                        |
+|   Default   | 48                                                           |
+|  Effective  | After restarting system                                      |
+
+* udf\_memory\_budget\_in\_mb
+
+|    Name     | udf\_memory\_budget\_in\_mb                                  |
+| :---------: | :----------------------------------------------------------- |
+| Description | How much memory may be used in ONE UDF query (in MB). The upper limit is 20% of allocated memory for read. |
+|    Type     | Float                                                        |
+|   Default   | 30.0                                                         |
+|  Effective  | After restarting system                                      |
+
+* udf\_reader\_transformer\_collector\_memory\_proportion
+
+|    Name     | udf\_reader\_transformer\_collector\_memory\_proportion      |
+| :---------: | :----------------------------------------------------------- |
+| Description | UDF memory allocation ratio for reader, transformer and collector. The parameter form is a : b : c, where a, b, and c are integers. |
+|    Type     | String                                                       |
+|   Default   | 1:1:1                                                        |
+|  Effective  | After restarting system                                      |
+
+* udf\_root\_dir
+
+|    Name     | udf\_root\_dir            |
+| :---------: | :------------------------ |
+| Description | Root directory of UDF     |
+|    Type     | String                    |
+|   Default   | ext/udf(Windows:ext\\udf) |
+|  Effective  | After restarting system   |
+
+### SELECT-INTO
+
+* select_into_insert_tablet_plan_row_limit
+
+|    Name     | select_into_insert_tablet_plan_row_limit                     |
+| :---------: | :----------------------------------------------------------- |
+| Description | The maximum number of rows that can be processed in insert-tablet-plan when executing select-into statements. When <= 0, use 10000. |
+|    Type     | Int32                                                        |
+|   Default   | 10000                                                        |
+|  Effective  | Trigger                                                      |
+
+### Trigger
+
+- concurrent_window_evaluation_thread
+
+|    Name     | concurrent_window_evaluation_thread                          |
+| :---------: | :----------------------------------------------------------- |
+| Description | How many threads can be used for evaluating sliding windows. When <= 0, use CPU core number. |
+|    Type     | Int32                                                        |
+|   Default   | The number of CPU cores                                      |
+|  Effective  | After restarting system                                      |
+
+- max_pending_window_evaluation_tasks
+
+|    Name     | max_pending_window_evaluation_tasks                          |
+| :---------: | :----------------------------------------------------------- |
+| Description | Maximum number of window evaluation tasks that can be pending for execution. When <= 0, the value is 64 by default. |
+|    Type     | Int32                                                        |
+|   Default   | 64                                                           |
+|  Effective  | After restarting system                                      |
+
+### Continuous Query
+
+- continuous_query_execution_thread
+
+|    Name     | continuous_query_execution_thread                            |
+| :---------: | :----------------------------------------------------------- |
+| Description | How many threads will be set up to perform continuous queries |
+|    Type     | Int32                                                        |
+|   Default   | max(1, the / 2)                                              |
+|  Effective  | After restarting system                                      |
+
+- max_pending_continuous_query_tasks
+
+|    Name     | max_pending_continuous_query_tasks                           |
+| :---------: | :----------------------------------------------------------- |
+| Description | Maximum number of continuous query tasks that can be pending for execution |
+|    Type     | Int32                                                        |
+|   Default   | 64                                                           |
+|  Effective  | After restarting system                                      |
+
+- continuous_query_min_every_interval
+
+|    Name     | continuous_query_min_every_interval                 |
+| :---------: | :-------------------------------------------------- |
+| Description | Minimum every interval to perform continuous query. |
+|    Type     | duration                                            |
+|   Default   | 1s                                                  |
+|  Effective  | After restarting system                             |
 
 ## Enable GC log
+
 GC log is off by default.
 For performance tuning, you may want to collect the GC info. 
 

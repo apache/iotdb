@@ -42,6 +42,7 @@ import java.util.Objects;
 @Category({LocalStandaloneTest.class})
 public class IOTDBInsertAlignedValuesIT {
   private static Connection connection;
+  private int numOfPointsPerPage;
 
   @Before
   public void setUp() throws Exception {
@@ -51,11 +52,13 @@ public class IOTDBInsertAlignedValuesIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     connection =
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    numOfPointsPerPage = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
   }
 
   @After
   public void tearDown() throws Exception {
     close();
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -338,5 +341,19 @@ public class IOTDBInsertAlignedValuesIT {
       }
       Assert.assertEquals(100, rowCount);
     }
+  }
+
+  @Test
+  public void testInsertAlignedValuesWithThreeLevelPath() throws SQLException {
+    Statement st0 = connection.createStatement();
+    st0.execute("insert into root.sg_device(time, status) aligned values (4000, true)");
+    st0.close();
+
+    Statement st1 = connection.createStatement();
+
+    ResultSet rs = st1.executeQuery("select ** from root");
+    rs.next();
+    Assert.assertEquals(true, rs.getBoolean(2));
+    st1.close();
   }
 }
