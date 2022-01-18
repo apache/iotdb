@@ -692,7 +692,6 @@ var config = {
 					},
 					{
 						title: 'Operate Metadata',
-						sidebarDepth: 1,
 						children: [
 							['Operate-Metadata/Storage-Group','Storage Group'],
 							['Operate-Metadata/Node','Node'],
@@ -703,7 +702,6 @@ var config = {
 					},
 					{
 						title: 'Write and Delete Data',
-						sidebarDepth: 1,
 						children: [
 							['Write-And-Delete-Data/Write-Data','Write Data'],
 							['Write-And-Delete-Data/Load-External-Tsfile','Load External Tsfile'],
@@ -1486,7 +1484,6 @@ var config = {
 					},
 					{
 						title: '元数据操作',
-						sidebarDepth: 1,
 						children: [
 							['Operate-Metadata/Storage-Group','存储组操作'],
 							['Operate-Metadata/Node','节点操作'],

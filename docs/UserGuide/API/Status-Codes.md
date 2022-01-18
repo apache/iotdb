@@ -19,7 +19,7 @@
 
 -->
 
-# Appendix 3: Status Codes
+# Status Codes
 
 **Status Code** is introduced in the latest version. A sample solution as IoTDB requires registering the time series first before writing data is:
 
