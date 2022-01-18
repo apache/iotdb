@@ -61,6 +61,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     try {
+      CompactionTaskManager.getInstance().restart();
       SizeTieredCompactionTask task1 =
           new SizeTieredCompactionTask(
               "root.compactionTest",
@@ -85,12 +86,11 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
       CompactionTaskManager manager = CompactionTaskManager.getInstance();
       try {
         Assert.assertTrue(manager.addTaskToWaitingQueue(task1));
-        Thread.sleep(500);
+        Thread.sleep(100);
         Assert.assertEquals(manager.getTotalTaskCount(), 1);
         // a same task should not be submitted compaction task manager
         Assert.assertFalse(manager.addTaskToWaitingQueue(task2));
         Assert.assertEquals(manager.getTotalTaskCount(), 1);
-        Thread.sleep(500);
       } finally {
         tsFileManager.writeUnlock();
       }
@@ -118,6 +118,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
+    CompactionTaskManager.getInstance().restart();
     SizeTieredCompactionTask task1 =
         new SizeTieredCompactionTask(
             "root.compactionTest",
@@ -171,6 +172,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
+    CompactionTaskManager.getInstance().restart();
     SizeTieredCompactionTask task1 =
         new SizeTieredCompactionTask(
             "root.compactionTest",
@@ -226,6 +228,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
+    CompactionTaskManager.getInstance().restart();
     SizeTieredCompactionTask task1 =
         new SizeTieredCompactionTask(
             "root.compactionTest",
