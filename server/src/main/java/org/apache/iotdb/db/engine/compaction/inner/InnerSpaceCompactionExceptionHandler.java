@@ -74,14 +74,14 @@ public class InnerSpaceCompactionExceptionHandler {
     } else {
       // some source file does not exists
       // it means we start to delete source file
-      LOGGER.error(
+      LOGGER.info(
           "{} [Compaction][ExceptionHandler] some source files {} is lost",
           fullStorageGroupName,
           lostSourceFiles);
       if (!targetTsFile.getTsFile().exists()) {
         // some source files are missed, and target file not exists
         // some data is lost, set the system to read-only
-        LOGGER.error(
+        LOGGER.warn(
             "{} [Compaction][ExceptionHandler] target file {} does not exist either, do nothing. Set system to read-only",
             fullStorageGroupName,
             targetTsFile);
@@ -104,7 +104,7 @@ public class InnerSpaceCompactionExceptionHandler {
           fullStorageGroupName);
       tsFileManager.setAllowCompaction(false);
     } else {
-      LOGGER.error(
+      LOGGER.info(
           "{} [Compaction][ExceptionHandler] Handle exception successfully, delete log file {}",
           fullStorageGroupName,
           logFile);
@@ -138,7 +138,7 @@ public class InnerSpaceCompactionExceptionHandler {
       TsFileResource targetTsFile,
       List<TsFileResource> selectedTsFileResourceList) {
     // all source file exists, delete the target file
-    LOGGER.error(
+    LOGGER.info(
         "{} [Compaction][ExceptionHandler] all source files {} exists, delete target file {}",
         fullStorageGroupName,
         selectedTsFileResourceList,
@@ -167,7 +167,7 @@ public class InnerSpaceCompactionExceptionHandler {
     if (!tmpTargetTsFile.remove()) {
       // failed to remove tmp target tsfile
       // system should not carry out the subsequent compaction in case of data redundant
-      LOGGER.error(
+      LOGGER.warn(
           "{} [Compaction][ExceptionHandler] failed to remove target file {}",
           fullStorageGroupName,
           tmpTargetTsFile);
@@ -205,7 +205,7 @@ public class InnerSpaceCompactionExceptionHandler {
     try {
       if (TsFileUtils.isTsFileComplete(targetTsFile.getTsFile())) {
         // target file is complete, delete source files
-        LOGGER.error(
+        LOGGER.info(
             "{} [Compaction][ExceptionHandler] target file {} is complete, delete remaining source files",
             fullStorageGroupName,
             targetTsFile);
