@@ -27,7 +27,6 @@ import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
@@ -42,6 +41,7 @@ public class FileReaderManager {
 
   private static final Logger logger = LoggerFactory.getLogger(FileReaderManager.class);
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   /** max number of file streams being cached, must be lower than 65535. */
   private static final int MAX_CACHED_FILE_SIZE = 30000;
@@ -235,16 +235,15 @@ public class FileReaderManager {
         || (!isClosed && unclosedFileReaderMap.containsKey(tsFile.getTsFilePath()));
   }
 
-  public void writeFileReferenceInfo(BufferedWriter writer) throws IOException {
-    StringBuilder builder = new StringBuilder("[closedReferenceMap]\n");
+  public void writeFileReferenceInfo() {
+    DEBUG_LOGGER.info("[closedReferenceMap]\n");
     for (Map.Entry<String, AtomicInteger> entry : closedReferenceMap.entrySet()) {
-      builder.append(String.format("\t%s: %d\n", entry.getKey(), entry.getValue().get()));
+      DEBUG_LOGGER.info(String.format("\t%s: %d\n", entry.getKey(), entry.getValue().get()));
     }
-    builder.append("[unclosedReferenceMap]\n");
+    DEBUG_LOGGER.info("[unclosedReferenceMap]\n");
     for (Map.Entry<String, AtomicInteger> entry : unclosedReferenceMap.entrySet()) {
-      builder.append(String.format("\t%s: %d", entry.getKey(), entry.getValue().get()));
+      DEBUG_LOGGER.info(String.format("\t%s: %d", entry.getKey(), entry.getValue().get()));
     }
-    writer.write(builder.toString());
   }
 
   private static class FileReaderManagerHelper {

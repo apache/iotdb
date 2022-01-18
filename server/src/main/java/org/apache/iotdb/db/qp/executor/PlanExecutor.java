@@ -35,7 +35,6 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
@@ -173,9 +172,7 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -236,6 +233,7 @@ public class PlanExecutor implements IPlanExecutor {
   private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
   private static final Logger AUDIT_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   // for data query
   protected IQueryRouter queryRouter;
   // for administration
@@ -2199,37 +2197,10 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private boolean processShowQueryResource() {
-    String dirName = IoTDBDescriptor.getInstance().getConfig().getTracingDir();
-    String logFileName = IoTDBConstant.TRACING_LOG;
-    File tracingDir = SystemFileFactory.INSTANCE.getFile(dirName);
-    if (!tracingDir.exists()) {
-      if (tracingDir.mkdirs()) {
-        logger.info("create performance folder {}.", tracingDir);
-      } else {
-        logger.info("create performance folder {} failed.", tracingDir);
-      }
-    }
-    File logFile = SystemFileFactory.INSTANCE.getFile(dirName + File.separator + logFileName);
-
-    BufferedWriter writer;
-    FileWriter fileWriter = null;
-    try {
-      fileWriter = new FileWriter(logFile, true);
-    } catch (IOException e) {
-      logger.error(
-          "Meeting error while creating query resource tracing FileWriter: {}", e.getMessage());
-    }
-    writer = new BufferedWriter(fileWriter);
-    try {
-      writer.write(String.format("**********%s**********\n\n", new Date()));
-      FileReaderManager.getInstance().writeFileReferenceInfo(writer);
-      QueryResourceManager.getInstance().writeQueryFileInfo(writer);
-      writer.write("\n****************************************************\n\n");
-      writer.flush();
-      writer.close();
-    } catch (IOException e) {
-      logger.error("Meeting error while Close the tracing log stream : {}", e.getMessage());
-    }
+    DEBUG_LOGGER.info(String.format("**********%s**********\n\n", new Date()));
+    FileReaderManager.getInstance().writeFileReferenceInfo();
+    QueryResourceManager.getInstance().writeQueryFileInfo();
+    DEBUG_LOGGER.info("\n****************************************************\n\n");
     return true;
   }
 
