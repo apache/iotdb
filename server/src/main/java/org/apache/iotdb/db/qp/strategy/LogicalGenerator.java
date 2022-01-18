@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlVisitor;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
@@ -53,9 +55,12 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
 /** LogicalGenerator. */
 public class LogicalGenerator {
 
-  public static Operator generate(String sql, ZoneId zoneId) throws ParseCancellationException {
+  public static Operator generate(
+      String sql, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion)
+      throws ParseCancellationException {
     IoTDBSqlVisitor ioTDBSqlVisitor = new IoTDBSqlVisitor();
     ioTDBSqlVisitor.setZoneId(zoneId);
+    ioTDBSqlVisitor.setClientVersion(clientVersion);
 
     CharStream charStream1 = CharStreams.fromString(sql);
 
@@ -164,6 +169,11 @@ public class LogicalGenerator {
     queryOp.setWhereComponent(new WhereComponent(basicFunctionOperator));
 
     return queryOp;
+  }
+
+  @TestOnly
+  public static Operator generate(String sql, ZoneId zoneId) throws ParseCancellationException {
+    return generate(sql, zoneId, IoTDBConstant.ClientVersion.V_0_13);
   }
 
   private LogicalGenerator() {}
