@@ -70,6 +70,8 @@ $ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
 
 #### query
 
+query 接口可以用于处理数据查询和元数据查询。
+
 请求方式：`POST`
 
 请求头：`application/json`
@@ -83,18 +85,21 @@ $ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
 |  sql | string | 是  |   |
 | rowLimit | integer | 否 | 一次查询能返回的结果集的最大行数。<br />如果不设置该参数，将使用配置文件的  `rest_query_default_row_size_limit` 作为默认值。<br />当返回结果集的行数超出限制时，将返回状态码 `411`。 |
 
-请求示例:
-```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select s3, s4, s3 + 1 from root.sg27 limit 2"}' http://127.0.0.1:18080/rest/v1/query
-```
-
 响应参数:
 
 |参数名称  |参数类型  |参数描述|
 | ------------ | ------------ | ------------|
-| expressions | array | 结果集列名的数组 |
-| timestamps | array | 时间戳列 |
-|values|array|值列数组，列数与结果集列名数组的长度相同|
+| expressions | array | 用于数据查询时结果集列名的数组，用于元数据查询时为`null`|
+| columnNames | array | 用于元数据查询结果集列名数组，用于数据查询时为`null` |
+| timestamps | array | 时间戳列，用于元数据查询时为`null` |
+|values|array|二维数组，第一维与结果集列名数组的长度相同，第二维数组代表结果集的一列|
+
+请求示例如下所示：
+
+请求示例 表达式查询:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select s3, s4, s3 + 1 from root.sg27 limit 2"}' http://127.0.0.1:18080/rest/v1/query
+```
 
 响应示例:
 
@@ -105,12 +110,624 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
     "root.sg27.s4",
     "root.sg27.s3 + 1"
   ],
-  "timestamps": [1,2],
-  "values": [[11,12],[false,true],[12.0,23.0]]
+  "columnNames": null,
+  "timestamps": [
+    1635232143960,
+    1635232153960
+  ],
+  "values": [
+    [
+      11,
+      null
+    ],
+    [
+      false,
+      true
+    ],
+    [
+      12.0,
+      null
+    ]
+  ]
 }
 ```
 
+请求示例 show child paths:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show child paths root"}' http://127.0.0.1:18080/rest/v1/query
+```
 
+响应示例:
+
+```json
+{
+  "expressions": null,
+  "columnNames": [
+    "child paths"
+  ],
+  "timestamps": null,
+  "values": [
+    [
+      "root.sg27",
+      "root.sg28"
+    ]
+  ]
+}
+```
+
+请求示例 show child nodes:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show child nodes root"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "expressions": null,
+  "columnNames": [
+    "child nodes"
+  ],
+  "timestamps": null,
+  "values": [
+    [
+      "sg27",
+      "sg28"
+    ]
+  ]
+}
+```
+
+请求示例 show all ttl:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show all ttl"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "expressions": null,
+  "columnNames": [
+    "storage group",
+    "ttl"
+  ],
+  "timestamps": null,
+  "values": [
+    [
+      "root.sg27",
+      "root.sg28"
+    ],
+    [
+      null,
+      null
+    ]
+  ]
+}
+```
+
+请求示例 show ttl:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show ttl on root.sg27"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "expressions": null,
+  "columnNames": [
+    "storage group",
+    "ttl"
+  ],
+  "timestamps": null,
+  "values": [
+    [
+      "root.sg27"
+    ],
+    [
+      null
+    ]
+  ]
+}
+```
+
+请求示例 show functions:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show functions"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "expressions": null,
+  "columnNames": [
+    "function name",
+    "function type",
+    "class name (UDF)"
+  ],
+  "timestamps": null,
+  "values": [
+    [
+      "ABS",
+      "ACOS",
+      "ASIN",
+       ...
+    ],
+    [
+      "built-in UDTF",
+      "built-in UDTF",
+      "built-in UDTF",
+      ...
+    ],
+    [
+      "org.apache.iotdb.db.query.udf.builtin.UDTFAbs",
+      "org.apache.iotdb.db.query.udf.builtin.UDTFAcos",
+      "org.apache.iotdb.db.query.udf.builtin.UDTFAsin",
+      ...
+    ]
+  ]
+}
+```
+
+请求示例 show timeseries:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show timeseries"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "expressions": null,
+  "columnNames": [
+    "timeseries",
+    "alias",
+    "storage group",
+    "dataType",
+    "encoding",
+    "compression",
+    "tags",
+    "attributes"
+  ],
+  "timestamps": null,
+  "values": [
+    [
+      "root.sg27.s3",
+      "root.sg27.s4",
+      "root.sg28.s3",
+      "root.sg28.s4"
+    ],
+    [
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      "root.sg27",
+      "root.sg27",
+      "root.sg28",
+      "root.sg28"
+    ],
+    [
+      "INT32",
+      "BOOLEAN",
+      "INT32",
+      "BOOLEAN"
+    ],
+    [
+      "RLE",
+      "RLE",
+      "RLE",
+      "RLE"
+    ],
+    [
+      "SNAPPY",
+      "SNAPPY",
+      "SNAPPY",
+      "SNAPPY"
+    ],
+    [
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      null
+    ]
+  ]
+}
+```
+
+请求示例 show latest timeseries:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show latest timeseries"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "expressions": null,
+  "columnNames": [
+    "timeseries",
+    "alias",
+    "storage group",
+    "dataType",
+    "encoding",
+    "compression",
+    "tags",
+    "attributes"
+  ],
+  "timestamps": null,
+  "values": [
+    [
+      "root.sg28.s4",
+      "root.sg27.s4",
+      "root.sg28.s3",
+      "root.sg27.s3"
+    ],
+    [
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      "root.sg28",
+      "root.sg27",
+      "root.sg28",
+      "root.sg27"
+    ],
+    [
+      "BOOLEAN",
+      "BOOLEAN",
+      "INT32",
+      "INT32"
+    ],
+    [
+      "RLE",
+      "RLE",
+      "RLE",
+      "RLE"
+    ],
+    [
+      "SNAPPY",
+      "SNAPPY",
+      "SNAPPY",
+      "SNAPPY"
+    ],
+    [
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      null
+    ]
+  ]
+}
+```
+
+请求示例 count timeseries:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"count timeseries root.**"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "expressions": null,
+  "columnNames": [
+    "count"
+  ],
+  "timestamps": null,
+  "values": [
+    [
+      4
+    ]
+  ]
+}
+```
+
+请求示例 count nodes:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"count nodes root.** level=2"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "expressions": null,
+  "columnNames": [
+    "count"
+  ],
+  "timestamps": null,
+  "values": [
+    [
+      4
+    ]
+  ]
+}
+```
+
+请求示例 show devices:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "expressions": null,
+  "columnNames": [
+    "devices",
+    "isAligned"
+  ],
+  "timestamps": null,
+  "values": [
+    [
+      "root.sg27",
+      "root.sg28"
+    ],
+    [
+      "false",
+      "false"
+    ]
+  ]
+}
+```
+
+请求示例 show devices with storage group:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices with storage group"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "expressions": null,
+  "columnNames": [
+    "devices",
+    "storage group",
+    "isAligned"
+  ],
+  "timestamps": null,
+  "values": [
+    [
+      "root.sg27",
+      "root.sg28"
+    ],
+    [
+      "root.sg27",
+      "root.sg28"
+    ],
+    [
+      "false",
+      "false"
+    ]
+  ]
+}
+```
+
+请求示例 list user:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"list user"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "expressions": null,
+  "columnNames": [
+    "user"
+  ],
+  "timestamps": null,
+  "values": [
+    [
+      "root"
+    ]
+  ]
+}
+```
+
+请求示例 原始聚合查询:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.sg27"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "expressions": [
+    "count(root.sg27.s3)",
+    "count(root.sg27.s4)"
+  ],
+  "columnNames": null,
+  "timestamps": [
+    0
+  ],
+  "values": [
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ]
+}
+```
+
+请求示例 group by level:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.** group by level = 1"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "expressions": null,
+  "columnNames": [
+    "count(root.sg27.*)",
+    "count(root.sg28.*)"
+  ],
+  "timestamps": null,
+  "values": [
+    [
+      3
+    ],
+    [
+      3
+    ]
+  ]
+}
+```
+
+请求示例 group by:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.sg27 group by([1635232143960,1635232153960),1s)"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "expressions": [
+    "count(root.sg27.s3)",
+    "count(root.sg27.s4)"
+  ],
+  "columnNames": null,
+  "timestamps": [
+    1635232143960,
+    1635232144960,
+    1635232145960,
+    1635232146960,
+    1635232147960,
+    1635232148960,
+    1635232149960,
+    1635232150960,
+    1635232151960,
+    1635232152960
+  ],
+  "values": [
+    [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  ]
+}
+```
+
+请求示例 last:
+```shell
+curl -H "Content-Type:application/json"  -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select last s3 from root.sg27"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "expressions": null,
+  "columnNames": [
+    "timeseries",
+    "value",
+    "dataType"
+  ],
+  "timestamps": [
+    1635232143960
+  ],
+  "values": [
+    [
+      "root.sg27.s3"
+    ],
+    [
+      "11"
+    ],
+    [
+      "INT32"
+    ]
+  ]
+}
+```
+
+请求示例 disable align:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select * from root.sg27 disable align"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "code": 407,
+  "message": "disable align clauses are not supported."
+}
+```
+
+请求示例 align by device:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(s3) from root.sg27 align by device"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "code": 407,
+  "message": "align by device clauses are not supported."
+}
+```
+
+请求示例 select into:
+```shell
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select s3, s4 into root.sg29.s1, root.sg29.s2 from root.sg27"}' http://127.0.0.1:18080/rest/v1/query
+```
+
+响应示例:
+
+```json
+{
+  "code": 407,
+  "message": "select into clauses are not supported."
+}
+```
 
 #### nonQuery
 
