@@ -377,6 +377,7 @@ public class CompactionTaskManager implements IService {
       semaphore =
           new Semaphore(IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
       submissionThread = new Thread(this::submitTaskFromTaskQueue);
+      runningCompactionTaskList = new ArrayList<>();
     }
     currentTaskNum = new AtomicInteger(0);
     logger.info("Compaction task manager started.");
