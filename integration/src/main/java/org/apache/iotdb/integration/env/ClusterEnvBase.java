@@ -20,6 +20,7 @@ package org.apache.iotdb.integration.env;
 
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 
 import org.slf4j.Logger;
@@ -36,6 +37,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.jdbc.Config.VERSION;
 import static org.junit.Assert.fail;
 
 public abstract class ClusterEnvBase implements BaseEnv {
@@ -240,6 +242,31 @@ public abstract class ClusterEnvBase implements BaseEnv {
                   System.getProperty("User", "root"),
                   System.getProperty("Password", "root"));
       connection.setQueryTimeout(queryTimeout);
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+      fail();
+    }
+    return connection;
+  }
+
+  @Override
+  public Connection getConnection(Constant.Version version) throws SQLException {
+    Connection connection = null;
+
+    try {
+      Class.forName(Config.JDBC_DRIVER_NAME);
+      connection =
+          DriverManager.getConnection(
+              Config.IOTDB_URL_PREFIX
+                  + this.nodes.get(0).getIp()
+                  + ":"
+                  + this.nodes.get(0).getPort()
+                  + "?"
+                  + VERSION
+                  + "="
+                  + version.toString(),
+              System.getProperty("User", "root"),
+              System.getProperty("Password", "root"));
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       fail();
