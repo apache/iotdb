@@ -107,6 +107,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DropPipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
@@ -396,6 +397,8 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case CREATE_TEMPLATE:
         return createTemplate((CreateTemplatePlan) plan);
+      case DROP_TEMPLATE:
+        return dropTemplate((DropTemplatePlan) plan);
       case APPEND_TEMPLATE:
         return appendTemplate((AppendTemplatePlan) plan);
       case PRUNE_TEMPLATE:
@@ -437,6 +440,15 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     try {
       IoTDB.metaManager.createSchemaTemplate(createTemplatePlan);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    return true;
+  }
+
+  private boolean dropTemplate(DropTemplatePlan dropTemplatePlan) throws QueryProcessException {
+    try {
+      IoTDB.metaManager.dropSchemaTemplate(dropTemplatePlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
