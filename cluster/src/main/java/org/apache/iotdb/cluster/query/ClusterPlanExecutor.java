@@ -303,7 +303,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
       // adapt to prefix match of IoTDB v0.12
       ret.addAll(getNodesList(path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD), level));
     }
-    logger.debug("The number of paths satisfying {}@{} is {}", path, level, ret.size());
+    logger.debug("The paths satisfying {}@{} is {}", path, level, ret);
     return ret.size();
   }
 
@@ -516,12 +516,20 @@ public class ClusterPlanExecutor extends PlanExecutor {
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
-      return IoTDB.metaManager.getNodesListInGivenLevel(
+      List<PartialPath> nodesListInGivenLevel =
+          IoTDB.metaManager.getNodesListInGivenLevel(
+              schemaPattern,
+              level,
+              new SlotSgFilter(
+                  ((SlotPartitionTable) metaGroupMember.getPartitionTable())
+                      .getNodeSlots(group.getHeader())));
+      logger.debug(
+          "Paths satisfying {}@{} are {} in {} locally",
           schemaPattern,
           level,
-          new SlotSgFilter(
-              ((SlotPartitionTable) metaGroupMember.getPartitionTable())
-                  .getNodeSlots(group.getHeader())));
+          nodesListInGivenLevel,
+          group);
+      return nodesListInGivenLevel;
     } catch (MetadataException e) {
       logger.error(
           "Cannot not get node list of {}@{} from {} locally", schemaPattern, level, group);
@@ -536,6 +544,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
       try {
         paths = getRemoteNodesListForOneNode(node, group, schemaPattern, level);
         if (paths != null) {
+          logger.debug(
+              "Paths satisfying {}@{} are {} in {}@{}", schemaPattern, level, paths, node, group);
           break;
         }
       } catch (IOException e) {

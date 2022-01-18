@@ -1270,12 +1270,19 @@ public class MTree implements Serializable {
   /** Get all paths from root to the given level */
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
+    return getNodesListInGivenLevel(pathPattern, nodeLevel, filter, false);
+  }
+
+  /** Get all paths from root to the given level */
+  public List<PartialPath> getNodesListInGivenLevel(
+      PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter, boolean isPrefixMatch)
+      throws MetadataException {
     MNodeCollector<List<PartialPath>> collector =
         new MNodeCollector<List<PartialPath>>(root, pathPattern) {
           @Override
           protected void transferToResult(IMNode node) {
             try {
-              resultSet.add(getCurrentPartialPath(node));
+              resultSet.add(new PartialPath(node.getFullPath()));
             } catch (MetadataException e) {
               logger.error(e.getMessage());
             }
@@ -1284,6 +1291,7 @@ public class MTree implements Serializable {
     collector.setResultSet(new LinkedList<>());
     collector.setTargetLevel(nodeLevel);
     collector.setStorageGroupFilter(filter);
+    collector.setPrefixMatch(isPrefixMatch);
     collector.traverse();
     return collector.getResult();
   }

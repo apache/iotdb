@@ -1097,6 +1097,12 @@ public class MManager {
     return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);
   }
 
+  public List<PartialPath> getNodesListInGivenLevel(
+      PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, filter, isPrefixMatch);
+  }
+
   /**
    * Get child node path in the next level of the given path pattern.
    *
