@@ -55,7 +55,7 @@ public class SessionManager {
   // (queryId -> QueryDataSet)
   private final Map<Long, QueryDataSet> queryIdToDataSet = new ConcurrentHashMap<>();
 
-  // (queryId -> client version number)
+  // (sessionId -> client version number)
   private final Map<Long, IoTDBConstant.ClientVersion> sessionIdToClientVersion =
       new ConcurrentHashMap<>();
 
