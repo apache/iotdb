@@ -28,8 +28,7 @@ public enum TSEncoding {
   GORILLA_V1((byte) 6),
   REGULAR((byte) 7),
   GORILLA((byte) 8),
-  ZIGZAG((byte) 9),
-  SIMPLE8B((byte) 10);
+  ZIGZAG((byte) 9);
 
   private final byte type;
 

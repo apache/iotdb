@@ -45,7 +45,7 @@ public class ZigzagDecoderTest {
   private List<Boolean> booleanList;
   private Random rand = new Random();
 
-  private List<Integer> intList2;
+  private List<Integer> randomIntList;
 
   @Before
   public void setUp() {
@@ -58,10 +58,10 @@ public class ZigzagDecoderTest {
     }
 
 
-    intList2 = new ArrayList<Integer>();
+    randomIntList = new ArrayList<Integer>();
 
     for (int i = 0; i < int_num; i++) {
-      intList2.add(rand.nextInt(int_num));
+      randomIntList.add(rand.nextInt(int_num));
     }
 
     booleanList = new ArrayList<Boolean>();
@@ -80,6 +80,7 @@ public class ZigzagDecoderTest {
   public void testZigzagReadInt() throws Exception {
     for (int i = 1; i < 10; i++) {
       testInt(intList, false, i);
+      testInt(randomIntList, false, i);
     }
   }
 

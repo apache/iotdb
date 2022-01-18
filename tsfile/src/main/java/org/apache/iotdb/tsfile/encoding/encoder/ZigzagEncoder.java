@@ -39,8 +39,6 @@ public class ZigzagEncoder extends Encoder {
   private static final Logger logger = LoggerFactory.getLogger(DictionaryEncoder.class);
   private List<Integer> values;
   byte[] buf = new byte[5];
-  private int temp_int = 0;
-  private int temp_byte = 0;
 
   public ZigzagEncoder() {
     super(TSEncoding.ZIGZAG);
@@ -48,7 +46,7 @@ public class ZigzagEncoder extends Encoder {
     logger.debug("tsfile-encoding ZigzagEncoder: init zigzag encoder");
   }
 
-  /** encoding */
+  /** encoding and bit packing*/
   private byte[] encodeInt(int n) {
     n = (n << 1) ^ (n >> 31);
     int idx = 0;
@@ -88,13 +86,11 @@ public class ZigzagEncoder extends Encoder {
       byte[] bytes = encodeInt(value);
       byteCache.write(bytes, 0, bytes.length);
     }
+    // store encoded bytes size
     ReadWriteForEncodingUtils.writeUnsignedVarInt(byteCache.size(), out);
+    // store initial list size
     ReadWriteForEncodingUtils.writeUnsignedVarInt(len, out);
-    System.out.println("before " + len + " after " + byteCache.size());
     out.write(byteCache.toByteArray());
-    temp_int += len;
-    temp_byte += byteCache.size();
-    System.out.println("total before " + temp_int + " total after " + temp_byte);
     reset();
   }
 
