@@ -26,6 +26,7 @@ import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipeData;
 
+import org.apache.iotdb.db.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,7 +112,7 @@ public class TsFilePipeLog {
     return builder.toString();
   }
 
-  /** tsfile pipe data log */
+  /** add pipe log data */
   public void addHistoryPipeData(TsFilePipeData pipeData) throws IOException {
     getHistoryOutputStream();
     pipeData.serialize(historyOutputStream);
@@ -140,22 +141,22 @@ public class TsFilePipeLog {
       // recover real time pipe log
       realTimePipeLogStartNumber = new LinkedBlockingDeque<>();
       File logDir = new File(pipeLogDir);
-      List<Long> startTimes = new ArrayList<>();
+      List<Long> startNumbers = new ArrayList<>();
 
       logDir.mkdirs();
       for (File file : logDir.listFiles())
         if (file.getName().endsWith(SenderConf.realTimePipeLogNameSuffix)) {
-          startTimes.add(SenderConf.getSerialNumberFromPipeLogName(file.getName()));
+          startNumbers.add(SenderConf.getSerialNumberFromPipeLogName(file.getName()));
         }
-      if (startTimes.size() != 0) {
-        Collections.sort(startTimes);
-        for (Long startTime : startTimes) {
+      if (startNumbers.size() != 0) {
+        Collections.sort(startNumbers);
+        for (Long startTime : startNumbers) {
           realTimePipeLogStartNumber.offer(startTime);
         }
         File writingPipeLog =
             new File(
                 pipeLogDir,
-                SenderConf.getRealTimePipeLogName(startTimes.get(startTimes.size() - 1)));
+                SenderConf.getRealTimePipeLogName(startNumbers.get(startNumbers.size() - 1)));
         realTimeOutputStream = new DataOutputStream(new FileOutputStream(writingPipeLog));
         currentPipeLogSize = writingPipeLog.length();
       } else {
@@ -169,6 +170,7 @@ public class TsFilePipeLog {
   }
 
   private void moveToNextPipeLog(long startSerialNumber) throws IOException {
+    realTimeOutputStream.close();
     File newPipeLog = new File(pipeLogDir, SenderConf.getRealTimePipeLogName(startSerialNumber));
     createFile(newPipeLog);
 
@@ -177,22 +179,28 @@ public class TsFilePipeLog {
     currentPipeLogSize = 0;
   }
 
+  /** remove pipe log data */
   public void removePipeData(long serialNumber) throws IOException {
-    if (serialNumber > 0) {
+    serializeRemoveSerialNumber(serialNumber);
+
+    if (serialNumber >= 0) {
       if (historyOutputStream != null) {
         removeHistoryPipeLog();
       }
-      while (!realTimePipeLogStartNumber.isEmpty()) {
-        long pipeLogStartNumber = realTimePipeLogStartNumber.poll();
-        if (!realTimePipeLogStartNumber.isEmpty()
-            && realTimePipeLogStartNumber.peek() < serialNumber) {
-          removeRealTimePipeLog(pipeLogStartNumber);
-        } else {
-          break;
+      if (realTimePipeLogStartNumber.size() < 2) {
+        long pipeLogStartNumber;
+        while (true) {
+          pipeLogStartNumber = realTimePipeLogStartNumber.poll();
+          if (!realTimePipeLogStartNumber.isEmpty()
+              && realTimePipeLogStartNumber.peek() < serialNumber) {
+            removeRealTimePipeLog(pipeLogStartNumber);
+          } else {
+            break;
+          }
         }
+        realTimePipeLogStartNumber.addFirst(pipeLogStartNumber);
       }
     }
-    serializeRemoveSerialNumber(serialNumber);
   }
 
   private void removeHistoryPipeLog() throws IOException {
@@ -232,8 +240,8 @@ public class TsFilePipeLog {
     } catch (IOException e) {
       logger.warn(
           String.format(
-              "Can not parse pipe log %s, the tsfiles in this pipe log will not be deleted.",
-              realTimePipeLog.getPath()));
+              "Can not parse pipe log %s, the tsfiles in this pipe log will not be deleted, because %s",
+              realTimePipeLog.getPath(), e));
     }
   }
 
@@ -271,5 +279,23 @@ public class TsFilePipeLog {
     return file.createNewFile();
   }
 
-  public void clear() {}
+  public void clear() throws IOException {
+    if (historyOutputStream != null) {
+      removeHistoryPipeLog();
+    }
+    if (realTimeOutputStream != null) {
+      realTimeOutputStream.close();
+      realTimeOutputStream = null;
+    }
+    if (removeSerialNumberWriter != null) {
+      removeSerialNumberWriter.close();
+      removeSerialNumberWriter = null;
+    }
+
+    realTimePipeLogStartNumber = null;
+    File pipeDir = new File(this.pipeDir);
+    if (pipeDir.exists()) {
+      FileUtils.deleteDirectory(pipeDir);
+    }
+  }
 }

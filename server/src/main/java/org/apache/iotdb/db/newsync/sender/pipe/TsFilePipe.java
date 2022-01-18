@@ -22,15 +22,24 @@ package org.apache.iotdb.db.newsync.sender.pipe;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.exception.PipeException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLog;
 import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLogAnalyzer;
 
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingDeque;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class TsFilePipe implements Pipe {
   private static final Logger logger = LoggerFactory.getLogger(TsFilePipe.class);
@@ -44,10 +53,10 @@ public class TsFilePipe implements Pipe {
   private ExecutorService singleExecutorService;
   private TsFilePipeLog pipeLog;
 
-  private PipeStatus status;
-
-  private final BlockingDeque<TsFilePipeData> pipeData;
+  private BlockingDeque<TsFilePipeData> pipeData;
   private long maxSerialNumber;
+
+  private PipeStatus status;
 
   public TsFilePipe(
       long createTime,
@@ -66,9 +75,17 @@ public class TsFilePipe implements Pipe {
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
             ThreadName.PIPE_SERVICE.getName() + "-" + name);
 
-    this.status = PipeStatus.STOP;
+    recover();
 
-    this.pipeData = new LinkedBlockingDeque<>();
+    this.status = PipeStatus.STOP;
+  }
+
+  private void recover() {
+    this.pipeData = new TsFilePipeLogAnalyzer(this).recover();
+    this.maxSerialNumber = 0;
+    if (pipeData.size() != 0) {
+      this.maxSerialNumber = Math.max(maxSerialNumber, pipeData.getLast().getSerialNumber());
+    }
   }
 
   @Override
@@ -80,28 +97,59 @@ public class TsFilePipe implements Pipe {
       return;
     }
 
-    status = PipeStatus.RUNNING;
-    if (new TsFilePipeLogAnalyzer(this).isCollectFinished()) {
-      recover();
-    } else {
-      collectData();
-      pipeLog.finishCollect();
-    }
+    try {
+      if (!new TsFilePipeLogAnalyzer(this).isCollectFinished()) {
+        pipeLog.clear();
+        collectData();
+        pipeLog.finishCollect();
+      }
 
-    singleExecutorService.submit(this::transport);
+      singleExecutorService.submit(this::transport);
+      status = PipeStatus.RUNNING;
+    } catch (IOException e) {
+      logger.error(
+          String.format("Can not clear pipe dir %s, because %s", SenderConf.getPipeDir(this), e));
+      throw new PipeException("Start error, can not clear pipe log.");
+    }
   }
 
   /** collect data * */
   private void collectData() {
-    collectMetaData();
+    collectRealTimeMetadata();
+    collectHistoryMetadata();
     collectTsFileAndDeletion();
   }
 
-  private void collectMetaData() {}
+  private void collectRealTimeMetadata() {
+    IoTDB.metaManager.registerPipe(this);
+  }
+
+  private void collectHistoryMetadata() {
+    List<SetStorageGroupPlan> storageGroupPlanList = IoTDB.metaManager.getStorageGroupAsPlan();
+    for (SetStorageGroupPlan storageGroupPlan : storageGroupPlanList) {
+      // todo process sg plan
+      PartialPath sgPath = storageGroupPlan.getPath();
+      try {
+        for (PhysicalPlan timeseriesPlan :
+            IoTDB.metaManager.getTimeseriesAsPlan(sgPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {}
+
+      } catch (MetadataException e) {
+
+      }
+    }
+  }
 
   private void collectTsFileAndDeletion() {}
 
-  private void recover() {}
+  public void collectRealTimeMetaData(PhysicalPlan plan) {
+    maxSerialNumber += 1;
+    TsFilePipeData metaData = new TsFilePipeData(plan, maxSerialNumber);
+    try {
+      pipeLog.addRealTimePipeData(metaData);
+    } catch (IOException e) {
+      logger.warn(String.format("Can not record plan pipe data %s.", metaData));
+    }
+  }
 
   /** transport data * */
   private void transport() {

@@ -34,7 +34,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -53,28 +55,106 @@ public class TsFilePipeLogAnalyzer {
     pipeLogDir = new File(pipeDir, SenderConf.pipeLogDirName).getPath();
   }
 
-  public BlockingDeque<TsFilePipeData> recover() throws IOException {
+  public BlockingDeque<TsFilePipeData> recover() {
     pipeData = new LinkedBlockingDeque<>();
+    removeSerialNumber = Long.MIN_VALUE;
+
+    if (!new File(pipeDir).exists()) {
+      return pipeData;
+    }
 
     deserializeRemoveSerialNumber();
     recoverHistoryData();
+    recoverRealTimeData();
 
-    return null;
+    return pipeData;
   }
 
-  private void deserializeRemoveSerialNumber() throws IOException {
-    BufferedReader br =
-        new BufferedReader(
-            new FileReader(new File(pipeLogDir, SenderConf.removeSerialNumberLogName)));
-    String readLine;
-    while ((readLine = br.readLine()) != null) {
-      removeSerialNumber = Long.parseLong(readLine);
+  private void deserializeRemoveSerialNumber() {
+    File removeSerialNumberLog = new File(pipeLogDir, SenderConf.removeSerialNumberLogName);
+    if (!removeSerialNumberLog.exists()) {
+      return;
     }
-    br.close();
+
+    try {
+      BufferedReader br = new BufferedReader(new FileReader(removeSerialNumberLog));
+      long lineIndex = 0;
+      String readLine;
+      while ((readLine = br.readLine()) != null) {
+        lineIndex += 1;
+        try {
+          removeSerialNumber = Long.parseLong(readLine);
+        } catch (NumberFormatException e) {
+          logger.warn(String.format("Can not parse Long in line %s, skip it.", lineIndex));
+        }
+      }
+      br.close();
+    } catch (IOException e) {
+      logger.warn(
+          String.format(
+              "deserialize remove serial number error, remove serial number has been set to %d, because %s",
+              removeSerialNumber, e));
+    }
   }
 
   private void recoverHistoryData() {
-    if (removeSerialNumber <= 0) {}
+    File historyPipeLog = new File(pipeLogDir, SenderConf.historyPipeLogName);
+    if (!historyPipeLog.exists()) {
+      return;
+    }
+
+    if (removeSerialNumber < 0) {
+      try {
+        List<TsFilePipeData> historyPipeData = parseFile(historyPipeLog);
+        for (TsFilePipeData data : historyPipeData)
+          if (data.getSerialNumber() > removeSerialNumber) {
+            pipeData.offer(data);
+          }
+      } catch (IOException e) {
+        logger.error(
+            String.format(
+                "Can not parse history pipe log %s, because %s", historyPipeLog.getPath()));
+      }
+    } else {
+      try {
+        Files.delete(historyPipeLog.toPath());
+      } catch (IOException e) {
+        logger.warn(
+            String.format(
+                "Can not delete history pipe log %s, because %s", historyPipeLog.getPath(), e));
+      }
+    }
+  }
+
+  private void recoverRealTimeData() {
+    File pipeLogDir = new File(this.pipeLogDir);
+    if (!pipeLogDir.exists()) {
+      return;
+    }
+
+    List<Long> startNumbers = new ArrayList<>();
+    for (File file : pipeLogDir.listFiles())
+      if (file.getName().endsWith(SenderConf.realTimePipeLogNameSuffix)) {
+        startNumbers.add(SenderConf.getSerialNumberFromPipeLogName(file.getName()));
+      }
+    if (startNumbers.size() != 0) {
+      Collections.sort(startNumbers);
+      for (Long startNumber : startNumbers) {
+        File realTimePipeLog =
+            new File(this.pipeLogDir, SenderConf.getRealTimePipeLogName(startNumber));
+        try {
+          List<TsFilePipeData> realTimeData = parseFile(realTimePipeLog);
+          for (TsFilePipeData data : realTimeData)
+            if (data.getSerialNumber() > removeSerialNumber) {
+              pipeData.offer(data);
+            }
+        } catch (IOException e) {
+          logger.error(
+              String.format(
+                  "Can not parse real time pipe log %s, because %s", realTimePipeLog.getPath(), e));
+        }
+      }
+    }
   }
 
   public boolean isCollectFinished() {

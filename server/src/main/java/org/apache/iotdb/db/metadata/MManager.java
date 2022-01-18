@@ -616,7 +616,9 @@ public class MManager {
         }
         plan.setTagOffset(offset);
         logWriter.createTimeseries(plan);
-        syncManager.syncMetadataPlan(plan);
+        if(syncManager.isEnableSync()){
+          syncManager.syncMetadataPlan(plan);
+        }
       }
       leafMNode.setOffset(offset);
 
@@ -714,7 +716,9 @@ public class MManager {
       // write log
       if (!isRecovering) {
         logWriter.createAlignedTimeseries(plan);
-        syncManager.syncMetadataPlan(plan);
+        if(syncManager.isEnableSync()){
+          syncManager.syncMetadataPlan(plan);
+        }
       }
     } catch (IOException e) {
       throw new MetadataException(e);
@@ -802,7 +806,9 @@ public class MManager {
         }
         deleteTimeSeriesPlan.setDeletePathList(Collections.singletonList(p));
         logWriter.deleteTimeseries(deleteTimeSeriesPlan);
-        syncManager.syncMetadataPlan(deleteTimeSeriesPlan);
+        if(syncManager.isEnableSync()){
+          syncManager.syncMetadataPlan(deleteTimeSeriesPlan);
+        }
       }
     } catch (DeleteFailedException e) {
       failedNames.add(e.getName());
@@ -862,7 +868,9 @@ public class MManager {
       }
       if (!isRecovering) {
         logWriter.setStorageGroup(storageGroup);
-        syncManager.syncMetadataPlan(new SetStorageGroupPlan(storageGroup));
+        if(syncManager.isEnableSync()){
+          syncManager.syncMetadataPlan(new SetStorageGroupPlan(storageGroup));
+        }
       }
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
@@ -904,7 +912,9 @@ public class MManager {
         // if success
         if (!isRecovering) {
           logWriter.deleteStorageGroup(storageGroup);
-          syncManager.syncMetadataPlan(plansForSync);
+          if(syncManager.isEnableSync()){
+            syncManager.syncMetadataPlan(plansForSync);
+          }
         }
       }
     } catch (IOException e) {
@@ -2443,9 +2453,9 @@ public class MManager {
 
   // region Interfaces for Sync
 
-  public List<PhysicalPlan> getStorageGroupAsPlan() {
+  public List<SetStorageGroupPlan> getStorageGroupAsPlan() {
     List<PartialPath> allStorageGroups = mtree.getAllStorageGroupPaths();
-    List<PhysicalPlan> result = new LinkedList<>();
+    List<SetStorageGroupPlan> result = new LinkedList<>();
     for (PartialPath sgPath : allStorageGroups) {
       result.add(new SetStorageGroupPlan(sgPath));
     }
@@ -2456,11 +2466,11 @@ public class MManager {
     return mtree.getTimeseriesAsPlan(pathPattern);
   }
 
-  public void registerSyncTask(TsFilePipe syncPipe) {
+  public void registerPipe(TsFilePipe syncPipe) {
     syncManager.registerSyncTask(syncPipe);
   }
 
-  public void deregisterSyncTask() {
+  public void deregisterPipe() {
     syncManager.deregisterSyncTask();
   }
 
