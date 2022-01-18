@@ -1906,6 +1906,7 @@ public class VirtualStorageGroupProcessor {
 
     try {
       Set<PartialPath> devicePaths = IoTDB.metaManager.getBelongedDevices(path);
+      logger.debug("Devices of {}: {}", path, devicePaths);
       for (PartialPath device : devicePaths) {
         // delete Last cache record if necessary
         tryToDeleteLastCache(device, path, startTime, endTime);
