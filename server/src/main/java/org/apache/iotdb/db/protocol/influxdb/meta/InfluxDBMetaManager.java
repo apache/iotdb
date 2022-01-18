@@ -31,7 +31,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -71,7 +70,7 @@ public class InfluxDBMetaManager {
   }
 
   public void recover() {
-    long queryId = QueryResourceManager.getInstance().assignQueryId(true);
+    long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
     try {
       QueryPlan queryPlan = (QueryPlan) planner.parseSQLToPhysicalPlan(SELECT_TAG_INFO_SQL);
       QueryContext queryContext =
