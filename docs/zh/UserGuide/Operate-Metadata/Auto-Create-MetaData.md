@@ -104,4 +104,4 @@
 
 * 可配置的编码方式包括：PLAIN, RLE, TS_2DIFF, GORILLA, DICTIONARY
 
-* 数据类型与编码方式的对应关系详见 [编码方式](./Encoding.md)。
+* 数据类型与编码方式的对应关系详见 [编码方式](../Data-Concept/Encoding.md)。

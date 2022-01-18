@@ -60,7 +60,7 @@ END
 * `<path_prefix>` 与 `<path_suffix>` 拼接成完整的查询原时间序列。
 * `<full_path>` 或 `<node_name>` 指定将查询出的数据写入的结果序列路径。
 * `<group_by_interval>` 指定时间分组长度，支持 ns、us、ms、s、m、h、d、w、mo、y 等单位。
-* `<level>`指按照序列第 `<level>` 层分组，将第 `<level>` 层同名的所有序列聚合。Group By Level 语句的具体语义及 `<level>` 的定义见 [路径层级分组聚合](../IoTDB-SQL-Language/DML-Data-Manipulation-Language.md)。
+* `<level>`指按照序列第 `<level>` 层分组，将第 `<level>` 层同名的所有序列聚合。Group By Level 语句的具体语义及 `<level>` 的定义见 [路径层级分组聚合](../Operate-Metadata/DML-Data-Manipulation-Language.md)。
 
 注：
 

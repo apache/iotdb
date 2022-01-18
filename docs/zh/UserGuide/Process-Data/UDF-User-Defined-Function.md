@@ -506,7 +506,7 @@ SHOW FUNCTIONS
 
 ## 已知的 UDF 库实现
 
-+ [IoTDB-Quality](../Library-UDF/Get-Started.md)，一个关于数据质量的 UDF 库实现，包括数据画像、数据质量评估与修复等一系列函数。
++ [IoTDB-Quality](UDF-Get-Started.md)，一个关于数据质量的 UDF 库实现，包括数据画像、数据质量评估与修复等一系列函数。
 
 ## Q&A
 
