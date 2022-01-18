@@ -261,6 +261,8 @@ public class IoTDBContinuousQueryIT {
               + "GROUP BY time(1s) END");
     } catch (Exception e) {
       assertTrue(e.getMessage().contains("duplicated"));
+    } finally {
+      stopDataGenerator();
     }
   }
 
