@@ -21,10 +21,8 @@ package org.apache.iotdb.db.engine.compaction.cross;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -50,10 +48,10 @@ import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.Rewrit
 import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_SEQ_FILES;
 import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_TARGET_FILES;
 import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_UNSEQ_FILES;
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.COMPACTION_LOG_NAME;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
-public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTest {
+public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
+
   private final String oldThreadName = Thread.currentThread().getName();
 
   @Before
@@ -70,7 +68,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
   }
 
   @Test
-  public void testRecoverWithAllSourceFilesExisted() throws Exception {
+  public void testHandleWithAllSourceFilesExisted() throws Exception {
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
@@ -96,15 +94,14 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
     compactionLogger.logStringInfo(MAGIC_STRING);
     compactionLogger.close();
-    new RewriteCrossCompactionRecoverTask(
-            COMPACTION_LOG_NAME,
-            "0",
-            0,
-            SEQ_DIRS.getPath(),
-            compactionLogFile,
-            CompactionTaskManager.currentTaskNum,
-            tsFileManager)
-        .call();
+    CrossSpaceCompactionExceptionHandler.handleException(
+        COMPACTION_TEST_SG,
+        compactionLogFile,
+        targetResources,
+        seqResources,
+        unseqResources,
+        tsFileManager,
+        0);
     // all source file should still exist
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
@@ -140,7 +137,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
   }
 
   @Test
-  public void testRecoverWithAllSourceFilesExistedAndTargetFilesMoved() throws Exception {
+  public void testHandleWithAllSourceFilesExistedAndTargetFilesMoved() throws Exception {
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
@@ -167,15 +164,14 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     compactionLogger.logStringInfo(MAGIC_STRING);
     compactionLogger.close();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    new RewriteCrossCompactionRecoverTask(
-            COMPACTION_LOG_NAME,
-            "0",
-            0,
-            SEQ_DIRS.getPath(),
-            compactionLogFile,
-            CompactionTaskManager.currentTaskNum,
-            tsFileManager)
-        .call();
+    CrossSpaceCompactionExceptionHandler.handleException(
+        COMPACTION_TEST_SG,
+        compactionLogFile,
+        targetResources,
+        seqResources,
+        unseqResources,
+        tsFileManager,
+        0);
     // all source file should still exist
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
@@ -211,7 +207,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
   }
 
   @Test
-  public void testRecoverWithSomeSourceFilesExisted() throws Exception {
+  public void testHandleWithSomeSourceFilesExisted() throws Exception {
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
@@ -239,15 +235,14 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     seqResources.get(0).getTsFile().delete();
     compactionLogger.logStringInfo(MAGIC_STRING);
     compactionLogger.close();
-    new RewriteCrossCompactionRecoverTask(
-            COMPACTION_LOG_NAME,
-            "0",
-            0,
-            SEQ_DIRS.getPath(),
-            compactionLogFile,
-            CompactionTaskManager.currentTaskNum,
-            tsFileManager)
-        .call();
+    CrossSpaceCompactionExceptionHandler.handleException(
+        COMPACTION_TEST_SG,
+        compactionLogFile,
+        targetResources,
+        seqResources,
+        unseqResources,
+        tsFileManager,
+        0);
     // all source file should not exist
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
@@ -283,7 +278,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
    * file.
    */
   @Test
-  public void testRecoverWithoutAllSourceFilesAndModFilesExist() throws Exception {
+  public void testHandleWithoutAllSourceFilesAndModFilesExist() throws Exception {
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
@@ -328,17 +323,15 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     }
     CompactionUtils.combineModsInCompaction(seqResources, unseqResources, targetResources);
     seqResources.get(0).remove();
-    compactionLogger.close();
 
-    new RewriteCrossCompactionRecoverTask(
-            COMPACTION_LOG_NAME,
-            "0",
-            0,
-            SEQ_DIRS.getPath(),
-            compactionLogFile,
-            CompactionTaskManager.currentTaskNum,
-            tsFileManager)
-        .call();
+    CrossSpaceCompactionExceptionHandler.handleException(
+        COMPACTION_TEST_SG,
+        compactionLogFile,
+        targetResources,
+        seqResources,
+        unseqResources,
+        tsFileManager,
+        0);
     // All source file should not exist. All compaction mods file and old mods file of each source
     // file should not exist
     for (TsFileResource resource : seqResources) {
@@ -389,7 +382,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
    * new mods file of the target file.
    */
   @Test
-  public void testRecoverWithAllSourcesFileAndCompactonModFileExist() throws Exception {
+  public void testHandleWithAllSourcesFileAndCompactonModFileExist() throws Exception {
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
@@ -413,9 +406,9 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     compactionLogger.logFiles(seqResources, STR_SEQ_FILES);
     compactionLogger.logFiles(unseqResources, STR_UNSEQ_FILES);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     compactionLogger.logStringInfo(MAGIC_STRING);
     compactionLogger.close();
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
       deleteMap.put(
@@ -434,15 +427,14 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     }
     CompactionUtils.combineModsInCompaction(seqResources, unseqResources, targetResources);
 
-    new RewriteCrossCompactionRecoverTask(
-            COMPACTION_LOG_NAME,
-            "0",
-            0,
-            SEQ_DIRS.getPath(),
-            compactionLogFile,
-            CompactionTaskManager.currentTaskNum,
-            tsFileManager)
-        .call();
+    CrossSpaceCompactionExceptionHandler.handleException(
+        COMPACTION_TEST_SG,
+        compactionLogFile,
+        targetResources,
+        seqResources,
+        unseqResources,
+        tsFileManager,
+        0);
     // all source file should still exist
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());

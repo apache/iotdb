@@ -63,6 +63,14 @@ public class AbstractCompactionTest {
   private static final int oldPagePointSize =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
+  protected static File STORAGE_GROUP_DIR =
+      new File(
+          TestConstant.BASE_OUTPUT_PATH
+              + "data"
+              + File.separator
+              + "sequence"
+              + File.separator
+              + "root.compactionTest");
   protected static File SEQ_DIRS =
       new File(
           TestConstant.BASE_OUTPUT_PATH

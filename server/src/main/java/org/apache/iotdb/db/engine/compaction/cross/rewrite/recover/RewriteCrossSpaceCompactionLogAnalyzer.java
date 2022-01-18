@@ -40,8 +40,9 @@ public class RewriteCrossSpaceCompactionLogAnalyzer {
   private List<TsFileIdentifier> targetFileInfos = new ArrayList<>();
   private String targetFile = null;
   private boolean isSeq = false;
+  private boolean isFirstMagicStringExisted = false;
 
-  boolean isAllTmpTargetFilesExisted = false;
+  boolean isAllTargetFilesExisted = false;
 
   public RewriteCrossSpaceCompactionLogAnalyzer(File logFile) {
     this.logFile = logFile;
@@ -57,6 +58,11 @@ public class RewriteCrossSpaceCompactionLogAnalyzer {
       while ((currLine = bufferedReader.readLine()) != null) {
         switch (currLine) {
           case MAGIC_STRING:
+            if (magicCount == 0) {
+              isFirstMagicStringExisted = true;
+            } else {
+              isAllTargetFilesExisted = true;
+            }
             magicCount++;
             break;
           case STR_TARGET_FILES:
@@ -70,9 +76,6 @@ public class RewriteCrossSpaceCompactionLogAnalyzer {
             analyzeFilePath(isTargetFile, currLine);
             break;
         }
-      }
-      if (magicCount == 2) {
-        isAllTmpTargetFilesExisted = true;
       }
     }
   }
@@ -97,8 +100,12 @@ public class RewriteCrossSpaceCompactionLogAnalyzer {
     return targetFileInfos;
   }
 
-  public boolean isAllTmpTargetFilesExisted() {
-    return isAllTmpTargetFilesExisted;
+  public boolean isAllTargetFilesExisted() {
+    return isAllTargetFilesExisted;
+  }
+
+  public boolean isFirstMagicStringExisted() {
+    return isFirstMagicStringExisted;
   }
 
   public String getTargetFile() {

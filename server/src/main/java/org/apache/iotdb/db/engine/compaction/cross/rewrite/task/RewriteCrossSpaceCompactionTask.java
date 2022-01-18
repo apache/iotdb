@@ -100,11 +100,16 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     } catch (Throwable throwable) {
       // catch throwable instead of exception to handle OOM errors
       CrossSpaceCompactionExceptionHandler.handleException(
-          storageGroupName, logFile, targetTsfileResourceList, tsFileManager, timePartition);
+          storageGroupName,
+          logFile,
+          targetTsfileResourceList,
+          selectedSeqTsFileResourceList,
+          selectedUnSeqTsFileResourceList,
+          tsFileManager,
+          timePartition);
       throw throwable;
     } finally {
       releaseAllLock();
-      resetCompactionStatus();
       if (getWriteLockOfManager) {
         tsFileManager.writeUnlock();
       }
@@ -153,6 +158,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       // indicates that the cross compaction is complete and the result can be reused during a
       // restart recovery
       compactionLogger.logStringInfo(MAGIC_STRING);
+      compactionLogger.close();
 
       releaseReadAndLockWrite(selectedSeqTsFileResourceList);
       releaseReadAndLockWrite(selectedUnSeqTsFileResourceList);
@@ -181,6 +187,9 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       removeCompactionModification();
 
       updateTsFileResource();
+      if (logFile.exists()) {
+        logFile.delete();
+      }
       logger.info(
           "{}-crossSpaceCompactionTask Costs {} s",
           storageGroupName,
@@ -242,15 +251,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     }
     holdReadLockList.clear();
     holdWriteLockList.clear();
-  }
-
-  private void resetCompactionStatus() {
-    for (TsFileResource tsFileResource : selectedSeqTsFileResourceList) {
-      tsFileResource.setMerging(false);
-    }
-    for (TsFileResource tsFileResource : selectedUnSeqTsFileResourceList) {
-      tsFileResource.setMerging(false);
-    }
   }
 
   void deleteOldFiles(List<TsFileResource> tsFileResourceList) throws IOException {

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -34,10 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -49,6 +47,8 @@ public class CrossSpaceCompactionExceptionHandler {
       String storageGroup,
       File logFile,
       List<TsFileResource> targetResourceList,
+      List<TsFileResource> seqResourceList,
+      List<TsFileResource> unseqResourceList,
       TsFileManager tsFileManager,
       long timePartiionId) {
     try {
@@ -64,29 +64,18 @@ public class CrossSpaceCompactionExceptionHandler {
       List<TsFileResource> lostSeqFiles = new ArrayList<>();
       List<TsFileResource> lostUnseqFiles = new ArrayList<>();
 
-      boolean allSeqFilesExist =
-          checkAllSourceFileExists(
-              tsFileManager.getSequenceListByTimePartition(timePartiionId), lostSeqFiles);
-      boolean allUnseqFilesExist =
-          checkAllSourceFileExists(
-              tsFileManager.getUnsequenceListByTimePartition(timePartiionId), lostUnseqFiles);
+      boolean allSeqFilesExist = checkAllSourceFileExists(seqResourceList, lostSeqFiles);
+      boolean allUnseqFilesExist = checkAllSourceFileExists(unseqResourceList, lostUnseqFiles);
 
       if (allSeqFilesExist && allUnseqFilesExist) {
         // all source files exists, remove target file
         handleSuccess =
             handleWhenAllSourceFilesExist(
-                storageGroup,
-                targetResourceList,
-                tsFileManager.getSequenceListByTimePartition(timePartiionId),
-                tsFileManager.getUnsequenceListByTimePartition(timePartiionId));
+                storageGroup, targetResourceList, seqResourceList, unseqResourceList);
       } else {
         handleSuccess =
             handleWhenSomeSourceFilesLost(
-                storageGroup,
-                targetResourceList,
-                tsFileManager.getSequenceListByTimePartition(timePartiionId),
-                tsFileManager.getUnsequenceListByTimePartition(timePartiionId),
-                logFile);
+                storageGroup, targetResourceList, seqResourceList, unseqResourceList, logFile);
       }
 
       if (!handleSuccess) {
@@ -94,6 +83,8 @@ public class CrossSpaceCompactionExceptionHandler {
             "[Compaction][ExceptionHandler] failed to handle exception, set allowCompaction to false in {}",
             storageGroup);
         tsFileManager.setAllowCompaction(false);
+      } else {
+        FileUtils.delete(logFile);
       }
     } catch (Throwable throwable) {
       // catch throwable when handling exception
@@ -185,7 +176,7 @@ public class CrossSpaceCompactionExceptionHandler {
         RewriteCrossSpaceCompactionLogger.MAGIC_STRING.getBytes(StandardCharsets.UTF_8).length;
     long fileLength = logFile.length();
 
-    if (magicStringLength < 2 * fileLength) {
+    if (fileLength < 2 * magicStringLength) {
       // the log length is less than twice the Magic String length
       // it means the compaction has not finished yet
       LOGGER.error(
@@ -196,16 +187,10 @@ public class CrossSpaceCompactionExceptionHandler {
     }
 
     // read head magic string in compaction log
-    FileChannel fileChannel = FileChannel.open(logFile.toPath(), StandardOpenOption.READ);
-    long totalSize = fileChannel.size();
-    ByteBuffer magicStringBytes =
-        ByteBuffer.allocate(RewriteCrossSpaceCompactionLogger.MAGIC_STRING.getBytes().length);
-    fileChannel.read(
-        magicStringBytes,
-        totalSize - RewriteCrossSpaceCompactionLogger.MAGIC_STRING.getBytes().length);
-    magicStringBytes.flip();
-    if (!RewriteCrossSpaceCompactionLogger.MAGIC_STRING.equals(
-        new String(magicStringBytes.array()))) {
+    RewriteCrossSpaceCompactionLogAnalyzer logAnalyzer =
+        new RewriteCrossSpaceCompactionLogAnalyzer(logFile);
+    logAnalyzer.analyze();
+    if (!logAnalyzer.isFirstMagicStringExisted()) {
       LOGGER.error(
           "{} [Compaction][ExceptionHandler] the head magic string in compaction log is incorrect,"
               + " failed to handle exception",
@@ -214,12 +199,7 @@ public class CrossSpaceCompactionExceptionHandler {
     }
 
     // read tail string in compaction log
-    magicStringBytes.clear();
-    fileChannel.read(magicStringBytes, 0);
-    magicStringBytes.flip();
-    fileChannel.close();
-    if (!RewriteCrossSpaceCompactionLogger.MAGIC_STRING.equals(
-        new String(magicStringBytes.array()))) {
+    if (!logAnalyzer.isAllTargetFilesExisted()) {
       LOGGER.error(
           "{} [Compaction][ExceptionHandler] the tail magic string in compaction log is incorrect,"
               + " failed to handle exception",
