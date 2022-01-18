@@ -698,6 +698,23 @@ var config = {
 						]
 					},
 					{
+						title: 'Query Data',
+						sidebarDepth: 1,
+						children: [
+							['Query-Data/Overview.md','Overview'],
+							['Query-Data/Query-Expression.md','Query Expression'],
+							['Query-Data/Query-Filter.md','Query Filter'],
+							['Query-Data/Order-By-Time.md','Order By Time'],
+							['Query-Data/Pagination.md','Pagination'],
+							['Query-Data/Result-Format.md','Query Result Formats'],
+							['Query-Data/Aggregate-Query.md','Aggregate Query'],
+							['Query-Data/Last-Query.md','Last Query'],
+							['Query-Data/Fill-Null-Value.md','Fill Null Value'],
+							['Query-Data/Without-Null.md','Without Null'],
+							['Query-Data/Tracing-Tool.md','Tracing Tool']
+						]
+					},
+					{
 						title: 'API',
 						children: [
 							['API/Programming-Java-Native-API','Java Native API'],
@@ -1501,6 +1518,23 @@ var config = {
 							['IoTDB-SQL-Language/DDL-Data-Definition-Language','数据定义语言（DDL）'],
 							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','数据操作语言（DML）'],
 							['IoTDB-SQL-Language/Maintenance-Command','运维命令']
+						]
+					},
+					{
+						title: '数据查询',
+						sidebarDepth: 1,
+						children: [
+							['Query-Data/Overview.md','概述'],
+							['Query-Data/Query-Expression.md','查询表达式'],
+							['Query-Data/Query-Filter.md','查询过滤条件'],
+							['Query-Data/Order-By-Time.md','时间排序'],
+							['Query-Data/Pagination.md','查询结果分页'],
+							['Query-Data/Result-Format.md','查询结果对齐格式'],
+							['Query-Data/Aggregate-Query.md','聚合查询'],
+							['Query-Data/Last-Query.md','最新点查询'],
+							['Query-Data/Fill-Null-Value.md','空值填充'],
+							['Query-Data/Without-Null.md','空值过滤'],
+							['Query-Data/Tracing-Tool.md','查询性能追踪']
 						]
 					},
 					{
