@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -148,6 +149,22 @@ public class TsFileSplitTool {
               reader.position(chunkMetadataList.get(i).getOffsetOfChunkHeader());
               chunkHeader = reader.readChunkHeader(reader.readMarker());
             }
+
+            if (chunkHeader.getChunkType()
+                    == (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK)
+                || chunkHeader.getChunkType()
+                    == (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK)
+                || chunkHeader.getChunkType()
+                    == (byte)
+                        (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK)
+                || chunkHeader.getChunkType()
+                    == (byte)
+                        (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER
+                            | TsFileConstant.VALUE_COLUMN_MASK)) {
+              throw new IOException(
+                  "Unsupported to split TsFile with aligned timeseries currently.");
+            }
+
             TSDataType dataType = chunkHeader.getDataType();
             int dataSize = chunkHeader.getDataSize();
             Decoder valueDecoder =
