@@ -418,6 +418,7 @@ public class CrossSpaceCompactionTest {
           ICrossSpaceMergeFileSelector fileSelector =
               new MaxFileMergeFileSelector(mergeResource, Long.MAX_VALUE);
           List[] mergeFiles = fileSelector.select();
+          mergeResource.clear();
           index++;
           if (mergeFiles.length > 0) {
             CrossSpaceCompactionTaskFactory taskFactory = new CrossSpaceCompactionTaskFactory();
@@ -724,6 +725,7 @@ public class CrossSpaceCompactionTest {
           ICrossSpaceMergeFileSelector fileSelector =
               new MaxFileMergeFileSelector(mergeResource, Long.MAX_VALUE);
           List[] mergeFiles = fileSelector.select();
+          mergeResource.clear();
           if (mergeFiles.length > 0) {
             CrossSpaceCompactionTaskFactory taskFactory = new CrossSpaceCompactionTaskFactory();
             AbstractCompactionTask compactionTask =
@@ -1028,6 +1030,7 @@ public class CrossSpaceCompactionTest {
           ICrossSpaceMergeFileSelector fileSelector =
               new MaxFileMergeFileSelector(mergeResource, Long.MAX_VALUE);
           List[] mergeFiles = fileSelector.select();
+          mergeResource.clear();
           if (mergeFiles.length > 0) {
             CrossSpaceCompactionTaskFactory taskFactory = new CrossSpaceCompactionTaskFactory();
             AbstractCompactionTask compactionTask =
