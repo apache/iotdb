@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -68,6 +69,12 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
     Thread.currentThread().setName(oldThreadName);
+    for (TsFileResource tsFileResource : seqResources) {
+      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+    }
   }
 
   /* Total 5 seq files, each file has the same 6 nonAligned timeseries, each timeseries has the same 100 data point.*/
