@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -58,6 +59,11 @@ public class TsFileSketchToolTest {
   String sketchOut = "sketch.out";
   String device = "root.device_0";
   String alignedDevice = "root.device_1";
+  String sensorPrefix = "sensor_";
+  // the number of rows to include in the tablet
+  int rowNum = 1000000;
+  // the number of values to include in the tablet
+  int sensorNum = 10;
 
   @Before
   public void setUp() throws Exception {
@@ -68,12 +74,6 @@ public class TsFileSketchToolTest {
       }
 
       Schema schema = new Schema();
-
-      String sensorPrefix = "sensor_";
-      // the number of rows to include in the tablet
-      int rowNum = 1000000;
-      // the number of values to include in the tablet
-      int sensorNum = 10;
 
       List<MeasurementSchema> measurementSchemas = new ArrayList<>();
       // add measurements into file schema (all with INT64 data type)
@@ -97,8 +97,9 @@ public class TsFileSketchToolTest {
       MeasurementGroup group = new MeasurementGroup(true, schemas);
       schema.registerMeasurementGroup(new Path(alignedDevice), group);
 
-      // add measurements into TSFileWriter
       try (TsFileWriter tsFileWriter = new TsFileWriter(f, schema)) {
+
+        // add measurements into TSFileWriter
         // construct the tablet
         Tablet tablet = new Tablet(device, measurementSchemas);
         long[] timestamps = tablet.timestamps;
@@ -123,16 +124,14 @@ public class TsFileSketchToolTest {
           tsFileWriter.write(tablet);
           tablet.reset();
         }
-      }
 
-      // add aligned measurements into TSFileWriter
-      try (TsFileWriter tsFileWriter = new TsFileWriter(f, schema)) {
+        // add aligned measurements into TSFileWriter
         // construct the tablet
-        Tablet tablet = new Tablet(alignedDevice, alignedMeasurementSchemas);
-        long[] timestamps = tablet.timestamps;
-        Object[] values = tablet.values;
-        long timestamp = 1;
-        long value = 1000000L;
+        tablet = new Tablet(alignedDevice, alignedMeasurementSchemas);
+        timestamps = tablet.timestamps;
+        values = tablet.values;
+        timestamp = 1;
+        value = 1000000L;
         for (int r = 0; r < rowNum; r++, value++) {
           int row = tablet.rowSize++;
           timestamps[row] = timestamp++;
@@ -165,6 +164,29 @@ public class TsFileSketchToolTest {
     TsFileSketchTool tool = new TsFileSketchTool(path, sketchOut);
     try {
       tool.run();
+    } catch (IOException e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void allChunkGroupMetadataTest() {
+    String args[] = new String[2];
+    args[0] = path;
+    args[1] = sketchOut;
+    TsFileSketchTool tool = new TsFileSketchTool(path, sketchOut);
+    try {
+      List<ChunkGroupMetadata> chunkGroupMetadataList = tool.getAllChunkGroupMetadata();
+      Assert.assertEquals(2, chunkGroupMetadataList.size());
+      for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
+        if (device.equals(chunkGroupMetadata.getDevice())) {
+          Assert.assertEquals(sensorNum, chunkGroupMetadata.getChunkMetadataList().size());
+        } else if (alignedDevice.equals(chunkGroupMetadata.getDevice())) {
+          Assert.assertEquals(sensorNum + 1, chunkGroupMetadata.getChunkMetadataList().size());
+        } else {
+          Assert.fail();
+        }
+      }
     } catch (IOException e) {
       Assert.fail(e.getMessage());
     }

@@ -503,4 +503,11 @@ public class TsFileSketchTool {
       return timeseriesMetadataMap;
     }
   }
+
+  // for test
+  protected List<ChunkGroupMetadata> getAllChunkGroupMetadata() throws IOException {
+    List<ChunkGroupMetadata> allChunkGroupMetadata = new ArrayList<>();
+    reader.selfCheck(null, allChunkGroupMetadata, false);
+    return allChunkGroupMetadata;
+  }
 }
