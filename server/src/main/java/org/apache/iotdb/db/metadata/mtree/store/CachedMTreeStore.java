@@ -214,7 +214,11 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   private void pinMNodeInMemory(IMNode node) {
-    memManager.requestPinnedMemResource(node);
+    if (!cacheStrategy.isPinned(node)) {
+      memManager.requestPinnedMemResource(node);
+    } else {
+      memManager.upgradeMemResource(node);
+    }
     cacheStrategy.pinMNode(node);
     if (!memManager.isUnderThreshold()) {
       executeMemoryRelease();

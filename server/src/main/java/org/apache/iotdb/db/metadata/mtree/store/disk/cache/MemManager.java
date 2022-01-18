@@ -63,6 +63,12 @@ public class MemManager implements IMemManager {
   }
 
   @Override
+  public void upgradeMemResource(IMNode node) {
+    pinnedSize++;
+    size--;
+  }
+
+  @Override
   public void releasePinnedMemResource(IMNode node) {
     pinnedSize--;
     size++;

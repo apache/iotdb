@@ -43,13 +43,17 @@ public class CacheStrategy implements ICacheStrategy {
 
   @Override
   public void updateCacheStatusAfterRead(IMNode node) {
-    if (node.getCacheEntry() != null) {
-      return;
+    CacheEntry cacheEntry = node.getCacheEntry();
+    if (cacheEntry == null) {
+      cacheEntry = new CacheEntry();
+      node.setCacheEntry(new CacheEntry());
     }
 
-    CacheEntry cacheEntry = new CacheEntry();
-    node.setCacheEntry(new CacheEntry());
-    nodeCache.put(cacheEntry, node);
+    if (cacheEntry.isVolatile()) {
+      nodeBuffer.put(cacheEntry, node);
+    } else {
+      nodeCache.put(cacheEntry, node);
+    }
   }
 
   @Override

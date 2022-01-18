@@ -34,6 +34,8 @@ public interface IMemManager {
 
   void requestPinnedMemResource(IMNode node);
 
+  void upgradeMemResource(IMNode node);
+
   void releasePinnedMemResource(IMNode node);
 
   void clear();
