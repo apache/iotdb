@@ -390,7 +390,11 @@ public class TsFileResource {
   public long getTsFileSize() {
     if (closed) {
       if (tsFileSize == -1) {
-        tsFileSize = file.length();
+        synchronized (this) {
+          if (tsFileSize == -1) {
+            tsFileSize = file.length();
+          }
+        }
       }
       return tsFileSize;
     } else {
