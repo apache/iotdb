@@ -83,18 +83,16 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
               new AtomicInteger(0));
       tsFileManager.writeLock("test");
       CompactionTaskManager manager = CompactionTaskManager.getInstance();
-      Thread t = new Thread(() -> manager.submitTaskFromTaskQueue());
       try {
         Assert.assertTrue(manager.addTaskToWaitingQueue(task1));
+        Thread.sleep(500);
         Assert.assertEquals(manager.getTotalTaskCount(), 1);
         // a same task should not be submitted compaction task manager
         Assert.assertFalse(manager.addTaskToWaitingQueue(task2));
         Assert.assertEquals(manager.getTotalTaskCount(), 1);
-        t.start();
         Thread.sleep(500);
       } finally {
         tsFileManager.writeUnlock();
-        t.interrupt();
       }
       Thread.sleep(5000);
       Assert.assertEquals(0, manager.getTotalTaskCount());
