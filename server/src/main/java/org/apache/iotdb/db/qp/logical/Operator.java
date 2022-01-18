@@ -191,6 +191,8 @@ public abstract class Operator {
 
     UNSET_TEMPLATE,
     PRUNE_TEMPLATE,
-    APPEND_TEMPLATE
+    APPEND_TEMPLATE,
+
+    SHOW_QUERY_RESOURCE
   }
 }

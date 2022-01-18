@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
@@ -232,6 +233,18 @@ public class FileReaderManager {
   public synchronized boolean contains(TsFileResource tsFile, boolean isClosed) {
     return (isClosed && closedFileReaderMap.containsKey(tsFile.getTsFilePath()))
         || (!isClosed && unclosedFileReaderMap.containsKey(tsFile.getTsFilePath()));
+  }
+
+  public void writeFileReferenceInfo(BufferedWriter writer) throws IOException {
+    StringBuilder builder = new StringBuilder("[closedReferenceMap]\n");
+    for (Map.Entry<String, AtomicInteger> entry : closedReferenceMap.entrySet()) {
+      builder.append(String.format("\t%s: %d\n", entry.getKey(), entry.getValue().get()));
+    }
+    builder.append("[unclosedReferenceMap]\n");
+    for (Map.Entry<String, AtomicInteger> entry : unclosedReferenceMap.entrySet()) {
+      builder.append(String.format("\t%s: %d", entry.getKey(), entry.getValue().get()));
+    }
+    writer.write(builder.toString());
   }
 
   private static class FileReaderManagerHelper {

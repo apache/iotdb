@@ -21,9 +21,12 @@ package org.apache.iotdb.db.query.control;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -125,5 +128,31 @@ public class QueryFileManager {
               FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
               return k;
             });
+  }
+
+  public void writeQueryFileInfo(BufferedWriter writer) throws IOException {
+    StringBuilder builder = new StringBuilder("[Query Sealed File Info]\n");
+    for (Map.Entry<Long, Map<TsFileResource, TsFileResource>> entry :
+        sealedFilePathsMap.entrySet()) {
+      long queryId = entry.getKey();
+      Set<TsFileResource> tsFileResources = entry.getValue().keySet();
+      builder.append(String.format("\t[queryId: %d]\n", queryId));
+      for (TsFileResource tsFileResource : tsFileResources) {
+        builder.append(String.format("\t\t%s\n", tsFileResource.getTsFile().getAbsolutePath()));
+      }
+      builder.append("\n");
+    }
+    builder.append("[Query Unsealed File Info]\n");
+    for (Map.Entry<Long, Map<TsFileResource, TsFileResource>> entry :
+        unsealedFilePathsMap.entrySet()) {
+      long queryId = entry.getKey();
+      Set<TsFileResource> tsFileResources = entry.getValue().keySet();
+      builder.append(String.format("\t[queryId: %d]\n", queryId));
+      for (TsFileResource tsFileResource : tsFileResources) {
+        builder.append(String.format("\t\t%s\n", tsFileResource.getTsFile().getAbsolutePath()));
+      }
+      builder.append("\n");
+    }
+    writer.write(builder.toString());
   }
 }

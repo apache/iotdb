@@ -53,57 +53,10 @@ import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.logical.crud.UDAFQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.UDTFQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
-import org.apache.iotdb.db.qp.logical.sys.ActivateTemplateOperator;
-import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.*;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
-import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
-import org.apache.iotdb.db.qp.logical.sys.ClearCacheOperator;
-import org.apache.iotdb.db.qp.logical.sys.CountOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateAlignedTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateContinuousQueryOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateFunctionOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateSnapshotOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateTemplateOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateTriggerOperator;
-import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeletePartitionOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.DropContinuousQueryOperator;
-import org.apache.iotdb.db.qp.logical.sys.DropFunctionOperator;
-import org.apache.iotdb.db.qp.logical.sys.DropTriggerOperator;
-import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
-import org.apache.iotdb.db.qp.logical.sys.KillQueryOperator;
-import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
-import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
-import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
-import org.apache.iotdb.db.qp.logical.sys.MergeOperator;
-import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetTemplateOperator;
-import org.apache.iotdb.db.qp.logical.sys.SettleOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowContinuousQueriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowLockInfoOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
-import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
-import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
-import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.UnloadFileOperator;
-import org.apache.iotdb.db.qp.logical.sys.UnsetTemplateOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CqGroupByTimeClauseContext;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
@@ -2004,6 +1957,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitShowMergeInfo(IoTDBSqlParser.ShowMergeInfoContext ctx) {
     return new ShowMergeStatusOperator(SQLConstant.TOK_SHOW_MERGE_STATUS);
+  }
+
+  // Show Query Resource
+
+  @Override
+  public Operator visitShowQueryResource(IoTDBSqlParser.ShowQueryResourceContext ctx) {
+    return new ShowQueryResourceOperate(SQLConstant.TOK_SHOW_QUERY_RESOURCE);
   }
 
   // Show Query Processlist

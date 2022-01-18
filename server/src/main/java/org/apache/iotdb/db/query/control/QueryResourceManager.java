@@ -31,6 +31,7 @@ import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -213,6 +214,10 @@ public class QueryResourceManager {
 
     // remove cached QueryDataSource
     cachedQueryDataSourcesMap.remove(queryId);
+  }
+
+  public void writeQueryFileInfo(BufferedWriter writer) throws IOException {
+    filePathsManager.writeQueryFileInfo(writer);
   }
 
   private static class QueryTokenManagerHelper {

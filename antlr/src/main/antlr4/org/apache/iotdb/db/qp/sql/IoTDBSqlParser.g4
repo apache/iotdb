@@ -57,8 +57,8 @@ dclStatement
     ;
 
 utilityStatement
-    : merge | fullMerge | flush | clearCache | settle
-    | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showMergeInfo
+    : merge | fullMerge | flush | clearCache | settle | setSystemStatus
+    | showVersion | showFlushInfo | showLockInfo | showMergeInfo | showQueryResource
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
@@ -602,6 +602,11 @@ showLockInfo
 // Show Merge Info
 showMergeInfo
     : SHOW MERGE INFO
+    ;
+
+// Show Query Resource
+showQueryResource
+    : SHOW QUERY RESOURCE
     ;
 
 // Show Query Processlist
