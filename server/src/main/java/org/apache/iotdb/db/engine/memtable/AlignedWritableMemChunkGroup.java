@@ -61,6 +61,10 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
   @Override
   public boolean contains(String measurement) {
+    // used for calculate memtable size
+    if ("".equals(measurement)) {
+      return true;
+    }
     return memChunk.containsMeasurement(measurement);
   }
 
