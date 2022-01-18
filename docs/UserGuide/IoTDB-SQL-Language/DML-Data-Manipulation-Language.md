@@ -548,63 +548,6 @@ Known Implementation UDF Libraries:
 
 + [IoTDB-Quality](https://thulab.github.io/iotdb-quality), a UDF library about data quality, including data profiling, data quality evalution and data repairing, etc.
 
-### Nested Expressions
-
-IoTDB supports the execution of arbitrary nested expressions consisting of **numbers, time series, arithmetic expressions, and time series generating functions (including user-defined functions)** in the `select` clause.
-
-> Please note that Aligned Timeseries has not been supported in Nested Expressions yet. An error message is expected if you use Nested Expressions with Aligned Timeseries selected in a query statement.
-
-#### Syntax
-
-The following is the syntax definition of the `select` clause:
-
-```sql
-selectClause
-    : SELECT resultColumn (',' resultColumn)*
-    ;
-
-resultColumn
-    : expression (AS ID)?
-    ;
-
-expression
-    : '(' expression ')'
-    | '-' expression
-    | expression ('*' | '/' | '%') expression
-    | expression ('+' | '-') expression
-    | functionName '(' expression (',' expression)* functionAttribute* ')'
-    | timeSeriesSuffixPath
-    | number
-    ;
-```
-
-#### Example
-
-SQL:
-
-```sql
-select a,
-       b,
-       ((a + 1) * 2 - 1) % 2 + 1.5,
-       sin(a + sin(a + sin(b))),
-       -(a + b) * (sin(a + b) * sin(a + b) + cos(a + b) * cos(a + b))
-from root.sg1.d1;
-```
-
-Result:
-
-```
-+-----------------------------+-------------+-------------+-------------------------------------------+------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-|                         Time|root.sg1.d1.a|root.sg1.d1.b|((((root.sg1.d1.a + 1) * 2) - 1) % 2) + 1.5|sin(root.sg1.d1.a + sin(root.sg1.d1.a + sin(root.sg1.d1.b)))|-root.sg1.d1.a + root.sg1.d1.b * ((sin(root.sg1.d1.a + root.sg1.d1.b) * sin(root.sg1.d1.a + root.sg1.d1.b)) + (cos(root.sg1.d1.a + root.sg1.d1.b) * cos(root.sg1.d1.a + root.sg1.d1.b)))|
-+-----------------------------+-------------+-------------+-------------------------------------------+------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-|1970-01-01T08:00:00.000+08:00|            0|            0|                                        2.5|                                                         0.0|                                                                                                                                                                                    -0.0|
-|1970-01-01T08:00:00.001+08:00|            1|            1|                                        2.5|                                          0.9238430524420609|                                                                                                                                                                                    -2.0|
-|1970-01-01T08:00:00.002+08:00|            2|            2|                                        2.5|                                          0.7903505371876317|                                                                                                                                                                                    -4.0|
-+-----------------------------+-------------+-------------+-------------------------------------------+------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-Total line number = 3
-It costs 0.170s
-```
-
 ### Fill Null Value
 
 In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be filled. Therefore, the IoTDB system introduces fill methods.
@@ -1399,15 +1342,159 @@ Total line number = 7
 It costs 0.004s
 ```
 
-#### Nested Expressions query with aggregations
+### Nested Expressions
 
-IoTDB supports aggregation query nested by any other expressions.
+IoTDB supports the calculation of arbitrary nested expressions. Since time series query and aggregation query can not be used in a query statement at the same time, we divide nested expressions into two types, which are nested expressions with time series query and nested expressions with aggregation query. 
+
+The following is the syntax definition of the `select` clause:
+
+```sql
+selectClause
+    : SELECT resultColumn (',' resultColumn)*
+    ;
+
+resultColumn
+    : expression (AS ID)?
+    ;
+
+expression
+    : '(' expression ')'
+    | '-' expression
+    | expression ('*' | '/' | '%') expression
+    | expression ('+' | '-') expression
+    | functionName '(' expression (',' expression)* functionAttribute* ')'
+    | timeSeriesSuffixPath
+    | number
+    ;
+```
+
+#### Nested Expressions with Time Series Query
+
+IoTDB supports the calculation of arbitrary nested expressions consisting of **numbers, time series, time series generating functions (including user-defined functions) and arithmetic expressions** in the `select` clause.
 
 ##### Example
 
-1. Aggregation query without `GROUP BY`.
+Input1：
 
-Input:
+```sql
+select a,
+       b,
+       ((a + 1) * 2 - 1) % 2 + 1.5,
+       sin(a + sin(a + sin(b))),
+       -(a + b) * (sin(a + b) * sin(a + b) + cos(a + b) * cos(a + b)) + 1
+from root.sg1;
+```
+
+Result1：
+
+```
++-----------------------------+----------+----------+----------------------------------------+---------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                         Time|root.sg1.a|root.sg1.b|((((root.sg1.a + 1) * 2) - 1) % 2) + 1.5|sin(root.sg1.a + sin(root.sg1.a + sin(root.sg1.b)))|(-root.sg1.a + root.sg1.b * ((sin(root.sg1.a + root.sg1.b) * sin(root.sg1.a + root.sg1.b)) + (cos(root.sg1.a + root.sg1.b) * cos(root.sg1.a + root.sg1.b)))) + 1|
++-----------------------------+----------+----------+----------------------------------------+---------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|1970-01-01T08:00:00.010+08:00|         1|         1|                                     2.5|                                 0.9238430524420609|                                                                                                                      -1.0|
+|1970-01-01T08:00:00.020+08:00|         2|         2|                                     2.5|                                 0.7903505371876317|                                                                                                                      -3.0|
+|1970-01-01T08:00:00.030+08:00|         3|         3|                                     2.5|                                0.14065207680386618|                                                                                                                      -5.0|
+|1970-01-01T08:00:00.040+08:00|         4|      null|                                     2.5|                                               null|                                                                                                                      null|
+|1970-01-01T08:00:00.050+08:00|      null|         5|                                    null|                                               null|                                                                                                                      null|
+|1970-01-01T08:00:00.060+08:00|         6|         6|                                     2.5|                                -0.7288037411970916|                                                                                                                     -11.0|
++-----------------------------+----------+----------+----------------------------------------+---------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+Total line number = 6
+It costs 0.048s
+```
+
+Input2：
+
+```sql
+select (a + b) * 2 + sin(a) from root.sg
+```
+
+Result2：
+
+```
++-----------------------------+----------------------------------------------+
+|                         Time|((root.sg.a + root.sg.b) * 2) + sin(root.sg.a)|
++-----------------------------+----------------------------------------------+
+|1970-01-01T08:00:00.010+08:00|                             59.45597888911063|
+|1970-01-01T08:00:00.020+08:00|                            100.91294525072763|
+|1970-01-01T08:00:00.030+08:00|                            139.01196837590714|
+|1970-01-01T08:00:00.040+08:00|                            180.74511316047935|
+|1970-01-01T08:00:00.050+08:00|                            219.73762514629607|
+|1970-01-01T08:00:00.060+08:00|                             259.6951893788978|
+|1970-01-01T08:00:00.070+08:00|                             300.7738906815579|
+|1970-01-01T08:00:00.090+08:00|                             39.45597888911063|
+|1970-01-01T08:00:00.100+08:00|                             39.45597888911063|
++-----------------------------+----------------------------------------------+
+Total line number = 9
+It costs 0.011s
+```
+
+Input3：
+
+```sql
+select (a + *) / 2  from root.sg1
+```
+
+Result3：
+
+```
++-----------------------------+-----------------------------+-----------------------------+
+|                         Time|(root.sg1.a + root.sg1.a) / 2|(root.sg1.a + root.sg1.b) / 2|
++-----------------------------+-----------------------------+-----------------------------+
+|1970-01-01T08:00:00.010+08:00|                          1.0|                          1.0|
+|1970-01-01T08:00:00.020+08:00|                          2.0|                          2.0|
+|1970-01-01T08:00:00.030+08:00|                          3.0|                          3.0|
+|1970-01-01T08:00:00.040+08:00|                          4.0|                         null|
+|1970-01-01T08:00:00.060+08:00|                          6.0|                          6.0|
++-----------------------------+-----------------------------+-----------------------------+
+Total line number = 5
+It costs 0.011s
+```
+
+Input4：
+
+```sql
+select (a + b) * 3 from root.sg, root.ln
+```
+
+Result4：
+
+```
++-----------------------------+---------------------------+---------------------------+---------------------------+---------------------------+
+|                         Time|(root.sg.a + root.sg.b) * 3|(root.sg.a + root.ln.b) * 3|(root.ln.a + root.sg.b) * 3|(root.ln.a + root.ln.b) * 3|
++-----------------------------+---------------------------+---------------------------+---------------------------+---------------------------+
+|1970-01-01T08:00:00.010+08:00|                       90.0|                      270.0|                      360.0|                      540.0|
+|1970-01-01T08:00:00.020+08:00|                      150.0|                      330.0|                      690.0|                      870.0|
+|1970-01-01T08:00:00.030+08:00|                      210.0|                      450.0|                      570.0|                      810.0|
+|1970-01-01T08:00:00.040+08:00|                      270.0|                      240.0|                      690.0|                      660.0|
+|1970-01-01T08:00:00.050+08:00|                      330.0|                       null|                       null|                       null|
+|1970-01-01T08:00:00.060+08:00|                      390.0|                       null|                       null|                       null|
+|1970-01-01T08:00:00.070+08:00|                      450.0|                       null|                       null|                       null|
+|1970-01-01T08:00:00.090+08:00|                       60.0|                       null|                       null|                       null|
+|1970-01-01T08:00:00.100+08:00|                       60.0|                       null|                       null|                       null|
++-----------------------------+---------------------------+---------------------------+---------------------------+---------------------------+
+Total line number = 9
+It costs 0.014s
+```
+
+##### Explanation
+
+- Only when the left operand and the right operand under a certain timestamp are not `null`, the nested expressions will have an output value. Otherwise this row will not be included in the result. 
+  - In Result1 of the Example part, the value of time series `root.sg.a` at time 40 is 4, while the value of time series `root.sg.b` is `null`. So at time 40, the value of nested expressions `(a + b) * 2 + sin(a)` is `null`. So in Result2, this row is not included in the result.
+- If one operand in the nested expressions can be translated into multiple time series (For example, `*`), the result of each time series will be included in the result (Cartesian product). Please refer to Input3, Input4 and corresponding Result3 and Result4 in Example.
+
+##### Note
+
+> Please note that Aligned Time Series has not been supported in Nested Expressions with Time Series Query yet. An error message is expected if you use it with Aligned Time Series selected in a query statement.
+
+#### Nested Expressions query with aggregations
+
+IoTDB supports the calculation of arbitrary nested expressions consisting of **numbers, aggregations and arithmetic expressions** in the `select` clause.
+
+##### Example
+
+Aggregation query without `GROUP BY`.
+
+Input1:
 
 ```sql
 select avg(temperature),
@@ -1418,7 +1505,7 @@ select avg(temperature),
 from root.ln.wf01.wt01;
 ```
 
-Result:
+Result1:
 
 ```
 +----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+--------------------------------------------------------------------+
@@ -1430,31 +1517,29 @@ Total line number = 1
 It costs 0.009s
 ```
 
-Input:
+Input2:
 
 ```sql
-select count(a),
-       count(b),
-       ((count(a) + 1) * 2 - 1) % 2 + 1.5,
-       -(count(a) + count(b)) * (count(a) * count(b)) + count(a) / count(b)
-from root.sg;
+select avg(*), 
+	   (avg(*) + 1) * 3 / 2 -1 
+from root.sg1
 ```
 
-Result:
+Result2:
 
 ```
-+----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
-|count(root.sg.a)|count(root.sg.b)|((((count(root.sg.a) + 1) * 2) - 1) % 2) + 1.5|(-count(root.sg.a) + count(root.sg.b) * (count(root.sg.a) * count(root.sg.b))) + (count(root.sg.a) / count(root.sg.b))|
-+----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
-|               4|               3|                                           2.5|                                                                                                    -82.66666666666667|
-+----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
++---------------+---------------+-------------------------------------+-------------------------------------+
+|avg(root.sg1.a)|avg(root.sg1.b)|(((avg(root.sg1.a) + 1) * 3) / 2) - 1|(((avg(root.sg1.b) + 1) * 3) / 2) - 1|
++---------------+---------------+-------------------------------------+-------------------------------------+
+|            3.2|            3.4|                    5.300000000000001|                   5.6000000000000005|
++---------------+---------------+-------------------------------------+-------------------------------------+
 Total line number = 1
-It costs 0.013s
+It costs 0.007s
 ```
 
-2. Aggregation with `GROUP BY`.
+Aggregation with `GROUP BY`.
 
-Input:
+Input3:
 
 ```sql
 select avg(temperature),
@@ -1466,7 +1551,7 @@ from root.ln.wf01.wt01
 GROUP BY([10, 90), 10ms);
 ```
 
-Result:
+Result3:
 
 ```
 +-----------------------------+----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+----------+
@@ -1485,6 +1570,11 @@ Total line number = 8
 It costs 0.012s
 ```
 
+##### Explanation
+
+- Only when the left operand and the right operand under a certain timestamp are not `null`, the nested expressions will have an output value. Otherwise this row will not be included in the result. But for nested expressions with `GROUP BY` clause, it is better to show the result of all time intervals. Please refer to Input3 and corresponding Result3 in Example.
+- If one operand in the nested expressions can be translated into multiple time series (For example, `*`), the result of each time series will be included in the result (Cartesian product). Please refer to Input2 and corresponding Result2 in Example.
+
 ##### Note
 
 > Automated fill (`FILL`) and grouped by level (`GROUP BY LEVEL`) are not supported in an aggregation query with expression nested. They may be supported in future versions.
@@ -1492,6 +1582,7 @@ It costs 0.012s
 > The aggregation expression must be the lowest level input of one expression tree. Any kind expressions except timeseries are not valid as aggregation function parameters。
 >
 > In a word, the following queries are not valid.
+>
 > ```sql
 > SELECT avg(s1+1) FROM root.sg.d1; -- The aggregation function has expression parameters.
 > SELECT avg(s1) + avg(s2) FROM root.sg.* GROUP BY LEVEL=1; -- Grouped by level

@@ -105,6 +105,12 @@ public abstract class PhysicalPlan {
 
   private boolean debug;
 
+  /**
+   * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
+   * DML use prefixMatch.
+   */
+  private boolean isPrefixMatch = false;
+
   /** whether the plan can be split into more than one Plans. Only used in the cluster mode. */
   public boolean canBeSplit() {
     return canBeSplit;
@@ -185,7 +191,7 @@ public abstract class PhysicalPlan {
    *
    * @param buffer
    */
-  public void serialize(ByteBuffer buffer) {
+  public final void serialize(ByteBuffer buffer) {
     buffer.mark();
     try {
       serializeImpl(buffer);
@@ -556,4 +562,12 @@ public abstract class PhysicalPlan {
    * @throws QueryProcessException when the check fails
    */
   public void checkIntegrity() throws QueryProcessException {}
+
+  public boolean isPrefixMatch() {
+    return isPrefixMatch;
+  }
+
+  public void setPrefixMatch(boolean prefixMatch) {
+    isPrefixMatch = prefixMatch;
+  }
 }
