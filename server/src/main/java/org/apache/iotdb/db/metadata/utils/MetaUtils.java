@@ -59,10 +59,48 @@ public class MetaUtils {
         if (startIndex == path.length()) {
           throw new IllegalPathException(path);
         }
+      } else if (path.charAt(i) == '"') {
+        int endIndex = path.indexOf('"', i + 1);
+        // if a double quotes with escape character
+        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
+          endIndex = path.indexOf('"', endIndex + 1);
+        }
+        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
+          String node = path.substring(startIndex, endIndex + 1);
+          if (node.isEmpty()) {
+            throw new IllegalPathException(path);
+          }
+          nodes.add(node);
+          i = endIndex + 1;
+          startIndex = endIndex + 2;
+        } else {
+          throw new IllegalPathException(path);
+        }
+      } else if (path.charAt(i) == '\'') {
+        int endIndex = path.indexOf('\'', i + 1);
+        // if a double quotes with escape character
+        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
+          endIndex = path.indexOf('\'', endIndex + 1);
+        }
+        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
+          String node = path.substring(startIndex, endIndex + 1);
+          if (node.isEmpty()) {
+            throw new IllegalPathException(path);
+          }
+          nodes.add(node);
+          i = endIndex + 1;
+          startIndex = endIndex + 2;
+        } else {
+          throw new IllegalPathException(path);
+        }
       }
     }
     if (startIndex <= path.length() - 1) {
-      nodes.add(path.substring(startIndex));
+      String node = path.substring(startIndex);
+      if (node.isEmpty()) {
+        throw new IllegalPathException(path);
+      }
+      nodes.add(node);
     }
     return nodes.toArray(new String[0]);
   }

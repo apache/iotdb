@@ -37,6 +37,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
@@ -184,6 +185,10 @@ public class MLogWriter implements AutoCloseable {
   }
 
   public void unsetSchemaTemplate(UnsetTemplatePlan plan) throws IOException {
+    putLog(plan);
+  }
+
+  public void dropSchemaTemplate(DropTemplatePlan plan) throws IOException {
     putLog(plan);
   }
 
