@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -59,10 +60,14 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     return memChunk.count();
   }
 
+  /**
+   * Check whether this MemChunkGroup contains a measurement. If a VECTOR_PLACEHOLDER passed from
+   * outer, always return true because AlignedMemChunkGroup existing.
+   */
   @Override
   public boolean contains(String measurement) {
     // used for calculate memtable size
-    if ("".equals(measurement)) {
+    if (AlignedPath.VECTOR_PLACEHOLDER.equals(measurement)) {
       return true;
     }
     return memChunk.containsMeasurement(measurement);
