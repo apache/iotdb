@@ -172,6 +172,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |     类型     | INT32                        |
 |    默认值    | 8086                         |
 | 改后生效方式 | 重启服务生效                 |
+
 ### 写前日志配置
 
 * enable\_wal
@@ -531,20 +532,12 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 
 * concurrent\_sub\_rawQuery\_thread
 
-|名字| concurrent\_sub\_rawQuery\_thread | 
-|:---:|:--| 
-|描述| 原始数据查询时，最多启动多少个线程来执行该操作。如果设置小于等于 0，会采用机器 CPU 核数。| 
-|类型| Int32 | 
-|默认值| 8 | 
-|改后生效方式|重启服务生效|
+|名字| concurrent\_sub\_rawQuery\_thread | |:---:|:--| |描述| 原始数据查询时，最多启动多少个线程来执行该操作。如果设置小于等于 0，会采用机器 CPU 核数。| |类型| Int32 |
+|默认值| 8 | |改后生效方式|重启服务生效|
 
 * raw\_query\_blocking\_queue\_capacity
 
-|名字| raw\_query\_blocking\_queue\_capacity | 
-|:---:|:--| 
-|描述| 原始数据查询中，读任务的阻塞队列长度。默认值为 5。| 
-|类型| Int32 | 
-|默认值| 5 |
+|名字| raw\_query\_blocking\_queue\_capacity | |:---:|:--| |描述| 原始数据查询中，读任务的阻塞队列长度。默认值为 5。| |类型| Int32 | |默认值| 5 |
 |改后生效方式|重启服务生效|
 
 * chunk\_buffer\_pool\_enable
@@ -805,15 +798,6 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |名字| compaction\_schedule\_interval |
 |:---:|:---|
 |描述| 合并调度的时间间隔 |
-|类型| Long，单位为毫秒 |
-|默认值| 60000，建议不要设置的太小 |
-|改后生效方式|重启服务生效|
-
-* compaction\_submission\_interval
-
-|名字| compaction\_submission\_interval |
-|:---:|:---|
-|描述| 合并任务提交的间隔 |
 |类型| Long，单位为毫秒 |
 |默认值| 60000，建议不要设置的太小 |
 |改后生效方式|重启服务生效|
@@ -1710,8 +1694,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 
 ## 开启 GC 日志
 
-GC 日志默认是关闭的。为了性能调优，用户可能会需要收集 GC 信息。
-若要打开 GC 日志，则需要在启动 IoTDB Server 的时候加上"printgc"参数：
+GC 日志默认是关闭的。为了性能调优，用户可能会需要收集 GC 信息。 若要打开 GC 日志，则需要在启动 IoTDB Server 的时候加上"printgc"参数：
 
 ```bash
 nohup sbin/start-server.sh printgc >/dev/null 2>&1 &

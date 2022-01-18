@@ -21,29 +21,40 @@
 
 # Appendix 1: Configuration Parameters
 
+Before starting to use IoTDB, you need to config the configuration files first. For your convenience, we have already
+set the default config in the files.
 
-Before starting to use IoTDB, you need to config the configuration files first. For your convenience, we have already set the default config in the files.
+In total, we provide users three kinds of configurations module:
 
-In total, we provide users three kinds of configurations module: 
+* environment configuration file (`iotdb-env.bat`, `iotdb-env.sh`). The default configuration file for the environment
+  configuration item. Users can configure the relevant system configuration items of JAVA-JVM in the file.
+* system configuration file (`iotdb-engine.properties`).
+	* `iotdb-engine.properties`: The default configuration file for the IoTDB engine layer configuration item. Users can
+	  configure the IoTDB engine related parameters in the file, such as JDBC service listening port (`rpc_port`),
+	  unsequence data storage directory (`unsequence_data_dir`), etc. What's more, Users can configure the information
+	  about the TsFile, such as the data size written to the disk per time(`group_size_in_byte`).
 
-* environment configuration file (`iotdb-env.bat`, `iotdb-env.sh`). The default configuration file for the environment configuration item. Users can configure the relevant system configuration items of JAVA-JVM in the file.
-* system configuration file (`iotdb-engine.properties`). 
-	* `iotdb-engine.properties`: The default configuration file for the IoTDB engine layer configuration item. Users can configure the IoTDB engine related parameters in the file, such as JDBC service listening port (`rpc_port`), unsequence data storage directory (`unsequence_data_dir`), etc. What's more, Users can configure the information about the TsFile, such as the data size written to the disk per time(`group_size_in_byte`). 
-  
 * log configuration file (`logback.xml`)
 
-The configuration files of the three configuration items are located in the IoTDB installation directory: `$IOTDB_HOME/conf` folder.
+The configuration files of the three configuration items are located in the IoTDB installation
+directory: `$IOTDB_HOME/conf` folder.
 
 ## Hot Modification Configuration
 
-For the convenience of users, IoTDB server provides users with hot modification function, that is, modifying some configuration parameters in `iotdb engine. Properties` during the system operation and applying them to the system immediately. 
-In the parameters described below, these parameters whose way of `Effective` is `trigger` support hot modification.
+For the convenience of users, IoTDB server provides users with hot modification function, that is, modifying some
+configuration parameters in `iotdb engine. Properties` during the system operation and applying them to the system
+immediately. In the parameters described below, these parameters whose way of `Effective` is `trigger` support hot
+modification.
 
-Trigger way: The client sends the command `load configuration` to the IoTDB server. See Chapter 4 for the usage of the client.
+Trigger way: The client sends the command `load configuration` to the IoTDB server. See Chapter 4 for the usage of the
+client.
 
 ## IoTDB Environment Configuration File
 
-The environment configuration file is mainly used to configure the Java environment related parameters when IoTDB Server is running, such as JVM related configuration. This part of the configuration is passed to the JVM when the IoTDB Server starts. Users can view the contents of the environment configuration file by viewing the `iotdb-env.sh` (or `iotdb-env.bat`) file.
+The environment configuration file is mainly used to configure the Java environment related parameters when IoTDB Server
+is running, such as JVM related configuration. This part of the configuration is passed to the JVM when the IoTDB Server
+starts. Users can view the contents of the environment configuration file by viewing the `iotdb-env.sh` (
+or `iotdb-env.bat`) file.
 
 The detail of each variables are as follows:
 
@@ -73,7 +84,6 @@ The detail of each variables are as follows:
 |Type|Enum String: "true", "false"|
 |Default|true|
 |Effective|After restarting system|
-
 
 * JMX\_PORT
 
@@ -186,7 +196,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| The default is 2 digits. Note: The 32-bit floating point number has a decimal precision of 7 bits, and the 64-bit floating point number has a decimal precision of 15 bits. If the setting is out of the range, it will have no practical significance. |
 |Effective|Trigger|
 
-
 * bloomFilterErrorRate
 
 |Name| bloomFilterErrorRate |
@@ -195,8 +204,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type|float, (0, 1)|
 |Default| 0.05 |
 |Effective|After restarting system|
-
-
 
 ### Engine Layer
 
@@ -235,7 +242,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type|Boolean|
 |Default| false |
 |Effective|After restarting system|
-
 
 * time\_zone
 
@@ -417,7 +423,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 604800 |
 |Effective|Only allowed to be modified in first start up|
 
-
 * concurrent\_writing\_time\_partition
 
 |Name| concurrent\_writing\_time\_partition |
@@ -528,15 +533,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 60000, don't set it a small value |
 |Effective|After restart system|
 
-* compaction\_submission\_interval
-
-|Name| compaction\_submission\_interval |
-|:---:|:---|
-|Description| interval of submitting compaction task |
-|Type| Long, the unit is millisecond |
-|Default| 60000, don't set it a small value |
-|Effective|After restart system|
-
 * enable\_seq\_space\_compaction
 
 |Name| enable\_seq\_space\_compaction |
@@ -590,7 +586,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type| String |
 |Default| inner_cross, options are inner_cross, balance, cross_inner |
 |Effective|After restart system|
-
 
 * target\_compaction\_file\_size
 
@@ -722,7 +717,8 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| hdfs\_ip |
 |:---:|:---|
-|Description| IP of HDFS if Tsfile and related data files are stored in HDFS. **If there are more than one hdfs\_ip in configuration, Hadoop HA is used.**|
+|Description| IP of HDFS if Tsfile and related data files are stored in HDFS. **If there are more than one hdfs\_ip in
+configuration, Hadoop HA is used.**|
 |Type| String |
 |Default|localhost |
 |Effective|After restarting system|
@@ -772,7 +768,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default|org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider |
 |Effective|After restarting system|
 
-
 * hdfs\_use\_kerberos
 
 |Name| hdfs\_use\_kerberos |
@@ -799,7 +794,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type| String |
 |Default|your principal |
 |Effective|After restarting system|
-
 
 * authorizer\_provider\_class
 
@@ -849,7 +843,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |   Default   | 8086                                  |
 |  Effective  | After restarting system               |
 
-###  Query
+### Query
 
 * default\_fill\_interval
 
@@ -1090,19 +1084,19 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 ## Enable GC log
 
-GC log is off by default.
-For performance tuning, you may want to collect the GC info. 
+GC log is off by default. For performance tuning, you may want to collect the GC info.
 
 To enable GC log, just add a parameter "printgc" when you start the server.
 
 ```bash
 nohup sbin/start-server.sh printgc >/dev/null 2>&1 &
 ```
+
 Or
+
 ```bash
 sbin\start-server.bat printgc
 ```
 
-GC log is stored at `IOTDB_HOME/logs/gc.log`.
-There will be at most 10 gc.log.* files and each one can reach to 10MB.
+GC log is stored at `IOTDB_HOME/logs/gc.log`. There will be at most 10 gc.log.* files and each one can reach to 10MB.
 
