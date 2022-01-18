@@ -156,6 +156,8 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     seqResources.get(0).remove();
     compactionLogger.close();
+    Assert.assertTrue(targetResource.getTsFile().exists());
+    Assert.assertTrue(targetResource.resourceFileExists());
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         logFile,
@@ -207,6 +209,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
       channel.truncate(targetResource.getTsFileSize() - 10);
     }
     compactionLogger.close();
+    Assert.assertTrue(targetResource.getTsFile().exists());
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         logFile,
@@ -264,6 +267,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     seqResources.get(0).remove();
     compactionLogger.close();
 
+    Assert.assertTrue(targetResource.getTsFile().exists());
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         logFile,
@@ -327,6 +331,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     seqResources.get(0).remove();
     compactionLogger.close();
 
+    Assert.assertTrue(targetResource.getTsFile().exists());
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         logFile,

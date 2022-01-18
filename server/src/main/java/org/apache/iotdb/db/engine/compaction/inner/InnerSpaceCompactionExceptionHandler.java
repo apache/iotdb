@@ -74,7 +74,7 @@ public class InnerSpaceCompactionExceptionHandler {
     } else {
       // some source file does not exists
       // it means we start to delete source file
-      LOGGER.info(
+      LOGGER.warn(
           "{} [Compaction][ExceptionHandler] some source files {} is lost",
           fullStorageGroupName,
           lostSourceFiles);
@@ -104,7 +104,7 @@ public class InnerSpaceCompactionExceptionHandler {
           fullStorageGroupName);
       tsFileManager.setAllowCompaction(false);
     } else {
-      LOGGER.info(
+      LOGGER.warn(
           "{} [Compaction][ExceptionHandler] Handle exception successfully, delete log file {}",
           fullStorageGroupName,
           logFile);
@@ -138,7 +138,7 @@ public class InnerSpaceCompactionExceptionHandler {
       TsFileResource targetTsFile,
       List<TsFileResource> selectedTsFileResourceList) {
     // all source file exists, delete the target file
-    LOGGER.info(
+    LOGGER.warn(
         "{} [Compaction][ExceptionHandler] all source files {} exists, delete target file {}",
         fullStorageGroupName,
         selectedTsFileResourceList,
@@ -205,7 +205,7 @@ public class InnerSpaceCompactionExceptionHandler {
     try {
       if (TsFileUtils.isTsFileComplete(targetTsFile.getTsFile())) {
         // target file is complete, delete source files
-        LOGGER.info(
+        LOGGER.warn(
             "{} [Compaction][ExceptionHandler] target file {} is complete, delete remaining source files",
             fullStorageGroupName,
             targetTsFile);
