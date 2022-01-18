@@ -28,6 +28,7 @@ import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLogAnalyzer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -46,7 +47,7 @@ public class TsFilePipe implements Pipe {
 
   private PipeStatus status;
 
-  private final BlockingQueue<TsFilePipeData> pipeData;
+  private final BlockingDeque<TsFilePipeData> pipeData;
   private long maxSerialNumber;
 
   public TsFilePipe(
@@ -81,7 +82,7 @@ public class TsFilePipe implements Pipe {
     }
 
     status = PipeStatus.RUNNING;
-    if (new TsFilePipeLogAnalyzer().isCollectFinished()) {
+    if (new TsFilePipeLogAnalyzer(this).isCollectFinished()) {
       recover();
     } else {
       collectData();

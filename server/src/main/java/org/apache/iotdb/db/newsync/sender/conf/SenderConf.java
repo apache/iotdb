@@ -36,6 +36,7 @@ public class SenderConf {
   public static final String historyPipeLogName = "pipe data.log.history";
   public static final String realTimePipeLogNameSuffix = "-pipe data.log";
   public static final Long defaultPipeLogSizeInByte = 10485760L;
+  public static final String removeSerialNumberLogName = "remove serial number.log";
 
   public static final String sysDir = syncDir + File.separator + "sys";
   public static final String senderLog = sysDir + File.separator + "senderService.log";

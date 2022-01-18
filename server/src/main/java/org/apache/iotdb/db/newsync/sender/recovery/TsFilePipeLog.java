@@ -29,18 +29,20 @@ import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipeData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedWriter;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 
 public class TsFilePipeLog {
@@ -55,6 +57,9 @@ public class TsFilePipeLog {
   private BlockingDeque<Long> realTimePipeLogStartNumber;
   private DataOutputStream realTimeOutputStream;
   private long currentPipeLogSize;
+
+  private BufferedWriter removeSerialNumberWriter;
+  private long currentRemoveLogSize;
 
   public TsFilePipeLog(TsFilePipe tsFilePipe) {
     pipeDir = SenderConf.getPipeDir(tsFilePipe);
@@ -148,7 +153,9 @@ public class TsFilePipeLog {
           realTimePipeLogStartNumber.offer(startTime);
         }
         File writingPipeLog =
-            new File(SenderConf.getRealTimePipeLogName(startTimes.get(startTimes.size() - 1)));
+            new File(
+                pipeLogDir,
+                SenderConf.getRealTimePipeLogName(startTimes.get(startTimes.size() - 1)));
         realTimeOutputStream = new DataOutputStream(new FileOutputStream(writingPipeLog));
         currentPipeLogSize = writingPipeLog.length();
       } else {
@@ -162,7 +169,7 @@ public class TsFilePipeLog {
   }
 
   private void moveToNextPipeLog(long startSerialNumber) throws IOException {
-    File newPipeLog = new File(SenderConf.getRealTimePipeLogName(startSerialNumber));
+    File newPipeLog = new File(pipeLogDir, SenderConf.getRealTimePipeLogName(startSerialNumber));
     createFile(newPipeLog);
 
     realTimeOutputStream = new DataOutputStream(new FileOutputStream(newPipeLog));
@@ -170,8 +177,80 @@ public class TsFilePipeLog {
     currentPipeLogSize = 0;
   }
 
-  public void removePipeData(long serialNumber) {
-    while (!realTimePipeLogStartNumber.isEmpty() && realTimePipeLogStartNumber.peek() < serialNumber) {
+  public void removePipeData(long serialNumber) throws IOException {
+    if (serialNumber > 0) {
+      if (historyOutputStream != null) {
+        removeHistoryPipeLog();
+      }
+      while (!realTimePipeLogStartNumber.isEmpty()) {
+        long pipeLogStartNumber = realTimePipeLogStartNumber.poll();
+        if (!realTimePipeLogStartNumber.isEmpty()
+            && realTimePipeLogStartNumber.peek() < serialNumber) {
+          removeRealTimePipeLog(pipeLogStartNumber);
+        } else {
+          break;
+        }
+      }
+    }
+    serializeRemoveSerialNumber(serialNumber);
+  }
+
+  private void removeHistoryPipeLog() throws IOException {
+    historyOutputStream.close();
+    historyOutputStream = null;
+    File historyPipeLog = new File(pipeLogDir, SenderConf.historyPipeLogName);
+    try {
+      Files.delete(historyPipeLog.toPath());
+    } catch (NoSuchFileException e) {
+      logger.warn(
+          String.format("delete history pipe log in %s error, %s", historyPipeLog.getPath(), e));
+    }
+  }
+
+  private void removeRealTimePipeLog(long serialNumber) throws IOException {
+    File realTimePipeLog = new File(pipeLogDir, SenderConf.getRealTimePipeLogName(serialNumber));
+    removeTsFile(realTimePipeLog);
+    try {
+      Files.delete(realTimePipeLog.toPath());
+    } catch (NoSuchFileException e) {
+      logger.warn(
+          String.format("delete real time pipe log in %s error, %s", realTimePipeLog.getPath(), e));
+    }
+  }
+
+  private void removeTsFile(File realTimePipeLog) {
+    try {
+      List<TsFilePipeData> pipeData = TsFilePipeLogAnalyzer.parseFile(realTimePipeLog);
+      List<File> tsFiles;
+      for (TsFilePipeData data : pipeData)
+        if (data.isTsFile()) {
+          tsFiles = data.getTsFiles();
+          for (File file : tsFiles) {
+            Files.deleteIfExists(file.toPath());
+          }
+        }
+    } catch (IOException e) {
+      logger.warn(
+          String.format(
+              "Can not parse pipe log %s, the tsfiles in this pipe log will not be deleted.",
+              realTimePipeLog.getPath()));
+    }
+  }
+
+  private void serializeRemoveSerialNumber(long serialNumber) throws IOException {
+    if (removeSerialNumberWriter == null) {
+      removeSerialNumberWriter =
+          new BufferedWriter(
+              new FileWriter(new File(pipeLogDir, SenderConf.removeSerialNumberLogName)));
+      currentRemoveLogSize = 0;
+    }
+    removeSerialNumberWriter.write(String.valueOf(serialNumber));
+    removeSerialNumberWriter.newLine();
+    removeSerialNumberWriter.flush();
+    currentRemoveLogSize += Long.BYTES;
+    if (currentRemoveLogSize >= SenderConf.defaultPipeLogSizeInByte) {
+      removeSerialNumberWriter.close();
+      removeSerialNumberWriter = null;
     }
   }
 
