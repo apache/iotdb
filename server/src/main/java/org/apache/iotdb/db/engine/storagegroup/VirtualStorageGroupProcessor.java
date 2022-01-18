@@ -1987,9 +1987,12 @@ public class VirtualStorageGroupProcessor {
       String deviceId = device.getFullPath();
       long endTime = tsFileResource.getEndTime(deviceId);
       if (endTime == Long.MIN_VALUE) {
+        logger.debug("{} in {}: {}", deviceId, tsFileResource, false);
         return false;
       }
 
+      boolean hasDevice = tsFileResource.isDeviceIdExist(deviceId);
+      logger.debug("{} in {}: {}", deviceId, tsFileResource, hasDevice);
       if (tsFileResource.isDeviceIdExist(deviceId)
           && (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= endTime)) {
         return false;
