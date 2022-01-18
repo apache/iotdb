@@ -206,7 +206,7 @@ metricReporterList:
 # Type of monitor frame, options: [micrometer, dropwizard]
 monitorType: micrometer
 
-# Predefined metric, options: [jvm, logback]
+# Predefined metric, options: [jvm, logback], logback are not supported in dropwizard
 predefinedMetrics:
   - jvm
   - logback
