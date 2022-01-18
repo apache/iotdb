@@ -574,4 +574,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     String[] prefixNodes = Arrays.copyOf(nodes, length);
     return new PartialPath(prefixNodes);
   }
+
+  public void removeLast() {
+    nodes = Arrays.copyOf(nodes, nodes.length - 1);
+    this.device = null;
+    this.fullPath = null;
+  }
 }

@@ -320,6 +320,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
       Map<String, List<PartialPath>> sgPathMap, int level, boolean isPrefixMatch)
       throws MetadataException, CheckConsistencyException, PartitionTableUnavailableException,
           NotInSameGroupException {
+
     AtomicInteger result = new AtomicInteger();
     // split the paths by the data group they belong to
     Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();

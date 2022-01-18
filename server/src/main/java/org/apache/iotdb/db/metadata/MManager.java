@@ -1780,7 +1780,7 @@ public class MManager {
       PartialPath path, boolean isPrefixMatch) throws MetadataException {
     Map<String, List<PartialPath>> sgPathMap = mtree.groupPathByStorageGroup(path, isPrefixMatch);
     if (logger.isDebugEnabled()) {
-      logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
+      logger.debug("The storage groups of path {} are {}", path, sgPathMap);
     }
     return sgPathMap;
   }
