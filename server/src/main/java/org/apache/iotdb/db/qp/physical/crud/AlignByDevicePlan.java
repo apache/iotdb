@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -68,9 +69,14 @@ public class AlignByDevicePlan extends QueryPlan {
   public void deduplicate(PhysicalGenerator physicalGenerator) {
     Set<String> pathWithAggregationSet = new LinkedHashSet<>();
     List<String> deduplicatedAggregations = new ArrayList<>();
+    HashSet<String> measurements = new HashSet<>(getMeasurements());
     for (int i = 0; i < paths.size(); i++) {
       PartialPath path = paths.get(i);
       String aggregation = aggregations != null ? aggregations.get(i) : null;
+      String measurementWithAggregation = getMeasurementStrWithAggregation(path, aggregation);
+      if (!measurements.contains(measurementWithAggregation)) {
+        continue;
+      }
       String pathStrWithAggregation = getPathStrWithAggregation(path, aggregation);
       if (!pathWithAggregationSet.contains(pathStrWithAggregation)) {
         pathWithAggregationSet.add(pathStrWithAggregation);
@@ -207,6 +213,14 @@ public class AlignByDevicePlan extends QueryPlan {
   public void setAggregationPlan(AggregationPlan aggregationPlan) {
     this.aggregationPlan = aggregationPlan;
     this.setOperatorType(Operator.OperatorType.AGGREGATION);
+  }
+
+  private String getMeasurementStrWithAggregation(PartialPath path, String aggregation) {
+    String measurement = path.getMeasurement();
+    if (aggregation != null) {
+      measurement = aggregation + "(" + measurement + ")";
+    }
+    return measurement;
   }
 
   private String getPathStrWithAggregation(PartialPath path, String aggregation) {
