@@ -31,8 +31,14 @@ import org.apache.iotdb.library.dprofile.util.GKArray;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.HashMap;
+
 /** calculate the approximate percentile */
 public class UDAFPercentile implements UDTF {
+  //public static HashMap<Integer, Long> intDic;
+  //public static HashMap<Long, Long> longDic;
+  //public static HashMap<Float, Long> floatDic;
+  public static HashMap<Double, Long> Dic;
   private ExactOrderStatistics statistics;
   private GKArray sketch;
   private boolean exact;
@@ -67,6 +73,7 @@ public class UDAFPercentile implements UDTF {
       statistics = new ExactOrderStatistics(parameters.getDataType(0));
     } else {
       sketch = new GKArray(error);
+      Dic = new HashMap<Double,Long>();
     }
   }
 
@@ -75,16 +82,22 @@ public class UDAFPercentile implements UDTF {
     if (exact) {
       statistics.insert(row);
     } else {
-      sketch.insert(Util.getValueAsDouble(row));
+      double res=Util.getValueAsDouble(row);
+      sketch.insert(res);
+      Long time=row.getTime();
+      Dic.put(res,time);
     }
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
     if (exact) {
-      collector.putDouble(0, statistics.getPercentile(rank));
+      double res=statistics.getPercentile(rank);
+      long time=Dic.get(res);
+      collector.putDouble(time, res);
     } else {
-      collector.putDouble(0, sketch.query(rank));
+      double res=sketch.query(rank);
+      collector.putDouble(0, res);
     }
   }
 }
