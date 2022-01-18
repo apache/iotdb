@@ -31,17 +31,11 @@ import org.apache.iotdb.db.protocol.rest.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.model.SQL;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.ListDataSet;
-import org.apache.iotdb.db.query.dataset.ShowDevicesDataSet;
-import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
-import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -113,14 +107,11 @@ public class RestApiServiceImpl extends RestApiService {
                     .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
             .build();
       }
+
       Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
         return response;
       }
-
-      // set max row limit to avoid OOM
-      final int actualRowSizeLimit =
-          sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit();
 
       final long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
       try {
@@ -134,30 +125,17 @@ public class RestApiServiceImpl extends RestApiService {
         QueryDataSet queryDataSet =
             serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-        if (queryDataSet instanceof ShowDevicesDataSet
-            || (queryDataSet instanceof ListDataSet && !(physicalPlan instanceof LastQueryPlan))
-            || queryDataSet instanceof ShowTimeseriesDataSet
-            || (queryDataSet instanceof SingleDataSet
-                && !(physicalPlan instanceof AggregationPlan))) {
-          return QueryDataSetHandler.fillShowPlanDateSet(queryDataSet, actualRowSizeLimit);
-        } else if (queryDataSet instanceof ListDataSet && physicalPlan instanceof LastQueryPlan) {
-          return QueryDataSetHandler.fillLastQueryPlanDateSet(queryDataSet, actualRowSizeLimit);
-        } else if (queryDataSet instanceof SingleDataSet
-            && physicalPlan instanceof AggregationPlan
-            && ((AggregationPlan) physicalPlan).getLevels() != null) {
-          return QueryDataSetHandler.fillAggregationPlanDateSet(
-              queryDataSet, (AggregationPlan) physicalPlan, actualRowSizeLimit);
-        } else if (physicalPlan instanceof QueryPlan) {
-          return QueryDataSetHandler.fillDateSet(
-              queryDataSet, (QueryPlan) physicalPlan, actualRowSizeLimit);
-        }
+        // set max row limit to avoid OOM
+        return QueryDataSetHandler.fillQueryDataSet(
+            queryDataSet,
+            physicalPlan,
+            sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit());
       } finally {
         ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     }
-    return Response.ok().entity(new org.apache.iotdb.db.protocol.rest.model.QueryDataSet()).build();
   }
 
   @Override
