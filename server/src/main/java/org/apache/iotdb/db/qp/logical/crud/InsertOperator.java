@@ -110,7 +110,7 @@ public class InsertOperator extends Operator {
                 measurementsNum, valueLists.get(i).length));
       }
       InsertRowPlan insertRowPlan =
-          new InsertRowPlan(device, times[i], measurementList, valueLists.get(i));
+          new InsertRowPlan(device, times[i], measurementList.clone(), valueLists.get(i));
       insertRowPlan.setAligned(isAligned);
       insertRowsPlan.addOneInsertRowPlan(insertRowPlan, i);
     }

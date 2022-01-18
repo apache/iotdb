@@ -72,6 +72,7 @@ public class CompactionTaskManager implements IService {
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
       new ConcurrentHashMap<>();
   private List<AbstractCompactionTask> runningCompactionTaskList = new ArrayList<>();
+  private Thread submissionThread = new Thread(this::submitTaskFromTaskQueue);
 
   public static Semaphore semaphore = null;
 
@@ -91,6 +92,8 @@ public class CompactionTaskManager implements IService {
       currentTaskNum = new AtomicInteger(0);
       semaphore =
           new Semaphore(IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
+      submissionThread.setName("Compaction-Submission");
+      submissionThread.start();
     }
     logger.info("Compaction task manager started.");
   }
@@ -98,6 +101,8 @@ public class CompactionTaskManager implements IService {
   @Override
   public void stop() {
     if (taskExecutionPool != null) {
+      submissionThread.interrupt();
+      submissionThread = null;
       taskExecutionPool.shutdownNow();
       logger.info("Waiting for task taskExecutionPool to shut down");
       waitTermination();
@@ -108,6 +113,8 @@ public class CompactionTaskManager implements IService {
   @Override
   public void waitAndStop(long milliseconds) {
     if (taskExecutionPool != null) {
+      submissionThread.interrupt();
+      submissionThread = null;
       awaitTermination(taskExecutionPool, milliseconds);
       logger.info("Waiting for task taskExecutionPool to shut down");
       waitTermination();
@@ -115,11 +122,21 @@ public class CompactionTaskManager implements IService {
     }
   }
 
+  public void acquireSemaphore() throws InterruptedException {
+    semaphore.acquire();
+  }
+
+  public void releaseSemaphore() {
+    semaphore.release();
+  }
+
   @TestOnly
   public void waitAllCompactionFinish() {
     long sleepingStartTime = 0;
     long MAX_WAITING_TIME = 120_000L;
     if (taskExecutionPool != null) {
+      submissionThread.interrupt();
+      submissionThread = null;
       while (taskExecutionPool.getActiveCount() > 0 || taskExecutionPool.getQueue().size() > 0) {
         // wait
         try {
@@ -144,6 +161,8 @@ public class CompactionTaskManager implements IService {
 
   private void waitTermination() {
     long startTime = System.currentTimeMillis();
+    submissionThread.interrupt();
+    submissionThread = null;
     while (!taskExecutionPool.isTerminated()) {
       int timeMillis = 0;
       try {
@@ -168,6 +187,8 @@ public class CompactionTaskManager implements IService {
 
   private void awaitTermination(ExecutorService service, long milliseconds) {
     try {
+      submissionThread.interrupt();
+      submissionThread = null;
       service.shutdown();
       service.awaitTermination(milliseconds, TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
@@ -210,7 +231,7 @@ public class CompactionTaskManager implements IService {
   public void submitTaskFromTaskQueue() {
     try {
       while (true) {
-        semaphore.acquire();
+        acquireSemaphore();
         AbstractCompactionTask compactionTask;
         do {
           compactionTask = candidateCompactionTaskQueue.take();
@@ -219,7 +240,12 @@ public class CompactionTaskManager implements IService {
         if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
           addMetrics(compactionTask, false, false);
         }
-
+        AbstractCompactionTask finalCompactionTask = compactionTask;
+        compactionTask.setCallBack(
+            () -> {
+              CompactionTaskManager.getInstance().releaseSemaphore();
+              CompactionTaskManager.getInstance().removeRunningTaskFromList(finalCompactionTask);
+            });
         submitTask(
             compactionTask.getFullStorageGroupName(),
             compactionTask.getTimePartition(),
@@ -282,13 +308,14 @@ public class CompactionTaskManager implements IService {
           .computeIfAbsent(fullStorageGroupName, k -> new ConcurrentHashMap<>())
           .computeIfAbsent(timePartition, k -> new HashSet<>())
           .add(future);
-      return;
+    } else {
+      logger.warn(
+          "A CompactionTask failed to be submitted to CompactionTaskManager because {}",
+          taskExecutionPool == null
+              ? "taskExecutionPool is null"
+              : "taskExecutionPool is terminated");
+      releaseSemaphore();
     }
-    logger.warn(
-        "A CompactionTask failed to be submitted to CompactionTaskManager because {}",
-        taskExecutionPool == null
-            ? "taskExecutionPool is null"
-            : "taskExecutionPool is terminated");
   }
 
   /**
@@ -332,6 +359,8 @@ public class CompactionTaskManager implements IService {
               IoTDBThreadPoolFactory.newScheduledThreadPool(
                   IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
                   ThreadName.COMPACTION_SERVICE.getName());
+      semaphore =
+          new Semaphore(IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
     }
     currentTaskNum = new AtomicInteger(0);
     logger.info("Compaction task manager started.");

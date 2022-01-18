@@ -46,6 +46,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   protected String fullStorageGroupName;
   protected long timePartition;
   protected final AtomicInteger currentTaskNum;
+  protected Runnable callBack = null;
 
   public AbstractCompactionTask(
       String fullStorageGroupName, long timePartition, AtomicInteger currentTaskNum) {
@@ -59,8 +60,8 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   @Override
   public Void call() throws Exception {
     long startTime = System.currentTimeMillis();
-    currentTaskNum.incrementAndGet();
     try {
+      currentTaskNum.incrementAndGet();
       doCompaction();
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
@@ -71,7 +72,9 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
         CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
       }
       this.currentTaskNum.decrementAndGet();
-      CompactionTaskManager.semaphore.release();
+      if (callBack != null) {
+        callBack.run();
+      }
     }
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
@@ -106,11 +109,20 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
    */
   public abstract boolean checkValidAndSetMerging();
 
+  public void setCallBack(Runnable callBack) {
+    this.callBack = callBack;
+  }
+
   @Override
   public boolean equals(Object other) {
     if (other instanceof AbstractCompactionTask) {
       return equalsOtherTask((AbstractCompactionTask) other);
     }
     return false;
+  }
+
+  @FunctionalInterface
+  public interface CompactionCallBack {
+    void call();
   }
 }

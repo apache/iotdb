@@ -132,25 +132,28 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
       // cached during selection
       mergeResource.setCacheDeviceMeta(true);
 
-      AbstractCompactionTask compactionTask =
-          taskFactory.createTask(
-              logicalStorageGroupName,
-              virtualGroupId,
-              timePartition,
-              mergeResource,
-              storageGroupDir,
-              sequenceFileList,
-              unsequenceFileList,
-              mergeFiles[0],
-              mergeFiles[1],
-              fileSelector.getConcurrentMergeNum());
-      CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
-      taskSubmitted = true;
-      LOGGER.info(
-          "{} [Compaction] submit a task with {} sequence file and {} unseq files",
-          logicalStorageGroupName + "-" + virtualGroupId,
-          mergeResource.getSeqFiles().size(),
-          mergeResource.getUnseqFiles().size());
+      if (mergeFiles[0].size() > 0 && mergeFiles[1].size() > 0) {
+        AbstractCompactionTask compactionTask =
+            taskFactory.createTask(
+                logicalStorageGroupName,
+                virtualGroupId,
+                timePartition,
+                mergeResource,
+                storageGroupDir,
+                sequenceFileList,
+                unsequenceFileList,
+                mergeFiles[0],
+                mergeFiles[1],
+                fileSelector.getConcurrentMergeNum());
+        CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
+        taskSubmitted = true;
+        LOGGER.info(
+            "{} [Compaction] submit a task with {} sequence file and {} unseq files",
+            logicalStorageGroupName + "-" + virtualGroupId,
+            mergeResource.getSeqFiles().size(),
+            mergeResource.getUnseqFiles().size());
+      }
+
     } catch (MergeException | IOException | InterruptedException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }

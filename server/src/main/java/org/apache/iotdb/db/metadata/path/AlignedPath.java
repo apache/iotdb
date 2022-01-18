@@ -62,6 +62,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -122,6 +123,10 @@ public class AlignedPath extends PartialPath {
     super(vectorPath);
     measurementList = new ArrayList<>();
     schemaList = new ArrayList<>();
+  }
+
+  public PartialPath getDevicePath() {
+    return new PartialPath(Arrays.copyOf(nodes, nodes.length));
   }
 
   @Override
