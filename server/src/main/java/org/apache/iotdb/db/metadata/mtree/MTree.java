@@ -883,9 +883,8 @@ public class MTree implements Serializable {
    * storage group using the children of a mNode. If one child is a storage group node, put a
    * storageGroupName-fullPath pair into paths.
    */
-  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path,
-      boolean isPrefixMatch)
-      throws MetadataException {
+  public Map<String, List<PartialPath>> groupPathByStorageGroup(
+      PartialPath path, boolean isPrefixMatch) throws MetadataException {
     Map<String, List<PartialPath>> result = new HashMap<>();
     StorageGroupCollector<Map<String, String>> collector =
         new StorageGroupCollector<Map<String, String>>(root, path) {

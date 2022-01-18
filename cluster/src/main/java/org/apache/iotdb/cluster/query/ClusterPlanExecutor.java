@@ -135,7 +135,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @TestOnly
   protected List<MeasurementPath> getPathsName(PartialPath path) throws MetadataException {
     try {
-      return ((CMManager) IoTDB.metaManager).getMatchedPaths(path);
+      return ((CMManager) IoTDB.metaManager).getMatchedPaths(path, false);
     } catch (PartitionTableUnavailableException | NotInSameGroupException e) {
       throw new MetadataException(e);
     }
@@ -143,7 +143,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   protected int getDevicesNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
     // make sure this node knows all storage groups
-    Map<String, List<PartialPath>> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(path, isPrefixMatch);
+    Map<String, List<PartialPath>> sgPathMap =
+        IoTDB.metaManager.groupPathByStorageGroup(path, isPrefixMatch);
     if (sgPathMap.isEmpty()) {
       throw new PathNotExistException(path.getFullPath());
     }
@@ -283,7 +284,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected int getPathsNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
 
-    Map<String, List<PartialPath>> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(path, isPrefixMatch);
+    Map<String, List<PartialPath>> sgPathMap =
+        IoTDB.metaManager.groupPathByStorageGroup(path, isPrefixMatch);
     try {
       return getPathCount(sgPathMap, -1, isPrefixMatch);
     } catch (CheckConsistencyException

@@ -1836,9 +1836,8 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path,
-      boolean isPrefixMatch)
-      throws MetadataException {
+  public Map<String, List<PartialPath>> groupPathByStorageGroup(
+      PartialPath path, boolean isPrefixMatch) throws MetadataException {
     try {
       metaGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
