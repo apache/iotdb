@@ -179,4 +179,13 @@ public class DeletePlan extends PhysicalPlan {
     this.index = buffer.getLong();
     setPrefixMatch(buffer.get() == 1);
   }
+
+  @Override
+  public String toString() {
+    return "DeletePlan{" +
+        "deleteStartTime=" + deleteStartTime +
+        ", deleteEndTime=" + deleteEndTime +
+        ", paths=" + paths +
+        '}';
+  }
 }
