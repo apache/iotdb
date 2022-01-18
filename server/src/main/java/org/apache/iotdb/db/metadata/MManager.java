@@ -2430,4 +2430,17 @@ public class MManager {
     }
   }
   // endregion
+
+  // region Interfaces for Sync
+
+  public List<PhysicalPlan> getStorageGroupAsPlan() {
+    List<PartialPath> allStorageGroups = mtree.getAllStorageGroupPaths();
+    List<PhysicalPlan> result = new LinkedList<>();
+    for (PartialPath sgPath : allStorageGroups) {
+      result.add(new SetStorageGroupPlan(sgPath));
+    }
+    return result;
+  }
+
+  // endregion
 }
