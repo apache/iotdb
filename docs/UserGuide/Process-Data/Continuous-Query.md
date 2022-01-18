@@ -58,7 +58,7 @@ END
 * `<path_prefix>` and `<path_suffix>` are spliced into the queried time series path.
 * `<full_path>` or `<node_name>` specifies the result time series path.
 * `<group_by_interval>` specifies the time grouping length. We currently support the units of ns, us, ms, s, m, h, d, w, mo, y.
-* `<level>` refers to grouping according to the `<level>` level of the time series, and grouping the aggregation result of  time series with the same name below the `<level>` level. For the specific semantics of the Group By Level statement and the definition of `<level>`, see [aggregation-by-level](../IoTDB-SQL-Language/DML-Data-Manipulation-Language.md)
+* `<level>` refers to grouping according to the `<level>` level of the time series, and grouping the aggregation result of  time series with the same name below the `<level>` level. For the specific semantics of the Group By Level statement and the definition of `<level>`, see [aggregation-by-level](../Write-And-Delete-Data/Delete-Data.md)
 
 
 Note:

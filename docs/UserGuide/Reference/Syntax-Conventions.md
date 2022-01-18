@@ -165,7 +165,7 @@ CREATE TIMESERIES root.a.b."s1.s2".c WITH DATATYPE=INT32, ENCODING=RLE
 Keywords are words that have significance in SQL require special treatment for use as identifiers and node names, and need to be escaped with backticks.
 Certain keywords, such as TIME and ROOT, are reserved and cannot use as identifiers and node names (even after escaping).
 
-[Keywords and Reserved Words](../Appendix/Keywords.md) shows the keywords and reserved words in IoTDB 0.13.
+[Keywords and Reserved Words](Keywords.md) shows the keywords and reserved words in IoTDB 0.13.
 
 ## Expressions
 

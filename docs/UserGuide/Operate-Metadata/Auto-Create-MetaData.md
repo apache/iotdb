@@ -104,4 +104,4 @@ Illustrated as the following figure:
 
 * Encoding types can be configured as PLAIN, RLE, TS_2DIFF, GORILLA, DICTIONARY.
 
-* The corresponding relationship between data types and encoding types is detailed in [Encoding](./Encoding.md).
+* The corresponding relationship between data types and encoding types is detailed in [Encoding](../Data-Concept/Encoding.md).
