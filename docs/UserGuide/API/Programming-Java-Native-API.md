@@ -266,7 +266,7 @@ public void addUnalignedMeasurementsIntemplate(String templateName,
 public void deleteNodeInTemplate(String templateName, String path);
 ```
 
-You can query measurement templates with these APIS:
+You can query measurement inside templates with these APIS:
 
 ```java
 // Return the amount of measurements inside a template
@@ -285,7 +285,7 @@ public List<String> showMeasurementsInTemplate(String templateName);
 public List<String> showMeasurementsInTemplate(String templateName, String pattern);
 ```
 
-Set the measurement template named 'templateName' at path 'prefixPath'.
+To implement schema template, you can  set the measurement template named 'templateName' at path 'prefixPath'.
 
 ``` java
 void setSchemaTemplate(String templateName, String prefixPath)
@@ -296,11 +296,28 @@ Before setting template, you should firstly create the template using
 ```java
 void createSchemaTemplate(Template template)
 ```
+
+After setting template to a certain path, you can query for info about template using belowed interface in session:
+
 ```java
-void unsetSchemaTemplate(String prefixPath, String templateName)
+/** @return All template names. */
+public List<String> showAllTemplates();
+
+/** @return All paths have been set to designated template. */
+public List<String> showPathsTemplateSetOn(String templateName);
+
+/** @return All paths are using designated template. */
+public List<String> showPathsTemplateUsingOn(String templateName)
 ```
 
-Unset the measurement template named 'templateName' from path 'prefixPath'. You should ensure that there is a template named 'templateName' set at the path 'prefixPath'.
+If you are ready to get rid of schema template, you can drop it with belowed interface. Make sure the template to drop has been unset from MTree.
+
+```java
+void unsetSchemaTemplate(String prefixPath, String templateName);
+public void dropSchemaTemplate(String templateName);
+```
+
+Unset the measurement template named 'templateName' from path 'prefixPath'. When you issue this interface, you should assure that there is a template named 'templateName' set at the path 'prefixPath'.
 
 Attention: Unsetting the template named 'templateName' from node at path 'prefixPath' or descendant nodes which have already inserted records using template is **not supported**.
 
