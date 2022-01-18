@@ -825,7 +825,7 @@ The function is used to compute the exact or approximate percentile of a numeric
 + `rank`: The rank percentage of the percentile. It should be (0,1] and the default value is 0.5. For instance, a percentile with `rank`=0.5 is the median.
 + `error`: The rank error of the approximate percentile. It should be within [0,1) and the default value is 0. For instance, a 0.5-percentile with `error`=0.01 is the value of the element with rank percentage 0.49~0.51. With `error`=0, the output is the exact percentile.
 
-**Output Series:** Output a single series. The type is DOUBLE. There is only one data point in the series, whose timestamp is the same has which the first percentile value has, and value is the percentile.
+**Output Series:** Output a single series. The type is the same as input series. If `error`=0, there is only one data point in the series, whose timestamp is the same has which the first percentile value has, and value is the percentile, otherwise the timestamp of the only data point is 0. 
 
 **Note:** Missing points, null points and `NaN` in the input series will be ignored.
 
@@ -948,7 +948,7 @@ This function is used to calculate Ljung-Box statistics $Q_{LB}$ for time series
 
 **Output Series:** Output a single series. The type is DOUBLE. The output series is p value, and timestamp means lag.
 
-**Note:** If you want to calculate Ljung-Box statistics $Q_{LB}$ instead of p value, you may use AutoCorrelation function.
+**Note:** If you want to calculate Ljung-Box statistics $Q_{LB}$ instead of p value, you may use ACF function.
 
 ### Examples
 

@@ -20,7 +20,6 @@ package org.apache.iotdb.library.dprofile.util;
 
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
-import org.apache.iotdb.library.dprofile.UDAFPercentile;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
@@ -29,8 +28,6 @@ import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.NoSuchElementException;
 
 /** Util for computing median, MAD, percentile */
@@ -44,23 +41,18 @@ public class ExactOrderStatistics {
 
   public ExactOrderStatistics(TSDataType type) throws UDFInputSeriesDataTypeNotValidException {
     this.dataType = type;
-    UDAFPercentile.Dic = new HashMap<Double,Long>();
     switch (dataType) {
       case INT32:
         intArrayList = new IntArrayList();
-        //UDAFPercentile.Dic = new HashMap<Double,Long>();
         break;
       case INT64:
         longArrayList = new LongArrayList();
-        //UDAFPercentile.Dic = new HashMap<Long, Long>();
         break;
       case FLOAT:
         floatArrayList = new FloatArrayList();
-        //UDAFPercentile.floatDic = new HashMap<Float,Long>();
         break;
       case DOUBLE:
         doubleArrayList = new DoubleArrayList();
-        //UDAFPercentile.doubleDic = new HashMap<Double,Long>();
         break;
       default:
         // This will not happen.
@@ -73,24 +65,20 @@ public class ExactOrderStatistics {
     switch (dataType) {
       case INT32:
         intArrayList.add(row.getInt(0));
-        UDAFPercentile.Dic.put((double)row.getInt(0),row.getTime());
         break;
       case INT64:
         longArrayList.add(row.getLong(0));
-        UDAFPercentile.Dic.put((double)row.getLong(0),row.getTime());
         break;
       case FLOAT:
         float vf = row.getFloat(0);
         if (Float.isFinite(vf)) {
           floatArrayList.add(vf);
-          UDAFPercentile.Dic.put((double)vf,row.getTime());
         }
         break;
       case DOUBLE:
         double vd = row.getDouble(0);
         if (Double.isFinite(vd)) {
           doubleArrayList.add(vd);
-          UDAFPercentile.Dic.put((double)vd,row.getTime());
         }
         break;
       default:
@@ -134,16 +122,16 @@ public class ExactOrderStatistics {
     }
   }
 
-  public double getPercentile(double phi) throws UDFInputSeriesDataTypeNotValidException {
+  public String getPercentile(double phi) throws UDFInputSeriesDataTypeNotValidException {
     switch (dataType) {
       case INT32:
-        return getPercentile(intArrayList, phi);
+        return Integer.toString(getPercentile(intArrayList, phi));
       case INT64:
-        return getPercentile(longArrayList, phi);
+        return Long.toString(getPercentile(longArrayList, phi));
       case FLOAT:
-        return getPercentile(floatArrayList, phi);
+        return Float.toString(getPercentile(floatArrayList, phi));
       case DOUBLE:
-        return getPercentile(doubleArrayList, phi);
+        return Double.toString(getPercentile(doubleArrayList, phi));
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(

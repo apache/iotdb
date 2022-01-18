@@ -35,14 +35,15 @@ import java.util.HashMap;
 
 /** calculate the approximate percentile */
 public class UDAFPercentile implements UDTF {
-  //public static HashMap<Integer, Long> intDic;
-  //public static HashMap<Long, Long> longDic;
-  //public static HashMap<Float, Long> floatDic;
-  public static HashMap<Double, Long> Dic;
+  public static HashMap<Integer, Long> intDic;
+  public static HashMap<Long, Long> longDic;
+  public static HashMap<Float, Long> floatDic;
+  public static HashMap<Double, Long> doubleDic;
   private ExactOrderStatistics statistics;
   private GKArray sketch;
   private boolean exact;
   private double rank;
+  private TSDataType dataType;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -65,7 +66,8 @@ public class UDAFPercentile implements UDTF {
       throws Exception {
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.DOUBLE);
+        .setOutputDataType(parameters.getDataType(0));
+    dataType = parameters.getDataType(0);
     double error = parameters.getDoubleOrDefault("error", 0);
     rank = parameters.getDoubleOrDefault("rank", 0.5);
     exact = (error == 0);
@@ -73,7 +75,22 @@ public class UDAFPercentile implements UDTF {
       statistics = new ExactOrderStatistics(parameters.getDataType(0));
     } else {
       sketch = new GKArray(error);
-      Dic = new HashMap<Double,Long>();
+    }
+    switch (dataType) {
+      case INT32:
+        intDic = new HashMap<>();
+        break;
+      case INT64:
+        longDic = new HashMap<>();
+        break;
+      case FLOAT:
+        floatDic = new HashMap<>();
+        break;
+      case DOUBLE:
+        doubleDic = new HashMap<>();
+        break;
+      default:
+        break;
     }
   }
 
@@ -81,23 +98,71 @@ public class UDAFPercentile implements UDTF {
   public void transform(Row row, PointCollector collector) throws Exception {
     if (exact) {
       statistics.insert(row);
+      switch (dataType) {
+        case INT32:
+          intDic.put(row.getInt(0), row.getTime());
+          break;
+        case INT64:
+          longDic.put(row.getLong(0), row.getTime());
+          break;
+        case FLOAT:
+          floatDic.put(row.getFloat(0), row.getTime());
+          break;
+        case DOUBLE:
+          doubleDic.put(row.getDouble(0), row.getTime());
+          break;
+        default:
+          break;
+      }
     } else {
-      double res=Util.getValueAsDouble(row);
+      double res = Util.getValueAsDouble(row);
       sketch.insert(res);
-      Long time=row.getTime();
-      Dic.put(res,time);
     }
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
     if (exact) {
-      double res=statistics.getPercentile(rank);
-      long time=Dic.get(res);
-      collector.putDouble(time, res);
+      long time;
+      switch (dataType) {
+        case INT32:
+          int ires = Integer.parseInt(statistics.getPercentile(rank));
+          time = intDic.getOrDefault(ires, 0L);
+          collector.putInt(time, ires);
+          break;
+        case INT64:
+          long lres = Long.parseLong(statistics.getPercentile(rank));
+          time = longDic.getOrDefault(lres, 0L);
+          collector.putLong(time, lres);
+          break;
+        case FLOAT:
+          float fres = Float.parseFloat(statistics.getPercentile(rank));
+          time = floatDic.getOrDefault(fres, 0L);
+          collector.putFloat(time, fres);
+          break;
+        case DOUBLE:
+          double dres = Double.parseDouble(statistics.getPercentile(rank));
+          time = doubleDic.getOrDefault(dres, 0L);
+          collector.putDouble(time, dres);
+          break;
+        default:
+          break;
+      }
     } else {
-      double res=sketch.query(rank);
-      collector.putDouble(0, res);
+      double res = sketch.query(rank);
+      switch (dataType) {
+        case INT32:
+          collector.putInt(0, (int) res);
+          break;
+        case INT64:
+          collector.putLong(0, (long) res);
+          break;
+        case FLOAT:
+          collector.putFloat(0, (float) res);
+          break;
+        case DOUBLE:
+          collector.putDouble(0, res);
+      }
     }
   }
 }
