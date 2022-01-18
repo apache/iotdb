@@ -679,6 +679,13 @@ var config = {
 						]
 					},
 					{
+						title: 'Syntax Conventions',
+						sidebarDepth: 2,
+						children: [
+							['Reference/Syntax-Conventions','Syntax Conventions'],
+						]
+					},
+					{
 						title: 'API',
 						children: [
 							['API/Programming-Thrift','Thrift'],
@@ -781,7 +788,6 @@ var config = {
 						children: [
 							['Reference/Config-Manual','Config Manual'],
 							['Reference/Keywords','Keywords'],
-							['Reference/Syntax-Conventions','Syntax Conventions'],
 							['Reference/Frequently-asked-questions','Frequently asked questions'],
 							['Reference/TSDB-Comparison','TSDB Comparison']
 						]
@@ -1474,6 +1480,13 @@ var config = {
 						]
 					},
 					{
+						title: '语法约定',
+						sidebarDepth: 2,
+						children: [
+							['Reference/Syntax-Conventions', '语法约定'],
+						]
+					},
+					{
 						title: '应用编程接口',
 						children: [
 							['API/Programming-Thrift','Thrift'],
@@ -1580,7 +1593,6 @@ var config = {
 						children: [
 							['Reference/Config-Manual','配置参数'],
 							['Reference/Keywords','关键字'],
-							['Reference/Syntax-Conventions','语法约定'],
 							['Reference/Frequently-asked-questions','常见问题'],
 							['Reference/TSDB-Comparison','时间序列数据库比较']
 						]
