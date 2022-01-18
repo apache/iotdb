@@ -677,6 +677,13 @@ var config = {
 						]
 					},
 					{
+						title: 'Syntax Conventions',
+						sidebarDepth: 2,
+						children: [
+							['Reference/Syntax-Conventions','Syntax Conventions'],
+						]
+					},
+					{
 						title: 'API',
 						children: [
 							['API/Programming-Java-Native-API','Java Native API'],
@@ -712,7 +719,16 @@ var config = {
 						title: 'Query Data',
 						sidebarDepth: 1,
 						children: [
-							['Query-Data/Performance-Tracing-Tool','Performance Tracing Tool'],
+							['Query-Data/Overview.md','Overview'],
+							['Query-Data/Select-Expression.md','Select Expression'],
+							['Query-Data/Query-Filter.md','Query Filter'],
+							['Query-Data/Pagination.md','Pagination'],
+							['Query-Data/Result-Format.md','Query Result Formats'],
+							['Query-Data/Aggregate-Query.md','Aggregate Query'],
+							['Query-Data/Last-Query.md','Last Query'],
+							['Query-Data/Fill-Null-Value.md','Fill Null Value'],
+							['Query-Data/Without-Null.md','Without Null'],
+							['Query-Data/Tracing-Tool.md','Tracing Tool']
 						]
 					},
 					{
@@ -772,7 +788,6 @@ var config = {
 						children: [
 							['Reference/Config-Manual','Config Manual'],
 							['Reference/Keywords','Keywords'],
-							['Reference/Syntax-Conventions','Syntax Conventions'],
 							['Reference/Frequently-asked-questions','Frequently asked questions'],
 							['Reference/TSDB-Comparison','TSDB Comparison']
 						]
@@ -1463,6 +1478,13 @@ var config = {
 						]
 					},
 					{
+						title: '语法约定',
+						sidebarDepth: 2,
+						children: [
+							['Reference/Syntax-Conventions', '语法约定'],
+						]
+					},
+					{
 						title: '应用编程接口',
 						children: [
 							['API/Programming-Java-Native-API','Java 原生接口'],
@@ -1502,7 +1524,16 @@ var config = {
 						title: '数据查询',
 						sidebarDepth: 1,
 						children: [
-							['Query-Data/Performance-Tracing-Tool','查询性能追踪'],
+							['Query-Data/Overview.md','概述'],
+							['Query-Data/Select-Expression.md','选择表达式'],
+							['Query-Data/Query-Filter.md','查询过滤条件'],
+							['Query-Data/Pagination.md','查询结果分页'],
+							['Query-Data/Result-Format.md','查询结果对齐格式'],
+							['Query-Data/Aggregate-Query.md','聚合查询'],
+							['Query-Data/Last-Query.md','最新点查询'],
+							['Query-Data/Fill-Null-Value.md','空值填充'],
+							['Query-Data/Without-Null.md','空值过滤'],
+							['Query-Data/Tracing-Tool.md','查询性能追踪']
 						]
 					},
 					{
@@ -1563,7 +1594,6 @@ var config = {
 						children: [
 							['Reference/Config-Manual','配置参数'],
 							['Reference/Keywords','关键字'],
-							['Reference/Syntax-Conventions','语法约定'],
 							['Reference/Frequently-asked-questions','常见问题'],
 							['Reference/TSDB-Comparison','时间序列数据库比较']
 						]

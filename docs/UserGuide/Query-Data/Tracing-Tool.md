@@ -18,19 +18,16 @@
     under the License.
 
 -->
-# 性能追踪工具
 
-> 注意：0.13及以上版本中将不再支持0.12中的 `TRACING ON/OFF` 。
+# Performance Tracing Tool
 
-IoTDB 支持使用 `TRACING` 关键词对查询语句进行性能追踪。用户可以分析查询语句执行中存在的潜在性能问题。
+IoTDB supports the use of the `TRACING` clause to enable performance tracing of executed query statements. Users can use the performance tracing tool to analyze potential performance problems in some statements.
 
-性能追踪的结果包括：
-1. 执行过程中各个阶段的累积耗时。
-2. 与性能分析相关的统计信息。对于查询语句，包括查询的时间序列数、涉及访问的 Tsfile 文件数、需要扫描的 chunk 总数以及平均每个 chunk 包含的数据点个数、读取的 Page 总数以及其中乱序 Page 的个数。
+The current performance analysis includes the following contents:
+1. The elapsed time of each stage of the execution process.
+2. Statistics related to performance analysis, it includes the number of time series queried, the number of Tsfile files accessed, the total number of chunks to be scanned, and the average number of data points contained in the chunk, the total number of pages read, and the number of overlapped pages.
 
-**示例：**
-
-例如执行 `tracing select * from root`，输出结果如下：
+For example, execute `tracing select * from root`, will display the following contents:
 
 ```
 Tracing Activties:
