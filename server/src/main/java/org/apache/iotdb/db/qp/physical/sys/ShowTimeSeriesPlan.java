@@ -140,6 +140,7 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     showTimeSeriesPlan.path = this.path;
     showTimeSeriesPlan.canBeSplit = this.canBeSplit;
     showTimeSeriesPlan.index = this.index;
+    showTimeSeriesPlan.setPrefixMatch(isPrefixMatch());
     return showTimeSeriesPlan;
   }
 }

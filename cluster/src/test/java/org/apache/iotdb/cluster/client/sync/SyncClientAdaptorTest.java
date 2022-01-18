@@ -258,6 +258,7 @@ public class SyncClientAdaptorTest {
               RaftNode header,
               List<String> pathsToQuery,
               int level,
+              boolean isPrefixMatch,
               AsyncMethodCallback<Integer> resultHandler) {
             resultHandler.onComplete(pathsToQuery.size());
           }
@@ -407,7 +408,9 @@ public class SyncClientAdaptorTest {
     assertEquals(paths, result);
     assertEquals(
         paths.size(),
-        (int) SyncClientAdaptor.getPathCount(dataClient, TestUtils.getRaftNode(0, 0), paths, 0));
+        (int)
+            SyncClientAdaptor.getPathCount(
+                dataClient, TestUtils.getRaftNode(0, 0), paths, 0, false));
     assertEquals(
         new HashSet<>(paths),
         SyncClientAdaptor.getAllDevices(dataClient, TestUtils.getRaftNode(0, 0), paths, false));

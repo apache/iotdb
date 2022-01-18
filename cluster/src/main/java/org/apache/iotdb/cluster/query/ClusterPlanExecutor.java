@@ -73,6 +73,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -140,30 +141,20 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
   }
 
-  @Override
   protected int getDevicesNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
-    // adapt to prefix match of IoTDB v0.12
-    int cnt = getDevicesNum(path);
-    if (isPrefixMatch && !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(path.getTailNode())) {
-      // adapt to prefix match of IoTDB v0.12
-      cnt += getDevicesNum(path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
-    }
-    return cnt;
-  }
-
-  protected int getDevicesNum(PartialPath path) throws MetadataException {
     // make sure this node knows all storage groups
     Map<String, List<PartialPath>> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(path);
     if (sgPathMap.isEmpty()) {
       throw new PathNotExistException(path.getFullPath());
     }
     logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
-    int ret = getDeviceCount(sgPathMap);
+    int ret = getDeviceCount(sgPathMap, isPrefixMatch);
     logger.debug("The number of devices satisfying {} is {}", path, ret);
     return ret;
   }
 
-  private int getDeviceCount(Map<String, List<PartialPath>> sgPathMap) throws MetadataException {
+  private int getDeviceCount(Map<String, List<PartialPath>> sgPathMap, boolean isPrefixMatch)
+      throws MetadataException {
     AtomicInteger result = new AtomicInteger();
     // split the paths by the data group they belong to
     Map<PartitionGroup, List<String>> groupPathMap =
@@ -189,7 +180,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
                       .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getRaftId())
                       .syncLeaderWithConsistencyCheck(false);
                   for (String s : pathsToQuery) {
-                    int localResult = getLocalDeviceCount(new PartialPath(s));
+                    int localResult = getLocalDeviceCount(new PartialPath(s), isPrefixMatch);
                     logger.debug(
                         "{}: get device count of {} from {} locally, result {}",
                         s,
@@ -200,7 +191,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
                   }
                 } else {
                   try {
-                    result.addAndGet(getRemoteDeviceCount(partitionGroup, pathsToQuery));
+                    result.addAndGet(
+                        getRemoteDeviceCount(partitionGroup, pathsToQuery, isPrefixMatch));
                   } catch (MetadataException e) {
                     logger.warn(
                         "Cannot get remote device count of {} from {}",
@@ -218,18 +210,20 @@ public class ClusterPlanExecutor extends PlanExecutor {
     return result.get();
   }
 
-  private int getLocalDeviceCount(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getDevicesNum(path);
+  private int getLocalDeviceCount(PartialPath path, boolean isPrefixMatch)
+      throws MetadataException {
+    return IoTDB.metaManager.getDevicesNum(path, isPrefixMatch);
   }
 
-  private int getRemoteDeviceCount(PartitionGroup partitionGroup, List<String> pathsToCount)
+  private int getRemoteDeviceCount(
+      PartitionGroup partitionGroup, List<String> pathsToCount, boolean isPrefixMatch)
       throws MetadataException {
     // choose the node with lowest latency or highest throughput
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     Integer count;
     for (Node node : coordinatedNodes) {
       try {
-        count = getRemoteDeviceCountForOneNode(node, partitionGroup, pathsToCount);
+        count = getRemoteDeviceCountForOneNode(node, partitionGroup, pathsToCount, isPrefixMatch);
         logger.debug(
             "{}: get device count of {} from {}, result {}",
             metaGroupMember.getName(),
@@ -251,7 +245,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private Integer getRemoteDeviceCountForOneNode(
-      Node node, PartitionGroup partitionGroup, List<String> pathsToCount)
+      Node node, PartitionGroup partitionGroup, List<String> pathsToCount, boolean isPrefixMatch)
       throws IOException, TException, InterruptedException {
     Integer count;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -259,7 +253,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
           ClusterIoTDB.getInstance()
               .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       client.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
-      count = SyncClientAdaptor.getDeviceCount(client, partitionGroup.getHeader(), pathsToCount);
+      count =
+          SyncClientAdaptor.getDeviceCount(
+              client, partitionGroup.getHeader(), pathsToCount, isPrefixMatch);
     } else {
       SyncDataClient syncDataClient = null;
       try {
@@ -267,7 +263,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         syncDataClient.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
-        count = syncDataClient.getDeviceCount(partitionGroup.getHeader(), pathsToCount);
+        count =
+            syncDataClient.getDeviceCount(partitionGroup.getHeader(), pathsToCount, isPrefixMatch);
       } catch (TApplicationException e) {
         throw e;
       } catch (TException e) {
@@ -288,15 +285,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
     Map<String, List<PartialPath>> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(path);
     try {
-      int pathCount = getPathCount(sgPathMap, -1);
 
-      if (isPrefixMatch && !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(path.getTailNode())) {
-        path = path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
-        sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(path);
-        pathCount += getPathCount(sgPathMap, -1);
-      }
-
-      return pathCount;
+      return getPathCount(sgPathMap, -1, isPrefixMatch);
     } catch (CheckConsistencyException
         | PartitionTableUnavailableException
         | NotInSameGroupException e) {
@@ -307,14 +297,13 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected int getNodesNumInGivenLevel(PartialPath path, int level, boolean isPrefixMatch)
       throws MetadataException {
-    List<PartialPath> ret = getNodesList(path, level);
-    int cnt = ret.size();
+    Set<PartialPath> ret = new HashSet<>(getNodesList(path, level));
     if (isPrefixMatch && !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(path.getTailNode())) {
       // adapt to prefix match of IoTDB v0.12
-      cnt += getNodesList(path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD), level).size();
+      ret.addAll(getNodesList(path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD), level));
     }
-    logger.debug("The number of paths satisfying {}@{} is {}", path, level, ret);
-    return cnt;
+    logger.debug("The number of paths satisfying {}@{} is {}", path, level, ret.size());
+    return ret.size();
   }
 
   /**
@@ -326,7 +315,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
    * @return the number of paths that match the pattern at given level
    */
   @Deprecated() // when level != -1, sgPathMap may contain paths that generate overlapping results
-  private int getPathCount(Map<String, List<PartialPath>> sgPathMap, int level)
+  private int getPathCount(
+      Map<String, List<PartialPath>> sgPathMap, int level, boolean isPrefixMatch)
       throws MetadataException, CheckConsistencyException, PartitionTableUnavailableException,
           NotInSameGroupException {
     AtomicInteger result = new AtomicInteger();
@@ -346,7 +336,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
             .syncLeaderWithConsistencyCheck(false);
         int localResult = 0;
         for (PartialPath path : paths) {
-          int localPathCount = getLocalPathCount(path, level);
+          int localPathCount = getLocalPathCount(path, level, isPrefixMatch);
           localResult += localPathCount;
           logger.debug(
               "{}: get path count of {} from {} locally, result {}",
@@ -380,7 +370,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
           remoteQueryThreadPool.submit(
               () -> {
                 try {
-                  result.addAndGet(getRemotePathCount(partitionGroup, pathsToQuery, level));
+                  result.addAndGet(
+                      getRemotePathCount(partitionGroup, pathsToQuery, level, isPrefixMatch));
                 } catch (MetadataException e) {
                   logger.warn(
                       "Cannot get remote path count of {} from {}",
@@ -396,25 +387,27 @@ public class ClusterPlanExecutor extends PlanExecutor {
     return result.get();
   }
 
-  private int getLocalPathCount(PartialPath path, int level) throws MetadataException {
+  private int getLocalPathCount(PartialPath path, int level, boolean isPrefixMatch)
+      throws MetadataException {
     int localResult;
     if (level == -1) {
-      localResult = IoTDB.metaManager.getAllTimeseriesCount(path);
+      localResult = IoTDB.metaManager.getAllTimeseriesCount(path, isPrefixMatch);
     } else {
-      localResult = IoTDB.metaManager.getNodesCountInGivenLevel(path, level);
+      localResult = IoTDB.metaManager.getNodesCountInGivenLevel(path, level, isPrefixMatch);
     }
     return localResult;
   }
 
   private int getRemotePathCount(
-      PartitionGroup partitionGroup, List<String> pathsToQuery, int level)
+      PartitionGroup partitionGroup, List<String> pathsToQuery, int level, boolean isPrefixMatch)
       throws MetadataException {
     // choose the node with lowest latency or highest throughput
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     Integer count;
     for (Node node : coordinatedNodes) {
       try {
-        count = getRemotePathCountForOneNode(node, partitionGroup, pathsToQuery, level);
+        count =
+            getRemotePathCountForOneNode(node, partitionGroup, pathsToQuery, level, isPrefixMatch);
         logger.debug(
             "{}: get path count of {} from {}@{}, result {}",
             metaGroupMember.getName(),
@@ -437,7 +430,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private Integer getRemotePathCountForOneNode(
-      Node node, PartitionGroup partitionGroup, List<String> pathsToQuery, int level)
+      Node node,
+      PartitionGroup partitionGroup,
+      List<String> pathsToQuery,
+      int level,
+      boolean isPrefixMatch)
       throws IOException, TException, InterruptedException {
     Integer count;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -446,7 +443,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
               .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       client.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
       count =
-          SyncClientAdaptor.getPathCount(client, partitionGroup.getHeader(), pathsToQuery, level);
+          SyncClientAdaptor.getPathCount(
+              client, partitionGroup.getHeader(), pathsToQuery, level, isPrefixMatch);
     } else {
       SyncDataClient syncDataClient = null;
       try {
@@ -454,7 +452,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         syncDataClient.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
-        count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
+        count =
+            syncDataClient.getPathCount(
+                partitionGroup.getHeader(), pathsToQuery, level, isPrefixMatch);
       } catch (TApplicationException e) {
         throw e;
       } catch (TException e) {
@@ -882,11 +882,13 @@ public class ClusterPlanExecutor extends PlanExecutor {
       throws MetadataException {
     Map<String, List<PartialPath>> sgPathMap =
         IoTDB.metaManager.groupPathByStorageGroup(countPlan.getPath());
-    return getTimeseriesCountGroupByLevel(sgPathMap, countPlan.getLevel());
+    return getTimeseriesCountGroupByLevel(
+        sgPathMap, countPlan.getLevel(), countPlan.isPrefixMatch());
   }
 
   private Map<PartialPath, Integer> getTimeseriesCountGroupByLevel(
-      Map<String, List<PartialPath>> sgPathMap, int level) throws MetadataException {
+      Map<String, List<PartialPath>> sgPathMap, int level, boolean isPrefixMatch)
+      throws MetadataException {
     Map<PartialPath, Integer> retMap = new ConcurrentHashMap<>();
     // split the paths by the data group they belong to
     Map<PartitionGroup, List<String>> groupPathMap =
@@ -915,6 +917,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
                     CountPlan countPlan =
                         new CountPlan(
                             ShowContentType.COUNT_NODE_TIMESERIES, new PartialPath(s), level);
+                    countPlan.setPrefixMatch(isPrefixMatch);
                     Map<PartialPath, Integer> timeseriesCountGroupByLevel =
                         super.getTimeseriesCountGroupByLevel(countPlan);
                     mergeTimeseriesCountGroupByLevel(retMap, timeseriesCountGroupByLevel);
@@ -927,7 +930,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
                   }
                 } else {
                   Map<PartialPath, Integer> timeseriesCountGroupByLevel =
-                      getTimeseriesCountGroupByLevelRemotely(pathsToQuery, level, partitionGroup);
+                      getTimeseriesCountGroupByLevelRemotely(
+                          pathsToQuery, level, partitionGroup, isPrefixMatch);
                   mergeTimeseriesCountGroupByLevel(retMap, timeseriesCountGroupByLevel);
                   logger.debug(
                       "{}: get timeseries group count of {} from {} remotely, result {}",
@@ -961,13 +965,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private Map<PartialPath, Integer> getTimeseriesCountGroupByLevelRemotely(
-      List<String> paths, int level, PartitionGroup group) throws MetadataException {
+      List<String> paths, int level, PartitionGroup group, boolean isPrefixMatch)
+      throws MetadataException {
     // choose the node with lowest latency or highest throughput
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(group);
     Map<PartialPath, Integer> result = Collections.emptyMap();
     for (Node node : coordinatedNodes) {
       try {
-        result = getTimeseriesCountGroupByLevelFromNode(paths, level, node, group);
+        result = getTimeseriesCountGroupByLevelFromNode(paths, level, node, group, isPrefixMatch);
         logger.debug(
             "{}: count timeseries of {} group by {} from {}, result {}",
             metaGroupMember.getName(),
@@ -990,7 +995,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private Map<PartialPath, Integer> getTimeseriesCountGroupByLevelFromNode(
-      List<String> paths, int level, Node node, PartitionGroup partitionGroup)
+      List<String> paths,
+      int level,
+      Node node,
+      PartitionGroup partitionGroup,
+      boolean isPrefixMatch)
       throws IOException, TException, IllegalPathException, InterruptedException {
     Map<String, Integer> remoteResult;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -1000,7 +1009,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
       client.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
       remoteResult =
           SyncClientAdaptor.countDeviceGroupByLevel(
-              client, partitionGroup.getHeader(), paths, level);
+              client, partitionGroup.getHeader(), paths, level, isPrefixMatch);
     } else {
       SyncDataClient syncDataClient = null;
       try {
@@ -1009,7 +1018,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         syncDataClient.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
         remoteResult =
-            syncDataClient.countDeviceGroupByLevel(partitionGroup.getHeader(), paths, level);
+            syncDataClient.countDeviceGroupByLevel(
+                partitionGroup.getHeader(), paths, level, isPrefixMatch);
       } catch (TApplicationException e) {
         throw e;
       } catch (TException e) {

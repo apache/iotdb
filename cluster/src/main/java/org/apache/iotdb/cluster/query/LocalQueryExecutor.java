@@ -1004,28 +1004,28 @@ public class LocalQueryExecutor {
     return previousFill.getFillResult();
   }
 
-  public int getPathCount(List<String> pathsToQuery, int level)
+  public int getPathCount(List<String> pathsToQuery, int level, boolean isPrefixMatch)
       throws CheckConsistencyException, MetadataException {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     int count = 0;
     for (String s : pathsToQuery) {
       if (level == -1) {
-        count += getCMManager().getAllTimeseriesCount(new PartialPath(s));
+        count += getCMManager().getAllTimeseriesCount(new PartialPath(s), isPrefixMatch);
       } else {
-        count += getCMManager().getNodesCountInGivenLevel(new PartialPath(s), level);
+        count += getCMManager().getNodesCountInGivenLevel(new PartialPath(s), level, isPrefixMatch);
       }
     }
     return count;
   }
 
-  public int getDeviceCount(List<String> pathsToQuery)
+  public int getDeviceCount(List<String> pathsToQuery, boolean isPrefixMatch)
       throws CheckConsistencyException, MetadataException {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     int count = 0;
     for (String s : pathsToQuery) {
-      count += getCMManager().getDevicesNum(new PartialPath(s));
+      count += getCMManager().getDevicesNum(new PartialPath(s), isPrefixMatch);
     }
     return count;
   }
@@ -1066,13 +1066,15 @@ public class LocalQueryExecutor {
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
-  public Map<String, Integer> countTimeseriesGroupByLevel(List<String> paths, int level)
+  public Map<String, Integer> countTimeseriesGroupByLevel(
+      List<String> paths, int level, boolean isPrefixMatch)
       throws MetadataException, CheckConsistencyException {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
     Map<String, Integer> fullResult = new HashMap<>();
     for (String path : paths) {
       Map<PartialPath, Integer> partialResult =
-          getCMManager().getMeasurementCountGroupByLevel(new PartialPath(path), level, false);
+          getCMManager()
+              .getMeasurementCountGroupByLevel(new PartialPath(path), level, isPrefixMatch);
       for (Entry<PartialPath, Integer> entry : partialResult.entrySet()) {
         fullResult.compute(
             entry.getKey().getFullPath(),

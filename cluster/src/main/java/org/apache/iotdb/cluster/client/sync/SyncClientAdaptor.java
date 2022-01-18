@@ -366,22 +366,26 @@ public class SyncClientAdaptor {
   }
 
   public static Integer getPathCount(
-      AsyncDataClient client, RaftNode header, List<String> pathsToQuery, int level)
+      AsyncDataClient client,
+      RaftNode header,
+      List<String> pathsToQuery,
+      int level,
+      boolean isPrefixMatch)
       throws InterruptedException, TException {
     AtomicReference<Integer> remoteResult = new AtomicReference<>(null);
     GenericHandler<Integer> handler = new GenericHandler<>(client.getNode(), remoteResult);
 
-    client.getPathCount(header, pathsToQuery, level, handler);
+    client.getPathCount(header, pathsToQuery, level, isPrefixMatch, handler);
     return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 
   public static Integer getDeviceCount(
-      AsyncDataClient client, RaftNode header, List<String> pathsToQuery)
+      AsyncDataClient client, RaftNode header, List<String> pathsToQuery, boolean isPrefixMatch)
       throws InterruptedException, TException {
     AtomicReference<Integer> remoteResult = new AtomicReference<>(null);
     GenericHandler<Integer> handler = new GenericHandler<>(client.getNode(), remoteResult);
 
-    client.getDeviceCount(header, pathsToQuery, handler);
+    client.getDeviceCount(header, pathsToQuery, isPrefixMatch, handler);
     return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 
@@ -536,12 +540,12 @@ public class SyncClientAdaptor {
   }
 
   public static Map<String, Integer> countDeviceGroupByLevel(
-      AsyncDataClient client, RaftNode header, List<String> paths, int level)
+      AsyncDataClient client, RaftNode header, List<String> paths, int level, boolean isPrefixMatch)
       throws TException, InterruptedException {
     AtomicReference<Map<String, Integer>> result = new AtomicReference<>();
     GenericHandler<Map<String, Integer>> handler = new GenericHandler<>(client.getNode(), result);
 
-    client.countDeviceGroupByLevel(header, paths, level, handler);
+    client.countDeviceGroupByLevel(header, paths, level, isPrefixMatch, handler);
     return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 }

@@ -456,23 +456,27 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
       RaftNode header,
       List<String> pathsToQuery,
       int level,
+      boolean isPrefixMatch,
       AsyncMethodCallback<Integer> resultHandler)
       throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "count path");
     if (service != null) {
-      service.getPathCount(header, pathsToQuery, level, resultHandler);
+      service.getPathCount(header, pathsToQuery, level, isPrefixMatch, resultHandler);
     }
   }
 
   @Override
   public void getDeviceCount(
-      RaftNode header, List<String> pathsToQuery, AsyncMethodCallback<Integer> resultHandler)
+      RaftNode header,
+      List<String> pathsToQuery,
+      boolean isPrefixMatch,
+      AsyncMethodCallback<Integer> resultHandler)
       throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "count device");
     if (service != null) {
-      service.getDeviceCount(header, pathsToQuery, resultHandler);
+      service.getDeviceCount(header, pathsToQuery, isPrefixMatch, resultHandler);
     }
   }
 
@@ -652,10 +656,12 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public int getPathCount(RaftNode header, List<String> pathsToQuery, int level) throws TException {
+  public int getPathCount(
+      RaftNode header, List<String> pathsToQuery, int level, boolean isPrefixMatch)
+      throws TException {
     return DataGroupEngine.getInstance()
         .getDataSyncService(header)
-        .getPathCount(header, pathsToQuery, level);
+        .getPathCount(header, pathsToQuery, level, isPrefixMatch);
   }
 
   @Override
@@ -666,10 +672,11 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public int getDeviceCount(RaftNode header, List<String> pathsToQuery) throws TException {
+  public int getDeviceCount(RaftNode header, List<String> pathsToQuery, boolean isPrefixMatch)
+      throws TException {
     return DataGroupEngine.getInstance()
         .getDataSyncService(header)
-        .getDeviceCount(header, pathsToQuery);
+        .getDeviceCount(header, pathsToQuery, isPrefixMatch);
   }
 
   @Override
@@ -774,10 +781,10 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public Map<String, Integer> countDeviceGroupByLevel(
-      RaftNode header, List<String> paths, int level) throws TException {
+      RaftNode header, List<String> paths, int level, boolean isPrefixMatch) throws TException {
     return DataGroupEngine.getInstance()
         .getDataSyncService(header)
-        .countDeviceGroupByLevel(header, paths, level);
+        .countDeviceGroupByLevel(header, paths, level, isPrefixMatch);
   }
 
   @Override
@@ -785,11 +792,12 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
       RaftNode header,
       List<String> paths,
       int level,
+      boolean isPrefixMatch,
       AsyncMethodCallback<Map<String, Integer>> resultHandler)
       throws TException {
     resultHandler.onComplete(
         DataGroupEngine.getInstance()
             .getDataSyncService(header)
-            .countDeviceGroupByLevel(header, paths, level));
+            .countDeviceGroupByLevel(header, paths, level, isPrefixMatch));
   }
 }

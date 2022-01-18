@@ -205,8 +205,11 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       } catch (CheckConsistencyException e) {
         throw new QueryProcessException(e.getMessage());
       }
-      return calculateLastPairForSeriesLocally(
-          seriesPaths, dataTypes, context, expression, queryPlan.getDeviceToMeasurements());
+      List<Pair<Boolean, TimeValuePair>> pairs =
+          calculateLastPairForSeriesLocally(
+              seriesPaths, dataTypes, context, expression, queryPlan.getDeviceToMeasurements());
+      logger.debug("Last result of {} from {} locally: {}", seriesPaths, group, pairs);
+      return pairs;
     }
 
     private List<Pair<Boolean, TimeValuePair>> calculateSeriesLastRemotely(
@@ -232,6 +235,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
             TimeValuePair pair = timeValuePairs.get(i);
             results.add(new Pair<>(true, pair));
           }
+          logger.debug("Last result of {} from {}@{}: {}", seriesPaths, node, group, results);
           return results;
         } catch (IOException | TException e) {
           logger.warn("Query last of {} from {} errored", group, seriesPaths, e);

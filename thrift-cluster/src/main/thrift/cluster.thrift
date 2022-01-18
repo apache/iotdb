@@ -463,9 +463,10 @@ service TSDataService extends RaftService {
   **/
   binary last(1: LastQueryRequest request)
 
-  int getPathCount(1: RaftNode header, 2: list<string> pathsToQuery, 3: int level)
+  int getPathCount(1: RaftNode header, 2: list<string> pathsToQuery, 3: int level, 4: bool
+  isPrefixMatch)
 
-  int getDeviceCount(1: RaftNode header, 2: list<string> pathsToQuery)
+  int getDeviceCount(1: RaftNode header, 2: list<string> pathsToQuery, 3: bool isPrefixMatch)
 
   /**
   * During slot transfer, when a member has pulled snapshot from a group, the member will use this
@@ -476,7 +477,8 @@ service TSDataService extends RaftService {
   binary peekNextNotNullValue(1: RaftNode header, 2: long executorId, 3: long startTime, 4: long
   endTime)
 
-  map<string, int> countDeviceGroupByLevel(1: RaftNode header, 2: list<string> paths, 3: int level)
+  map<string, int> countDeviceGroupByLevel(1: RaftNode header, 2: list<string> paths, 3: int
+  level, 4: bool isPrefixMatch)
 }
 
 service TSMetaService extends RaftService {

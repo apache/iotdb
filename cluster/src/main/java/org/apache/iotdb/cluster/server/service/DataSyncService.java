@@ -427,18 +427,23 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public int getPathCount(RaftNode header, List<String> pathsToQuery, int level) throws TException {
+  public int getPathCount(
+      RaftNode header, List<String> pathsToQuery, int level, boolean isPrefixMatch)
+      throws TException {
     try {
-      return dataGroupMember.getLocalQueryExecutor().getPathCount(pathsToQuery, level);
+      return dataGroupMember
+          .getLocalQueryExecutor()
+          .getPathCount(pathsToQuery, level, isPrefixMatch);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TApplicationException(e.getMessage());
     }
   }
 
   @Override
-  public int getDeviceCount(RaftNode header, List<String> pathsToQuery) throws TException {
+  public int getDeviceCount(RaftNode header, List<String> pathsToQuery, boolean isPrefixMatch)
+      throws TException {
     try {
-      return dataGroupMember.getLocalQueryExecutor().getDeviceCount(pathsToQuery);
+      return dataGroupMember.getLocalQueryExecutor().getDeviceCount(pathsToQuery, isPrefixMatch);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TApplicationException(e.getMessage());
     }
@@ -463,9 +468,11 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
 
   @Override
   public Map<String, Integer> countDeviceGroupByLevel(
-      RaftNode header, List<String> paths, int level) throws TException {
+      RaftNode header, List<String> paths, int level, boolean isPrefixMatch) throws TException {
     try {
-      return dataGroupMember.getLocalQueryExecutor().countTimeseriesGroupByLevel(paths, level);
+      return dataGroupMember
+          .getLocalQueryExecutor()
+          .countTimeseriesGroupByLevel(paths, level, isPrefixMatch);
     } catch (MetadataException e) {
       throw new TApplicationException(e.getMessage());
     }

@@ -453,10 +453,11 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       RaftNode header,
       List<String> pathsToQuery,
       int level,
+      boolean isPrefixMatch,
       AsyncMethodCallback<Integer> resultHandler) {
     try {
       resultHandler.onComplete(
-          dataGroupMember.getLocalQueryExecutor().getPathCount(pathsToQuery, level));
+          dataGroupMember.getLocalQueryExecutor().getPathCount(pathsToQuery, level, isPrefixMatch));
     } catch (CheckConsistencyException | MetadataException e) {
       resultHandler.onError(e);
     }
@@ -464,11 +465,14 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void getDeviceCount(
-      RaftNode header, List<String> pathsToQuery, AsyncMethodCallback<Integer> resultHandler)
+      RaftNode header,
+      List<String> pathsToQuery,
+      boolean isPrefixMatch,
+      AsyncMethodCallback<Integer> resultHandler)
       throws TException {
     try {
       resultHandler.onComplete(
-          dataGroupMember.getLocalQueryExecutor().getDeviceCount(pathsToQuery));
+          dataGroupMember.getLocalQueryExecutor().getDeviceCount(pathsToQuery, isPrefixMatch));
     } catch (CheckConsistencyException | MetadataException e) {
       resultHandler.onError(e);
     }
@@ -502,11 +506,14 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       RaftNode header,
       List<String> paths,
       int level,
+      boolean isPrefixMatch,
       AsyncMethodCallback<Map<String, Integer>> resultHandler)
       throws TException {
     try {
       resultHandler.onComplete(
-          dataGroupMember.getLocalQueryExecutor().countTimeseriesGroupByLevel(paths, level));
+          dataGroupMember
+              .getLocalQueryExecutor()
+              .countTimeseriesGroupByLevel(paths, level, isPrefixMatch));
     } catch (MetadataException e) {
       resultHandler.onError(e);
     }
