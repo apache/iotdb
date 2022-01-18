@@ -539,7 +539,7 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public GetAllPathsResult getAllPaths(
-      RaftNode header, List<String> path, boolean isPrefixMatch, boolean withAlias)
+      RaftNode header, List<String> path, boolean withAlias, boolean isPrefixMatch)
       throws TException {
     return DataGroupEngine.getInstance()
         .getDataSyncService(header)
