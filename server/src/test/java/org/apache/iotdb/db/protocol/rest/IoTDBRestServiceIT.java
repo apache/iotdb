@@ -185,6 +185,7 @@ public class IoTDBRestServiceIT {
     showDevicesWithStroage(httpClient);
     listUser(httpClient);
     selectCount(httpClient);
+    selectLast(httpClient);
     try {
       httpClient.close();
     } catch (IOException e) {
@@ -736,5 +737,51 @@ public class IoTDBRestServiceIT {
         };
     Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
+  }
+
+  public void selectLast(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"select last s4 from root.sg25\"}";
+    Map map = queryMetaData(httpClient, sql);
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+    List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+    Assert.assertTrue(map.size() > 0);
+    List<Object> columnNames =
+        new ArrayList<Object>() {
+          {
+            add("timeseries");
+            add("value");
+            add("dataType");
+          }
+        };
+    List<Long> timestamps =
+        new ArrayList<Long>() {
+          {
+            add(1635232153960l);
+          }
+        };
+    List<Object> values1 =
+        new ArrayList<Object>() {
+          {
+            add("root.sg25.s4");
+          }
+        };
+    List<Object> values2 =
+        new ArrayList<Object>() {
+          {
+            add("2");
+          }
+        };
+    List<Object> values3 =
+        new ArrayList<Object>() {
+          {
+            add("INT32");
+          }
+        };
+    Assert.assertEquals(columnNames, columnNamesResult);
+    Assert.assertEquals(timestamps, timestampsResult);
+    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertEquals(values2.get(0), valuesResult.get(1).get(0));
+    Assert.assertEquals(values3, valuesResult.get(2));
   }
 }
