@@ -76,7 +76,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 ### 4.3. IoTDB Metrics
 
-### 4.4. API
+#### 4.3.1. API
 
 | Metric              | Tag                   | Description                              | Sample                                       |
 | ------------------- | --------------------- | ---------------------------------------- | -------------------------------------------- |
@@ -85,14 +85,14 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | entry_seconds_max   | name="interface name" | The max latency of the interface         | entry_seconds_max{name="openSession",} 0.024 |
 | quantity_total      | name="pointsIn"       | The total points inserted into IoTDB     | quantity_total{name="pointsIn",} 1.0         |
 
-### 4.5. File
+#### 4.3.2. File
 
 | Metric     | Tag                  | Description                                     | Sample                      |
 | ---------- | -------------------- | ----------------------------------------------- | --------------------------- |
 | file_size  | name="wal/seq/unseq" | The current file size of wal/seq/unseq in bytes | file_size{name="wal",} 67.0 |
 | file_count | name="wal/seq/unseq" | The current count of wal/seq/unseq files        | file_count{name="seq",} 1.0 |
 
-### 4.6. Flush
+#### 4.3.3. Flush
 
 | Metric                  | Tag                                         | Description                                                  | Sample                                                       |
 | ----------------------- | ------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -101,7 +101,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | cost_task_seconds_max   | name="flush"                                | The seconds of the longest flushing task takes till now      | cost_task_seconds_max{name="flush",} 0.363                   |
 | cost_task_seconds_sum   | name="flush"                                | The total cost seconds of all flushing tasks till now        | cost_task_seconds_sum{name="flush",} 0.363                   |
 
-### 4.7. Compaction
+#### 4.3.4. Compaction
 
 | Metric                  | Tag                                                          | Description                                                  | Sample                                               |
 | ----------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ---------------------------------------------------- |
@@ -110,25 +110,25 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | cost_task_seconds_max   | name="compaction"                                            | The seconds of the longest compaction task takes till now    | cost_task_seconds_max{name="compaction",} 0.363      |
 | cost_task_seconds_sum   | name="compaction"                                            | The total cost seconds of all compaction tasks till now      | cost_task_seconds_sum{name="compaction",} 0.363      |
 
-### 4.8. Memory Usage
+#### 4.3.5. Memory Usage
 
 | Metric | Tag                                     | Description                                                  | Sample                            |
 | ------ | --------------------------------------- | ------------------------------------------------------------ | --------------------------------- |
 | mem    | name="chunkMetaData/storageGroup/mtree" | Current memory size of chunkMetaData/storageGroup/mtree data in bytes | mem{name="chunkMetaData",} 2050.0 |
 
-### 4.9. Cache Hit Ratio
+#### 4.3.6. Cache Hit Ratio
 
 | Metric    | Tag                                     | Description                                                  | Sample                      |
 | --------- | --------------------------------------- | ------------------------------------------------------------ | --------------------------- |
 | cache_hit | name="chunk/timeSeriesMeta/bloomFilter" | Cache hit ratio of chunk/timeSeriesMeta  and prevention ratio of bloom filter | cache_hit{name="chunk",} 80 |
 
-### 4.10. Business Data
+#### 4.3.7. Business Data
 
 | Metric   | Tag                                   | Description                                                  | Sample                           |
 | -------- | ------------------------------------- | ------------------------------------------------------------ | -------------------------------- |
 | quantity | name="timeSeries/storageGroup/device" | The current count of timeSeries/storageGroup/devices in IoTDB | quantity{name="timeSeries",} 1.0 |
 
-### 4.11. Cluster
+#### 4.3.8. Cluster
 
 | Metric                    | Tag                             | Description                                                  | Sample                                                       |
 | ------------------------- | ------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -137,15 +137,15 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | cluster_node_status       | name="{{ip}}"                   | The current node status, 1=online  2=offline                 | cluster_node_status{name="127.0.0.1",} 1.0                   |
 | cluster_elect_total       | name="{{ip}}",status="fail/win" | The count and result (won or failed) of elections the node participated in. | cluster_elect_total{name="127.0.0.1",status="win",} 1.0      |
 
-### 4.12. Log Events
+#### 4.3.9. Log Events
 
 | Metric               | Tag                                    | Description                                                  | Sample                                  |
 | -------------------- | -------------------------------------- | ------------------------------------------------------------ | --------------------------------------- |
 | logback_events_total | {level="trace/debug/info/warn/error",} | The count of  trace/debug/info/warn/error log events till now | logback_events_total{level="warn",} 0.0 |
 
-### 4.13. JVM
+#### 4.3.10. JVM
 
-#### 4.13.1. Threads
+##### 4.3.10.1. Threads
 
 | Metric                     | Tag                                                          | Description                          | Sample                                             |
 | -------------------------- | ------------------------------------------------------------ | ------------------------------------ | -------------------------------------------------- |
@@ -154,7 +154,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | jvm_threads_peak_threads   | None                                                         | The max count of threads till now    | jvm_threads_peak_threads 28.0                      |
 | jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | The count of threads in each status  | jvm_threads_states_threads{state="runnable",} 10.0 |
 
-#### 4.13.2. GC
+##### 4.3.10.2. GC
 
 | Metric                              | Tag                                                    | Description                                                  | Sample                                                       |
 | ----------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -167,7 +167,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | jvm_gc_live_data_size_bytes         | 无                                                     | Size of long-lived heap memory pool after reclamation        | jvm_gc_live_data_size_bytes 8450088.0                        |
 | jvm_gc_memory_allocated_bytes_total | None                                                   | Incremented for an increase in the size of the (young) heap memory pool after one GC to before the next | jvm_gc_memory_allocated_bytes_total 4.2979144E7              |
 
-#### 4.13.3. Memory
+##### 4.3.10.3. Memory
 
 | Metric                          | Tag                             | Description                                                  | Sample                                                       |
 | ------------------------------- | ------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -178,7 +178,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | The maximum amount of memory in bytes that can be used for memory management | jvm_memory_max_bytes{area="heap",id="Par Survivor Space",} 2.44252672E8<br/>jvm_memory_max_bytes{area="nonheap",id="Compressed Class Space",} 1.073741824E9 |
 | jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | The amount of used memory                                    | jvm_memory_used_bytes{area="heap",id="Par Eden Space",} 1.000128376E9<br/>jvm_memory_used_bytes{area="nonheap",id="Code Cache",} 2.9783808E7<br/> |
 
-#### 4.13.4. Classes
+##### 4.3.10.4. Classes
 
 | Metric                             | Tag                                           | Description                                                  | Sample                                                       |
 | ---------------------------------- | --------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
