@@ -165,8 +165,12 @@ It costs 0.004s
 
 * SHOW TIMESERIES LIMIT INT OFFSET INT
 
-  returns all the timeseries information start from the offset and limit the number of series returned
-  
+  returns all the timeseries information start from the offset and limit the number of series returned. For example,
+
+```
+show timeseries root.ln.** limit 10 offset 10
+```
+
 * SHOW LATEST TIMESERIES
 
   all the returned timeseries information should be sorted in descending order of the last timestamp of timeseries
