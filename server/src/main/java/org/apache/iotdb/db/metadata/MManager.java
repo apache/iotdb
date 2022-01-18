@@ -616,7 +616,7 @@ public class MManager {
         }
         plan.setTagOffset(offset);
         logWriter.createTimeseries(plan);
-        if(syncManager.isEnableSync()){
+        if (syncManager.isEnableSync()) {
           syncManager.syncMetadataPlan(plan);
         }
       }
@@ -716,7 +716,7 @@ public class MManager {
       // write log
       if (!isRecovering) {
         logWriter.createAlignedTimeseries(plan);
-        if(syncManager.isEnableSync()){
+        if (syncManager.isEnableSync()) {
           syncManager.syncMetadataPlan(plan);
         }
       }
@@ -806,7 +806,7 @@ public class MManager {
         }
         deleteTimeSeriesPlan.setDeletePathList(Collections.singletonList(p));
         logWriter.deleteTimeseries(deleteTimeSeriesPlan);
-        if(syncManager.isEnableSync()){
+        if (syncManager.isEnableSync()) {
           syncManager.syncMetadataPlan(deleteTimeSeriesPlan);
         }
       }
@@ -868,7 +868,7 @@ public class MManager {
       }
       if (!isRecovering) {
         logWriter.setStorageGroup(storageGroup);
-        if(syncManager.isEnableSync()){
+        if (syncManager.isEnableSync()) {
           syncManager.syncMetadataPlan(new SetStorageGroupPlan(storageGroup));
         }
       }
@@ -912,7 +912,7 @@ public class MManager {
         // if success
         if (!isRecovering) {
           logWriter.deleteStorageGroup(storageGroup);
-          if(syncManager.isEnableSync()){
+          if (syncManager.isEnableSync()) {
             syncManager.syncMetadataPlan(plansForSync);
           }
         }

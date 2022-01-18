@@ -27,10 +27,10 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLog;
 import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLogAnalyzer;
-
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.service.IoTDB;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
