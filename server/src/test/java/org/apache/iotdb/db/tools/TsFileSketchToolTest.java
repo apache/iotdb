@@ -158,24 +158,12 @@ public class TsFileSketchToolTest {
 
   @Test
   public void tsFileSketchToolTest() {
-    String args[] = new String[2];
+    String[] args = new String[2];
     args[0] = path;
     args[1] = sketchOut;
     TsFileSketchTool tool = new TsFileSketchTool(path, sketchOut);
     try {
       tool.run();
-    } catch (IOException e) {
-      Assert.fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void allChunkGroupMetadataTest() {
-    String args[] = new String[2];
-    args[0] = path;
-    args[1] = sketchOut;
-    TsFileSketchTool tool = new TsFileSketchTool(path, sketchOut);
-    try {
       List<ChunkGroupMetadata> chunkGroupMetadataList = tool.getAllChunkGroupMetadata();
       Assert.assertEquals(2, chunkGroupMetadataList.size());
       for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
