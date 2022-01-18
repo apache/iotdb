@@ -57,7 +57,6 @@ public class ZigzagDecoderTest {
       intList.add(i);
     }
 
-
     randomIntList = new ArrayList<Integer>();
 
     for (int i = 0; i < int_num; i++) {

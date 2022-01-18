@@ -46,7 +46,7 @@ public class ZigzagEncoder extends Encoder {
     logger.debug("tsfile-encoding ZigzagEncoder: init zigzag encoder");
   }
 
-  /** encoding and bit packing*/
+  /** encoding and bit packing */
   private byte[] encodeInt(int n) {
     n = (n << 1) ^ (n >> 31);
     int idx = 0;
