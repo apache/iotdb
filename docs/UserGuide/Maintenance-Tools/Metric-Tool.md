@@ -137,15 +137,12 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | cluster_node_status       | name="{{ip}}"                   | The current node status, 1=online  2=offline                 | cluster_node_status{name="127.0.0.1",} 1.0                   |
 | cluster_elect_total       | name="{{ip}}",status="fail/win" | The count and result (won or failed) of elections the node participated in. | cluster_elect_total{name="127.0.0.1",status="win",} 1.0      |
 
-#### 4.3.9. Log Events
+### 4.4. IoTDB PreDefined Metrics Set
+Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file to enable the predefined set of metrics, which `logback` does not support in `dropwizard`.
 
-| Metric               | Tag                                    | Description                                                  | Sample                                  |
-| -------------------- | -------------------------------------- | ------------------------------------------------------------ | --------------------------------------- |
-| logback_events_total | {level="trace/debug/info/warn/error",} | The count of  trace/debug/info/warn/error log events till now | logback_events_total{level="warn",} 0.0 |
+#### 4.4.1. JVM
 
-#### 4.3.10. JVM
-
-##### 4.3.10.1. Threads
+##### 4.4.1.1. Threads
 
 | Metric                     | Tag                                                          | Description                          | Sample                                             |
 | -------------------------- | ------------------------------------------------------------ | ------------------------------------ | -------------------------------------------------- |
@@ -154,7 +151,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | jvm_threads_peak_threads   | None                                                         | The max count of threads till now    | jvm_threads_peak_threads 28.0                      |
 | jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | The count of threads in each status  | jvm_threads_states_threads{state="runnable",} 10.0 |
 
-##### 4.3.10.2. GC
+##### 4.4.1.2. GC
 
 | Metric                              | Tag                                                    | Description                                                  | Sample                                                       |
 | ----------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -167,7 +164,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | jvm_gc_live_data_size_bytes         | 无                                                     | Size of long-lived heap memory pool after reclamation        | jvm_gc_live_data_size_bytes 8450088.0                        |
 | jvm_gc_memory_allocated_bytes_total | None                                                   | Incremented for an increase in the size of the (young) heap memory pool after one GC to before the next | jvm_gc_memory_allocated_bytes_total 4.2979144E7              |
 
-##### 4.3.10.3. Memory
+##### 4.4.1.3. Memory
 
 | Metric                          | Tag                             | Description                                                  | Sample                                                       |
 | ------------------------------- | ------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -178,7 +175,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | The maximum amount of memory in bytes that can be used for memory management | jvm_memory_max_bytes{area="heap",id="Par Survivor Space",} 2.44252672E8<br/>jvm_memory_max_bytes{area="nonheap",id="Compressed Class Space",} 1.073741824E9 |
 | jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | The amount of used memory                                    | jvm_memory_used_bytes{area="heap",id="Par Eden Space",} 1.000128376E9<br/>jvm_memory_used_bytes{area="nonheap",id="Code Cache",} 2.9783808E7<br/> |
 
-##### 4.3.10.4. Classes
+##### 4.4.1.4. Classes
 
 | Metric                             | Tag                                           | Description                                                  | Sample                                                       |
 | ---------------------------------- | --------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -186,6 +183,13 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | jvm_classes_loaded_classes         | 无                                            | The number of classes that are currently loaded in the Java virtual machine | jvm_classes_loaded_classes 5975.0                            |
 | jvm_compilation_time_ms_total      | {compiler="HotSpot 64-Bit Tiered Compilers",} | The approximate accumulated elapsed time spent in compilation | jvm_compilation_time_ms_total{compiler="HotSpot 64-Bit Tiered Compilers",} 107092.0 |
 
+#### 4.4.2. Log Events
+
+| Metric               | Tag                                    | Description                                                  | Sample                                  |
+| -------------------- | -------------------------------------- | ------------------------------------------------------------ | --------------------------------------- |
+| logback_events_total | {level="trace/debug/info/warn/error",} | The count of  trace/debug/info/warn/error log events till now | logback_events_total{level="warn",} 0.0 |
+
+### 4.5. Add custom metrics
 If you want to add your own metrics data in IoTDB, please see the [IoTDB Metric Framework] (https://github.com/apache/iotdb/tree/master/metrics) document.
 
 ## 5. How to get these metrics？
