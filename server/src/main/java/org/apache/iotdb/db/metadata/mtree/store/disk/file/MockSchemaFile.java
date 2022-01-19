@@ -56,6 +56,16 @@ public class MockSchemaFile implements ISchemaFile {
     IMNode result = null;
     if (segment != null) {
       result = cloneMNode(segment.get(childName));
+      if (result == null) {
+        if (parent.isEntity()) {
+          for (IMNode node : segment.values()) {
+            if (node.isMeasurement() && childName.equals(node.getAsMeasurementMNode().getAlias())) {
+              result = cloneMNode(node);
+              break;
+            }
+          }
+        }
+      }
     }
     if (result != null) {
       result.setParent(parent);

@@ -44,14 +44,12 @@ public class CacheStrategy implements ICacheStrategy {
   @Override
   public void cacheMNode(IMNode node) {
     node.setCacheEntry(new CacheEntry());
-    if (node.getParent() != null) {
-      getBelongedContainer(node).addChildToCache(node);
-    }
   }
 
   @Override
   public void updateCacheStatusAfterRead(IMNode node) {
     CacheEntry cacheEntry = node.getCacheEntry();
+    getBelongedContainer(node).addChildToCache(node);
     if (cacheEntry.isPinned()) {
       return;
     }
@@ -67,9 +65,6 @@ public class CacheStrategy implements ICacheStrategy {
     CacheEntry cacheEntry = node.getCacheEntry();
     cacheEntry.setVolatile(true);
     getBelongedContainer(node).appendMNode(node);
-    if (!cacheEntry.isPinned()) {
-      nodeBuffer.put(cacheEntry, node);
-    }
   }
 
   @Override
@@ -77,10 +72,6 @@ public class CacheStrategy implements ICacheStrategy {
     CacheEntry cacheEntry = node.getCacheEntry();
     if (!cacheEntry.isVolatile()) {
       cacheEntry.setVolatile(true);
-      if (!cacheEntry.isPinned()) {
-        nodeCache.remove(cacheEntry);
-        nodeBuffer.put(cacheEntry, node);
-      }
       getBelongedContainer(node).updateMNode(node.getName());
     }
   }

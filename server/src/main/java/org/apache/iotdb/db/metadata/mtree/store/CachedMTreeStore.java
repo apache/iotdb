@@ -85,7 +85,19 @@ public class CachedMTreeStore implements IMTreeStore {
         cacheStrategy.updateCacheStatusAfterRead(node);
       }
     }
+
+    if (node != null && node.isMeasurement()) {
+      processAlias(parent.getAsEntityMNode(), node.getAsMeasurementMNode());
+    }
+
     return node;
+  }
+
+  private void processAlias(IEntityMNode parent, IMeasurementMNode node) {
+    String alias = node.getAlias();
+    if (alias != null) {
+      parent.addAlias(alias, node);
+    }
   }
 
   // must pin parent first
@@ -128,8 +140,6 @@ public class CachedMTreeStore implements IMTreeStore {
   @Override
   public List<IMeasurementMNode> deleteChild(IMNode parent, String childName) {
     IMNode deletedMNode = parent.getChild(childName);
-    parent.deleteChild(childName);
-
     // collect all the LeafMNode in this storage group
     List<IMeasurementMNode> leafMNodes = new LinkedList<>();
     Queue<IMNode> queue = new LinkedList<>();
@@ -148,6 +158,7 @@ public class CachedMTreeStore implements IMTreeStore {
       }
     }
 
+    parent.deleteChild(childName);
     if (cacheStrategy.isCached(deletedMNode)) {
       List<IMNode> removedMNodes = cacheStrategy.remove(deletedMNode);
       for (IMNode removedMNode : removedMNodes) {
@@ -169,13 +180,10 @@ public class CachedMTreeStore implements IMTreeStore {
     parent.deleteAliasChild(alias);
   }
 
+  // must pin first
   @Override
   public void updateMNode(IMNode node) {
-    if (cacheStrategy.isCached(node)) {
-      cacheStrategy.updateCacheStatusAfterUpdate(node);
-    } else {
-      file.writeMNode(node.getParent());
-    }
+    cacheStrategy.updateCacheStatusAfterUpdate(node);
   }
 
   @Override

@@ -825,7 +825,7 @@ public class MManager {
       return storageGroupPath;
     }
 
-    while (node.isEmptyInternal()) {
+    while (mtree.isEmptyInternalMNode(node)) {
       mNodeCache.invalidate(node.getPartialPath());
       node = node.getParent();
     }

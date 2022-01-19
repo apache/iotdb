@@ -37,8 +37,6 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   private long segmentAddress = -1;
 
-  private int size = 0;
-
   private Map<String, IMNode> childCache = null;
   private Map<String, IMNode> newChildBuffer = null;
   private Map<String, IMNode> updatedChildBuffer = null;
@@ -54,7 +52,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public boolean isEmpty() {
-    return size == 0;
+    return isEmpty(childCache) && isEmpty(newChildBuffer) && isEmpty(updatedChildBuffer);
   }
 
   private boolean isEmpty(Map<String, IMNode> map) {
@@ -117,9 +115,6 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     }
     if (result == null) {
       result = remove(updatedChildBuffer, key);
-    }
-    if (result != null) {
-      size--;
     }
     return result;
   }
@@ -188,14 +183,18 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   @Nullable
   @Override
   public IMNode replace(String key, IMNode value) {
-    IMNode replacedOne = childCache.replace(key, value);
+    IMNode replacedOne = replace(childCache, key, value);
     if (replacedOne == null) {
-      replacedOne = newChildBuffer.replace(key, value);
+      replacedOne = replace(newChildBuffer, key, value);
     }
     if (replacedOne == null) {
-      replacedOne = updatedChildBuffer.replace(key, value);
+      replacedOne = replace(updatedChildBuffer, key, value);
     }
     return replacedOne;
+  }
+
+  private IMNode replace(Map<String, IMNode> map, String key, IMNode value) {
+    return map == null ? null : map.replace(key, value);
   }
 
   @Override
@@ -256,10 +255,14 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public void addChildToCache(IMNode node) {
+    String name = node.getName();
+    if (containsKey(name)) {
+      return;
+    }
     if (childCache == null) {
       childCache = new ConcurrentHashMap<>();
     }
-    childCache.put(node.getName(), node);
+    childCache.put(name, node);
   }
 
   @Override
@@ -268,15 +271,11 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
       newChildBuffer = new ConcurrentHashMap<>();
     }
     newChildBuffer.put(node.getName(), node);
-    size++;
   }
 
   @Override
   public void updateMNode(String name) {
-    IMNode node = null;
-    if (childCache != null) {
-      node = childCache.remove(name);
-    }
+    IMNode node = remove(childCache, name);
     if (node != null) {
       if (updatedChildBuffer == null) {
         updatedChildBuffer = new ConcurrentHashMap<>();

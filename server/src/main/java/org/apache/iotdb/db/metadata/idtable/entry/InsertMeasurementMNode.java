@@ -195,11 +195,6 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   @Override
-  public boolean isEmptyInternal() {
-    throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
-  }
-
-  @Override
   public boolean isStorageGroup() {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }

@@ -400,7 +400,7 @@ public class MTreeService implements Serializable {
     }
 
     // delete all empty ancestors except storage group and MeasurementMNode
-    while (curNode.isEmptyInternal()) {
+    while (isEmptyInternalMNode(curNode)) {
       // if current storage group has no time series, return the storage group name
       if (curNode.isStorageGroup()) {
         return new Pair<>(curNode.getPartialPath(), deletedNode);
@@ -542,13 +542,23 @@ public class MTreeService implements Serializable {
 
     cur = cur.getParent();
     // delete node b while retain root.a.sg2
-    while (cur.isEmptyInternal()) {
+    while (isEmptyInternalMNode(cur)) {
       store.deleteChild(cur.getParent(), cur.getName());
       cur = cur.getParent();
     }
     unPinPath(cur);
     return leafMNodes;
   }
+
+  public boolean isEmptyInternalMNode(IMNode node) {
+    return !IoTDBConstant.PATH_ROOT.equals(node.getName())
+        && !node.isStorageGroup()
+        && !node.isMeasurement()
+        && node.getSchemaTemplate() == null
+        && !node.isUseTemplate()
+        && !store.getChildrenIterator(node).hasNext();
+  }
+
   // endregion
 
   // region Interfaces and Implementation for metadata info Query
