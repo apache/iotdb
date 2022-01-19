@@ -46,6 +46,11 @@ public class FileReaderManager {
   private static final int MAX_CACHED_FILE_SIZE = 30000;
 
   /**
+   * When number of file streams reached MAX_CACHED_FILE_SIZE, then we will print a warning log each PRINT_INTERVAL
+   */
+  private static final int PRINT_INTERVAL = 10000;
+
+  /**
    * the key of closedFileReaderMap is the file path and the value of closedFileReaderMap is the
    * corresponding reader.
    */
@@ -108,12 +113,12 @@ public class FileReaderManager {
     Map<String, TsFileSequenceReader> readerMap =
         !isClosed ? unclosedFileReaderMap : closedFileReaderMap;
     if (!readerMap.containsKey(filePath)) {
-
-      if (readerMap.size() >= MAX_CACHED_FILE_SIZE) {
+      int currentOpenedReaderCount = readerMap.size();
+      if (currentOpenedReaderCount >= MAX_CACHED_FILE_SIZE && (currentOpenedReaderCount % PRINT_INTERVAL == 0)) {
         logger.warn("Query has opened {} files !", readerMap.size());
       }
 
-      TsFileSequenceReader tsFileReader = null;
+      TsFileSequenceReader tsFileReader;
       // check if the file is old version
       if (!isClosed) {
         tsFileReader = new UnClosedTsFileReader(filePath);
