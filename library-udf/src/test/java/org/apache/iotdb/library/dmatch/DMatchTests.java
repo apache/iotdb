@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -263,14 +264,12 @@ public class DMatchTests {
   @Test
   public void testCov1() {
     String sqlStr = "select cov(d1.s1,d1.s3) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -279,14 +278,12 @@ public class DMatchTests {
   @Test
   public void testCov2() {
     String sqlStr = "select cov(d1.s2,d1.s4) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -295,14 +292,12 @@ public class DMatchTests {
   @Test
   public void testCov3() {
     String sqlStr = "select cov(d2.s1,d2.s3) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -311,14 +306,12 @@ public class DMatchTests {
   @Test
   public void testCov4() {
     String sqlStr = "select cov(d2.s2,d2.s4) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -327,9 +320,7 @@ public class DMatchTests {
   @Test
   public void testDtw1() {
     String sqlStr = "select dtw(d1.s1,d1.s3) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
@@ -345,9 +336,7 @@ public class DMatchTests {
   @Test
   public void testDtw2() {
     String sqlStr = "select dtw(d1.s2,d1.s4) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
@@ -363,9 +352,7 @@ public class DMatchTests {
   @Test
   public void testDtw3() {
     String sqlStr = "select dtw(d2.s1,d2.s3) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
@@ -381,9 +368,7 @@ public class DMatchTests {
   @Test
   public void testDtw4() {
     String sqlStr = "select dtw(d2.s2,d2.s4) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
@@ -399,9 +384,7 @@ public class DMatchTests {
   @Test
   public void testPearson1() {
     String sqlStr = "select pearson(d1.s1,d1.s3) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
@@ -414,9 +397,7 @@ public class DMatchTests {
   @Test
   public void testPearson2() {
     String sqlStr = "select pearson(d1.s2,d1.s4) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
@@ -429,9 +410,7 @@ public class DMatchTests {
   @Test
   public void testPearson3() {
     String sqlStr = "select pearson(d2.s1,d2.s3) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
@@ -444,9 +423,7 @@ public class DMatchTests {
   @Test
   public void testPearson4() {
     String sqlStr = "select pearson(d2.s2,d2.s4) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
@@ -459,14 +436,12 @@ public class DMatchTests {
   @Test
   public void testPthSym1() {
     String sqlStr = "select ptnsym(d1.s1, 'window'='3', 'threshold'='0') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -475,14 +450,12 @@ public class DMatchTests {
   @Test
   public void testPtnSym2() {
     String sqlStr = "select ptnsym(d1.s2, 'window'='3', 'threshold'='0') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -491,14 +464,12 @@ public class DMatchTests {
   @Test
   public void testPtnSym3() {
     String sqlStr = "select ptnsym(d2.s1, 'window'='3', 'threshold'='0') from";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -507,14 +478,12 @@ public class DMatchTests {
   @Test
   public void testPtnSym4() {
     String sqlStr = "select ptnsym(d2.s2, 'window'='3', 'threshold'='0') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -523,14 +492,12 @@ public class DMatchTests {
   @Test
   public void testXCorr1() {
     String sqlStr = "select xcorr(d1.s1,d1.s3) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 19;
+      Assert.assertEquals(resultSetLength,19);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -539,14 +506,12 @@ public class DMatchTests {
   @Test
   public void testXCorr2() {
     String sqlStr = "select xcorr(d1.s2, d1.s4) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 19;
+      Assert.assertEquals(resultSetLength,19);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -555,14 +520,12 @@ public class DMatchTests {
   @Test
   public void testXCorr3() {
     String sqlStr = "select xcorr(d2.s1, d2.s3) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 19;
+      Assert.assertEquals(resultSetLength,19);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -571,14 +534,12 @@ public class DMatchTests {
   @Test
   public void testXCorr4() {
     String sqlStr = "select xcorr(d2.s2,d2.s4) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 19;
+      Assert.assertEquals(resultSetLength,19);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
