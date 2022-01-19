@@ -80,6 +80,7 @@ var config = {
 					text: 'Documentation',
 					items: [
 						{ text: 'latest', link: '/UserGuide/Master/QuickStart/QuickStart' },
+						{ text: 'v0.13.x', link: '/UserGuide/V0.13.x/QuickStart/QuickStart' },
 						{ text: 'v0.12.x', link: '/UserGuide/V0.12.x/QuickStart/QuickStart' },
 						{ text: 'v0.11.x', link: '/UserGuide/V0.11.x/Get Started/QuickStart' },
 						{ text: 'v0.10.x', link: '/UserGuide/V0.10.x/Get Started/QuickStart' },
@@ -639,6 +640,162 @@ var config = {
 						]
 					}
 				],
+				'/UserGuide/V0.13.x/': [
+					{
+						title:'IoTDB User Guide (latest)',
+						collapsable: false,
+					},
+					{
+						title: 'IoTDB Introduction',
+						children: [
+							['IoTDB-Introduction/What-is-IoTDB','What is IoTDB'],
+							['IoTDB-Introduction/Architecture','Architecture'],
+							['IoTDB-Introduction/Scenario','Scenario'],
+							['IoTDB-Introduction/Features','Features'],
+							['IoTDB-Introduction/Publication','Publication']
+						]
+					},
+					{
+						title: 'Quick Start',
+						children: [
+							['QuickStart/QuickStart','Quick Start'],
+							['QuickStart/Files','Data storage'],
+							['QuickStart/WayToGetIoTDB','Download and Setup'],
+							['QuickStart/Command-Line-Interface','Command Line Interface'],
+						]
+					},
+					{
+						title: 'Data Concept',
+						sidebarDepth: 1,
+						children: [
+							['Data-Concept/Data-Model-and-Terminology','Data Model and Terminology'],
+							['Data-Concept/Schema-Template','Schema Template'],
+							['Data-Concept/Data-Type','Data Type'],
+							['Data-Concept/Encoding','Encoding'],
+							['Data-Concept/Compression','Compression'],
+							['Data-Concept/Time-Partition','Time Partition'],
+							['Data-Concept/Time-zone','Time zone']
+						]
+					},
+					{
+						title: 'Syntax Conventions',
+						sidebarDepth: 2,
+						children: [
+							['Reference/Syntax-Conventions','Syntax Conventions'],
+						]
+					},
+					{
+						title: 'API',
+						children: [
+							['API/Programming-Java-Native-API','Java Native API'],
+							['API/Programming-Python-Native-API','Python Native API'],
+							['API/Programming-Cpp-Native-API','C++ Native API'],
+							['API/Programming-Go-Native-API','Go Native API'],
+							['API/Programming-JDBC','JDBC (Not Recommend)'],
+							['API/Programming-MQTT','MQTT'],
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Status-Codes','Status Codes']
+						]
+					},
+					{
+						title: 'Operate Metadata',
+						children: [
+							['Operate-Metadata/Storage-Group','Storage Group'],
+							['Operate-Metadata/Node','Node'],
+							['Operate-Metadata/Timeseries','Timeseries'],
+							['Operate-Metadata/TTL','TTL'],
+							['Operate-Metadata/Auto-Create-MetaData','Auto Create Metadata']
+						]
+					},
+					{
+						title: 'Write and Delete Data',
+						children: [
+							['Write-And-Delete-Data/Write-Data','Write Data'],
+							['Write-And-Delete-Data/Load-External-Tsfile','Load External Tsfile'],
+							['Write-And-Delete-Data/CSV-Tool','CSV Tool'],
+							['Write-And-Delete-Data/Delete-Data','Delete Data']
+						]
+					},
+					{
+						title: 'Query Data',
+						sidebarDepth: 1,
+						children: [
+							['Query-Data/Overview.md','Overview'],
+							['Query-Data/Select-Expression.md','Select Expression'],
+							['Query-Data/Query-Filter.md','Query Filter'],
+							['Query-Data/Pagination.md','Pagination'],
+							['Query-Data/Result-Format.md','Query Result Formats'],
+							['Query-Data/Aggregate-Query.md','Aggregate Query'],
+							['Query-Data/Last-Query.md','Last Query'],
+							['Query-Data/Fill-Null-Value.md','Fill Null Value'],
+							['Query-Data/Without-Null.md','Without Null'],
+							['Query-Data/Tracing-Tool.md','Tracing Tool']
+						]
+					},
+					{
+						title: 'Process Data',
+						sidebarDepth: 1,
+						children: [
+							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
+							['Process-Data/UDF-Library', 'UDF Library'],
+							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
+							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
+							['Process-Data/Triggers','Triggers'],
+							['Process-Data/Alerting','Alerting'],
+						]
+					},
+					{
+						title: 'Administration Management',
+						children: [
+							['Administration-Management/Administration','Administration']
+						]
+					},
+					{
+						title: 'Maintenance Tools',
+						children: [
+							['Maintenance-Tools/Maintenance-Command','Maintenance Command'],
+							['Maintenance-Tools/Monitor-and-Log-Tools','Monitor and Log Tools'],
+							['Maintenance-Tools/JMX-Tool','JMX Tool'],
+							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
+							['Maintenance-Tools/NodeTool','Node Tool'],
+							['Maintenance-Tools/Watermark-Tool','Watermark Tool'],
+							['Maintenance-Tools/Metric-Tool','Metric Tool'],
+							['Maintenance-Tools/Sync-Tool','Sync Tool'],
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool']
+						]
+					},
+					{
+						title: 'Ecosystem Integration',
+						children: [
+							['Ecosystem Integration/Grafana Connector','Grafana Connector'],
+							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
+							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
+							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
+							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
+							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
+							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
+							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
+							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
+						]
+					},
+					{
+						title: 'Cluster Setup',
+						children: [
+							['Cluster/Cluster-Setup','Cluster Setup'],
+							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
+						]
+					},
+					{
+						title: 'Reference',
+						children: [
+							['Reference/Config-Manual','Config Manual'],
+							['Reference/Keywords','Keywords'],
+							['Reference/Frequently-asked-questions','Frequently asked questions'],
+							['Reference/TSDB-Comparison','TSDB Comparison']
+						]
+					},
+				],
 				'/UserGuide/Master/': [
 					{
 						title:'IoTDB User Guide (latest)',
@@ -733,6 +890,7 @@ var config = {
 					},
 					{
 						title: 'Process Data',
+						sidebarDepth: 1,
 						children: [
 							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
 							['Process-Data/UDF-Library', 'UDF Library'],
@@ -1441,6 +1599,167 @@ var config = {
 						]
 					}
 				],
+				'/zh/UserGuide/V0.13.x/': [
+					{
+						title: 'IoTDB用户手册 (In progress)',
+						collapsable: false,
+					},
+					{
+						title: 'IoTDB简介',
+						children: [
+							['IoTDB-Introduction/What-is-IoTDB','IoTDB简介'],
+							['IoTDB-Introduction/Features','主要功能特点'],
+							['IoTDB-Introduction/Architecture','系统架构'],
+							['IoTDB-Introduction/Scenario','应用场景'],
+							['IoTDB-Introduction/Publication','研究论文']
+						]
+					},
+					{
+						title: '快速上手',
+						children: [
+							['QuickStart/QuickStart','快速上手'],
+							['QuickStart/Files','数据文件存储'],
+							['QuickStart/WayToGetIoTDB','下载与安装'],
+							['QuickStart/Command-Line-Interface','SQL命令行终端(CLI)']
+						]
+					},
+					{
+						title: '数据模式与概念',
+						sidebarDepth: 1,
+						children: [
+							['Data-Concept/Data-Model-and-Terminology','数据模型'],
+							['Data-Concept/Schema-Template','元数据模板'],
+							['Data-Concept/Data-Type','数据类型'],
+							['Data-Concept/Encoding','编码方式'],
+							['Data-Concept/Compression','压缩方式'],
+							['Data-Concept/Time-Partition','时间分区'],
+							['Data-Concept/Time-zone','时区']
+						]
+					},
+					{
+						title: '语法约定',
+						sidebarDepth: 2,
+						children: [
+							['Reference/Syntax-Conventions', '语法约定'],
+						]
+					},
+					{
+						title: '应用编程接口',
+						children: [
+							['API/Programming-Java-Native-API','Java 原生接口'],
+							['API/Programming-Python-Native-API','Python 原生接口'],
+							['API/Programming-Cpp-Native-API','C++ 原生接口'],
+							['API/Programming-Go-Native-API','Go 原生接口'],
+							['API/Programming-JDBC','JDBC (不推荐)'],
+							['API/Programming-MQTT','MQTT'],
+							['API/RestService','REST'],
+							['API/RestService','HTTP API'],
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/InfluxDB-Protocol','InfluxDB 协议适配器（开发中)'],
+							['API/Status-Codes','状态码']
+						]
+					},
+					{
+						title: '元数据操作',
+						children: [
+							['Operate-Metadata/Storage-Group','存储组操作'],
+							['Operate-Metadata/Node','节点操作'],
+							['Operate-Metadata/Timeseries','时间序列操作'],
+							['Operate-Metadata/TTL','TTL'],
+							['Operate-Metadata/Auto-Create-MetaData','自动创建元数据']
+						]
+					},
+					{
+						title: '数据写入和删除',
+						sidebarDepth: 1,
+						children: [
+							['Write-And-Delete-Data/Write-Data','写入数据'],
+							['Write-And-Delete-Data/Load-External-Tsfile','加载 TsFile'],
+							['Write-And-Delete-Data/CSV-Tool','导入导出 CSV'],
+							['Write-And-Delete-Data/Delete-Data','删除数据']
+						]
+					},
+					{
+						title: '数据查询',
+						sidebarDepth: 1,
+						children: [
+							['Query-Data/Overview.md','概述'],
+							['Query-Data/Select-Expression.md','选择表达式'],
+							['Query-Data/Query-Filter.md','查询过滤条件'],
+							['Query-Data/Pagination.md','查询结果分页'],
+							['Query-Data/Result-Format.md','查询结果对齐格式'],
+							['Query-Data/Aggregate-Query.md','聚合查询'],
+							['Query-Data/Last-Query.md','最新点查询'],
+							['Query-Data/Fill-Null-Value.md','空值填充'],
+							['Query-Data/Without-Null.md','空值过滤'],
+							['Query-Data/Tracing-Tool.md','查询性能追踪']
+						]
+					},
+					{
+						title: '数据处理',
+						sidebarDepth: 1,
+						children: [
+							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
+							['Process-Data/UDF-Library', 'UDF 函数库'],
+							['Process-Data/Select-Into','查询写回(SELECT INTO)'],
+							['Process-Data/Continuous-Query','连续查询(CQ)'],
+							['Process-Data/Triggers','触发器'],
+							['Process-Data/Alerting','告警机制'],
+						]
+					},
+					{
+						title: '权限管理',
+						children: [
+							['Administration-Management/Administration','权限管理']
+						]
+					},
+					{
+						title: '运维工具',
+						children: [
+							['Maintenance-Tools/Maintenance-Command','运维命令'],
+							['Maintenance-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
+							['Maintenance-Tools/JMX-Tool','JMX 工具'],
+							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
+							['Maintenance-Tools/NodeTool','节点工具'],
+							['Maintenance-Tools/Watermark-Tool','水印工具'],
+							['Maintenance-Tools/Metric-Tool','监控工具'],
+							['Maintenance-Tools/Sync-Tool','TsFile 同步工具'],
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具']
+						]
+					},
+					{
+						title: '系统集成',
+						children: [
+							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
+							['Ecosystem Integration/Grafana Connector','Grafana Connector（不推荐）'],
+							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
+							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
+							['Ecosystem Integration/MapReduce TsFile','Hadoop-TsFile'],
+							['Ecosystem Integration/Spark IoTDB','Spark-IoTDB'],
+							['Ecosystem Integration/Hive TsFile','Hive-TsFile'],
+							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
+							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
+							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
+						]
+					},
+					{
+						title: '集群搭建',
+						children: [
+							['Cluster/Cluster-Setup','集群搭建'],
+							['Cluster/Cluster-Setup-Example','集群搭建示例']
+						]
+					},
+					{
+						title: '参考',
+						children: [
+							['Reference/Config-Manual','配置参数'],
+							['Reference/Keywords','关键字'],
+							['Reference/Frequently-asked-questions','常见问题'],
+							['Reference/TSDB-Comparison','时间序列数据库比较']
+						]
+					}
+				],
 				'/zh/UserGuide/Master/': [
 					{
 						title: 'IoTDB用户手册 (In progress)',
@@ -1539,6 +1858,7 @@ var config = {
 					},
 					{
 						title: '数据处理',
+						sidebarDepth: 1,
 						children: [
 							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
 							['Process-Data/UDF-Library', 'UDF 函数库'],
