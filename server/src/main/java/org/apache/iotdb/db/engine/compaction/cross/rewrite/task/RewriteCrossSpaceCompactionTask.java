@@ -285,11 +285,8 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   public boolean equalsOtherTask(AbstractCompactionTask other) {
     if (other instanceof RewriteCrossSpaceCompactionTask) {
       RewriteCrossSpaceCompactionTask otherTask = (RewriteCrossSpaceCompactionTask) other;
-      if (!otherTask.selectedSeqTsFileResourceList.equals(selectedSeqTsFileResourceList)
-          || !otherTask.selectedUnSeqTsFileResourceList.equals(selectedUnSeqTsFileResourceList)) {
-        return false;
-      }
-      return true;
+      return otherTask.selectedSeqTsFileResourceList.equals(selectedSeqTsFileResourceList)
+          && otherTask.selectedUnSeqTsFileResourceList.equals(selectedUnSeqTsFileResourceList);
     }
     return false;
   }
