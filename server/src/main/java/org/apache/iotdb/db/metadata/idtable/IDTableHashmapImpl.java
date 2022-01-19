@@ -82,7 +82,7 @@ public class IDTableHashmapImpl implements IDTable {
       try {
         IDiskSchemaManager.recover(this);
       } catch (IOException e) {
-        logger.error("can't recover id table of " + storageGroupDir.getName());
+        logger.error("can't recover id table of {}", storageGroupDir.getName());
       }
     }
   }
