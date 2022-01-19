@@ -1057,6 +1057,7 @@ public class IoTDBNewTsFileCompactionIT {
     TsFileManager resourceManager = virtualStorageGroupProcessor.getTsFileResourceManager();
 
     long startTime = System.nanoTime();
+    TimeUnit.MILLISECONDS.sleep(500);
     // get the size of level 1's tsfile list to judge whether merge is finished
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() != 0) {
       TimeUnit.MILLISECONDS.sleep(100);

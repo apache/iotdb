@@ -86,6 +86,11 @@ public class TsFileSequenceRead {
             System.out.println("\tposition: " + reader.position());
             ChunkHeader header = reader.readChunkHeader(marker);
             System.out.println("\tMeasurement: " + header.getMeasurementID());
+            if (header.getDataSize() == 0) {
+              // empty value chunk
+              System.out.println("\t-- Empty Chunk ");
+              break;
+            }
             System.out.println(
                 "\tChunk Size: " + (header.getDataSize() + header.getSerializedSize()));
             Decoder defaultTimeDecoder =
@@ -136,8 +141,8 @@ public class TsFileSequenceRead {
                   System.out.println("\t\tpoints in the page: " + valueBatch.length);
                 }
                 if (printDetail) {
-                  for (int i = 0; i < valueBatch.length; i++) {
-                    System.out.println("\t\t\tvalue: " + valueBatch[i]);
+                  for (TsPrimitiveType batch : valueBatch) {
+                    System.out.println("\t\t\tvalue: " + batch);
                   }
                 }
               } else { // NonAligned Chunk

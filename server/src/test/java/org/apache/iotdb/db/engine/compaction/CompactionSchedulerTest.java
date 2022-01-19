@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -104,7 +103,6 @@ public class CompactionSchedulerTest {
     if (!basicOutputDir.exists()) {
       assertTrue(basicOutputDir.mkdirs());
     }
-    MergeManager.getINSTANCE().start();
     CompactionTaskManager.getInstance().start();
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
@@ -119,7 +117,6 @@ public class CompactionSchedulerTest {
   public void tearDown() throws IOException, StorageEngineException {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    MergeManager.getINSTANCE().stop();
     IoTDB.metaManager.clear();
     CompactionClearUtils.clearAllCompactionFiles();
     EnvironmentUtils.cleanAllDir();
@@ -127,6 +124,8 @@ public class CompactionSchedulerTest {
       Thread.sleep(10_000);
     } catch (InterruptedException e) {
 
+    } finally {
+      CompactionClearUtils.deleteEmptyDir(new File("target"));
     }
   }
 
@@ -164,7 +163,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -176,7 +175,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -319,7 +318,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -331,7 +330,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -458,7 +457,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -470,7 +469,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -591,7 +590,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -603,7 +602,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -699,7 +698,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -711,7 +710,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -741,7 +740,6 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(false).size());
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
@@ -865,7 +863,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -877,7 +875,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -997,7 +995,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -1009,7 +1007,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1129,7 +1127,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -1141,7 +1139,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1237,7 +1235,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -1249,7 +1247,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1363,7 +1361,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -1375,7 +1373,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1498,7 +1496,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -1510,7 +1508,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1631,7 +1629,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -1643,7 +1641,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1765,7 +1763,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -1777,7 +1775,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1897,7 +1895,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -1909,7 +1907,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -2031,7 +2029,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -2043,7 +2041,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -2165,7 +2163,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -2177,7 +2175,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);

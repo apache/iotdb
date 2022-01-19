@@ -185,6 +185,7 @@ public abstract class InnerCompactionTest {
   }
 
   private void removeFiles() throws IOException {
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     for (TsFileResource tsFileResource : seqResources) {
       if (tsFileResource.getTsFile().exists()) {
         tsFileResource.remove();
@@ -204,7 +205,6 @@ public abstract class InnerCompactionTest {
     for (File resourceFile : resourceFiles) {
       resourceFile.delete();
     }
-    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
   }
 
   void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum, long valueOffset)
