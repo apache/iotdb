@@ -269,7 +269,7 @@ public class DMatchTests {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength,1);
+      Assert.assertEquals(resultSetLength, 1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -283,7 +283,7 @@ public class DMatchTests {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength,1);
+      Assert.assertEquals(resultSetLength, 1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -297,7 +297,7 @@ public class DMatchTests {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength,1);
+      Assert.assertEquals(resultSetLength, 1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -311,7 +311,7 @@ public class DMatchTests {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength,1);
+      Assert.assertEquals(resultSetLength, 1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -441,7 +441,7 @@ public class DMatchTests {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength,1);
+      Assert.assertEquals(resultSetLength, 1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -455,7 +455,7 @@ public class DMatchTests {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength,1);
+      Assert.assertEquals(resultSetLength, 1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -469,7 +469,7 @@ public class DMatchTests {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength,1);
+      Assert.assertEquals(resultSetLength, 1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -483,7 +483,7 @@ public class DMatchTests {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength,1);
+      Assert.assertEquals(resultSetLength, 1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -497,7 +497,7 @@ public class DMatchTests {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength,19);
+      Assert.assertEquals(resultSetLength, 19);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -511,7 +511,7 @@ public class DMatchTests {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength,19);
+      Assert.assertEquals(resultSetLength, 19);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -525,7 +525,7 @@ public class DMatchTests {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength,19);
+      Assert.assertEquals(resultSetLength, 19);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -539,7 +539,7 @@ public class DMatchTests {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength,19);
+      Assert.assertEquals(resultSetLength, 19);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
