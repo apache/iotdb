@@ -53,57 +53,10 @@ import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.logical.crud.UDAFQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.UDTFQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
-import org.apache.iotdb.db.qp.logical.sys.ActivateTemplateOperator;
-import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.*;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
-import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
-import org.apache.iotdb.db.qp.logical.sys.ClearCacheOperator;
-import org.apache.iotdb.db.qp.logical.sys.CountOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateAlignedTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateContinuousQueryOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateFunctionOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateSnapshotOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateTemplateOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateTriggerOperator;
-import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeletePartitionOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.DropContinuousQueryOperator;
-import org.apache.iotdb.db.qp.logical.sys.DropFunctionOperator;
-import org.apache.iotdb.db.qp.logical.sys.DropTriggerOperator;
-import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
-import org.apache.iotdb.db.qp.logical.sys.KillQueryOperator;
-import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
-import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
-import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
-import org.apache.iotdb.db.qp.logical.sys.MergeOperator;
-import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetTemplateOperator;
-import org.apache.iotdb.db.qp.logical.sys.SettleOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowContinuousQueriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowLockInfoOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
-import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
-import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
-import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.UnloadFileOperator;
-import org.apache.iotdb.db.qp.logical.sys.UnsetTemplateOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CqGroupByTimeClauseContext;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
@@ -749,6 +702,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return dropContinuousQueryOperator;
   }
 
+  // Drop Schema Template
+
+  @Override
+  public Operator visitDropSchemaTemplate(IoTDBSqlParser.DropSchemaTemplateContext ctx) {
+    DropTemplateOperator dropTemplateOperator =
+        new DropTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_DROP);
+    dropTemplateOperator.setTemplateName(parseStringWithQuotes((ctx.templateName.getText())));
+    return dropTemplateOperator;
+  }
+
   // Set TTL
 
   @Override
@@ -949,6 +912,40 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitShowAllTTL(IoTDBSqlParser.ShowAllTTLContext ctx) {
     List<PartialPath> storageGroups = new ArrayList<>();
     return new ShowTTLOperator(storageGroups);
+  }
+
+  // Show Schema Template
+
+  @Override
+  public Operator visitShowSchemaTemplates(IoTDBSqlParser.ShowSchemaTemplatesContext ctx) {
+    return new ShowTemplatesOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_SHOW);
+  }
+
+  // Show Measurements In Schema Template
+
+  public Operator visitShowNodesInSchemaTemplate(
+      IoTDBSqlParser.ShowNodesInSchemaTemplateContext ctx) {
+    String templateName = parseStringWithQuotes(ctx.templateName.getText());
+    return new ShowNodesInTemplateOperator(
+        SQLConstant.TOK_SCHEMA_TEMPLATE_SHOW_NODES, templateName);
+  }
+
+  // Show Paths Set Schema Template
+
+  public Operator visitShowPathsSetSchemaTemplate(
+      IoTDBSqlParser.ShowPathsSetSchemaTemplateContext ctx) {
+    String templateName = parseStringWithQuotes(ctx.templateName.getText());
+    return new ShowPathsSetTemplateOperator(
+        SQLConstant.TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET, templateName);
+  }
+
+  // Show Paths Using Schema Template
+
+  public Operator visitShowPathsUsingSchemaTemplate(
+      IoTDBSqlParser.ShowPathsUsingSchemaTemplateContext ctx) {
+    String templateName = parseStringWithQuotes(ctx.templateName.getText());
+    return new ShowPathsUsingTemplateOperator(
+        SQLConstant.TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING, templateName);
   }
 
   // countStorageGroup

@@ -39,10 +39,13 @@ ddlStatement
     | createSchemaTemplate | createTimeseriesOfSchemaTemplate
     | createFunction | createTrigger | createContinuousQuery | createSnapshot
     | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition
-    | dropFunction | dropTrigger | dropContinuousQuery | setTTL | unsetTTL
-    | setSchemaTemplate | unsetSchemaTemplate | startTrigger | stopTrigger
+    | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
+    | setTTL | unsetTTL | startTrigger | stopTrigger
+    | setSchemaTemplate | unsetSchemaTemplate | appendSchemaTemplate | pruneSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
     | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
+    | showSchemaTemplates | showNodesInSchemaTemplate
+    | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
     ;
 
@@ -89,7 +92,7 @@ alignedMeasurements
 
 // Create Schema Template
 createSchemaTemplate
-    : CREATE SCHEMA TEMPLATE templateName=identifier
+    : CREATE SCHEMA? TEMPLATE templateName=identifier
     LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
     ;
 
@@ -101,7 +104,7 @@ templateMeasurementClause
 
 // Create Timeseries Of Schema Template
 createTimeseriesOfSchemaTemplate
-    : CREATE TIMESERIES OF SCHEMA TEMPLATE ON prefixPath
+    : CREATE TIMESERIES OF SCHEMA? TEMPLATE ON prefixPath
     ;
 
 // Create Function
@@ -196,6 +199,11 @@ dropContinuousQuery
     : DROP (CONTINUOUS QUERY|CQ) continuousQueryName=identifier
     ;
 
+// Drop Schema Template
+dropSchemaTemplate
+    : DROP SCHEMA? TEMPLATE templateName=identifier
+    ;
+
 // Set TTL
 setTTL
     : SET TTL TO path=prefixPath time=INTEGER_LITERAL
@@ -208,12 +216,22 @@ unsetTTL
 
 // Set Schema Template
 setSchemaTemplate
-    : SET SCHEMA TEMPLATE templateName=identifier TO prefixPath
+    : SET SCHEMA? TEMPLATE templateName=identifier TO prefixPath
     ;
 
 // Unset Schema Template
 unsetSchemaTemplate
-    : UNSET SCHEMA TEMPLATE templateName=identifier FROM prefixPath
+    : UNSET SCHEMA? TEMPLATE templateName=identifier FROM prefixPath
+    ;
+
+// Append Schema Template
+appendSchemaTemplate
+    :
+    ;
+
+// Prune Schema Template
+pruneSchemaTemplate
+    :
     ;
 
 // Start Trigger
@@ -278,6 +296,26 @@ showTTL
 // Show All TTL
 showAllTTL
     : SHOW ALL TTL
+    ;
+
+// Show Schema Template
+showSchemaTemplates
+    : SHOW SCHEMA? TEMPLATES
+    ;
+
+// Show Measurements In Schema Template
+showNodesInSchemaTemplate
+    : SHOW NODES OPERATOR_IN SCHEMA? TEMPLATE templateName=identifier
+    ;
+
+// Show Paths Set Schema Template
+showPathsSetSchemaTemplate
+    : SHOW PATHS SET SCHEMA? TEMPLATE templateName=identifier
+    ;
+
+// Show Paths Using Schema Template
+showPathsUsingSchemaTemplate
+    : SHOW PATHS USING SCHEMA? TEMPLATE templateName=identifier
     ;
 
 // Count Storage Group

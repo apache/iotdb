@@ -69,6 +69,10 @@ ANY
     : A N Y
     ;
 
+APPEND
+    : A P P E N D
+    ;
+
 AS
     : A S
     ;
@@ -378,6 +382,10 @@ PROPERTY
     : P R O P E R T Y
     ;
 
+PRUNE
+    : P R U N E
+    ;
+
 QUERIES
     : Q U E R I E S
     ;
@@ -480,6 +488,10 @@ TASK
 
 TEMPLATE
     : T E M P L A T E
+    ;
+
+TEMPLATES
+    : T E M P L A T E S
     ;
 
 TIME

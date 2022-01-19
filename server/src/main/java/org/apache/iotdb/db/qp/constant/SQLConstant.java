@@ -189,6 +189,13 @@ public class SQLConstant {
   public static final int TOK_SCHEMA_TEMPLATE_SET = 113;
   public static final int TOK_SCHEMA_TEMPLATE_ACTIVATE = 114;
   public static final int TOK_SCHEMA_TEMPLATE_UNSET = 115;
+  public static final int TOK_SCHEMA_TEMPLATE_APPEND = 116;
+  public static final int TOK_SCHEMA_TEMPLATE_PRUNE = 117;
+  public static final int TOK_SCHEMA_TEMPLATE_DROP = 118;
+  public static final int TOK_SCHEMA_TEMPLATE_SHOW = 119;
+  public static final int TOK_SCHEMA_TEMPLATE_SHOW_NODES = 120;
+  public static final int TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET = 121;
+  public static final int TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING = 122;
 
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 
