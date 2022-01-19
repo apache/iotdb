@@ -34,14 +34,14 @@ CREATE SCHEMA? TEMPLATE <templateName> '(' templateMeasurementClause [',' templa
 
 templateMeasurementClause
     : <measurementId> <attributeClauses> # non-aligned measurement
-    | <deviceId> ALIGNED '(' <measurementId> <attributeClauses> [',' <measurementId> <attributeClauses>]+ ')' # a group of aligned measurements
+    | <deviceId> '(' <measurementId> <attributeClauses> [',' <measurementId> <attributeClauses>]+ ')' # a group of aligned measurements
     ;
 ```
 
 For example:
 
-```
-IoTDB> create schema template temp1(GPS aligned (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla compression=SNAPPY), status BOOLEAN encoding=PLAIN compression=SNAPPY)
+```shell
+IoTDB> create schema template temp1(GPS (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla compression=SNAPPY), status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
 
 The` lat` and `lon` measurements under the `GPS` device are aligned.
@@ -50,7 +50,7 @@ The` lat` and `lon` measurements under the `GPS` device are aligned.
 
 The SQL Statement for setting schema template is as follow:
 
-```
+```shell
 IoTDB> set schema template temp1 to root.ln.wf01
 ```
 
@@ -58,7 +58,7 @@ After setting the schema template, you can insert data into the timeseries. For 
 
 **Attention**: Before inserting data, timeseries defined by the schema template will not be created. You can use the following SQL statement to create the timeseries before inserting data:
 
-```
+```shell
 IoTDB> create timeseries of schema template on root.ln.wf01
 ```
 
@@ -134,7 +134,7 @@ The execution result is as follows:
 
 The SQL Statement for unsetting schema template is as follow:
 
-```
+```shell
 IoTDB> unset schema template temp1 from root.beijing
 ```
 

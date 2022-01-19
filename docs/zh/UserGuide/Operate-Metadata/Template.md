@@ -34,14 +34,14 @@ CREATE SCHEMA? TEMPLATE <templateName> '(' templateMeasurementClause [',' templa
 
 templateMeasurementClause
     : <measurementId> <attributeClauses> #非对齐物理量
-    | <deviceId> ALIGNED '(' <measurementId> <attributeClauses> [',' <measurementId> <attributeClauses>]+ ')'  #一组对齐的物理量
+    | <deviceId> '(' <measurementId> <attributeClauses> [',' <measurementId> <attributeClauses>]+ ')'  #一组对齐的物理量
     ;
 ```
 
 例如：
 
 ```shell
-IoTDB> create schema template temp1(GPS aligned (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla compression=SNAPPY), status BOOLEAN encoding=PLAIN compression=SNAPPY)
+IoTDB> create schema template temp1(GPS (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla compression=SNAPPY), status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
 
 其中，`GPS` 设备下的物理量 `lat` 和 `lon` 是对齐的。

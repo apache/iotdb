@@ -64,7 +64,7 @@ public class IoTDBSchemaTemplateIT {
     // test create schema template repeatedly
     try {
       statement.execute(
-          "CREATE SCHEMA TEMPLATE temp1 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 aligned (s1 FLOAT, s2 INT64))");
+          "CREATE SCHEMA TEMPLATE temp1 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 (s1 FLOAT, s2 INT64))");
     } catch (IoTDBSQLException e) {
       Assert.assertEquals("303: Duplicated template name: temp1", e.getMessage());
     }
@@ -143,7 +143,7 @@ public class IoTDBSchemaTemplateIT {
     // test create schema template repeatedly
     try {
       statement.execute(
-          "CREATE SCHEMA TEMPLATE temp1 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 aligned (s1 FLOAT, s2 INT64))");
+          "CREATE SCHEMA TEMPLATE temp1 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 (s1 FLOAT, s2 INT64))");
     } catch (IoTDBSQLException e) {
       Assert.assertEquals("303: Duplicated template name: temp1", e.getMessage());
     }
@@ -314,10 +314,10 @@ public class IoTDBSchemaTemplateIT {
 
     // create schema template
     statement.execute(
-        "CREATE SCHEMA TEMPLATE temp1 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 aligned (s1 FLOAT, s2 INT64))");
+        "CREATE SCHEMA TEMPLATE temp1 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 (s1 FLOAT, s2 INT64))");
     statement.execute(
-        "CREATE SCHEMA TEMPLATE temp2 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 aligned (s1 FLOAT, s2 INT64))");
+        "CREATE SCHEMA TEMPLATE temp2 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 (s1 FLOAT, s2 INT64))");
     statement.execute(
-        "CREATE SCHEMA TEMPLATE temp3 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 aligned (s1 FLOAT, s2 INT64))");
+        "CREATE SCHEMA TEMPLATE temp3 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 (s1 FLOAT, s2 INT64))");
   }
 }

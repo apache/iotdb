@@ -97,7 +97,7 @@ createSchemaTemplate
 
 templateMeasurementClause
     : suffixPath attributeClauses #nonAlignedTemplateMeasurement
-    | suffixPath ALIGNED LR_BRACKET nodeNameWithoutWildcard attributeClauses
+    | suffixPath LR_BRACKET nodeNameWithoutWildcard attributeClauses
     (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET  #alignedTemplateMeasurement
     ;
 
