@@ -57,6 +57,31 @@ import org.apache.iotdb.db.qp.logical.sys.*;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
+import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
+import org.apache.iotdb.db.qp.logical.sys.MergeOperator;
+import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetTemplateOperator;
+import org.apache.iotdb.db.qp.logical.sys.SettleOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowContinuousQueriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowLockInfoOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
+import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
+import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
+import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.UnloadFileOperator;
+import org.apache.iotdb.db.qp.logical.sys.UnsetTemplateOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CqGroupByTimeClauseContext;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
@@ -1994,13 +2019,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       return new ShowLockInfoOperator(
           SQLConstant.TOK_LOCK_INFO, new PartialPath(SQLConstant.getSingleRootArray()));
     }
-  }
-
-  // Show Merge Info
-
-  @Override
-  public Operator visitShowMergeInfo(IoTDBSqlParser.ShowMergeInfoContext ctx) {
-    return new ShowMergeStatusOperator(SQLConstant.TOK_SHOW_MERGE_STATUS);
   }
 
   // Show Query Processlist

@@ -21,18 +21,16 @@ package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.ICrossSpaceMergeFileSelector;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.MaxFileMergeFileSelector;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.MaxSeriesMergeFileSelector;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.MergeFileStrategy;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.MaxFileMergeFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.MaxSeriesMergeFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
@@ -98,7 +96,7 @@ public class InnerSpaceCompactionUtils {
       boolean sequence)
       throws IOException, MetadataException {
     MultiTsFileDeviceIterator.MeasurementIterator seriesIterator =
-        deviceIterator.iterateNotAlignedSeries(device);
+        deviceIterator.iterateNotAlignedSeries(device, true);
     while (seriesIterator.hasNextSeries()) {
       // TODO: we can provide a configuration item to enable concurrent between each series
       String currentSeries = seriesIterator.nextSeries();
@@ -116,7 +114,7 @@ public class InnerSpaceCompactionUtils {
       TsFileResource targetResource,
       TsFileIOWriter writer,
       MultiTsFileDeviceIterator deviceIterator)
-      throws IOException, IllegalPathException, PathNotExistException {
+      throws IOException {
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
         deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
     AlignedSeriesCompactionExecutor compactionExecutor =
@@ -260,12 +258,12 @@ public class InnerSpaceCompactionUtils {
    */
   public static void moveTargetFile(TsFileResource targetResource, String fullStorageGroupName)
       throws IOException {
-    if (!targetResource.getTsFilePath().endsWith(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)) {
+    if (!targetResource.getTsFilePath().endsWith(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)) {
       logger.warn(
           "{} [Compaction] Tmp target tsfile {} should be end with {}",
           fullStorageGroupName,
           targetResource.getTsFilePath(),
-          IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX);
+          IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX);
       return;
     }
     File oldFile = targetResource.getTsFile();
@@ -274,7 +272,7 @@ public class InnerSpaceCompactionUtils {
     String newFilePath =
         targetResource
             .getTsFilePath()
-            .replace(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX);
+            .replace(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX);
     File newFile = new File(newFilePath);
     FSFactoryProducer.getFSFactory().moveFile(oldFile, newFile);
 

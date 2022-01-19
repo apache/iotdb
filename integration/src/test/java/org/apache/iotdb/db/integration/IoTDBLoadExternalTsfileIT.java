@@ -140,7 +140,6 @@ public class IoTDBLoadExternalTsfileIT {
     IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(1);
     prevCompactionThread =
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData(insertSequenceSqls);

@@ -24,18 +24,18 @@ For applications based on time series data, data quality is vital.
 **UDF Library** is IoTDB User Defined Functions (UDF) about data quality, including data profiling, data quality evalution and data repairing.
 It effectively meets the demand for data quality in the industrial field.
 
-## Quick Start
+### Quick Start
 
 1. Download the JAR with all dependencies and the script of registering UDF.
 2. Copy the JAR package to `ext\udf` under the directory of IoTDB system.
 3. Run `sbin\start-server.bat` (for Windows) or `sbin\start-server.sh` (for Linux or MacOS) to start IoTDB server.
 4. Copy the script to the directory of IoTDB system (under the root directory, at the same level as `sbin`), modify the parameters in the script if needed and run it to register UDF.
 
-## Contact
+### Contact
 
 + Email: iotdb-quality@protonmail.com
 
-## Download
+### Download
 
 You can download the following files:
 
@@ -58,11 +58,11 @@ You can download the following files:
     </tr>
 </table>
 
-# Data Quality
+## Data Quality
 
-## Completeness
+### Completeness
 
-### Usage
+#### Usage
 This function is used to calculate the completeness of time series. The input series are divided into several continuous and non overlapping windows. The timestamp of the first data point and the completeness of each window will be output.
 
 **Name:** COMPLETENESS
@@ -78,7 +78,7 @@ This function is used to calculate the completeness of time series. The input se
 
 **Note:** Only when the number of data points in the window exceeds 10, the calculation will be performed. Otherwise, the window will be ignored and nothing will be output.
 
-### Example: Default Parameters
+#### Example: Default Parameters
 
 With default parameters, this function will regard all input data as the same window.
 
@@ -122,7 +122,7 @@ Output series:
 +-----------------------------+-----------------------------+
 ```
 
-### Example: Specific Window Size
+#### Example: Specific Window Size
 
 When the window size is given, this function will divide the input data as multiple windows.
 
@@ -182,9 +182,9 @@ Output series:
 +-----------------------------+--------------------------------------------+
 ```
 
-## Consistency
+### Consistency
 
-### Usage
+#### Usage
 This function is used to calculate the consistency of time series. The input series are divided into several continuous and non overlapping windows. The timestamp of the first data point and the consistency of each window will be output.
 
 **Name:** CONSISTENCY
@@ -199,7 +199,7 @@ This function is used to calculate the consistency of time series. The input ser
 
 **Note:** Only when the number of data points in the window exceeds 10, the calculation will be performed. Otherwise, the window will be ignored and nothing will be output.
 
-### Example: Default Parameters
+#### Example: Default Parameters
 
 With default parameters, this function will regard all input data as the same window.
 
@@ -243,7 +243,7 @@ Output series:
 +-----------------------------+----------------------------+
 ```
 
-### Example: Specific Window Size
+#### Example: Specific Window Size
 
 When the window size is given, this function will divide the input data as multiple windows.
 
@@ -303,9 +303,9 @@ Output series:
 +-----------------------------+-------------------------------------------+
 ```
 
-## Timeliness
+### Timeliness
 
-### Usage
+#### Usage
 This function is used to calculate the timeliness of time series. The input series are divided into several continuous and non overlapping windows. The timestamp of the first data point and the timeliness of each window will be output.
 
 **Name:** TIMELINESS
@@ -320,7 +320,7 @@ This function is used to calculate the timeliness of time series. The input seri
 
 **Note:** Only when the number of data points in the window exceeds 10, the calculation will be performed. Otherwise, the window will be ignored and nothing will be output.
 
-### Example: Default Parameters
+#### Example: Default Parameters
 
 With default parameters, this function will regard all input data as the same window.
 
@@ -364,7 +364,7 @@ Output series:
 +-----------------------------+---------------------------+
 ```
 
-### Example: Specific Window Size
+#### Example: Specific Window Size
 
 When the window size is given, this function will divide the input data as multiple windows.
 
@@ -424,9 +424,9 @@ Output series:
 +-----------------------------+------------------------------------------+
 ```
 
-## Validity
+### Validity
 
-### Usage
+#### Usage
 This function is used to calculate the Validity of time series. The input series are divided into several continuous and non overlapping windows. The timestamp of the first data point and the Validity of each window will be output.
 
 **Name:** VALIDITY
@@ -441,7 +441,7 @@ This function is used to calculate the Validity of time series. The input series
 
 **Note:** Only when the number of data points in the window exceeds 10, the calculation will be performed. Otherwise, the window will be ignored and nothing will be output.
 
-### Example: Default Parameters
+#### Example: Default Parameters
 
 With default parameters, this function will regard all input data as the same window.
 
@@ -485,7 +485,7 @@ Output series:
 +-----------------------------+-------------------------+
 ```
 
-### Example: Specific Window Size
+#### Example: Specific Window Size
 
 When the window size is given, this function will divide the input data as multiple windows.
 
@@ -545,9 +545,9 @@ Output series:
 +-----------------------------+----------------------------------------+
 ```
 
-# Data Repair
+## Data Repair
 
-## TimestampRepair
+### TimestampRepair
 
 This function is used for timestamp repair.
 According to the given standard time interval,
@@ -568,7 +568,7 @@ this function will use the **median**, **mode** or **cluster** of the time inter
 
 **Output Series:** Output a single series. The type is the same as the input. This series is the input after repairing.
 
-### Example: Manually Specify the Standard Time Interval
+#### Example: Manually Specify the Standard Time Interval
 
 When `interval` is given, this function repairs according to the given standard time interval.
 
@@ -617,7 +617,7 @@ Output series:
 +-----------------------------+----------------------------------------------------+
 ```
 
-### Example: Automatically Estimate the Standard Time Interval
+#### Example: Automatically Estimate the Standard Time Interval
 
 When `interval` is default, this function estimates the standard time interval.
 
@@ -646,9 +646,9 @@ Output series:
 +-----------------------------+--------------------------------+
 ```
 
-## ValueFill
+### ValueFill
 
-### Usage
+#### Usage
 This function is used to impute time series. Several methods are supported.
 
 **Name**: ValueFill
@@ -663,7 +663,7 @@ This function is used to impute time series. Several methods are supported.
 
 **Note:** AR method use AR(1) model. Input value should be auto-correlated, or the function would output a single point (0, 0.0).
 
-### Example: Fill with linear
+#### Example: Fill with linear
 
 When `method` is "linear" or the default, Screen method is used to impute.
 
@@ -721,7 +721,7 @@ Output series:
 +-----------------------------+-----------------------+
 ```
 
-### Example: Previous Fill
+#### Example: Previous Fill
 
 When `method` is "previous", previous method is used.
 
@@ -755,9 +755,9 @@ Output series:
 +-----------------------------+-------------------------------------------+
 ```
 
-## ValueRepair
+### ValueRepair
 
-### Usage
+#### Usage
 This function is used to repair the value of the time series.
 Currently, two methods are supported:
 **Screen** is a method based on speed threshold, which makes all speeds meet the threshold requirements under the premise of minimum changes;
@@ -780,7 +780,7 @@ Currently, two methods are supported:
 
 **Note:** `NaN` will be filled with linear interpolation before repairing.
 
-### Example: Repair with Screen
+#### Example: Repair with Screen
 
 When `method` is 'Screen' or the default, Screen method is used.
 
@@ -838,7 +838,7 @@ Output series:
 +-----------------------------+----------------------------+
 ```
 
-### Example: Repair with LsGreedy
+#### Example: Repair with LsGreedy
 When `method` is 'LsGreedy', LsGreedy method is used.
 
 Input series is the same as above, the SQL for query is shown below:

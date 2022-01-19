@@ -51,7 +51,6 @@ public class IoTDBFuzzyQueryIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     initCreateSQLStatement();
     EnvironmentUtils.envSetUp();
     insertData();

@@ -36,6 +36,7 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
 
 import com.google.common.collect.MinMaxPriorityQueue;
+import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,6 +81,8 @@ public class CompactionTaskManager implements IService {
 
   private final long TASK_SUBMIT_INTERVAL =
       IoTDBDescriptor.getInstance().getConfig().getCompactionSubmissionInterval();
+
+  private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
   public static CompactionTaskManager getInstance() {
     return INSTANCE;
@@ -244,6 +247,33 @@ public class CompactionTaskManager implements IService {
           addMetrics(task, true, true);
         }
       }
+    }
+  }
+
+  public RateLimiter getMergeWriteRateLimiter() {
+    setWriteMergeRate(
+        IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec());
+    return mergeWriteRateLimiter;
+  }
+
+  private void setWriteMergeRate(final double throughoutMbPerSec) {
+    double throughout = throughoutMbPerSec * 1024.0 * 1024.0;
+    // if throughout = 0, disable rate limiting
+    if (throughout == 0) {
+      throughout = Double.MAX_VALUE;
+    }
+    if (mergeWriteRateLimiter.getRate() != throughout) {
+      mergeWriteRateLimiter.setRate(throughout);
+    }
+  }
+  /** wait by throughoutMbPerSec limit to avoid continuous Write Or Read */
+  public static void mergeRateLimiterAcquire(RateLimiter limiter, long bytesLength) {
+    while (bytesLength >= Integer.MAX_VALUE) {
+      limiter.acquire(Integer.MAX_VALUE);
+      bytesLength -= Integer.MAX_VALUE;
+    }
+    if (bytesLength > 0) {
+      limiter.acquire((int) bytesLength);
     }
   }
 

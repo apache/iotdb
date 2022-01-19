@@ -34,110 +34,10 @@ By using JConsole tool and connecting with JMX you are provided with some system
 
 This section describes how to use the JConsole ```Mbean```tab of jconsole to monitor some system configurations of IoTDB, the statistics of writing, and so on. After connecting to JMX, you can find the "MBean" of "org.apache.iotdb.service", as shown in the figure below.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112428223-ce7e3600-8d75-11eb-8e50-04f04571925b.png"> <br>
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/46039728/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
 
-There are several attributes under monitor, including data file directory, the statistics of writing and the values of some system parameters. It can also display a line chart of the property by double clicking the value corresponding to the property. For a detailed description of monitor attributes, see the following sections.
-
-**MBean Monitor Attributes List**
-
-* SystemDirectory
-
-|Name| SystemDirectory |
-|:---:|:---|
-|Description| The absolute directory of data system file. |
-|Type| String |
-
-* DataSizeInByte
-
-|Name| DataSizeInByte |
-|:---:|:---|
-|Description| The total size of data file.|
-|Unit| Byte |
-|Type| Long |
-
-* EnableStatMonitor
-
-|Name| EnableStatMonitor |
-|:---:|:---|
-|Description| If the monitor module is open |
-|Type| Boolean |
-
-### Data Monitoring
-
-This module is for providing some statistics info about the writing operations:
-
-- the data size (in bytes) in IoTDB, the number of data points in IoTDB;
-- how many operations are successful or failed executed.
-
-#### Enable/disable the module
-
-Users can choose to enable or disable the feature of data statistics monitoring (set the `enable_stat_monitor` item in the configuration file).
-
-#### Statistics Data Storing
-
-By default, the statistics data is only saved in memory and can be accessed using Jconsole.
-
-The data can also be written as some time series on disk. To enable it, set `enable_monitor_series_write=true` in the configuration file. If so, using `select` statement in IoTDB-cli can query these time series.
-
-> Note:
-> if `enable_monitor_series_write=true`, when IoTDB is restarted, the previous statistics data will be recovered into memory.
-> if `enable_monitor_series_write=false`, IoTDB will forget all statistics data after the instance is restarted.
-
-#### Writing Data Monitor
-
-At present, the monitor system can be divided into two modules: global writing statistics and storage group writing statistics. The global statistics records the number of total points and requests, and the storage group statistics counts the write data of each storage group.
-
-The system sets the collection granularity of the monitoring module to **update the statistical information once one data file is flushed into the disk**, so the data accuracy may be different from the actual situation. To obtain accurate information, **Please call the `flush` method before querying**. 
-
-Here are the writing data statistics (the range supported is shown in brackets):
-
-* TOTAL_POINTS (GLOBAL)
-
-|Name| TOTAL\_POINTS |
-|:---:|:---|
-|Description| Calculate the total number of global writing points. |
-|Timeseries Name| root.stats."global".TOTAL_POINTS<br/>root.stats."{storageGroupName}".TOTAL_POINTS<br/>where storageGroupName equals to `the-actual-sg-name.replace('.', '#')`<br/>For example, the total write points of the storage group `root.sg` is recorded in root.stats."root#sg".TOTAL_POINTS |
-
-* TOTAL\_REQ\_SUCCESS (GLOBAL)
-
-|Name| TOTAL\_REQ\_SUCCESS |
-|:---:|:---|
-|Description| Calculate the number of global successful requests. |
-|Timeseries Name|  root.stats."global".TOTAL\_REQ\_SUCCESS |
-
-* TOTAL\_REQ\_FAIL (GLOBAL)
-
-|Name| TOTAL\_REQ\_FAIL |
-|:---:|:---|
-|Description| Calculate the number of global failed requests. |
-|Timeseries Name| root.stats."global".TOTAL\_REQ\_FAIL |
-
-The above attributes also support visualization in JConsole. For the statistical information of each storage group, in order to avoid the display confusion caused by too many storage groups, the user can input the storage group name in the operation method under monitor MBean to query the corresponding statistical information.
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/34242296/92922942-34a20c00-f469-11ea-8dc2-8229d454583c.png">
-
-#### Example
-
-Here we give some examples of using writing data statistics.
-
-To know the total number of global writing points, use `select` clause to query it's value. The query statement is:
-
-```sql
-select TOTAL_POINTS from root.stats."global"
-```
-
-To know the total number of global writing points of root.ln (storage group), the query statement is:
-
-```sql
-select TOTAL_POINTS from root.stats."root.ln"
-```
-
-To know the latest statistics of the current system, you can use the latest data query. Here is the query statement:
-
-```sql
-flush
-select last TOTAL_POINTS from root.stats."global"
-```
+### System Metric Framework
+[Metric Tool](Metric-Tool.md)
 
 ### Performance Monitor
 
@@ -155,49 +55,10 @@ location：conf/iotdb-engine.properties
 
 **Table -parameter and description**
 
-|Parameter|Default Value|Description|
-|:---|:---|:---|
-|enable\_performance\_stat|false|Is stat performance of sub-module enable.|
-|performance\_stat\_display\_interval|60000|The interval of display statistic result in ms.|
-|performance_stat_memory_in_kb|20|The memory used for performance_stat in kb.|
+| Parameter                 | Default Value | Description                               |
+| :------------------------ | :------------ | :---------------------------------------- |
+| enable\_performance\_stat | false         | Is stat performance of sub-module enable. |
 </center>
-
-#### JMX MBean
-
-Connect to jconsole with port 31999，and choose `MBean`in menu bar. Expand the sidebar and choose `org.apache.iotdb.db.cost.statistic`. You can Find：
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112426751-721a1700-8d73-11eb-871c-db2e9c13cf99.png">
-
-**Attribute**
-
-1. EnableStat：Whether the statistics are enabled or not, if it is true, the module records the time-consuming of each operation and prints the results; It is non-editable but can be changed by the function below.
-
-2. DisplayIntervalInMs：The interval between print results. The changes will not take effect instantly. To make the changes effective, you should call startContinuousStatistics() or startOneTimeStatistics().
-3. OperationSwitch：It's a map to indicate whether the statistics of one kind of operation should be computed, the key is operation name and the value is true means the statistics of the operation are enabled, otherwise disabled. This parameter cannot be changed directly, it's changed by operation 'changeOperationSwitch()'. 
-
-**Operation**
-
-1. startContinuousStatistics： Start the statistics and output at interval of ‘DisplayIntervalInMs’.
-2. startOneTimeStatistics：Start the statistics and output in delay of ‘DisplayIntervalInMs’.
-3. stopStatistic：Stop the statistics.
-4. clearStatisticalState(): clear current stat result, reset statistical result.
-5. changeOperationSwitch(String operationName, Boolean operationState):set whether to monitor a kind of operation. The param 'operationName' is the name of operation, defined in attribute operationSwitch. The param operationState is whether to enable the statistics or not. If the state is switched successfully, the function will return true, else return false.
-
-### Adding Custom Monitoring Items for contributors of IOTDB
-
-**Add Operation**
-
-Add an enumeration in org.apache.iotdb.db.cost.statistic.Operation.
-
-**Add Timing Code in Monitoring Area**
-
-Add timing code in the monitoring start area:
-
-    long t0 = System. currentTimeMillis();
-
-Add timing code in the monitoring stop area: 
-
-    Measurement.INSTANCE.addOperationLatency(Operation, t0);
 
 ### Cache Hit Ratio Statistics
 

@@ -32,8 +32,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -58,9 +56,7 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -83,6 +79,47 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SettlePlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowChildNodesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowLockInfoPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
@@ -145,7 +182,6 @@ import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CANCELLED;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_NODES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COLUMN;
@@ -156,20 +192,16 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_NAM
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_QUERY_SQL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_TARGET_PATH;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COUNT;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CREATED_TIME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DONE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_TYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_LOCK_INFO;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PROGRESS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_SCHEMA_TEMPLATE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TASK_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
@@ -296,7 +328,7 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case MERGE:
       case FULL_MERGE:
-        operateMerge((MergePlan) plan);
+        operateMerge();
         return true;
       case SET_SYSTEM_MODE:
         operateSetSystemMode((SetSystemModePlan) plan);
@@ -460,12 +492,8 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  private void operateMerge(MergePlan plan) throws StorageEngineException {
-    if (plan.getOperatorType() == OperatorType.FULL_MERGE) {
-      StorageEngine.getInstance().mergeAll(true);
-    } else {
-      StorageEngine.getInstance().mergeAll(false);
-    }
+  private void operateMerge() throws StorageEngineException {
+    StorageEngine.getInstance().mergeAll();
   }
 
   private void operateClearCache() {
@@ -640,8 +668,6 @@ public class PlanExecutor implements IPlanExecutor {
         return processCountStorageGroup((CountPlan) showPlan);
       case COUNT_NODES:
         return processCountNodes((CountPlan) showPlan);
-      case MERGE_STATUS:
-        return processShowMergeStatus();
       case QUERY_PROCESSLIST:
         return processShowQueryProcesslist();
       case FUNCTIONS:
@@ -1601,15 +1627,8 @@ public class PlanExecutor implements IPlanExecutor {
         checkFailedMeasurments(insertRowPlan);
       }
     } catch (StorageEngineException | MetadataException e) {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
-        StatMonitor.getInstance().updateFailedStatValue();
-      }
       throw new QueryProcessException(e);
     } catch (Exception e) {
-      // update failed statistics
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
-        StatMonitor.getInstance().updateFailedStatValue();
-      }
       throw e;
     }
   }
@@ -1723,15 +1742,8 @@ public class PlanExecutor implements IPlanExecutor {
         checkFailedMeasurments(insertTabletPlan);
       }
     } catch (StorageEngineException | MetadataException e) {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
-        StatMonitor.getInstance().updateFailedStatValue();
-      }
       throw new QueryProcessException(e);
     } catch (Exception e) {
-      // update failed statistics
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
-        StatMonitor.getInstance().updateFailedStatValue();
-      }
       throw e;
     }
   }
@@ -2189,45 +2201,6 @@ public class PlanExecutor implements IPlanExecutor {
   @SuppressWarnings("unused") // for the distributed version
   protected void loadConfiguration(LoadConfigurationPlan plan) throws QueryProcessException {
     IoTDBDescriptor.getInstance().loadHotModifiedProps();
-  }
-
-  private QueryDataSet processShowMergeStatus() {
-    List<PartialPath> headerList = new ArrayList<>();
-    List<TSDataType> typeList = new ArrayList<>();
-    headerList.add(new PartialPath(COLUMN_STORAGE_GROUP, false));
-    headerList.add(new PartialPath(COLUMN_TASK_NAME, false));
-    headerList.add(new PartialPath(COLUMN_CREATED_TIME, false));
-    headerList.add(new PartialPath(COLUMN_PROGRESS, false));
-    headerList.add(new PartialPath(COLUMN_CANCELLED, false));
-    headerList.add(new PartialPath(COLUMN_DONE, false));
-
-    typeList.add(TSDataType.TEXT);
-    typeList.add(TSDataType.TEXT);
-    typeList.add(TSDataType.TEXT);
-    typeList.add(TSDataType.TEXT);
-    typeList.add(TSDataType.BOOLEAN);
-    typeList.add(TSDataType.BOOLEAN);
-    ListDataSet dataSet = new ListDataSet(headerList, typeList);
-    Map<String, List<TaskStatus>>[] taskStatus = MergeManager.getINSTANCE().collectTaskStatus();
-    for (Map<String, List<TaskStatus>> statusMap : taskStatus) {
-      for (Entry<String, List<TaskStatus>> stringListEntry : statusMap.entrySet()) {
-        for (TaskStatus status : stringListEntry.getValue()) {
-          dataSet.putRecord(toRowRecord(status, stringListEntry.getKey()));
-        }
-      }
-    }
-    return dataSet;
-  }
-
-  public RowRecord toRowRecord(TaskStatus status, String storageGroup) {
-    RowRecord record = new RowRecord(0);
-    record.addField(new Binary(storageGroup), TSDataType.TEXT);
-    record.addField(new Binary(status.getTaskName()), TSDataType.TEXT);
-    record.addField(new Binary(status.getCreatedTime()), TSDataType.TEXT);
-    record.addField(new Binary(status.getProgress()), TSDataType.TEXT);
-    record.addField(status.isCancelled(), TSDataType.BOOLEAN);
-    record.addField(status.isDone(), TSDataType.BOOLEAN);
-    return record;
   }
 
   private QueryDataSet processShowQueryProcesslist() {
