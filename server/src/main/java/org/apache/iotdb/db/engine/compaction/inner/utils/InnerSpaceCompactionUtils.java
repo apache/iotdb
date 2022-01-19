@@ -61,21 +61,23 @@ public class InnerSpaceCompactionUtils {
   }
 
   public static void compact(TsFileResource targetResource, List<TsFileResource> tsFileResources)
-      throws IOException, MetadataException {
+      throws IOException, MetadataException, InterruptedException {
 
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(tsFileResources);
         TsFileIOWriter writer = new TsFileIOWriter(targetResource.getTsFile())) {
       while (deviceIterator.hasNextDevice()) {
+        checkThreadInterrupted(targetResource);
+
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
         boolean aligned = deviceInfo.right;
+
         writer.startChunkGroup(device);
         if (aligned) {
           compactAlignedSeries(device, targetResource, writer, deviceIterator);
         } else {
           compactNotAlignedSeries(device, targetResource, writer, deviceIterator);
         }
-
         writer.endChunkGroup();
       }
 
@@ -84,6 +86,15 @@ public class InnerSpaceCompactionUtils {
       }
       writer.endFile();
       targetResource.close();
+    }
+  }
+
+  private static void checkThreadInterrupted(TsFileResource tsFileResource)
+      throws InterruptedException {
+    if (Thread.currentThread().isInterrupted()) {
+      throw new InterruptedException(
+          String.format(
+              "[Compaction] compaction for target file %s abort", tsFileResource.toString()));
     }
   }
 
