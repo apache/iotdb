@@ -46,7 +46,8 @@ public class FileReaderManager {
   private static final int MAX_CACHED_FILE_SIZE = 30000;
 
   /**
-   * When number of file streams reached MAX_CACHED_FILE_SIZE, then we will print a warning log each PRINT_INTERVAL
+   * When number of file streams reached MAX_CACHED_FILE_SIZE, then we will print a warning log each
+   * PRINT_INTERVAL
    */
   private static final int PRINT_INTERVAL = 10000;
 
@@ -114,7 +115,8 @@ public class FileReaderManager {
         !isClosed ? unclosedFileReaderMap : closedFileReaderMap;
     if (!readerMap.containsKey(filePath)) {
       int currentOpenedReaderCount = readerMap.size();
-      if (currentOpenedReaderCount >= MAX_CACHED_FILE_SIZE && (currentOpenedReaderCount % PRINT_INTERVAL == 0)) {
+      if (currentOpenedReaderCount >= MAX_CACHED_FILE_SIZE
+          && (currentOpenedReaderCount % PRINT_INTERVAL == 0)) {
         logger.warn("Query has opened {} files !", readerMap.size());
       }
 
