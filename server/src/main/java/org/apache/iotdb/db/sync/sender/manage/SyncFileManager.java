@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.sync.sender.manage;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.IoTDB;
@@ -167,7 +166,8 @@ public class SyncFileManager implements ISyncFileManager {
   private boolean checkFileValidity(File file) {
     return new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
         && !new File(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists()
-        && !new File(file.getAbsolutePath() + CrossSpaceMergeTask.MERGE_SUFFIX).exists();
+        && !new File(file.getAbsolutePath() + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX)
+            .exists();
   }
 
   @Override

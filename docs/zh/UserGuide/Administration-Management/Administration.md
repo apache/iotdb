@@ -149,10 +149,10 @@ Msg: The statement is executed successfully.
 |REVOKE\_ROLE\_PRIVILEGE|撤销角色权限。路径无关|
 |CREATE_FUNCTION|注册 UDF。路径无关|
 |DROP_FUNCTION|卸载 UDF。路径无关|
-|CREATE_TRIGGER|创建触发器。路径无关|
-|DROP_TRIGGER|卸载触发器。路径无关|
-|START_TRIGGER|启动触发器。路径无关|
-|STOP_TRIGGER|停止触发器。路径无关|
+|CREATE_TRIGGER|创建触发器。路径相关|
+|DROP_TRIGGER|卸载触发器。路径相关|
+|START_TRIGGER|启动触发器。路径相关|
+|STOP_TRIGGER|停止触发器。路径相关|
 |CREATE_CONTINUOUS_QUERY|创建连续查询。路径无关|
 |DROP_CONTINUOUS_QUERY|卸载连续查询。路径无关|
 

@@ -48,7 +48,6 @@ import static org.junit.Assert.fail;
 public class GrafanaApiServiceIT {
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
 

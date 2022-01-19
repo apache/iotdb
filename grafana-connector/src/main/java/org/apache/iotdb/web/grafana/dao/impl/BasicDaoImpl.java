@@ -32,7 +32,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -42,7 +41,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** Created by dell on 2017/7/17. */
 @Repository
 @PropertySource("classpath:application.properties")
 public class BasicDaoImpl implements BasicDao {
@@ -75,25 +73,21 @@ public class BasicDaoImpl implements BasicDao {
 
   @Override
   public List<String> getMetaData() {
-    ConnectionCallback<Object> connectionCallback =
-        new ConnectionCallback<Object>() {
-          @Override
-          public Object doInConnection(Connection connection) throws SQLException {
-            try (Statement statement = connection.createStatement()) {
-              statement.execute("show timeseries root.*");
-              try (ResultSet resultSet = statement.getResultSet()) {
+    return jdbcTemplate.execute(
+        (ConnectionCallback<List<String>>)
+            connection -> {
+              try (Statement statement = connection.createStatement()) {
+                statement.execute("show timeseries root.**");
                 logger.info("Start to get timeseries");
-                List<String> columnsName = new ArrayList<>();
-                while (resultSet.next()) {
-                  String timeseries = resultSet.getString(1);
-                  columnsName.add(timeseries.substring(5));
+                try (ResultSet resultSet = statement.getResultSet()) {
+                  List<String> columnsName = new ArrayList<>();
+                  while (resultSet.next()) {
+                    columnsName.add(resultSet.getString(1).substring(5));
+                  }
+                  return columnsName;
                 }
-                return columnsName;
               }
-            }
-          }
-        };
-    return (List<String>) jdbcTemplate.execute(connectionCallback);
+            });
   }
 
   public static void setTimestampRadioX(String timestampPrecision) {
