@@ -894,7 +894,8 @@ public class MManagerBasicTest {
 
     Set<String> allSchema = new HashSet<>();
     for (IMeasurementSchema schema : node.getSchemaTemplate().getSchemaMap().values()) {
-      allSchema.add("root.sg1.d1.vector" + TsFileConstant.PATH_SEPARATOR + schema.getMeasurementId());
+      allSchema.add(
+          "root.sg1.d1.vector" + TsFileConstant.PATH_SEPARATOR + schema.getMeasurementId());
     }
     for (MeasurementPath measurementPath :
         manager.getMeasurementPaths(new PartialPath("root.sg1.**"))) {

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
-import org.apache.commons.compress.archivers.ar.ArArchiveEntry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -108,8 +107,9 @@ public class InsertRowPlanTest {
   }
 
   @Test
-  public void testInsertRowPlanWithTreeSchemaTemplate() throws QueryProcessException, MetadataException, InterruptedException,
-  QueryFilterOptimizationException, StorageEngineException, IOException {
+  public void testInsertRowPlanWithTreeSchemaTemplate()
+      throws QueryProcessException, MetadataException, InterruptedException,
+          QueryFilterOptimizationException, StorageEngineException, IOException {
     List<List<String>> measurementList = new ArrayList<>();
     List<String> v1 = Arrays.asList("GPS.s1", "GPS.s2", "GPS.s3");
     measurementList.add(v1);
@@ -132,7 +132,8 @@ public class InsertRowPlanTest {
     encodingList.add(Collections.singletonList(TSEncoding.PLAIN));
 
     List<List<CompressionType>> compressionTypes = new ArrayList<>();
-    compressionTypes.add(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.SNAPPY));
+    compressionTypes.add(
+        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.SNAPPY));
     compressionTypes.add(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
     compressionTypes.add(Arrays.asList(CompressionType.SNAPPY));
 
@@ -166,29 +167,22 @@ public class InsertRowPlanTest {
     }
     Assert.assertEquals(3, resSize);
 
-    TSDataType[] dataTypes =
-        new TSDataType[] {TSDataType.TEXT};
+    TSDataType[] dataTypes = new TSDataType[] {TSDataType.TEXT};
 
     String[] columns = new String[1];
     columns[0] = "a";
 
-    rowPlan = new InsertRowPlan(
-        new PartialPath("root.isp.d1"),
-        1111L,
-        new String[] {"s6"},
-        dataTypes,
-        columns,
-        false);
+    rowPlan =
+        new InsertRowPlan(
+            new PartialPath("root.isp.d1"), 1111L, new String[] {"s6"}, dataTypes, columns, false);
     executor.insert(rowPlan);
 
-    queryPlan =
-        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(1, dataSet.getPaths().size());
     Assert.assertEquals(true, dataSet.hasNext());
 
-    queryPlan =
-        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.**");
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.**");
     dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(2, dataSet.getPaths().size());
     Assert.assertEquals(true, dataSet.hasNext());

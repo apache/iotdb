@@ -249,11 +249,16 @@ public class Template {
       String[] nodeNames,
       TSDataType[] dataTypes,
       TSEncoding[] encodings,
-      CompressionType[] compressors) throws IllegalPathException{
+      CompressionType[] compressors)
+      throws IllegalPathException {
     MeasurementSchema[] schemas = new MeasurementSchema[nodeNames.length];
     for (int i = 0; i < nodeNames.length; i++) {
-      schemas[i] = new MeasurementSchema(
-          new PartialPath(nodeNames[i]).getMeasurement(), dataTypes[i], encodings[i], compressors[i]);
+      schemas[i] =
+          new MeasurementSchema(
+              new PartialPath(nodeNames[i]).getMeasurement(),
+              dataTypes[i],
+              encodings[i],
+              compressors[i]);
     }
     return schemas;
   }
