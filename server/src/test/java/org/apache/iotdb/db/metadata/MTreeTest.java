@@ -795,6 +795,9 @@ public class MTreeTest {
         null);
 
     Assert.assertEquals(7, root.getStorageGroupNum(new PartialPath("root.**")));
+    for (PartialPath path : root.getMatchedStorageGroups(new PartialPath("root.*"), false)) {
+      System.out.println(path);
+    }
     Assert.assertEquals(3, root.getStorageGroupNum(new PartialPath("root.*")));
     Assert.assertEquals(2, root.getStorageGroupNum(new PartialPath("root.*.*")));
     Assert.assertEquals(2, root.getStorageGroupNum(new PartialPath("root.*.*.*")));

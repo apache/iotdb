@@ -26,7 +26,9 @@ public interface IMemManager {
 
   boolean isEmpty();
 
-  boolean isUnderThreshold();
+  boolean isExceedThreshold();
+
+  boolean isExceedCapacity();
 
   boolean requestMemResource(IMNode node);
 

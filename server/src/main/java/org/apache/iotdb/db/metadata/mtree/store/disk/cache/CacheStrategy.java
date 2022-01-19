@@ -176,7 +176,6 @@ public class CacheStrategy implements ICacheStrategy {
     }
     if (node != null) {
       getBelongedContainer(node).evictMNode(node.getName());
-      node.getParent().deleteChild(node.getName());
       removeOne(node.getCacheEntry());
       evictedMNodes.add(node);
       collectEvictedMNodes(node, evictedMNodes);
@@ -188,7 +187,7 @@ public class CacheStrategy implements ICacheStrategy {
     for (IMNode child : node.getChildren().values()) {
       removeOne(child.getCacheEntry());
       evictedMNodes.add(child);
-      collectVolatileNodes(child, evictedMNodes);
+      collectEvictedMNodes(child, evictedMNodes);
     }
   }
 

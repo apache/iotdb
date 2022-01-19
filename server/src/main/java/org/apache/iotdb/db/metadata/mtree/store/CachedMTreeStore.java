@@ -108,6 +108,7 @@ public class CachedMTreeStore implements IMTreeStore {
       if (!getCachedMNodeContainer(parent).isVolatile()) {
         node = file.getChildNode(parent, name);
         if (node != null) {
+          node.setParent(parent);
           pinMNodeInMemory(node);
           cacheStrategy.updateCacheStatusAfterRead(node);
         }
@@ -192,7 +193,7 @@ public class CachedMTreeStore implements IMTreeStore {
     for (IMNode releasedMNode : releasedMNodes) {
       memManager.releasePinnedMemResource(releasedMNode);
     }
-    if (!memManager.isUnderThreshold()) {
+    if (memManager.isExceedCapacity()) {
       executeMemoryRelease();
     }
   }
@@ -215,22 +216,21 @@ public class CachedMTreeStore implements IMTreeStore {
     if (!cacheStrategy.isCached(node.getParent())) {
       return false;
     }
+
     if (!memManager.requestMemResource(node)) {
       executeMemoryRelease();
-      if (cacheStrategy.isCached(node.getParent())) {
-        if (memManager.requestMemResource(node)) {
-          cacheStrategy.cacheMNode(node);
-          return true;
-        }
+      if (!cacheStrategy.isCached(node.getParent()) || !memManager.requestMemResource(node)) {
+        return false;
       }
     }
-    return false;
+    cacheStrategy.cacheMNode(node);
+    return true;
   }
 
   private void executeMemoryRelease() {
     flushVolatileNodes();
     List<IMNode> evictedMNodes;
-    while (!memManager.isUnderThreshold()) {
+    while (memManager.isExceedThreshold()) {
       evictedMNodes = cacheStrategy.evict();
       for (IMNode evictedMNode : evictedMNodes) {
         memManager.releaseMemResource(evictedMNode);
@@ -258,7 +258,7 @@ public class CachedMTreeStore implements IMTreeStore {
       }
     }
     cacheStrategy.pinMNode(node);
-    if (!memManager.isUnderThreshold()) {
+    if (memManager.isExceedCapacity()) {
       executeMemoryRelease();
     }
   }
@@ -288,14 +288,13 @@ public class CachedMTreeStore implements IMTreeStore {
         throw new NoSuchElementException();
       }
       if (!isIteratingDisk) {
-        if (cacheStrategy.isCached(nextNode)) {
+        if (cacheStrategy.isCached(nextNode) || cacheMNodeInMemory(nextNode)) {
           cacheStrategy.updateCacheStatusAfterRead(nextNode);
         }
       } else {
-        if (cacheStrategy.isCached(parent)) {
-          if (cacheMNodeInMemory(nextNode)) {
-            cacheStrategy.updateCacheStatusAfterRead(nextNode);
-          }
+        nextNode.setParent(parent);
+        if (cacheMNodeInMemory(nextNode)) {
+          cacheStrategy.updateCacheStatusAfterRead(nextNode);
         }
       }
       IMNode result = nextNode;
