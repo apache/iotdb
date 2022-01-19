@@ -107,6 +107,8 @@ public class IoTDBConstant {
   public static final String COLUMN_CONTINUOUS_QUERY_TARGET_PATH = "target path";
   public static final String COLUMN_CONTINUOUS_QUERY_QUERY_SQL = "query sql";
 
+  public static final String COLUMN_SCHEMA_TEMPLATE = "template name";
+
   public static final String FUNCTION_TYPE_NATIVE = "native";
   public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
   public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";

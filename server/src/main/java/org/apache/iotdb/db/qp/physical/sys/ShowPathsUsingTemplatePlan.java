@@ -27,4 +27,8 @@ public class ShowPathsUsingTemplatePlan extends ShowPlan {
     super(showContentType);
     this.templateName = templateName;
   }
+
+  public String getTemplateName() {
+    return templateName;
+  }
 }
