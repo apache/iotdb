@@ -14,7 +14,7 @@ name: InfluxDB Protocol Test
 
 on:
   push:
-    branches:
+    branches-ignore:
       - master
       - 'rel/*'
     paths-ignore:
