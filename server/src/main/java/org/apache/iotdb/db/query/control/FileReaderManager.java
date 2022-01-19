@@ -148,7 +148,7 @@ public class FileReaderManager {
    * Increase the reference count of the reader specified by filePath. Only when the reference count
    * of a reader equals zero, the reader can be closed and removed.
    */
-  public void increaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
+  void increaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     tsFile.readLock();
     synchronized (this) {
       if (!isClosed) {
@@ -167,7 +167,7 @@ public class FileReaderManager {
    * Decrease the reference count of the reader specified by filePath. This method is latch-free.
    * Only when the reference count of a reader equals zero, the reader can be closed and removed.
    */
-  public void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
+  void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     synchronized (this) {
       if (!isClosed && unclosedReferenceMap.containsKey(tsFile.getTsFilePath())) {
         if (unclosedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet() == 0) {
