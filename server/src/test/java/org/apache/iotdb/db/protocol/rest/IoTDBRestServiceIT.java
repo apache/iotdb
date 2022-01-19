@@ -73,8 +73,6 @@ public class IoTDBRestServiceIT {
     HttpGet httpGet = new HttpGet("http://127.0.0.1:18080/ping");
     CloseableHttpResponse response = null;
     try {
-      String authorization = getAuthorization("root", "root");
-      httpGet.setHeader("Authorization", authorization);
       response = httpClient.execute(httpGet);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
@@ -191,6 +189,68 @@ public class IoTDBRestServiceIT {
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void queryWithUnsetAuthorization() {
+    CloseableHttpResponse response = null;
+    try {
+      CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+      HttpPost httpPost = new HttpPost("http://127.0.0.1:18080/rest/v1/query");
+      httpPost.addHeader("Content-type", "application/json; charset=utf-8");
+      httpPost.setHeader("Accept", "application/json");
+      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      Assert.assertEquals(401, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(603, Integer.parseInt(result.get("code").toString()));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void queryWithWrongAuthorization() {
+    CloseableHttpResponse response = null;
+    try {
+      CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+      HttpPost httpPost = new HttpPost("http://127.0.0.1:18080/rest/v1/query");
+      httpPost.addHeader("Content-type", "application/json; charset=utf-8");
+      httpPost.setHeader("Accept", "application/json");
+      String authorization = getAuthorization("abc", "def");
+      httpPost.setHeader("Authorization", authorization);
+      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      Assert.assertEquals(401, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(600, Integer.parseInt(result.get("code").toString()));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
     }
   }
 
