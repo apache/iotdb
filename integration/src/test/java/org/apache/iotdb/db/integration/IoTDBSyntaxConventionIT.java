@@ -33,7 +33,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.junit.Assert.fail;
 
@@ -218,9 +220,36 @@ public class IoTDBSyntaxConventionIT {
   }
 
   @Test
+  public void testIllegalExpression4() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg1.d1.`'a'` INT64");
+      try {
+        statement.execute("SELECT 'a' FROM root.sg1.d1");
+        fail();
+      } catch (SQLException e) {
+        // ignored
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
   public void testNodeName() {
     String[] createNodeNames = {
       "`select`", "'select'", "\"select\"", "`a+b`", "'a+b'", "\"a+b\"", "'a.b'", "\"a.b\""
+    };
+    String[] selectNodeNames = {
+      "`select`",
+      "`'select'`",
+      "`\"select\"`",
+      "`a+b`",
+      "`'a+b'`",
+      "`\"a+b\"`",
+      "`'a.b'`",
+      "`\"a.b\"`"
     };
     String[] resultNodeNames = {
       "select", "'select'", "\"select\"", "a+b", "'a+b'", "\"a+b\"", "'a.b'", "\"a.b\""
@@ -258,9 +287,9 @@ public class IoTDBSyntaxConventionIT {
       }
       Assert.assertEquals(0, expectedResult.size());
 
-      for (int i = 0; i < createNodeNames.length; i++) {
+      for (int i = 0; i < selectNodeNames.length; i++) {
         String selectSql =
-            String.format("SELECT %s FROM root.sg1.d1 WHERE time = 1", createNodeNames[i]);
+            String.format("SELECT %s FROM root.sg1.d1 WHERE time = 1", selectNodeNames[i]);
         System.out.println("SELECT STATEMENT: " + selectSql);
         hasResult = statement.execute(selectSql);
         Assert.assertTrue(hasResult);
