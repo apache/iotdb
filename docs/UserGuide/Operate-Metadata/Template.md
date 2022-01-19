@@ -19,21 +19,34 @@
 
 -->
 
-## Schema Template
+# Schema Template
 
 IoTDB supports the schema template function, enabling different entities of the same type to share metadata, reduce the memory usage of metadata, and simplify the management of numerous entities and measurements.
 
-### Create Schema Template
+Note: The `schema` keyword in the following statements can be omitted.
 
-The SQL Statement for creating schema template is as follow:
+## Create Schema Template
+
+The SQL syntax for creating a metadata template is as follows:
+
+```sql
+CREATE SCHEMA? TEMPLATE <templateName> '(' templateMeasurementClause [',' templateMeasurementClause]+ ')'
+
+templateMeasurementClause
+    : <measurementId> <attributeClauses> # non-aligned measurement
+    | <deviceId> ALIGNED '(' <measurementId> <attributeClauses> [',' <measurementId> <attributeClauses>]+ ')' # a group of aligned measurements
+    ;
+```
+
+For example:
 
 ```
-IoTDB> create schema template temp1(GPS(lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla compression=SNAPPY), status BOOLEAN encoding=PLAIN compression=SNAPPY)
+IoTDB> create schema template temp1(GPS aligned (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla compression=SNAPPY), status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
 
 The` lat` and `lon` measurements under the `GPS` device are aligned.
 
-### Set Schema Template
+## Set Schema Template
 
 The SQL Statement for setting schema template is as follow:
 
@@ -49,7 +62,75 @@ After setting the schema template, you can insert data into the timeseries. For 
 IoTDB> create timeseries of schema template on root.ln.wf01
 ```
 
-### Uset Schema Template
+## Show Schema Template
+
+- Show all schema templates
+
+The SQL statement looks like this:
+
+```shell
+IoTDB> show schema templates on root.ln.wf01
+````
+
+The execution result is as follows:
+```shell
++-------------+
+|template name|
++-------------+
+|temp1|
++-------------+
+````
+
+- Show nodes under in schema template
+
+The SQL statement looks like this:
+
+```shell
+IoTDB> show nodes in schema template templ1
+````
+
+The execution result is as follows:
+```shell
++------------+
+|child nodes|
++------------+
+| status|
+|GPS.lat|
+| GPS.lon|
++------------+
+````
+
+- Show the path prefix where a schema template is set
+
+```shell
+IoTDB> show paths set schema template templ1
+````
+
+The execution result is as follows:
+```shell
++------------+
+| child paths|
++------------+
+|root.ln.wf01|
++------------+
+````
+
+- Show the path prefix where a schema template is used (i.e. the time series has been created)
+
+```shell
+IoTDB> show paths using schema template templ1
+````
+
+The execution result is as follows:
+```shell
++------------+
+| child paths|
++------------+
+|root.ln.wf01|
++------------+
+````
+
+## Uset Schema Template
 
 The SQL Statement for unsetting schema template is as follow:
 
@@ -58,3 +139,13 @@ IoTDB> unset schema template temp1 from root.beijing
 ```
 
 **Attention**: Unsetting the template from entities, which have already inserted records using the template, is not supported.
+
+## Drop Schema Template
+
+The SQL Statement for dropping schema template is as follow:
+
+```shell
+IoTDB> drop schema template temp1
+```
+
+**Attention**: Dropping an already set template is not supported.
