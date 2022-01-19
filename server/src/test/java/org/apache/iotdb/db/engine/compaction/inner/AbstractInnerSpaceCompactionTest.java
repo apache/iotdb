@@ -104,8 +104,6 @@ public abstract class AbstractInnerSpaceCompactionTest {
   protected List<TsFileResource> seqResources = new ArrayList<>();
   protected List<TsFileResource> unseqResources = new ArrayList<>();
 
-  private int prevMergeChunkThreshold;
-
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     tempSGDir =
@@ -132,9 +130,6 @@ public abstract class AbstractInnerSpaceCompactionTest {
 
     EnvironmentUtils.envSetUp();
     IoTDB.metaManager.init();
-    prevMergeChunkThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
-    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(-1);
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
     tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
@@ -240,9 +235,6 @@ public abstract class AbstractInnerSpaceCompactionTest {
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMergeChunkPointNumberThreshold(prevMergeChunkThreshold);
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();

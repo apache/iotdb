@@ -70,15 +70,10 @@ abstract class MergeTest {
   List<TsFileResource> seqResources = new ArrayList<>();
   List<TsFileResource> unseqResources = new ArrayList<>();
 
-  private int prevMergeChunkThreshold;
-
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     EnvironmentUtils.envSetUp();
     IoTDB.metaManager.init();
-    prevMergeChunkThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
-    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(-1);
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
   }
@@ -88,9 +83,6 @@ abstract class MergeTest {
     removeFiles(seqResources, unseqResources);
     seqResources.clear();
     unseqResources.clear();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMergeChunkPointNumberThreshold(prevMergeChunkThreshold);
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();

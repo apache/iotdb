@@ -80,7 +80,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   /* Total 5 seq files, each file has the same 6 nonAligned timeseries, each timeseries has the same 100 data point.*/
   @Test
   public void testSeqInnerSpaceCompactionWithSameTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     registerTimeseriesInMManger(2, 3, false);
     createFiles(5, 2, 3, 100, 0, 0, 50, 50, false, true);
 
@@ -147,7 +147,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   */
   @Test
   public void testSeqInnerSpaceCompactionWithDifferentTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     registerTimeseriesInMManger(5, 5, false);
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
     createFiles(2, 3, 5, 50, 250, 250, 50, 50, false, true);
@@ -246,7 +246,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   /* Total 5 unseq files, each file has the same 6 nonAligned timeseries, each timeseries has the same 100 data point.*/
   @Test
   public void testUnSeqInnerSpaceCompactionWithSameTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     registerTimeseriesInMManger(2, 3, false);
     createFiles(5, 2, 3, 100, 0, 0, 50, 50, false, false);
 
@@ -328,7 +328,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   */
   @Test
   public void testUnSeqInnerSpaceCompactionWithDifferentTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     registerTimeseriesInMManger(9, 9, false);
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, false);
     createFiles(2, 3, 5, 50, 150, 150, 50, 50, false, false);
@@ -449,7 +449,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   */
   @Test
   public void testUnSeqInnerSpaceCompactionWithAllDataDeletedInTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(5, 7, false);
     createFiles(2, 2, 3, 300, 0, 0, 0, 0, false, false);
@@ -580,7 +580,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   */
   @Test
   public void testUnSeqInnerSpaceCompactionWithAllDataDeletedInDevice()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(5, 7, false);
     createFiles(2, 2, 3, 300, 0, 0, 0, 0, false, false);
@@ -704,7 +704,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   */
   @Test
   public void testUnSeqInnerSpaceCompactionWithAllDataDeletedInTargetFile()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(5, 7, false);
     createFiles(2, 2, 3, 300, 0, 0, 0, 0, false, false);
@@ -792,7 +792,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   /* Total 5 seq files, each file has the same 6 aligned timeseries, each timeseries has the same 100 data point.*/
   @Test
   public void testAlignedSeqInnerSpaceCompactionWithSameTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     registerTimeseriesInMManger(2, 3, true);
     createFiles(5, 2, 3, 100, 0, 0, 50, 50, true, true);
 
@@ -883,7 +883,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   */
   @Test
   public void testAlignedSeqInnerSpaceCompactionWithDifferentTimeseriesAndEmptyPage()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(50);
     registerTimeseriesInMManger(5, 7, true);
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, true, true);
@@ -1001,7 +1001,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   */
   @Test
   public void testAlignedSeqInnerSpaceCompactionWithDifferentTimeseriesAndEmptyChunk()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     registerTimeseriesInMManger(5, 7, true);
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, true, true);
     createFiles(2, 3, 5, 50, 250, 250, 50, 50, true, true);
@@ -1118,7 +1118,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   */
   @Test
   public void testAlignedUnSeqInnerSpaceCompactionWithEmptyChunkAndEmptyPage()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(5, 7, true);
     createFiles(2, 2, 3, 300, 0, 0, 0, 0, true, false);
@@ -1247,7 +1247,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   */
   @Test
   public void testAlignedUnSeqInnerSpaceCompactionWithAllDataDeletedInTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(5, 7, true);
     createFiles(2, 2, 3, 300, 0, 0, 0, 0, true, false);
@@ -1424,7 +1424,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   */
   @Test
   public void testAlignedUnSeqInnerSpaceCompactionWithAllDataDeletedInDevice()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(5, 7, true);
     createFiles(2, 2, 3, 300, 0, 0, 0, 0, true, false);
@@ -1568,7 +1568,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   /* Total 5 files, each file has the same 6 aligned timeseries, each timeseries has the same 100 data point.*/
   @Test
   public void testAlignedUnSeqInnerSpaceCompactionWithSameTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     registerTimeseriesInMManger(2, 3, true);
     createFiles(5, 2, 3, 100, 0, 0, 50, 50, true, false);
 
@@ -1663,7 +1663,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
    */
   @Test
   public void testCrossSpaceCompactionWithSameTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     registerTimeseriesInMManger(2, 3, false);
     createFiles(5, 2, 3, 100, 0, 0, 0, 0, false, true);
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
@@ -1750,7 +1750,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
    */
   @Test
   public void testCrossSpaceCompactionWithDifferentTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
@@ -1891,7 +1891,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
    */
   @Test
   public void testCrossSpaceCompactionWithAllDataDeletedInTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
@@ -2045,7 +2045,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
    */
   @Test
   public void testCrossSpaceCompactionWithAllDataDeletedInDevice()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
@@ -2192,7 +2192,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
    */
   @Test
   public void testCrossSpaceCompactionWithAllDataDeletedInOneTargetFile()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
@@ -2327,7 +2327,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
    */
   @Test
   public void testCrossSpaceCompactionWithAllDataDeletedInDeviceInSeqFiles()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
@@ -2474,7 +2474,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
    */
   @Test
   public void testAlignedCrossSpaceCompactionWithSameTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     registerTimeseriesInMManger(2, 3, true);
     createFiles(5, 2, 3, 100, 0, 0, 0, 0, true, true);
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, true, false);
@@ -2570,7 +2570,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
    */
   @Test
   public void testAlignedCrossSpaceCompactionWithDifferentTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, true);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, true, true);
@@ -2731,7 +2731,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
    */
   @Test
   public void testAlignedCrossSpaceCompactionWithAllDataDeletedInTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, true);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, true, true);
@@ -2935,7 +2935,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
    */
   @Test
   public void testAlignedCrossSpaceCompactionWithAllDataDeletedInOneTargetFile()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, true);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, true, true);
@@ -3140,7 +3140,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
    */
   @Test
   public void testAlignedCrossSpaceCompactionWithFileTimeIndexResource()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException, InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, true);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, true, true);

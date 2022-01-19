@@ -414,13 +414,6 @@ public class IoTDBConfig {
 
   /** The max candidate file num in compaction */
   private int maxCompactionCandidateFileNum = 30;
-  /**
-   * When merge point number reaches this, merge the files to the last level. During a merge, if a
-   * chunk with less number of chunks than this parameter, the chunk will be merged with its
-   * succeeding chunks even if it is not overflowed, until the merged chunks reach this threshold
-   * and the new chunk will be flushed.
-   */
-  private int mergeChunkPointNumberThreshold = 100000;
 
   /**
    * When point number of a page reaches this, use "append merge" instead of "deserialize merge".
@@ -1705,13 +1698,6 @@ public class IoTDBConfig {
     this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
   }
 
-  public int getMergeChunkPointNumberThreshold() {
-    return mergeChunkPointNumberThreshold;
-  }
-
-  public void setMergeChunkPointNumberThreshold(int mergeChunkPointNumberThreshold) {
-    this.mergeChunkPointNumberThreshold = mergeChunkPointNumberThreshold;
-  }
 
   public int getMergePagePointNumberThreshold() {
     return mergePagePointNumberThreshold;

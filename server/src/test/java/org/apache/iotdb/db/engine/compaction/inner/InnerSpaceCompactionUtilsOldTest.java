@@ -73,7 +73,7 @@ public class InnerSpaceCompactionUtilsOldTest extends InnerCompactionTest {
   }
 
   @Test
-  public void testCompact() throws IOException, MetadataException {
+  public void testCompact() throws IOException, MetadataException, InterruptedException {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(

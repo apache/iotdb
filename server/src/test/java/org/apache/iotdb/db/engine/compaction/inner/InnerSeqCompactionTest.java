@@ -332,6 +332,8 @@ public class InnerSeqCompactionTest {
           }
         }
       }
+    } catch (InterruptedException e) {
+      e.printStackTrace();
     } finally {
       IoTDBDescriptor.getInstance()
           .getConfig()
@@ -343,13 +345,7 @@ public class InnerSeqCompactionTest {
   }
 
   @Test
-  public void testAppendPage() throws IOException, MetadataException {
-    int prevMergePagePointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getMergePagePointNumberThreshold();
-    IoTDBDescriptor.getInstance().getConfig().setMergePagePointNumberThreshold(1);
-    int prevMergeChunkPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
-    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(100000);
+  public void testAppendPage() throws IOException, MetadataException, InterruptedException {
 
     for (int toMergeFileNum : toMergeFileNums) {
       for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
@@ -608,13 +604,6 @@ public class InnerSeqCompactionTest {
         }
       }
     }
-
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMergePagePointNumberThreshold(prevMergePagePointNumberThreshold);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMergeChunkPointNumberThreshold(prevMergeChunkPointNumberThreshold);
   }
 
   @Test
@@ -946,6 +935,8 @@ public class InnerSeqCompactionTest {
           }
         }
       }
+    } catch (InterruptedException e) {
+      e.printStackTrace();
     } finally {
       IoTDBDescriptor.getInstance()
           .getConfig()
