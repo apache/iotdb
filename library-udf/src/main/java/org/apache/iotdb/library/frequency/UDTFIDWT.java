@@ -70,7 +70,7 @@ public class UDTFIDWT implements UDTF {
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(TSDataType.DOUBLE);
-    s = parameters.getString("coef");
+    s = parameters.getStringOrDefault("coef", "");
     method = parameters.getStringOrDefault("method", "");
     layer = parameters.getIntOrDefault("layer", 1);
     timestamp.clear();
