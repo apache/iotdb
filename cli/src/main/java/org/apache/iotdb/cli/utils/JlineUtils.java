@@ -74,12 +74,13 @@ public class JlineUtils {
     String historyFilePath =
         System.getProperty("user.home")
             + File.separator
+            + historyFile
+            + "-"
             + host.hashCode()
             + "-"
             + port
             + "-"
-            + username
-            + historyFile;
+            + username;
     builder.variable(LineReader.HISTORY_FILE, new File(historyFilePath));
 
     // TODO: since the lexer doesn't produce tokens for quotation marks, disable the highlighter to
