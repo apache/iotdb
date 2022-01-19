@@ -50,7 +50,6 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -73,23 +72,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.ConcurrentModificationException;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -601,16 +586,6 @@ public class StorageEngine implements IService {
 
     try {
       virtualStorageGroupProcessor.insert(insertRowPlan);
-      if (config.isEnableStatMonitor()) {
-        try {
-          updateMonitorStatistics(
-              processorMap.get(
-                  IoTDB.metaManager.getBelongedStorageGroup(insertRowPlan.getDevicePath())),
-              insertRowPlan);
-        } catch (MetadataException e) {
-          logger.error("failed to record status", e);
-        }
-      }
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }
@@ -668,28 +643,6 @@ public class StorageEngine implements IService {
 
     getSeriesSchemas(insertTabletPlan, virtualStorageGroupProcessor);
     virtualStorageGroupProcessor.insertTablet(insertTabletPlan);
-
-    if (config.isEnableStatMonitor()) {
-      try {
-        updateMonitorStatistics(
-            processorMap.get(
-                IoTDB.metaManager.getBelongedStorageGroup(insertTabletPlan.getDevicePath())),
-            insertTabletPlan);
-      } catch (MetadataException e) {
-        logger.error("failed to record status", e);
-      }
-    }
-  }
-
-  private void updateMonitorStatistics(
-      StorageGroupManager storageGroupManager, InsertPlan insertPlan) {
-    StatMonitor monitor = StatMonitor.getInstance();
-    int successPointsNum =
-        insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
-    // update to storage group statistics
-    storageGroupManager.updateMonitorSeriesValue(successPointsNum);
-    // update to global statistics
-    monitor.updateStatGlobalValue(successPointsNum);
   }
 
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
@@ -844,13 +797,13 @@ public class StorageEngine implements IService {
    *
    * @throws StorageEngineException StorageEngineException
    */
-  public void mergeAll(boolean isFullMerge) throws StorageEngineException {
+  public void mergeAll() throws StorageEngineException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
 
     for (StorageGroupManager storageGroupManager : processorMap.values()) {
-      storageGroupManager.mergeAll(isFullMerge);
+      storageGroupManager.mergeAll();
     }
   }
 
@@ -909,7 +862,7 @@ public class StorageEngine implements IService {
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
       throws StorageEngineException, LoadFileException, IllegalPathException {
-    getProcessorDirectly(new PartialPath(getSgByEngineFile(newTsFileResource.getTsFile())))
+    getProcessorDirectly(new PartialPath(getSgByEngineFile(newTsFileResource.getTsFile(), false)))
         .loadNewTsFileForSync(newTsFileResource);
   }
 
@@ -927,19 +880,19 @@ public class StorageEngine implements IService {
 
   public boolean deleteTsfileForSync(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile)))
+    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile, false)))
         .deleteTsfile(deletedTsfile);
   }
 
   public boolean deleteTsfile(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile)))
+    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile, true)))
         .deleteTsfile(deletedTsfile);
   }
 
   public boolean unloadTsfile(File tsfileToBeUnloaded, File targetDir)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(tsfileToBeUnloaded)))
+    return getProcessorDirectly(new PartialPath(getSgByEngineFile(tsfileToBeUnloaded, true)))
         .unloadTsfile(tsfileToBeUnloaded, targetDir);
   }
 
@@ -948,10 +901,28 @@ public class StorageEngine implements IService {
    * files which are not loaded.
    *
    * @param file internal file
+   * @param needCheck check if the tsfile is an internal TsFile. If you make sure it is inside, no
+   *     need to check
    * @return sg name
+   * @throws IllegalPathException throw if tsfile is not an internal TsFile
    */
-  public String getSgByEngineFile(File file) {
-    return file.getParentFile().getParentFile().getParentFile().getName();
+  public String getSgByEngineFile(File file, boolean needCheck) throws IllegalPathException {
+    if (needCheck) {
+      File dataDir =
+          file.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile();
+      if (dataDir.exists()) {
+        String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+        for (String dir : dataDirs) {
+          File f = new File(dir);
+          if (dataDir.getAbsolutePath().equals(f.getAbsolutePath())) {
+            return file.getParentFile().getParentFile().getParentFile().getName();
+          }
+        }
+      }
+      throw new IllegalPathException(file.getAbsolutePath(), "it's not an internal tsfile.");
+    } else {
+      return file.getParentFile().getParentFile().getParentFile().getName();
+    }
   }
 
   /** @return TsFiles (seq or unseq) grouped by their storage group and partition number. */

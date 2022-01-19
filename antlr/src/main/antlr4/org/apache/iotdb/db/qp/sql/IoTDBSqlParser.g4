@@ -58,7 +58,7 @@ dclStatement
 
 utilityStatement
     : merge | fullMerge | flush | clearCache | settle
-    | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showMergeInfo
+    | setSystemStatus | showVersion | showFlushInfo | showLockInfo
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
@@ -89,7 +89,7 @@ alignedMeasurements
 
 // Create Schema Template
 createSchemaTemplate
-    : CREATE SCHEMA TEMPLATE templateName=ID
+    : CREATE SCHEMA TEMPLATE templateName=identifier
     LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
     ;
 
@@ -106,12 +106,12 @@ createTimeseriesOfSchemaTemplate
 
 // Create Function
 createFunction
-    : CREATE FUNCTION udfName=ID AS className=STRING_LITERAL
+    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL
     ;
 
 // Create Trigger
 createTrigger
-    : CREATE TRIGGER triggerName=ID triggerEventClause ON fullPath AS className=STRING_LITERAL triggerAttributeClause?
+    : CREATE TRIGGER triggerName=identifier triggerEventClause ON fullPath AS className=STRING_LITERAL triggerAttributeClause?
     ;
 
 triggerEventClause
@@ -128,7 +128,7 @@ triggerAttribute
 
 // Create Continuous Query
 createContinuousQuery
-    : CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=ID resampleClause? cqSelectIntoClause
+    : CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=identifier resampleClause? cqSelectIntoClause
     ;
 
 cqSelectIntoClause
@@ -154,16 +154,16 @@ alterTimeseries
     ;
 
 alterClause
-    : RENAME beforeName=ID TO currentName=ID
+    : RENAME beforeName=identifier TO currentName=identifier
     | SET propertyClause (COMMA propertyClause)*
-    | DROP ID (COMMA ID)*
+    | DROP identifier (COMMA identifier)*
     | ADD TAGS propertyClause (COMMA propertyClause)*
     | ADD ATTRIBUTES propertyClause (COMMA propertyClause)*
     | UPSERT aliasClause? tagClause? attributeClause?
     ;
 
 aliasClause
-    : ALIAS OPERATOR_EQ ID
+    : ALIAS OPERATOR_EQ identifier
     ;
 
 // Delete Storage Group
@@ -183,17 +183,17 @@ deletePartition
 
 // Drop Function
 dropFunction
-    : DROP FUNCTION udfName=ID
+    : DROP FUNCTION udfName=identifier
     ;
 
 // Drop Trigger
 dropTrigger
-    : DROP TRIGGER triggerName=ID
+    : DROP TRIGGER triggerName=identifier
     ;
 
 // Drop Continuous Query
 dropContinuousQuery
-    : DROP (CONTINUOUS QUERY|CQ) continuousQueryName=ID
+    : DROP (CONTINUOUS QUERY|CQ) continuousQueryName=identifier
     ;
 
 // Set TTL
@@ -208,22 +208,22 @@ unsetTTL
 
 // Set Schema Template
 setSchemaTemplate
-    : SET SCHEMA TEMPLATE templateName=ID TO prefixPath
+    : SET SCHEMA TEMPLATE templateName=identifier TO prefixPath
     ;
 
 // Unset Schema Template
 unsetSchemaTemplate
-    : UNSET SCHEMA TEMPLATE templateName=ID FROM prefixPath
+    : UNSET SCHEMA TEMPLATE templateName=identifier FROM prefixPath
     ;
 
 // Start Trigger
 startTrigger
-    : START TRIGGER triggerName=ID
+    : START TRIGGER triggerName=identifier
     ;
 
 // Stop Trigger
 stopTrigger
-    : STOP TRIGGER triggerName=ID
+    : STOP TRIGGER triggerName=identifier
     ;
 
 // Show Storage Group
@@ -410,7 +410,7 @@ insertStatement
     ;
 
 insertColumnsSpec
-    : LR_BRACKET (TIMESTAMP|TIME)? (COMMA? measurementName)+ RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME)? (COMMA? nodeNameWithoutWildcard)+ RR_BRACKET
     ;
 
 insertValuesSpec
@@ -420,10 +420,6 @@ insertValuesSpec
 insertMultiValue
     : LR_BRACKET timeValue (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET (measurementValue COMMA?)+ RR_BRACKET
-    ;
-
-measurementName
-    : nodeNameWithoutWildcard
     ;
 
 measurementValue
@@ -603,10 +599,6 @@ showLockInfo
     : SHOW LOCK INFO prefixPath
     ;
 
-// Show Merge Info
-showMergeInfo
-    : SHOW MERGE INFO
-    ;
 
 // Show Query Processlist
 showQueryProcesslist
@@ -679,17 +671,44 @@ suffixPath
     ;
 
 nodeName
-    : wildcard? ID wildcard?
-    | wildcard
+    : wildcard
+    | wildcard? ID wildcard?
+    | wildcard? INTEGER_LITERAL wildcard?
+    | QUTOED_ID_WITHOUT_DOT
+    | STRING_LITERAL
     ;
 
 nodeNameWithoutWildcard
     : ID
+    | INTEGER_LITERAL
+    | QUTOED_ID_WITHOUT_DOT
+    | STRING_LITERAL
+    ;
+
+suffixPathCanInExpr
+    : nodeNameCanInExpr (DOT nodeNameCanInExpr)*
+    ;
+
+nodeNameCanInExpr
+    : wildcard
+    | wildcard? ID wildcard?
+    | QUTOED_ID
+    | QUTOED_ID_WITHOUT_DOT
     ;
 
 wildcard
     : STAR
     | DOUBLE_STAR
+    ;
+
+
+// Identifier
+
+identifier
+    : ID
+    | QUTOED_ID
+    | QUTOED_ID_WITHOUT_DOT
+    | INTEGER_LITERAL
     ;
 
 
@@ -736,12 +755,12 @@ expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
-    | suffixPath
+    | suffixPathCanInExpr
     | constant
     ;
 
 functionName
-    : ID
+    : identifier
     | COUNT
     ;
 
@@ -750,7 +769,7 @@ functionAttribute
     ;
 
 containsExpression
-    : name=ID OPERATOR_CONTAINS value=propertyValue
+    : name=identifier OPERATOR_CONTAINS value=propertyValue
     ;
 
 orExpression
@@ -803,7 +822,7 @@ topClause
     ;
 
 resultColumn
-    : expression (AS ID)?
+    : expression (AS identifier)?
     ;
 
 
@@ -824,7 +843,7 @@ attributeClauses
     tagClause?
     attributeClause?
     // Simplified version (supported since v0.13)
-    | alias? dataType=DATATYPE_VALUE
+    | alias? WITH? (DATATYPE OPERATOR_EQ)? dataType=DATATYPE_VALUE
     (ENCODING OPERATOR_EQ encoding=ENCODING_VALUE)?
     ((COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=COMPRESSOR_VALUE)?
     propertyClause*
@@ -833,7 +852,7 @@ attributeClauses
     ;
 
 alias
-    : LR_BRACKET ID RR_BRACKET
+    : LR_BRACKET nodeNameCanInExpr RR_BRACKET
     ;
 
 tagClause
@@ -841,13 +860,11 @@ tagClause
     ;
 
 propertyClause
-    : name=ID OPERATOR_EQ value=propertyValue
+    : name=identifier OPERATOR_EQ value=propertyValue
     ;
 
 propertyValue
-    : INTEGER_LITERAL
-    | ID
-    | STRING_LITERAL
+    : identifier
     | constant
     ;
 

@@ -130,6 +130,8 @@ public class TsFileResource {
 
   private long ramSize;
 
+  private long tsFileSize = -1L;
+
   private TsFileProcessor processor;
 
   /**
@@ -170,6 +172,7 @@ public class TsFileResource {
     this.maxPlanIndex = other.maxPlanIndex;
     this.minPlanIndex = other.minPlanIndex;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
+    this.tsFileSize = other.tsFileSize;
   }
 
   /** for sealed TsFile, call setClosed to close TsFileResource */
@@ -385,7 +388,18 @@ public class TsFileResource {
   }
 
   public long getTsFileSize() {
-    return file.length();
+    if (closed) {
+      if (tsFileSize == -1) {
+        synchronized (this) {
+          if (tsFileSize == -1) {
+            tsFileSize = file.length();
+          }
+        }
+      }
+      return tsFileSize;
+    } else {
+      return file.length();
+    }
   }
 
   public long getStartTime(String deviceId) {
@@ -910,6 +924,11 @@ public class TsFileResource {
 
   public byte getTimeIndexType() {
     return timeIndexType;
+  }
+
+  @TestOnly
+  public void setTimeIndexType(byte type) {
+    this.timeIndexType = type;
   }
 
   public long getRamSize() {
