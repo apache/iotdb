@@ -578,6 +578,94 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
+   * @return an iterator of timeseries list, in which names of timeseries are ordered in dictionary
+   *     order
+   * @throws IOException io error
+   */
+  public Iterator<List<Path>> getPathsIterator() throws IOException {
+    readFileMetadata();
+
+    MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
+    List<MetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
+    Queue<Pair<String, Pair<Long, Long>>> queue = new LinkedList<>();
+    for (int i = 0; i < metadataIndexEntryList.size(); i++) {
+      MetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
+      long endOffset = metadataIndexNode.getEndOffset();
+      if (i != metadataIndexEntryList.size() - 1) {
+        endOffset = metadataIndexEntryList.get(i + 1).getOffset();
+      }
+      ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
+      getAllPaths(metadataIndexEntry, buffer, null, metadataIndexNode.getNodeType(), queue);
+    }
+    return new Iterator<List<Path>>() {
+      @Override
+      public boolean hasNext() {
+        return !queue.isEmpty();
+      }
+
+      @Override
+      public List<Path> next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        Pair<String, Pair<Long, Long>> startEndPair = queue.remove();
+        List<Path> paths = new ArrayList<>();
+        try {
+          ByteBuffer nextBuffer = readData(startEndPair.right.left, startEndPair.right.right);
+          while (nextBuffer.hasRemaining()) {
+            paths.add(
+                new Path(
+                    startEndPair.left,
+                    TimeseriesMetadata.deserializeFrom(nextBuffer, false).getMeasurementId()));
+          }
+          return paths;
+        } catch (IOException e) {
+          throw new TsFileRuntimeException(
+              "Error occurred while reading a time series metadata block.");
+        }
+      }
+    };
+  }
+
+  private void getAllPaths(
+      MetadataIndexEntry metadataIndex,
+      ByteBuffer buffer,
+      String deviceId,
+      MetadataIndexNodeType type,
+      Queue<Pair<String, Pair<Long, Long>>> queue)
+      throws IOException {
+    try {
+      if (type.equals(MetadataIndexNodeType.LEAF_DEVICE)) {
+        deviceId = metadataIndex.getName();
+      }
+      MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+      int metadataIndexListSize = metadataIndexNode.getChildren().size();
+      for (int i = 0; i < metadataIndexListSize; i++) {
+        long startOffset = metadataIndexNode.getChildren().get(i).getOffset();
+        long endOffset = metadataIndexNode.getEndOffset();
+        if (i != metadataIndexListSize - 1) {
+          endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
+        }
+        if (metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+          queue.add(new Pair<>(deviceId, new Pair<>(startOffset, endOffset)));
+          continue;
+        }
+        ByteBuffer nextBuffer =
+            readData(metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
+        getAllPaths(
+            metadataIndexNode.getChildren().get(i),
+            nextBuffer,
+            deviceId,
+            metadataIndexNode.getNodeType(),
+            queue);
+      }
+    } catch (BufferOverflowException e) {
+      logger.error("Something error happened while getting all paths of file {}", file);
+      throw e;
+    }
+  }
+
+  /**
    * Traverse the metadata index from MetadataIndexEntry to get TimeseriesMetadatas
    *
    * @param metadataIndex MetadataIndexEntry
