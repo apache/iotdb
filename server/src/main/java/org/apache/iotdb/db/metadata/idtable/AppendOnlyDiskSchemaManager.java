@@ -139,12 +139,11 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
   }
 
   @Override
-  public void recover(IDTable idTable) throws IOException {
-    FileInputStream inputStream = new FileInputStream(dataFile);
+  public void recover(IDTable idTable) {
     long loc = 0;
 
-    while (inputStream.available() > 0) {
-      try {
+    try (FileInputStream inputStream = new FileInputStream(dataFile)) {
+      while (inputStream.available() > 0) {
         DiskSchemaEntry cur = DiskSchemaEntry.deserialize(inputStream);
         SchemaEntry schemaEntry =
             new SchemaEntry(
@@ -153,15 +152,11 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
                 CompressionType.deserialize(cur.compressor),
                 loc);
         idTable.putSchemaEntry(cur.deviceID, cur.measurementName, schemaEntry, cur.isAligned);
-
         loc += cur.entrySize;
-      } catch (IOException | MetadataException e) {
-        logger.error("can't recover from log");
       }
+    } catch (IOException | MetadataException e) {
+      logger.error("ID table can't recover from log: {}", dataFile);
     }
-
-    // free resource
-    inputStream.close();
   }
 
   @TestOnly

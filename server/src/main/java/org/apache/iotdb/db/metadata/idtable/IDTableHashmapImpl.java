@@ -79,11 +79,7 @@ public class IDTableHashmapImpl implements IDTable {
     }
     if (config.isEnableIDTableLogFile()) {
       IDiskSchemaManager = new AppendOnlyDiskSchemaManager(storageGroupDir);
-      try {
-        IDiskSchemaManager.recover(this);
-      } catch (IOException e) {
-        logger.error("can't recover id table of {}", storageGroupDir.getName());
-      }
+      IDiskSchemaManager.recover(this);
     }
   }
 

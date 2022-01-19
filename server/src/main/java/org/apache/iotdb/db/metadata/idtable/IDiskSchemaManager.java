@@ -40,7 +40,7 @@ public interface IDiskSchemaManager {
    *
    * @param idTable id table need to be recovered
    */
-  public void recover(IDTable idTable) throws IOException;
+  public void recover(IDTable idTable);
 
   /**
    * get all disk schema entries from file
