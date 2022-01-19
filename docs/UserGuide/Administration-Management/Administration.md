@@ -108,9 +108,16 @@ IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, tr
 Msg: The statement is executed successfully.
 ```
 
-### Other SQL Statements
+### SQL Statements
 
-Here are some more SQL statements:
+Here are all related SQL statements:
+
+* Create User
+
+```
+CREATE USER <userName> <password>;  
+Eg: IoTDB > CREATE USER thulab 'pwd';
+```
 
 * Delete User
 
@@ -131,6 +138,13 @@ Eg: IoTDB > CREATE ROLE admin;
 ```
 DROP ROLE <roleName>;  
 Eg: IoTDB > DROP ROLE admin;
+```
+
+* Grant User Privileges
+
+```
+GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>;  
+Eg: IoTDB > GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
 ```
 
 * Grant Role Privileges

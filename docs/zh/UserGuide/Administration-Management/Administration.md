@@ -113,9 +113,16 @@ IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, tr
 Msg: The statement is executed successfully.
 ```
 
-### 其他 SQL 语句
+### SQL 语句
 
-其他与权限相关的语句包括：
+与权限相关的语句包括：
+
+* 创建用户
+
+```
+CREATE USER <userName> <password>;  
+Eg: IoTDB > CREATE USER thulab 'passwd';
+```
 
 * 删除用户
 
@@ -136,6 +143,13 @@ Eg: IoTDB > CREATE ROLE admin;
 ```
 DROP ROLE <roleName>;  
 Eg: IoTDB > DROP ROLE admin;
+```
+
+* 赋予用户权限
+
+```
+GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>;  
+Eg: IoTDB > GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
 ```
 
 * 赋予角色权限
