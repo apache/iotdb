@@ -36,7 +36,6 @@ import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 
-
 public class IntZigzagDecoderTest {
 
   private static final Logger logger = LoggerFactory.getLogger(IntZigzagDecoderTest.class);

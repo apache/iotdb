@@ -53,7 +53,7 @@ public class IntZigzagEncoder extends Encoder {
     if ((n & ~0x7F) != 0) {
       buf[idx++] = (byte) ((n | 0x80) & 0xFF);
       n >>>= 7;
-      while ( n > 0x7F) {
+      while (n > 0x7F) {
         buf[idx++] = (byte) ((n | 0x80) & 0xFF);
         n >>>= 7;
       }

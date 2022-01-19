@@ -20,9 +20,8 @@
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.encoding.encoder.IntZigzagEncoder;
-
 import org.apache.iotdb.tsfile.encoding.encoder.LongZigzagEncoder;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -36,59 +35,60 @@ import java.util.List;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
+
 public class LongZigzagDecoderTest {
-    private static final Logger logger = LoggerFactory.getLogger(LongZigzagDecoderTest.class);
-    private List<Long> longList;
-    private Random rand = new Random();
-    private List<Long> randomLongList;
+  private static final Logger logger = LoggerFactory.getLogger(LongZigzagDecoderTest.class);
+  private List<Long> longList;
+  private Random rand = new Random();
+  private List<Long> randomLongList;
 
-    @Before
-    public void setUp() {
-        longList = new ArrayList<>();
-        int int_num = 10000;
-        randomLongList = new ArrayList<>();
-        for (int i = 0; i < int_num; i++) {
-            longList.add((long)(i + ((long)1 << 31)));
-        }
-        for (int i = 0; i < int_num; i++) {
-            randomLongList.add(rand.nextLong());
-        }
+  @Before
+  public void setUp() {
+    longList = new ArrayList<>();
+    int int_num = 10000;
+    randomLongList = new ArrayList<>();
+    for (int i = 0; i < int_num; i++) {
+      longList.add((long) (i + ((long) 1 << 31)));
+    }
+    for (int i = 0; i < int_num; i++) {
+      randomLongList.add(rand.nextLong());
+    }
+  }
+
+  @After
+  public void tearDown() {
+    randomLongList.clear();
+    longList.clear();
+  }
+
+  @Test
+  public void testZigzagReadLong() throws Exception {
+    for (int i = 1; i < 10; i++) {
+      testLong(longList, false, i);
+      testLong(randomLongList, false, i);
+    }
+  }
+
+  private void testLong(List<Long> list, boolean isDebug, int repeatCount) throws Exception {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    Encoder encoder = new LongZigzagEncoder();
+    for (int i = 0; i < repeatCount; i++) {
+      for (long value : list) {
+        encoder.encode(value, baos);
+      }
+      encoder.flush(baos);
     }
 
-    @After
-    public void tearDown() {
-        randomLongList.clear();
-        longList.clear();
-    }
-
-    @Test
-    public void testZigzagReadLong() throws Exception {
-        for (int i = 1; i < 10; i++) {
-            testLong(longList, false, i);
-            testLong(randomLongList, false, i);
+    ByteBuffer bais = ByteBuffer.wrap(baos.toByteArray());
+    Decoder decoder = new LongZigzagDecoder();
+    for (int i = 0; i < repeatCount; i++) {
+      for (long value : list) {
+        long value_ = decoder.readLong(bais);
+        if (isDebug) {
+          logger.debug("{} // {}", value_, value);
         }
+        assertEquals(value, value_);
+      }
     }
-
-    private void testLong(List<Long> list, boolean isDebug, int repeatCount) throws Exception {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        Encoder encoder = new LongZigzagEncoder();
-        for (int i = 0; i < repeatCount; i++) {
-            for (long value : list) {
-                encoder.encode(value, baos);
-            }
-            encoder.flush(baos);
-        }
-
-        ByteBuffer bais = ByteBuffer.wrap(baos.toByteArray());
-        Decoder decoder = new LongZigzagDecoder();
-        for (int i = 0; i < repeatCount; i++) {
-            for (long value : list) {
-                long value_ = decoder.readLong(bais);
-                if (isDebug) {
-                    logger.debug("{} // {}", value_, value);
-                }
-                assertEquals(value, value_);
-            }
-        }
-    }
+  }
 }
