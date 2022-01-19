@@ -2266,7 +2266,7 @@ public class VirtualStorageGroupProcessor {
   }
 
   /** merge file under this storage group processor */
-  public void merge() {
+  public void compact() {
     writeLock("merge");
     try {
       executeCompaction();
