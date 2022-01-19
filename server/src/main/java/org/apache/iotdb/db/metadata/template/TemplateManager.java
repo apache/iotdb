@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -35,6 +36,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TemplateManager {
@@ -81,6 +83,10 @@ public class TemplateManager {
       // already have template
       throw new MetadataException("Duplicated template name: " + plan.getName());
     }
+  }
+
+  public void dropSchemaTemplate(DropTemplatePlan plan) {
+    templateMap.remove(plan.getName());
   }
 
   public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
@@ -137,6 +143,10 @@ public class TemplateManager {
 
   public Map<String, Template> getTemplateMap() {
     return templateMap;
+  }
+
+  public Set<String> getAllTemplateName() {
+    return templateMap.keySet();
   }
 
   public void checkIsTemplateAndMNodeCompatible(Template template, IMNode node)

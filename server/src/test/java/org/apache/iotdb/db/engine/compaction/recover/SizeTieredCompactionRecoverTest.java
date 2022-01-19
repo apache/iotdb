@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUti
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
@@ -63,6 +64,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SizeTieredCompactionRecoverTest {
+
   static final String COMPACTION_TEST_SG = "root.compactionTest";
   static final String SEQ_FILE_DIR =
       TestConstant.BASE_OUTPUT_PATH
@@ -88,6 +90,8 @@ public class SizeTieredCompactionRecoverTest {
           + "0"
           + File.separator
           + "0";
+  static final TsFileManager tsileManager =
+      new TsFileManager(COMPACTION_TEST_SG, "0", TestConstant.BASE_OUTPUT_PATH);
   static final String[] fullPaths =
       new String[] {
         COMPACTION_TEST_SG + ".device0.sensor0",
@@ -222,10 +226,8 @@ public class SizeTieredCompactionRecoverTest {
           fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
       sourceFiles.add(tsFileResource);
     }
-    String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(sourceFiles, true).getName();
     TsFileResource targetResource =
-        new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
     SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
     for (TsFileResource resource : sourceFiles) {
       logger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, resource.getTsFile());
@@ -236,7 +238,14 @@ public class SizeTieredCompactionRecoverTest {
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     SizeTieredCompactionRecoverTask recoverTask =
         new SizeTieredCompactionRecoverTask(
-            COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            new File(logFilePath),
+            "",
+            true,
+            new AtomicInteger(0),
+            tsileManager);
     recoverTask.doCompaction();
     // all the source file should still exist
     for (TsFileResource resource : sourceFiles) {
@@ -276,10 +285,8 @@ public class SizeTieredCompactionRecoverTest {
           fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
       sourceFiles.add(tsFileResource);
     }
-    String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(sourceFiles, true).getName();
     TsFileResource targetResource =
-        new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
     SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
     for (TsFileResource resource : sourceFiles) {
       logger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, resource.getTsFile());
@@ -294,7 +301,14 @@ public class SizeTieredCompactionRecoverTest {
     channel.close();
     SizeTieredCompactionRecoverTask recoverTask =
         new SizeTieredCompactionRecoverTask(
-            COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            new File(logFilePath),
+            "",
+            true,
+            new AtomicInteger(0),
+            tsileManager);
     recoverTask.doCompaction();
     // all the source file should be deleted
     for (TsFileResource resource : sourceFiles) {
@@ -335,10 +349,8 @@ public class SizeTieredCompactionRecoverTest {
           fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
       sourceFiles.add(tsFileResource);
     }
-    String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(sourceFiles, true).getName();
     TsFileResource targetResource =
-        new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
     SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
     for (TsFileResource resource : sourceFiles) {
       logger.logFile(SizeTieredCompactionLogger.SOURCE_NAME, resource.getTsFile());
@@ -349,7 +361,14 @@ public class SizeTieredCompactionRecoverTest {
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     SizeTieredCompactionRecoverTask recoverTask =
         new SizeTieredCompactionRecoverTask(
-            COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            new File(logFilePath),
+            "",
+            true,
+            new AtomicInteger(0),
+            tsileManager);
     recoverTask.doCompaction();
     // all the source file should still exist
     for (TsFileResource resource : sourceFiles) {
@@ -389,10 +408,8 @@ public class SizeTieredCompactionRecoverTest {
           fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
       sourceFiles.add(tsFileResource);
     }
-    String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(sourceFiles, true).getName();
     TsFileResource targetResource =
-        new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
     SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
     for (TsFileResource resource : sourceFiles) {
       logger.logFile(SizeTieredCompactionLogger.SOURCE_NAME, resource.getTsFile());
@@ -407,7 +424,14 @@ public class SizeTieredCompactionRecoverTest {
     channel.close();
     SizeTieredCompactionRecoverTask recoverTask =
         new SizeTieredCompactionRecoverTask(
-            COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            new File(logFilePath),
+            "",
+            true,
+            new AtomicInteger(0),
+            tsileManager);
     recoverTask.doCompaction();
     // all the source file should be deleted
     for (TsFileResource resource : sourceFiles) {
@@ -451,10 +475,8 @@ public class SizeTieredCompactionRecoverTest {
         sourceFiles.add(tsFileResource);
         sourceFileNames.add(tsFileResource.getTsFile().getName());
       }
-      String targetFileName =
-          TsFileNameGenerator.getInnerCompactionFileName(sourceFiles, true).getName();
       TsFileResource targetResource =
-          new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
       for (TsFileResource resource : sourceFiles) {
         logger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, resource.getTsFile());
@@ -470,7 +492,14 @@ public class SizeTieredCompactionRecoverTest {
       setDataDirs(new String[] {TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"});
       SizeTieredCompactionRecoverTask recoverTask =
           new SizeTieredCompactionRecoverTask(
-              COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
+              COMPACTION_TEST_SG,
+              "0",
+              0,
+              new File(logFilePath),
+              "",
+              true,
+              new AtomicInteger(0),
+              tsileManager);
       recoverTask.doCompaction();
       // all the source files should exist
       for (String sourceFileName : sourceFileNames) {
@@ -503,8 +532,12 @@ public class SizeTieredCompactionRecoverTest {
                   + "0"
                   + File.separator
                   + "0",
-              targetFileName.replace(
-                  IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
+              targetResource
+                  .getTsFile()
+                  .getName()
+                  .replace(
+                      IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+                      TsFileConstant.TSFILE_SUFFIX));
       Assert.assertFalse(targetFileAfterMoved.exists());
     } finally {
       FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
@@ -547,10 +580,8 @@ public class SizeTieredCompactionRecoverTest {
         sourceFiles.add(tsFileResource);
         sourceFileNames.add(tsFileResource.getTsFile().getName());
       }
-      String targetFileName =
-          TsFileNameGenerator.getInnerCompactionFileName(sourceFiles, true).getName();
       TsFileResource targetResource =
-          new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
       for (TsFileResource resource : sourceFiles) {
         logger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, resource.getTsFile());
@@ -569,7 +600,14 @@ public class SizeTieredCompactionRecoverTest {
       setDataDirs(new String[] {TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"});
       SizeTieredCompactionRecoverTask recoverTask =
           new SizeTieredCompactionRecoverTask(
-              COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
+              COMPACTION_TEST_SG,
+              "0",
+              0,
+              new File(logFilePath),
+              "",
+              true,
+              new AtomicInteger(0),
+              tsileManager);
       recoverTask.doCompaction();
       // all the source file should be deleted
       for (String sourceFileName : sourceFileNames) {
@@ -602,7 +640,7 @@ public class SizeTieredCompactionRecoverTest {
                       + "0"
                       + File.separator
                       + "0",
-                  targetFileName)
+                  targetResource.getTsFile().getName())
               .exists());
     } finally {
       FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
@@ -644,10 +682,8 @@ public class SizeTieredCompactionRecoverTest {
         sourceFiles.add(tsFileResource);
         sourceFileNames.add(tsFileResource.getTsFile().getName());
       }
-      String targetFileName =
-          TsFileNameGenerator.getInnerCompactionFileName(sourceFiles, true).getName();
       TsFileResource targetResource =
-          new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
       for (TsFileResource resource : sourceFiles) {
         logger.logFile(SizeTieredCompactionLogger.SOURCE_NAME, resource.getTsFile());
@@ -663,7 +699,14 @@ public class SizeTieredCompactionRecoverTest {
       setDataDirs(new String[] {TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"});
       SizeTieredCompactionRecoverTask recoverTask =
           new SizeTieredCompactionRecoverTask(
-              COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
+              COMPACTION_TEST_SG,
+              "0",
+              0,
+              new File(logFilePath),
+              "",
+              true,
+              new AtomicInteger(0),
+              tsileManager);
       recoverTask.doCompaction();
       // all the source files should exist
       for (String sourceFileName : sourceFileNames) {
@@ -696,8 +739,12 @@ public class SizeTieredCompactionRecoverTest {
                   + "0"
                   + File.separator
                   + "0",
-              targetFileName.replace(
-                  IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
+              targetResource
+                  .getTsFile()
+                  .getName()
+                  .replace(
+                      IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+                      TsFileConstant.TSFILE_SUFFIX));
       Assert.assertFalse(targetFileAfterMoved.exists());
     } finally {
       FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
@@ -740,10 +787,8 @@ public class SizeTieredCompactionRecoverTest {
         sourceFiles.add(tsFileResource);
         sourceFileNames.add(tsFileResource.getTsFile().getName());
       }
-      String targetFileName =
-          TsFileNameGenerator.getInnerCompactionFileName(sourceFiles, true).getName();
       TsFileResource targetResource =
-          new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
       for (TsFileResource resource : sourceFiles) {
         logger.logFile(SizeTieredCompactionLogger.SOURCE_NAME, resource.getTsFile());
@@ -762,7 +807,14 @@ public class SizeTieredCompactionRecoverTest {
       setDataDirs(new String[] {TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"});
       SizeTieredCompactionRecoverTask recoverTask =
           new SizeTieredCompactionRecoverTask(
-              COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
+              COMPACTION_TEST_SG,
+              "0",
+              0,
+              new File(logFilePath),
+              "",
+              true,
+              new AtomicInteger(0),
+              tsileManager);
       recoverTask.doCompaction();
       // all the source file should be deleted
       for (String sourceFileName : sourceFileNames) {
@@ -795,7 +847,7 @@ public class SizeTieredCompactionRecoverTest {
                       + "0"
                       + File.separator
                       + "0",
-                  targetFileName)
+                  targetResource.getTsFile().getName())
               .exists());
     } finally {
       FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));

@@ -446,9 +446,9 @@ public class MTreeTest {
       Set<String> result1 = root.getChildNodeNameInNextLevel(new PartialPath("root.a.d0"));
       Set<String> result2 = root.getChildNodeNameInNextLevel(new PartialPath("root.a"));
       Set<String> result3 = root.getChildNodeNameInNextLevel(new PartialPath("root"));
-      assertEquals(result1, new HashSet<>(Arrays.asList("s0", "s1")));
-      assertEquals(result2, new HashSet<>(Arrays.asList("d0", "d5")));
-      assertEquals(result3, new HashSet<>(Arrays.asList("a")));
+      assertEquals(new HashSet<>(Arrays.asList("s0", "s1")), result1);
+      assertEquals(new HashSet<>(Arrays.asList("d0", "d5")), result2);
+      assertEquals(new HashSet<>(Collections.singletonList("a")), result3);
 
       // if child node is nll   will return  null HashSet
       Set<String> result5 = root.getChildNodeNameInNextLevel(new PartialPath("root.a.d5"));
@@ -693,6 +693,9 @@ public class MTreeTest {
       assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")));
       assertEquals(0, root.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s3")));
 
+      assertEquals(1, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.**.s1"), 1));
+      assertEquals(1, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.*.*"), 1));
+      assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.*.*"), 2));
       assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.*"), 2));
       assertEquals(4, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.*.*"), 3));
       assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.**"), 2));
@@ -935,6 +938,10 @@ public class MTreeTest {
         2, root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, filter).size());
     Assert.assertEquals(
         2, root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, null).size());
+    Assert.assertEquals(
+        2, root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, null).size());
+    Assert.assertEquals(
+        2, root.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, null).size());
     Assert.assertEquals(
         1, root.getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, filter).size());
   }

@@ -64,7 +64,6 @@ public class IoTDBCheckConfigIT {
 
   @Before
   public void setUp() {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
 
     bytes = new ByteArrayOutputStream();

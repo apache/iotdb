@@ -27,7 +27,7 @@ import java.util.function.Function;
 
 /** factory to build device id according to configured algorithm */
 public class DeviceIDFactory {
-  Function<PartialPath, IDeviceID> getDeviceIDFunction;
+  Function<String, IDeviceID> getDeviceIDFunction;
 
   // region DeviceIDFactory Singleton
   private static class DeviceIDFactoryHolder {
@@ -54,9 +54,9 @@ public class DeviceIDFactory {
             .getConfig()
             .getDeviceIDTransformationMethod()
             .equals("SHA256")) {
-      getDeviceIDFunction = partialPath -> new SHA256DeviceID(partialPath.toString());
+      getDeviceIDFunction = SHA256DeviceID::new;
     } else {
-      getDeviceIDFunction = partialPath -> new PlainDeviceID(partialPath.toString());
+      getDeviceIDFunction = PlainDeviceID::new;
     }
   }
   // endregion
@@ -68,6 +68,16 @@ public class DeviceIDFactory {
    * @return device id of the timeseries
    */
   public IDeviceID getDeviceID(PartialPath devicePath) {
+    return getDeviceIDFunction.apply(devicePath.toString());
+  }
+
+  /**
+   * get device id by full path
+   *
+   * @param devicePath device path of the timeseries
+   * @return device id of the timeseries
+   */
+  public IDeviceID getDeviceID(String devicePath) {
     return getDeviceIDFunction.apply(devicePath);
   }
 

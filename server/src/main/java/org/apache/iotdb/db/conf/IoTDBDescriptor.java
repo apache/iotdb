@@ -128,15 +128,6 @@ public class IoTDBDescriptor {
       logger.info("Start to read config file {}", url);
       Properties properties = new Properties();
       properties.load(inputStream);
-      conf.setEnableStatMonitor(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_stat_monitor", Boolean.toString(conf.isEnableStatMonitor()))));
-
-      conf.setEnableMonitorSeriesWrite(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_monitor_series_write", Boolean.toString(conf.isEnableStatMonitor()))));
 
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
       replaceHostnameWithIP();
@@ -508,11 +499,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "merge_chunk_subthread_num",
                   Integer.toString(conf.getMergeChunkSubThreadNum()))));
-      conf.setContinueMergeAfterReboot(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "continue_merge_after_reboot",
-                  Boolean.toString(conf.isContinueMergeAfterReboot()))));
       conf.setMergeFileSelectionTimeBudget(
           Long.parseLong(
               properties.getProperty(
@@ -522,10 +508,6 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty(
                   "merge_interval_sec", Long.toString(conf.getMergeIntervalSec()))));
-      conf.setForceFullMerge(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "force_full_merge", Boolean.toString(conf.isForceFullMerge()))));
       conf.setConcurrentCompactionThread(
           Integer.parseInt(
               properties.getProperty(
@@ -560,11 +542,11 @@ public class IoTDBDescriptor {
                   "max_compaction_candidate_file_num",
                   Integer.toString(conf.getMaxCompactionCandidateFileNum()))));
 
-      conf.setMergeWriteThroughputMbPerSec(
+      conf.setCompactionWriteThroughputMbPerSec(
           Integer.parseInt(
               properties.getProperty(
-                  "merge_write_throughput_mb_per_sec",
-                  Integer.toString(conf.getMergeWriteThroughputMbPerSec()))));
+                  "compaction_write_throughput_mb_per_sec",
+                  Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
       conf.setEnablePartialInsert(
           Boolean.parseBoolean(
@@ -1247,11 +1229,11 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
       // update merge_write_throughput_mb_per_sec
-      conf.setMergeWriteThroughputMbPerSec(
+      conf.setCompactionWriteThroughputMbPerSec(
           Integer.parseInt(
               properties.getProperty(
                   "merge_write_throughput_mb_per_sec",
-                  Integer.toString(conf.getMergeWriteThroughputMbPerSec()))));
+                  Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
       // update insert-tablet-plan's row limit for select-into
       conf.setSelectIntoInsertTabletPlanRowLimit(

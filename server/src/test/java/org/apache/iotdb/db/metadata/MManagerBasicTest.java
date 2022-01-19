@@ -894,13 +894,14 @@ public class MManagerBasicTest {
 
     Set<String> allSchema = new HashSet<>();
     for (IMeasurementSchema schema : node.getSchemaTemplate().getSchemaMap().values()) {
-      allSchema.add("root.sg1.d1" + TsFileConstant.PATH_SEPARATOR + schema.getMeasurementId());
+      allSchema.add(
+          "root.sg1.d1.vector" + TsFileConstant.PATH_SEPARATOR + schema.getMeasurementId());
     }
     for (MeasurementPath measurementPath :
-        manager.getMeasurementPaths(new PartialPath("root.sg1.d1.**"))) {
+        manager.getMeasurementPaths(new PartialPath("root.sg1.**"))) {
       allSchema.remove(measurementPath.toString());
     }
-
+    allSchema.remove("root.sg1.d1.vector.s11");
     assertTrue(allSchema.isEmpty());
 
     IMeasurementMNode mNode = manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s11"));

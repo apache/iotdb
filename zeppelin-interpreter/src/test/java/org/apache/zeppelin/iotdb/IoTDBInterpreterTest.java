@@ -54,7 +54,6 @@ public class IoTDBInterpreterTest {
 
   @Before
   public void open() {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     Properties properties = new Properties();
     properties.put(IOTDB_HOST, DEFAULT_HOST);

@@ -33,7 +33,6 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -44,6 +43,8 @@ import org.apache.commons.lang3.StringUtils;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+
+import java.time.ZoneId;
 
 public class GrafanaApiServiceImpl extends GrafanaApiService {
 
@@ -90,7 +91,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         return response;
       }
 
-      final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
+      final long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
       try {
         QueryContext queryContext =
             serviceProvider.genQueryContext(
@@ -102,7 +103,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         QueryDataSet queryDataSet =
             serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-        return QueryDataSetHandler.fillVariablesResult(queryDataSet, physicalPlan);
+        return QueryDataSetHandler.fillGrafanaVariablesResult(queryDataSet, physicalPlan);
       } finally {
         ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }
@@ -138,14 +139,15 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         sql += " " + expressionRequest.getControl();
       }
 
-      PhysicalPlan physicalPlan = serviceProvider.getPlanner().parseSQLToPhysicalPlan(sql);
+      PhysicalPlan physicalPlan =
+          serviceProvider.getPlanner().parseSQLToGrafanaQueryPlan(sql, ZoneId.systemDefault());
 
       Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
         return response;
       }
 
-      final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
+      final long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
       try {
         QueryContext queryContext =
             serviceProvider.genQueryContext(
@@ -157,7 +159,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         QueryDataSet queryDataSet =
             serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-        return QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan, 0);
+        return QueryDataSetHandler.fillDataSetWithTimestamps(
+            queryDataSet, (QueryPlan) physicalPlan, 0);
       } finally {
         ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }
