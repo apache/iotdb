@@ -19,46 +19,46 @@
 
 -->
 
-## RESTful 服务
-IoTDB 的 RESTful 服务可用于查询、写入和管理操作，它使用 OpenAPI 标准来定义接口并生成框架。
+## RESTful Services  
+IoTDB's RESTful services can be used for query, write, and management operations, using the OpenAPI standard to define interfaces and generate frameworks.
 
 
 
-### 鉴权
-RESTful 服务使用了基础（basic）鉴权，每次 URL 请求都需要在 header 中携带 `'Authorization': 'Basic ' + base64.encode(username + ':' + password)`。
+### Authentication
+RESTful services use the basic authentication. Each URL request needs to carry `'Authorization': 'Basic ' + base64.encode(username + ':' + password)`.
 
 
 
-### 接口
+### Interface
 
 #### ping
 
-请求方式：`GET`
+Request method: `GET`
 
-请求路径：http://ip:port/ping
+Request path: http://ip:port/ping
 
-示例中使用的用户名为：root，密码为：root
+The user name used in the example is: root, password: root
 
-请求示例：
+Example request: 
 
 ```shell
 $ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
 ```
-响应参数：
+Response parameters:
 
-|参数名称  |参数类型  |参数描述|
-| ------------ | ------------ | ------------|
-| code | integer |  状态码 |
-| message  |  string | 信息提示 |
+|parameter name  |parameter type |parameter describe|
+|:--- | :--- | :---|
+|code | integer |  status code |
+| message  |  string | message |
 
-响应示例：
+Sample response:
 ```json
 {
   "code": 200,
   "message": "SUCCESS_STATUS"
 }
 ```
-用户名密码认证失败示例：
+Example Of user name and password authentication failure:
 ```json
 {
   "code": 600,
@@ -70,38 +70,37 @@ $ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
 
 #### query
 
-query 接口可以用于处理数据查询和元数据查询。
+The query interface can be used to handle data queries and metadata queries.
 
-请求方式：`POST`
+Request method: `POST`
 
-请求头：`application/json`
+Request header: `application/json`
 
-请求路径：http://ip:port/rest/v1/query
+Request path: http://ip:port/rest/v1/query
 
-参数说明:
+Parameter Description:
 
-|参数名称  |参数类型  |是否必填|参数描述|
-| ------------ | ------------ | ------------ |------------ |
-|  sql | string | 是  |   |
-| rowLimit | integer | 否 | 一次查询能返回的结果集的最大行数。<br />如果不设置该参数，将使用配置文件的  `rest_query_default_row_size_limit` 作为默认值。<br />当返回结果集的行数超出限制时，将返回状态码 `411`。 |
+| parameter name | parameter type | required | parameter description                                        |
+| -------------- | -------------- | -------- | ------------------------------------------------------------ |
+| sql            | string         | yes      |                                                              |
+| rowLimit       | integer        | no       | The maximum number of rows in the result set that can be returned by a query. <br />If this parameter is not set, the `rest_query_default_row_size_limit` of the configuration file will be used as the default value. <br /> When the number of rows in the returned result set exceeds the limit, the status code `411` will be returned. |
 
-响应参数:
+Response parameters:
 
-|参数名称  |参数类型  |参数描述|
-| ------------ | ------------ | ------------|
-| expressions | array | 用于数据查询时结果集列名的数组，用于元数据查询时为`null`|
-| columnNames | array | 用于元数据查询结果集列名数组，用于数据查询时为`null` |
-| timestamps | array | 时间戳列，用于元数据查询时为`null` |
-|values|array|二维数组，第一维与结果集列名数组的长度相同，第二维数组代表结果集的一列|
+| parameter name | parameter type | parameter description                                        |
+| -------------- | -------------- | ------------------------------------------------------------ |
+| expressions    | array          | Array of result set column names for data query, `null` for metadata query |
+| columnNames    | array          | Array of column names for metadata query result set, `null` for data query |
+| timestamps     | array          | Timestamp column, `null` for metadata query                  |
+| values         | array          | A two-dimensional array, the first dimension has the same length as the result set column name array, and the second dimension array represents a column of the result set |
 
-请求示例如下所示：
+**Examples:**
 
-请求示例 表达式查询:
+**Expression query**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select s3, s4, s3 + 1 from root.sg27 limit 2"}' http://127.0.0.1:18080/rest/v1/query
-```
-
-响应示例:
+````
 
 ```json
 {
@@ -132,12 +131,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 show child paths:
+**Show child paths**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show child paths root"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -155,12 +153,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 show child nodes:
+**Show child nodes**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show child nodes root"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -178,12 +175,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 show all ttl:
+**Show all ttl**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show all ttl"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -206,12 +202,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 show ttl:
+**Show ttl**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show ttl on root.sg27"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -232,12 +227,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 show functions:
+**Show functions**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show functions"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -271,12 +265,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 show timeseries:
+**Show timeseries**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show timeseries"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -345,12 +338,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 show latest timeseries:
+**Show latest timeseries**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show latest timeseries"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -419,13 +411,12 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 count timeseries:
+**Count timeseries**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"count timeseries root.**"}' http://127.0.0.1:18080/rest/v1/query
 ```
 
-响应示例:
-
 ```json
 {
   "expressions": null,
@@ -441,13 +432,12 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 count nodes:
+**Count nodes**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"count nodes root.** level=2"}' http://127.0.0.1:18080/rest/v1/query
 ```
 
-响应示例:
-
 ```json
 {
   "expressions": null,
@@ -463,12 +453,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 show devices:
+**Show devices**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -491,12 +480,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 show devices with storage group:
+**Show devices with storage group**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices with storage group"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -524,12 +512,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 list user:
+**List user**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"list user"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -546,12 +533,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 原始聚合查询:
+**Aggregation**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.sg27"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -574,12 +560,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 group by level:
+**Group by level**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.** group by level = 1"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -600,12 +585,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 group by:
+**Group by**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.sg27 group by([1635232143960,1635232153960),1s)"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -655,12 +639,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 last:
+**Last**
+
 ```shell
 curl -H "Content-Type:application/json"  -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select last s3 from root.sg27"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -687,12 +670,11 @@ curl -H "Content-Type:application/json"  -H "Authorization:Basic cm9vdDpyb290" -
 }
 ```
 
-请求示例 disable align:
+**Disable align**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select * from root.sg27 disable align"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -701,12 +683,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 align by device:
+**Align by device**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(s3) from root.sg27 align by device"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -715,12 +696,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 select into:
+**Select into**
+
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select s3, s4 into root.sg29.s1, root.sg29.s2 from root.sg27"}' http://127.0.0.1:18080/rest/v1/query
 ```
-
-响应示例:
 
 ```json
 {
@@ -731,31 +711,31 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 #### nonQuery
 
-请求方式：`POST`
+Request method: `POST`
 
-请求头：`application/json`
+Request header: `application/json`
 
-请求路径：http://ip:port/rest/v1/nonQuery
+Request path: http://ip:port/rest/v1/nonQuery
 
-参数说明:
+Parameter Description:
 
-|参数名称  |参数类型  |是否必填|参数描述|
-| ------------ | ------------ | ------------ |------------ |
-|  sql | string | 是  |   |
+|parameter name  |parameter type |parameter describe|
+|:--- | :--- | :---|
+|  sql | string | query content  | 
 
-请求示例:
+Example request:
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"set storage group to root.ln"}' http://127.0.0.1:18080/rest/v1/nonQuery
 ```
 
-响应参数:
+Response parameters:
 
-|参数名称  |参数类型  |参数描述|
-| ------------ | ------------ | ------------|
-| code | integer |  状态码 |
-| message  |  string | 信息提示 |
+|parameter name  |parameter type |parameter describe|
+|:--- | :--- | :---|
+| code | integer |  status code |
+| message  |  string | message |
 
-响应示例：
+Sample response:
 ```json
 {
   "code": 200,
@@ -767,36 +747,36 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 #### insertTablet
 
-请求方式：`POST`
+Request method: `POST`
 
-请求头：`application/json`
+Request header: `application/json`
 
-请求路径：http://ip:port/rest/v1/insertTablet
+Request path: http://ip:port/rest/v1/insertTablet
 
-参数说明:
+Parameter Description:
 
-|参数名称  |参数类型  |是否必填|参数描述|
-| ------------ | ------------ | ------------ |------------ |
-|  timestamps | array | 是 |  时间列  |
-|  measurements | array | 是  | 测点名称 |
-| dataTypes | array | 是  | 数据类型  |
-|  values | array | 是  | 值列，每一列中的值可以为 `null` |
-|  isAligned | boolean | 是  | 是否是对齐时间序列 |
-|  deviceId | boolean | 是  | 设备名称 |
+|parameter name  |parameter type |is required|parameter describe|
+|:--- | :--- | :---| :---| 
+|  timestamps | array | yes |  Time column  |
+|  measurements | array | yes  | The name of the measuring point |
+| dataTypes | array | yes  | The data type |
+|  values | array | yes  | Value columns, the values in each column can be `null` |
+|  isAligned | boolean | yes  | Whether to align the timeseries |
+|  deviceId | boolean | yes  | Device name |
 
-请求示例：
+Example request:
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"timestamps":[1635232143960,1635232153960],"measurements":["s3","s4"],"dataTypes":["INT32","BOOLEAN"],"values":[[11,null],[false,true]],"isAligned":false,"deviceId":"root.sg27"}' http://127.0.0.1:18080/rest/v1/insertTablet
 ```
 
-响应参数：
+Sample response:
 
-|参数名称  |参数类型  |参数描述|
-| ------------ | ------------ | ------------|
-| code | integer |  状态码 |
-| message  |  string | 信息提示 |
+|parameter name  |parameter type |parameter describe|
+|:--- | :--- | :---|
+| code | integer |  status code |
+| message  |  string | message |
 
-响应示例：
+Sample response:
 ```json
 {
   "code": 200,
@@ -806,82 +786,83 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 
 
-### 配置
+### Configuration
 
-配置位于 `iotdb-rest.properties` 中。
+The configuration is located in 'iotdb-rest.properties'.
 
 
 
-* 将 `enable_rest_service` 设置为 `true` 以启用该模块，而将 `false` 设置为禁用该模块。默认情况下，该值为 `false`。
+* Set 'enable_REST_service' to 'true' to enable the module, and 'false' to disable the module. By default, this value is' false '.
 
 ```properties
 enable_rest_service=true
 ```
 
-* 仅在 `enable_rest_service=true` 时生效。将 `rest_service_port `设置为数字（1025~65535），以自定义REST服务套接字端口。默认情况下，值为 `18080`。
+* This parameter is valid only when 'enable_REST_service =true'. Set 'rest_service_port' to a number (1025 to 65535) to customize the REST service socket port. By default, the value is 18080.
 
 ```properties
 rest_service_port=18080
 ```
 
-* 一次查询能返回的结果集最大行数。当返回结果集的行数超出参数限制时，您只会得到在行数范围内的结果集，且将得到状态码`411`。
+* The maximum number of rows in the result set that can be returned by a query. When the number of rows in the returned result set exceeds the limit, the status code `411` is returned.
 
-```properties
+````properties
 rest_query_default_row_size_limit=10000
-```
+````
 
-* 缓存客户登录信息的过期时间（用于加速用户鉴权的速度，单位为秒，默认是8个小时）
+* Expiration time for caching customer login information (used to speed up user authentication, in seconds, 8 hours by default)
 
 ```properties
 cache_expire=28800
 ```
 
-* 缓存中存储的最大用户数量（默认是100）
+
+* Maximum number of users stored in the cache (default: 100)
 
 ```properties
 cache_max_num=100
 ```
 
-* 缓存初始容量（默认是10）
+* Initial cache size (default: 10)
 
 ```properties
 cache_init_num=10
 ```
 
-* REST Service 是否开启 SSL 配置，将 `enable_https` 设置为 `true` 以启用该模块，而将 `false` 设置为禁用该模块。默认情况下，该值为 `false`。
+* REST Service whether to enable SSL configuration, set 'enable_https' to' true 'to enable the module, and set' false 'to disable the module. By default, this value is' false '.
 
 ```properties
 enable_https=false
 ```
 
-* keyStore 所在路径（非必填）
+* keyStore location path (optional)
 
 ```properties
 key_store_path=
 ```
 
 
-* keyStore 密码（非必填）
+* keyStore password (optional)
 
 ```properties
 key_store_pwd=
 ```
 
 
-* trustStore 所在路径（非必填）
+* trustStore location path (optional)
 
 ```properties
 trust_store_path=
 ```
 
-* trustStore 密码（非必填）
+* trustStore password (optional)
 
 ```properties
 trust_store_pwd=
 ```
 
 
-* SSL 超时时间，单位为秒
+* SSL timeout period, in seconds
 
 ```properties
 idle_timeout=5000
