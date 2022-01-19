@@ -170,7 +170,6 @@ public class IoTDBSizeTieredCompactionIT {
       long pageSize = 100;
       long timestamp = 1;
 
-
       for (long row = 0; row < 10000; row++) {
         statement.execute(
             String.format(
@@ -182,7 +181,6 @@ public class IoTDBSizeTieredCompactionIT {
       }
 
       timestamp = 8322;
-
 
       for (long row = 0; row < 2400; row++) {
         statement.execute(

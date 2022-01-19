@@ -231,7 +231,8 @@ public class InnerSpaceCompactionUtils {
 
   public static ICrossSpaceMergeFileSelector getCrossSpaceFileSelector(
       long budget, CrossSpaceMergeResource resource) {
-    CrossCompactionStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getCrossCompactionStrategy();
+    CrossCompactionStrategy strategy =
+        IoTDBDescriptor.getInstance().getConfig().getCrossCompactionStrategy();
     switch (strategy) {
       case REWRITE_COMPACTION:
         return new RewriteCompactionFileSelector(resource, budget);

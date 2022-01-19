@@ -102,11 +102,12 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         "{} [Compaction] starting compaction task with {} files",
         fullStorageGroupName,
         selectedTsFileResourceList.size());
-    File logFile = new File(
-        dataDirectory
-            + File.separator
-            + targetTsFileResource.getTsFile().getName()
-            + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
+    File logFile =
+        new File(
+            dataDirectory
+                + File.separator
+                + targetTsFileResource.getTsFile().getName()
+                + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
     SizeTieredCompactionLogger sizeTieredCompactionLogger = null;
     try {
       sizeTieredCompactionLogger = new SizeTieredCompactionLogger(logFile.getPath());

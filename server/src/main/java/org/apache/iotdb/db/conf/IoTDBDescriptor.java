@@ -482,7 +482,8 @@ public class IoTDBDescriptor {
       conf.setCrossCompactionMemoryBudget(
           Long.parseLong(
               properties.getProperty(
-                  "cross_compaction_memory_budget", Long.toString(conf.getCrossCompactionMemoryBudget()))));
+                  "cross_compaction_memory_budget",
+                  Long.toString(conf.getCrossCompactionMemoryBudget()))));
       conf.setCrossCompactionFileSelectionTimeBudget(
           Long.parseLong(
               properties.getProperty(

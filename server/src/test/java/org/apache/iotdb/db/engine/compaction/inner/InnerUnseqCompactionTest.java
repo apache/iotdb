@@ -125,7 +125,8 @@ public class InnerUnseqCompactionTest {
   // unseq space only do deserialize page
   @Test
   public void test()
-      throws MetadataException, IOException, StorageEngineException, WriteProcessException, InterruptedException {
+      throws MetadataException, IOException, StorageEngineException, WriteProcessException,
+          InterruptedException {
     for (int toMergeFileNum : toMergeFileNums) {
       for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
         for (boolean compactionBeforeHasMod : compactionBeforeHasMods) {

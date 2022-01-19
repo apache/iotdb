@@ -86,7 +86,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   @Test
   public void testRestrictedSelection() throws MergeException, IOException {
     CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqResources, unseqResources);
-    ICrossSpaceMergeFileSelector mergeFileSelector = new RewriteCompactionFileSelector(resource, 400000);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, 400000);
     List[] result = mergeFileSelector.select();
     List<TsFileResource> seqSelected = result[0];
     List<TsFileResource> unseqSelected = result[1];

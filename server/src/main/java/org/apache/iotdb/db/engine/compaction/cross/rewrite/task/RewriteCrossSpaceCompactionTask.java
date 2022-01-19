@@ -127,7 +127,8 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     if (targetTsfileResourceList.isEmpty()
         || selectedSeqTsFileResourceList.isEmpty()
         || selectedUnSeqTsFileResourceList.isEmpty()) {
-      logger.info("{} [Compaction] Cross space compaction file list is empty, end it", storageGroupName);
+      logger.info(
+          "{} [Compaction] Cross space compaction file list is empty, end it", storageGroupName);
       return;
     }
 
