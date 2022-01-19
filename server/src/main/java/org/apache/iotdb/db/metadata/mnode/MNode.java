@@ -131,7 +131,7 @@ public abstract class MNode implements IMNode {
         && !isMeasurement()
         && getSchemaTemplate() == null
         && !isUseTemplate()
-        && getChildren().size() == 0;
+        && getChildren().isEmpty();
   }
 
   @Override

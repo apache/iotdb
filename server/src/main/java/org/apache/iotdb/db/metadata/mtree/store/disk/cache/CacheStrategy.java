@@ -51,7 +51,7 @@ public class CacheStrategy implements ICacheStrategy {
 
   @Override
   public void updateCacheStatusAfterRead(IMNode node) {
-    CacheEntry cacheEntry = new CacheEntry();
+    CacheEntry cacheEntry = node.getCacheEntry();
     if (cacheEntry.isPinned()) {
       return;
     }
@@ -102,7 +102,7 @@ public class CacheStrategy implements ICacheStrategy {
   private void updateCacheStatusAfterPersist(IMNode node, ICachedMNodeContainer container) {
     CacheEntry cacheEntry = node.getCacheEntry();
     cacheEntry.setVolatile(false);
-    container.moveChildToCache(node.getName());
+    container.moveMNodeToCache(node.getName());
     if (!cacheEntry.isPinned()) {
       nodeBuffer.remove(cacheEntry);
       nodeCache.put(cacheEntry, node);
@@ -136,6 +136,9 @@ public class CacheStrategy implements ICacheStrategy {
 
   @Override
   public List<IMNode> remove(IMNode node) {
+    if (isPinned(node)) {
+      unPinMNode(node.getParent());
+    }
     List<IMNode> removedMNodes = new LinkedList<>();
     removeRecursively(node, removedMNodes);
     return removedMNodes;
@@ -181,6 +184,7 @@ public class CacheStrategy implements ICacheStrategy {
       }
     }
     if (node != null) {
+      getBelongedContainer(node).evictMNode(node.getName());
       node.getParent().deleteChild(node.getName());
       removeOne(node.getCacheEntry());
       evictedMNodes.add(node);
@@ -200,12 +204,13 @@ public class CacheStrategy implements ICacheStrategy {
   @Override
   public void pinMNode(IMNode node) {
     CacheEntry cacheEntry = node.getCacheEntry();
-    if (cacheEntry.isVolatile()) {
-      nodeBuffer.remove(cacheEntry);
-    } else {
-      nodeCache.remove(cacheEntry);
-    }
     if (!cacheEntry.isPinned()) {
+      if (cacheEntry.isVolatile()) {
+        nodeBuffer.remove(cacheEntry);
+      } else {
+        nodeCache.remove(cacheEntry);
+      }
+
       IMNode parent = node.getParent();
       if (parent != null) {
         parent.getCacheEntry().pin();
@@ -224,14 +229,15 @@ public class CacheStrategy implements ICacheStrategy {
       releasedMNodes.add(node);
       IMNode parent = node.getParent();
       while (parent != null) {
-        cacheEntry = parent.getCacheEntry();
+        node = parent;
+        parent = node.getParent();
+        cacheEntry = node.getCacheEntry();
         cacheEntry.unPin();
-        updateStatusAfterUnPinned(parent);
+        updateStatusAfterUnPinned(node);
         if (cacheEntry.isPinned()) {
           break;
         }
-        releasedMNodes.add(parent);
-        parent = parent.getParent();
+        releasedMNodes.add(node);
       }
     }
     return releasedMNodes;

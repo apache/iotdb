@@ -31,8 +31,10 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.file.MockSchemaFile;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Queue;
 
 import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer.getCachedMNodeContainer;
 
@@ -71,14 +73,15 @@ public class CachedMTreeStore implements IMTreeStore {
     if (node == null) {
       if (!getCachedMNodeContainer(parent).isVolatile()) {
         node = file.getChildNode(parent, name);
-        if (node != null && cacheStrategy.isCached(parent)) {
+        if (node != null) {
+          node.setParent(parent);
           if (cacheMNodeInMemory(node)) {
             cacheStrategy.updateCacheStatusAfterRead(node);
           }
         }
       }
     } else {
-      if (cacheStrategy.isCached(node)) {
+      if (cacheStrategy.isCached(node) || cacheMNodeInMemory(node)) {
         cacheStrategy.updateCacheStatusAfterRead(node);
       }
     }
@@ -123,11 +126,30 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public void deleteChild(IMNode parent, String childName) {
-    IMNode node = parent.getChild(childName);
+  public List<IMeasurementMNode> deleteChild(IMNode parent, String childName) {
+    IMNode deletedMNode = parent.getChild(childName);
     parent.deleteChild(childName);
-    if (cacheStrategy.isCached(node)) {
-      List<IMNode> removedMNodes = cacheStrategy.remove(node);
+
+    // collect all the LeafMNode in this storage group
+    List<IMeasurementMNode> leafMNodes = new LinkedList<>();
+    Queue<IMNode> queue = new LinkedList<>();
+    queue.add(deletedMNode);
+    while (!queue.isEmpty()) {
+      IMNode node = queue.poll();
+      Iterator<IMNode> iterator = getChildrenIterator(node);
+      IMNode child;
+      while (iterator.hasNext()) {
+        child = iterator.next();
+        if (child.isMeasurement()) {
+          leafMNodes.add(child.getAsMeasurementMNode());
+        } else {
+          queue.add(child);
+        }
+      }
+    }
+
+    if (cacheStrategy.isCached(deletedMNode)) {
+      List<IMNode> removedMNodes = cacheStrategy.remove(deletedMNode);
       for (IMNode removedMNode : removedMNodes) {
         if (cacheStrategy.isPinned(removedMNode)) {
           memManager.releasePinnedMemResource(removedMNode);
@@ -136,8 +158,10 @@ public class CachedMTreeStore implements IMTreeStore {
       }
     }
     if (!getCachedMNodeContainer(parent).isVolatile()) {
-      file.deleteMNode(node);
+      file.deleteMNode(deletedMNode);
     }
+
+    return leafMNodes;
   }
 
   @Override
@@ -180,12 +204,16 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   private boolean cacheMNodeInMemory(IMNode node) {
+    if (!cacheStrategy.isCached(node.getParent())) {
+      return false;
+    }
     if (!memManager.requestMemResource(node)) {
       executeMemoryRelease();
       if (cacheStrategy.isCached(node.getParent())) {
-        memManager.requestMemResource(node);
-        cacheStrategy.cacheMNode(node);
-        return true;
+        if (memManager.requestMemResource(node)) {
+          cacheStrategy.cacheMNode(node);
+          return true;
+        }
       }
     }
     return false;

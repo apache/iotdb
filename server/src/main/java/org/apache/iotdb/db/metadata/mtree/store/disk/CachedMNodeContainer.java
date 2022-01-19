@@ -32,16 +32,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 
 public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   private long segmentAddress = -1;
-  Map<String, IMNode> childCache = null;
-  Map<String, IMNode> newChildBuffer = null;
-  Map<String, IMNode> updatedChildBuffer = null;
+
+  private int size = 0;
+
+  private Map<String, IMNode> childCache = null;
+  private Map<String, IMNode> newChildBuffer = null;
+  private Map<String, IMNode> updatedChildBuffer = null;
 
   @Override
   public int size() {
@@ -54,7 +54,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public boolean isEmpty() {
-    return isEmpty(childCache) && isEmpty(newChildBuffer) && isEmpty(updatedChildBuffer);
+    return size == 0;
   }
 
   private boolean isEmpty(Map<String, IMNode> map) {
@@ -112,14 +112,16 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   @Override
   public IMNode remove(Object key) {
     IMNode result = remove(childCache, key);
-    if (result != null) {
-      return result;
+    if (result == null) {
+      result = remove(newChildBuffer, key);
     }
-    result = remove(newChildBuffer, key);
-    if (result != null) {
-      return result;
+    if (result == null) {
+      result = remove(updatedChildBuffer, key);
     }
-    return remove(updatedChildBuffer, key);
+    if (result != null) {
+      size--;
+    }
+    return result;
   }
 
   private IMNode remove(Map<String, IMNode> map, Object key) {
@@ -183,69 +185,17 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     return map == null ? Collections.emptySet() : map.entrySet();
   }
 
-  @Override
-  public IMNode getOrDefault(Object key, IMNode defaultValue) {
-    return ICachedMNodeContainer.super.getOrDefault(key, defaultValue);
-  }
-
-  @Override
-  public void forEach(BiConsumer<? super String, ? super IMNode> action) {
-    ICachedMNodeContainer.super.forEach(action);
-  }
-
-  @Override
-  public void replaceAll(BiFunction<? super String, ? super IMNode, ? extends IMNode> function) {
-    ICachedMNodeContainer.super.replaceAll(function);
-  }
-
-  @Nullable
-  @Override
-  public IMNode putIfAbsent(String key, IMNode value) {
-    return ICachedMNodeContainer.super.putIfAbsent(key, value);
-  }
-
-  @Override
-  public boolean remove(Object key, Object value) {
-    return ICachedMNodeContainer.super.remove(key, value);
-  }
-
-  @Override
-  public boolean replace(String key, IMNode oldValue, IMNode newValue) {
-    return ICachedMNodeContainer.super.replace(key, oldValue, newValue);
-  }
-
   @Nullable
   @Override
   public IMNode replace(String key, IMNode value) {
-    return ICachedMNodeContainer.super.replace(key, value);
-  }
-
-  @Override
-  public IMNode computeIfAbsent(
-      String key, @NotNull Function<? super String, ? extends IMNode> mappingFunction) {
-    return ICachedMNodeContainer.super.computeIfAbsent(key, mappingFunction);
-  }
-
-  @Override
-  public IMNode computeIfPresent(
-      String key,
-      @NotNull BiFunction<? super String, ? super IMNode, ? extends IMNode> remappingFunction) {
-    return ICachedMNodeContainer.super.computeIfPresent(key, remappingFunction);
-  }
-
-  @Override
-  public IMNode compute(
-      String key,
-      @NotNull BiFunction<? super String, ? super IMNode, ? extends IMNode> remappingFunction) {
-    return ICachedMNodeContainer.super.compute(key, remappingFunction);
-  }
-
-  @Override
-  public IMNode merge(
-      String key,
-      @NotNull IMNode value,
-      @NotNull BiFunction<? super IMNode, ? super IMNode, ? extends IMNode> remappingFunction) {
-    return ICachedMNodeContainer.super.merge(key, value, remappingFunction);
+    IMNode replacedOne = childCache.replace(key, value);
+    if (replacedOne == null) {
+      replacedOne = newChildBuffer.replace(key, value);
+    }
+    if (replacedOne == null) {
+      replacedOne = updatedChildBuffer.replace(key, value);
+    }
+    return replacedOne;
   }
 
   @Override
@@ -318,6 +268,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
       newChildBuffer = new ConcurrentHashMap<>();
     }
     newChildBuffer.put(node.getName(), node);
+    size++;
   }
 
   @Override
@@ -335,15 +286,26 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public void moveChildToCache(String name) {
-    IMNode node = newChildBuffer.remove(name);
+  public void moveMNodeToCache(String name) {
+    IMNode node = remove(newChildBuffer, name);
     if (node == null) {
-      node = updatedChildBuffer.remove(name);
+      node = remove(updatedChildBuffer, name);
     }
     if (childCache == null) {
       childCache = new ConcurrentHashMap<>();
     }
     childCache.put(name, node);
+  }
+
+  @Override
+  public void evictMNode(String name) {
+    IMNode result = remove(childCache, name);
+    if (result == null) {
+      result = remove(newChildBuffer, name);
+    }
+    if (result == null) {
+      remove(updatedChildBuffer, name);
+    }
   }
 
   private class CachedMNodeContainerIterator implements Iterator<IMNode> {

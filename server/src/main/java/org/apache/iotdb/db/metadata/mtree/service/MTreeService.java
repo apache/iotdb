@@ -87,7 +87,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Stream;
@@ -370,8 +369,7 @@ public class MTreeService implements Serializable {
     }
 
     if (isPathExistsWithinTemplate(path)) {
-      throw new MetadataException(
-          "Cannot delete a timeseries inside a template: " + path.toString());
+      throw new MetadataException("Cannot delete a timeseries inside a template: " + path);
     }
 
     IMeasurementMNode deletedNode = getPinnedMeasurementMNode(path);
@@ -533,31 +531,14 @@ public class MTreeService implements Serializable {
 
   /** Delete a storage group */
   public List<IMeasurementMNode> deleteStorageGroup(PartialPath path) throws MetadataException {
-    IMNode cur = getNodeByPath(path);
+    IMNode cur = getPinnedNodeByPath(path);
     if (!(cur.isStorageGroup())) {
+      unPinPath(cur);
       throw new StorageGroupNotSetException(path.getFullPath());
     }
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the storage group node sg1
-    store.deleteChild(cur.getParent(), cur.getName());
-
-    // collect all the LeafMNode in this storage group
-    List<IMeasurementMNode> leafMNodes = new LinkedList<>();
-    Queue<IMNode> queue = new LinkedList<>();
-    queue.add(cur);
-    while (!queue.isEmpty()) {
-      IMNode node = queue.poll();
-      Iterator<IMNode> iterator = store.getChildrenIterator(node);
-      IMNode child;
-      while (iterator.hasNext()) {
-        child = iterator.next();
-        if (child.isMeasurement()) {
-          leafMNodes.add(child.getAsMeasurementMNode());
-        } else {
-          queue.add(child);
-        }
-      }
-    }
+    List<IMeasurementMNode> leafMNodes = store.deleteChild(cur.getParent(), cur.getName());
 
     cur = cur.getParent();
     // delete node b while retain root.a.sg2
@@ -565,6 +546,7 @@ public class MTreeService implements Serializable {
       store.deleteChild(cur.getParent(), cur.getName());
       cur = cur.getParent();
     }
+    unPinPath(cur);
     return leafMNodes;
   }
   // endregion
@@ -583,13 +565,19 @@ public class MTreeService implements Serializable {
     IMNode cur = root;
     IMNode child;
     Template upperTemplate = cur.getSchemaTemplate();
+    boolean isInTemplate = false;
     for (int i = 1; i < nodeNames.length; i++) {
-      child = store.getChild(cur, nodeNames[i]);
+      if (isInTemplate) {
+        child = cur.getChild(nodeNames[i]);
+      } else {
+        child = store.getChild(cur, nodeNames[i]);
+      }
       if (child == null) {
         if (!cur.isUseTemplate() || upperTemplate.getDirectNode(nodeNames[i]) == null) {
           return false;
         }
         child = upperTemplate.getDirectNode(nodeNames[i]);
+        isInTemplate = true;
       }
       cur = child;
       if (cur.isMeasurement()) {
@@ -1224,8 +1212,9 @@ public class MTreeService implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
     IMNode cur = root;
+    IMNode next;
     Template upperTemplate = cur.getSchemaTemplate();
-
+    boolean isInTemplate = false;
     for (int i = 1; i < nodes.length; i++) {
       if (cur.isMeasurement()) {
         if (i == nodes.length - 1) {
@@ -1237,7 +1226,11 @@ public class MTreeService implements Serializable {
       if (cur.getSchemaTemplate() != null) {
         upperTemplate = cur.getSchemaTemplate();
       }
-      IMNode next = store.getChild(cur, nodes[i]);
+      if (isInTemplate) {
+        next = cur.getChild(nodes[i]);
+      } else {
+        next = store.getChild(cur, nodes[i]);
+      }
       if (next == null) {
         if (upperTemplate == null
             || !cur.isUseTemplate()
@@ -1245,6 +1238,7 @@ public class MTreeService implements Serializable {
           throw new PathNotExistException(path.getFullPath(), true);
         }
         next = upperTemplate.getDirectNode(nodes[i]);
+        isInTemplate = true;
       }
       cur = next;
     }
@@ -1263,16 +1257,21 @@ public class MTreeService implements Serializable {
     }
 
     IMNode cur = root;
+    IMNode child;
     Template upperTemplate = null;
-
+    boolean isInTemplate = false;
     for (int i = 1; i < nodes.length; i++) {
       if (cur.getSchemaTemplate() != null) {
         upperTemplate = cur.getSchemaTemplate();
       }
 
-      if (store.getChild(cur, nodes[i]) != null) {
-        cur = store.getChild(cur, nodes[i]);
+      if (isInTemplate) {
+        child = cur.getChild(nodes[i]);
       } else {
+        child = store.getChild(cur, nodes[i]);
+      }
+
+      if (child == null) {
         // seek child in template
         if (!storageGroupChecked) {
           throw new StorageGroupNotSetException(path.getFullPath());
@@ -1284,8 +1283,10 @@ public class MTreeService implements Serializable {
           throw new PathNotExistException(path.getFullPath());
         }
 
-        cur = upperTemplate.getDirectNode(nodes[i]);
+        child = upperTemplate.getDirectNode(nodes[i]);
+        isInTemplate = true;
       }
+      cur = child;
 
       if (cur.isStorageGroup()) {
         storageGroupChecked = true;
@@ -1685,8 +1686,9 @@ public class MTreeService implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
     IMNode cur = root;
+    IMNode next;
     Template upperTemplate = cur.getSchemaTemplate();
-
+    boolean isInTemplate = false;
     for (int i = 1; i < nodes.length; i++) {
       if (cur.isMeasurement()) {
         if (i == nodes.length - 1) {
@@ -1699,7 +1701,13 @@ public class MTreeService implements Serializable {
       if (cur.getSchemaTemplate() != null) {
         upperTemplate = cur.getSchemaTemplate();
       }
-      IMNode next = store.getPinnedChild(cur, nodes[i]);
+
+      if (isInTemplate) {
+        next = cur.getChild(nodes[i]);
+      } else {
+        next = store.getPinnedChild(cur, nodes[i]);
+      }
+
       if (next == null) {
         if (upperTemplate == null
             || !cur.isUseTemplate()
@@ -1708,6 +1716,7 @@ public class MTreeService implements Serializable {
           throw new PathNotExistException(path.getFullPath(), true);
         }
         next = upperTemplate.getDirectNode(nodes[i]);
+        isInTemplate = true;
       }
       cur = next;
     }
