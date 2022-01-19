@@ -75,9 +75,8 @@ public class CompactionUtils {
   public static void compact(
       List<TsFileResource> seqFileResources,
       List<TsFileResource> unseqFileResources,
-      List<TsFileResource> targetFileResources,
-      String fullStorageGroupName)
-      throws IOException, MetadataException, StorageEngineException {
+      List<TsFileResource> targetFileResources)
+      throws IOException, MetadataException, StorageEngineException, InterruptedException {
     long queryId = QueryResourceManager.getInstance().assignCompactionQueryId();
     QueryContext queryContext = new QueryContext(queryId);
     QueryDataSource queryDataSource = new QueryDataSource(seqFileResources, unseqFileResources);
@@ -92,6 +91,7 @@ public class CompactionUtils {
             getCompactionWriter(seqFileResources, unseqFileResources, targetFileResources);
         MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(allResources)) {
       while (deviceIterator.hasNextDevice()) {
+        checkThreadInterrupted(targetFileResources);
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
         boolean isAligned = deviceInfo.right;
@@ -383,6 +383,15 @@ public class CompactionUtils {
         }
         FileUtils.delete(new File(ModificationFile.getCompactionMods(sourceFile).getFilePath()));
       }
+    }
+  }
+
+  private static void checkThreadInterrupted(List<TsFileResource> tsFileResource)
+      throws InterruptedException {
+    if (Thread.currentThread().isInterrupted()) {
+      throw new InterruptedException(
+          String.format(
+              "[Compaction] compaction for target file %s abort", tsFileResource.toString()));
     }
   }
 }

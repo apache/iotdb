@@ -127,8 +127,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         CompactionUtils.compact(
             Collections.emptyList(),
             selectedTsFileResourceList,
-            Collections.singletonList(targetTsFileResource),
-            fullStorageGroupName);
+            Collections.singletonList(targetTsFileResource));
       }
 
       InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, fullStorageGroupName);

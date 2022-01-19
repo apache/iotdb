@@ -148,10 +148,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       compactionLogger.logFiles(selectedSeqTsFileResourceList, STR_SEQ_FILES);
       compactionLogger.logFiles(selectedUnSeqTsFileResourceList, STR_UNSEQ_FILES);
       CompactionUtils.compact(
-          selectedSeqTsFileResourceList,
-          selectedUnSeqTsFileResourceList,
-          targetTsfileResourceList,
-          storageGroupName);
+          selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
 
       CompactionUtils.moveTargetFile(targetTsfileResourceList, false, storageGroupName);
 

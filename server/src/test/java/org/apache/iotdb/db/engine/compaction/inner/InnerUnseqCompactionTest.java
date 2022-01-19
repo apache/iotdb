@@ -366,8 +366,7 @@ public class InnerUnseqCompactionTest {
               CompactionUtils.compact(
                   Collections.emptyList(),
                   toMergeResources,
-                  Collections.singletonList(targetTsFileResource),
-                  COMPACTION_TEST_SG);
+                  Collections.singletonList(targetTsFileResource));
               CompactionUtils.moveTargetFile(
                   Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
               InnerSpaceCompactionUtils.combineModsInCompaction(

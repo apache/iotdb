@@ -66,8 +66,6 @@ public class InnerSpaceCompactionUtils {
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(tsFileResources);
         TsFileIOWriter writer = new TsFileIOWriter(targetResource.getTsFile())) {
       while (deviceIterator.hasNextDevice()) {
-        checkThreadInterrupted(targetResource);
-
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
         boolean aligned = deviceInfo.right;
@@ -103,10 +101,11 @@ public class InnerSpaceCompactionUtils {
       TsFileResource targetResource,
       TsFileIOWriter writer,
       MultiTsFileDeviceIterator deviceIterator)
-      throws IOException, MetadataException {
+      throws IOException, MetadataException, InterruptedException {
     MultiTsFileDeviceIterator.MeasurementIterator seriesIterator =
         deviceIterator.iterateNotAlignedSeries(device, true);
     while (seriesIterator.hasNextSeries()) {
+      checkThreadInterrupted(targetResource);
       // TODO: we can provide a configuration item to enable concurrent between each series
       String currentSeries = seriesIterator.nextSeries();
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
@@ -123,7 +122,8 @@ public class InnerSpaceCompactionUtils {
       TsFileResource targetResource,
       TsFileIOWriter writer,
       MultiTsFileDeviceIterator deviceIterator)
-      throws IOException {
+      throws IOException, InterruptedException {
+    checkThreadInterrupted(targetResource);
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
         deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
     AlignedSeriesCompactionExecutor compactionExecutor =
