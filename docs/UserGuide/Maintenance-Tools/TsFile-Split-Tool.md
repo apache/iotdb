@@ -30,16 +30,16 @@ Command:
 For Windows:
 
 ```
-.\split-tsfile-tool.bat <path of your TsFile> (<LEVEL of the target files>) 
+.\split-tsfile-tool.bat <path of your TsFile> (-level <LEVEL of the target files>) (-size <SIZE of the target files>)
 ```
 
 For Linux or MacOs:
 
 ```
-./split-tsfile-tool.sh <path of your TsFile> (<LEVEL of the target files>) 
+./split-tsfile-tool.sh <path of your TsFile> (-level <LEVEL of the target files>) (-size <SIZE of the target files>)
 ```
 
-> Note that if `<LEVEL of the target files>` is not set, the default level of target files is 10.
+> Note that if `-level` is not set, the default level of target files is 10; if `-size` is not set, the default size of target files is about 1GB.
 
 Here are some configurations:
 

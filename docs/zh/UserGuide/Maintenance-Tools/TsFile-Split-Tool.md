@@ -28,16 +28,16 @@
 Windows:
 
 ```
-.\split-tsfile-tool.bat <TsFile 文件路径> (<所拆分文件的层级>) 
+.\split-tsfile-tool.bat <TsFile 文件路径> (-level <所拆分文件的层级>) (-size <所拆分文件的大小>)
 ```
 
 
 Linux or MacOs:
 
 ```
-./split-tsfile-tool.bat <TsFile 文件路径> (<所拆分文件的层级>)  
+./split-tsfile-tool.bat <TsFile 文件路径> (-level <所拆分文件的层级>) (-size <所拆分文件的大小>)
 ```
-> 注意：如果传入第二个参数，所拆分文件的层级为 10。
+> 注意：如果不传入-level，所拆分文件的层级为 10；如果不传入-size，所拆分文件的大小约为 1GB；
 
 拆分中可以调节的配置项如下：
 
