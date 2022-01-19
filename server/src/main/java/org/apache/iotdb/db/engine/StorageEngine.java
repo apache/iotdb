@@ -72,6 +72,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.*;
@@ -913,9 +915,12 @@ public class StorageEngine implements IService {
       if (dataDir.exists()) {
         String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
         for (String dir : dataDirs) {
-          File f = new File(dir);
-          if (dataDir.getAbsolutePath().equals(f.getAbsolutePath())) {
-            return file.getParentFile().getParentFile().getParentFile().getName();
+          try {
+            if (Files.isSameFile(Paths.get(dir), dataDir.toPath())) {
+              return file.getParentFile().getParentFile().getParentFile().getName();
+            }
+          } catch (IOException e) {
+            throw new IllegalPathException(file.getAbsolutePath(), e.getMessage());
           }
         }
       }
