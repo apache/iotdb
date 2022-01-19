@@ -740,7 +740,6 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(false).size());
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
