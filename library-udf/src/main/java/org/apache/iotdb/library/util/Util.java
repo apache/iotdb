@@ -42,7 +42,7 @@ public class Util {
    */
   public static double getValueAsDouble(Row row, int index) throws Exception {
     double ans = 0;
-    try{
+    try {
       switch (row.getDataType(index)) {
         case INT32:
           ans = row.getInt(index);
@@ -59,9 +59,8 @@ public class Util {
         default:
           throw new NoNumberException();
       }
-    }
-    catch (IOException e){
-      throw new Exception("Fail to get data type in row "+row.getTime(),e);
+    } catch (IOException e) {
+      throw new Exception("Fail to get data type in row " + row.getTime(), e);
     }
     return ans;
   }

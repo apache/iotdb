@@ -29,8 +29,6 @@ import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAc
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.util.Arrays;
-
 /** This function is used to detect density anomaly of time series. */
 public class UDTFLOF implements UDTF {
   private double threshold;
@@ -166,7 +164,7 @@ public class UDTFLOF implements UDTF {
             lof[m] = getLOF(knn, knn[m], size);
             collector.putDouble(timestamp[m], lof[m]);
           } catch (Exception e) {
-            throw new Exception("Fail to get LOF "+m,e);
+            throw new Exception("Fail to get LOF " + m, e);
           }
         }
       }
@@ -204,7 +202,7 @@ public class UDTFLOF implements UDTF {
               lof[m] = getLOF(knn, knn[m], size);
               collector.putDouble(timestamp[m], lof[m]);
             } catch (Exception e) {
-              throw new Exception("Fail to get LOF "+m,e);
+              throw new Exception("Fail to get LOF " + m, e);
             }
           }
         }
