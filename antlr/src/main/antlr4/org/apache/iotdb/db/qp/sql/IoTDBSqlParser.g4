@@ -40,8 +40,7 @@ ddlStatement
     | createFunction | createTrigger | createContinuousQuery | createSnapshot
     | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
-    | setTTL | unsetTTL | startTrigger | stopTrigger
-    | setSchemaTemplate | unsetSchemaTemplate | appendSchemaTemplate | pruneSchemaTemplate
+    | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
     | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
     | showSchemaTemplates | showNodesInSchemaTemplate
@@ -222,16 +221,6 @@ setSchemaTemplate
 // Unset Schema Template
 unsetSchemaTemplate
     : UNSET SCHEMA? TEMPLATE templateName=identifier FROM prefixPath
-    ;
-
-// Append Schema Template
-appendSchemaTemplate
-    :
-    ;
-
-// Prune Schema Template
-pruneSchemaTemplate
-    :
     ;
 
 // Start Trigger
