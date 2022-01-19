@@ -14,12 +14,16 @@ name: InfluxDB Protocol Test
 
 on:
   push:
+    branches:
+      - influxdb-*
     branches-ignore:
       - master
       - 'rel/*'
     paths-ignore:
       - 'docs/**'
   pull_request:
+    branches:
+      - influxdb-*
     branches-ignore:
       - master
       - 'rel/*'
