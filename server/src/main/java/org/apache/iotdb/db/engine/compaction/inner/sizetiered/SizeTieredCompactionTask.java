@@ -122,8 +122,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
 
       // carry out the compaction
       if (sequence) {
-        InnerSpaceCompactionUtils.compact(
-            targetTsFileResource, selectedTsFileResourceList, sequence);
+        InnerSpaceCompactionUtils.compact(targetTsFileResource, selectedTsFileResourceList);
       } else {
         CompactionUtils.compact(
             Collections.emptyList(),

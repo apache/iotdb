@@ -199,7 +199,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, true);
+      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       long[] points = new long[fileNum];
       for (int i = 1; i <= fileNum; i++) {
@@ -289,7 +289,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, true);
+      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -381,7 +381,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, true);
+      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -456,7 +456,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, true);
+      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -564,7 +564,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, true);
+      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -643,7 +643,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, true);
+      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -725,7 +725,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, true);
+      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -801,7 +801,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, true);
+      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {

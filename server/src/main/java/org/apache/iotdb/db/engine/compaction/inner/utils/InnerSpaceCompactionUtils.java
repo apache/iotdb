@@ -60,8 +60,7 @@ public class InnerSpaceCompactionUtils {
     throw new IllegalStateException("Utility class");
   }
 
-  public static void compact(
-      TsFileResource targetResource, List<TsFileResource> tsFileResources, boolean sequence)
+  public static void compact(TsFileResource targetResource, List<TsFileResource> tsFileResources)
       throws IOException, MetadataException {
 
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(tsFileResources);
@@ -74,7 +73,7 @@ public class InnerSpaceCompactionUtils {
         if (aligned) {
           compactAlignedSeries(device, targetResource, writer, deviceIterator);
         } else {
-          compactNotAlignedSeries(device, targetResource, writer, deviceIterator, sequence);
+          compactNotAlignedSeries(device, targetResource, writer, deviceIterator);
         }
 
         writer.endChunkGroup();
@@ -92,8 +91,7 @@ public class InnerSpaceCompactionUtils {
       String device,
       TsFileResource targetResource,
       TsFileIOWriter writer,
-      MultiTsFileDeviceIterator deviceIterator,
-      boolean sequence)
+      MultiTsFileDeviceIterator deviceIterator)
       throws IOException, MetadataException {
     MultiTsFileDeviceIterator.MeasurementIterator seriesIterator =
         deviceIterator.iterateNotAlignedSeries(device, true);
@@ -104,7 +102,7 @@ public class InnerSpaceCompactionUtils {
           seriesIterator.getMetadataListForCurrentSeries();
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
           new SingleSeriesCompactionExecutor(
-              device, currentSeries, readerAndChunkMetadataList, writer, targetResource, sequence);
+              device, currentSeries, readerAndChunkMetadataList, writer, targetResource);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
   }

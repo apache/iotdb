@@ -131,7 +131,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    InnerSpaceCompactionUtils.compact(targetResource, resources, true);
+    InnerSpaceCompactionUtils.compact(targetResource, resources);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -199,7 +199,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    InnerSpaceCompactionUtils.compact(targetResource, resources, true);
+    InnerSpaceCompactionUtils.compact(targetResource, resources);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -261,7 +261,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    InnerSpaceCompactionUtils.compact(targetResource, resources, true);
+    InnerSpaceCompactionUtils.compact(targetResource, resources);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -326,7 +326,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    InnerSpaceCompactionUtils.compact(targetResource, resources, true);
+    InnerSpaceCompactionUtils.compact(targetResource, resources);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -389,7 +389,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    InnerSpaceCompactionUtils.compact(targetResource, resources, true);
+    InnerSpaceCompactionUtils.compact(targetResource, resources);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -454,7 +454,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    InnerSpaceCompactionUtils.compact(targetResource, resources, true);
+    InnerSpaceCompactionUtils.compact(targetResource, resources);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -520,7 +520,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    InnerSpaceCompactionUtils.compact(targetResource, resources, true);
+    InnerSpaceCompactionUtils.compact(targetResource, resources);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,

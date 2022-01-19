@@ -68,7 +68,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     compactionLogger.logSequence(true);
     compactionLogger.logFileInfo(
         SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources, true);
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     try (FileOutputStream os = new FileOutputStream(targetResource.getTsFile(), true);
         FileChannel channel = os.getChannel()) {
@@ -116,7 +116,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     compactionLogger.logSequence(true);
     compactionLogger.logFileInfo(
         SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources, true);
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     compactionLogger.close();
     InnerSpaceCompactionExceptionHandler.handleException(
@@ -160,7 +160,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     compactionLogger.logSequence(true);
     compactionLogger.logFileInfo(
         SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources, true);
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     FileUtils.delete(seqResources.get(0).getTsFile().getPath());
     seqResources.get(0).remove();
@@ -211,7 +211,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     compactionLogger.logSequence(true);
     compactionLogger.logFileInfo(
         SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources, true);
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     seqResources.get(0).remove();
     try (FileOutputStream os = new FileOutputStream(targetResource.getTsFile(), true);
@@ -264,7 +264,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     compactionLogger.logSequence(true);
     compactionLogger.logFileInfo(
         SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources, true);
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
@@ -338,7 +338,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
           new Pair<>(i * ptNum, i * ptNum + 10));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
     }
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources, true);
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     seqResources.get(0).remove();
     compactionLogger.close();
@@ -396,7 +396,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
           new Pair<>(i * ptNum, i * ptNum + 5));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
     }
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources, true);
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();

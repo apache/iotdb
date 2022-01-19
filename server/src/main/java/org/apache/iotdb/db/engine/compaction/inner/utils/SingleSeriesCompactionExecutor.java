@@ -50,7 +50,6 @@ public class SingleSeriesCompactionExecutor {
   private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList;
   private TsFileIOWriter fileWriter;
   private TsFileResource targetResource;
-  private boolean sequence;
 
   private IMeasurementSchema schema;
   private ChunkWriterImpl chunkWriter;
@@ -78,8 +77,7 @@ public class SingleSeriesCompactionExecutor {
       String timeSeries,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
       TsFileIOWriter fileWriter,
-      TsFileResource targetResource,
-      boolean sequence)
+      TsFileResource targetResource)
       throws MetadataException {
     this.device = device;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
@@ -89,7 +87,6 @@ public class SingleSeriesCompactionExecutor {
     this.cachedChunk = null;
     this.cachedChunkMetadata = null;
     this.targetResource = targetResource;
-    this.sequence = sequence;
   }
 
   /**
@@ -104,12 +101,6 @@ public class SingleSeriesCompactionExecutor {
       List<ChunkMetadata> chunkMetadataList = readerListPair.right;
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         Chunk currentChunk = reader.readMemChunk(chunkMetadata);
-
-        if (!sequence) {
-          // if it is not sequence, deserialize it into point
-          flushChunkToMap(currentChunk);
-          continue;
-        }
 
         // if this chunk is modified, deserialize it into points
         if (chunkMetadata.getDeleteIntervalList() != null) {
@@ -137,8 +128,6 @@ public class SingleSeriesCompactionExecutor {
       cachedChunkMetadata = null;
     } else if (pointCountInChunkWriter != 0L) {
       flushChunkWriter();
-    } else if (timeValuePairMapForUnseqMerge.size() > 0) {
-      flushMapToFileWriter();
     }
     targetResource.updateStartTime(device, minStartTimestamp);
     targetResource.updateEndTime(device, maxEndTimestamp);

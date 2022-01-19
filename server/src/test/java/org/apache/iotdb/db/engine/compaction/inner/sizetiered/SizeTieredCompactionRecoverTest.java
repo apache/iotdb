@@ -141,7 +141,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     deleteFileIfExists(targetTsFileResource.getTsFile());
     compactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
     InnerSpaceCompactionUtils.compact(
-        targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)), true);
+        targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)));
     compactionLogger.close();
     InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     BufferedReader logReader = new BufferedReader(new FileReader(compactionLogFile));
@@ -269,7 +269,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     deleteFileIfExists(targetTsFileResource.getTsFile());
     compactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
     InnerSpaceCompactionUtils.compact(
-        targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)), true);
+        targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)));
     compactionLogger.close();
     new SizeTieredCompactionRecoverTask(
             COMPACTION_LOG_NAME,
@@ -388,7 +388,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     deleteFileIfExists(targetTsFileResource.getTsFile());
     compactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
     InnerSpaceCompactionUtils.compact(
-        targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)), true);
+        targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)));
     InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     // delete one source file
     seqResources.get(0).remove();
@@ -471,7 +471,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logSequence(true);
     compactionLogger.logFileInfo(
         SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources, true);
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
@@ -554,7 +554,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logSequence(true);
     compactionLogger.logFileInfo(
         SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources, true);
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
@@ -675,7 +675,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     deleteFileIfExists(targetTsFileResource.getTsFile());
     compactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
     InnerSpaceCompactionUtils.compact(
-        targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)), true);
+        targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)));
     compactionLogger.close();
     InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     tsFileManager.add(targetTsFileResource, true);
@@ -780,7 +780,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     deleteFileIfExists(targetTsFileResource.getTsFile());
     compactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
     InnerSpaceCompactionUtils.compact(
-        targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)), true);
+        targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)));
     InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     compactionLogger.close();
     for (TsFileResource resource : new ArrayList<>(seqResources.subList(0, 3))) {
@@ -888,7 +888,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     deleteFileIfExists(targetTsFileResource.getTsFile());
     compactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
     InnerSpaceCompactionUtils.compact(
-        targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)), true);
+        targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)));
     compactionLogger.close();
     InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     deleteFileIfExists(compactionLogFile);
