@@ -21,6 +21,7 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -34,6 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -70,14 +72,22 @@ public class TsFileSplitTool {
   private final double targetSplitFileSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
 
-  /** Maximum index of plans executed within this TsFile. */
+  private static String levelNum;
+
+  private static final String defaultLevelNum = "10";
+
+  private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+
+  // TODO maxPlanIndex and minPlanIndex should be modified after cluster is refactored
+  // Maximum index of plans executed within this TsFile
   protected long maxPlanIndex = Long.MIN_VALUE;
 
-  /** Minimum index of plans executed within this TsFile. */
+  // Minimum index of plans executed within this TsFile.
   protected long minPlanIndex = Long.MAX_VALUE;
 
   public static void main(String[] args) throws IOException {
     String fileName = args[0];
+    levelNum = args.length < 2 ? defaultLevelNum : args[1];
     logger.info("Splitting TsFile {} ...", fileName);
     new TsFileSplitTool(fileName).run();
   }
@@ -90,16 +100,20 @@ public class TsFileSplitTool {
   /* entry of tool */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void run() throws IOException {
+    if (fsFactory.getFile(filename + ModificationFile.FILE_SUFFIX).exists()) {
+      throw new IOException("Unsupported to split TsFile with modification currently.");
+    }
+
     TsFileIOWriter writer = null;
 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
       Iterator<List<Path>> pathIterator = reader.getPathsIterator();
       Set<String> devices = new HashSet<>();
       String[] filePathSplit = filename.split(IoTDBConstant.FILE_NAME_SEPARATOR);
-      int versionIndex = Integer.parseInt(filePathSplit[filePathSplit.length - 3]) + 1;
-      // to avoid compaction after restarting. NOTICE: This will take effect only in
-      filePathSplit[filePathSplit.length - 2] = "10";
-      // server v0.12
+      int originVersionIndex = Integer.parseInt(filePathSplit[filePathSplit.length - 3]);
+      int versionIndex = originVersionIndex + 1;
+      String originLevel = filePathSplit[filePathSplit.length - 2];
+      filePathSplit[filePathSplit.length - 2] = levelNum;
 
       while (pathIterator.hasNext()) {
         for (Path path : pathIterator.next()) {
@@ -120,11 +134,11 @@ public class TsFileSplitTool {
               for (int i = 0; i < filePathSplit.length; i++) {
                 sb.append(filePathSplit[i]);
                 if (i != filePathSplit.length - 1) {
-                  sb.append("-");
+                  sb.append(IoTDBConstant.FILE_NAME_SEPARATOR);
                 }
               }
               // open a new TsFile
-              writer = new TsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(sb.toString()));
+              writer = new TsFileIOWriter(fsFactory.getFile(sb.toString()));
               versionIndex++;
               writer.startChunkGroup(deviceId);
             }
@@ -136,6 +150,19 @@ public class TsFileSplitTool {
           ChunkMetadata firstChunkMetadata = chunkMetadataList.get(0);
           reader.position(firstChunkMetadata.getOffsetOfChunkHeader());
           ChunkHeader chunkHeader = reader.readChunkHeader(reader.readMarker());
+          if (chunkHeader.getChunkType()
+                  == (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK)
+              || chunkHeader.getChunkType()
+                  == (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK)
+              || chunkHeader.getChunkType()
+                  == (byte)
+                      (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK)
+              || chunkHeader.getChunkType()
+                  == (byte)
+                      (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK)) {
+            throw new IOException("Unsupported to split TsFile with aligned timeseries currently.");
+          }
+
           MeasurementSchema measurementSchema =
               new MeasurementSchema(
                   chunkHeader.getMeasurementID(), chunkHeader.getDataType(),
@@ -148,21 +175,6 @@ public class TsFileSplitTool {
             if (i != 0) {
               reader.position(chunkMetadataList.get(i).getOffsetOfChunkHeader());
               chunkHeader = reader.readChunkHeader(reader.readMarker());
-            }
-
-            if (chunkHeader.getChunkType()
-                    == (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK)
-                || chunkHeader.getChunkType()
-                    == (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK)
-                || chunkHeader.getChunkType()
-                    == (byte)
-                        (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK)
-                || chunkHeader.getChunkType()
-                    == (byte)
-                        (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER
-                            | TsFileConstant.VALUE_COLUMN_MASK)) {
-              throw new IOException(
-                  "Unsupported to split TsFile with aligned timeseries currently.");
             }
 
             TSDataType dataType = chunkHeader.getDataType();
