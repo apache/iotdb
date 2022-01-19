@@ -21,7 +21,6 @@ package org.apache.iotdb.db.conf;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
@@ -556,7 +555,7 @@ public class IoTDBConfig {
   private TSEncoding defaultTextEncoding = TSEncoding.PLAIN;
 
   /** How much memory (in byte) can be used by a single merge task. */
-  private long mergeMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.1);
+  private long crossCompactionMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.1);
 
   /** How many threads will be set up to perform upgrade tasks. */
   private int upgradeThreadNum = 1;
@@ -569,7 +568,7 @@ public class IoTDBConfig {
    * selection will be used as final selection. When < 0, it means time is unbounded. Unit:
    * millisecond
    */
-  private long mergeFileSelectionTimeBudget = 30 * 1000L;
+  private long crossCompactionFileSelectionTimeBudget = 30 * 1000L;
 
   /**
    * A global merge will be performed each such interval, that is, each storage group will be merged
@@ -1414,12 +1413,12 @@ public class IoTDBConfig {
     this.chunkBufferPoolEnable = chunkBufferPoolEnable;
   }
 
-  public long getMergeMemoryBudget() {
-    return mergeMemoryBudget;
+  public long getCrossCompactionMemoryBudget() {
+    return crossCompactionMemoryBudget;
   }
 
-  void setMergeMemoryBudget(long mergeMemoryBudget) {
-    this.mergeMemoryBudget = mergeMemoryBudget;
+  void setCrossCompactionMemoryBudget(long crossCompactionMemoryBudget) {
+    this.crossCompactionMemoryBudget = crossCompactionMemoryBudget;
   }
 
   public long getMergeIntervalSec() {
@@ -1696,12 +1695,12 @@ public class IoTDBConfig {
     this.maxOpenFileNumInCrossSpaceCompaction = maxOpenFileNumInCrossSpaceCompaction;
   }
 
-  public long getMergeFileSelectionTimeBudget() {
-    return mergeFileSelectionTimeBudget;
+  public long getCrossCompactionFileSelectionTimeBudget() {
+    return crossCompactionFileSelectionTimeBudget;
   }
 
-  void setMergeFileSelectionTimeBudget(long mergeFileSelectionTimeBudget) {
-    this.mergeFileSelectionTimeBudget = mergeFileSelectionTimeBudget;
+  void setCrossCompactionFileSelectionTimeBudget(long crossCompactionFileSelectionTimeBudget) {
+    this.crossCompactionFileSelectionTimeBudget = crossCompactionFileSelectionTimeBudget;
   }
 
   public boolean isRpcThriftCompressionEnable() {

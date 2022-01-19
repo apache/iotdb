@@ -155,7 +155,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     int unseqIndex = 0;
     long startTime = System.currentTimeMillis();
     long timeConsumption = 0;
-    long timeLimit = IoTDBDescriptor.getInstance().getConfig().getMergeFileSelectionTimeBudget();
+    long timeLimit = IoTDBDescriptor.getInstance().getConfig().getCrossCompactionFileSelectionTimeBudget();
     if (timeLimit < 0) {
       timeLimit = Long.MAX_VALUE;
     }

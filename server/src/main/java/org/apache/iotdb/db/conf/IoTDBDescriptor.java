@@ -479,15 +479,15 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "upgrade_thread_num", Integer.toString(conf.getUpgradeThreadNum()))));
-      conf.setMergeMemoryBudget(
+      conf.setCrossCompactionMemoryBudget(
           Long.parseLong(
               properties.getProperty(
-                  "merge_memory_budget", Long.toString(conf.getMergeMemoryBudget()))));
-      conf.setMergeFileSelectionTimeBudget(
+                  "cross_compaction_memory_budget", Long.toString(conf.getCrossCompactionMemoryBudget()))));
+      conf.setCrossCompactionFileSelectionTimeBudget(
           Long.parseLong(
               properties.getProperty(
-                  "merge_fileSelection_time_budget",
-                  Long.toString(conf.getMergeFileSelectionTimeBudget()))));
+                  "cross_compaction_file_selection_time_budget",
+                  Long.toString(conf.getCrossCompactionFileSelectionTimeBudget()))));
       conf.setMergeIntervalSec(
           Long.parseLong(
               properties.getProperty(

@@ -104,7 +104,7 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
     if (unSeqFileList.size() > config.getMaxCompactionCandidateFileNum()) {
       unSeqFileList = unSeqFileList.subList(0, config.getMaxCompactionCandidateFileNum());
     }
-    long budget = config.getMergeMemoryBudget();
+    long budget = config.getCrossCompactionMemoryBudget();
     long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
     CrossSpaceMergeResource mergeResource =
         new CrossSpaceMergeResource(seqFileList, unSeqFileList, timeLowerBound);
