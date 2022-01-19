@@ -661,13 +661,11 @@ var config = {
 							['QuickStart/Files','Data storage'],
 							['QuickStart/WayToGetIoTDB','Download and Setup'],
 							['QuickStart/Command-Line-Interface','Command Line Interface'],
-							['QuickStart/Cluster-Setup','Cluster Setup'],
-							['QuickStart/Cluster-Setup-Example','Cluster Setup Example']
 						]
 					},
 					{
 						title: 'Data Concept',
-						sidebarDepth: 2,
+						sidebarDepth: 1,
 						children: [
 							['Data-Concept/Data-Model-and-Terminology','Data Model and Terminology'],
 							['Data-Concept/Schema-Template','Schema Template'],
@@ -679,9 +677,15 @@ var config = {
 						]
 					},
 					{
+						title: 'Syntax Conventions',
+						sidebarDepth: 2,
+						children: [
+							['Reference/Syntax-Conventions','Syntax Conventions'],
+						]
+					},
+					{
 						title: 'API',
 						children: [
-							['API/Programming-Thrift','Thrift'],
 							['API/Programming-Java-Native-API','Java Native API'],
 							['API/Programming-Python-Native-API','Python Native API'],
 							['API/Programming-Cpp-Native-API','C++ Native API'],
@@ -694,7 +698,6 @@ var config = {
 					},
 					{
 						title: 'Operate Metadata',
-						sidebarDepth: 2,
 						children: [
 							['Operate-Metadata/Storage-Group','Storage Group'],
 							['Operate-Metadata/Node','Node'],
@@ -705,7 +708,6 @@ var config = {
 					},
 					{
 						title: 'Write and Delete Data',
-						sidebarDepth: 2,
 						children: [
 							['Write-And-Delete-Data/Write-Data','Write Data'],
 							['Write-And-Delete-Data/Load-External-Tsfile','Load External Tsfile'],
@@ -715,18 +717,25 @@ var config = {
 					},
 					{
 						title: 'Query Data',
-						sidebarDepth: 2,
+						sidebarDepth: 1,
 						children: [
-							['Query-Data/Performance-Tracing-Tool','Performance Tracing Tool'],
+							['Query-Data/Overview.md','Overview'],
+							['Query-Data/Select-Expression.md','Select Expression'],
+							['Query-Data/Query-Filter.md','Query Filter'],
+							['Query-Data/Pagination.md','Pagination'],
+							['Query-Data/Result-Format.md','Query Result Formats'],
+							['Query-Data/Aggregate-Query.md','Aggregate Query'],
+							['Query-Data/Last-Query.md','Last Query'],
+							['Query-Data/Fill-Null-Value.md','Fill Null Value'],
+							['Query-Data/Without-Null.md','Without Null'],
+							['Query-Data/Tracing-Tool.md','Tracing Tool']
 						]
 					},
 					{
 						title: 'Process Data',
 						children: [
 							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
-							['Process-Data/UDF-Get-Started', 'UDF Library'],
-							['Process-Data/UDF-Data-Quality', 'UDF Data Quality'],
-							['Process-Data/UDF-Data-Repair', 'UDF Data Repairing'],
+							['Process-Data/UDF-Library', 'UDF Library'],
 							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
 							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
 							['Process-Data/Triggers','Triggers'],
@@ -768,11 +777,17 @@ var config = {
 						]
 					},
 					{
+						title: 'Cluster Setup',
+						children: [
+							['Cluster/Cluster-Setup','Cluster Setup'],
+							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
+						]
+					},
+					{
 						title: 'Reference',
 						children: [
 							['Reference/Config-Manual','Config Manual'],
 							['Reference/Keywords','Keywords'],
-							['Reference/Syntax-Conventions','Syntax Conventions'],
 							['Reference/Frequently-asked-questions','Frequently asked questions'],
 							['Reference/TSDB-Comparison','TSDB Comparison']
 						]
@@ -1446,14 +1461,12 @@ var config = {
 							['QuickStart/QuickStart','快速上手'],
 							['QuickStart/Files','数据文件存储'],
 							['QuickStart/WayToGetIoTDB','下载与安装'],
-							['QuickStart/Command-Line-Interface','SQL命令行终端(CLI)'],
-							['QuickStart/Cluster-Setup','集群搭建'],
-							['QuickStart/Cluster-Setup-Example','集群搭建示例']
+							['QuickStart/Command-Line-Interface','SQL命令行终端(CLI)']
 						]
 					},
 					{
 						title: '数据模式与概念',
-						sidebarDepth: 2,
+						sidebarDepth: 1,
 						children: [
 							['Data-Concept/Data-Model-and-Terminology','数据模型'],
 							['Data-Concept/Schema-Template','元数据模板'],
@@ -1465,9 +1478,15 @@ var config = {
 						]
 					},
 					{
+						title: '语法约定',
+						sidebarDepth: 2,
+						children: [
+							['Reference/Syntax-Conventions', '语法约定'],
+						]
+					},
+					{
 						title: '应用编程接口',
 						children: [
-							['API/Programming-Thrift','Thrift'],
 							['API/Programming-Java-Native-API','Java 原生接口'],
 							['API/Programming-Python-Native-API','Python 原生接口'],
 							['API/Programming-Cpp-Native-API','C++ 原生接口'],
@@ -1483,7 +1502,6 @@ var config = {
 					},
 					{
 						title: '元数据操作',
-						sidebarDepth: 2,
 						children: [
 							['Operate-Metadata/Storage-Group','存储组操作'],
 							['Operate-Metadata/Node','节点操作'],
@@ -1494,7 +1512,7 @@ var config = {
 					},
 					{
 						title: '数据写入和删除',
-						sidebarDepth: 2,
+						sidebarDepth: 1,
 						children: [
 							['Write-And-Delete-Data/Write-Data','写入数据'],
 							['Write-And-Delete-Data/Load-External-Tsfile','加载 TsFile'],
@@ -1504,18 +1522,25 @@ var config = {
 					},
 					{
 						title: '数据查询',
-						sidebarDepth: 2,
+						sidebarDepth: 1,
 						children: [
-							['Query-Data/Performance-Tracing-Tool','查询性能追踪'],
+							['Query-Data/Overview.md','概述'],
+							['Query-Data/Select-Expression.md','选择表达式'],
+							['Query-Data/Query-Filter.md','查询过滤条件'],
+							['Query-Data/Pagination.md','查询结果分页'],
+							['Query-Data/Result-Format.md','查询结果对齐格式'],
+							['Query-Data/Aggregate-Query.md','聚合查询'],
+							['Query-Data/Last-Query.md','最新点查询'],
+							['Query-Data/Fill-Null-Value.md','空值填充'],
+							['Query-Data/Without-Null.md','空值过滤'],
+							['Query-Data/Tracing-Tool.md','查询性能追踪']
 						]
 					},
 					{
 						title: '数据处理',
 						children: [
 							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
-							['Process-Data/UDF-Get-Started', 'UDF 函数库'],
-							['Process-Data/UDF-Data-Quality', 'UDF 数据质量'],
-							['Process-Data/UDF-Data-Repair', 'UDF 数据修复'],
+							['Process-Data/UDF-Library', 'UDF 函数库'],
 							['Process-Data/Select-Into','查询写回(SELECT INTO)'],
 							['Process-Data/Continuous-Query','连续查询(CQ)'],
 							['Process-Data/Triggers','触发器'],
@@ -1558,11 +1583,17 @@ var config = {
 						]
 					},
 					{
+						title: '集群搭建',
+						children: [
+							['Cluster/Cluster-Setup','集群搭建'],
+							['Cluster/Cluster-Setup-Example','集群搭建示例']
+						]
+					},
+					{
 						title: '参考',
 						children: [
 							['Reference/Config-Manual','配置参数'],
 							['Reference/Keywords','关键字'],
-							['Reference/Syntax-Conventions','语法约定'],
 							['Reference/Frequently-asked-questions','常见问题'],
 							['Reference/TSDB-Comparison','时间序列数据库比较']
 						]

@@ -696,8 +696,8 @@ suffixPathCanInExpr
 nodeNameCanInExpr
     : wildcard
     | wildcard? ID wildcard?
+    | QUTOED_ID
     | QUTOED_ID_WITHOUT_DOT
-    | STRING_LITERAL
     ;
 
 wildcard

@@ -2204,8 +2204,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public String parseNodeNameCanInExpr(IoTDBSqlParser.NodeNameCanInExprContext ctx) {
     if (ctx.QUTOED_ID_WITHOUT_DOT() != null) {
       return parseStringWithQuotes(ctx.QUTOED_ID_WITHOUT_DOT().getText());
-    } else if (ctx.STRING_LITERAL() != null) {
-      return parseStringWithQuotesInNodeName(ctx.STRING_LITERAL().getText());
+    } else if (ctx.QUTOED_ID() != null) {
+      return parseStringWithQuotes(ctx.QUTOED_ID().getText());
     } else {
       return ctx.getText();
     }

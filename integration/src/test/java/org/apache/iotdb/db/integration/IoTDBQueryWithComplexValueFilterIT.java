@@ -37,7 +37,6 @@ public class IoTDBQueryWithComplexValueFilterIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     prepareData();
   }

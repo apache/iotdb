@@ -95,7 +95,6 @@ public class IoTDBUserDefinedAggregationFunctionIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);

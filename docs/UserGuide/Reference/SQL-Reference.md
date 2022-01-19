@@ -19,7 +19,7 @@
 
 -->
 
-# Appendix 2: SQL Reference
+# SQL Reference
 
 In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a SQL-like query language for interacting with IoTDB, the query language can be devided into 4 major parts:
 

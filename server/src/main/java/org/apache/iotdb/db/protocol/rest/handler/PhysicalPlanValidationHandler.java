@@ -34,6 +34,7 @@ public class PhysicalPlanValidationHandler {
     if (!(operator instanceof QueryOperator)) {
       return;
     }
+
     QueryOperator queryOperator = (QueryOperator) operator;
 
     if (queryOperator.isAlignByDevice()) {

@@ -58,7 +58,6 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -1561,15 +1560,8 @@ public class PlanExecutor implements IPlanExecutor {
         checkFailedMeasurments(insertRowPlan);
       }
     } catch (StorageEngineException | MetadataException e) {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
-        StatMonitor.getInstance().updateFailedStatValue();
-      }
       throw new QueryProcessException(e);
     } catch (Exception e) {
-      // update failed statistics
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
-        StatMonitor.getInstance().updateFailedStatValue();
-      }
       throw e;
     }
   }
@@ -1683,15 +1675,8 @@ public class PlanExecutor implements IPlanExecutor {
         checkFailedMeasurments(insertTabletPlan);
       }
     } catch (StorageEngineException | MetadataException e) {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
-        StatMonitor.getInstance().updateFailedStatValue();
-      }
       throw new QueryProcessException(e);
     } catch (Exception e) {
-      // update failed statistics
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
-        StatMonitor.getInstance().updateFailedStatValue();
-      }
       throw e;
     }
   }

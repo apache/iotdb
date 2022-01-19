@@ -171,12 +171,15 @@ Certain keywords, such as TIME and ROOT, are reserved and cannot use as identifi
 
 IoTDB supports the execution of arbitrary nested expressions consisting of numbers, time series, arithmetic expressions, and time series generating functions (including user-defined functions) in the `select` clause.
 
-Note: Node names that consist solely of digits in an expression must be enclosed in backticks (`).
+Note: Node names that consist solely of digits, `'` and `"` in an expression must be enclosed in backticks (`).
 ```sql
-// There is a time series: root.sg.d.0
-select 0 from root.sg.d  // ambiguity exists, parsing failed
-select `0` from root.sg.d  // query from root.sg.d.0
-select `0` + 0 from root.sg.d  // valid expression
+-- There exists timeseries: root.sg.d.0, root.sg.d.'a' and root.sg."d".b
+select 0 from root.sg.d  -- ambiguity exists, parsing failed
+select 'a' from root.sg.d -- ambiguity exists, parsing failed
+select "d".b from root.sg -- ambiguity exists, parsing failed
+select `0` from root.sg.d  -- query from root.sg.d.0
+select `0` + 0 from root.sg.d -- valid expression, add number 0 to each point of root.sg.d.0
+select myudf(`'a'`, 'x') from root.sg.d -- valid expression, call function myudf with timeseries root.sg.d.'a' as the 1st parameter, and a string constant 'x' as the 2nd parameter
 ```
 
 ## Learn More
