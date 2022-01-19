@@ -44,9 +44,12 @@ import java.sql.Statement;
 import static org.junit.Assert.fail;
 
 public class StringTests {
-  private static final float oldUdfCollectorMemoryBudgetInMB= IoTDBDescriptor.getInstance().getConfig().getUdfCollectorMemoryBudgetInMB();
-  private static final float oldUdfTransformerMemoryBudgetInMB= IoTDBDescriptor.getInstance().getConfig().getUdfTransformerMemoryBudgetInMB();
-  private static final float oldUdfReaderMemoryBudgetInMB= IoTDBDescriptor.getInstance().getConfig().getUdfReaderMemoryBudgetInMB();
+  private static final float oldUdfCollectorMemoryBudgetInMB =
+      IoTDBDescriptor.getInstance().getConfig().getUdfCollectorMemoryBudgetInMB();
+  private static final float oldUdfTransformerMemoryBudgetInMB =
+      IoTDBDescriptor.getInstance().getConfig().getUdfTransformerMemoryBudgetInMB();
+  private static final float oldUdfReaderMemoryBudgetInMB =
+      IoTDBDescriptor.getInstance().getConfig().getUdfReaderMemoryBudgetInMB();
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -149,12 +152,12 @@ public class StringTests {
   public void testRegexMatch1() {
     String sqlStr =
         "select regexmatch(d1.s1,\"regex\"=\"\\d+\\.\\d+\\.\\d+\\.\\d+\", \"group\"=\"0\") from root.vehicle";
-    try (Connection connection =EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength,5);
+      Assert.assertEquals(resultSetLength, 5);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -164,12 +167,12 @@ public class StringTests {
   public void testRegexReplace1() {
     String sqlStr =
         "select regexreplace(d2.s1,\"regex\"=\"192\\.168\\.0\\.(\\d+)\", \"replace\"=\"cluster-$1\") from root.vehicle";
-    try (Connection connection =EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength,5);
+      Assert.assertEquals(resultSetLength, 5);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -178,12 +181,12 @@ public class StringTests {
   @Test
   public void testRegexSplit1() {
     String sqlStr = "select regexsplit(d2.s1, \"regex\"=\",\") from root.vehicle";
-    try (Connection connection =EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength,5);
+      Assert.assertEquals(resultSetLength, 5);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -193,12 +196,12 @@ public class StringTests {
   public void testStrReplace1() {
     String sqlStr =
         "select strreplace(d2.s1,\"target\"=\",\", \"replace\"=\"_\") from root.vehicle";
-    try (Connection connection =EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength,5);
+      Assert.assertEquals(resultSetLength, 5);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
