@@ -170,12 +170,15 @@ CREATE TIMESERIES root.a.b."s1.s2".c WITH DATATYPE=INT32, ENCODING=RLE
 
 IoTDB 支持在 `select` 子句中执行由数字常量、时间序列、算数运算表达式和时间序列生成函数（包括用户自定义函数）组成的任意嵌套表达式。
 
-注意：当参与表达式的路径节点名由纯数字组成（不推荐！）时，必须使用反引号（`）括起，以免引起歧义。示例如下：
+注意：当参与表达式的路径节点名由纯数字、单引号、或双引号组成（不推荐！）时，必须使用反引号（`）括起，以免引起歧义。示例如下：
 ```sql
-// 存在时间序列： root.sg.d.0
-select 0 from root.sg.d  // 存在歧义，解析失败
-select `0` from root.sg.d  // 对时间序列 root.sg.d.0 进行查询
-select `0` + 0 from root.sg.d  // 表达式，对时间序列 root.sg.d.0 的每一个查询结果加 0
+-- 存在时间序列： root.sg.d.0, root.sg.d.'a' 和 root.sg."d".b
+select 0 from root.sg.d  -- 存在歧义，解析失败
+select 'a' from root.sg.d -- 存在歧义，解析失败
+select "d".b from root.sg -- 存在歧义，解析失败
+select `0` from root.sg.d  -- 对时间序列 root.sg.d.0 进行查询
+select `0` + 0 from root.sg.d -- 表达式，对时间序列 root.sg.d.0 的每一个查询结果加 0
+select myudf(`'a'`, 'x') from root.sg.d -- 表达式，调用函数 myudf，第一个参数为时间序列 root.sg.d.'a'，第二个参数为字符串常量 'x'
 ```
 
 ## 了解更多

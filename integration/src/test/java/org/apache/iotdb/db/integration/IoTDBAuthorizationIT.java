@@ -53,7 +53,6 @@ public class IoTDBAuthorizationIT {
 
   @Before
   public void setUp() {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
 
