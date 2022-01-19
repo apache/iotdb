@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.metadata.idtable.entry;
 
+import org.apache.iotdb.db.utils.TestOnly;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.iotdb.db.utils.TestOnly;
 
 /** device entry in id table */
 public class DeviceEntry {

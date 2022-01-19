@@ -117,7 +117,6 @@ public class CompactionScheduler {
               virtualStorageGroupName,
               timePartition,
               tsFileManager,
-              sequenceFileList,
               true,
               new InnerSpaceCompactionTaskFactory());
       taskSubmitted =
@@ -126,7 +125,6 @@ public class CompactionScheduler {
                   virtualStorageGroupName,
                   timePartition,
                   tsFileManager,
-                  unsequenceFileList,
                   false,
                   new InnerSpaceCompactionTaskFactory())
               | taskSubmitted;
@@ -136,8 +134,7 @@ public class CompactionScheduler {
                   virtualStorageGroupName,
                   storageGroupDir,
                   timePartition,
-                  sequenceFileList,
-                  unsequenceFileList,
+                  tsFileManager,
                   new CrossSpaceCompactionTaskFactory())
               | taskSubmitted;
     }
@@ -156,7 +153,6 @@ public class CompactionScheduler {
         virtualStorageGroupName,
         timePartition,
         tsFileManager,
-        sequenceFileList,
         true,
         new InnerSpaceCompactionTaskFactory());
     tryToSubmitInnerSpaceCompactionTask(
@@ -164,7 +160,6 @@ public class CompactionScheduler {
         virtualStorageGroupName,
         timePartition,
         tsFileManager,
-        unsequenceFileList,
         false,
         new InnerSpaceCompactionTaskFactory());
     tryToSubmitCrossSpaceCompactionTask(
@@ -172,8 +167,7 @@ public class CompactionScheduler {
         virtualStorageGroupName,
         storageGroupDir,
         timePartition,
-        sequenceFileList,
-        unsequenceFileList,
+        tsFileManager,
         new CrossSpaceCompactionTaskFactory());
   }
 
@@ -190,15 +184,13 @@ public class CompactionScheduler {
         virtualStorageGroupName,
         storageGroupDir,
         timePartition,
-        sequenceFileList,
-        unsequenceFileList,
+        tsFileManager,
         new CrossSpaceCompactionTaskFactory());
     tryToSubmitInnerSpaceCompactionTask(
         logicalStorageGroupName,
         virtualStorageGroupName,
         timePartition,
         tsFileManager,
-        sequenceFileList,
         true,
         new InnerSpaceCompactionTaskFactory());
     tryToSubmitInnerSpaceCompactionTask(
@@ -206,7 +198,6 @@ public class CompactionScheduler {
         virtualStorageGroupName,
         timePartition,
         tsFileManager,
-        unsequenceFileList,
         false,
         new InnerSpaceCompactionTaskFactory());
   }
@@ -216,7 +207,6 @@ public class CompactionScheduler {
       String virtualStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
-      TsFileResourceList tsFileResources,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
     if ((!config.isEnableSeqSpaceCompaction() && sequence)
@@ -232,7 +222,6 @@ public class CompactionScheduler {
                 virtualStorageGroupName,
                 timePartition,
                 tsFileManager,
-                tsFileResources,
                 sequence,
                 taskFactory);
     return innerSpaceCompactionSelector.selectAndSubmit();
@@ -243,8 +232,7 @@ public class CompactionScheduler {
       String virtualStorageGroupName,
       String storageGroupDir,
       long timePartition,
-      TsFileResourceList sequenceFileList,
-      TsFileResourceList unsequenceFileList,
+      TsFileManager tsFileManager,
       CrossSpaceCompactionTaskFactory taskFactory) {
     if (!config.isEnableCrossSpaceCompaction()) {
       return false;
@@ -257,8 +245,7 @@ public class CompactionScheduler {
                 virtualStorageGroupName,
                 storageGroupDir,
                 timePartition,
-                sequenceFileList,
-                unsequenceFileList,
+                tsFileManager,
                 taskFactory);
     return crossSpaceCompactionSelector.selectAndSubmit();
   }

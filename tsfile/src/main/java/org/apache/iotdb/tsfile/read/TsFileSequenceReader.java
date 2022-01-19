@@ -1624,7 +1624,7 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   // This method is only used for TsFile
   public List<IChunkMetadata> getIChunkMetadataList(Path path) throws IOException {
-    ITimeSeriesMetadata timeseriesMetaData = readITimeseriesMetadata(path, false);
+    ITimeSeriesMetadata timeseriesMetaData = readITimeseriesMetadata(path, true);
     if (timeseriesMetaData == null) {
       return Collections.emptyList();
     }

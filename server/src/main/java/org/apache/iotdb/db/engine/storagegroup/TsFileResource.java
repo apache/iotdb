@@ -926,6 +926,11 @@ public class TsFileResource {
     return timeIndexType;
   }
 
+  @TestOnly
+  public void setTimeIndexType(byte type) {
+    this.timeIndexType = type;
+  }
+
   public long getRamSize() {
     return ramSize;
   }
