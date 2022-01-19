@@ -127,3 +127,12 @@ The data in [2017-11-01T00:06:00.001, 2017-11-01T00:06:00.007] is within the com
 The data point at time 2017-11-01T00:06:00.007 is stored because the next data point at time 2017-11-01T00:06:00.015
 exceeds compression deviation. When a data point exceeds the compression deviation, SDT stores the last read
 point and updates the upper and lower boundaries. The last point at time 2017-11-01T00:06:00.018 is not stored.
+
+## Compression Ratio Statistics
+
+Compression ratio statistics file: data/system/storage_groups/compression_ratio/Ratio-{ratio_sum}-{memtable_flush_time}
+
+* ratio_sum: sum of memtable compression ratios
+* memtable_flush_time: memtable flush times
+
+The average compression ratio can be calculated by `ratio_sum / memtable_flush_time`
