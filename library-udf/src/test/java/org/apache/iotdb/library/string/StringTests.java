@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -143,14 +144,12 @@ public class StringTests {
   public void testRegexMatch1() {
     String sqlStr =
         "select regexmatch(d1.s1,\"regex\"=\"\\d+\\.\\d+\\.\\d+\\.\\d+\", \"group\"=\"0\") from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 5;
+      Assert.assertEquals(resultSetLength,5);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -160,14 +159,12 @@ public class StringTests {
   public void testRegexReplace1() {
     String sqlStr =
         "select regexreplace(d2.s1,\"regex\"=\"192\\.168\\.0\\.(\\d+)\", \"replace\"=\"cluster-$1\") from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 5;
+      Assert.assertEquals(resultSetLength,5);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -176,14 +173,12 @@ public class StringTests {
   @Test
   public void testRegexSplit1() {
     String sqlStr = "select regexsplit(d2.s1, \"regex\"=\",\") from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 5;
+      Assert.assertEquals(resultSetLength,5);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -193,14 +188,12 @@ public class StringTests {
   public void testStrReplace1() {
     String sqlStr =
         "select strreplace(d2.s1,\"target\"=\",\", \"replace\"=\"_\") from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 5;
+      Assert.assertEquals(resultSetLength,5);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

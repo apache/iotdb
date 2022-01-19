@@ -93,10 +93,8 @@ public class UDTFRegexReplace implements UDTF {
       } else {
         suffix = origin.substring(endIndexList.get(endIndexList.size() - offset - 1));
       }
-      String prefix;
-      if (limit == -1 || endIndexList.size() < limit + offset + 1) {
-        prefix = "";
-      } else {
+      String prefix="";
+      if (limit != -1 && endIndexList.size() >= limit + offset + 1) {
         prefix = origin.substring(0, endIndexList.get(endIndexList.size() - limit - offset - 1));
       }
       result =
@@ -111,17 +109,12 @@ public class UDTFRegexReplace implements UDTF {
       while (matcher.find() && fromIndexList.size() < limit + offset + 2) {
         fromIndexList.add(matcher.start());
       }
-      String prefix;
-      if (fromIndexList.size() < offset + 1) {
-        prefix = origin;
-      } else {
+      String prefix=origin;
+      if (fromIndexList.size() >= offset + 1) {
         prefix = origin.substring(0, fromIndexList.get(offset));
       }
-      String suffix;
-      if (limit == -1 || fromIndexList.size() < limit + offset + 1) {
-        // replace all left matches
-        suffix = "";
-      } else {
+      String suffix="";
+      if (limit != -1 && fromIndexList.size() >= limit + offset + 1) {
         suffix = origin.substring(fromIndexList.get(limit + offset));
       }
       result =
