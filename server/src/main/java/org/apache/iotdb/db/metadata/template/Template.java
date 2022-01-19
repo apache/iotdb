@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -248,10 +249,11 @@ public class Template {
       String[] nodeNames,
       TSDataType[] dataTypes,
       TSEncoding[] encodings,
-      CompressionType[] compressors) {
+      CompressionType[] compressors) throws IllegalPathException{
     MeasurementSchema[] schemas = new MeasurementSchema[nodeNames.length];
     for (int i = 0; i < nodeNames.length; i++) {
-      schemas[i] = new MeasurementSchema(nodeNames[i], dataTypes[i], encodings[i], compressors[i]);
+      schemas[i] = new MeasurementSchema(
+          new PartialPath(nodeNames[i]).getMeasurement(), dataTypes[i], encodings[i], compressors[i]);
     }
     return schemas;
   }
