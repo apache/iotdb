@@ -39,7 +39,7 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContaine
 
 public class MockSchemaFile implements ISchemaFile {
 
-  private long fileTail = 0;
+  private long fileTail = 5;
 
   private final Map<Long, Map<String, IMNode>> mockFile = new HashMap<>();
 
@@ -87,7 +87,7 @@ public class MockSchemaFile implements ISchemaFile {
       cloned.setParent(parent);
       map.put(node.getName(), cloned);
     }
-    return map.values().iterator();
+    return new MockSchemaFileIterator(parent, map.values().iterator());
   }
 
   @Override
@@ -199,5 +199,28 @@ public class MockSchemaFile implements ISchemaFile {
     ICachedMNodeContainer container = new CachedMNodeContainer();
     container.setSegmentAddress((getCachedMNodeContainer(node)).getSegmentAddress());
     result.setChildren(container);
+  }
+
+  private class MockSchemaFileIterator implements Iterator<IMNode> {
+
+    IMNode parent;
+    Iterator<IMNode> iterator;
+
+    MockSchemaFileIterator(IMNode parent, Iterator<IMNode> iterator) {
+      this.parent = parent;
+      this.iterator = iterator;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+
+    @Override
+    public IMNode next() {
+      IMNode result = cloneMNode(iterator.next());
+      result.setParent(parent);
+      return result;
+    }
   }
 }
