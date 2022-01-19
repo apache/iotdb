@@ -162,7 +162,11 @@ It costs 0.004s
 
 * SHOW TIMESERIES LIMIT INT OFFSET INT
 
-  只返回从指定下标开始的结果，最大返回条数被 LIMIT 限制，用于分页查询
+  只返回从指定下标开始的结果，最大返回条数被 LIMIT 限制，用于分页查询。例如：
+
+```
+show timeseries root.ln.** limit 10 offset 10
+```
 
 * SHOW LATEST TIMESERIES
 

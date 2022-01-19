@@ -19,7 +19,7 @@
 
 -->
 
-# SQL 命令行终端 (CLI)
+## SQL 命令行终端 (CLI)
 
 IOTDB 为用户提供 cli/Shell 工具用于启动客户端和服务端程序。下面介绍每个 cli/Shell 工具的运行方式和相关参数。
 > \$IOTDB\_HOME 表示 IoTDB 的安装目录所在路径。

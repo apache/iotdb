@@ -31,7 +31,6 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
@@ -194,11 +193,11 @@ public class CompactionCheckerUtils {
         while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
           switch (marker) {
             case MetaMarker.CHUNK_HEADER:
-            case (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK):
-            case (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
+            case MetaMarker.TIME_CHUNK_HEADER:
+            case MetaMarker.VALUE_CHUNK_HEADER:
             case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
-            case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK):
-            case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
+            case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
+            case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
               ChunkHeader header = reader.readChunkHeader(marker);
               // read the next measurement and pack data of last measurement
               if (currTimeValuePairs.size() > 0) {
@@ -391,11 +390,11 @@ public class CompactionCheckerUtils {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
-          case (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK):
-          case (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
+          case MetaMarker.TIME_CHUNK_HEADER:
+          case MetaMarker.VALUE_CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
-          case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK):
-          case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
+          case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
+          case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
             ChunkHeader header = reader.readChunkHeader(marker);
             // read the next measurement and pack data of last measurement
             if (pagePointsNum.size() > 0) {

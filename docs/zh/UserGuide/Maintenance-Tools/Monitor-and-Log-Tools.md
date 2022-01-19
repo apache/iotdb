@@ -34,139 +34,10 @@
 通过使用 JConsole 工具并与 JMX 连接，您可以查看一些系统统计信息和参数。
 本节描述如何使用 JConsole 的 "Mbean" 选项卡来监视 IoTDB 的一些系统配置、写入数据统计等等。 连接到 JMX 后，您可以通过 "MBeans" 标签找到名为 "org.apache.iotdb.service" 的 "MBean"，如下图所示。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112428223-ce7e3600-8d75-11eb-8e50-04f04571925b.png"> <br>
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/46039728/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
 
-Monitor 下有几个属性，包括数据文件目录，写入数据统计信息以及某些系统参数的值。 通过双击与属性对应的值，它还可以显示该属性的折线图。有关 Monitor 属性的具体介绍，请参见以下部分。
-
- * MBean 监视器属性列表
-
-- SystemDirectory
-
-| 名称 | SystemDirectory        |
-| :--: | :--------------------- |
-| 描述 | 数据系统文件的绝对目录 |
-| 类型 | String                 |
-
-- DataSizeInByte
-
-| 名称 | DataSizeInByte   |
-| :--: | :--------------- |
-| 描述 | 数据文件的总大小 |
-| 单元 | Byte             |
-| 类型 | Long             |
-
-- EnableStatMonitor
-
-| 名称 | EnableStatMonitor    |
-| ---- | -------------------- |
-| 描述 | 系统监控模块是否开启 |
-| 类型 | Boolean              |
-
-- WriteAheadLogStatus
-
-| 名称 | WriteAheadLogStatus                       |
-| :--: | :---------------------------------------- |
-| 描述 | 预写日志（WAL）的状态。 True 表示启用 WAL。 |
-| 类型 | Boolean                                   |
-
-- GlobalTotalPointsNum
-
-| 名称 | GlobalTotalPointsNum                       |
-| :--: | :---------------------------------------- |
-| 描述 | 总点数 |
-| 类型 |     Long                               |
-
-- GlobalReqSuccessNum
-  
-| 名称 | GlobalReqSuccessNum                       |
-| :--: | :---------------------------------------- |
-| 描述 |  成功的请求数 |
-| 类型 |     Long                               |
-
-- GlobalReqFailNum
-  
-| 名称 | GlobalReqFailNum                       |
-| :--: | :---------------------------------------- |
-| 描述 | 失败的请求数 |
-| 类型 |      Long                              |
-
-### 数据统计监控
-
-本模块对数据写入操作提供一些统计信息的监控，包括：
-
-- IoTDB 中数据文件的大小 （以字节为单位） ，数据写入的总点数
-- 写入操作成功和失败的次数
-
-#### 开启/关闭监控
-
-用户可以选择开启或关闭数据统计监控功能（您可以设定配置文件中的`enable_stat_monitor`项，详细信息参见 [附录 1：配置参数](http://iotdb.apache.org/zh/UserGuide/Master/Appendix/Config-Manual.html)）。
-
-### 统计数据存储
-
-默认情况下，统计数据只储存在内存中，可以使用 Jconsole 进行访问。
-
-统计数据还支持以时间序列的格式写入磁盘，可以通过设置配置文件中的`enable_monitor_series_write`开启。开启后，可以使用 `select` 命令来对这些统计数据进行查询。
-
-> 请注意：
->
-> 如果 `enable_monitor_series_write=true`, 当 IoTDB 重启时，之前的统计数据会被重新载入内存。
-> 如果 `enable_monitor_series_write=false`, IoTDB 关闭时内存中所有的统计信息会被清空。
-
-#### 写入数据统计
-
-系统目前对写入数据的统计可分为两大模块： 全局（Global） 写入数据统计和存储组（Storage Group） 写入数据统计。全局统计量记录了所有写入数据的点数、请求数统计，存储组统计量对每一个存储组的写入数据进行了统计。
-
-系统设定监控模块的采集粒度为**每个数据文件刷入磁盘时更新一次统计信息**，因此数据精度可能和实际有所出入。如需获取准确信息，**请先调用 flush 方法后再查询**。
-
-写入数据统计项列表（括号内为统计量支持的范围）：
-
-* TOTAL_POINTS （全局，存储组）
-
-|     名字     | TOTAL\_POINTS                                                |
-| :----------: | :----------------------------------------------------------- |
-|     描述     | 写入总点数                                                   |
-| 时间序列名称 | root.stats."global".TOTAL\_POINTS <br />root.stats."{storageGroupName}".TOTAL\_POINTS<br />其中 storageGroupName 是将存储组中的 `.` 替换成 `#` 得到<br />例如存储组 `root.sg` 的写入总点数记录在  root.stats."root#sg".TOTAL\_POINTS |
-
-* TOTAL\_REQ\_SUCCESS （全局）
-
-|         名字         | TOTAL\_REQ\_SUCCESS                                     |
-|:--------------------:|:------------------------------------------------------- |
-|         描述         | 写入请求成功次数                                        |
-|     时间序列名称     | root.stats."global".TOTAL\_REQ\_SUCCESS             |
-
-* TOTAL\_REQ\_FAIL （全局）
-
-|         名字         | TOTAL\_REQ\_FAIL                                     |
-|:--------------------:|:---------------------------------------------------- |
-|         描述         | 写入请求失败次数                                     |
-|     时间序列名称     | root.stats."global".TOTAL\_REQ\_FAIL             |
-
-以上属性同样支持在 Jconsole 中进行可视化显示。对于每个存储组的统计信息，为了避免存储组过多造成显示混乱，用户可以在 Monitor Mbean 下的操作方法中输入存储组名进行相应的统计信息查询。
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/34242296/92922942-34a20c00-f469-11ea-8dc2-8229d454583c.png"> <br>
-
-#### 示例
-
-下面为您展示两个具体的例子。用户可以通过`SELECT`语句查询自己所需要的写入数据统计项。（查询方法与普通的时间序列查询方式一致）
-
-我们以查询全局统计量总点数（`TOTAL_POINTS`）为例，用 IoTDB SELECT 语句查询它的值。SQL 语句如下：
-
-```sql
-select TOTAL_POINTS from root.stats."global"
-```
-
-我们以查询存储组 root.ln 的统计量总点数（`TOTAL_POINTS`）为例，用 IoTDB SELECT 语句查询它的值。SQL 语句如下：
-
-```sql
-select TOTAL_POINTS from root.stats."root.ln"
-```
-
-若您需要查询当前系统的最新信息，您可以使用最新数据查询，SQL 语句如下：
-
-```sql
-flush
-select last TOTAL_POINTS from root.stats."global"
-```
+#### 系统监控框架监控
+[监控工具](Metric-Tool.md)
 
 ### 性能监控
 
@@ -184,50 +55,10 @@ select last TOTAL_POINTS from root.stats."global"
 
 **表 -配置参数以及描述项**
 
-|参数|默认值|描述|
-|:---|:---|:---|
-|enable\_performance\_stat|false|是否开启性能监控模块|
-|performance\_stat\_display\_interval|60000|打印统计结果的时间延迟，以毫秒为单位|
-|performance_stat_memory_in_kb|20|性能监控模块使用的内存阈值，单位为 KB|
+| 参数                      | 默认值 | 描述                 |
+| :------------------------ | :----- | :------------------- |
+| enable\_performance\_stat | false  | 是否开启性能监控模块 |
 </center>
-
-#### 利用 JMX MBean 动态调节参数
-
-通过端口 31999 连接 jconsole，并在上方菜单项中选择`MBean`. 展开侧边框并选择 `org.apache.iotdb.db.cost.statistic`. 将会得到如下图所示结果：
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112426751-721a1700-8d73-11eb-871c-db2e9c13cf99.png">
-
-**属性**
-
-1. EnableStat：是否开启性能监控模块，如果被设置为 true，则性能监控模块会记录每个操作的耗时并打印结果。这个参数不能直接通过 jconsole 直接更改，但可通过下方的函数来进行动态设置。
-2. DisplayIntervalInMs：相邻两次打印结果的时间间隔。这个参数可以直接设置，但它要等性能监控模块重启才会生效。重启性能监控模块可以通过先调用 stopStatistic() 然后调用 startContinuousStatistics() 或者直接调用 startOneTimeStatistics() 实现。
-3. OperationSwitch：这个属性用来展示针对每一种操作是否开启了监控统计，map 的键为操作的名字，值为是否针对这种操作开启性能监控。这个参数不能直接通过 jconsole 直接更改，但可通过下方的 'changeOperationSwitch()'函数来进行动态设置。
-
-**操作**
-
-1. startStatistics：开启性能监控。
-2. startContinuousPrintStatistics：开启性能监控并以‘DisplayIntervalInMs’的时间间隔打印统计结果。 
-3. startPrintStatisticsOnce：开启性能监控并以‘DisplayIntervalInMs’的时间延迟打印一次统计结果。 
-4. stopPrintStatistic：关闭打印性能监控的统计结果。
-5. stopStatistic：关闭性能监控。
-6. clearStatisticalState(): 清除以统计的结果，从新开始统计。
-7. changeOperationSwitch(String operationName, Boolean operationState): 设置是否针对每一种不同的操作开启监控。参数‘operationName 是操作的名称，在 OperationSwitch 属性中展示了所有操作的名称。参数 ‘operationState’是操作的状态，打开或者关闭。如果状态设置成功则此函数会返回 true，否则返回 false。
-
-### 自定义操作类型监控其他区域
-
-**增加操作项**
-
-在 org.apache.iotdb.db.cost.statistic.Operation 类中增加一个枚举项来表示新增的操作。
-
-**在监控区域增加监控代码**
-
-在监控开始区域增加计时代码：
-
-    long t0 = System. currentTimeMillis();
-
-在监控结束区域增加记录代码：
-
-    Measurement.INSTANCE.addOperationLatency(Operation, t0);
 
 ### cache 命中率统计
 

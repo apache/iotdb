@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactionTask {
-
   List<TsFileResource> selectedSequenceFiles;
   List<TsFileResource> selectedUnsequenceFiles;
 

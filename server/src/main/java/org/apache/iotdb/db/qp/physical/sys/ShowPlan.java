@@ -110,7 +110,6 @@ public class ShowPlan extends PhysicalPlan {
     COUNT_TIMESERIES,
     COUNT_NODE_TIMESERIES,
     COUNT_NODES,
-    MERGE_STATUS,
     FUNCTIONS,
     COUNT_DEVICES,
     COUNT_STORAGE_GROUP,

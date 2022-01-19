@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
+import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
@@ -89,20 +89,20 @@ public class TsFileWriteApiTest {
       // example 1
       writeMeasurementScheams.add(measurementSchemas.get(0));
       writeMeasurementScheams.add(measurementSchemas.get(1));
-      TsFileGeneratorForTest.writeWithTsRecord(
+      TsFileGeneratorUtils.writeWithTsRecord(
           tsFileWriter, deviceId, writeMeasurementScheams, 10000, 0, 0, false);
 
       // example 2
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(measurementSchemas.get(2));
       writeMeasurementScheams.add(measurementSchemas.get(0));
-      TsFileGeneratorForTest.writeWithTsRecord(
+      TsFileGeneratorUtils.writeWithTsRecord(
           tsFileWriter, deviceId, writeMeasurementScheams, 10000, 10000, 100, false);
 
       // example 3 : late data
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(measurementSchemas.get(2));
-      TsFileGeneratorForTest.writeWithTsRecord(
+      TsFileGeneratorUtils.writeWithTsRecord(
           tsFileWriter, deviceId, writeMeasurementScheams, 10, 20000, 200000, false);
     }
   }
@@ -117,20 +117,20 @@ public class TsFileWriteApiTest {
       // example1
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
-      TsFileGeneratorForTest.writeWithTsRecord(
+      TsFileGeneratorUtils.writeWithTsRecord(
           tsFileWriter, deviceId, writeMeasurementScheams, 8, 0, 0, true);
 
       // example2
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
-      TsFileGeneratorForTest.writeWithTsRecord(
+      TsFileGeneratorUtils.writeWithTsRecord(
           tsFileWriter, deviceId, writeMeasurementScheams, 20, 1000, 500, true);
 
       // example3 : late data
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
-      TsFileGeneratorForTest.writeWithTsRecord(
+      TsFileGeneratorUtils.writeWithTsRecord(
           tsFileWriter, deviceId, writeMeasurementScheams, 20, 300000, 50, true);
     }
   }
@@ -145,20 +145,20 @@ public class TsFileWriteApiTest {
       // example 1
       writeMeasurementScheams.add(measurementSchemas.get(0));
       writeMeasurementScheams.add(measurementSchemas.get(1));
-      TsFileGeneratorForTest.writeWithTablet(
+      TsFileGeneratorUtils.writeWithTablet(
           tsFileWriter, deviceId, writeMeasurementScheams, 1000, 0, 0, false);
 
       // example 2
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(measurementSchemas.get(2));
       writeMeasurementScheams.add(measurementSchemas.get(1));
-      TsFileGeneratorForTest.writeWithTablet(
+      TsFileGeneratorUtils.writeWithTablet(
           tsFileWriter, deviceId, writeMeasurementScheams, 1000, 2000, 0, false);
 
       // example 3: late data
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(measurementSchemas.get(1));
-      TsFileGeneratorForTest.writeWithTablet(
+      TsFileGeneratorUtils.writeWithTablet(
           tsFileWriter, deviceId, writeMeasurementScheams, 1000, 3111, 0, false);
     }
   }
@@ -172,20 +172,20 @@ public class TsFileWriteApiTest {
       List<MeasurementSchema> writeMeasurementScheams = new ArrayList<>();
       // example 1
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
-      TsFileGeneratorForTest.writeWithTablet(
+      TsFileGeneratorUtils.writeWithTablet(
           tsFileWriter, deviceId, writeMeasurementScheams, 10, 0, 0, true);
 
       // example 2
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
-      TsFileGeneratorForTest.writeWithTablet(
+      TsFileGeneratorUtils.writeWithTablet(
           tsFileWriter, deviceId, writeMeasurementScheams, 200000, 10, 0, true);
 
       // example 3
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
-      TsFileGeneratorForTest.writeWithTablet(
+      TsFileGeneratorUtils.writeWithTablet(
           tsFileWriter, deviceId, writeMeasurementScheams, 10, 210000, 0, true);
     }
   }
@@ -200,14 +200,14 @@ public class TsFileWriteApiTest {
       // example 1
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
-      TsFileGeneratorForTest.writeWithTablet(
+      TsFileGeneratorUtils.writeWithTablet(
           tsFileWriter, deviceId, writeMeasurementScheams, 100000, 0, 0, true);
 
       // example 2
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(3));
-      TsFileGeneratorForTest.writeWithTablet(
+      TsFileGeneratorUtils.writeWithTablet(
           tsFileWriter, deviceId, writeMeasurementScheams, 20, 1000000, 0, true);
 
     } catch (IOException | WriteProcessException e) {
@@ -227,14 +227,14 @@ public class TsFileWriteApiTest {
       // example 1
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
-      TsFileGeneratorForTest.writeWithTablet(
+      TsFileGeneratorUtils.writeWithTablet(
           tsFileWriter, deviceId, writeMeasurementScheams, 100000, 0, 0, true);
 
       // example 2
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(3));
-      TsFileGeneratorForTest.writeWithTablet(
+      TsFileGeneratorUtils.writeWithTablet(
           tsFileWriter, deviceId, writeMeasurementScheams, 20, 1000000, 0, true);
     } catch (IOException | WriteProcessException e) {
       Assert.assertEquals(
@@ -253,14 +253,14 @@ public class TsFileWriteApiTest {
       // example 1
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
-      TsFileGeneratorForTest.writeWithTablet(
+      TsFileGeneratorUtils.writeWithTablet(
           tsFileWriter, deviceId, writeMeasurementScheams, 1000, 0, 0, true);
 
       // example 2
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
       try {
-        TsFileGeneratorForTest.writeWithTablet(
+        TsFileGeneratorUtils.writeWithTablet(
             tsFileWriter, deviceId, writeMeasurementScheams, 20, 100, 0, true);
         Assert.fail("Expected to throw writeProcessException due to write out-of-order data.");
       } catch (WriteProcessException e) {
@@ -273,7 +273,7 @@ public class TsFileWriteApiTest {
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
       try {
-        TsFileGeneratorForTest.writeWithTsRecord(
+        TsFileGeneratorUtils.writeWithTsRecord(
             tsFileWriter, deviceId, writeMeasurementScheams, 20, 100, 0, true);
         Assert.fail("Expected to throw writeProcessException due to write out-of-order data.");
       } catch (WriteProcessException e) {
@@ -294,14 +294,14 @@ public class TsFileWriteApiTest {
       // example 1
       writeMeasurementScheams.add(measurementSchemas.get(0));
       writeMeasurementScheams.add(measurementSchemas.get(1));
-      TsFileGeneratorForTest.writeWithTablet(
+      TsFileGeneratorUtils.writeWithTablet(
           tsFileWriter, deviceId, writeMeasurementScheams, 1000, 0, 0, false);
 
       // example 2
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(measurementSchemas.get(0));
       try {
-        TsFileGeneratorForTest.writeWithTablet(
+        TsFileGeneratorUtils.writeWithTablet(
             tsFileWriter, deviceId, writeMeasurementScheams, 20, 100, 0, false);
         Assert.fail("Expected to throw writeProcessException due to write out-of-order data.");
       } catch (WriteProcessException e) {
@@ -314,7 +314,7 @@ public class TsFileWriteApiTest {
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(measurementSchemas.get(1));
       try {
-        TsFileGeneratorForTest.writeWithTsRecord(
+        TsFileGeneratorUtils.writeWithTsRecord(
             tsFileWriter, deviceId, writeMeasurementScheams, 20, 100, 0, false);
         Assert.fail("Expected to throw writeProcessException due to write out-of-order data.");
       } catch (WriteProcessException e) {
