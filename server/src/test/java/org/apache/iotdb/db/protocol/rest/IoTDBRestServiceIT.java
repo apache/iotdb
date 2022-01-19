@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @FixMethodOrder(MethodSorters.JVM)
@@ -168,6 +169,23 @@ public class IoTDBRestServiceIT {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     rightInsertTablet(httpClient);
     query(httpClient);
+    queryRowLimit(httpClient);
+    queryShowChildPaths(httpClient);
+    queryShowNodes(httpClient);
+    showAllTTL(httpClient);
+    showStorageGroup(httpClient);
+    showFunctions(httpClient);
+    showTimeseries(httpClient);
+
+    showLastTimeseries(httpClient);
+    countTimeseries(httpClient);
+    countNodes(httpClient);
+    showDevices(httpClient);
+
+    showDevicesWithStroage(httpClient);
+    listUser(httpClient);
+    selectCount(httpClient);
+    selectLast(httpClient);
     try {
       httpClient.close();
     } catch (IOException e) {
@@ -276,5 +294,494 @@ public class IoTDBRestServiceIT {
         fail(e.getMessage());
       }
     }
+  }
+
+  public void queryRowLimit(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/query");
+      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\",\"rowLimit\":1}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      assertTrue(message.contains("row size exceeded the given max row size"));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public Map queryMetaData(CloseableHttpClient httpClient, String sql) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/query");
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      return map;
+
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+    return null;
+  }
+
+  public void queryShowChildPaths(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"show child paths root\"}";
+    Map map = queryMetaData(httpClient, sql);
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+    Assert.assertTrue(map.size() > 0);
+    List<Object> columnNames =
+        new ArrayList<Object>() {
+          {
+            add("child paths");
+          }
+        };
+    List<Object> values1 =
+        new ArrayList<Object>() {
+          {
+            add("root.sg25");
+          }
+        };
+
+    Assert.assertEquals(columnNames, columnNamesResult);
+    Assert.assertEquals(values1, valuesResult.get(0));
+  }
+
+  public void queryShowNodes(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"show child nodes root\",\"rowLimit\":1}";
+    Map map = queryMetaData(httpClient, sql);
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+    Assert.assertTrue(map.size() > 0);
+    List<Object> columnNames =
+        new ArrayList<Object>() {
+          {
+            add("child nodes");
+          }
+        };
+    List<Object> values1 =
+        new ArrayList<Object>() {
+          {
+            add("sg25");
+          }
+        };
+
+    Assert.assertEquals(columnNames, columnNamesResult);
+    Assert.assertEquals(values1, valuesResult.get(0));
+  }
+
+  public void showAllTTL(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"show all ttl\"}";
+    Map map = queryMetaData(httpClient, sql);
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+    Assert.assertTrue(map.size() > 0);
+    List<Object> columnNames =
+        new ArrayList<Object>() {
+          {
+            add("storage group");
+            add("ttl");
+          }
+        };
+    List<Object> values1 =
+        new ArrayList<Object>() {
+          {
+            add("root.sg25");
+          }
+        };
+    List<Object> values2 =
+        new ArrayList<Object>() {
+          {
+            add(null);
+          }
+        };
+    Assert.assertEquals(columnNames, columnNamesResult);
+    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertEquals(values2, valuesResult.get(1));
+  }
+
+  public void showStorageGroup(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"show storage group root.*\"}";
+    Map map = queryMetaData(httpClient, sql);
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+    Assert.assertTrue(map.size() > 0);
+    List<Object> columnNames =
+        new ArrayList<Object>() {
+          {
+            add("storage group");
+          }
+        };
+    List<Object> values1 =
+        new ArrayList<Object>() {
+          {
+            add("root.sg25");
+          }
+        };
+    Assert.assertEquals(columnNames, columnNamesResult);
+    Assert.assertEquals(values1, valuesResult.get(0));
+  }
+
+  public void showFunctions(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"show functions\"}";
+    Map map = queryMetaData(httpClient, sql);
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+    assertEquals(3, columnNamesResult.size());
+    assertEquals(3, valuesResult.size());
+  }
+
+  public void showTimeseries(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"show timeseries\"}";
+    Map map = queryMetaData(httpClient, sql);
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+    Assert.assertTrue(map.size() > 0);
+    List<Object> columnNames =
+        new ArrayList<Object>() {
+          {
+            add("timeseries");
+            add("alias");
+            add("storage group");
+            add("dataType");
+            add("encoding");
+            add("compression");
+            add("tags");
+            add("attributes");
+          }
+        };
+    List<Object> values1 =
+        new ArrayList<Object>() {
+          {
+            add("root.sg25.s3");
+            add("root.sg25.s4");
+            add("root.sg25.s5");
+            add("root.sg25.s6");
+            add("root.sg25.s7");
+            add("root.sg25.s8");
+          }
+        };
+    List<Object> values2 =
+        new ArrayList<Object>() {
+          {
+            add(null);
+            add(null);
+            add(null);
+            add(null);
+            add(null);
+            add(null);
+          }
+        };
+    List<Object> values3 =
+        new ArrayList<Object>() {
+          {
+            add("root.sg25");
+            add("root.sg25");
+            add("root.sg25");
+            add("root.sg25");
+            add("root.sg25");
+            add("root.sg25");
+          }
+        };
+
+    Assert.assertEquals(columnNames, columnNamesResult);
+    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertEquals(values2, valuesResult.get(1));
+    Assert.assertEquals(values3, valuesResult.get(2));
+  }
+
+  public void showLastTimeseries(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"SHOW LATEST TIMESERIES\"}";
+    Map map = queryMetaData(httpClient, sql);
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+    Assert.assertTrue(map.size() > 0);
+    List<Object> columnNames =
+        new ArrayList<Object>() {
+          {
+            add("timeseries");
+            add("alias");
+            add("storage group");
+            add("dataType");
+            add("encoding");
+            add("compression");
+            add("tags");
+            add("attributes");
+          }
+        };
+    List<Object> values1 =
+        new ArrayList<Object>() {
+          {
+            add("root.sg25.s3");
+            add("root.sg25.s4");
+            add("root.sg25.s5");
+            add("root.sg25.s7");
+            add("root.sg25.s8");
+            add("root.sg25.s6");
+          }
+        };
+    List<Object> values2 =
+        new ArrayList<Object>() {
+          {
+            add(null);
+            add(null);
+            add(null);
+            add(null);
+            add(null);
+            add(null);
+          }
+        };
+    List<Object> values3 =
+        new ArrayList<Object>() {
+          {
+            add("root.sg25");
+            add("root.sg25");
+            add("root.sg25");
+            add("root.sg25");
+            add("root.sg25");
+            add("root.sg25");
+          }
+        };
+
+    Assert.assertEquals(columnNames, columnNamesResult);
+    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertEquals(values2, valuesResult.get(1));
+    Assert.assertEquals(values3, valuesResult.get(2));
+  }
+
+  public void countTimeseries(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"COUNT TIMESERIES root.** GROUP BY LEVEL=1\"}";
+    Map map = queryMetaData(httpClient, sql);
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+    Assert.assertTrue(map.size() > 0);
+    List<Object> columnNames =
+        new ArrayList<Object>() {
+          {
+            add("column");
+            add("count");
+          }
+        };
+    List<Object> values1 =
+        new ArrayList<Object>() {
+          {
+            add("root.sg25");
+          }
+        };
+    List<Object> values2 =
+        new ArrayList<Object>() {
+          {
+            add(6);
+          }
+        };
+
+    Assert.assertEquals(columnNames, columnNamesResult);
+    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertEquals(values2, valuesResult.get(1));
+  }
+
+  public void countNodes(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"count nodes root.** level=2\"}";
+    Map map = queryMetaData(httpClient, sql);
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+    Assert.assertTrue(map.size() > 0);
+    List<Object> columnNames =
+        new ArrayList<Object>() {
+          {
+            add("count");
+          }
+        };
+    List<Object> values1 =
+        new ArrayList<Object>() {
+          {
+            add(6);
+          }
+        };
+    Assert.assertEquals(columnNames, columnNamesResult);
+    Assert.assertEquals(values1, valuesResult.get(0));
+  }
+
+  public void showDevices(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"show devices\"}";
+    Map map = queryMetaData(httpClient, sql);
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+    Assert.assertTrue(map.size() > 0);
+    List<Object> columnNames =
+        new ArrayList<Object>() {
+          {
+            add("devices");
+            add("isAligned");
+          }
+        };
+    List<Object> values1 =
+        new ArrayList<Object>() {
+          {
+            add("root.sg25");
+          }
+        };
+    List<Boolean> values2 =
+        new ArrayList<Boolean>() {
+          {
+            add(false);
+          }
+        };
+    Assert.assertEquals(columnNames, columnNamesResult);
+    Assert.assertEquals(values1, valuesResult.get(0));
+    // Assert.assertEquals(values2, valuesResult.get(1));
+  }
+
+  public void showDevicesWithStroage(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"show devices with storage group\"}";
+    Map map = queryMetaData(httpClient, sql);
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+    Assert.assertTrue(map.size() > 0);
+    List<Object> columnNames =
+        new ArrayList<Object>() {
+          {
+            add("devices");
+            add("storage group");
+            add("isAligned");
+          }
+        };
+    List<Object> values1 =
+        new ArrayList<Object>() {
+          {
+            add("root.sg25");
+          }
+        };
+    List<Object> values2 =
+        new ArrayList<Object>() {
+          {
+            add("root.sg25");
+          }
+        };
+    List<Object> values3 =
+        new ArrayList<Object>() {
+          {
+            add("false");
+          }
+        };
+    Assert.assertEquals(columnNames, columnNamesResult);
+    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertEquals(values2, valuesResult.get(1));
+    Assert.assertEquals(values3, valuesResult.get(2));
+  }
+
+  public void listUser(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"list user\"}";
+    Map map = queryMetaData(httpClient, sql);
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+    Assert.assertTrue(map.size() > 0);
+    List<Object> columnNames =
+        new ArrayList<Object>() {
+          {
+            add("user");
+          }
+        };
+    List<Object> values1 =
+        new ArrayList<Object>() {
+          {
+            add("root");
+          }
+        };
+    Assert.assertEquals(columnNames, columnNamesResult);
+    Assert.assertEquals(values1, valuesResult.get(0));
+  }
+
+  public void selectCount(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"select count(s3) from root.** group by level = 1\"}";
+    Map map = queryMetaData(httpClient, sql);
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+    Assert.assertTrue(map.size() > 0);
+    List<Object> columnNames =
+        new ArrayList<Object>() {
+          {
+            add("count(root.sg25.s3)");
+          }
+        };
+    List<Object> values1 =
+        new ArrayList<Object>() {
+          {
+            add(2);
+          }
+        };
+    Assert.assertEquals(columnNames, columnNamesResult);
+    Assert.assertEquals(values1, valuesResult.get(0));
+  }
+
+  public void selectLast(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"select last s4 from root.sg25\"}";
+    Map map = queryMetaData(httpClient, sql);
+    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+    List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+    Assert.assertTrue(map.size() > 0);
+    List<Object> columnNames =
+        new ArrayList<Object>() {
+          {
+            add("timeseries");
+            add("value");
+            add("dataType");
+          }
+        };
+    List<Long> timestamps =
+        new ArrayList<Long>() {
+          {
+            add(1635232153960l);
+          }
+        };
+    List<Object> values1 =
+        new ArrayList<Object>() {
+          {
+            add("root.sg25.s4");
+          }
+        };
+    List<Object> values2 =
+        new ArrayList<Object>() {
+          {
+            add("2");
+          }
+        };
+    List<Object> values3 =
+        new ArrayList<Object>() {
+          {
+            add("INT32");
+          }
+        };
+    Assert.assertEquals(columnNames, columnNamesResult);
+    Assert.assertEquals(timestamps, timestampsResult);
+    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertEquals(values2.get(0), valuesResult.get(1).get(0));
+    Assert.assertEquals(values3, valuesResult.get(2));
   }
 }

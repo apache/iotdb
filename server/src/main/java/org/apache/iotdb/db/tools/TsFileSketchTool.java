@@ -54,6 +54,8 @@ public class TsFileSketchTool {
   private PrintWriter pw;
   private TsFileSketchToolReader reader;
   private String splitStr; // for split different part of TsFile
+  TsFileMetadata tsFileMetaData;
+  List<ChunkGroupMetadata> allChunkGroupMetadata;
 
   public static void main(String[] args) throws IOException {
     Pair<String, String> fileNames = checkArgs(args);
@@ -80,6 +82,10 @@ public class TsFileSketchTool {
         str1.append("|");
       }
       splitStr = str1.toString();
+      // get metadata information
+      tsFileMetaData = reader.readFileMetadata();
+      allChunkGroupMetadata = new ArrayList<>();
+      reader.selfCheck(null, allChunkGroupMetadata, false);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -92,11 +98,6 @@ public class TsFileSketchTool {
         pw, "-------------------------------- TsFile Sketch --------------------------------");
     printlnBoth(pw, "file path: " + filename);
     printlnBoth(pw, "file length: " + length);
-
-    // get metadata information
-    TsFileMetadata tsFileMetaData = reader.readFileMetadata();
-    List<ChunkGroupMetadata> allChunkGroupMetadata = new ArrayList<>();
-    reader.selfCheck(null, allChunkGroupMetadata, false);
 
     // print file information
     printFileInfo();
@@ -508,5 +509,10 @@ public class TsFileSketchTool {
       }
       return timeseriesMetadataMap;
     }
+  }
+
+  // for test
+  protected List<ChunkGroupMetadata> getAllChunkGroupMetadata() {
+    return allChunkGroupMetadata;
   }
 }
