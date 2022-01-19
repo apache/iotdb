@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.string;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -43,6 +44,10 @@ import java.sql.Statement;
 import static org.junit.Assert.fail;
 
 public class StringTests {
+  private static final float oldUdfCollectorMemoryBudgetInMB= IoTDBDescriptor.getInstance().getConfig().getUdfCollectorMemoryBudgetInMB();
+  private static final float oldUdfTransformerMemoryBudgetInMB= IoTDBDescriptor.getInstance().getConfig().getUdfTransformerMemoryBudgetInMB();
+  private static final float oldUdfReaderMemoryBudgetInMB= IoTDBDescriptor.getInstance().getConfig().getUdfReaderMemoryBudgetInMB();
+
   @BeforeClass
   public static void setUp() throws Exception {
     ConfigFactory.getConfig()
@@ -135,9 +140,9 @@ public class StringTests {
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterClass();
     ConfigFactory.getConfig()
-        .setUdfCollectorMemoryBudgetInMB(100)
-        .setUdfTransformerMemoryBudgetInMB(100)
-        .setUdfReaderMemoryBudgetInMB(100);
+        .setUdfCollectorMemoryBudgetInMB(oldUdfCollectorMemoryBudgetInMB)
+        .setUdfTransformerMemoryBudgetInMB(oldUdfTransformerMemoryBudgetInMB)
+        .setUdfReaderMemoryBudgetInMB(oldUdfReaderMemoryBudgetInMB);
   }
 
   @Test
