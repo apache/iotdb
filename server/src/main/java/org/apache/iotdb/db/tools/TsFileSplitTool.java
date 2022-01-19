@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import javax.ws.rs.NotSupportedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +63,9 @@ public class TsFileSplitTool {
 
   private final String filename;
 
+  private static final String SIZE_PARAM = "-size";
+  private static final String LEVEL_PARAM = "-level";
+
   /**
    * If the chunk point num is lower than this threshold, it will be deserialized into points,
    * default is 100
@@ -69,12 +73,10 @@ public class TsFileSplitTool {
   private final long chunkPointNumLowerBoundInCompaction =
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
 
-  private final double targetSplitFileSize =
+  private static long targetSplitFileSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
 
-  private static String levelNum;
-
-  private static final String defaultLevelNum = "10";
+  private static String levelNum = "10";
 
   private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
@@ -86,8 +88,8 @@ public class TsFileSplitTool {
   protected long minPlanIndex = Long.MAX_VALUE;
 
   public static void main(String[] args) throws IOException {
+    checkArgs(args);
     String fileName = args[0];
-    levelNum = args.length < 2 ? defaultLevelNum : args[1];
     logger.info("Splitting TsFile {} ...", fileName);
     new TsFileSplitTool(fileName).run();
   }
@@ -112,7 +114,6 @@ public class TsFileSplitTool {
       String[] filePathSplit = filename.split(IoTDBConstant.FILE_NAME_SEPARATOR);
       int originVersionIndex = Integer.parseInt(filePathSplit[filePathSplit.length - 3]);
       int versionIndex = originVersionIndex + 1;
-      String originLevel = filePathSplit[filePathSplit.length - 2];
       filePathSplit[filePathSplit.length - 2] = levelNum;
 
       while (pathIterator.hasNext()) {
@@ -282,5 +283,28 @@ public class TsFileSplitTool {
     tsFileResource.serialize();
 
     return tsFileResource;
+  }
+
+  private static void checkArgs(String[] args) {
+    if (args.length == 3) {
+      if (args[1].equals(SIZE_PARAM)) {
+        targetSplitFileSize = Long.parseLong(args[2]);
+        return;
+      } else if (args[1].equals(LEVEL_PARAM)) {
+        levelNum = args[2];
+        return;
+      }
+    } else if (args.length == 5) {
+      if (args[1].equals(SIZE_PARAM) && args[3].equals(LEVEL_PARAM)) {
+        targetSplitFileSize = Long.parseLong(args[2]);
+        levelNum = args[4];
+        return;
+      } else if (args[1].equals(LEVEL_PARAM) && args[3].equals(SIZE_PARAM)) {
+        levelNum = args[2];
+        targetSplitFileSize = Long.parseLong(args[4]);
+        return;
+      }
+    }
+    throw new NotSupportedException("Invalid param");
   }
 }

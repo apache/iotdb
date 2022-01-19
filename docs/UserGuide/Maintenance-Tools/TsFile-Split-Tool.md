@@ -43,9 +43,9 @@ For Linux or MacOs:
 
 Here are some configurations:
 
-1. The size of target files could be configured by `target_compaction_file_size`, which is 1GB by default. This configuration is also the target file size in compaction in 0.13. File size could determine whether the compaction is proceeded in 0.13, so this configuration could make sure there is no compaction after restarting.
-2. The points number of chunk could be configured by `chunk_point_num_lower_bound_in_compaction`, which is 100 by default. This configuration is also the points number of target file in compaction in 0.13.
-3. The level of target files is determined by the input param, which is 10 by default. File level could determine whether the compaction is proceeded in 0.12, so this configuration could make sure there is no compaction after restarting.
+1. The size of target files could be configured by the input param, which is 1GB by default. This configuration is also the target file size in compaction in 0.13. File size could determine whether the compaction is proceeded in 0.13, so this configuration could make sure there is no compaction after restarting.
+2. The level of target files is determined by the input param, which is 10 by default. File level could determine whether the compaction is proceeded in 0.12, so this configuration could make sure there is no compaction after restarting.
+3. The points number of chunk could be configured by `chunk_point_num_lower_bound_in_compaction`, which is 100 by default. This configuration is also the points number of target file in compaction in 0.13.
 
 Here are some more tips:
 1. TsFile split tool is offline maintenance tool. Before splitting a file, you should make sure the file to be split is closed (aka with `tsFile.resource`) and IoTDB is shut down. After splitting, restart IoTDB.
