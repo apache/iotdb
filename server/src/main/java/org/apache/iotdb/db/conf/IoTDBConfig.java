@@ -1275,22 +1275,6 @@ public class IoTDBConfig {
     this.unSeqTsFileSize = unSeqTsFileSize;
   }
 
-  public boolean isEnableStatMonitor() {
-    return enableStatMonitor;
-  }
-
-  public void setEnableStatMonitor(boolean enableStatMonitor) {
-    this.enableStatMonitor = enableStatMonitor;
-  }
-
-  public boolean isEnableMonitorSeriesWrite() {
-    return enableMonitorSeriesWrite;
-  }
-
-  public void setEnableMonitorSeriesWrite(boolean enableMonitorSeriesWrite) {
-    this.enableMonitorSeriesWrite = enableMonitorSeriesWrite;
-  }
-
   public int getRpcMaxConcurrentClientNum() {
     return rpcMaxConcurrentClientNum;
   }

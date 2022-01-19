@@ -60,7 +60,6 @@ public class IoTDBNewTsFileCompactionIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     prevMergePagePointNumber =
         IoTDBDescriptor.getInstance().getConfig().getMergePagePointNumberThreshold();
     preMaxNumberOfPointsInPage =
