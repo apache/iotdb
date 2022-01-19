@@ -45,7 +45,6 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
-import javax.ws.rs.NotSupportedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -305,6 +304,6 @@ public class TsFileSplitTool {
         return;
       }
     }
-    throw new NotSupportedException("Invalid param");
+    throw new UnsupportedOperationException("Invalid param");
   }
 }

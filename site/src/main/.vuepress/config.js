@@ -758,7 +758,8 @@ var config = {
 							['Maintenance-Tools/NodeTool','Node Tool'],
 							['Maintenance-Tools/Watermark-Tool','Watermark Tool'],
 							['Maintenance-Tools/Metric-Tool','Metric Tool'],
-							['Maintenance-Tools/Sync-Tool','Sync Tool']
+							['Maintenance-Tools/Sync-Tool','Sync Tool'],
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool']
 						]
 					},
 					{
@@ -1563,7 +1564,8 @@ var config = {
 							['Maintenance-Tools/NodeTool','节点工具'],
 							['Maintenance-Tools/Watermark-Tool','水印工具'],
 							['Maintenance-Tools/Metric-Tool','监控工具'],
-							['Maintenance-Tools/Sync-Tool','TsFile 同步工具']
+							['Maintenance-Tools/Sync-Tool','TsFile 同步工具'],
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具']
 						]
 					},
 					{
