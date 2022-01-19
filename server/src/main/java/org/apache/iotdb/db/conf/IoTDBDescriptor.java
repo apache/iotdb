@@ -308,11 +308,6 @@ public class IoTDBDescriptor {
                   "io_task_queue_size_for_flushing",
                   Integer.toString(conf.getIoTaskQueueSizeForFlushing()))));
 
-      conf.setMergePagePointNumberThreshold(
-          Integer.parseInt(
-              properties.getProperty(
-                  "merge_page_point_number",
-                  Integer.toString(conf.getMergePagePointNumberThreshold()))));
       conf.setCompactionScheduleInterval(
           Long.parseLong(
               properties.getProperty(
@@ -488,11 +483,6 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty(
                   "merge_memory_budget", Long.toString(conf.getMergeMemoryBudget()))));
-      conf.setMergeChunkSubThreadNum(
-          Integer.parseInt(
-              properties.getProperty(
-                  "merge_chunk_subthread_num",
-                  Integer.toString(conf.getMergeChunkSubThreadNum()))));
       conf.setMergeFileSelectionTimeBudget(
           Long.parseLong(
               properties.getProperty(

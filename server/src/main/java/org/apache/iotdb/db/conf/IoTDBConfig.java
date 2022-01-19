@@ -415,11 +415,6 @@ public class IoTDBConfig {
   /** The max candidate file num in compaction */
   private int maxCompactionCandidateFileNum = 30;
 
-  /**
-   * When point number of a page reaches this, use "append merge" instead of "deserialize merge".
-   */
-  private int mergePagePointNumberThreshold = 100;
-
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
   private long compactionScheduleInterval = 60_000L;
 
@@ -568,9 +563,6 @@ public class IoTDBConfig {
 
   /** How many threads will be set up to perform settle tasks. */
   private int settleThreadNum = 1;
-
-  /** How many threads will be set up to perform unseq merge chunk sub-tasks. */
-  private int mergeChunkSubThreadNum = 4;
 
   /**
    * If one merge file selection runs for more than this time, it will be ended and its current
@@ -1699,14 +1691,6 @@ public class IoTDBConfig {
   }
 
 
-  public int getMergePagePointNumberThreshold() {
-    return mergePagePointNumberThreshold;
-  }
-
-  public void setMergePagePointNumberThreshold(int mergePagePointNumberThreshold) {
-    this.mergePagePointNumberThreshold = mergePagePointNumberThreshold;
-  }
-
   public MergeFileStrategy getMergeFileStrategy() {
     return mergeFileStrategy;
   }
@@ -1721,14 +1705,6 @@ public class IoTDBConfig {
 
   public void setMaxOpenFileNumInCrossSpaceCompaction(int maxOpenFileNumInCrossSpaceCompaction) {
     this.maxOpenFileNumInCrossSpaceCompaction = maxOpenFileNumInCrossSpaceCompaction;
-  }
-
-  public int getMergeChunkSubThreadNum() {
-    return mergeChunkSubThreadNum;
-  }
-
-  void setMergeChunkSubThreadNum(int mergeChunkSubThreadNum) {
-    this.mergeChunkSubThreadNum = mergeChunkSubThreadNum;
   }
 
   public long getMergeFileSelectionTimeBudget() {

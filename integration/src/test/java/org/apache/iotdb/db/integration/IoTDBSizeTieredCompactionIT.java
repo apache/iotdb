@@ -170,9 +170,6 @@ public class IoTDBSizeTieredCompactionIT {
       long pageSize = 100;
       long timestamp = 1;
 
-      int prevMergePagePointNumberThreshold =
-          IoTDBDescriptor.getInstance().getConfig().getMergePagePointNumberThreshold();
-      IoTDBDescriptor.getInstance().getConfig().setMergePagePointNumberThreshold(1);
 
       for (long row = 0; row < 10000; row++) {
         statement.execute(
@@ -186,7 +183,6 @@ public class IoTDBSizeTieredCompactionIT {
 
       timestamp = 8322;
 
-      IoTDBDescriptor.getInstance().getConfig().setMergePagePointNumberThreshold(10000000);
 
       for (long row = 0; row < 2400; row++) {
         statement.execute(
@@ -209,9 +205,6 @@ public class IoTDBSizeTieredCompactionIT {
         }
       }
       assertEquals(1, cnt);
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setMergePagePointNumberThreshold(prevMergePagePointNumberThreshold);
     }
   }
 
