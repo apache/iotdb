@@ -35,6 +35,7 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -124,13 +125,14 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         TsFileNameGenerator.getCrossCompactionTargetFileResources(selectedSeqTsFileResourceList);
 
     if (targetTsfileResourceList.isEmpty()
-        && selectedSeqTsFileResourceList.isEmpty()
-        && selectedUnSeqTsFileResourceList.isEmpty()) {
+        || selectedSeqTsFileResourceList.isEmpty()
+        || selectedUnSeqTsFileResourceList.isEmpty()) {
+      logger.info("{} [Compaction] Cross space compaction file list is empty, end it", storageGroupName);
       return;
     }
 
     logger.info(
-        "{}-crossSpaceCompactionTask start. Sequence files : {}, unsequence files : {}",
+        "{} [Compaction] CrossSpaceCompactionTask start. Sequence files : {}, unsequence files : {}",
         storageGroupName,
         selectedSeqTsFileResourceList,
         selectedUnSeqTsFileResourceList);
@@ -141,6 +143,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
                 + targetTsfileResourceList.get(0).getTsFile().getName()
                 + PATH_SEPARATOR
                 + RewriteCrossSpaceCompactionLogger.COMPACTION_LOG_NAME);
+
     try (RewriteCrossSpaceCompactionLogger compactionLogger =
         new RewriteCrossSpaceCompactionLogger(logFile)) {
       // print the path of the temporary file first for priority check during recovery
@@ -170,7 +173,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         // if current compaction thread couldn't get write lock
         // a WriteLockFailException will be thrown, then terminate the thread itself
         logger.error(
-            "{} [CrossSpaceCompactionTask] failed to get write lock, abort the task.",
+            "{} [Compaction] CrossSpaceCompactionTask failed to get write lock, abort the task.",
             fullStorageGroupName,
             e);
         throw new InterruptedException(
@@ -185,10 +188,10 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
 
       updateTsFileResource();
       if (logFile.exists()) {
-        logFile.delete();
+        FileUtils.delete(logFile);
       }
       logger.info(
-          "{}-crossSpaceCompactionTask Costs {} s",
+          "{} [Compaction] CrossSpaceCompactionTask Costs {} s",
           storageGroupName,
           (System.currentTimeMillis() - startTime) / 1000);
     }

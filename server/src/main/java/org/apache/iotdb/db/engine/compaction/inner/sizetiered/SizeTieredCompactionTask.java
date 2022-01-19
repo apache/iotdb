@@ -32,7 +32,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 
-import org.h2.store.fs.FileUtils;
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -204,7 +204,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           costTime / 1000);
 
       if (logFile.exists()) {
-        FileUtils.delete(logFile.getPath());
+        FileUtils.delete(logFile);
       }
     } catch (Throwable throwable) {
       LOGGER.error(
