@@ -48,6 +48,16 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
 </dependencies>
 ```
 
+## 语法说明
+
+ - 对于 IoTDB-SQL 接口：传入的 SQL 参数需要符合 [语法规范](../Reference/Syntax-Conventions.md) ，并且针对 JAVA 字符串进行反转义，如双引号前需要加反斜杠。（即：经 JAVA 转义之后与命令行执行的 SQL 语句一致。） 
+ - 对于其他接口： 
+   - 经参数传入的路径或路径前缀中的节点： 
+     - 在 SQL 语句中需要使用反引号（`）进行转义的，此处均不需要进行转义。 
+     - 使用单引号或双引号括起的节点，仍需要使用单引号或双引号括起，并且要针对 JAVA 字符串进行反转义。 
+     - 对于 `checkTimeseriesExists` 接口，由于内部调用了 IoTDB-SQL 接口，因此需要和 SQL 语法规范保持一致，并且针对 JAVA 字符串进行反转义。
+   - 经参数传入的标识符（如模板名）：在 SQL 语句中需要使用反引号（`）进行转义的，此处均不需要进行转义。
+
 ## 基本接口说明
 
 下面将给出 Session 对应的接口的简要介绍和对应参数：

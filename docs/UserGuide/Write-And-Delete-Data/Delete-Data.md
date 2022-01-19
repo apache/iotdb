@@ -19,13 +19,13 @@
 
 -->
 
-## DELETE
+# DELETE
 
 Users can delete data that meet the deletion condition in the specified timeseries by using the [DELETE statement](../Reference/SQL-Reference.md). When deleting data, users can select one or more timeseries paths, prefix paths, or paths with star  to delete data within a certain time interval.
 
 In a JAVA programming environment, you can use the [Java JDBC](../API/Programming-JDBC.md) to execute single or batch UPDATE statements.
 
-### Delete Single Timeseries
+## Delete Single Timeseries
 Taking ln Group as an example, there exists such a usage scenario:
 
 The wf02 plant's wt02 device has many segments of errors in its power supply status before 2017-11-01 16:26:00, and the data cannot be analyzed correctly. The erroneous data affected the correlation analysis with other devices. At this point, the data before this time point needs to be deleted. The SQL statement for this operation is
@@ -66,7 +66,7 @@ delete from root.ln.wf02.status
 ```
 
 
-### Delete Multiple Timeseries
+## Delete Multiple Timeseries
 If both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](../Data-Concept/Data-Model-and-Terminology.md) can be used to delete the data. The SQL statement for this operation is:
 
 ```sql
@@ -83,7 +83,7 @@ IoTDB> delete from root.ln.wf03.wt02.status where time < now()
 Msg: The statement is executed successfully.
 ```
 
-### Delete Time Partition (experimental)
+## Delete Time Partition (experimental)
 You may delete all data in a time partition of a storage group using the following grammar:
 
 ```sql
