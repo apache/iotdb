@@ -115,7 +115,8 @@ public class FileReaderManager {
         !isClosed ? unclosedFileReaderMap : closedFileReaderMap;
     if (!readerMap.containsKey(filePath)) {
       int currentOpenedReaderCount = readerMap.size();
-      if (currentOpenedReaderCount >= MAX_CACHED_FILE_SIZE && (currentOpenedReaderCount % PRINT_INTERVAL == 0)) {
+      if (currentOpenedReaderCount >= MAX_CACHED_FILE_SIZE
+          && (currentOpenedReaderCount % PRINT_INTERVAL == 0)) {
         logger.warn("Query has opened {} files !", readerMap.size());
       }
 
