@@ -55,8 +55,7 @@ public class MetricName {
   }
 
   /**
-   * convert the metric name to flat string, like name[tag_key1=tag_value1,tag_key2=tag_value2....]
-   * and
+   * convert the metric name to flat string, like name_tag_key1:tag_value1_tag_key2:tag_value2....
    *
    * @return the flat string
    */
