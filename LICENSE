@@ -225,13 +225,11 @@ The following files include code modified from Michael Burman's gorilla-tsc proj
 ./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/LongGorillaEncoder.java
 ./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/SinglePrecisionEncoderV2.java
 ./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/DoublePrecisionEncoderV2.java
-./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/ZigzagEncoder.java
 ./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/GorillaDecoderV2.java
 ./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/IntGorillaDecoder.java
 ./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/LongGorillaDecoder.java
 ./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/SinglePrecisionDecoderV2.java
 ./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/DoublePrecisionDecoderV2.java
-./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/ZigzagDecoder.java
 
 Copyright: 2016-2018 Michael Burman and/or other contributors
 Project page: https://github.com/burmanm/gorilla-tsc
