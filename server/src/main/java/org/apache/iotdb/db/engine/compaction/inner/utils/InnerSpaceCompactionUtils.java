@@ -21,11 +21,10 @@ package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.MaxFileMergeFileSelector;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.MaxSeriesMergeFileSelector;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -232,12 +231,10 @@ public class InnerSpaceCompactionUtils {
 
   public static ICrossSpaceMergeFileSelector getCrossSpaceFileSelector(
       long budget, CrossSpaceMergeResource resource) {
-    MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
+    CrossCompactionStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getCrossCompactionStrategy();
     switch (strategy) {
-      case MAX_FILE_NUM:
+      case REWRITE_COMPACTION:
         return new MaxFileMergeFileSelector(resource, budget);
-      case MAX_SERIES_NUM:
-        return new MaxSeriesMergeFileSelector(resource, budget);
       default:
         throw new UnsupportedOperationException("Unknown CrossSpaceFileStrategy " + strategy);
     }

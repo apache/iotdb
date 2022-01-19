@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 
+import org.h2.store.fs.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,15 +102,13 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         "{} [Compaction] starting compaction task with {} files",
         fullStorageGroupName,
         selectedTsFileResourceList.size());
-    File logFile = null;
+    File logFile = new File(
+        dataDirectory
+            + File.separator
+            + targetTsFileResource.getTsFile().getName()
+            + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
     SizeTieredCompactionLogger sizeTieredCompactionLogger = null;
     try {
-      logFile =
-          new File(
-              dataDirectory
-                  + File.separator
-                  + targetTsFileResource.getTsFile().getName()
-                  + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
       sizeTieredCompactionLogger = new SizeTieredCompactionLogger(logFile.getPath());
 
       for (TsFileResource resource : selectedTsFileResourceList) {
@@ -203,8 +202,9 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           fullStorageGroupName,
           targetTsFileResource.getTsFile().getName(),
           costTime / 1000);
+
       if (logFile.exists()) {
-        logFile.delete();
+        FileUtils.delete(logFile.getPath());
       }
     } catch (Throwable throwable) {
       LOGGER.error(

@@ -375,7 +375,7 @@ public class IoTDBConfig {
    * SIZE_TIRED_COMPACTION:
    */
   private CrossCompactionStrategy crossCompactionStrategy =
-      CrossCompactionStrategy.INPLACE_COMPACTION;
+      CrossCompactionStrategy.REWRITE_COMPACTION;
 
   /**
    * The priority of compaction task execution. There are three priority strategy INNER_CROSS:
@@ -617,8 +617,6 @@ public class IoTDBConfig {
    * loss between threads, so we need to judge the size of the tablet.
    */
   private int insertMultiTabletEnableMultithreadingColumnThreshold = 10;
-
-  private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
   /** Default system file storage is in local file system (unsupported) */
   private FSType systemFileStorageFs = FSType.LOCAL;
@@ -1688,15 +1686,6 @@ public class IoTDBConfig {
 
   public void setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
     this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
-  }
-
-
-  public MergeFileStrategy getMergeFileStrategy() {
-    return mergeFileStrategy;
-  }
-
-  public void setMergeFileStrategy(MergeFileStrategy mergeFileStrategy) {
-    this.mergeFileStrategy = mergeFileStrategy;
   }
 
   public int getMaxOpenFileNumInCrossSpaceCompaction() {
