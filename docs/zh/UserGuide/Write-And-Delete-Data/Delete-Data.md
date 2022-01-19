@@ -76,7 +76,7 @@ delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 
 ```sql
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
-Msg: TimeSeries does not exist and its data cannot be deleted
+Msg: The statement is executed successfully.
 ```
 
 ### 删除时间分区 （实验性功能）
