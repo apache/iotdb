@@ -1059,6 +1059,7 @@ var config = {
 					text: '文档',
 					items: [
 						{ text: 'latest', link: '/zh/UserGuide/Master/QuickStart/QuickStart' },
+						{ text: 'v0.13.x', link: '/zh/UserGuide/V0.13.x/QuickStart/QuickStart' },
 						{ text: 'v0.12.x', link: '/zh/UserGuide/V0.12.x/QuickStart/QuickStart' },
 						{ text: 'v0.11.x', link: '/zh/UserGuide/V0.11.x/Get Started/QuickStart' },
 						{ text: 'v0.10.x', link: '/zh/UserGuide/V0.10.x/Get Started/QuickStart' },
