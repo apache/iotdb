@@ -20,7 +20,7 @@
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.encoding.encoder.ZigzagEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.IntZigzagEncoder;
 
 import org.junit.After;
 import org.junit.Before;
@@ -36,10 +36,10 @@ import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 
-@Deprecated
-public class ZigzagDecoderTest {
 
-  private static final Logger logger = LoggerFactory.getLogger(BitmapDecoderTest.class);
+public class IntZigzagDecoderTest {
+
+  private static final Logger logger = LoggerFactory.getLogger(IntZigzagDecoderTest.class);
 
   private List<Integer> intList;
   private List<Boolean> booleanList;
@@ -49,31 +49,23 @@ public class ZigzagDecoderTest {
 
   @Before
   public void setUp() {
-    intList = new ArrayList<Integer>();
-    int[] int_array = {0, 1, 2, 3, 4, 5, 6, 7, 8};
-    int int_len = int_array.length;
+    intList = new ArrayList<>();
+    randomIntList = new ArrayList<>();
     int int_num = 100000;
     for (int i = 0; i < int_num; i++) {
       intList.add(i);
+      intList.add(-i);
     }
-
-    randomIntList = new ArrayList<Integer>();
-
     for (int i = 0; i < int_num; i++) {
       randomIntList.add(rand.nextInt(int_num));
-    }
-
-    booleanList = new ArrayList<Boolean>();
-    boolean[] boolean_array = {true, false, true, true, false, true, false, false};
-    int boolean_len = boolean_array.length;
-    int boolean_num = 100000;
-    for (int i = 0; i < boolean_num; i++) {
-      booleanList.add(boolean_array[i % boolean_len]);
     }
   }
 
   @After
-  public void tearDown() {}
+  public void tearDown() {
+    randomIntList.clear();
+    intList.clear();
+  }
 
   @Test
   public void testZigzagReadInt() throws Exception {
@@ -85,17 +77,16 @@ public class ZigzagDecoderTest {
 
   private void testInt(List<Integer> list, boolean isDebug, int repeatCount) throws Exception {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    Encoder encoder = new ZigzagEncoder();
+    Encoder encoder = new IntZigzagEncoder();
     for (int i = 0; i < repeatCount; i++) {
       for (int value : list) {
         encoder.encode(value, baos);
       }
-
       encoder.flush(baos);
     }
 
     ByteBuffer bais = ByteBuffer.wrap(baos.toByteArray());
-    Decoder decoder = new ZigzagDecoder();
+    Decoder decoder = new IntZigzagDecoder();
     for (int i = 0; i < repeatCount; i++) {
       for (int value : list) {
         int value_ = decoder.readInt(bais);

@@ -115,7 +115,9 @@ public abstract class Decoder {
       case ZIGZAG:
         switch (dataType) {
           case INT32:
-            return new ZigzagDecoder();
+            return new IntZigzagDecoder();
+          case INT64:
+            return new LongZigzagDecoder();
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }

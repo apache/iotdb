@@ -27,8 +27,8 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 
-public class ZigzagDecoder extends Decoder {
-  private static final Logger logger = LoggerFactory.getLogger(ZigzagDecoder.class);
+public class IntZigzagDecoder extends Decoder {
+  private static final Logger logger = LoggerFactory.getLogger(IntZigzagDecoder.class);
 
   /** how many bytes for all encoded data in input stream. */
   private int length;
@@ -44,10 +44,10 @@ public class ZigzagDecoder extends Decoder {
    */
   private ByteBuffer byteCache;
 
-  public ZigzagDecoder() {
+  public IntZigzagDecoder() {
     super(TSEncoding.ZIGZAG);
     this.reset();
-    logger.debug("tsfile-encoding ZigzagDecoder: init bitmap decoder");
+    logger.debug("tsfile-decoding IntZigzagDecoder: int zigzag decoder");
   }
 
   /** decoding */

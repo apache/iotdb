@@ -35,15 +35,15 @@ import java.util.List;
  * Encoder for int value using Zigzag . For more information, see
  * https://gist.github.com/mfuerstenau/ba870a29e16536fdbaba
  */
-public class ZigzagEncoder extends Encoder {
+public class IntZigzagEncoder extends Encoder {
   private static final Logger logger = LoggerFactory.getLogger(DictionaryEncoder.class);
   private List<Integer> values;
   byte[] buf = new byte[5];
 
-  public ZigzagEncoder() {
+  public IntZigzagEncoder() {
     super(TSEncoding.ZIGZAG);
     this.values = new ArrayList<>();
-    logger.debug("tsfile-encoding ZigzagEncoder: init zigzag encoder");
+    logger.debug("tsfile-encoding IntZigzagEncoder: int zigzag encoder");
   }
 
   /** encoding and bit packing */
@@ -53,17 +53,9 @@ public class ZigzagEncoder extends Encoder {
     if ((n & ~0x7F) != 0) {
       buf[idx++] = (byte) ((n | 0x80) & 0xFF);
       n >>>= 7;
-      if (n > 0x7F) {
+      while ( n > 0x7F) {
         buf[idx++] = (byte) ((n | 0x80) & 0xFF);
         n >>>= 7;
-        if (n > 0x7F) {
-          buf[idx++] = (byte) ((n | 0x80) & 0xFF);
-          n >>>= 7;
-          if (n > 0x7F) {
-            buf[idx++] = (byte) ((n | 0x80) & 0xFF);
-            n >>>= 7;
-          }
-        }
       }
     }
     buf[idx++] = (byte) n;
@@ -104,6 +96,6 @@ public class ZigzagEncoder extends Encoder {
       return 0;
     }
     // try to caculate max value
-    return (long) 8 + values.size() * 5;
+    return (long) 8 + values.size() * 4;
   }
 }

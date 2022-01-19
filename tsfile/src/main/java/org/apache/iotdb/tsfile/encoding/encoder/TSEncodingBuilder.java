@@ -323,7 +323,9 @@ public abstract class TSEncodingBuilder {
     public Encoder getEncoder(TSDataType type) {
       switch (type) {
         case INT32:
-          return new ZigzagEncoder();
+          return new IntZigzagEncoder();
+        case INT64:
+          return new LongZigzagEncoder();
         default:
           throw new UnSupportedDataTypeException("GORILLA doesn't support data type: " + type);
       }
