@@ -3,14 +3,20 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.SchemaPageOverflowException;
 import org.apache.iotdb.db.exception.metadata.SegmentNotFoundException;
+import org.apache.iotdb.db.exception.metadata.SegmentOverflowException;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.collector.EntityCollector;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.collector.MeasurementCollector;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 
 /**
  * This class is aimed to manage space over one page.
@@ -101,13 +107,13 @@ public class SchemaPage implements ISchemaPage{
     int res = tarSeg.insertRecord(key, buffer);
 
     if (res < 0) {
-      // If segment has next page, return exceptional value first, since it shall be a full-page segment
+      // If next segment exist, return next segment address first
       if (tarSeg.getNextSegAddress() > 0) {
         return tarSeg.getNextSegAddress();
       }
 
       // reallocate inside page, if not enough space for new size segment, throw exception
-      short newSegSize = ISchemaFile.reEstimateSegSize(tarSeg.size());
+      short newSegSize = SchemaFile.reEstimateSegSize(tarSeg.size());
       res = reAllocateSeg(tarSeg, segIdx, newSegSize).insertRecord(key, buffer);
       if (res < 0) {
         // failed to insert buffer into new segment
@@ -115,6 +121,28 @@ public class SchemaPage implements ISchemaPage{
       }
     }
     return 0L;
+  }
+
+  @Override
+  public IMNode read(short segIdx, String key) throws SegmentNotFoundException {
+    ISegment seg = getSegment(segIdx);
+    return seg.getRecordAsIMNode(key);
+  }
+
+  @Override
+  public boolean hasRecordKeyInSegment(String key, short segId) throws SegmentNotFoundException{
+    return getSegment(segId).hasRecordKey(key);
+  }
+
+  @Override
+  public Queue<IMNode> getChildren(short segId) throws SegmentNotFoundException {
+    ISegment seg = getSegment(segId);
+    return seg.getAllRecords();
+  }
+
+  @Override
+  public void removeRecord(short segId, String key) throws SegmentNotFoundException {
+    getSegment(segId).removeRecord(key);
   }
 
   @Override
@@ -131,8 +159,18 @@ public class SchemaPage implements ISchemaPage{
    * @param buffer
    * @return spare space of the segment, negative if not enough
    */
-  public short update(short segIdx, String key, ByteBuffer buffer) {
-    return 0;
+  public void update(short segIdx, String key, ByteBuffer buffer) throws MetadataException{
+    ISegment seg = getSegment(segIdx);
+    try {
+      seg.updateRecord(key, buffer);
+    } catch (SegmentOverflowException e) {
+      seg = reAllocateSeg(seg, segIdx, SchemaFile.reEstimateSegSize(seg.size()));
+      int res = seg.updateRecord(key, buffer);
+      if (res < 0) {
+        throw new MetadataException(
+            String.format("Unknown reason for key [%s] not found in page [%d].", key, pageIndex));
+      }
+    }
   }
 
   /**
@@ -154,12 +192,17 @@ public class SchemaPage implements ISchemaPage{
    */
   @Override
   public short getSpareSize() {
-    return (short) (SchemaFile.PAGE_LENGTH - pageSpareOffset - segNum * ISchemaFile.SEG_OFF_DIG);
+    return (short) (SchemaFile.PAGE_LENGTH - pageSpareOffset - segNum * SchemaFile.SEG_OFF_DIG);
   }
 
   @Override
   public boolean isCapableForSize(short size) {
-    return pageSpareOffset + size + (segNum+1) * ISchemaFile.SEG_OFF_DIG <= ISchemaFile.PAGE_LENGTH;
+    return pageSpareOffset + size + (segNum+1) * SchemaFile.SEG_OFF_DIG <= SchemaFile.PAGE_LENGTH;
+  }
+
+  @Override
+  public boolean isSegmentCapableFor(short segId, short size) throws SegmentNotFoundException{
+    return getSegment(segId).getSpareSize() > size;
   }
 
   @Override
@@ -184,7 +227,7 @@ public class SchemaPage implements ISchemaPage{
       entry.getValue().syncBuffer();
     }
 
-    pageBuffer.position(SchemaFile.PAGE_LENGTH - segNum * ISchemaFile.SEG_OFF_DIG);
+    pageBuffer.position(SchemaFile.PAGE_LENGTH - segNum * SchemaFile.SEG_OFF_DIG);
     for(short offset : segOffsetLst) {
       ReadWriteIOUtils.write(offset, pageBuffer);
     }
@@ -220,27 +263,35 @@ public class SchemaPage implements ISchemaPage{
   @Override
   public void deleteSegment(short segId) throws SegmentNotFoundException {
     getSegment(segId).delete();
+    segCacheMap.remove(segId);
     segOffsetLst.set(segId, (short)-1);
   }
 
-  @Override
-  public void extendsSegmentTo(ByteBuffer dstBuffer, short segId) throws SegmentNotFoundException {
-    ISegment sf = getSegment(segId);
-    sf.syncBuffer();
-    sf.extendsTo(dstBuffer);
-  }
-
+  /**
+   * Transplant designated segment from srcPage, to spare space of the page
+   * @param srcPage source page conveys source segment
+   * @param segId id of the target segment
+   * @param newSegSize size of new segment in this page
+   * @throws MetadataException if spare not enough, segment not found or inconsistency
+   */
   @Override
   public long transplantSegment(ISchemaPage srcPage, short segId, short newSegSize)
-      throws SegmentNotFoundException, IOException {
-    ByteBuffer newBuf = ByteBuffer.allocate(newSegSize);
-    srcPage.extendsSegmentTo(newBuf, segId);
-    short nSegId = plantAsNewSegment(newBuf);
-    if (nSegId >= 0) {
-      return ISchemaFile.getGlobalIndex(pageIndex, nSegId);
-    } else {
-      return -1;
+      throws MetadataException {
+    if (!isCapableForSize(newSegSize)) {
+      throw new SchemaPageOverflowException(pageIndex);
     }
+    ByteBuffer newBuf = ByteBuffer.allocate(newSegSize);
+    ((SchemaPage)srcPage).extendsSegmentTo(newBuf, segId);
+
+    newBuf.clear();
+    this.pageBuffer.clear();
+    this.pageBuffer.position(pageSpareOffset);
+    this.pageBuffer.put(newBuf);
+
+    this.pageBuffer.position(pageSpareOffset);
+    ISegment newSeg = Segment.loadAsSegment(this.pageBuffer.slice());
+
+    return SchemaFile.getGlobalIndex(pageIndex, registerNewSegment(newSeg));
   }
 
   /**
@@ -249,6 +300,7 @@ public class SchemaPage implements ISchemaPage{
    */
   @Override
   public String inspect() throws SegmentNotFoundException{
+    syncPageBuffer();
     StringBuilder builder = new StringBuilder(String.format("SchemaPage Inspect: id:%d, totalSeg:%d, spareOffset:%d\n",
         pageIndex, segNum, pageSpareOffset));
     for(int idx = 0; idx < segOffsetLst.size(); idx++) {
@@ -257,8 +309,9 @@ public class SchemaPage implements ISchemaPage{
         builder.append(String.format("Segment id:%d deleted, at offset:%d\n", idx, offset));
       } else {
         ISegment seg = getSegment((short)idx);
-        builder.append(String.format("Segment id:%d, at offset:%d, address:%d %s\n",
-            idx, offset, ISchemaFile.getGlobalIndex(pageIndex, (short)idx), seg.toString()));
+        builder.append(String.format("Segment id:%d, at offset:%d, address:%d, next:%d, pref:%d, %s\n",
+            idx, offset, SchemaFile.getGlobalIndex(pageIndex, (short)idx),
+            seg.getNextSegAddress(), seg.getPrevSegAddress(), seg.toString()));
       }
     }
     return builder.toString();
@@ -287,7 +340,7 @@ public class SchemaPage implements ISchemaPage{
   // endregion
 
   private void reconstructSegmentList() {
-    pageBuffer.position(SchemaFile.PAGE_LENGTH - ISchemaFile.SEG_OFF_DIG * segNum);
+    pageBuffer.position(SchemaFile.PAGE_LENGTH - SchemaFile.SEG_OFF_DIG * segNum);
     for (int idx = 0; idx < segNum; idx ++ ) {
       segOffsetLst.add(ReadWriteIOUtils.readShort(pageBuffer));
     }
@@ -315,10 +368,7 @@ public class SchemaPage implements ISchemaPage{
   }
 
   private short getSegmentOffset(short index) throws SegmentNotFoundException {
-    if (index >= segOffsetLst.size()) {
-      throw new SegmentNotFoundException(pageIndex, index);
-    }
-    if (segOffsetLst.get(index) < 0) {
+    if (index >= segOffsetLst.size() || segOffsetLst.get(index) < 0) {
       throw new SegmentNotFoundException(pageIndex, index);
     }
     return segOffsetLst.get(index);
@@ -338,24 +388,17 @@ public class SchemaPage implements ISchemaPage{
    */
   private ISegment reAllocateSeg(ISegment seg, short segIdx, short newSize)
       throws SchemaPageOverflowException, SegmentNotFoundException {
-    ByteBuffer newBuffer;
-    if (newSize >= ISchemaFile.SEG_MAX_SIZ) {
+    if (newSize >= SchemaFile.SEG_MAX_SIZ
+    || getSpareSize() + seg.size() > newSize) {
       throw new SchemaPageOverflowException(pageIndex);
     }
+    ByteBuffer newBuffer;
 
     try {
       newBuffer = allocSpareBufferSlice(newSize);
     } catch (SchemaPageOverflowException e) {
       rearrangeSegments(segIdx, seg);
-
-      // check whether able to extend in place
-      // -1 for no rearrange now, new page immediately
-      if (-1 * getSpareSize() + seg.size() > newSize) {
-        return extendSegmentInPlace(segIdx, seg, newSize);
-      } else {
-        // still not enough space after rearrange segments
-        throw e;
-      }
+      return extendSegmentInPlace(segIdx, seg, newSize);
     }
 
     // allocate buffer slice successfully
@@ -381,7 +424,7 @@ public class SchemaPage implements ISchemaPage{
    */
   private ByteBuffer allocSpareBufferSlice(short size) throws SchemaPageOverflowException {
     // check whether enough space
-    if (getSpareSize() < size + ISchemaFile.SEG_OFF_DIG) {
+    if (getSpareSize() < size + SchemaFile.SEG_OFF_DIG) {
       throw new SchemaPageOverflowException(pageIndex);
     }
 
@@ -401,11 +444,52 @@ public class SchemaPage implements ISchemaPage{
   }
 
   /**
-   * TODO:
    * Compact segments and move target segment (id at idx) to the tail of segments.
    */
-  private void rearrangeSegments(short idx, ISegment tarSeg) {
+  private synchronized void rearrangeSegments(short idx, ISegment tarSeg) {
+    // all segment instance shall be abolished
+    syncPageBuffer();
+    segCacheMap.clear();
 
+    ByteBuffer mirrorPage = ByteBuffer.allocate(SchemaFile.PAGE_LENGTH);
+    this.pageBuffer.clear();
+    mirrorPage.put(this.pageBuffer);
+    this.pageBuffer.clear();
+
+    pageSpareOffset = SchemaFile.PAGE_HEADER_SIZE;
+
+    for (short i = 0; i < segOffsetLst.size(); i++) {
+      if (segOffsetLst.get(i) >= 0 && i != idx) {
+        // except for target segment, compact other valid segment
+        short offset = segOffsetLst.get(i);
+
+        mirrorPage.clear();
+        this.pageBuffer.clear();
+
+        mirrorPage.position(offset);
+        short len = RecordUtils.getRecordLength(mirrorPage);
+        mirrorPage.limit(offset + len);
+        this.pageBuffer.position(pageSpareOffset);
+
+        this.segOffsetLst.set(i, pageSpareOffset);
+        this.pageBuffer.put(mirrorPage);
+        pageSpareOffset += len;
+      }
+    }
+    // a negative idx meant for only compaction
+    if (idx >= 0) {
+      this.pageBuffer.clear();
+      this.pageBuffer.position(pageSpareOffset);
+
+      mirrorPage.clear();
+      mirrorPage.position(segOffsetLst.get(idx));
+      short len = RecordUtils.getRecordLength(mirrorPage);
+      mirrorPage.limit(mirrorPage.position() + len);
+
+      this.pageBuffer.put(mirrorPage);
+      segOffsetLst.set(idx, pageSpareOffset);
+      pageSpareOffset += len;
+    }
   }
 
   /**
@@ -420,6 +504,7 @@ public class SchemaPage implements ISchemaPage{
     // extend segment, modify pageSpareOffset, segCacheMap
     short offset = getSegmentOffset(segId);
 
+    // only last segment could extend in-place
     if (offset + segment.size() != pageSpareOffset) {
       throw new SegmentNotFoundException(segId);
     }
@@ -447,26 +532,31 @@ public class SchemaPage implements ISchemaPage{
     return newSeg;
   }
 
-  private short plantAsNewSegment(ByteBuffer buffer) throws IOException {
-    if (!isCapableForSize((short)buffer.capacity())) {
-      return -1;
-    }
+  protected void extendsSegmentTo(ByteBuffer dstBuffer, short segId) throws SegmentNotFoundException {
+    ISegment sf = getSegment(segId);
+    sf.extendsTo(dstBuffer);
+  }
 
+  protected void updateRecordSegAddr(short segId, String key, long newSegAddr) throws SegmentNotFoundException {
+    ISegment seg = getSegment(segId);
+    ((Segment)seg).updateRecordSegAddr(key, newSegAddr);
+  }
+
+
+  /**
+   * Register segment instance to segCacheMap and segOffList, modify pageSpareOffset and segNum respectively
+   * @param seg the segment to register
+   * @return index of the segment
+   */
+  private synchronized short registerNewSegment(ISegment seg) throws MetadataException{
     short thisIndex = (short)segOffsetLst.size();
     if (segCacheMap.containsKey(thisIndex)) {
-      throw new IOException("Segment cache map inconsistent with segment list.");
+      throw new MetadataException(String.format("Segment cache map inconsistent with segment list in page %d.", pageIndex));
     }
 
-    ISegment newSeg = Segment.loadAsSegment(buffer);
-
-    buffer.clear();
-    this.pageBuffer.clear();
-    this.pageBuffer.position(pageSpareOffset);
-    this.pageBuffer.put(buffer);
-
-    segCacheMap.put(thisIndex, newSeg);
+    segCacheMap.put(thisIndex, seg);
     segOffsetLst.add(pageSpareOffset);
-    pageSpareOffset += buffer.capacity();
+    pageSpareOffset += seg.size();
     segNum += 1;
 
     return thisIndex;

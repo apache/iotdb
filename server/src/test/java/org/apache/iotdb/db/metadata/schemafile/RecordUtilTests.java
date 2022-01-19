@@ -34,6 +34,7 @@ public class RecordUtilTests {
     oneNode.getChildren().getSegment().setSegmentAddress(1234567L);
     oneNode.setUseTemplate(true);
     ByteBuffer buffer = RecordUtils.node2Buffer(oneNode);
+    buffer.clear();
     IMNode node2 = RecordUtils.buffer2Node("abcd", buffer);
     Assert.assertEquals(node2.getChildren().getSegment().getSegmentAddress(), 1234567L);
     Assert.assertEquals(node2.isUseTemplate(), oneNode.isUseTemplate());
@@ -44,6 +45,7 @@ public class RecordUtilTests {
     IMeasurementSchema schema = new MeasurementSchema("amn", TSDataType.FLOAT, TSEncoding.BITMAP, CompressionType.GZIP);
     IMNode amn = MeasurementMNode.getMeasurementMNode(null, "amn", schema, "anothername");
     ByteBuffer buffer = RecordUtils.node2Buffer(amn);
+    buffer.clear();
     IMNode node2 = RecordUtils.buffer2Node("amn", buffer);
 
     Assert.assertEquals(TSDataType.FLOAT, node2.getAsMeasurementMNode().getDataType("amn"));

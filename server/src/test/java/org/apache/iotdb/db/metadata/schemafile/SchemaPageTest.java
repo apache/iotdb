@@ -10,6 +10,7 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -35,10 +36,10 @@ public class SchemaPageTest {
 
   @Test
   public void flatTreeInsert() throws SchemaPageOverflowException, IOException, SegmentNotFoundException, RecordDuplicatedException {
-    ISchemaPage page = SchemaPage.initPage(ByteBuffer.allocate(ISchemaFile.PAGE_LENGTH), 0);
+    ISchemaPage page = SchemaPage.initPage(ByteBuffer.allocate(SchemaFile.PAGE_LENGTH), 0);
     IMNode root = virtualFlatMTree(15);
     for(int i = 0; i < 7; i++) {
-      page.allocNewSegment(ISchemaFile.SEG_SIZE_LST[0]);
+      page.allocNewSegment(SchemaFile.SEG_SIZE_LST[0]);
       int cnt = 0;
       for (IMNode child : root.getChildren().values()) {
         cnt ++;
@@ -53,7 +54,7 @@ public class SchemaPageTest {
       }
     }
 
-    ByteBuffer newBuf = ByteBuffer.allocate(ISchemaFile.PAGE_LENGTH);
+    ByteBuffer newBuf = ByteBuffer.allocate(SchemaFile.PAGE_LENGTH);
     page.syncPageBuffer();
     page.getPageBuffer(newBuf);
     ISchemaPage newPage = SchemaPage.loadPage(newBuf, 0);

@@ -58,7 +58,7 @@ public class SegmentTest {
     ISegment newSeg = Segment.loadAsSegment(newBuffer);
     System.out.println(newSeg);
     Assert.assertEquals(RecordUtils.buffer2String(sf.getRecord("mid4")),
-        RecordUtils.buffer2String(newSeg.getRecord("mid4")));
+        RecordUtils.buffer2String(((Segment)newSeg).getRecord("mid4")));
     Assert.assertEquals(sf.getRecord("aaa"), nsf.getRecord("aaa"));
   }
 

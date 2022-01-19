@@ -26,6 +26,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -40,7 +41,7 @@ public class CachedMNodeContainer implements IMNodeContainer, ISegment {
   private long segmentAddress = -1;
   Map<String, IMNode> childCache = null;
   Map<String, IMNode> newChildBuffer = null;
-  Map<String, IMNode> updatedChildBuffer = null;
+  Map<String, IMNode> updatedChildBuffer = new HashMap<>();
 
   @Override
   public int size() {

@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.*;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -92,9 +93,14 @@ public class RecordUtils {
     return buffer;
   }
 
+  /**
+   * NOTICE: Make sure that buffer has set its position and limit clearly before pass to this method.
+   * @param nodeName name of the constructed node
+   * @param buffer content of the node
+   * @return node constructed from buffer
+   */
   public static IMNode buffer2Node(String nodeName, ByteBuffer buffer) {
     IMNode resNode;
-    buffer.clear();
 
     byte nodeType = ReadWriteIOUtils.readByte(buffer);
     if (nodeType < 2) {
@@ -136,6 +142,37 @@ public class RecordUtils {
     short len = ReadWriteIOUtils.readShort(recBuf);
     recBuf.position(oriPos);
     return len;
+  }
+
+  public static byte getRecordType(ByteBuffer recBuf) {
+    int oriPos = recBuf.position();
+    recBuf.position(oriPos);
+    byte type = ReadWriteIOUtils.readByte(recBuf);
+    recBuf.position(oriPos);
+    return type;
+  }
+
+  public static long getRecordSegAddr(ByteBuffer recBuf) {
+    int oriPos = recBuf.position();
+    recBuf.position(oriPos + 3);
+    long addr = ReadWriteIOUtils.readLong(recBuf);
+    recBuf.position(oriPos);
+    return addr;
+  }
+
+  public static String getRecordAlias(ByteBuffer recBuf) {
+    int oriPos = recBuf.position();
+    recBuf.position(oriPos + 19);
+    String alias = ReadWriteIOUtils.readString(recBuf);
+    recBuf.position(oriPos);
+    return alias;
+  }
+
+  public static void updateSegAddr(ByteBuffer recBuf, long newSegAddr) {
+    int oriPos = recBuf.position();
+    recBuf.position(oriPos + 3);
+    ReadWriteIOUtils.write(newSegAddr, recBuf);
+    recBuf.position(oriPos);
   }
 
   @TestOnly

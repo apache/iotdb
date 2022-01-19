@@ -3,12 +3,16 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.db.exception.metadata.RecordDuplicatedException;
 import org.apache.iotdb.db.exception.metadata.SegmentOverflowException;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 
 /**
  * This class initiate a segment object with corresponding bytes.
@@ -55,8 +59,10 @@ public class Segment implements ISegment {
       freeAddr = (short) buffer.capacity();
       recordNum = 0;
       pairLength = 0;
-      prevSegAddress = 0;
-      nextSegAddress = 0;
+
+      // these two address need to be initiated as same as in childrenContainer
+      prevSegAddress = -1;
+      nextSegAddress = -1;
       delFlag = false;
       // parRecord = lastSegAddr = nextSegAddr = 0L;
 
@@ -153,19 +159,45 @@ public class Segment implements ISegment {
   }
 
   @Override
-  public ByteBuffer getRecord(String key) {
-    short targetAddr;
-    int idx = getRecordIndexByKey(key);
-    if (idx >= 0) {
-      targetAddr = keyAddressList.get(idx).right;
-      this.buffer.clear();
-      this.buffer.position(targetAddr);
-      short len = RecordUtils.getRecordLength(this.buffer);
-      this.buffer.limit(targetAddr + len);
-      return this.buffer.slice();
+  public IMNode getRecordAsIMNode(String key) {
+    int index = getRecordIndexByKey(key);
+    if (index < 0) {
+      return null;
     }
-    return null;
+
+    short offset = getOffsetByIndex(index);
+    this.buffer.clear();
+    this.buffer.position(offset);
+    short len = RecordUtils.getRecordLength(this.buffer);
+    this.buffer.limit(offset + len);
+
+    return RecordUtils.buffer2Node(key, this.buffer);
   }
+
+  @Override
+  public boolean hasRecordKey(String key) {
+    for (Pair<String, Short> p : keyAddressList) {
+      if (p.left.equals(key)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Override
+  public Queue<IMNode> getAllRecords() {
+    Queue<IMNode> res = new ArrayDeque<>();
+    this.buffer.clear();
+    for (Pair<String, Short> p : keyAddressList) {
+      this.buffer.limit(this.buffer.capacity());
+      this.buffer.position(p.right);
+      short len = RecordUtils.getRecordLength(this.buffer);
+      this.buffer.limit(p.right + len);
+      res.add(RecordUtils.buffer2Node(p.left, this.buffer));
+    }
+    return res;
+  }
+
 
   /**
    * @param key
@@ -187,7 +219,6 @@ public class Segment implements ISegment {
     short newLen = (short)buffer.capacity();
     if (oriLen >= newLen) {
       // update in place
-      buffer.clear();
       this.buffer.limit(this.buffer.position() + oriLen);
       this.buffer.put(buffer);
     } else {
@@ -222,8 +253,10 @@ public class Segment implements ISegment {
       short len = RecordUtils.getRecordLength(this.buffer);
       freeAddr += len;
     }
+
+    // TODO: compact segment further as well
     pairLength -= 2;
-    pairLength -= key.getBytes().length;
+    pairLength -= key.getBytes().length + 4;
     keyAddressList.remove(idx);
 
     return idx;
@@ -237,6 +270,7 @@ public class Segment implements ISegment {
     ReadWriteIOUtils.write(freeAddr, prefBuffer);
     ReadWriteIOUtils.write(recordNum, prefBuffer);
     ReadWriteIOUtils.write(pairLength, prefBuffer);
+    ReadWriteIOUtils.write(delFlag, prefBuffer);
     ReadWriteIOUtils.write(prevSegAddress, prefBuffer);
     ReadWriteIOUtils.write(nextSegAddress, prefBuffer);
     ReadWriteIOUtils.write(delFlag, prefBuffer);
@@ -266,6 +300,16 @@ public class Segment implements ISegment {
     return length;
   }
 
+  @Override
+  public short getSpareSize() {
+    return (short)(freeAddr - pairLength - SEG_HEADER_SIZE);
+  }
+
+  /**
+   * This method will write info into a buffer equal or larger to existed one.
+   * There is no need to call sync before this method, since it will flush header and key-offset list directly.
+   * @param newBuffer target buffer
+   */
   @Override
   public void extendsTo(ByteBuffer newBuffer) {
     short sizeGap = (short)(newBuffer.capacity() - length);
@@ -317,6 +361,14 @@ public class Segment implements ISegment {
     return newBuffer;
   }
 
+  protected void updateRecordSegAddr(String key, long newSegAddr) {
+    int index = getRecordIndexByKey(key);
+    short offset = getOffsetByIndex(index);
+    this.buffer.clear();
+    this.buffer.position(offset);
+    RecordUtils.updateSegAddr(this.buffer, newSegAddr);
+  }
+
   public long getPrevSegAddress() {
     return prevSegAddress;
   }
@@ -353,6 +405,7 @@ public class Segment implements ISegment {
 
   /**
    * To decouple search implementation from other methods
+   * Rather than offset of the target key, index could be used to update or remove on keyAddressList
    * @param key Record Key
    * @return index of record, -1 for not found
    */
@@ -371,7 +424,7 @@ public class Segment implements ISegment {
     }
     int pivot = (head + tail) / 2;
     while (key.compareTo(keyAddressList.get(pivot).left) != 0) {
-      if (head == tail) {
+      if (head == tail || pivot == head || pivot == tail) {
         return -1;
       }
       if (key.compareTo(keyAddressList.get(pivot).left) < 0) {
@@ -383,6 +436,10 @@ public class Segment implements ISegment {
     }
     return pivot;
 
+  }
+
+  private short getOffsetByIndex(int index) {
+    return keyAddressList.get(index).right;
   }
 
   private void reconstructKeyAddress(ByteBuffer pairBuffer) {
@@ -397,13 +454,35 @@ public class Segment implements ISegment {
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder("");
-    builder.append(String.format("[spare begin: %d, records offset: %d, pairs:",
-        this.pairLength + Segment.SEG_HEADER_SIZE, this.freeAddr));
+    builder.append(String.format("[seg size: %d, k-a list size: %d, spare:%d,",
+        this.length, keyAddressList.size(), freeAddr - pairLength - SEG_HEADER_SIZE));
+    this.buffer.clear();
     for (Pair<String, Short> pair : keyAddressList) {
-      builder.append(String.format("(%s, %d),", pair.left, pair.right));
+      this.buffer.position(pair.right);
+      if (RecordUtils.getRecordType(buffer) < 3) {
+        builder.append(String.format("(%s -> %d),", pair.left, RecordUtils.getRecordSegAddr(buffer)));
+      } else {
+        builder.append(String.format("(%s, %s),", pair.left, RecordUtils.getRecordAlias(buffer)));
+      }
     }
     builder.append("]");
     return builder.toString();
   }
+
+  @TestOnly
+  public ByteBuffer getRecord(String key) {
+    short targetAddr;
+    int idx = getRecordIndexByKey(key);
+    if (idx >= 0) {
+      targetAddr = keyAddressList.get(idx).right;
+      this.buffer.clear();
+      this.buffer.position(targetAddr);
+      short len = RecordUtils.getRecordLength(this.buffer);
+      this.buffer.limit(targetAddr + len);
+      return this.buffer.slice();
+    }
+    return null;
+  }
+
 
 }

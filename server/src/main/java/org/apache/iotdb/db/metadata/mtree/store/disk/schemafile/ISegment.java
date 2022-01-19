@@ -2,9 +2,11 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.db.exception.metadata.RecordDuplicatedException;
 import org.apache.iotdb.db.exception.metadata.SegmentOverflowException;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.Queue;
 
 /**
  * This interface interacts with segment bytebuffer.
@@ -25,12 +27,11 @@ public interface ISegment {
 
   int removeRecord(String key);
 
-  /**
-   * Danger of memory leak, [[DEPRECATED]]
-   * @param key node name usually
-   * @return node content
-   */
-  ByteBuffer getRecord(String key);
+  IMNode getRecordAsIMNode(String key);
+
+  boolean hasRecordKey(String key);
+
+  Queue<IMNode> getAllRecords();
 
   /**
    * Records are always sync with buffer, but header and key-address list are not.
@@ -39,6 +40,8 @@ public interface ISegment {
   void syncBuffer();
 
   short size();
+
+  short getSpareSize();
 
   void delete();
 
