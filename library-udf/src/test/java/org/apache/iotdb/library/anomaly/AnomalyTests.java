@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -180,14 +181,12 @@ public class AnomalyTests {
   @Test
   public void testIRQR1() {
     String sqlStr = "select iqr(d1.s1) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -196,14 +195,12 @@ public class AnomalyTests {
   @Test
   public void testIQR2() {
     String sqlStr = "select iqr(d1.s2) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -212,14 +209,12 @@ public class AnomalyTests {
   @Test
   public void testIQR3() {
     String sqlStr = "select iqr(d2.s1) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -228,14 +223,12 @@ public class AnomalyTests {
   @Test
   public void testIQR4() {
     String sqlStr = "select iqr(d2.s2) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -244,14 +237,12 @@ public class AnomalyTests {
   @Test
   public void testKSigma1() {
     String sqlStr = "select ksigma(d1.s1,\"k\"=\"1.0\") from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -260,14 +251,12 @@ public class AnomalyTests {
   @Test
   public void testKSigma2() {
     String sqlStr = "select ksigma(d1.s2,\"k\"=\"1.0\") from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -276,14 +265,12 @@ public class AnomalyTests {
   @Test
   public void testKSigma3() {
     String sqlStr = "select ksigma(d2.s1,\"k\"=\"1.0\") from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -292,14 +279,12 @@ public class AnomalyTests {
   @Test
   public void testKSigma4() {
     String sqlStr = "select ksigma(d2.s2,\"k\"=\"1.0\") from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -308,9 +293,7 @@ public class AnomalyTests {
   @Test
   public void testMissDetect1() {
     String sqlStr = "select missdetect(d1.s1,'minlen'='10') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
@@ -323,9 +306,7 @@ public class AnomalyTests {
   @Test
   public void testMissDetect2() {
     String sqlStr = "select missdetect(d1.s2,'minlen'='10') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
@@ -338,9 +319,7 @@ public class AnomalyTests {
   @Test
   public void testMissDetect3() {
     String sqlStr = "select missdetect(d2.s1,'minlen'='10') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
@@ -353,9 +332,7 @@ public class AnomalyTests {
   @Test
   public void testMissDetect4() {
     String sqlStr = "select missdetect(d2.s2,'minlen'='10') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
@@ -368,9 +345,7 @@ public class AnomalyTests {
   @Test
   public void testLOF1() {
     String sqlStr = "select lof(d1.s1, \"method\"=\"series\") from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
@@ -383,9 +358,7 @@ public class AnomalyTests {
   @Test
   public void testLOF2() {
     String sqlStr = "select lof(d1.s2, \"method\"=\"series\") from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
@@ -398,9 +371,7 @@ public class AnomalyTests {
   @Test
   public void testLOF3() {
     String sqlStr = "select lof(d2.s1, \"method\"=\"series\") from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
@@ -413,9 +384,7 @@ public class AnomalyTests {
   @Test
   public void testLOF4() {
     String sqlStr = "select lof(d2.s2, \"method\"=\"series\") from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
@@ -429,14 +398,12 @@ public class AnomalyTests {
   public void testRange1() {
     String sqlStr =
         "select range(d1.s1,\"lower_bound\"=\"-5.0\",\"upper_bound\"=\"5.0\") from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -446,14 +413,12 @@ public class AnomalyTests {
   public void testRange2() {
     String sqlStr =
         "select range(d1.s2,\"lower_bound\"=\"-5.0\",\"upper_bound\"=\"5.0\") from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -463,14 +428,12 @@ public class AnomalyTests {
   public void testRange3() {
     String sqlStr =
         "select range(d2.s1,\"lower_bound\"=\"-5.0\",\"upper_bound\"=\"5.0\") from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -480,14 +443,12 @@ public class AnomalyTests {
   public void testRange4() {
     String sqlStr =
         "select range(d2.s2,\"lower_bound\"=\"-5.0\",\"upper_bound\"=\"5.0\") from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
+      Assert.assertEquals(resultSetLength,1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -496,9 +457,7 @@ public class AnomalyTests {
   @Test
   public void testTwoSidedFileter1() {
     String sqlStr = "select TwoSidedFilter(d1.s1, 'len'='3', 'threshold'='0.3') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
@@ -512,9 +471,7 @@ public class AnomalyTests {
   @Test
   public void testTwoSidedFileter2() {
     String sqlStr = "select TwoSidedFilter(d1.s2, 'len'='3', 'threshold'='0.3') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
@@ -528,9 +485,7 @@ public class AnomalyTests {
   @Test
   public void testTwoSidedFileter3() {
     String sqlStr = "select TwoSidedFilter(d2.s1, 'len'='3', 'threshold'='0.3') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
@@ -544,9 +499,7 @@ public class AnomalyTests {
   @Test
   public void testTwoSidedFileter4() {
     String sqlStr = "select TwoSidedFilter(d2.s2, 'len'='3', 'threshold'='0.3') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();

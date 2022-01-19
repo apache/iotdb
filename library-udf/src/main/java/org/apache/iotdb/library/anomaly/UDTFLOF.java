@@ -166,7 +166,7 @@ public class UDTFLOF implements UDTF {
             lof[m] = getLOF(knn, knn[m], size);
             collector.putDouble(timestamp[m], lof[m]);
           } catch (Exception e) {
-            throw new Exception(e + " " + Arrays.toString(e.getStackTrace()) + " " + m);
+            throw new Exception("Fail to get LOF "+m,e);
           }
         }
       }
@@ -204,7 +204,7 @@ public class UDTFLOF implements UDTF {
               lof[m] = getLOF(knn, knn[m], size);
               collector.putDouble(timestamp[m], lof[m]);
             } catch (Exception e) {
-              throw new Exception(e + " " + Arrays.toString(e.getStackTrace()) + " " + m);
+              throw new Exception("Fail to get LOF "+m,e);
             }
           }
         }

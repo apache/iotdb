@@ -88,7 +88,7 @@ public class UDTFRange implements UDTF {
         }
         break;
       default:
-        throw new Exception();
+        throw new Exception("No such kind of data type.");
     }
   }
 

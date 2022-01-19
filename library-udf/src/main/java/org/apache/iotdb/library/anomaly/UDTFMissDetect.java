@@ -57,7 +57,7 @@ public class UDTFMissDetect implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     detector.insert(row.getTime(), Util.getValueAsDouble(row));
-    while (detector.hasNext()) { // 尽早输出，以减少输出缓冲的压力
+    while (detector.hasNext()) {
       collector.putBoolean(detector.getOutTime(), detector.getOutValue());
       detector.next();
     }
@@ -66,7 +66,7 @@ public class UDTFMissDetect implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     detector.flush();
-    while (detector.hasNext()) { // 尽早输出，以减少输出缓冲的压力
+    while (detector.hasNext()) {
       collector.putBoolean(detector.getOutTime(), detector.getOutValue());
       detector.next();
     }
