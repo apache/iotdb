@@ -194,7 +194,7 @@ Here are some examples of valid SELECT content:
 * `s1`
 * `top_k(s1, 'k'='1') as top`
 * `sin(s1) + cos(s1 + s2)` 
-* `udf(s1) as "中文别名"`
+* `udf(s1) as "alias"`
 
 FROM input box: contents must be the prefix path of the time series, such as `root.sg.d`.
 
