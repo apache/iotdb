@@ -36,7 +36,7 @@
     <appender class="ch.qos.logback.core.ConsoleAppender" name="stdout">
         <Target>System.out</Target>
         <encoder>
-            <pattern>[%thread] %m %n</pattern>
+            <pattern>%-5p [%d] [%thread] %C{25}:%L - %m %n</pattern>
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">

@@ -412,7 +412,22 @@ public class ClusterDescriptor {
   }
 
   private String hostnameToIP(String hostname) throws UnknownHostException {
-    InetAddress address = InetAddress.getByName(hostname);
-    return address.getHostAddress();
+    int maxRetry = 10;
+    for (int i = 0; i < maxRetry; i++) {
+      InetAddress address;
+      try {
+        address = InetAddress.getByName(hostname);
+        return address.getHostAddress();
+      } catch (UnknownHostException e) {
+        // ignore
+
+      }
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+    throw new UnknownHostException(hostname);
   }
 }

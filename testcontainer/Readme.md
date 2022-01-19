@@ -63,4 +63,10 @@ TestContainer can start the docker (or docker compose) automatically.
 But these docker compose files can also be used independently.
 e.g., `docker-compose up`.
 
+## Beware
+
+If you are running docker on Windows, DO NOT use Docker Compose V2 as it uses a different naming
+rule of containers, making the tests fail to find containers correctly. You can find this option in
+docker's setting -> general -> Use Docker Compose V2, remember to uncheck it.
+
 
