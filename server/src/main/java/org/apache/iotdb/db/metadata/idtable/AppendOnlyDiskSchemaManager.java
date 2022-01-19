@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.db.metadata.idtable;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
+import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +56,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
   public AppendOnlyDiskSchemaManager(File dir) {
     try {
       initFile(dir);
-      outputStream = new FileOutputStream(dataFile);
+      outputStream = new FileOutputStream(dataFile, true);
     } catch (IOException e) {
       logger.error(e.getMessage());
       throw new IllegalArgumentException("can't initialize disk schema manager at " + dataFile);
@@ -85,6 +90,11 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
   }
 
   private boolean checkLastEntry(long pos) {
+    // empty file
+    if (pos == 0) {
+      return true;
+    }
+
     // file length is smaller than one int
     if (pos <= Integer.BYTES) {
       return false;
@@ -117,14 +127,41 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
 
   @Override
   public long serialize(DiskSchemaEntry schemaEntry) {
+    long beforeLoc = loc;
     try {
-      schemaEntry.serialize(outputStream);
+      loc += schemaEntry.serialize(outputStream);
     } catch (IOException e) {
       logger.error("failed to serialize schema entry: " + schemaEntry);
       throw new IllegalArgumentException("can't serialize disk entry of " + schemaEntry);
     }
 
-    return 0;
+    return beforeLoc;
+  }
+
+  @Override
+  public void recover(IDTable idTable) throws IOException {
+    FileInputStream inputStream = new FileInputStream(dataFile);
+    long loc = 0;
+
+    while (inputStream.available() > 0) {
+      try {
+        DiskSchemaEntry cur = DiskSchemaEntry.deserialize(inputStream);
+        SchemaEntry schemaEntry =
+            new SchemaEntry(
+                TSDataType.deserialize(cur.type),
+                TSEncoding.deserialize(cur.encoding),
+                CompressionType.deserialize(cur.compressor),
+                loc);
+        idTable.putSchemaEntry(cur.deviceID, cur.measurementName, schemaEntry, cur.isAligned);
+
+        loc += cur.entrySize;
+      } catch (IOException | MetadataException e) {
+        logger.error("can't recover from log");
+      }
+    }
+
+    // free resource
+    inputStream.close();
   }
 
   @TestOnly
