@@ -15,7 +15,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// temporary redirection
+import Vue from 'vue'
+import VueRouter from 'vue-router'
+Vue.use(VueRouter)
+// end
+
 const path = require('path')
+
+// temporary redirection
+export new VueRouter({
+  routes: [
+    {
+      path: '/UserGuide/Master/Libary-UDF/Data-Quality',
+      redirect: '/UserGuide/Master/Process-Data/UDF-Libary'
+    },
+    {
+      path: '/UserGuide/Master/Libary-UDF/Data-Repair',
+      redirect: '/UserGuide/Master/Process-Data/UDF-Libary'
+    }
+  ]
+})
+// end
 
 // Theme API.
 module.exports = (options, ctx) => ({
