@@ -92,6 +92,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     tsFileResources.readLock();
     PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
+    boolean taskSubmitted = false;
     try {
       int maxLevel = searchMaxFileLevel();
       for (int currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
@@ -100,14 +101,14 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         }
       }
       while (taskPriorityQueue.size() > 0) {
-        createAndSubmitTask(taskPriorityQueue.poll().left);
+        taskSubmitted = createAndSubmitTask(taskPriorityQueue.poll().left) || taskSubmitted;
       }
     } catch (Exception e) {
       LOGGER.error("Exception occurs while selecting files", e);
     } finally {
       tsFileResources.readUnlock();
     }
-    return true;
+    return taskSubmitted;
   }
 
   /**
@@ -135,7 +136,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     for (TsFileResource currentFile : tsFileResources) {
       TsFileNameGenerator.TsFileName currentName =
           TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
-      if (currentName.getInnerCompactionCnt() != level) {
+      if (currentName.getInnerCompactionCnt() != level || currentFile.isCompactionCandidate()) {
         selectedFileList.clear();
         selectedFileSize = 0L;
         continue;
@@ -177,7 +178,9 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     return maxLevel;
   }
 
-  private boolean createAndSubmitTask(List<TsFileResource> selectedFileList) {
+  private boolean createAndSubmitTask(List<TsFileResource> selectedFileList)
+      throws InterruptedException {
+    selectedFileList.forEach(x -> x.setCompactionCandidate(true));
     AbstractCompactionTask compactionTask =
         taskFactory.createTask(
             logicalStorageGroupName,

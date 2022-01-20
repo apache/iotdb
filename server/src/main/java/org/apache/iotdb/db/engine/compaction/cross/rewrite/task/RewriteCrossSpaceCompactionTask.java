@@ -215,7 +215,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
 
   private boolean addReadLock(List<TsFileResource> tsFileResourceList) {
     for (TsFileResource tsFileResource : tsFileResourceList) {
-      if (tsFileResource.isMerging()
+      if (tsFileResource.isCompacting()
           || !tsFileResource.isClosed()
           || !tsFileResource.getTsFile().exists()
           || tsFileResource.isDeleted()) {
@@ -224,7 +224,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       }
       tsFileResource.readLock();
       holdReadLockList.add(tsFileResource);
-      tsFileResource.setMerging(true);
+      tsFileResource.setCompacting(true);
     }
     return true;
   }
@@ -248,7 +248,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     for (TsFileResource tsFileResource : holdReadLockList) {
       tsFileResource.readUnlock();
       tsFileResource.writeUnlock();
-      tsFileResource.setMerging(false);
+      tsFileResource.setCompacting(false);
     }
     holdReadLockList.clear();
     holdWriteLockList.clear();

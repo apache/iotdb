@@ -112,4 +112,6 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     }
     return false;
   }
+
+  public abstract void resetCompactionCandidateStatusForAllSourceFiles();
 }

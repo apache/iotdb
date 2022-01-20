@@ -101,7 +101,8 @@ public class TsFileResource {
 
   protected volatile boolean closed = false;
   private volatile boolean deleted = false;
-  volatile boolean isMerging = false;
+  volatile boolean isCompacting = false;
+  volatile boolean compactionCandidate = false;
 
   private TsFileLock tsFileLock = new TsFileLock();
 
@@ -165,7 +166,7 @@ public class TsFileResource {
     this.modFile = other.modFile;
     this.closed = other.closed;
     this.deleted = other.deleted;
-    this.isMerging = other.isMerging;
+    this.isCompacting = other.isCompacting;
     this.pathToChunkMetadataListMap = other.pathToChunkMetadataListMap;
     this.pathToReadOnlyMemChunkMap = other.pathToReadOnlyMemChunkMap;
     this.pathToTimeSeriesMetadataMap = other.pathToTimeSeriesMetadataMap;
@@ -586,12 +587,20 @@ public class TsFileResource {
     this.deleted = deleted;
   }
 
-  public boolean isMerging() {
-    return isMerging;
+  public boolean isCompacting() {
+    return isCompacting;
   }
 
-  public void setMerging(boolean merging) {
-    isMerging = merging;
+  public void setCompacting(boolean compacting) {
+    isCompacting = compacting;
+  }
+
+  public boolean isCompactionCandidate() {
+    return compactionCandidate;
+  }
+
+  public void setCompactionCandidate(boolean compactionCandidate) {
+    this.compactionCandidate = compactionCandidate;
   }
 
   /** check if any of the device lives over the given time bound */

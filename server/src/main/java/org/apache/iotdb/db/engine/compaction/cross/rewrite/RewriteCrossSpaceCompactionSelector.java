@@ -131,6 +131,8 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
       mergeResource.setCacheDeviceMeta(true);
 
       if (mergeFiles[0].size() > 0 && mergeFiles[1].size() > 0) {
+        mergeFiles[0].forEach(x -> ((TsFileResource) x).setCompactionCandidate(true));
+        mergeFiles[1].forEach(x -> ((TsFileResource) x).setCompactionCandidate(true));
         AbstractCompactionTask compactionTask =
             taskFactory.createTask(
                 logicalStorageGroupName,
@@ -151,7 +153,7 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
             mergeResource.getUnseqFiles().size());
       }
 
-    } catch (MergeException | IOException e) {
+    } catch (MergeException | IOException | InterruptedException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }
 
