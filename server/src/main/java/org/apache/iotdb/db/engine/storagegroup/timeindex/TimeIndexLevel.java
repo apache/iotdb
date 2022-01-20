@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
 public enum TimeIndexLevel {
-  /** old file to time index (small memory foot print) */
+  /** v0.12 file to time index (small memory foot print) */
   V012_FILE_TIME_INDEX,
 
   /** device to time index (large memory foot print) */
