@@ -19,9 +19,9 @@
 
 -->
 
-# Spark-IoTDB
+## Spark-IoTDB
 
-## 版本
+### 版本
 
 Spark和Java所需的版本如下：
 
@@ -29,11 +29,11 @@ Spark和Java所需的版本如下：
 | ------------- | ------------- | ------------ | -------- |
 | `2.4.5`       | `2.12`        | `1.8`        | `0.13.0` |
 
-## 安装
+### 安装
 
 mvn clean scala:compile compile install
 
-## Maven依赖
+#### Maven依赖
 
 ```
     <dependency>
@@ -43,14 +43,10 @@ mvn clean scala:compile compile install
     </dependency>
 ```
 
-## IoTDB读取数据
+#### Spark-shell用户指南
 
-### 注意
-
-因为IoTDB与Spark的thrift版本有冲突，所以需要通过执行`rm -f $SPARK_HOME/jars/libthrift*`和`cp $IOTDB_HOME/lib/libthrift* $SPARK_HOME/jars/`这两个命令来解决。
+注意：因为IoTDB与Spark的thrift版本有冲突，所以需要通过执行`rm -f $SPARK_HOME/jars/libthrift*`和`cp $IOTDB_HOME/lib/libthrift* $SPARK_HOME/jars/`这两个命令来解决。
 否则的话，就只能在IDE里面进行代码调试。而且如果你需要通过`spark-submit`命令提交任务的话，你打包时必须要带上依赖。
-
-### Spark-shell用户指南
 
 ```shell
 spark-shell --jars spark-iotdb-connector-0.13.0.jar,iotdb-jdbc-0.13.0-jar-with-dependencies.jar
@@ -80,7 +76,7 @@ df.printSchema()
 df.show()
 ```
 
-### 模式推断
+#### 模式推断
 
 以下TsFile结构为例：TsFile模式中有三个度量：状态，温度和硬件。 这三种测量的基本信息如下：
 
@@ -126,7 +122,7 @@ TsFile中的现有数据如下：
 | 5    | root.ln.wf02.wt01 | false | null | null |
 | 6    | root.ln.wf02.wt02 | null  | ccc  | null |
 
-### 在宽和窄表之间转换
+#### 在宽和窄表之间转换
 
 * 从宽到窄
 
