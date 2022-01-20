@@ -25,6 +25,7 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -133,6 +134,7 @@ public class SizeTieredCompactionRecoverTest {
 
   @After
   public void tearDown() throws Exception {
+    new CompactionConfigRestorer().restoreCompactionConfig();
     setDataDirs(originDataDirs);
     IoTDB.metaManager.clear();
     File dataDir = new File(testDataDirs[0]);

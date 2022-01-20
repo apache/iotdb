@@ -831,7 +831,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |:---:|:---|
 |描述| 合并时的优先级，BALANCE 各种合并平等，INNER_CROSS 优先进行顺序文件和顺序文件或乱序文件和乱序文件的合并，CROSS_INNER 优先将乱序文件合并到顺序文件中 |
 |类型| String |
-|默认值| inner\_cross |
+|默认值| balance |
 |改后生效方式|重启服务生效|
 
 * target\_compaction\_file\_size

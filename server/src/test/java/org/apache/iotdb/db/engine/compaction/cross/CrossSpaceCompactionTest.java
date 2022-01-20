@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompa
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionTimeseriesType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -118,6 +119,7 @@ public class CrossSpaceCompactionTest {
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
     Thread.currentThread().setName(oldThreadName);
+    new CompactionConfigRestorer().restoreCompactionConfig();
   }
 
   // test one seq file overlaps with six unseq files with six type of relation(Contains, In,

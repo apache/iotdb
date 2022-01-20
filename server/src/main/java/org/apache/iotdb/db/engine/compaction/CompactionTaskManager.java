@@ -122,6 +122,7 @@ public class CompactionTaskManager implements IService {
       logger.info("Waiting for task taskExecutionPool to shut down");
       waitTermination();
       storageGroupTasks.clear();
+      candidateCompactionTaskQueue.clear();
     }
   }
 
