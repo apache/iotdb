@@ -13,11 +13,13 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 
 
 /**
- * TODO: Specify durability design
+ * TODO: reliability design TBD
  *
  * This class is mainly aimed to manage space all over the file.
  *
@@ -35,7 +37,7 @@ public class SchemaFile implements ISchemaFile{
   public static int PAGE_LENGTH = 16 * 1024;  // 16 kib for default
   public static short PAGE_HEADER_SIZE = 16;
   public static int PAGE_CACHE_SIZE = 48;  // size of page cache
-  public static int HEADER_INDEX = 0;  // index of header page
+  public static int ROOT_INDEX = 0;  // index of header page
   public static int INDEX_LENGTH = 4;  // 32 bit for page pointer, maximum .pmt file as 2^(32+14) bytes, 64 TiB
 
   public static short SEG_OFF_DIG = 2; // byte length of short, which is the type of index of segment inside a page
@@ -77,7 +79,7 @@ public class SchemaFile implements ISchemaFile{
     File pmtFile = new File(filePath);
 
     if (pmtFile.exists() && override) {
-      pmtFile.delete();
+      Files.delete(Paths.get(pmtFile.toURI()));
     }
 
     if (!pmtFile.exists() || !pmtFile.isFile()) {
@@ -94,7 +96,7 @@ public class SchemaFile implements ISchemaFile{
   // region Interface Implementation
 
   @Override
-  public void write(IMNode node) throws MetadataException, IOException {
+  public void writeMNode(IMNode node) throws MetadataException, IOException {
     int pageIndex;
     short curSegIdx;
     ISchemaPage curPage;
@@ -173,7 +175,6 @@ public class SchemaFile implements ISchemaFile{
 
           curPage.deleteSegment(curSegIdx);
 
-          // FIXME: need to update record of node respectively
           curSegIdx = SchemaFile.getSegIndex(curSegAddr);
           node.getChildren().getSegment().setSegmentAddress(curSegAddr);
           updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
@@ -217,8 +218,9 @@ public class SchemaFile implements ISchemaFile{
           if (curSegSize == SEG_MAX_SIZ) {
             // allocate new page and expand max-segment-lists
             long nextSegAddr = curPage.getNextSegAddress(curSegIdx);
+
+            // link new seg as the next to the cur, prev to the original next if existed
             if (nextSegAddr >= 0) {
-              // link new seg as the middle seg between new and next
               ISchemaPage nextPage = getPageInstance(getPageIndex(nextSegAddr));
 
               newPage.setNextSegAddress(newSegId, nextSegAddr);
@@ -243,47 +245,30 @@ public class SchemaFile implements ISchemaFile{
         if (existedSegAddr >= 0 || curSegSize == SEG_MAX_SIZ) {
           // remove from original segment
           getPageInstance(getPageIndex(actualSegAddr)).removeRecord(getSegIndex(actualSegAddr), entry.getKey());
-          // updated record flush into another linked segment, or a fresh full-page segment
+          // flush updated record into another linked segment, or a fresh full-page segment
           curPage.write(curSegIdx, entry.getKey(), childBuffer);
         } else {
-          // updated on a extended segment
+          // updated on an extended segment
           curPage.update(curSegIdx, entry.getKey(), childBuffer);
         }
       }
     }
   }
 
-  private void updateParentalRecord(IMNode parent, String key, long newSegAddr) throws IOException, MetadataException {
-    long parSegAddr = parent.getParent() == null ? 0 : parent.getChildren().getSegment().getSegmentAddress();
-    parSegAddr = getTargetSegmentAddress(parSegAddr, key);
-    ISchemaPage page = getPageInstance(getPageIndex(parSegAddr));
-    ((SchemaPage)page).updateRecordSegAddr(getSegIndex(parSegAddr), key, newSegAddr);
-  }
-
-  private ISchemaPage getRootPage() {
-    return rootPage;
-  }
-
-
-  private long preAllocateSegment(short size) throws IOException, MetadataException {
-    ISchemaPage page = getMinApplicablePageInMem(size);
-    return SchemaFile.getGlobalIndex(page.getPageIndex(), page.allocNewSegment(size));
-  }
-
-
-
   @Override
-  public void write(Collection<IMNode> nodes) {
+  public void delete(IMNode node) throws IOException, MetadataException{
+    long recSegAddr = node.getParent() == null ? ROOT_INDEX : node.getParent().getChildren().getSegment().getSegmentAddress();
+    recSegAddr = getTargetSegmentAddress(recSegAddr, node.getName());
+    getPageInstance(getPageIndex(recSegAddr)).removeRecord(getSegIndex(recSegAddr), node.getName());
 
+    if (!node.isMeasurement()) {
+      long delSegAddr = node.getChildren().getSegment().getSegmentAddress();
+      getPageInstance(getPageIndex(delSegAddr)).deleteSegment(getSegIndex(delSegAddr));
+    }
   }
 
   @Override
-  public void delete(IMNode node) {
-
-  }
-
-  @Override
-  public IMNode read(IMNode parent, String childName) throws MetadataException, IOException{
+  public IMNode getChildNode(IMNode parent, String childName) throws MetadataException, IOException{
     if (parent.isMeasurement()
     || parent.getChildren().getSegment().getSegmentAddress() < 0) {
       throw new MetadataException(String.format("Node [] has no child in schema file.", parent.getFullPath()));
@@ -345,7 +330,9 @@ public class SchemaFile implements ISchemaFile{
 
   public String inspect() throws MetadataException, IOException {
     StringBuilder builder = new StringBuilder(String.format(
-        "==================\n==================\nSchemaFile inspect: %s, totalPages:%d\n", storageGroupName, lastPageIndex));
+        "==================\n" +
+            "==================\n" +
+            "SchemaFile inspect: %s, totalPages:%d\n", storageGroupName, lastPageIndex));
     int cnt = 0;
     while (cnt <= lastPageIndex) {
       ISchemaPage page = getPageInstance(cnt);
@@ -404,12 +391,9 @@ public class SchemaFile implements ISchemaFile{
     }
   }
 
-  private ByteBuffer getRecordFromPage(long segAddress, String nodeName) throws MetadataException, IOException {
-    int pageIndex = getPageIndex(segAddress);
-    short segIndex = getSegIndex(segAddress);
-    ISchemaPage tarPage = getPageInstance(pageIndex);
-    return null;
-  }
+
+  // endregion
+  // region Segment Address Operation
 
   private long getTargetSegmentAddress(long curSegAddr, String recKey) throws IOException, MetadataException {
     ISchemaPage curPage = getPageInstance(getPageIndex(curSegAddr));
@@ -477,10 +461,18 @@ public class SchemaFile implements ISchemaFile{
     return -1;
   }
 
+  private long preAllocateSegment(short size) throws IOException, MetadataException {
+    ISchemaPage page = getMinApplicablePageInMem(size);
+    return SchemaFile.getGlobalIndex(page.getPageIndex(), page.allocNewSegment(size));
+  }
+
   // endregion
 
-  // region Space Management
+  // region Schema Page Operations
 
+  private ISchemaPage getRootPage() {
+    return rootPage;
+  }
 
   /**
    * This method checks with cached page container, get a minimum applicable page for allocation.
@@ -498,7 +490,6 @@ public class SchemaFile implements ISchemaFile{
 
   /**
    * Get from cache, or load from file.
-   * TODO: improve with file-wide page cache
    * @param pageIdx target page index
    * @return an existed page
    */
@@ -535,6 +526,9 @@ public class SchemaFile implements ISchemaFile{
         removeCnt --;
         entry.getValue().syncPageBuffer();
         flushPageToFile(entry.getValue());
+
+        // release object
+        pageInstCache.remove(entry.getKey());
         if (removeCnt == 0) {
           return;
         }
@@ -567,6 +561,13 @@ public class SchemaFile implements ISchemaFile{
       }
     }
     return SEG_MAX_SIZ;
+  }
+
+  private void updateParentalRecord(IMNode parent, String key, long newSegAddr) throws IOException, MetadataException {
+    long parSegAddr = parent.getParent() == null ? ROOT_INDEX : parent.getChildren().getSegment().getSegmentAddress();
+    parSegAddr = getTargetSegmentAddress(parSegAddr, key);
+    ISchemaPage page = getPageInstance(getPageIndex(parSegAddr));
+    ((SchemaPage)page).updateRecordSegAddr(getSegIndex(parSegAddr), key, newSegAddr);
   }
 
   /**

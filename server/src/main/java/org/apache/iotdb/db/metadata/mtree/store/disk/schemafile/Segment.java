@@ -17,7 +17,7 @@ import java.util.Queue;
 /**
  * This class initiate a segment object with corresponding bytes.
  * Implements add, get, remove records methods.
- * Acts like a wrapper of a bytebuffer which reflects a segment.
+ * Act like a wrapper of a bytebuffer which reflects a segment.
  * */
 public class Segment implements ISegment {
   static ByteBuffer PRE_ALL_BUF = null;  // to pre-allocate segment instantly
@@ -385,24 +385,6 @@ public class Segment implements ISegment {
     this.nextSegAddress = nextSegAddress;
   }
 
-  public static void preAllocate(ByteBuffer buf) {
-    short size = (short) buf.capacity();
-    if (Segment.PRE_ALL_BUF == null) {
-      // construct a buffer as header without segment length (2 bytes)
-      Segment.PRE_ALL_BUF = ByteBuffer.allocate(Segment.SEG_HEADER_SIZE - 2);
-      ReadWriteIOUtils.write((short)0, Segment.PRE_ALL_BUF);
-      ReadWriteIOUtils.write((short)0, Segment.PRE_ALL_BUF);
-      ReadWriteIOUtils.write((short)0, Segment.PRE_ALL_BUF);
-      ReadWriteIOUtils.write(0L, Segment.PRE_ALL_BUF);
-      ReadWriteIOUtils.write(0L, Segment.PRE_ALL_BUF);
-      ReadWriteIOUtils.write(false, Segment.PRE_ALL_BUF);
-    }
-    Segment.PRE_ALL_BUF.clear();
-    buf.clear();
-    ReadWriteIOUtils.write(size, buf);
-    buf.put(Segment.PRE_ALL_BUF);
-  }
-
   /**
    * To decouple search implementation from other methods
    * Rather than offset of the target key, index could be used to update or remove on keyAddressList
@@ -467,6 +449,17 @@ public class Segment implements ISegment {
     }
     builder.append("]");
     return builder.toString();
+  }
+
+  /**
+   * If buffer position is set to begin of the segment, this methods extract length of it.
+   * @param buffer
+   * @return
+   */
+  static short getSegBufLen(ByteBuffer buffer) {
+    short res = ReadWriteIOUtils.readShort(buffer);
+    buffer.position(buffer.position() - 2);
+    return res;
   }
 
   @TestOnly

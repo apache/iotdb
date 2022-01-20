@@ -19,10 +19,10 @@ import java.util.Map;
 import java.util.Queue;
 
 /**
- * This class is aimed to manage space over one page.
+ * This class is aimed to manage space inside one page.
  * A segment inside a page has 3 representation: index, offset and instance.
  * Index is meant to decouple file-wide indexing with in-page compaction;
- * Offset is meant for in-page indexing, and instance is meant for records manipulations.
+ * Offset is meant for in-page indexing, and segment instance is meant for records manipulations.
  */
 public class SchemaPage implements ISchemaPage{
 
@@ -360,7 +360,7 @@ public class SchemaPage implements ISchemaPage{
 
     pageBuffer.clear();
     pageBuffer.position(getSegmentOffset(index));
-    pageBuffer.limit(pageBuffer.position() + ISegment.getSegBufLen(pageBuffer));
+    pageBuffer.limit(pageBuffer.position() + Segment.getSegBufLen(pageBuffer));
 
     ISegment res = Segment.loadAsSegment(pageBuffer.slice());
     segCacheMap.put(index, res);

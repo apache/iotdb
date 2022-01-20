@@ -8,20 +8,15 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.testcontainers.shaded.org.bouncycastle.asn1.cms.MetaData;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -56,7 +51,7 @@ public class SchemaFileTest {
     while (ite.hasNext()) {
       IMNode curNode = ite.next();
       if (!curNode.isMeasurement()) {
-        sf.write(curNode);
+        sf.writeMNode(curNode);
       }
     }
     System.out.println(((SchemaFile)sf).inspect());
@@ -64,31 +59,31 @@ public class SchemaFileTest {
     int0.getChildren().getSegment().getNewChildBuffer().clear();
     int0.getChildren().getSegment().getUpdatedChildBuffer().put("mint1", getMeasurementNode(int0, "mint1", "alas99999"));
 
-    sf.write(int0);
+    sf.writeMNode(int0);
     System.out.println(((SchemaFile)sf).inspect());
 
     int1.getChildren().getSegment().getNewChildBuffer().clear();
     int1.getChildren().getSegment().getNewChildBuffer().put("int1newM", getMeasurementNode(int0, "int1newM", "alas"));
 
-    sf.write(int1);
+    sf.writeMNode(int1);
     System.out.println(((SchemaFile)sf).inspect());
 
     int4.getChildren().getSegment().getNewChildBuffer().clear();
     int4.getChildren().getSegment().getNewChildBuffer().put("AAAAA", getMeasurementNode(int0, "AAAAA", "alas"));
 
-    sf.write(int4);
+    sf.writeMNode(int4);
     System.out.println(((SchemaFile)sf).inspect());
 
     int4.getChildren().getSegment().getNewChildBuffer().clear();
     int4.getChildren().getSegment().getUpdatedChildBuffer().put("AAAAA", getMeasurementNode(int0, "AAAAA", "BBBBBB"));
 
-    sf.write(int4);
+    sf.writeMNode(int4);
     System.out.println(((SchemaFile)sf).inspect());
 
     int4.getChildren().getSegment().getUpdatedChildBuffer().clear();
     int4.getChildren().getSegment().getUpdatedChildBuffer().put("finalM191", getMeasurementNode(int0, "finalM191", "ALLLLLLLLLLLLLLLLLLLLfinalM191"));
 
-    sf.write(int4);
+    sf.writeMNode(int4);
     System.out.println(((SchemaFile)sf).inspect());
 
     sf.close();
@@ -105,7 +100,7 @@ public class SchemaFileTest {
     IMNode node = new InternalMNode(null, "test");
     node.getChildren().getSegment().setSegmentAddress(0L);
     ISchemaFile sf = new SchemaFile("tsg5");
-    IMNode target = sf.read(node, "aa1");
+    IMNode target = sf.getChildNode(node, "aa1");
     Assert.assertEquals("aa1als", target.getAsMeasurementMNode().getAlias());
     sf.close();
   }

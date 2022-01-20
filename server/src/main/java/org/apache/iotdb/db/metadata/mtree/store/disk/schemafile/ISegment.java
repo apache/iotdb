@@ -60,23 +60,5 @@ public interface ISegment {
   void extendsTo(ByteBuffer newBuffer);
 
   String toString();
-
-  static boolean isDeleted(ByteBuffer buffer) {
-    buffer.clear();
-    buffer.position(ISegment.SEG_HEADER_SIZE - 1);
-    boolean res = ReadWriteIOUtils.readBool(buffer);
-    buffer.clear();
-    return res;
-  }
-
-  /**
-   * If buffer position is set to begin of the segment, this methods extract length of it.
-   * @param buffer
-   * @return
-   */
-  static short getSegBufLen(ByteBuffer buffer) {
-    short res = ReadWriteIOUtils.readShort(buffer);
-    buffer.position(buffer.position() - 2);
-    return res;
-  }
+  
 }
