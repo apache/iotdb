@@ -21,6 +21,7 @@ package org.apache.iotdb.db.newsync.sender.recovery;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipeData;
@@ -105,8 +106,17 @@ public class TsFilePipeLog {
     return createHardLink(tsFile);
   }
 
-  public void addRealTimeTsFileResource(File tsFileResource) throws IOException {
-    createHardLink(tsFileResource);
+  public void addRealTimeTsFileResource(File tsFile) throws IOException {
+    File tsFileResource = new File(tsFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
+    try {
+      createHardLink(tsFileResource);
+    } catch (IOException e) {
+      logger.warn(
+          String.format(
+              "Record tsfile resource %s on disk error, make a empty to close it.",
+              tsFileResource.getPath()));
+      createFile(new File(tsFileDir, getRelativeFilePath(tsFileResource)));
+    }
   }
 
   private File createHardLink(File file) throws IOException {

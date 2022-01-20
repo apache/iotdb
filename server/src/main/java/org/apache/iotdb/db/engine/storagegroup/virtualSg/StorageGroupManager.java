@@ -477,6 +477,14 @@ public class StorageGroupManager {
     }
   }
 
+  /** sync methods */
+
+  public void registerSyncDataCollector(TsFilePipe tsFilePipe) {
+    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
+      processor.registerSyncDataCollecor(tsFilePipe);
+    }
+  }
+
   /**
    * This method is for sync. collect all history data in this storage group, and register to
    * collect real time data.

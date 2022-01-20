@@ -115,7 +115,7 @@ public class TsFilePipe implements Pipe {
       }
       if (!isCollectingRealTimeData) {
         registerMetadata();
-        collectTsFile();
+        registerTsFile();
         isCollectingRealTimeData = true;
       }
 
@@ -180,6 +180,10 @@ public class TsFilePipe implements Pipe {
     IoTDB.metaManager.registerSyncTask(this);
   }
 
+  private void deregisterMetadata() {
+    IoTDB.metaManager.deregisterSyncTask();
+  }
+
   private List<PhysicalPlan> collectHistoryMetadata() {
     List<PhysicalPlan> historyMetadata = new ArrayList<>();
     List<SetStorageGroupPlan> storageGroupPlanList = IoTDB.metaManager.getStorageGroupAsPlan();
@@ -212,6 +216,22 @@ public class TsFilePipe implements Pipe {
               plan, maxSerialNumber, e));
     } finally {
       collectRealTimeDataLock.unlock();
+    }
+  }
+
+  private void registerTsFile() {
+    Iterator<Map.Entry<PartialPath, StorageGroupManager>> sgIterator =
+        StorageEngine.getInstance().getProcessorMap().entrySet().iterator();
+    while (sgIterator.hasNext()) {
+      sgIterator.next().getValue().registerSyncDataCollector(this);
+    }
+  }
+
+  private void deregisterTsFile() {
+    Iterator<Map.Entry<PartialPath, StorageGroupManager>> sgIterator =
+        StorageEngine.getInstance().getProcessorMap().entrySet().iterator();
+    while (sgIterator.hasNext()) {
+      sgIterator.next().getValue().registerSyncDataCollector(null);
     }
   }
 
@@ -275,13 +295,13 @@ public class TsFilePipe implements Pipe {
     }
   }
 
-  public void collectRealTimeTsFileResource(File tsFileResource) {
+  public void collectRealTimeTsFileResource(File tsFile) {
     try {
-      pipeLog.addRealTimeTsFileResource(tsFileResource);
+      pipeLog.addRealTimeTsFileResource(tsFile);
     } catch (IOException e) {
       logger.warn(
           String.format(
-              "Record tsfile resource %s on disk error, because %s.", tsFileResource.getPath(), e));
+              "Record tsfile resource %s on disk error, because %s.", tsFile.getPath(), e));
     }
   }
 
@@ -326,12 +346,23 @@ public class TsFilePipe implements Pipe {
   }
 
   private boolean waitForTsFileClose(TsFilePipeData data) {
-    try {
-      Thread.sleep(SenderConf.defaultWaitingForTsFileCloseMilliseconds);
-    } catch (InterruptedException e) {
-      return false;
+    for (int i = 0; i < SenderConf.defaultWaitingForTsFileRetryNumber; i++) {
+      if (data.isTsFileClosed()) {
+        return true;
+      }
+      try {
+        Thread.sleep(SenderConf.defaultWaitingForTsFileCloseMilliseconds);
+      } catch (InterruptedException e) {
+        logger.warn(
+            String.format(
+                "Be Interrupted when waiting for tsfile %s closed", data.getTsFilePath()));
+      }
+      logger.info(
+          String.format(
+              "Waiting for tsfile %s close, retry %d / %d.",
+              data.getTsFilePath(), (i + 1), SenderConf.defaultWaitingForTsFileRetryNumber));
     }
-    return data.isTsFileClosed();
+    return false;
   }
 
   @Override
@@ -363,7 +394,29 @@ public class TsFilePipe implements Pipe {
     clear();
   }
 
-  private void clear() {}
+  private void clear() {
+    deregisterMetadata();
+    deregisterTsFile();
+
+    singleExecutorService.shutdown();
+
+    try {
+      Thread.sleep(SenderConf.defaultWaitingForDeregisterMilliseconds);
+    } catch (InterruptedException e) {
+      logger.warn(
+          String.format(
+              "Be interrupted when pipe %s %d waiting for deregister from tsfile, because %s.",
+              name, createTime, e));
+    }
+    try {
+      pipeLog.clear();
+    } catch (IOException e) {
+      logger.warn(String.format("Clear pipe %s %d error, because %s.", name, createTime, e));
+    }
+
+    pipeData = null;
+    isCollectingRealTimeData = false;
+  }
 
   @Override
   public String getName() {

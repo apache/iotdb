@@ -1195,6 +1195,9 @@ public class TsFileProcessor {
     long closeStartTime = System.currentTimeMillis();
     writer.endFile();
     tsFileResource.serialize();
+    if (syncDataCollector != null) {
+      syncDataCollector.collectRealTimeTsFileResource(tsFileResource.getTsFile());
+    }
     logger.info("Ended file {}", tsFileResource);
 
     // remove this processor from Closing list in StorageGroupProcessor,
@@ -1244,6 +1247,8 @@ public class TsFileProcessor {
     }
     return logNode;
   }
+
+  /** sync methods */
 
   /**
    * register the sync data collector into this tsfile processor.

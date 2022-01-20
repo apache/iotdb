@@ -31,13 +31,15 @@ public class SenderConf {
 
   public static final String pipeDir = syncDir + File.separator + "sender pipe ";
   public static final String pipeCollectFinishLockName = "finishCollect.lock";
+  public static final Long defaultWaitingForTsFileCloseMilliseconds = 500L;
+  public static final Long defaultWaitingForTsFileRetryNumber = 10L;
+  public static final Long defaultWaitingForDeregisterMilliseconds = 100L;
   public static final String tsFileDirName = "TsFile data";
   public static final String modsOffsetFileSuffix = ".offset";
   public static final String pipeLogDirName = "Pipe log";
   public static final String historyPipeLogName = "pipe data.log.history";
   public static final String realTimePipeLogNameSuffix = "-pipe data.log";
   public static final Long defaultPipeLogSizeInByte = 10485760L;
-  public static final Long defaultWaitingForTsFileCloseMilliseconds = 500L;
   public static final String removeSerialNumberLogName = "remove serial number.log";
 
   public static final String sysDir = syncDir + File.separator + "sys";

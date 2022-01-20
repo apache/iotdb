@@ -3183,6 +3183,23 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
+  /** sync methods */
+
+  public void registerSyncDataCollecor(TsFilePipe tsFilePipe) {
+    writeLock("Register collector for sync");
+    this.syncDataCollector = tsFilePipe;
+    registerTsFileResourceList(tsFileManager.getTsFileList(true), tsFilePipe);
+    registerTsFileResourceList(tsFileManager.getTsFileList(false), tsFilePipe);
+    writeUnlock();
+  }
+
+  private void registerTsFileResourceList(List<TsFileResource> tsFileResources, TsFilePipe tsFilePipe) {
+    int size = tsFileResources.size();
+    for (int i = 0; i < size; i++) {
+      tsFileResources.get(i).getProcessor().registerSyncDataCollector(tsFilePipe);
+    }
+  }
+
   /**
    * This method is for sync. Collect history tsfile data and register in every TsFileProcessor to
    * collect real time tsfile and deletion.

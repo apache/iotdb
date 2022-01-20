@@ -72,6 +72,10 @@ public class TsFilePipeData {
     return resource.exists();
   }
 
+  public String getTsFilePath() {
+    return tsFilePath == null ? "null" : tsFilePath;
+  }
+
   public long getSerialNumber() {
     return serialNumber;
   }
