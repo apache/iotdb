@@ -136,11 +136,12 @@ public class RpcUtils {
   }
 
   public static void verifySuccess(List<TSStatus> statuses) throws BatchExecutionException {
-    StringBuilder errMsgs = new StringBuilder();
+    StringBuilder errMsgs =
+        new StringBuilder().append(TSStatusCode.MULTIPLE_ERROR.getStatusCode()).append(": ");
     for (TSStatus status : statuses) {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && status.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-        errMsgs.append(status.getMessage()).append(";");
+        errMsgs.append(status.getMessage()).append("; ");
       }
     }
     if (errMsgs.length() > 0) {
