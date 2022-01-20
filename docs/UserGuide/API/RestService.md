@@ -39,12 +39,45 @@ RESTful services are disabled by default.
   ```
 
 ### Authentication
-RESTful services use the basic authentication. Each URL request needs to carry `'Authorization': 'Basic ' + base64.encode(username + ':' + password)`.
+Except the liveness probe API `/ping`, RESTful services use the basic authentication. Each URL request needs to carry `'Authorization': 'Basic ' + base64.encode(username + ':' + password)`.
 
+The username used in the following examples is: `root`, and password is: `root`.
+
+And the authorization header is
+
+```
+Authorization: Basic cm9vdDpyb2901
+```
+
+- If a user authorized with incorrect username or password, the following error is returned:
+
+  HTTP Status Code：`401`
+
+  HTTP response body:
+    ```json
+    {
+      "code": 600,
+      "message": "WRONG_LOGIN_PASSWORD_ERROR"
+    }
+    ```
+
+- If the `Authorization` header is missing，the following error is returned:
+
+  HTTP Status Code：`401`
+
+  HTTP response body:
+    ```json
+    {
+      "code": 603,
+      "message": "UNINITIALIZED_AUTH_ERROR"
+    }
+    ```
 
 ### Interface
 
 #### ping
+
+The `/ping` API can be used for service liveness probing.
 
 Request method: `GET`
 
@@ -55,7 +88,7 @@ The user name used in the example is: root, password: root
 Example request: 
 
 ```shell
-$ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
+$ curl http://127.0.0.1:18080/ping
 ```
 Response parameters:
 
@@ -71,15 +104,8 @@ Sample response:
   "message": "SUCCESS_STATUS"
 }
 ```
-Example Of user name and password authentication failure:
-```json
-{
-  "code": 600,
-  "message": "WRONG_LOGIN_PASSWORD_ERROR"
-}
-```
 
-
+> `/ping` can be accessed without authorization.
 
 #### query
 
@@ -882,4 +908,3 @@ trust_store_pwd=
 ```properties
 idle_timeout=5000
 ```
-
