@@ -97,7 +97,6 @@ import org.apache.iotdb.db.qp.logical.sys.ShowContinuousQueriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowLockInfoOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowPipeOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowPipeSinkOperator;
@@ -2009,13 +2008,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
   }
 
-  // Show Merge Info
-
-  @Override
-  public Operator visitShowMergeInfo(IoTDBSqlParser.ShowMergeInfoContext ctx) {
-    return new ShowMergeStatusOperator(SQLConstant.TOK_SHOW_MERGE_STATUS);
-  }
-
   // Show Query Processlist
 
   @Override
@@ -2354,8 +2346,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public String parseNodeNameCanInExpr(IoTDBSqlParser.NodeNameCanInExprContext ctx) {
     if (ctx.QUTOED_ID_WITHOUT_DOT() != null) {
       return parseStringWithQuotes(ctx.QUTOED_ID_WITHOUT_DOT().getText());
-    } else if (ctx.STRING_LITERAL() != null) {
-      return parseStringWithQuotesInNodeName(ctx.STRING_LITERAL().getText());
+    } else if (ctx.QUTOED_ID() != null) {
+      return parseStringWithQuotes(ctx.QUTOED_ID().getText());
     } else {
       return ctx.getText();
     }

@@ -45,6 +45,16 @@ In root directory:
 </dependencies>
 ```
 
+## Syntax Description
+
+- **IoTDB-SQL interface:** The input SQL parameter needs to conform to the [syntax conventions](../Reference/Syntax-Conventions.md) and be escaped for JAVA strings. For example, you need to add a backslash before the double-quotes. (That is: after JAVA escaping, it is consistent with the SQL statement executed on the command line.)
+- **Other interfaces:**
+  - The node names in path or path prefix as parameter:
+    - The node names which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
+    - The node names enclosed in single or double quotes still need to be enclosed in single or double quotes and must be escaped for JAVA strings.
+    - For the `checkTimeseriesExists` interface, since the IoTDB-SQL interface is called internally, the time-series pathname must be consistent with the SQL syntax conventions and be escaped for JAVA strings.
+  - Identifiers (such as template names) as parameters: The identifiers which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
+
 ## Native APIs
 
 Here we show the commonly used interfaces and their parameters in the Native API:
@@ -79,8 +89,11 @@ session =
         .thriftDefaultBufferSize(int thriftDefaultBufferSize)
         .thriftMaxFrameSize(int thriftMaxFrameSize)
         .enableCacheLeader(boolean enableCacheLeader)
+        .version(Version version)
         .build();
 ```
+
+Version represents the SQL semantic version used by the client, which is used to be compatible with the SQL semantics of 0.12 when upgrading 0.13. The possible values are: `V_0_12`, `V_0_13`.
 
 * Open a Session
 

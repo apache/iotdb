@@ -51,7 +51,6 @@ public class IoTDBSessionDisableMemControlIT {
   @Before
   public void setUp() {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvironmentUtils.closeStatMonitor();
     IoTDBDescriptor.getInstance().getConfig().setEnableMemControl(false);
     EnvironmentUtils.envSetUp();
   }

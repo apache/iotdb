@@ -362,11 +362,11 @@ public class StorageGroupManager {
   }
 
   /** push mergeAll operation down to all virtual storage group processors */
-  public void mergeAll(boolean isFullMerge) {
+  public void mergeAll() {
     for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
         this.virtualStorageGroupProcessor) {
       if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.merge(isFullMerge);
+        virtualStorageGroupProcessor.merge();
       }
     }
   }

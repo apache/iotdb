@@ -58,7 +58,7 @@ dclStatement
 
 utilityStatement
     : merge | fullMerge | flush | clearCache | settle
-    | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showMergeInfo
+    | setSystemStatus | showVersion | showFlushInfo | showLockInfo
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
@@ -602,10 +602,6 @@ showLockInfo
     : SHOW LOCK INFO prefixPath
     ;
 
-// Show Merge Info
-showMergeInfo
-    : SHOW MERGE INFO
-    ;
 
 // Show Query Processlist
 showQueryProcesslist
@@ -745,8 +741,8 @@ suffixPathCanInExpr
 nodeNameCanInExpr
     : wildcard
     | wildcard? ID wildcard?
+    | QUTOED_ID
     | QUTOED_ID_WITHOUT_DOT
-    | STRING_LITERAL
     ;
 
 wildcard

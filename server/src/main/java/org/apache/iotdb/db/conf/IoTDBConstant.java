@@ -180,8 +180,11 @@ public class IoTDBConstant {
   public static final int FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX = 3;
   public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
 
-  // compaction
-  public static final String COMPACTION_TMP_FILE_SUFFIX = ".target";
+  // inner space compaction
+  public static final String INNER_COMPACTION_TMP_FILE_SUFFIX = ".inner";
+
+  // cross space compaction
+  public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX = ".cross";
 
   // client version number
   public enum ClientVersion {

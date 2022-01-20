@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -124,7 +123,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.COMPACTION_LOG_NAME;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
@@ -475,6 +473,7 @@ public class VirtualStorageGroupProcessor {
     try {
       recoverInnerSpaceCompaction(true);
       recoverInnerSpaceCompaction(false);
+      recoverCrossSpaceCompaction();
     } catch (Exception e) {
       throw new StorageGroupProcessorException(e);
     }
@@ -559,16 +558,18 @@ public class VirtualStorageGroupProcessor {
                 + logicalStorageGroupName
                 + "-"
                 + virtualStorageGroupId);
+    timedCompactionScheduleTask.scheduleWithFixedDelay(
+        this::executeCompaction,
+        COMPACTION_TASK_SUBMIT_DELAY,
+        IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleInterval(),
+        TimeUnit.MILLISECONDS);
+  }
 
-    CompactionTaskManager.getInstance()
-        .submitTask(
-            logicalStorageGroupName + "-" + virtualStorageGroupId,
-            0,
-            new CompactionRecoverTask(
-                this::submitTimedCompactionTask,
-                tsFileManager,
-                logicalStorageGroupName,
-                virtualStorageGroupId));
+  /** recover crossSpaceCompaction */
+  private void recoverCrossSpaceCompaction() throws Exception {
+    CompactionRecoverTask compactionRecoverTask =
+        new CompactionRecoverTask(tsFileManager, logicalStorageGroupName, virtualStorageGroupId);
+    compactionRecoverTask.recoverCrossSpaceCompaction();
   }
 
   private void recoverInnerSpaceCompaction(boolean isSequence) throws Exception {
@@ -614,7 +615,8 @@ public class VirtualStorageGroupProcessor {
                           .substring(timePartitionDir.getPath().lastIndexOf(File.separator) + 1)),
                   compactionLog,
                   timePartitionDir.getPath(),
-                  isSequence)
+                  isSequence,
+                  tsFileManager)
               .call();
         }
       }
@@ -636,17 +638,10 @@ public class VirtualStorageGroupProcessor {
               -1,
               logFile,
               logFile.getParent(),
-              isSequence)
+              isSequence,
+              tsFileManager)
           .call();
     }
-  }
-
-  private void submitTimedCompactionTask() {
-    timedCompactionScheduleTask.scheduleWithFixedDelay(
-        this::executeCompaction,
-        COMPACTION_TASK_SUBMIT_DELAY,
-        COMPACTION_TASK_SUBMIT_DELAY,
-        TimeUnit.MILLISECONDS);
   }
 
   private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
@@ -717,10 +712,6 @@ public class VirtualStorageGroupProcessor {
       // resources
       continueFailedRenames(fileFolder, TEMP_SUFFIX);
 
-      // some TsFiles were going to be replaced by the merged files when the system crashed and
-      // the process was interrupted before the merged files could be named
-      continueFailedRenames(fileFolder, MERGE_SUFFIX);
-
       File[] subFiles = fileFolder.listFiles();
       if (subFiles != null) {
         for (File partitionFolder : subFiles) {
@@ -731,11 +722,6 @@ public class VirtualStorageGroupProcessor {
             // such
             // resources
             continueFailedRenames(partitionFolder, TEMP_SUFFIX);
-
-            // some TsFiles were going to be replaced by the merged files when the system crashed
-            // and
-            // the process was interrupted before the merged files could be named
-            continueFailedRenames(partitionFolder, MERGE_SUFFIX);
 
             Collections.addAll(
                 tsFiles,
@@ -2288,12 +2274,8 @@ public class VirtualStorageGroupProcessor {
     resources.clear();
   }
 
-  /**
-   * merge file under this storage group processor
-   *
-   * @param isFullMerge whether this merge is a full merge or not
-   */
-  public void merge(boolean isFullMerge) {
+  /** merge file under this storage group processor */
+  public void merge() {
     writeLock("merge");
     try {
       executeCompaction();
@@ -3041,7 +3023,6 @@ public class VirtualStorageGroupProcessor {
     try {
       // abort ongoing comapctions and merges
       CompactionTaskManager.getInstance().abortCompaction(logicalStorageGroupName);
-      MergeManager.getINSTANCE().abortMerge(logicalStorageGroupName);
       // close all working files that should be removed
       removePartitions(filter, workSequenceTsFileProcessors.entrySet(), true);
       removePartitions(filter, workUnsequenceTsFileProcessors.entrySet(), false);

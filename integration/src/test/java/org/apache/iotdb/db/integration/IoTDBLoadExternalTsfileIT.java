@@ -140,7 +140,6 @@ public class IoTDBLoadExternalTsfileIT {
     IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(1);
     prevCompactionThread =
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData(insertSequenceSqls);
@@ -200,7 +199,9 @@ public class IoTDBLoadExternalTsfileIT {
         tmpDir.mkdirs();
       }
       for (TsFileResource resource : resources) {
-        statement.execute(String.format("unload '%s' '%s'", resource.getTsFilePath(), tmpDir));
+        // test unload using relative path
+        statement.execute(
+            String.format("unload '%s' '%s'", "./" + resource.getTsFilePath(), tmpDir));
       }
       assertEquals(
           0,

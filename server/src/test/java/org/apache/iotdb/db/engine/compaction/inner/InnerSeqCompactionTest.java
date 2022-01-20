@@ -627,8 +627,8 @@ public class InnerSeqCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(1);
     long prevTargetChunkPointNum =
         IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1);
     long prevTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(1);
 
     try {

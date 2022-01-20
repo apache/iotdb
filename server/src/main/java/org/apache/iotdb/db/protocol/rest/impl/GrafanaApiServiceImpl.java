@@ -33,6 +33,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByLevelDataSet;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -103,7 +104,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         QueryDataSet queryDataSet =
             serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-        return QueryDataSetHandler.fillVariablesResult(queryDataSet, physicalPlan);
+        return QueryDataSetHandler.fillGrafanaVariablesResult(queryDataSet, physicalPlan);
       } finally {
         ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }
@@ -159,7 +160,13 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         QueryDataSet queryDataSet =
             serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-        return QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan, 0);
+
+        if (queryDataSet instanceof GroupByLevelDataSet) {
+          return QueryDataSetHandler.fillGroupByLevelDataSet(queryDataSet, 0);
+        } else {
+          return QueryDataSetHandler.fillDataSetWithTimestamps(
+              queryDataSet, (QueryPlan) physicalPlan, 0);
+        }
       } finally {
         ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }

@@ -144,7 +144,7 @@ public class InnerSpaceCompactionExceptionHandler {
         selectedTsFileResourceList,
         targetTsFile);
     TsFileResource tmpTargetTsFile;
-    if (targetTsFile.getTsFilePath().endsWith(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)) {
+    if (targetTsFile.getTsFilePath().endsWith(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)) {
       tmpTargetTsFile = targetTsFile;
       targetTsFile =
           new TsFileResource(
@@ -152,7 +152,8 @@ public class InnerSpaceCompactionExceptionHandler {
                   tmpTargetTsFile
                       .getTsFilePath()
                       .replace(
-                          IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
+                          IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+                          TsFileConstant.TSFILE_SUFFIX)));
     } else {
       tmpTargetTsFile =
           new TsFileResource(
@@ -160,7 +161,8 @@ public class InnerSpaceCompactionExceptionHandler {
                   targetTsFile
                       .getTsFilePath()
                       .replace(
-                          TsFileConstant.TSFILE_SUFFIX, IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+                          TsFileConstant.TSFILE_SUFFIX,
+                          IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
     }
     if (!tmpTargetTsFile.remove()) {
       // failed to remove tmp target tsfile
@@ -174,7 +176,7 @@ public class InnerSpaceCompactionExceptionHandler {
     if (!targetTsFile.remove()) {
       // failed to remove target tsfile
       // system should not carry out the subsequent compaction in case of data redundant
-      LOGGER.warn(
+      LOGGER.error(
           "{} [Compaction][ExceptionHandler] failed to remove target file {}",
           fullStorageGroupName,
           targetTsFile);
@@ -209,7 +211,7 @@ public class InnerSpaceCompactionExceptionHandler {
             targetTsFile);
         for (TsFileResource sourceFile : selectedTsFileResourceList) {
           if (!sourceFile.remove()) {
-            LOGGER.warn(
+            LOGGER.error(
                 "{} [Compaction][ExceptionHandler] failed to remove source file {}",
                 fullStorageGroupName,
                 sourceFile);
@@ -228,7 +230,7 @@ public class InnerSpaceCompactionExceptionHandler {
       } else {
         // target file is not complete, and some source file is lost
         // some data is lost
-        LOGGER.warn(
+        LOGGER.error(
             "{} [Compaction][ExceptionHandler] target file {} is not complete, and some source files {} is lost, do nothing. Set allowCompaction to false",
             fullStorageGroupName,
             targetTsFile,

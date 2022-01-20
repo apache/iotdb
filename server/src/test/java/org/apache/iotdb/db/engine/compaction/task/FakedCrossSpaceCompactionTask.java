@@ -20,37 +20,30 @@
 package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
 import java.util.List;
 
-public class FakedCrossSpaceCompactionTask extends InplaceCompactionTask {
+public class FakedCrossSpaceCompactionTask extends RewriteCrossSpaceCompactionTask {
   public FakedCrossSpaceCompactionTask(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartitionId,
-      CrossSpaceMergeResource mergeResource,
       String storageGroupDir,
-      TsFileResourceList seqTsFileResourceList,
-      TsFileResourceList unSeqTsFileResourceList,
+      TsFileManager tsFileManager,
       List<TsFileResource> selectedSeqTsFileResourceList,
-      List<TsFileResource> selectedUnSeqTsFileResourceList,
-      int concurrentMergeCount) {
+      List<TsFileResource> selectedUnSeqTsFileResourceList) {
     super(
         logicalStorageGroupName,
         virtualStorageGroupName,
         timePartitionId,
-        mergeResource,
         storageGroupDir,
-        seqTsFileResourceList,
-        unSeqTsFileResourceList,
+        tsFileManager,
         selectedSeqTsFileResourceList,
         selectedUnSeqTsFileResourceList,
-        concurrentMergeCount,
         CompactionTaskManager.currentTaskNum);
   }
 
@@ -66,6 +59,6 @@ public class FakedCrossSpaceCompactionTask extends InplaceCompactionTask {
           .setTsFileSize(resource.getTsFileSize() + avgSizeAddToSeqFile);
     }
     selectedUnSeqTsFileResourceList.clear();
-    unSeqTsFileResourceList.clear();
+    //    unSeqTsFileResourceList.clear();
   }
 }

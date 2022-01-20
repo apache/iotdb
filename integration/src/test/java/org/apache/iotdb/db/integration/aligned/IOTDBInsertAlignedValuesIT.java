@@ -42,11 +42,12 @@ import java.util.Objects;
 @Category({LocalStandaloneTest.class})
 public class IOTDBInsertAlignedValuesIT {
   private static Connection connection;
+  private static final int oldTsFileGroupSizeInByte =
+      TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
   private int numOfPointsPerPage;
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -60,6 +61,7 @@ public class IOTDBInsertAlignedValuesIT {
     close();
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
     EnvironmentUtils.cleanEnv();
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldTsFileGroupSizeInByte);
   }
 
   private static void close() {
