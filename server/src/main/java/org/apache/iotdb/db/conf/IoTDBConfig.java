@@ -793,7 +793,7 @@ public class IoTDBConfig {
    * whether enable the influxdb rpc service. This parameter has no a corresponding field in the
    * iotdb-engine.properties
    */
-  private boolean enableInfluxDBRpcService = true;
+  private boolean enableInfluxDBRpcService = false;
 
   /** the size of ioTaskQueue */
   private int ioTaskQueueSizeForFlushing = 10;
