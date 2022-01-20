@@ -213,7 +213,7 @@ Here are some examples of valid CONTROL content:
 *  `group by ([0, 20), 2ms, 3ms), level=1`
 
 
-Tip: to avoid oom problems, select * from root is not recommended xx.** This statement is used in the grafana plugin.
+Tip: Statements like `select * from root.xx.**` are not recommended because those statements may cause OOM.
 
 #### Support for variables and template functions
 
