@@ -693,7 +693,6 @@ var config = {
 							['API/Programming-Go-Native-API','Go Native API'],
 							['API/Programming-JDBC','JDBC (Not Recommend)'],
 							['API/Programming-MQTT','MQTT'],
-							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/Status-Codes','Status Codes']
 						]
