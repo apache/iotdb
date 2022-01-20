@@ -1660,7 +1660,6 @@ var config = {
 							['API/Programming-Go-Native-API','Go 原生接口'],
 							['API/Programming-JDBC','JDBC (不推荐)'],
 							['API/Programming-MQTT','MQTT'],
-							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/InfluxDB-Protocol','InfluxDB 协议适配器（开发中)'],
 							['API/Status-Codes','状态码']
