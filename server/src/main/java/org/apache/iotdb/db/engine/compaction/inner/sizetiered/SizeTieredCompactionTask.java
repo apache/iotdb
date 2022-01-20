@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -178,6 +179,15 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
             String.format(
                 "%s [Compaction] compaction abort because cannot acquire write lock",
                 fullStorageGroupName));
+      }
+
+      if (targetTsFileResource.getTsFile().length()
+          < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
+        // the file size is smaller than magic string and version number
+        throw new RuntimeException(
+            String.format(
+                "target file %s is smaller than magic string and version number size",
+                targetTsFileResource));
       }
 
       // delete the old files
