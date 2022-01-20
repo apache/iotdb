@@ -3196,7 +3196,10 @@ public class VirtualStorageGroupProcessor {
       List<TsFileResource> tsFileResources, TsFilePipe tsFilePipe) {
     int size = tsFileResources.size();
     for (int i = 0; i < size; i++) {
-      tsFileResources.get(i).getProcessor().registerSyncDataCollector(tsFilePipe);
+      TsFileProcessor tsFileProcessor = tsFileResources.get(i).getProcessor();
+      if (tsFileProcessor != null) {
+        tsFileResources.get(i).getProcessor().registerSyncDataCollector(tsFilePipe);
+      }
     }
   }
 
@@ -3227,10 +3230,14 @@ public class VirtualStorageGroupProcessor {
       if (tsFileResource.getFileEndTime() < dataStartTime) {
         continue;
       }
-      boolean isRealTimeTsFile =
-          tsFileResource
-              .getProcessor()
-              .registerSyncDataCollector(syncDataCollector); // register to collect real time data
+      TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+      boolean isRealTimeTsFile = false;
+      if (tsFileProcessor != null) {
+        isRealTimeTsFile =
+            tsFileResource
+                .getProcessor()
+                .registerSyncDataCollector(syncDataCollector); // register to collect real time data
+      }
       if (!isRealTimeTsFile) {
         File mods = new File(tsFileResource.getModFile().getFilePath());
         long modsOffset = mods.exists() ? mods.length() : 0L;

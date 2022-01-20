@@ -84,6 +84,7 @@ public class TsFilePipeLog {
               "Can not find %s mods to create hard link. The mods offset is %d.",
               mods.getPath(), modsOffset));
     }
+    addTsFileResource(tsFile);
     return addRealTimeTsFile(tsFile);
   }
 
@@ -106,7 +107,7 @@ public class TsFilePipeLog {
     return createHardLink(tsFile);
   }
 
-  public void addRealTimeTsFileResource(File tsFile) throws IOException {
+  public void addTsFileResource(File tsFile) throws IOException {
     File tsFileResource = new File(tsFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
     try {
       createHardLink(tsFileResource);

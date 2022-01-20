@@ -297,7 +297,7 @@ public class TsFilePipe implements Pipe {
 
   public void collectRealTimeTsFileResource(File tsFile) {
     try {
-      pipeLog.addRealTimeTsFileResource(tsFile);
+      pipeLog.addTsFileResource(tsFile);
     } catch (IOException e) {
       logger.warn(
           String.format(
@@ -307,6 +307,7 @@ public class TsFilePipe implements Pipe {
 
   /** transport data * */
   private void transport() {
+    // handshake
     try {
       while (true) {
         if (status == PipeStatus.STOP || status == PipeStatus.DROP) {
