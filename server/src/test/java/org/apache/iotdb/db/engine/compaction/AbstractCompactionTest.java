@@ -191,15 +191,16 @@ public class AbstractCompactionTest {
     TsFileResource resource = new TsFileResource(file);
     int deviceStartindex = 0;
     if (isAlign) {
+      deviceStartindex = TsFileGeneratorUtils.getAlignDeviceOffset();
       for (int i = deviceStartindex; i < deviceStartindex + deviceNum; i++) {
         resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, startTime);
         resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, endTime);
       }
-      deviceStartindex = TsFileGeneratorUtils.getAlignDeviceOffset();
-    }
-    for (int i = deviceStartindex; i < deviceStartindex + deviceNum; i++) {
-      resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, startTime);
-      resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, endTime);
+    } else {
+      for (int i = deviceStartindex; i < deviceStartindex + deviceNum; i++) {
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, startTime);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, endTime);
+      }
     }
     resource.updatePlanIndexes(fileVersion);
     resource.setClosed(true);

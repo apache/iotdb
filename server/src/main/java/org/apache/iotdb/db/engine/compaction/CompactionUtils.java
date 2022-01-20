@@ -284,7 +284,6 @@ public class CompactionUtils {
     } else {
       fileSuffix = IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX;
     }
-    // checkAndUpdateTargetFileResources(targetResources, fileSuffix);
     for (TsFileResource targetResource : targetResources) {
       moveOneTargetFile(targetResource, fileSuffix, fullStorageGroupName);
     }
@@ -304,7 +303,9 @@ public class CompactionUtils {
     File newFile =
         new File(
             targetResource.getTsFilePath().replace(tmpFileSuffix, TsFileConstant.TSFILE_SUFFIX));
-    FSFactoryProducer.getFSFactory().moveFile(targetResource.getTsFile(), newFile);
+    if (!newFile.exists()) {
+      FSFactoryProducer.getFSFactory().moveFile(targetResource.getTsFile(), newFile);
+    }
 
     // serialize xxx.tsfile.resource
     targetResource.setFile(newFile);
@@ -374,7 +375,6 @@ public class CompactionUtils {
             ModificationFile.getCompactionMods(sourceFile);
         Collection<Modification> newModification = compactionModificationFile.getModifications();
         compactionModificationFile.close();
-        sourceFile.resetModFile();
         // write the new modifications to its old modification file
         try (ModificationFile oldModificationFile = sourceFile.getModFile()) {
           for (Modification modification : newModification) {
