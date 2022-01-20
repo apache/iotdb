@@ -29,7 +29,7 @@
 
 ## 相关类
 
-* org.apache.iotdb.db.service.TSServiceImpl
+* org.apache.iotdb.db.service.thrift.impl.TSServiceImpl.java
 
 	IoTDB 服务器端 RPC 实现，与客户端进行直接交互。
 	
