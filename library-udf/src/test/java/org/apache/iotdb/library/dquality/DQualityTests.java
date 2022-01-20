@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dquality;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -30,6 +31,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -43,6 +45,12 @@ import static org.junit.Assert.fail;
 
 public class DQualityTests {
   protected static final int ITERATION_TIMES = 10_000;
+  private static final float oldUdfCollectorMemoryBudgetInMB =
+      IoTDBDescriptor.getInstance().getConfig().getUdfCollectorMemoryBudgetInMB();
+  private static final float oldUdfTransformerMemoryBudgetInMB =
+      IoTDBDescriptor.getInstance().getConfig().getUdfTransformerMemoryBudgetInMB();
+  private static final float oldUdfReaderMemoryBudgetInMB =
+      IoTDBDescriptor.getInstance().getConfig().getUdfReaderMemoryBudgetInMB();
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -130,9 +138,9 @@ public class DQualityTests {
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterClass();
     ConfigFactory.getConfig()
-        .setUdfCollectorMemoryBudgetInMB(100)
-        .setUdfTransformerMemoryBudgetInMB(100)
-        .setUdfReaderMemoryBudgetInMB(100);
+        .setUdfCollectorMemoryBudgetInMB(oldUdfCollectorMemoryBudgetInMB)
+        .setUdfTransformerMemoryBudgetInMB(oldUdfTransformerMemoryBudgetInMB)
+        .setUdfReaderMemoryBudgetInMB(oldUdfReaderMemoryBudgetInMB);
   }
 
   @Test
@@ -159,7 +167,7 @@ public class DQualityTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      Assert.assertTrue(result >= -0.0D && result <= 1.0D);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -174,7 +182,7 @@ public class DQualityTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      Assert.assertTrue(result >= -0.0D && result <= 1.0D);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -189,7 +197,7 @@ public class DQualityTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      Assert.assertTrue(result >= -0.0D && result <= 1.0D);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -204,7 +212,7 @@ public class DQualityTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      Assert.assertTrue(result >= -0.0D && result <= 1.0D);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -219,7 +227,7 @@ public class DQualityTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      Assert.assertTrue(result >= -0.0D && result <= 1.0D);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -234,7 +242,7 @@ public class DQualityTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      Assert.assertTrue(result >= -0.0D && result <= 1.0D);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -249,7 +257,7 @@ public class DQualityTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      Assert.assertTrue(result >= -0.0D && result <= 1.0D);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -264,7 +272,7 @@ public class DQualityTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      Assert.assertTrue(result >= -0.0D && result <= 1.0D);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -279,7 +287,7 @@ public class DQualityTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      Assert.assertTrue(result >= -0.0D && result <= 1.0D);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -294,7 +302,7 @@ public class DQualityTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      Assert.assertTrue(result >= -0.0D && result <= 1.0D);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -309,7 +317,7 @@ public class DQualityTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      Assert.assertTrue(result >= -0.0D && result <= 1.0D);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -324,7 +332,7 @@ public class DQualityTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      Assert.assertTrue(result >= -0.0D && result <= 1.0D);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -339,7 +347,7 @@ public class DQualityTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      Assert.assertTrue(result >= -0.0D && result <= 1.0D);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -354,7 +362,7 @@ public class DQualityTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      Assert.assertTrue(result >= -0.0D && result <= 1.0D);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -369,7 +377,7 @@ public class DQualityTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      Assert.assertTrue(result >= -0.0D && result <= 1.0D);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
