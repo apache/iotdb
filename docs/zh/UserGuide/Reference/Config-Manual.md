@@ -619,14 +619,6 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 3600 |
 |改后生效方式|重启服务生效|
 
-* time\_index\_level
-
-|名字| time\_index\_level |
-|:---:|:---|
-|描述| TimeIndex的级别，记录了TsFileResource的开始时间和结束时间。 目前，支持 DEVICE_TIME_INDEX 和 FILE_TIME_INDEX，第一次设置后无法更改。 |
-|类型| String |
-|默认值| DEVICE_TIME_INDEX |
-|改后生效方式|触发生效|
 
 ### 内存控制配置
 
