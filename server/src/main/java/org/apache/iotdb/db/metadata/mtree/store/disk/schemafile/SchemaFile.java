@@ -61,11 +61,6 @@ public class SchemaFile implements ISchemaFile{
 
   FileChannel channel;
 
-  @TestOnly
-  public SchemaFile() throws IOException, MetadataException {
-    this("testPMT");
-  }
-
   public SchemaFile(String sgName) throws IOException, MetadataException {
     this(sgName, false);
   }
@@ -541,15 +536,15 @@ public class SchemaFile implements ISchemaFile{
 
   // region Utilities
 
-  static long getGlobalIndex(int pageIndex, short segIndex) {
+  public static long getGlobalIndex(int pageIndex, short segIndex) {
     return ((pageIndex << SchemaFile.SEG_INDEX_DIGIT) | (segIndex & SchemaFile.SEG_INDEX_MASK));
   }
 
-  static int getPageIndex(long globalIndex) {
+  public static int getPageIndex(long globalIndex) {
     return ((int) globalIndex >>> SchemaFile.SEG_INDEX_DIGIT);
   }
 
-  static short getSegIndex(long globalIndex) {
+  public static short getSegIndex(long globalIndex) {
     return (short) (globalIndex & SchemaFile.SEG_INDEX_MASK);
   }
 
@@ -620,6 +615,11 @@ public class SchemaFile implements ISchemaFile{
     src.getPageBuffer(srcBuf);
     srcBuf.clear();
     channel.write(srcBuf, getPageAddress(src.getPageIndex()));
+  }
+
+  @TestOnly
+  public SchemaPage getPage(int index) throws IOException, MetadataException{
+    return (SchemaPage) getPageInstance(index);
   }
 
   // endregion

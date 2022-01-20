@@ -7,6 +7,7 @@ import org.apache.iotdb.db.exception.metadata.SegmentOverflowException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.service.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.service.traverser.collector.MeasurementCollector;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -289,6 +290,7 @@ public class SchemaPage implements ISchemaPage{
     this.pageBuffer.put(newBuf);
 
     this.pageBuffer.position(pageSpareOffset);
+    this.pageBuffer.limit(pageSpareOffset + newSegSize);
     ISegment newSeg = Segment.loadAsSegment(this.pageBuffer.slice());
 
     return SchemaFile.getGlobalIndex(pageIndex, registerNewSegment(newSeg));
@@ -565,5 +567,9 @@ public class SchemaPage implements ISchemaPage{
 
   // endregion
 
+  @TestOnly
+  public Segment getSegmentTest(short idx) throws SegmentNotFoundException{
+    return (Segment) getSegment(idx);
+  }
 
 }

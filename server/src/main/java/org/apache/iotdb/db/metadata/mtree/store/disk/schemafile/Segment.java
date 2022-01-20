@@ -72,11 +72,12 @@ public class Segment implements ISegment {
       freeAddr = ReadWriteIOUtils.readShort(buffer);
       recordNum = ReadWriteIOUtils.readShort(buffer);
       pairLength = ReadWriteIOUtils.readShort(buffer);
-      delFlag = ReadWriteIOUtils.readBool(buffer);
+
 
       // parRecord = ReadWriteIOUtils.readLong(buffer);
       prevSegAddress = ReadWriteIOUtils.readLong(buffer);
       nextSegAddress = ReadWriteIOUtils.readLong(buffer);
+      delFlag = ReadWriteIOUtils.readBool(buffer);
 
       buffer.position(Segment.SEG_HEADER_SIZE);
       buffer.limit(Segment.SEG_HEADER_SIZE + pairLength);
@@ -270,7 +271,6 @@ public class Segment implements ISegment {
     ReadWriteIOUtils.write(freeAddr, prefBuffer);
     ReadWriteIOUtils.write(recordNum, prefBuffer);
     ReadWriteIOUtils.write(pairLength, prefBuffer);
-    ReadWriteIOUtils.write(delFlag, prefBuffer);
     ReadWriteIOUtils.write(prevSegAddress, prefBuffer);
     ReadWriteIOUtils.write(nextSegAddress, prefBuffer);
     ReadWriteIOUtils.write(delFlag, prefBuffer);
@@ -477,5 +477,13 @@ public class Segment implements ISegment {
     return null;
   }
 
+  @TestOnly
+  public ByteBuffer getInnerBuffer() {
+    return this.buffer;
+  }
 
+  @TestOnly
+  public List<Pair<String, Short>> getKeyOffsetList() {
+    return keyAddressList;
+  }
 }

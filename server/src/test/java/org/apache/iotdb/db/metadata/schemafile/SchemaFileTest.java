@@ -7,10 +7,15 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.Segment;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -121,6 +126,41 @@ public class SchemaFileTest {
 
   }
 
+  @Test
+  public void testVerticalTree() throws MetadataException, IOException {
+    ISchemaFile sf = new SchemaFile("vt", true);
+    IMNode root = getVerticalTree(100, "VT");
+    Iterator<IMNode> ite = getTreeBFT(root);
+    while (ite.hasNext()) {
+      sf.writeMNode(ite.next());
+    }
+    printSF(sf);
+
+    IMNode vt1 = getNode(root, "root.VT_0.VT_1");
+    vt1.getChildren().getSegment().getNewChildBuffer().clear();
+    addMeasurementChild(vt1, "newM");
+    sf.writeMNode(vt1);
+    printSF(sf);
+
+    IMNode vt0 = getNode(root, "root.VT_0");
+    Assert.assertEquals(vt1.getChildren().getSegment().getSegmentAddress(),
+        RecordUtils.getRecordSegAddr(getSegment(sf, vt0.getChildren().getSegment().getSegmentAddress()).getRecord("VT_1")));
+    Assert.assertEquals(2, getSegment(sf, vt1.getChildren().getSegment().getSegmentAddress()).getKeyOffsetList().size());
+    sf.close();
+  }
+
+  private void printSF(ISchemaFile file) throws IOException, MetadataException {
+    System.out.println(((SchemaFile)file).inspect());
+  }
+
+  private SchemaPage getPage(ISchemaFile sf, long addr) throws MetadataException, IOException {
+    return ((SchemaFile)sf).getPage(SchemaFile.getPageIndex(addr));
+  }
+
+  private Segment getSegment(ISchemaFile sf, long addr) throws MetadataException, IOException {
+    return getPage(sf, addr).getSegmentTest(SchemaFile.getSegIndex(addr));
+  }
+
 
   public static void print(Object o) {
     System.out.println(o.toString());
@@ -168,6 +208,37 @@ public class SchemaFileTest {
     }
 
     return internalNode;
+  }
+
+  private IMNode getVerticalTree(int height, String id) {
+    IMNode root = new EntityMNode(null, "root");
+    int cnt = 0;
+    IMNode cur = root;
+    while (cnt < height) {
+      cur.addChild(new EntityMNode(cur, id + "_" + cnt));
+      cur = cur.getChild(id+"_"+cnt);
+      cnt++;
+    }
+    return root;
+  }
+
+  private void addMeasurementChild(IMNode par, String mid) {
+    par.addChild(getMeasurementNode(par, mid, mid+"alias"));
+  }
+
+  private IMeasurementSchema getSchema(String id) {
+    return new MeasurementSchema(id, TSDataType.FLOAT);
+  }
+
+  private IMNode getNode(IMNode root, String path) throws MetadataException{
+    String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
+    IMNode cur = root;
+    for (String node : pathNodes) {
+      if (!node.equals("root")) {
+        cur = cur.getChild(node);
+      }
+    }
+    return cur;
   }
 
   private IMNode getFlatTree(int flatSize) {
