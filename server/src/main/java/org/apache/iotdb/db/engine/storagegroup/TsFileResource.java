@@ -54,13 +54,7 @@ import java.io.OutputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.getTsFileName;
@@ -292,7 +286,7 @@ public class TsFileResource {
       for (int i = 0; i < size; i++) {
         String path = ReadWriteIOUtils.readString(inputStream);
         long time = ReadWriteIOUtils.readLong(inputStream);
-        deviceMap.put(path, i);
+        deviceMap.put(path.intern(), i);
         startTimesArray[i] = time;
       }
       size = ReadWriteIOUtils.readInt(inputStream);

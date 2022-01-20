@@ -45,14 +45,7 @@ import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
-import org.apache.iotdb.db.exception.TriggerExecutionException;
-import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
@@ -100,20 +93,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -158,8 +139,7 @@ public class VirtualStorageGroupProcessor {
   private static final int MERGE_MOD_START_VERSION_NUM = 1;
 
   private static final Logger logger = LoggerFactory.getLogger(VirtualStorageGroupProcessor.class);
-  /** indicating the file to be loaded already exists locally. */
-  private static final int POS_ALREADY_EXIST = -2;
+
   /** indicating the file to be loaded overlap with some files. */
   private static final int POS_OVERLAP = -3;
 
@@ -530,7 +510,7 @@ public class VirtualStorageGroupProcessor {
       Map<String, Long> endTimeMap = new HashMap<>();
       for (String deviceId : resource.getDevices()) {
         long endTime = resource.getEndTime(deviceId);
-        endTimeMap.put(deviceId, endTime);
+        endTimeMap.put(deviceId.intern(), endTime);
       }
       lastFlushTimeManager.setMultiDeviceLastTime(timePartitionId, endTimeMap);
       lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);

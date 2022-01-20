@@ -21,17 +21,12 @@ package org.apache.iotdb.db.metadata.mnode;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.rescon.CachedStringPool;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 public abstract class MNode implements IMNode {
-
-  private static Map<String, String> cachedPathPool =
-      CachedStringPool.getInstance().getCachedPool();
 
   /** Name of the MNode */
   protected String name;
@@ -95,13 +90,7 @@ public abstract class MNode implements IMNode {
   @Override
   public String getFullPath() {
     if (fullPath == null) {
-      fullPath = concatFullPath();
-      String cachedFullPath = cachedPathPool.get(fullPath);
-      if (cachedFullPath == null) {
-        cachedPathPool.put(fullPath, fullPath);
-      } else {
-        fullPath = cachedFullPath;
-      }
+      fullPath = concatFullPath().intern();
     }
     return fullPath;
   }
