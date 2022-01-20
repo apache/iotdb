@@ -49,7 +49,6 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneTest.class})
 public class IoTDBNewTsFileCompactionIT {
 
-  private int prevMergePagePointNumber;
   private int preMaxNumberOfPointsInPage;
   private PartialPath storageGroupPath;
   private int originCompactionFileNum;
@@ -60,12 +59,9 @@ public class IoTDBNewTsFileCompactionIT {
 
   @Before
   public void setUp() throws Exception {
-    prevMergePagePointNumber =
-        IoTDBDescriptor.getInstance().getConfig().getMergePagePointNumberThreshold();
     preMaxNumberOfPointsInPage =
         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
     storageGroupPath = new PartialPath("root.sg1");
-    IoTDBDescriptor.getInstance().getConfig().setMergePagePointNumberThreshold(1);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(1);
     originCompactionFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
@@ -87,9 +83,6 @@ public class IoTDBNewTsFileCompactionIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMergePagePointNumberThreshold(prevMergePagePointNumber);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setMaxCompactionCandidateFileNum(originCompactionFileNum);

@@ -778,45 +778,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |    默认值    | 1.0                                |
 | 改后生效方式 | 重启服务生效                       |
 
-### 插入配置
-
-- insert_multi_tablet_enable_multithreading_column_threshold
-
-|     名字     | insert_multi_tablet_enable_multithreading_column_threshold |
-| :----------: | :--------------------------------------------------------- |
-|     描述     | 插入时启用多线程插入列数的阈值                             |
-|     类型     | Int32                                                      |
-|    默认值    | 10                                                         |
-| 改后生效方式 | 重启服务生效                                               |
-
 ### 合并配置
-
-* concurrent\_compaction\_thread
-
-|名字| concurrent\_compaction\_thread |
-|:---:|:---|
-|描述| 执行合并任务的线程数目 |
-|类型| Integer |
-|默认值| 10 |
-|改后生效方式|重启服务生效|
-
-* compaction\_schedule\_interval
-
-|名字| compaction\_schedule\_interval |
-|:---:|:---|
-|描述| 合并调度的时间间隔 |
-|类型| Long，单位为毫秒 |
-|默认值| 60000，建议不要设置的太小 |
-|改后生效方式|重启服务生效|
-
-* compaction\_submission\_interval
-
-|名字| compaction\_submission\_interval |
-|:---:|:---|
-|描述| 合并任务提交的间隔 |
-|类型| Long，单位为毫秒 |
-|默认值| 60000，建议不要设置的太小 |
-|改后生效方式|重启服务生效|
 
 * enable\_seq\_space\_compaction
 
@@ -850,8 +812,8 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |名字| cross\_compaction\_strategy |
 |:---:|:---|
 |描述| 跨空间合并的策略 |
-|类型| String，暂时只有 INPLACE_COMPACTION 一个策略可选 |
-|默认值| inplace_compaction |
+|类型| String |
+|默认值| rewrite\_compaction |
 |改后生效方式|重启服务生效|
 
 * inner\_compaction\_strategy
@@ -859,8 +821,8 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |名字| cross\_compaction\_strategy |
 |:---:|:---|
 |描述| 空间内合并的策略 |
-|类型| String，暂时只有 SIZE_TIERED_COMPACTION 一个策略可选 |
-|默认值| size_tiered_compaction |
+|类型| String|
+|默认值| size\_tiered\_compaction |
 |改后生效方式|重启服务生效|
 
 * compaction\_priority
@@ -869,7 +831,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |:---:|:---|
 |描述| 合并时的优先级，BALANCE 各种合并平等，INNER_CROSS 优先进行顺序文件和顺序文件或乱序文件和乱序文件的合并，CROSS_INNER 优先将乱序文件合并到顺序文件中 |
 |类型| String |
-|默认值| inner_cross，有 inner_cross、balance、cross_inner 三种可选 |
+|默认值| balance |
 |改后生效方式|重启服务生效|
 
 * target\_compaction\_file\_size
@@ -877,17 +839,8 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |名字| target\_compaction\_file\_size |
 |:---:|:---|
 |描述| 空间内合并的目标文件大小 |
-|类型| Long，单位为字节|
-|默认值| 1073741824，即 1GB |
-|改后生效方式|重启服务生效|
-
-* max\_compaction\_candidate\_file\_num
-
-|名字| max\_compaction\_candidate\_file\_num |
-|:---:|:---|
-|描述| 一次合并最多参与的文件数 |
-|类型| Integer |
-|默认值| 30，建议不要过小，过小容易导致系统性能变差 |
+|类型| Int64|
+|默认值| 1073741824 |
 |改后生效方式|重启服务生效|
 
 * target\_chunk\_size
@@ -895,8 +848,8 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |名字| target\_chunk\_size |
 |:---:|:---|
 |描述| 合并时 Chunk 的目标大小 |
-|类型| Long，单位为字节|
-|默认值| 1048576，即 1MB |
+|类型| Int64|
+|默认值| 1048576|
 |改后生效方式|重启服务生效|
 
 * target\_chunk\_point\_num
@@ -904,7 +857,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |名字| target\_chunk\_point\_num |
 |:---:|:---|
 |描述| 合并时 Chunk 的目标点数 |
-|类型| Integer |
+|类型| Int32 |
 |默认值| 100000 |
 |改后生效方式|重启服务生效|
 
@@ -913,7 +866,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |名字| chunk\_size\_lower\_bound\_in\_compaction |
 |:---:|:---|
 |描述| 合并时源 Chunk 的大小小于这个值，将被解开成点进行合并 |
-|类型| Long，单位为字节 |
+|类型| Int64 |
 |默认值| 128 |
 |改后生效方式|重启服务生效|
 
@@ -922,72 +875,93 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |名字| chunk\_point\_num\_lower\_bound\_in\_compaction |
 |:---:|:---|
 |描述| 合并时源 Chunk 的点数小于这个值，将被解开成点进行合并 |
-|类型| Integer |
+|类型| Int32 |
 |默认值| 100 |
 |改后生效方式|重启服务生效|
 
-* compaction\_write\_throughput\_mb\_per\_sec\
+* max\_compaction\_candidate\_file\_num
 
-|名字| compaction\_write\_throughput\_mb\_per\_sec\ |
+|名字| max\_compaction\_candidate\_file\_num |
 |:---:|:---|
-|描述| 合并时写入的速率，这个速率为所有线程的写入速率之和 |
-|类型| Integer，单位为 MB/s |
-|默认值| 8，建议不要设置的过大 |
+|描述| 空间内合并中一次合并最多参与的文件数 |
+|类型| Int32 |
+|默认值| 30|
 |改后生效方式|重启服务生效|
 
-* merge\_fileSelection\_time\_budget
+* max\_open\_file\_num\_in\_cross\_space\_compaction
 
-|名字| merge\_fileSelection\_time\_budget |
+|名字| max\_open\_file\_num\_in\_cross\_space\_compaction |
+|:---:|:---|
+|描述| 一次跨空间合并中打开文件的最大数目 |
+|类型| Int32 |
+|默认值| 100|
+|改后生效方式|重启服务生效|
+
+* cross\_compaction\_file\_selection\_time\_budget
+
+|名字| cross\_compaction\_file\_selection\_time\_budget |
 |:---:|:---|
 |描述| 若一个合并文件选择运行的时间超过这个时间，它将结束，并且当前的文件合并选择将用作为最终选择。当时间小于0 时，则表示时间是无边界的。单位：ms。|
 |类型| Int32 |
 |默认值| 30000 |
 |改后生效方式| 重启服务生效|
 
-* merge\_memory\_budget
+* cross\_compaction\_memory\_budget
 
-|名字| merge\_memory\_budget |
+|名字| cross\_compaction\_memory\_budget |
 |:---:|:---|
 |描述| 一个合并任务可以使用多少内存（以字节为单位），默认为最大JVM内存的10%。这只是一个粗略的估计，从一个比较小的值开始，避免OOM。每个新的合并线程可能会占用这样的内存，所以merge_thread_num * merge_memory_budget是合并的预估总内存。|
 |类型| Int32 |
 |默认值| 2147483648 |
 |改后生效方式| 重启服务生效|
 
-* continue\_merge\_after\_reboot
+* concurrent\_compaction\_thread
 
-|名字| continue\_merge\_after\_reboot |
+|名字| concurrent\_compaction\_thread |
 |:---:|:---|
-|描述| 重启后继续合并，当true时，在系统重启过程中检测到一些崩溃的合并，则此类合并将继续，为false时，则合并中未完成的部分将不会继续，已完成的合并部分仍保持原样，若如果重启太慢，可设置为false。 |
-|类型| Boolean |
-|默认值| false |
-|改后生效方式| 重启服务生效|
-
-* force\_full\_merge
-
-|名字| force\_full\_merge |
-|:---:|:---|
-|描述| 当设置为 true 时，所有乱序文件合并变为完全合并。|
-|类型| Boolean |
-|默认值| true |
-|改后生效方式| 重启服务生效|
-
-* compaction\_thread\_num
-
-|名字| compaction\_thread\_num |
-|:---:|:---|
-|描述| 设置多少线程来执行压缩，默认为 10。数值小于等于0时设置为1。|
+|描述| 执行合并任务的线程数目 |
 |类型| Int32 |
 |默认值| 10 |
-|改后生效方式| 重启服务生效|
+|改后生效方式|重启服务生效|
 
-* merge\_write\_throughput\_mb\_per\_sec
+* compaction\_schedule\_interval\_in\_ms
 
-|名字| merge\_write\_throughput\_mb\_per\_sec |
+|名字| compaction\_schedule\_interval\_in\_ms |
+|:---:|:---|
+|描述| 合并调度的时间间隔 |
+|类型| Int64 |
+|默认值| 60000 |
+|改后生效方式|重启服务生效|
+
+* compaction\_submission\_interval\_in\_ms
+
+|名字| compaction\_submission\_interval\_in\_ms |
+|:---:|:---|
+|描述| 合并任务提交的间隔 |
+|类型| Int64 |
+|默认值| 60000 |
+|改后生效方式|重启服务生效|
+
+* compaction\_write\_throughput\_mb\_per\_sec
+
+|名字| compaction\_write\_throughput\_mb\_per\_sec |
 |:---:|:---|
 |描述| 每秒可达到的写入吞吐量合并限制。|
 |类型| Int32 |
 |默认值| 8 |
 |改后生效方式| 重启服务生效|
+
+
+### 插入配置
+
+- insert_multi_tablet_enable_multithreading_column_threshold
+
+|     名字     | insert_multi_tablet_enable_multithreading_column_threshold |
+| :----------: | :--------------------------------------------------------- |
+|     描述     | 插入时启用多线程插入列数的阈值                             |
+|     类型     | Int32                                                      |
+|    默认值    | 10                                                         |
+| 改后生效方式 | 重启服务生效                                               |
 
 * query\_timeout\_threshold
 

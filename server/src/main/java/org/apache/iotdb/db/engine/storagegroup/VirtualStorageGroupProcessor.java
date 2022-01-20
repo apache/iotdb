@@ -557,7 +557,7 @@ public class VirtualStorageGroupProcessor {
     timedCompactionScheduleTask.scheduleWithFixedDelay(
         this::executeCompaction,
         COMPACTION_TASK_SUBMIT_DELAY,
-        IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleInterval(),
+        IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
         TimeUnit.MILLISECONDS);
   }
 
@@ -2266,7 +2266,7 @@ public class VirtualStorageGroupProcessor {
   }
 
   /** merge file under this storage group processor */
-  public void merge() {
+  public void compact() {
     writeLock("merge");
     try {
       executeCompaction();
