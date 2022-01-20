@@ -3205,10 +3205,10 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
 
     for (TsFileResource resource : seqResources) {
-      resource.setTimeIndexType((byte) 0);
+      resource.setTimeIndexType((byte) 2);
     }
     for (TsFileResource resource : unseqResources) {
-      resource.setTimeIndexType((byte) 0);
+      resource.setTimeIndexType((byte) 2);
     }
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();

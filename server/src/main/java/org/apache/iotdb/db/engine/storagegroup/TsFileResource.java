@@ -962,7 +962,7 @@ public class TsFileResource {
     long endTime = timeIndex.getMaxEndTime();
     // replace the DeviceTimeIndex with FileTimeIndex
     timeIndex = new FileTimeIndex(startTime, endTime);
-    timeIndexType = 0;
+    timeIndexType = 2;
     return ramSize - timeIndex.calculateRamSize();
   }
 
