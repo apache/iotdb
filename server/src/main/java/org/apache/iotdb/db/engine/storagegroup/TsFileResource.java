@@ -92,7 +92,7 @@ public class TsFileResource {
   /** time index */
   protected ITimeIndex timeIndex;
 
-  /** time index type, fileTimeIndex = 0, deviceTimeIndex = 1 */
+  /** time index type, oldFileTimeIndex = 0, deviceTimeIndex = 1, fileTimeIndex = 2 */
   private byte timeIndexType;
 
   private ModificationFile modFile;
@@ -270,6 +270,14 @@ public class TsFileResource {
           modFile = new ModificationFile(modF.getPath());
         }
       }
+    }
+
+    // upgrade from v0.12 to v0.13, we need to rewrite the TsFileResource if the previous time index
+    // is file time index
+    if (timeIndexType == 0) {
+      timeIndexType = 2;
+      timeIndex = new FileTimeIndex(timeIndex.getMinStartTime(), timeIndex.getMaxEndTime());
+      serialize();
     }
   }
 
