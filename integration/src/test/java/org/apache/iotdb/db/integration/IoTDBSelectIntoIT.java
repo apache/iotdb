@@ -413,7 +413,7 @@ public class IoTDBSelectIntoIT {
       statement.execute("select s1 " + "into root.sg.d1.`datatype` " + "from root.sg.d1");
       fail();
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("506"));
+      assertTrue(throwable.getMessage().contains(TSStatusCode.MULTIPLE_ERROR + ""));
       assertTrue(throwable.getMessage().contains("mismatch"));
     }
   }
