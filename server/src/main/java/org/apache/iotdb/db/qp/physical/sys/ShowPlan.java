@@ -100,7 +100,7 @@ public class ShowPlan extends PhysicalPlan {
 
   @Override
   public String getOperatorName() {
-    return this.toString();
+    return String.format("%s: %s", getOperatorType(), showContentType);
   }
 
   public enum ShowContentType {
