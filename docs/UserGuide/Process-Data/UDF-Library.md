@@ -63,11 +63,11 @@ You can download the following files:
 
 
 
-# Data Profiling
+## Data Profiling
 
-## ACF
+### ACF
 
-### Usage
+#### Usage
 
 This function is used to calculate the auto-correlation factor of the input time series,
 which equals to cross correlation between the same series.
@@ -84,7 +84,7 @@ There are $2N-1$ data points in the series, and the values are interpreted in de
 
 + `null` and `NaN` values in the input series will be ignored and treated as 0.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -124,9 +124,9 @@ Output series:
 +-----------------------------+--------------------+
 ```
 
-## Distinct
+### Distinct
 
-### Usage
+#### Usage
 
 This function returns all unique values in time series.
 
@@ -143,7 +143,7 @@ This function returns all unique values in time series.
 + Case Sensitive.
 
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -177,9 +177,9 @@ Output series:
 +-----------------------------+-------------------------+
 ```
 
-## Histogram
+### Histogram
 
-### Usage
+#### Usage
 
 This function is used to calculate the distribution histogram of a single column of numerical data.
 
@@ -200,7 +200,7 @@ This function is used to calculate the distribution histogram of a single column
 + If the value is lower than `min`, it will be put into the 1st bucket. If the value is larger than `max`, it will be put into the last bucket.
 + Missing points, null points and `NaN` in the input series will be ignored.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -256,9 +256,9 @@ Output series:
 +-----------------------------+---------------------------------------------------------------+
 ```
 
-## Integral
+### Integral
 
-### Usage
+#### Usage
 
 This function is used to calculate the integration of time series,
 which equals to the area under the curve with time as X-axis and values as Y-axis.
@@ -282,9 +282,9 @@ which equals to the area under the curve with time as X-axis and values as Y-axi
 
 + `NaN` values in the input series will be ignored. The curve or trapezoids will skip these points and use the next valid point.
 
-### Examples
+#### Examples
 
-#### Default Parameters
+##### Default Parameters
 
 With default parameters, this function will take one second as 1.0.
 
@@ -324,7 +324,7 @@ Output series:
 Calculation expression:
 $$\frac{1}{2}[(1+2) \times 1 + (2+5) \times 1 + (5+6) \times 1 + (6+7) \times 1 + (7+8) \times 3 + (8+10) \times 2] = 57.5$$
 
-#### Specific time unit
+##### Specific time unit
 
 With time unit specified as "1m", this function will take one minute as 1.0.
 
@@ -347,9 +347,9 @@ Output series:
 Calculation expression:
 $$\frac{1}{2\times 60}[(1+2) \times 1 + (2+5) \times 1 + (5+6) \times 1 + (6+7) \times 1 + (7+8) \times 3 + (8+10) \times 2] = 0.958$$
 
-## IntegralAvg
+### IntegralAvg
 
-### Usage
+#### Usage
 
 This function is used to calculate the function average of time series.
 The output equals to the area divided by the time interval using the same time `unit`.
@@ -370,7 +370,7 @@ For more information of the area under the curve, please refer to `Integral` fun
 
 + If the input series is empty, the output value will be 0.0, but if there is only one data point, the value will equal to the input value.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -408,9 +408,9 @@ Output series:
 Calculation expression:
 $$\frac{1}{2}[(1+2) \times 1 + (2+5) \times 1 + (5+6) \times 1 + (6+7) \times 1 + (7+8) \times 3 + (8+10) \times 2] / 10 = 5.75$$
 
-## Mad
+### Mad
 
-### Usage
+#### Usage
 
 The function is used to compute the exact or approximate median absolute deviation (MAD) of a numeric time series. MAD is the median of the deviation of each element from the elements' median.
 
@@ -428,9 +428,9 @@ Take a dataset $\{1,3,3,5,5,6,7,8,9\}$ as an instance. Its median is 5 and the d
 
 **Note:** Missing points, null points and `NaN` in the input series will be ignored.
 
-### Examples
+#### Examples
 
-#### Exact Query
+##### Exact Query
 
 With the default `error`(`error`=0), the function queries the exact MAD.
 
@@ -486,7 +486,7 @@ Output series:
 +-----------------------------+------------------+
 ```
 
-#### Approximate Query
+##### Approximate Query
 
 By setting `error` within (0,1), the function queries the approximate MAD.
 
@@ -506,9 +506,9 @@ Output series:
 +-----------------------------+---------------------------------+
 ```
 
-## Median
+### Median
 
-### Usage
+#### Usage
 
 The function is used to compute the exact or approximate median of a numeric time series. Median is the value separating the higher half from the lower half of a data sample.
 
@@ -522,7 +522,7 @@ The function is used to compute the exact or approximate median of a numeric tim
 
 **Output Series:** Output a single series. The type is DOUBLE. There is only one data point in the series, whose timestamp is 0 and value is the median.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -576,9 +576,9 @@ Output series:
 +-----------------------------+------------------------------------+
 ```
 
-## MinMax
+### MinMax
 
-### Usage
+#### Usage
 
 This function is used to standardize the input series with min-max. Minimum value is transformed to 0; maximum value is transformed to 1.
 
@@ -592,9 +592,9 @@ This function is used to standardize the input series with min-max. Minimum valu
 
 **Output Series:** Output a single series. The type is DOUBLE.
 
-### Examples
+#### Examples
 
-#### Batch computing
+##### Batch computing
 
 Input series:
 
@@ -660,9 +660,9 @@ Output series:
 +-----------------------------+--------------------+
 ```
 
-## Mode
+### Mode
 
-### Usage
+#### Usage
 
 This function is used to calculate the mode of time series, that is, the value that occurs most frequently.
 
@@ -677,7 +677,7 @@ This function is used to calculate the mode of time series, that is, the value t
 + If there are multiple values with the most occurrences, the arbitrary one will be output.
 + Missing points and null points in the input series will be ignored, but `NaN` will not.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -715,9 +715,9 @@ Output series:
 +-----------------------------+---------------------+
 ```
 
-## MvAvg
+### MvAvg
 
-### Usage
+#### Usage
 
 This function is used to calculate moving average of input series.
 
@@ -729,9 +729,9 @@ This function is used to calculate moving average of input series.
 
 **Output Series:** Output a single series. The type is DOUBLE.
 
-### Examples
+#### Examples
 
-#### Batch computing
+##### Batch computing
 
 Input series:
 
@@ -795,9 +795,9 @@ Output series:
 +-----------------------------+---------------------------------+
 ```
 
-## PACF
+### PACF
 
-### Usage
+#### Usage
 
 This function is used to calculate partial autocorrelation of input series by solving Yule-Walker equation. For some cases, the equation may not be solved, and NaN will be output.
 
@@ -809,9 +809,9 @@ This function is used to calculate partial autocorrelation of input series by so
 
 **Output Series:** Output a single series. The type is DOUBLE.
 
-### Examples
+#### Examples
 
-#### Assigning maximum lag
+##### Assigning maximum lag
 
 Input series:
 
@@ -864,9 +864,9 @@ Output series:
 +-----------------------------+-----------------------------+
 ```
 
-## Percentile
+### Percentile
 
-### Usage
+#### Usage
 
 The function is used to compute the exact or approximate percentile of a numeric time series. A percentile is value of element in the certain rank of the sorted series.
 
@@ -883,7 +883,7 @@ The function is used to compute the exact or approximate percentile of a numeric
 
 **Note:** Missing points, null points and `NaN` in the input series will be ignored.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -937,9 +937,9 @@ Output series:
 +-----------------------------+------------------------------------------------------+
 ```
 
-## Period
+### Period
 
-### Usage
+#### Usage
 
 The function is used to compute the period of a numeric time series.
 
@@ -949,7 +949,7 @@ The function is used to compute the period of a numeric time series.
 
 **Output Series:** Output a single series. The type is INT32. There is only one data point in the series, whose timestamp is 0 and value is the period.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -986,9 +986,9 @@ Output series:
 +-----------------------------+-----------------------+
 ```
 
-## QLB
+### QLB
 
-### Usage
+#### Usage
 
 This function is used to calculate Ljung-Box statistics $Q_{LB}$ for time series, and convert it to p value.
 
@@ -1004,9 +1004,9 @@ This function is used to calculate Ljung-Box statistics $Q_{LB}$ for time series
 
 **Note:** If you want to calculate Ljung-Box statistics $Q_{LB}$ instead of p value, you may use ACF function.
 
-### Examples
+#### Examples
 
-#### Using Default Parameter
+##### Using Default Parameter
 
 Input series:
 
@@ -1070,9 +1070,9 @@ Output series:
 +-----------------------------+--------------------+
 ```
 
-## Resample
+### Resample
 
-### Usage
+#### Usage
 
 This function is used to resample the input series according to a given frequency,
 including up-sampling and down-sampling.
@@ -1101,9 +1101,9 @@ which supports Max, Min, First, Last, Mean and Median.
 
 **Note:** `NaN` in the input series will be ignored.
 
-### Examples
+#### Examples
 
-#### Up-sampling
+##### Up-sampling
 
 When the frequency of resampling is higher than the original frequency, up-sampling starts.
 
@@ -1150,7 +1150,7 @@ Output series:
 +-----------------------------+----------------------------------------------------------+
 ```
 
-#### Down-sampling
+##### Down-sampling
 
 When the frequency of resampling is lower than the original frequency, down-sampling starts.
 
@@ -1174,7 +1174,7 @@ Output series:
 
 
 
-#### Specify the time period
+##### Specify the time period
 
 The time period of resampling can be specified with `start` and `end`.
 The period outside the actual time range will be interpolated.
@@ -1199,9 +1199,9 @@ Output series:
 +-----------------------------+-----------------------------------------------------------------------+
 ```
 
-## Sample
+### Sample
 
-### Usage
+#### Usage
 
 This function is used to sample the input series,
 that is, select a specified number of data points from the input series and output them.
@@ -1224,9 +1224,9 @@ All of the points have the same probability of being sampled.
 
 **Note:** If `k` is greater than the length of input series, all data points in the input series will be output.
 
-### Examples
+#### Examples
 
-#### Reservoir Sampling
+##### Reservoir Sampling
 
 When `method` is 'reservoir' or the default, reservoir sampling is used.
 Due to the randomness of this method, the output series shown below is only a possible result.
@@ -1271,7 +1271,7 @@ Output series:
 +-----------------------------+------------------------------------------------------+
 ```
 
-#### Isometric Sampling
+##### Isometric Sampling
 
 When `method` is 'isometric', isometric sampling is used.
 
@@ -1295,9 +1295,9 @@ Output series:
 +-----------------------------+------------------------------------------------------+
 ```
 
-## Segment
+### Segment
 
-### Usage
+#### Usage
 
 This function is used to segment a time series into subsequences according to linear trend, and returns linear fitted values of first values in each subsequence or every data point.
 
@@ -1315,7 +1315,7 @@ This function is used to segment a time series into subsequences according to li
 
 **Note:** This function treat input series as equal-interval sampled. All data are loaded, so downsample input series first if there are too many data points.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -1387,9 +1387,9 @@ Output series:
 +-----------------------------+------------------------------------+
 ```
 
-## Skew
+### Skew
 
-### Usage
+#### Usage
 
 This function is used to calculate the population skewness.
 
@@ -1401,7 +1401,7 @@ This function is used to calculate the population skewness.
 
 **Note:** Missing points, null points and `NaN` in the input series will be ignored.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -1448,9 +1448,9 @@ Output series:
 +-----------------------------+-----------------------+
 ```
 
-## Spline
+### Spline
 
-### Usage
+#### Usage
 
 This function is used to calculate cubic spline interpolation of input series.
 
@@ -1464,9 +1464,9 @@ This function is used to calculate cubic spline interpolation of input series.
 
 **Note**: Output series retains the first and last timestamps of input series. Interpolation points are selected at equal intervals. The function tries to calculate only when there are no less than 4 points in input series.
 
-### Examples
+#### Examples
 
-#### Assigning number of interpolation points
+##### Assigning number of interpolation points
 
 Input series:
 
@@ -1653,9 +1653,9 @@ Output series:
 +-----------------------------+------------------------------------+
 ```
 
-## Spread
+### Spread
 
-### Usage
+#### Usage
 
 This function is used to calculate the spread of time series, that is, the maximum value minus the minimum value.
 
@@ -1667,7 +1667,7 @@ This function is used to calculate the spread of time series, that is, the maxim
 
 **Note:** Missing points, null points and `NaN` in the input series will be ignored.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -1709,9 +1709,9 @@ Output series:
 +-----------------------------+-----------------------+
 ```
 
-## Stddev
+### Stddev
 
-### Usage
+#### Usage
 
 This function is used to calculate the population standard deviation.
 
@@ -1723,7 +1723,7 @@ This function is used to calculate the population standard deviation.
 
 **Note:** Missing points, null points and `NaN` in the input series will be ignored.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -1770,9 +1770,9 @@ Output series:
 +-----------------------------+-----------------------+
 ```
 
-## ZScore
+### ZScore
 
-### Usage
+#### Usage
 
 This function is used to standardize the input series with z-score.
 
@@ -1786,9 +1786,9 @@ This function is used to standardize the input series with z-score.
 
 **Output Series:** Output a single series. The type is DOUBLE.
 
-### Examples
+#### Examples
 
-#### Batch computing
+##### Batch computing
 
 Input series:
 
@@ -1856,11 +1856,11 @@ Output series:
 
 
 
-# Data Quality
+## Data Quality
 
-## Completeness
+### Completeness
 
-### Usage
+#### Usage
 
 This function is used to calculate the completeness of time series. The input series are divided into several continuous and non overlapping windows. The timestamp of the first data point and the completeness of each window will be output.
 
@@ -1877,9 +1877,9 @@ This function is used to calculate the completeness of time series. The input se
 
 **Note:** Only when the number of data points in the window exceeds 10, the calculation will be performed. Otherwise, the window will be ignored and nothing will be output.
 
-### Examples
+#### Examples
 
-#### Default Parameters
+##### Default Parameters
 
 With default parameters, this function will regard all input data as the same window.
 
@@ -1923,7 +1923,7 @@ Output series:
 +-----------------------------+-----------------------------+
 ```
 
-#### Specific Window Size
+##### Specific Window Size
 
 When the window size is given, this function will divide the input data as multiple windows.
 
@@ -1983,9 +1983,9 @@ Output series:
 +-----------------------------+--------------------------------------------+
 ```
 
-## Consistency
+### Consistency
 
-### Usage
+#### Usage
 
 This function is used to calculate the consistency of time series. The input series are divided into several continuous and non overlapping windows. The timestamp of the first data point and the consistency of each window will be output.
 
@@ -2001,9 +2001,9 @@ This function is used to calculate the consistency of time series. The input ser
 
 **Note:** Only when the number of data points in the window exceeds 10, the calculation will be performed. Otherwise, the window will be ignored and nothing will be output.
 
-### Examples
+#### Examples
 
-#### Default Parameters
+##### Default Parameters
 
 With default parameters, this function will regard all input data as the same window.
 
@@ -2047,7 +2047,7 @@ Output series:
 +-----------------------------+----------------------------+
 ```
 
-#### Specific Window Size
+##### Specific Window Size
 
 When the window size is given, this function will divide the input data as multiple windows.
 
@@ -2107,9 +2107,9 @@ Output series:
 +-----------------------------+-------------------------------------------+
 ```
 
-## Timeliness
+### Timeliness
 
-### Usage
+#### Usage
 
 This function is used to calculate the timeliness of time series. The input series are divided into several continuous and non overlapping windows. The timestamp of the first data point and the timeliness of each window will be output.
 
@@ -2125,9 +2125,9 @@ This function is used to calculate the timeliness of time series. The input seri
 
 **Note:** Only when the number of data points in the window exceeds 10, the calculation will be performed. Otherwise, the window will be ignored and nothing will be output.
 
-### Examples
+#### Examples
 
-#### Default Parameters
+##### Default Parameters
 
 With default parameters, this function will regard all input data as the same window.
 
@@ -2171,7 +2171,7 @@ Output series:
 +-----------------------------+---------------------------+
 ```
 
-#### Specific Window Size
+##### Specific Window Size
 
 When the window size is given, this function will divide the input data as multiple windows.
 
@@ -2231,9 +2231,9 @@ Output series:
 +-----------------------------+------------------------------------------+
 ```
 
-## Validity
+### Validity
 
-### Usage
+#### Usage
 
 This function is used to calculate the Validity of time series. The input series are divided into several continuous and non overlapping windows. The timestamp of the first data point and the Validity of each window will be output.
 
@@ -2249,9 +2249,9 @@ This function is used to calculate the Validity of time series. The input series
 
 **Note:** Only when the number of data points in the window exceeds 10, the calculation will be performed. Otherwise, the window will be ignored and nothing will be output.
 
-### Examples
+#### Examples
 
-#### Default Parameters
+##### Default Parameters
 
 With default parameters, this function will regard all input data as the same window.
 
@@ -2295,7 +2295,7 @@ Output series:
 +-----------------------------+-------------------------+
 ```
 
-#### Specific Window Size
+##### Specific Window Size
 
 When the window size is given, this function will divide the input data as multiple windows.
 
@@ -2357,9 +2357,9 @@ Output series:
 
 
 
-# Data Repairing
+## Data Repairing
 
-## TimestampRepair
+### TimestampRepair
 
 This function is used for timestamp repair.
 According to the given standard time interval,
@@ -2380,9 +2380,9 @@ this function will use the **median**, **mode** or **cluster** of the time inter
 
 **Output Series:** Output a single series. The type is the same as the input. This series is the input after repairing.
 
-### Examples
+#### Examples
 
-#### Manually Specify the Standard Time Interval
+##### Manually Specify the Standard Time Interval
 
 When `interval` is given, this function repairs according to the given standard time interval.
 
@@ -2431,7 +2431,7 @@ Output series:
 +-----------------------------+----------------------------------------------------+
 ```
 
-#### Automatically Estimate the Standard Time Interval
+##### Automatically Estimate the Standard Time Interval
 
 When `interval` is default, this function estimates the standard time interval.
 
@@ -2460,9 +2460,9 @@ Output series:
 +-----------------------------+--------------------------------+
 ```
 
-## ValueFill
+### ValueFill
 
-### Usage
+#### Usage
 
 This function is used to impute time series. Several methods are supported.
 
@@ -2478,9 +2478,9 @@ This function is used to impute time series. Several methods are supported.
 
 **Note:** AR method use AR(1) model. Input value should be auto-correlated, or the function would output a single point (0, 0.0).
 
-### Examples
+#### Examples
 
-#### Fill with linear
+##### Fill with linear
 
 When `method` is "linear" or the default, Screen method is used to impute.
 
@@ -2538,7 +2538,7 @@ Output series:
 +-----------------------------+-----------------------+
 ```
 
-#### Previous Fill
+##### Previous Fill
 
 When `method` is "previous", previous method is used.
 
@@ -2572,9 +2572,9 @@ Output series:
 +-----------------------------+-------------------------------------------+
 ```
 
-## ValueRepair
+### ValueRepair
 
-### Usage
+#### Usage
 
 This function is used to repair the value of the time series.
 Currently, two methods are supported:
@@ -2598,9 +2598,9 @@ Currently, two methods are supported:
 
 **Note:** `NaN` will be filled with linear interpolation before repairing.
 
-### Examples
+#### Examples
 
-#### Repair with Screen
+##### Repair with Screen
 
 When `method` is 'Screen' or the default, Screen method is used.
 
@@ -2658,7 +2658,7 @@ Output series:
 +-----------------------------+----------------------------+
 ```
 
-#### Repair with LsGreedy
+##### Repair with LsGreedy
 
 When `method` is 'LsGreedy', LsGreedy method is used.
 
@@ -2694,11 +2694,11 @@ Output series:
 
 
 
-# Data Matching
+## Data Matching
 
-## Cov
+### Cov
 
-### Usage
+#### Usage
 
 This function is used to calculate the population covariance.
 
@@ -2714,7 +2714,7 @@ This function is used to calculate the population covariance.
 + If all rows are ignored, `NaN` will be output.
 
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -2757,9 +2757,9 @@ Output series:
 +-----------------------------+-------------------------------------+
 ```
 
-## DTW
+### DTW
 
-### Usage
+#### Usage
 
 This function is used to calculate the DTW distance between two input series.
 
@@ -2775,7 +2775,7 @@ This function is used to calculate the DTW distance between two input series.
 + If all rows are ignored, `0` will be output.
 
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -2822,9 +2822,9 @@ Output series:
 +-----------------------------+-------------------------------------+
 ```
 
-## Pearson
+### Pearson
 
-### Usage
+#### Usage
 
 This function is used to calculate the Pearson Correlation Coefficient.
 
@@ -2840,7 +2840,7 @@ This function is used to calculate the Pearson Correlation Coefficient.
 + If all rows are ignored, `NaN` will be output.
 
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -2883,9 +2883,9 @@ Output series:
 +-----------------------------+-----------------------------------------+
 ```
 
-## PtnSym
+### PtnSym
 
-### Usage
+#### Usage
 
 This function is used to find all symmetric subseries in the input whose degree of symmetry is less than the threshold. 
 The degree of symmetry is calculated by DTW. 
@@ -2903,7 +2903,7 @@ The smaller the degree, the more symmetrical the series is.
 
 **Output Series:** Output a single series. The type is DOUBLE. Each data point in the output series corresponds to a symmetric subseries. The output timestamp is the starting timestamp of the subseries and the output value is the degree of symmetry.
 
-### Example
+#### Example
 
 Input series:
 
@@ -2943,9 +2943,9 @@ Output series:
 +-----------------------------+------------------------------------------------------+
 ```
 
-## XCorr
+### XCorr
 
-### Usage
+#### Usage
 
 This function is used to calculate the cross correlation function of given two time series. 
 For discrete time series, cross correlation is given by
@@ -2969,7 +2969,7 @@ $$OS[i] = CR(i-N) = \frac{1}{N} \sum_{m=1}^{2N-i} S_1[i-N+m]S_2[m],\ if\ i > N$$
 
 + `null` and `NaN` values in the input series will be ignored and treated as 0.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -3011,11 +3011,11 @@ Output series:
 
 
 
-# Anomaly Detection
+## Anomaly Detection
 
-## IQR
+### IQR
 
-### Usage
+#### Usage
 
 This function is used to detect anomalies based on IQR. Points distributing beyond 1.5 times IQR are selected.
 
@@ -3031,9 +3031,9 @@ This function is used to detect anomalies based on IQR. Points distributing beyo
 
 **Note:** $IQR=Q_3-Q_1$
 
-### Examples
+#### Examples
 
-#### Batch computing
+##### Batch computing
 
 Input series:
 
@@ -3080,9 +3080,9 @@ Output series:
 +-----------------------------+-----------------+
 ```
 
-## KSigma
+### KSigma
 
-### Usage
+#### Usage
 
 This function is used to detect anomalies based on the Dynamic K-Sigma Algorithm.
 Within a sliding window, the input value with a deviation of more than k times the standard deviation from the average will be output as anomaly.
@@ -3098,9 +3098,9 @@ Within a sliding window, the input value with a deviation of more than k times t
 
 **Note:** Only when is larger than 0, the anomaly detection will be performed. Otherwise, nothing will be output.
 
-### Examples
+#### Examples
 
-#### Assigning k
+##### Assigning k
 
 Input series:
 
@@ -3145,9 +3145,9 @@ Output series:
 +-----------------------------+---------------------------------+
 ```
 
-## LOF
+### LOF
 
-### Usage
+#### Usage
 
 This function is used to detect density anomaly of time series. According to k-th distance calculation parameter and local outlier factor (lof) threshold, the function judges if a set of input values is an density anomaly, and a bool mark of anomaly values will be output.
 
@@ -3164,9 +3164,9 @@ This function is used to detect density anomaly of time series. According to k-t
 
 **Note:** Incomplete rows will be ignored. They are neither calculated nor marked as anomaly.
 
-### Examples
+#### Examples
 
-#### Using default parameters
+##### Using default parameters
 
 Input series:
 
@@ -3209,7 +3209,7 @@ Output series:
 +-----------------------------+-------------------------------------+
 ```
 
-#### Diagnosing 1d  timeseries
+##### Diagnosing 1d  timeseries
 
 Input series:
 
@@ -3271,9 +3271,9 @@ Output series:
 +-----------------------------+--------------------+
 ```
 
-## MissDetect
+### MissDetect
 
-### Usage
+#### Usage
 
 This function is used to detect missing anomalies. 
 In some datasets, missing values are filled by linear interpolation.
@@ -3291,7 +3291,7 @@ missing anomalies are detected.
 
 **Output Series:** Output a single series. The type is BOOLEAN. Each data point which is miss anomaly will be labeled as true.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -3359,9 +3359,9 @@ Output series:
 +-----------------------------+------------------------------------------+
 ```
 
-## Range
+### Range
 
-### Usage
+#### Usage
 
 This function is used to detect range anomaly of time series. According to upper bound and lower bound parameters, the function judges if a input value is beyond range, aka range anomaly, and a new time series of anomaly will be output.
 
@@ -3378,9 +3378,9 @@ This function is used to detect range anomaly of time series. According to upper
 
 
 
-### Examples
+#### Examples
 
-#### Assigning Lower and Upper Bound
+##### Assigning Lower and Upper Bound
 
 Input series:
 
@@ -3423,9 +3423,9 @@ Output series:
 +-----------------------------+------------------------------------------------------------------+
 ```
 
-## TwoSidedFilter
+### TwoSidedFilter
 
-### Usage
+#### Usage
 
 The function is used to filter anomalies of a numeric time series based on two-sided window detection.
 
@@ -3441,7 +3441,7 @@ The function is used to filter anomalies of a numeric time series based on two-s
 
 - `threshold`: The threshold of outlierness, which is a floating number in (0,1). By default, it's 0.3. The strict standard of detecting anomalies is in proportion to the threshold.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -3519,11 +3519,11 @@ Output series:
 
 
 
-# Frequency Domain
+## Frequency Domain
 
-## Conv
+### Conv
 
-### Usage
+#### Usage
 
 This function is used to calculate the convolution, i.e. polynomial multiplication.
 
@@ -3535,7 +3535,7 @@ This function is used to calculate the convolution, i.e. polynomial multiplicati
 
 **Note:** `NaN` in the input series will be ignored.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -3568,9 +3568,9 @@ Output series:
 +-----------------------------+--------------------------------------+
 ```
 
-## Deconv
+### Deconv
 
-### Usage
+#### Usage
 
 This function is used to calculate the deconvolution, i.e. polynomial division.
 
@@ -3586,10 +3586,10 @@ This function is used to calculate the deconvolution, i.e. polynomial division.
 
 **Note:** `NaN` in the input series will be ignored.
 
-### Examples
+#### Examples
 
 
-#### Calculate the quotient
+##### Calculate the quotient
 
 When `result` is 'quotient' or the default, this function calculates the quotient of the deconvolution.
 
@@ -3624,7 +3624,7 @@ Output series:
 +-----------------------------+----------------------------------------+
 ```
 
-#### Calculate the remainder
+##### Calculate the remainder
 
 When `result` is 'remainder', this function calculates the remainder of the deconvolution.
 
@@ -3648,9 +3648,9 @@ Output series:
 +-----------------------------+--------------------------------------------------------------+
 ```
 
-## DWT
+### DWT
 
-### Usage
+#### Usage
 
 This function is used to calculate 1d discrete wavelet transform of a numerical series.
 
@@ -3668,10 +3668,10 @@ This function is used to calculate 1d discrete wavelet transform of a numerical 
 
 **Note:** The length of input series must be an integer number power of 2.
 
-### Examples
+#### Examples
 
 
-#### Haar wavelet transform
+##### Haar wavelet transform
 
 Input series:
 
@@ -3729,9 +3729,9 @@ Output series:
 +-----------------------------+-------------------------------------+
 ```
 
-## FFT
+### FFT
 
-### Usage
+#### Usage
 
 This function is used to calculate the fast Fourier transform (FFT) of a numerical series.
 
@@ -3750,10 +3750,10 @@ This function is used to calculate the fast Fourier transform (FFT) of a numeric
 
 **Note:** `NaN` in the input series will be ignored.
 
-### Examples
+#### Examples
 
 
-#### Uniform FFT
+##### Uniform FFT
 
 With the default `type`, uniform FFT is applied.
 
@@ -3823,7 +3823,7 @@ Output series:
 
 Note: The input is $y=sin(2\pi t/4)+2sin(2\pi t/5)$ with a length of 20. Thus, there are peaks in $k=4$ and $k=5$ of the output.
 
-#### Uniform FFT with Compression
+##### Uniform FFT with Compression
 
 Input series is the same as above, the SQL for query is shown below:
 
@@ -3853,9 +3853,9 @@ Note: Based on the conjugation of the Fourier transform result, only the first h
 According to the given parameter, data points are reserved from low frequency to high frequency until the reserved energy ratio exceeds it.
 The last data point is reserved to indicate the length of the series.
 
-## HighPass
+### HighPass
 
-### Usage
+#### Usage
 
 This function performs low-pass filtering on the input series and extracts components above the cutoff frequency.
 The timestamps of input will be ignored and all data points will be regarded as equidistant.
@@ -3872,7 +3872,7 @@ The timestamps of input will be ignored and all data points will be regarded as 
 
 **Note:** `NaN` in the input series will be ignored.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -3940,9 +3940,9 @@ Output series:
 
 Note: The input is $y=sin(2\pi t/4)+2sin(2\pi t/5)$ with a length of 20. Thus, the output is $y=sin(2\pi t/4)$ after high-pass filtering.
 
-## IFFT
+### IFFT
 
-### Usage
+#### Usage
 
 This function treats the two input series as the real and imaginary part of a complex series, performs an inverse fast Fourier transform (IFFT), and outputs the real part of the result.
 For the input format, please refer to the output format of `FFT` function.
@@ -3961,7 +3961,7 @@ Moreover, the compressed output of `FFT` function is also supported.
 
 **Note:** If a row contains null points or `NaN`, it will be ignored.
 
-### Examples
+#### Examples
 
 
 Input series:
@@ -4017,9 +4017,9 @@ Output series:
 +-----------------------------+-------------------------------------------------------+
 ```
 
-## LowPass
+### LowPass
 
-### Usage
+#### Usage
 
 This function performs low-pass filtering on the input series and extracts components below the cutoff frequency.
 The timestamps of input will be ignored and all data points will be regarded as equidistant.
@@ -4036,7 +4036,7 @@ The timestamps of input will be ignored and all data points will be regarded as 
 
 **Note:** `NaN` in the input series will be ignored.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -4107,11 +4107,11 @@ Note: The input is $y=sin(2\pi t/4)+2sin(2\pi t/5)$ with a length of 20. Thus, t
 
 
 
-# Series Discovery
+## Series Discovery
 
-## ConsecutiveSequences
+### ConsecutiveSequences
 
-### Usage
+#### Usage
 
 This function is used to find locally longest consecutive subsequences in strictly equispaced multidimensional data.
 
@@ -4131,9 +4131,9 @@ Consecutive subsequence is the subsequence that is strictly equispaced with the 
 
 **Note:** For input series that is not strictly equispaced, there is no guarantee on the output.
 
-### Examples
+#### Examples
 
-#### Manually Specify the Standard Time Interval
+##### Manually Specify the Standard Time Interval
 
 It's able to manually specify the standard time interval by the parameter `gap`. It's notable that false parameter leads to false output.
 
@@ -4175,7 +4175,7 @@ Output series:
 ```
 
 
-#### Automatically Estimate the Standard Time Interval
+##### Automatically Estimate the Standard Time Interval
 
 When `gap` is default, this function estimates the standard time interval by the mode of time intervals and gets the same results. Therefore, this usage is more recommended.
 
@@ -4197,9 +4197,9 @@ Output series:
 +-----------------------------+------------------------------------------------------+
 ```
 
-## ConsecutiveWindows
+### ConsecutiveWindows
 
-### Usage
+#### Usage
 
 This function is used to find consecutive windows of specified length in strictly equispaced multidimensional data.
 
@@ -4220,7 +4220,7 @@ Consecutive window is the subsequence that is strictly equispaced with the stand
 
 **Note:** For input series that is not strictly equispaced, there is no guarantee on the output.
 
-### Examples
+#### Examples
 
 
 Input series:
@@ -4262,11 +4262,11 @@ Output series:
 
 
 
-# String Processing
+## String Processing
 
-## RegexMatch
+### RegexMatch
 
-### Usage
+#### Usage
 
 The function is used to fetch matched contents from text with given regular expression.
 
@@ -4287,7 +4287,7 @@ The function is used to fetch matched contents from text with given regular expr
 
 **Note:** Those points with null values or not matched with the given pattern will not return any results.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -4323,9 +4323,9 @@ Output series:
 +-----------------------------+----------------------------------------------------------------------+
 ```
 
-## RegexReplace
+### RegexReplace
 
-### Usage
+#### Usage
 
 The function is used to replace the specific regular expression matches with given string.
 
@@ -4345,7 +4345,7 @@ The function is used to replace the specific regular expression matches with giv
 
 **Output Series:** Output a single series. The type is TEXT.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -4382,9 +4382,9 @@ Output series:
 +-----------------------------+-----------------------------------------------------------+
 ```
 
-## RegexSplit
+### RegexSplit
 
-### Usage
+#### Usage
 
 The function is used to split text with given regular expression and return specific element.
 
@@ -4405,7 +4405,7 @@ The function is used to split text with given regular expression and return spec
 **Note:** When `index` is out of the range of the result array, for example `0,1,2` split with `,` and `index` is set to 3, 
 no result are returned for that record.
 
-### Examples
+#### Examples
 
 Input series:
 
@@ -4462,9 +4462,9 @@ Output series:
 +-----------------------------+-----------------------------------------------------+
 ```
 
-## StrReplace
+### StrReplace
 
-### Usage
+#### Usage
 
 The function is used to replace the specific substring with given string.
 
@@ -4483,7 +4483,7 @@ The function is used to replace the specific substring with given string.
 
 **Output Series:** Output a single series. The type is TEXT.
 
-### Examples
+#### Examples
 
 Input series:
 
