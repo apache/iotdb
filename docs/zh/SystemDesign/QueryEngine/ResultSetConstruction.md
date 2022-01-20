@@ -33,7 +33,7 @@
 
 原始数据查询的结果集表头构造逻辑主要在 `getWideQueryHeaders()` 方法中。
 
-- org.apache.iotdb.db.service.TSServiceImpl.getWideQueryHeaders
+- org.apache.iotdb.db.qp.physical.crud.QueryPlan.getWideQueryHeaders
 
 对于每个结果集表头的构造，需要提供列名及该列对应的数据类型。
 
@@ -61,7 +61,7 @@ SQL2：`SELECT count(s1), max_time(s1) FROM root.sg.d1;` ->
 
 原始数据查询的结果集表头构造逻辑主要在 `getAlignByDeviceQueryHeaders()` 方法中。
 
-- org.apache.iotdb.db.service.TSServiceImpl.getAlignByDeviceQueryHeaders
+- org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.java
 
 按设备对齐查询的结果集构造依赖于物理查询计划中生成的**未去重**的度量（Measurements）列表。在此作简单介绍，度量列表是由 SELECT 子句中的后缀路径（包括通配符）生成的列表，其中共有三种类型，分别为常量（Constant）、存在的时间序列（Exist）以及不存在的时间序列（NonExist）。详细可以参考 [Align by device query](../DataQuery/AlignByDeviceQuery.md)
 
@@ -110,7 +110,7 @@ SQL：`SELECT last s1, s2 FROM root.sg.d1;`
 
 除按设备对齐查询外，**原始数据查询、聚合查询、最新数据查询** 等查询的去重逻辑均在 `deduplicate()` 方法中。
 
-- org.apache.iotdb.db.qp.strategy.PhysicalGenerator.deduplicate()
+- org.apache.iotdb.db.qp.physical.crud.QueryPlan.deduplicate()
 
 去重逻辑比较简单：首先从查询计划中取得未去重的路径，然后在遍历时创建一个 Set 集合用于去重即可。
 
@@ -120,7 +120,7 @@ SQL：`SELECT last s1, s2 FROM root.sg.d1;`
 
 **按设备对齐查询**的去重逻辑在其结果集的 `hasNextWithoutConstraint()` 方法中。
 
-- org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet.hasNextWithoutConstraint()
+- org.apache.iotdb.db.query.dataset.QueryDataSet.hasNextWithoutConstraint()
 
 由于按设备对齐查询需要按设备依次组织其查询计划，每个设备查询的路径未必相同，且允许包含常量列以及不存在的时间序列，因此不能简单地与其他查询一起去重。去重时**不仅需要去除重复查询的时间序列路径，还需要去除查询中出现的常量列以及当前设备中不存在的时间序列**。实现方法可以参考 [Align by device query](../DataQuery/AlignByDeviceQuery.md).
 
@@ -150,7 +150,7 @@ SQL: `SELECT s2, s1, s2 FROM root.sg.d1;`
 
 为了还原最终结果集，需要构造一个列名到其在查询结果集中位置的映射集 `columnOrdinalMap`，方便从查询结果集中取出某一列对应的结果，该部分逻辑在新建最终结果集 `IoTDBQueryResultSet` 的构造函数内完成。
 
-- org.apache.iotdb.jdbc.AbstractIoTDBResultSet.AbstractIoTDBResultSet()
+- org.apache.iotdb.jdbc.AbstractIoTDBResultSet.AbstractIoTDBJDBCResultSet()
 
 为了构造最终结果集中的元数据信息，需要构造完整的列名列表，由于上面给出的 `columnNameList` 中不包含时间戳，因此，如果需要打印时间戳则在表头中加入 `Time` 列构成完整的表头。
 

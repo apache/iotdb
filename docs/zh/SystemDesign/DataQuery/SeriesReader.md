@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -163,55 +163,55 @@ Object[] values = readerByTimestamp.getValueInTimestamp(timestamps, length);
 ```
 
 /*
- * 文件层
- */
-private final List<TsFileResource> seqFileResource;
-	顺序文件列表，因为顺序文件本身就保证有序，且时间戳互不重叠，只需使用 List 进行存储
-	
-private final PriorityQueue<TsFileResource> unseqFileResource;
-	乱序文件列表，因为乱序文件互相之间不保证顺序性，且可能有重叠，为了保证顺序，使用优先队列进行存储
+* 文件索引
+*/
+protected int curSeqFileIndex;
+	当前文件的顺序文件的Index
+
+protected int curUnseqFileIndex;
+	当前文件的乱序文件的Index
 	
 /*
- * chunk 层
- * 
- * 三个字段之间数据永远不重复，first 永远是第一个（开始时间最小）
- */
-private ChunkMetaData firstChunkMetaData;
+* chunk 层
+*
+* 三个字段之间数据永远不重复，first 永远是第一个（开始时间最小）
+*/
+protected IChunkMetadata firstChunkMetadata;
 	填充 chunk 层时优先填充此字段，保证这个 chunk 具有当前最小开始时间
 	
-private final List<ChunkMetaData> seqChunkMetadatas;
-	顺序文件解开后得到的 ChunkMetaData 存放在此，本身有序且互不重叠，所以使用 List 存储
-
-private final PriorityQueue<ChunkMetaData> unseqChunkMetadatas;
-	乱序文件解开后得到的 ChunkMetaData 存放在此，互相之间可能有重叠，为了保证顺序，使用优先队列进行存储
+protected final PriorityQueue<IChunkMetadata> cachedChunkMetadata;
+	文件解开后得到的 ChunkMetaData 存放在此，互相之间可能有重叠，为了保证顺序，使用优先队列进行存储 
 	
 /*
- * page 层
- *
- * 两个字段之间数据永远不重复，first 永远是第一个（开始时间最小）
- */ 
-private VersionPageReader firstPageReader;
+* page cache
+*
+* 两个字段之间数据永远不重复，first 永远是第一个（开始时间最小）
+*/
+protected VersionPageReader firstPageReader;
 	开始时间最小的 page reader
 	
-private PriorityQueue<VersionPageReader> cachedPageReaders;
-	当前获得的所有 page reader，按照每个 page 的起始时间进行排序
+protected final List<VersionPageReader> seqPageReaders = new LinkedList<>();
+	顺序 chunk 解开后得到的 page reader 存放在此，本身有序且互不重叠，所以使用 List 存储
+
+protected final PriorityQueue<VersionPageReader> unSeqPageReaders;
+	乱序 chunk 解开后得到的 page reader 存放在此，互相之间可能有重叠，为了保证顺序，使用优先队列进行存储 
 	
 /*
  * 相交数据点层
  */ 
-private PriorityMergeReader mergeReader;
+protected final PriorityMergeReader mergeReader;
 	本质上是多个带优先级的 page，按时间戳从低到高输出数据点，时间戳相同时，保留优先级高的
 
 /*
  * 相交数据点产出结果的缓存
  */ 
-private boolean hasCachedNextOverlappedPage;
+protected boolean hasCachedNextOverlappedPage;
 	是否缓存了下一个 batch
 	
-private BatchData cachedBatchData;
+protected BatchData cachedBatchData;
 	缓存的下一个 batch 的引用
 ```
-	 
+
 下面介绍一下 SeriesReader 里的重要方法
 
 #### hasNextChunk()
