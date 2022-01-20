@@ -109,7 +109,7 @@ Response parameters:
 
 **Examples:**
 
-Tip: to avoid oom problems, select * from root.xx.** is not recommended.
+Tip: Statements like `select * from root.xx.**` are not recommended because those statements may cause OOM.
 
 **Expression query**
 
