@@ -168,4 +168,14 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     }
   }
+
+  @Override
+  public Response login(SecurityContext securityContext) throws NotFoundException {
+    return Response.ok()
+        .entity(
+            new ExecutionStatus()
+                .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                .message(TSStatusCode.SUCCESS_STATUS.name()))
+        .build();
+  }
 }
