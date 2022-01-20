@@ -3184,7 +3184,6 @@ public class VirtualStorageGroupProcessor {
   }
 
   /** sync methods */
-
   public void registerSyncDataCollecor(TsFilePipe tsFilePipe) {
     writeLock("Register collector for sync");
     this.syncDataCollector = tsFilePipe;
@@ -3193,7 +3192,8 @@ public class VirtualStorageGroupProcessor {
     writeUnlock();
   }
 
-  private void registerTsFileResourceList(List<TsFileResource> tsFileResources, TsFilePipe tsFilePipe) {
+  private void registerTsFileResourceList(
+      List<TsFileResource> tsFileResources, TsFilePipe tsFilePipe) {
     int size = tsFileResources.size();
     for (int i = 0; i < size; i++) {
       tsFileResources.get(i).getProcessor().registerSyncDataCollector(tsFilePipe);

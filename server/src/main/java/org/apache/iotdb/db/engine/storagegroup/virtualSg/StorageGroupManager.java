@@ -478,7 +478,6 @@ public class StorageGroupManager {
   }
 
   /** sync methods */
-
   public void registerSyncDataCollector(TsFilePipe tsFilePipe) {
     for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
       processor.registerSyncDataCollecor(tsFilePipe);
