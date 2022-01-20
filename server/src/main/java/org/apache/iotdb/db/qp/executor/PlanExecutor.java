@@ -426,7 +426,8 @@ public class PlanExecutor implements IPlanExecutor {
       case START_PIPE:
       case DROP_PIPE:
         operatePipe((OperatePipePlan) plan);
-        return true;case CREATE_PIPESINK:
+        return true;
+      case CREATE_PIPESINK:
         createPipeSink((CreatePipeSinkPlan) plan);
         return true;
       case DROP_PIPESINK:
