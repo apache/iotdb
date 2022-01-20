@@ -184,6 +184,10 @@ components:
           type: array
           items:
             type: string
+        columnNames:
+          type: array
+          items:
+            type: string
         timestamps:
           type: array
           items:

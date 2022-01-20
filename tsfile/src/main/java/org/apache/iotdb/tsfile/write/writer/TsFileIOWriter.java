@@ -85,7 +85,7 @@ public class TsFileIOWriter implements AutoCloseable {
   private long markedPosition;
   private String currentChunkGroupDeviceId;
 
-  // for upgrade tool
+  // for upgrade tool and split tool
   Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
 
   // the two longs marks the index range of operations in current MemTable
@@ -468,7 +468,7 @@ public class TsFileIOWriter implements AutoCloseable {
   }
 
   /**
-   * this function is only for Upgrade Tool.
+   * this function is for Upgrade Tool and Split Tool.
    *
    * @return DeviceTimeseriesMetadataMap
    */

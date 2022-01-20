@@ -21,8 +21,9 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.MaxFileMergeFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -70,6 +71,7 @@ public class MergeUpgradeTest {
 
   @After
   public void tearDown() {
+    new CompactionConfigRestorer().restoreCompactionConfig();
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
@@ -78,8 +80,8 @@ public class MergeUpgradeTest {
   @Test
   public void testMergeUpgradeSelect() throws MergeException {
     CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqResources, unseqResources);
-    MaxFileMergeFileSelector mergeFileSelector =
-        new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
+    RewriteCompactionFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     assertEquals(0, result.length);
   }

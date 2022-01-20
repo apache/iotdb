@@ -95,7 +95,6 @@ public class IoTDBUserDefinedAggregationFunctionIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -538,8 +537,7 @@ public class IoTDBUserDefinedAggregationFunctionIT {
 
       boolean hasResultSet =
           statement.execute(
-              "SELECT sum(s0)+10000000,avg(s2)-1000"
-                  + "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
+              "SELECT sum(s0)+10000000,avg(s2)-1000 FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
 
       Assert.assertTrue(hasResultSet);
       int cnt = 0;
@@ -557,8 +555,7 @@ public class IoTDBUserDefinedAggregationFunctionIT {
       // keep the correctness of `order by time desc`
       hasResultSet =
           statement.execute(
-              "SELECT sum(s0)+10000000,avg(s2)-1000"
-                  + "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000 order by time desc");
+              "SELECT sum(s0)+10000000,avg(s2)-1000 FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000 order by time desc");
 
       Assert.assertTrue(hasResultSet);
       cnt = 0;
@@ -576,8 +573,7 @@ public class IoTDBUserDefinedAggregationFunctionIT {
 
       hasResultSet =
           statement.execute(
-              "SELECT (sum(s0)+15)-3*5,avg(s2)"
-                  + "FROM root.vehicle.d0 WHERE time >= 1000 AND time <= 2000");
+              "SELECT (sum(s0)+15)-3*5,avg(s2) FROM root.vehicle.d0 WHERE time >= 1000 AND time <= 2000");
       Assert.assertTrue(hasResultSet);
       cnt = 1;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -604,7 +600,7 @@ public class IoTDBUserDefinedAggregationFunctionIT {
         Statement statement = connection.createStatement()) {
       try {
         statement.execute(
-            "SELECT avg(s3)+1" + "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
+            "SELECT avg(s3)+1 FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
         try (ResultSet resultSet = statement.getResultSet()) {
           resultSet.next();
           fail();
@@ -617,7 +613,7 @@ public class IoTDBUserDefinedAggregationFunctionIT {
       }
       try {
         statement.execute(
-            "SELECT sum(s3)+1" + "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
+            "SELECT sum(s3)+1 FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
         try (ResultSet resultSet = statement.getResultSet()) {
           resultSet.next();
           fail();
@@ -630,7 +626,7 @@ public class IoTDBUserDefinedAggregationFunctionIT {
       }
       try {
         statement.execute(
-            "SELECT avg(s4)+1" + "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
+            "SELECT avg(s4)+1 FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
         try (ResultSet resultSet = statement.getResultSet()) {
           resultSet.next();
           fail();
@@ -643,7 +639,7 @@ public class IoTDBUserDefinedAggregationFunctionIT {
       }
       try {
         statement.execute(
-            "SELECT sum(s4)+1" + "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
+            "SELECT sum(s4)+1 FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
         try (ResultSet resultSet = statement.getResultSet()) {
           resultSet.next();
           fail();

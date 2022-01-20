@@ -48,6 +48,16 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
 </dependencies>
 ```
 
+## 语法说明
+
+ - 对于 IoTDB-SQL 接口：传入的 SQL 参数需要符合 [语法规范](../Reference/Syntax-Conventions.md) ，并且针对 JAVA 字符串进行反转义，如双引号前需要加反斜杠。（即：经 JAVA 转义之后与命令行执行的 SQL 语句一致。） 
+ - 对于其他接口： 
+   - 经参数传入的路径或路径前缀中的节点： 
+     - 在 SQL 语句中需要使用反引号（`）进行转义的，此处均不需要进行转义。 
+     - 使用单引号或双引号括起的节点，仍需要使用单引号或双引号括起，并且要针对 JAVA 字符串进行反转义。 
+     - 对于 `checkTimeseriesExists` 接口，由于内部调用了 IoTDB-SQL 接口，因此需要和 SQL 语法规范保持一致，并且针对 JAVA 字符串进行反转义。
+   - 经参数传入的标识符（如模板名）：在 SQL 语句中需要使用反引号（`）进行转义的，此处均不需要进行转义。
+
 ## 基本接口说明
 
 下面将给出 Session 对应的接口的简要介绍和对应参数：
@@ -82,8 +92,11 @@ session =
         .thriftDefaultBufferSize(int thriftDefaultBufferSize)
         .thriftMaxFrameSize(int thriftMaxFrameSize)
         .enableCacheLeader(boolean enableCacheLeader)
+        .version(Version version)
         .build();
 ```
+
+其中，version 表示客户端使用的 SQL 语义版本，用于升级 0.13 时兼容 0.12 的 SQL 语义，可能取值有：`V_0_12`、`V_0_13`。
 
 * 开启 Session
 
@@ -270,8 +283,25 @@ public List<String> showMeasurementsInTemplate(String templateName, String patte
 void setSchemaTemplate(String templateName, String prefixPath)
 ```
 
+- 将模板挂载到 MTree 上之后，你可以随时查询所有模板的名称、某模板被设置到 MTree 的所有路径、所有正在使用某模板的所有路径，即如下接口：
+
+```java
+/** @return All template names. */
+public List<String> showAllTemplates();
+
+/** @return All paths have been set to designated template. */
+public List<String> showPathsTemplateSetOn(String templateName);
+
+/** @return All paths are using designated template. */
+public List<String> showPathsTemplateUsingOn(String templateName)
+```
+
+- 如果你需要删除某一个模板，请确保在进行删除之前，MTree 上已经没有节点被挂载了模板，对于已经被挂载模板的节点，可以用如下接口卸载模板；
+
+
 ``` java
-void unsetSchemaTemplate(String prefixPath, String templateName)
+void unsetSchemaTemplate(String prefixPath, String templateName);
+public void dropSchemaTemplate(String templateName);
 ```
 
 * 请注意，如果一个子树中有多个孩子节点需要使用模板，可以在其共同父母节点上使用 setSchemaTemplate 。而只有在已有数据点插入模板对应的物理量时，模板才会被设置为激活状态，进而被 show timeseries 等查询检测到。

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTest;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -46,6 +47,7 @@ public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceC
 
   @After
   public void tearDown() throws StorageEngineException, IOException {
+    new CompactionConfigRestorer().restoreCompactionConfig();
     super.tearDown();
   }
 
@@ -57,14 +59,7 @@ public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceC
       tsFileManager.addAll(unseqResources, false);
       SizeTieredCompactionTask task =
           new SizeTieredCompactionTask(
-              COMPACTION_TEST_SG,
-              "0",
-              0,
-              tsFileManager,
-              tsFileManager.getSequenceListByTimePartition(0),
-              seqResources,
-              true,
-              new AtomicInteger(0));
+              COMPACTION_TEST_SG, "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
       tsFileManager.writeLock("test");
       try {
         new Thread(
@@ -94,14 +89,7 @@ public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceC
     tsFileManager.addAll(unseqResources, false);
     SizeTieredCompactionTask task =
         new SizeTieredCompactionTask(
-            COMPACTION_TEST_SG,
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
+            COMPACTION_TEST_SG, "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
     tsFileManager.writeLock("test");
     try {
       seqResources.get(seqResources.size() - 1).remove();
@@ -131,14 +119,7 @@ public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceC
       tsFileManager.addAll(unseqResources, false);
       SizeTieredCompactionTask task =
           new SizeTieredCompactionTask(
-              COMPACTION_TEST_SG,
-              "0",
-              0,
-              tsFileManager,
-              tsFileManager.getSequenceListByTimePartition(0),
-              seqResources,
-              true,
-              new AtomicInteger(0));
+              COMPACTION_TEST_SG, "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
       tsFileManager.writeLock("test");
       try {
         new Thread(
@@ -173,14 +154,7 @@ public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceC
       tsFileManager.addAll(unseqResources, false);
       SizeTieredCompactionTask task =
           new SizeTieredCompactionTask(
-              COMPACTION_TEST_SG,
-              "0",
-              0,
-              tsFileManager,
-              tsFileManager.getSequenceListByTimePartition(0),
-              seqResources,
-              true,
-              new AtomicInteger(0));
+              COMPACTION_TEST_SG, "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
       tsFileManager.writeLock("test");
       try {
         new Thread(
@@ -188,14 +162,13 @@ public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceC
                   try {
                     task.call();
                   } catch (Exception e) {
-
                   }
                 })
             .start();
         Thread.sleep(8_000);
-        String targetFileName =
-            TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
-        File targetFile = new File(seqResources.get(0).getTsFile().getParent(), targetFileName);
+        File targetFile =
+            TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true)
+                .getTsFile();
         FileChannel channel = new FileOutputStream(targetFile, true).getChannel();
         channel.truncate(10);
         channel.close();

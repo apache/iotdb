@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
@@ -50,9 +51,12 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
+import org.apache.iotdb.tsfile.read.reader.page.ValuePageReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -1246,15 +1250,18 @@ public class TsFileSequenceReader implements AutoCloseable {
     // not a complete file, we will recover it...
     long truncatedSize = headerLength;
     byte marker;
+    List<long[]> timeBatch = new ArrayList<>();
     String lastDeviceId = null;
     List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
     try {
       while ((marker = this.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
+          case MetaMarker.TIME_CHUNK_HEADER:
+          case MetaMarker.VALUE_CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
-          case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | 0x80):
-          case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | 0x40):
+          case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
+          case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
             fileOffsetOfChunk = this.position() - 1;
             // if there is something wrong with a chunk, we will drop the whole ChunkGroup
             // as different chunks may be created by the same insertions(sqls), and partial
@@ -1269,66 +1276,127 @@ public class TsFileSequenceReader implements AutoCloseable {
                     chunkHeader.getCompressionType());
             measurementSchemaList.add(measurementSchema);
             dataType = chunkHeader.getDataType();
+            if (chunkHeader.getDataType() == TSDataType.VECTOR) {
+              timeBatch.clear();
+            }
             Statistics<? extends Serializable> chunkStatistics =
                 Statistics.getStatsByType(dataType);
             int dataSize = chunkHeader.getDataSize();
-            if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.CHUNK_HEADER) {
-              while (dataSize > 0) {
-                // a new Page
-                PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), true);
-                chunkStatistics.mergeStatistics(pageHeader.getStatistics());
-                this.skipPageData(pageHeader);
-                dataSize -= pageHeader.getSerializedPageSize();
+
+            if (dataSize > 0) {
+              if (((byte) (chunkHeader.getChunkType() & 0x3F))
+                  == MetaMarker
+                      .CHUNK_HEADER) { // more than one page, we could use page statistics to
+                // generate chunk statistic
+                while (dataSize > 0) {
+                  // a new Page
+                  PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), true);
+                  chunkStatistics.mergeStatistics(pageHeader.getStatistics());
+                  this.skipPageData(pageHeader);
+                  dataSize -= pageHeader.getSerializedPageSize();
+                  chunkHeader.increasePageNums(1);
+                }
+              } else { // only one page without statistic, we need to iterate each point to generate
+                // chunk statistic
+                PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), false);
+                Decoder valueDecoder =
+                    Decoder.getDecoderByType(
+                        chunkHeader.getEncodingType(), chunkHeader.getDataType());
+                ByteBuffer pageData = readPage(pageHeader, chunkHeader.getCompressionType());
+                Decoder timeDecoder =
+                    Decoder.getDecoderByType(
+                        TSEncoding.valueOf(
+                            TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+                        TSDataType.INT64);
+
+                if ((chunkHeader.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
+                    == TsFileConstant.TIME_COLUMN_MASK) { // Time Chunk with only one page
+
+                  TimePageReader timePageReader =
+                      new TimePageReader(pageHeader, pageData, timeDecoder);
+                  long[] currentTimeBatch = timePageReader.getNextTimeBatch();
+                  timeBatch.add(currentTimeBatch);
+                  for (long currentTime : currentTimeBatch) {
+                    chunkStatistics.update(currentTime);
+                  }
+                } else if ((chunkHeader.getChunkType() & TsFileConstant.VALUE_COLUMN_MASK)
+                    == TsFileConstant.VALUE_COLUMN_MASK) { // Value Chunk with only one page
+
+                  ValuePageReader valuePageReader =
+                      new ValuePageReader(
+                          pageHeader, pageData, chunkHeader.getDataType(), valueDecoder);
+                  TsPrimitiveType[] valueBatch = valuePageReader.nextValueBatch(timeBatch.get(0));
+
+                  if (valueBatch != null && valueBatch.length != 0) {
+                    for (int i = 0; i < valueBatch.length; i++) {
+                      TsPrimitiveType value = valueBatch[i];
+                      if (value == null) {
+                        continue;
+                      }
+                      long timeStamp = timeBatch.get(0)[i];
+                      switch (dataType) {
+                        case INT32:
+                          chunkStatistics.update(timeStamp, value.getInt());
+                          break;
+                        case INT64:
+                          chunkStatistics.update(timeStamp, value.getLong());
+                          break;
+                        case FLOAT:
+                          chunkStatistics.update(timeStamp, value.getFloat());
+                          break;
+                        case DOUBLE:
+                          chunkStatistics.update(timeStamp, value.getDouble());
+                          break;
+                        case BOOLEAN:
+                          chunkStatistics.update(timeStamp, value.getBoolean());
+                          break;
+                        case TEXT:
+                          chunkStatistics.update(timeStamp, value.getBinary());
+                          break;
+                        default:
+                          throw new IOException("Unexpected type " + dataType);
+                      }
+                    }
+                  }
+
+                } else { // NonAligned Chunk with only one page
+                  PageReader reader =
+                      new PageReader(
+                          pageHeader,
+                          pageData,
+                          chunkHeader.getDataType(),
+                          valueDecoder,
+                          timeDecoder,
+                          null);
+                  BatchData batchData = reader.getAllSatisfiedPageData();
+                  while (batchData.hasCurrent()) {
+                    switch (dataType) {
+                      case INT32:
+                        chunkStatistics.update(batchData.currentTime(), batchData.getInt());
+                        break;
+                      case INT64:
+                        chunkStatistics.update(batchData.currentTime(), batchData.getLong());
+                        break;
+                      case FLOAT:
+                        chunkStatistics.update(batchData.currentTime(), batchData.getFloat());
+                        break;
+                      case DOUBLE:
+                        chunkStatistics.update(batchData.currentTime(), batchData.getDouble());
+                        break;
+                      case BOOLEAN:
+                        chunkStatistics.update(batchData.currentTime(), batchData.getBoolean());
+                        break;
+                      case TEXT:
+                        chunkStatistics.update(batchData.currentTime(), batchData.getBinary());
+                        break;
+                      default:
+                        throw new IOException("Unexpected type " + dataType);
+                    }
+                    batchData.next();
+                  }
+                }
                 chunkHeader.increasePageNums(1);
               }
-            } else {
-              // only one page without statistic, we need to iterate each point to generate
-              // statistic
-              PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), false);
-              Decoder valueDecoder =
-                  Decoder.getDecoderByType(
-                      chunkHeader.getEncodingType(), chunkHeader.getDataType());
-              ByteBuffer pageData = readPage(pageHeader, chunkHeader.getCompressionType());
-              Decoder timeDecoder =
-                  Decoder.getDecoderByType(
-                      TSEncoding.valueOf(
-                          TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-                      TSDataType.INT64);
-              PageReader reader =
-                  new PageReader(
-                      pageHeader,
-                      pageData,
-                      chunkHeader.getDataType(),
-                      valueDecoder,
-                      timeDecoder,
-                      null);
-              BatchData batchData = reader.getAllSatisfiedPageData();
-              while (batchData.hasCurrent()) {
-                switch (dataType) {
-                  case INT32:
-                    chunkStatistics.update(batchData.currentTime(), batchData.getInt());
-                    break;
-                  case INT64:
-                    chunkStatistics.update(batchData.currentTime(), batchData.getLong());
-                    break;
-                  case FLOAT:
-                    chunkStatistics.update(batchData.currentTime(), batchData.getFloat());
-                    break;
-                  case DOUBLE:
-                    chunkStatistics.update(batchData.currentTime(), batchData.getDouble());
-                    break;
-                  case BOOLEAN:
-                    chunkStatistics.update(batchData.currentTime(), batchData.getBoolean());
-                    break;
-                  case TEXT:
-                    chunkStatistics.update(batchData.currentTime(), batchData.getBinary());
-                    break;
-                  default:
-                    throw new IOException("Unexpected type " + dataType);
-                }
-                batchData.next();
-              }
-              chunkHeader.increasePageNums(1);
             }
             currentChunk =
                 new ChunkMetadata(measurementID, dataType, fileOffsetOfChunk, chunkStatistics);
@@ -1556,7 +1624,7 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   // This method is only used for TsFile
   public List<IChunkMetadata> getIChunkMetadataList(Path path) throws IOException {
-    ITimeSeriesMetadata timeseriesMetaData = readITimeseriesMetadata(path, false);
+    ITimeSeriesMetadata timeseriesMetaData = readITimeseriesMetadata(path, true);
     if (timeseriesMetaData == null) {
       return Collections.emptyList();
     }

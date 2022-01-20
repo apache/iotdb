@@ -44,7 +44,7 @@ public class Utils {
       String subURL = url.substring(Config.IOTDB_URL_PREFIX.length());
       matcher = URL_PATTERN.matcher(subURL);
       if (matcher.matches()) {
-        if (parseUrlParam(subURL)) {
+        if (parseUrlParam(subURL, info)) {
           isUrlLegal = true;
         }
       }
@@ -86,7 +86,7 @@ public class Utils {
    *     need to be resolved 2.the value corresponding to the key that needs to be resolved does not
    *     match the type
    */
-  private static boolean parseUrlParam(String subURL) {
+  private static boolean parseUrlParam(String subURL, Properties info) {
     if (!subURL.contains("?")) {
       return true;
     }
@@ -102,10 +102,13 @@ public class Utils {
       switch (key) {
         case RPC_COMPRESS:
           if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
-            Config.rpcThriftCompressionEnable = Boolean.getBoolean(value);
+            Config.rpcThriftCompressionEnable = Boolean.parseBoolean(value);
           } else {
             return false;
           }
+          break;
+        case Config.VERSION:
+          info.put(key, value);
           break;
         default:
           return false;

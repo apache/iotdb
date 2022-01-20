@@ -97,6 +97,8 @@ public class TsFileResource {
 
   private ModificationFile modFile;
 
+  private ModificationFile compactionModFile;
+
   protected volatile boolean closed = false;
   private volatile boolean deleted = false;
   volatile boolean isMerging = false;
@@ -129,6 +131,8 @@ public class TsFileResource {
   private long version = 0;
 
   private long ramSize;
+
+  private long tsFileSize = -1L;
 
   private TsFileProcessor processor;
 
@@ -170,6 +174,7 @@ public class TsFileResource {
     this.maxPlanIndex = other.maxPlanIndex;
     this.minPlanIndex = other.minPlanIndex;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
+    this.tsFileSize = other.tsFileSize;
   }
 
   /** for sealed TsFile, call setClosed to close TsFileResource */
@@ -354,14 +359,14 @@ public class TsFileResource {
   }
 
   public ModificationFile getCompactionModFile() {
-    if (modFile == null) {
+    if (compactionModFile == null) {
       synchronized (this) {
-        if (modFile == null) {
-          modFile = ModificationFile.getCompactionMods(this);
+        if (compactionModFile == null) {
+          compactionModFile = ModificationFile.getCompactionMods(this);
         }
       }
     }
-    return modFile;
+    return compactionModFile;
   }
 
   public void resetModFile() {
@@ -385,7 +390,18 @@ public class TsFileResource {
   }
 
   public long getTsFileSize() {
-    return file.length();
+    if (closed) {
+      if (tsFileSize == -1) {
+        synchronized (this) {
+          if (tsFileSize == -1) {
+            tsFileSize = file.length();
+          }
+        }
+      }
+      return tsFileSize;
+    } else {
+      return file.length();
+    }
   }
 
   public long getStartTime(String deviceId) {
@@ -427,6 +443,10 @@ public class TsFileResource {
     if (modFile != null) {
       modFile.close();
       modFile = null;
+    }
+    if (compactionModFile != null) {
+      compactionModFile.close();
+      compactionModFile = null;
     }
     processor = null;
     pathToChunkMetadataListMap = null;
@@ -910,6 +930,11 @@ public class TsFileResource {
 
   public byte getTimeIndexType() {
     return timeIndexType;
+  }
+
+  @TestOnly
+  public void setTimeIndexType(byte type) {
+    this.timeIndexType = type;
   }
 
   public long getRamSize() {

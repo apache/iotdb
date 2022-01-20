@@ -37,7 +37,6 @@ class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/")
     super.beforeAll()
 
-    EnvironmentUtils.closeStatMonitor()
     daemon = IoTDB.getInstance
     daemon.active()
     EnvironmentUtils.envSetUp()

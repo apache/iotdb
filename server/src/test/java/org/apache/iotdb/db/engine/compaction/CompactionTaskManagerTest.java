@@ -58,24 +58,10 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     SizeTieredCompactionTask task1 =
         new SizeTieredCompactionTask(
-            "root.compactionTest",
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
+            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
     SizeTieredCompactionTask task2 =
         new SizeTieredCompactionTask(
-            "root.compactionTest",
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
+            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
     tsFileManager.writeLock("test");
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     try {
@@ -111,24 +97,10 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     SizeTieredCompactionTask task1 =
         new SizeTieredCompactionTask(
-            "root.compactionTest",
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
+            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
     SizeTieredCompactionTask task2 =
         new SizeTieredCompactionTask(
-            "root.compactionTest",
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
+            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
     tsFileManager.writeLock("test");
     try {
       CompactionTaskManager manager = CompactionTaskManager.getInstance();
@@ -162,24 +134,10 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     SizeTieredCompactionTask task1 =
         new SizeTieredCompactionTask(
-            "root.compactionTest",
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
+            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
     SizeTieredCompactionTask task2 =
         new SizeTieredCompactionTask(
-            "root.compactionTest",
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
+            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     manager.addTaskToWaitingQueue(task1);
     manager.submitTaskFromTaskQueue();
@@ -212,14 +170,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     SizeTieredCompactionTask task1 =
         new SizeTieredCompactionTask(
-            "root.compactionTest",
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
+            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     tsFileManager.writeLock("test");
     try {

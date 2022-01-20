@@ -155,10 +155,7 @@ public class TsFileReaderTest {
     QueryDataSet queryDataSet = tsFile.query(queryExpression);
     long aimedTimestamp = 1480562618000L;
     while (queryDataSet.hasNext()) {
-      // System.out.println("find next!");
       RowRecord rowRecord = queryDataSet.next();
-      // System.out.println("result datum: "+rowRecord.getTimestamp()+","
-      // +rowRecord.getFields());
       Assert.assertEquals(aimedTimestamp, rowRecord.getTimestamp());
       aimedTimestamp++;
     }
@@ -222,7 +219,6 @@ public class TsFileReaderTest {
     int cnt = 0;
     while (queryDataSet.hasNext()) {
       RowRecord r = queryDataSet.next();
-      // System.out.println(r);
       cnt++;
     }
     Assert.assertEquals(10647, cnt);
@@ -344,7 +340,7 @@ public class TsFileReaderTest {
       IExpression timeFilter =
           BinaryExpression.and(
               new GlobalTimeExpression(TimeFilter.gtEq(2000)),
-              new GlobalTimeExpression(TimeFilter.ltEq(3000L)));
+              new GlobalTimeExpression(TimeFilter.ltEq(10000L)));
       IExpression binaryExpression = BinaryExpression.and(valueFilter, timeFilter);
       long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
       Assert.assertNotEquals(0, rowCount);

@@ -471,15 +471,9 @@ public abstract class Cases {
 
     // try to read data on each node. SHOW TIMESERIES root.ln.wf01.* where tag3=v1"
     for (Statement readStatement : readStatements) {
-      ResultSet resultSet = null;
-      try {
-        resultSet = readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag3=v1");
-      } catch (Exception e) {
-        Assert.assertTrue(e.getMessage().contains("The key tag3 is not a tag"));
-      } finally {
-        if (resultSet != null) {
-          resultSet.close();
-        }
+      try (ResultSet rs =
+          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag3=v1")) {
+        Assert.assertFalse(rs.next());
       }
     }
   }
