@@ -168,7 +168,11 @@ public class InsertTabletPlansIterator {
 
     List<InsertTabletPlan> insertTabletPlans = new ArrayList<>();
     for (InsertTabletPlanGenerator insertTabletPlanGenerator : insertTabletPlanGenerators) {
-      insertTabletPlans.add(insertTabletPlanGenerator.generateInsertTabletPlan());
+      // all values can be null in a batch of the query dataset
+      InsertTabletPlan insertTabletPlan = insertTabletPlanGenerator.generateInsertTabletPlan();
+      if (insertTabletPlan.getColumns().length != 0) {
+        insertTabletPlans.add(insertTabletPlan);
+      }
     }
     return insertTabletPlans;
   }
