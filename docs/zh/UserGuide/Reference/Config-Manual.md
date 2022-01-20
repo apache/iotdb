@@ -924,18 +924,18 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 10 |
 |改后生效方式|重启服务生效|
 
-* compaction\_schedule\_interval
+* compaction\_schedule\_interval\_in\_ms
 
-|名字| compaction\_schedule\_interval |
+|名字| compaction\_schedule\_interval\_in\_ms |
 |:---:|:---|
 |描述| 合并调度的时间间隔 |
 |类型| Int64 |
 |默认值| 60000 |
 |改后生效方式|重启服务生效|
 
-* compaction\_submission\_interval
+* compaction\_submission\_interval\_in\_ms
 
-|名字| compaction\_submission\_interval |
+|名字| compaction\_submission\_interval\_in\_ms |
 |:---:|:---|
 |描述| 合并任务提交的间隔 |
 |类型| Int64 |

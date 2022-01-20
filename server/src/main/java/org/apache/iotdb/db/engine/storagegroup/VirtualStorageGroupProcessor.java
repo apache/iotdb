@@ -557,7 +557,7 @@ public class VirtualStorageGroupProcessor {
     timedCompactionScheduleTask.scheduleWithFixedDelay(
         this::executeCompaction,
         COMPACTION_TASK_SUBMIT_DELAY,
-        IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleInterval(),
+        IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
         TimeUnit.MILLISECONDS);
   }
 

@@ -308,17 +308,17 @@ public class IoTDBDescriptor {
                   "io_task_queue_size_for_flushing",
                   Integer.toString(conf.getIoTaskQueueSizeForFlushing()))));
 
-      conf.setCompactionScheduleInterval(
+      conf.setCompactionScheduleIntervalInMs(
           Long.parseLong(
               properties.getProperty(
-                  "compaction_schedule_interval",
-                  Long.toString(conf.getCompactionScheduleInterval()))));
+                  "compaction_schedule_interval_in_ms",
+                  Long.toString(conf.getCompactionScheduleIntervalInMs()))));
 
-      conf.setCompactionSubmissionInterval(
+      conf.setCompactionSubmissionIntervalInMs(
           Long.parseLong(
               properties.getProperty(
-                  "compaction_submission_interval",
-                  Long.toString(conf.getCompactionSubmissionInterval()))));
+                  "compaction_submission_interval_in_ms",
+                  Long.toString(conf.getCompactionSubmissionIntervalInMs()))));
 
       conf.setEnableCrossSpaceCompaction(
           Boolean.parseBoolean(

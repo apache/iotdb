@@ -382,7 +382,7 @@ public class IoTDBConfig {
    * cross space compaction, eliminate the unsequence files first BALANCE: alternate two compaction
    * types
    */
-  private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
+  private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
 
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
@@ -415,10 +415,10 @@ public class IoTDBConfig {
   private int maxCompactionCandidateFileNum = 30;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
-  private long compactionScheduleInterval = 60_000L;
+  private long compactionScheduleIntervalInMs = 60_000L;
 
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
-  private long compactionSubmissionInterval = 60_000L;
+  private long compactionSubmissionIntervalInMs = 60_000L;
 
   /**
    * The max open file num in each unseq compaction task. We use the unseq file num as the open file
@@ -2448,12 +2448,12 @@ public class IoTDBConfig {
     this.compactionAcquireWriteLockTimeout = compactionAcquireWriteLockTimeout;
   }
 
-  public long getCompactionScheduleInterval() {
-    return compactionScheduleInterval;
+  public long getCompactionScheduleIntervalInMs() {
+    return compactionScheduleIntervalInMs;
   }
 
-  public void setCompactionScheduleInterval(long compactionScheduleInterval) {
-    this.compactionScheduleInterval = compactionScheduleInterval;
+  public void setCompactionScheduleIntervalInMs(long compactionScheduleIntervalInMs) {
+    this.compactionScheduleIntervalInMs = compactionScheduleIntervalInMs;
   }
 
   public int getMaxCompactionCandidateFileNum() {
@@ -2464,12 +2464,12 @@ public class IoTDBConfig {
     this.maxCompactionCandidateFileNum = maxCompactionCandidateFileNum;
   }
 
-  public long getCompactionSubmissionInterval() {
-    return compactionSubmissionInterval;
+  public long getCompactionSubmissionIntervalInMs() {
+    return compactionSubmissionIntervalInMs;
   }
 
-  public void setCompactionSubmissionInterval(long interval) {
-    compactionSubmissionInterval = interval;
+  public void setCompactionSubmissionIntervalInMs(long interval) {
+    compactionSubmissionIntervalInMs = interval;
   }
 
   public String getDeviceIDTransformationMethod() {

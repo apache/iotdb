@@ -868,18 +868,18 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 10 |
 |Effective|After restart system|
 
-* compaction\_schedule\_interval
+* compaction\_schedule\_interval\_in\_ms
 
-|Name| compaction\_schedule\_interval |
+|Name| compaction\_schedule\_interval\_in\_ms |
 |:---:|:---|
 |Description| interval of scheduling compaction |
 |Type| Int64 |
 |Default| 60000 |
 |Effective|After restart system|
 
-* compaction\_submission\_interval
+* compaction\_submission\_interval\_in\_ms
 
-|Name| compaction\_submission\_interval |
+|Name| compaction\_submission\_interval\_in\_ms |
 |:---:|:---|
 |Description| interval of submitting compaction task |
 |Type| Int64 |
