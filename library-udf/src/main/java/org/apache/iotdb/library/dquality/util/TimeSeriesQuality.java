@@ -57,7 +57,7 @@ public class TimeSeriesQuality {
       if (Double.isFinite(v)) {
         timeList.add(t);
         originList.add(v);
-      } else {  // processing NAN，INF
+      } else { // processing NAN，INF
         specialCnt++;
         timeList.add(t);
         originList.add(Double.NaN);
