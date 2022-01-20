@@ -170,9 +170,9 @@ public class Example {
 }
 ```
 
-## Write Data to IoTDB
+### Write Data to IoTDB
 
-### User Guide
+#### User Guide
 ``` scala
 // import narrow table
 val df = spark.createDataFrame(List(
@@ -211,6 +211,6 @@ dfWithColumn.write.format("org.apache.iotdb.spark.db")
     .save
 ```
 
-### Notes
+#### Notes
 1. You can directly write data to IoTDB whatever the dataframe contains a wide table or a narrow table.
 2. The parameter `numPartition` is used to set the number of partitions. The dataframe that you want to save will be repartition based on this parameter before  writing data. Each partition will open a session to write data to increase the number of concurrent requests.
