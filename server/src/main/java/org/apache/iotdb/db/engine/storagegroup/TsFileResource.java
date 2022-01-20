@@ -92,7 +92,7 @@ public class TsFileResource {
   /** time index */
   protected ITimeIndex timeIndex;
 
-  /** time index type, oldFileTimeIndex = 0, deviceTimeIndex = 1, fileTimeIndex = 2 */
+  /** time index type, V012FileTimeIndex = 0, deviceTimeIndex = 1, fileTimeIndex = 2 */
   private byte timeIndexType;
 
   private ModificationFile modFile;

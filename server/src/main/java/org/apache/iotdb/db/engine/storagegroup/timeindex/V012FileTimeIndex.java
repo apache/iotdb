@@ -164,6 +164,6 @@ public class V012FileTimeIndex implements ITimeIndex {
   @Override
   public int compareDegradePriority(ITimeIndex timeIndex) {
     throw new UnsupportedOperationException(
-        "OldFileTimeIndex should be rewritten while upgrading.");
+        "V012FileTimeIndex should be rewritten while upgrading.");
   }
 }
