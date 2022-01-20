@@ -168,6 +168,7 @@ public class IoTDBRestServiceIT {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     rightInsertTablet(httpClient);
     query(httpClient);
+    queryGroupByLevel(httpClient);
     queryRowLimit(httpClient);
     queryShowChildPaths(httpClient);
     queryShowNodes(httpClient);
@@ -280,6 +281,40 @@ public class IoTDBRestServiceIT {
       Assert.assertEquals(values4, valuesResult.get(3));
       Assert.assertEquals(values5, valuesResult.get(4));
       Assert.assertEquals(values6, valuesResult.get(5));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void queryGroupByLevel(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/query");
+      String sql =
+          "{\"sql\":\"select count(s4) from root.sg25 group by([1635232143960,1635232153960),1s),level=1\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      Assert.assertTrue(timestampsResult.size() == 10);
+      Assert.assertTrue(valuesResult.size() == 1);
+      Assert.assertTrue("count(root.sg25.s4)".equals(expressionsResult.get(0)));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
