@@ -140,6 +140,10 @@ public abstract class PhysicalPlan {
     return operatorType;
   }
 
+  public String getOperatorName() {
+    return operatorType.toString();
+  }
+
   public void setOperatorType(Operator.OperatorType operatorType) {
     this.operatorType = operatorType;
   }

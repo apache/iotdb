@@ -98,6 +98,11 @@ public class ShowPlan extends PhysicalPlan {
     return String.format("%s %s", getOperatorType(), showContentType);
   }
 
+  @Override
+  public String getOperatorName() {
+    return this.toString();
+  }
+
   public enum ShowContentType {
     FLUSH_TASK_INFO,
     TTL,
