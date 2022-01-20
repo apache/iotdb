@@ -26,12 +26,12 @@
 SQL 语法：
 
 ```sql
-select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <WhereClause>
+select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <whereClause>
 ```
 
 其含义是：查询时间序列 prefixPath.path 中最近时间戳的数据。
 
-\<WhereClause\>中当前只支持含有 `>` 或 `>=` 的时间过滤条件，任何其他过滤条件都将会返回异常。
+`whereClause` 中当前只支持含有 `>` 或 `>=` 的时间过滤条件，任何其他过滤条件都将会返回异常。
 
 结果集为四列的结构：
 
@@ -41,7 +41,7 @@ select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <
 +----+----------+-----+--------+
 ```
 
-**示例 1：**查询 root.ln.wf01.wt01.status 的最新数据点
+**示例 1：** 查询 root.ln.wf01.wt01.status 的最新数据点
 
 ```
 IoTDB> select last status from root.ln.wf01.wt01
@@ -54,7 +54,7 @@ Total line number = 1
 It costs 0.000s
 ```
 
-**示例 2：**查询 root.ln.wf01.wt01 下 status，temperature 时间戳大于等于 2017-11-07T23:50:00 的最新数据点。
+**示例 2：** 查询 root.ln.wf01.wt01 下 status，temperature 时间戳大于等于 2017-11-07T23:50:00 的最新数据点。
 
 ```
 IoTDB> select last status, temperature from root.ln.wf01.wt01 where time >= 2017-11-07T23:50:00

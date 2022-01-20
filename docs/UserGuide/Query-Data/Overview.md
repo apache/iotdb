@@ -202,7 +202,7 @@ It costs 0.016s
 
 Data query statements can be used in SQL command-line terminals, JDBC, JAVA / C++ / Python / Go and other native APIs, and RESTful APIs.
 
-- Execute the query statement in the SQL command line terminal: start the SQL command line terminal, and directly enter the query statement to execute, see [SQL command line terminal](../QuickStart/Command-Line-Interface,md).
+- Execute the query statement in the SQL command line terminal: start the SQL command line terminal, and directly enter the query statement to execute, see [SQL command line terminal](../QuickStart/Command-Line-Interface.md).
 
 - Execute query statements in JDBC, see [JDBC](../API/Programming-JDBC.md) for details.
 
