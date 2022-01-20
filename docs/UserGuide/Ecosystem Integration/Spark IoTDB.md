@@ -18,9 +18,9 @@
     under the License.
 
 -->
-# Spark-IoTDB
+## Spark-IoTDB
 
-## version
+### version
 
 The versions required for Spark and Java are as follow:
 
@@ -32,12 +32,12 @@ The versions required for Spark and Java are as follow:
 > Currently we only support spark version 2.4.5 and there are some known issue on 2.4.7, do no use it
 
 
-## Install
+### Install
 ```shell
 mvn clean scala:compile compile install
 ```
 
-## Maven Dependency
+#### Maven Dependency
 
 ```
     <dependency>
@@ -47,14 +47,11 @@ mvn clean scala:compile compile install
     </dependency>
 ```
 
-## Read Data from IoTDB
-
-### Notice
-There is a conflict of thrift version between IoTDB and Spark. 
+Notice: There is a conflict of thrift version between IoTDB and Spark. 
 Therefore, if you want to debug in spark-shell, you need to execute `rm -f $SPARK_HOME/jars/libthrift*` and `cp $IOTDB_HOME/lib/libthrift* $SPARK_HOME/jars/` to resolve it.
 Otherwise, you can only debug the code in IDE. If you want to run your task by `spark-submit`, you must package with dependency.
 
-### spark-shell user guide
+#### spark-shell user guide
 
 ```
 spark-shell --jars spark-iotdb-connector-0.13.0.jar,iotdb-jdbc-0.13.0-jar-with-dependencies.jar,iotdb-session-0.13.0-jar-with-dependencies.jar
@@ -84,7 +81,7 @@ df.printSchema()
 df.show()
 ```
 
-### Schema Inference
+#### Schema Inference
 
 Take the following TsFile structure as an example: There are three Measurements in the TsFile schema: status, temperature, and hardware. The basic information of these three measurements is as follows:
 
@@ -122,7 +119,7 @@ You can also use narrow table form which as follows: (You can see part 4 about h
 |    5 | root.ln.wf02.wt01             | false                    | null                       | null                          |
 |    6 | root.ln.wf02.wt02             | null                     | ccc                        | null                          |
 
-### Transform between wide and narrow table
+#### Transform between wide and narrow table
 
 * from wide to narrow
 
