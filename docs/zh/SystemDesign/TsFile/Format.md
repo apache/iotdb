@@ -73,17 +73,19 @@
 	- **7: REGULAR**
 
 	- **8: GORILLA**
+	- **9: ZIGZAG**
+		- ZigZag编码将有符号整型映射到无符号整型，适合比较小的整数。
 
 - **数据类型与支持编码的对应关系**
 
 	| 数据类型 |          支持的编码           |
 	| :------: | :---------------------------: |
 	| BOOLEAN  |          PLAIN, RLE           |
-	|  INT32   | PLAIN, RLE, TS_2DIFF, GORILLA |
-	|  INT64   | PLAIN, RLE, TS_2DIFF, GORILLA |
-	|  FLOAT   | PLAIN, RLE, TS_2DIFF, GORILLA |
-	|  DOUBLE  | PLAIN, RLE, TS_2DIFF, GORILLA |
-	|   TEXT   |       PLAIN, DICTIONARY       |
+	|  INT32   | PLAIN, RLE, TS_2DIFF, GORILLA, ZIGZAG |
+	|  INT64   | PLAIN, RLE, TS_2DIFF, GORILLA, ZIGZAG |
+	|  FLOAT   |     PLAIN, RLE, TS_2DIFF, GORILLA     |
+	|  DOUBLE  |     PLAIN, RLE, TS_2DIFF, GORILLA     |
+	|   TEXT   |           PLAIN, DICTIONARY           |
 
 ### 1.2 TsFile 概述
 
