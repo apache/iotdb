@@ -172,7 +172,6 @@ public class InnerSpaceCompactionUtils {
             ModificationFile.getCompactionMods(sourceFile);
         Collection<Modification> newModification = compactionModificationFile.getModifications();
         compactionModificationFile.close();
-        sourceFile.resetModFile();
         // write the new modifications to its old modification file
         try (ModificationFile oldModificationFile = sourceFile.getModFile()) {
           for (Modification modification : newModification) {
