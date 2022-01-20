@@ -395,7 +395,7 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowQueryResource();
       default:
         throw new UnsupportedOperationException(
-            String.format("operation %s is not supported", plan.getOperatorType()));
+            String.format("operation %s is not supported", plan.getOperatorName()));
     }
   }
 
