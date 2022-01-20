@@ -26,6 +26,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -119,6 +120,13 @@ public class IoTDBSelectIntoIT {
     IoTDB.metaManager.createTimeseries(
         new PartialPath("root.sg.d2.s1"),
         TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.sg.d1.datatype"),
+        TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
@@ -394,6 +402,23 @@ public class IoTDBSelectIntoIT {
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testSourceAndTargetPathDataTypeUnmatched() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("select s1 " + "into root.sg.d1.`datatype` " + "from root.sg.d1");
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(
+          throwable
+              .getMessage()
+              .contains(Integer.toString(TSStatusCode.MULTIPLE_ERROR.getStatusCode())));
+      assertTrue(throwable.getMessage().contains("mismatch"));
     }
   }
 
