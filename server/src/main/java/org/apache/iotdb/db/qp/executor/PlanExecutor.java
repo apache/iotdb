@@ -62,6 +62,7 @@ import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
 import org.apache.iotdb.db.newsync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.newsync.sender.service.SenderService;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -2315,11 +2316,11 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operatePipe(OperatePipePlan plan) throws QueryProcessException {
     try {
-      if (OperatorType.STOP_PIPE.equals(plan.getOperatorType())) {
+      if (Operator.OperatorType.STOP_PIPE.equals(plan.getOperatorType())) {
         SenderService.getInstance().stopPipe(plan.getPipeName());
-      } else if (OperatorType.START_PIPE.equals(plan.getOperatorType())) {
+      } else if (Operator.OperatorType.START_PIPE.equals(plan.getOperatorType())) {
         SenderService.getInstance().startPipe(plan.getPipeName());
-      } else if (OperatorType.DROP_PIPE.equals(plan.getOperatorType())) {
+      } else if (Operator.OperatorType.DROP_PIPE.equals(plan.getOperatorType())) {
         SenderService.getInstance().dropPipe(plan.getPipeName());
       } else {
         throw new QueryProcessException(

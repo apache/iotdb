@@ -201,7 +201,7 @@ public class TsFilePipe implements Pipe {
   public void collectRealTimeMetaData(PhysicalPlan plan) {
     collectRealTimeDataLock.lock();
     try {
-      maxSerialNumber += 1;
+      maxSerialNumber += 1L;
       TsFilePipeData metaData = new TsFilePipeData(plan, maxSerialNumber);
       pipeData.offer(metaData); // ensure can be transport
       pipeLog.addRealTimePipeData(metaData);
@@ -240,7 +240,7 @@ public class TsFilePipe implements Pipe {
                 deletion.getFileOffset(),
                 deletion.getStartTime(),
                 deletion.getEndTime());
-        maxSerialNumber += 1;
+        maxSerialNumber += 1L;
         TsFilePipeData deletionData = new TsFilePipeData(splitDeletion, maxSerialNumber);
         pipeLog.addRealTimePipeData(deletionData);
         pipeData.offer(deletionData);
@@ -260,7 +260,7 @@ public class TsFilePipe implements Pipe {
   public void collectRealTimeTsFile(File tsFile) {
     collectRealTimeDataLock.lock();
     try {
-      maxSerialNumber += 1;
+      maxSerialNumber += 1L;
       TsFilePipeData tsFileData =
           new TsFilePipeData(pipeLog.addRealTimeTsFile(tsFile).getPath(), maxSerialNumber);
       pipeLog.addRealTimePipeData(tsFileData);
