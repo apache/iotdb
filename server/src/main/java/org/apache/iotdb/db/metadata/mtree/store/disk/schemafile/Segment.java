@@ -256,6 +256,7 @@ public class Segment implements ISegment {
     }
 
     // TODO: compact segment further as well
+    recordNum --;
     pairLength -= 2;
     pairLength -= key.getBytes().length + 4;
     keyAddressList.remove(idx);
@@ -436,7 +437,7 @@ public class Segment implements ISegment {
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder("");
-    builder.append(String.format("[seg size: %d, k-a list size: %d, spare:%d,",
+    builder.append(String.format("[size: %d, K-AL size: %d, spare:%d,",
         this.length, keyAddressList.size(), freeAddr - pairLength - SEG_HEADER_SIZE));
     this.buffer.clear();
     for (Pair<String, Short> pair : keyAddressList) {

@@ -308,10 +308,10 @@ public class SchemaPage implements ISchemaPage{
     for(int idx = 0; idx < segOffsetLst.size(); idx++) {
       short offset = segOffsetLst.get(idx);
       if (offset < 0) {
-        builder.append(String.format("Segment id:%d deleted, at offset:%d\n", idx, offset));
+        builder.append(String.format("Sgt id:%d deleted, offset:%d\n", idx, offset));
       } else {
         ISegment seg = getSegment((short)idx);
-        builder.append(String.format("Segment id:%d, at offset:%d, address:%d, next:%d, pref:%d, %s\n",
+        builder.append(String.format("Sgt id:%d, offset:%d, address:%d, next:%d, pref:%d, %s\n",
             idx, offset, SchemaFile.getGlobalIndex(pageIndex, (short)idx),
             seg.getNextSegAddress(), seg.getPrevSegAddress(), seg.toString()));
       }
@@ -391,7 +391,7 @@ public class SchemaPage implements ISchemaPage{
   private ISegment reAllocateSeg(ISegment seg, short segIdx, short newSize)
       throws SchemaPageOverflowException, SegmentNotFoundException {
     if (newSize >= SchemaFile.SEG_MAX_SIZ
-    || getSpareSize() + seg.size() > newSize) {
+    || getSpareSize() + seg.size() < newSize) {
       throw new SchemaPageOverflowException(pageIndex);
     }
     ByteBuffer newBuffer;
@@ -430,6 +430,7 @@ public class SchemaPage implements ISchemaPage{
       throw new SchemaPageOverflowException(pageIndex);
     }
 
+    pageBuffer.clear();
     pageBuffer.position(pageSpareOffset);
     pageBuffer.limit(pageSpareOffset + size);
 
@@ -469,7 +470,7 @@ public class SchemaPage implements ISchemaPage{
         this.pageBuffer.clear();
 
         mirrorPage.position(offset);
-        short len = RecordUtils.getRecordLength(mirrorPage);
+        short len = Segment.getSegBufLen(mirrorPage);
         mirrorPage.limit(offset + len);
         this.pageBuffer.position(pageSpareOffset);
 
@@ -485,7 +486,7 @@ public class SchemaPage implements ISchemaPage{
 
       mirrorPage.clear();
       mirrorPage.position(segOffsetLst.get(idx));
-      short len = RecordUtils.getRecordLength(mirrorPage);
+      short len = Segment.getSegBufLen(mirrorPage);
       mirrorPage.limit(mirrorPage.position() + len);
 
       this.pageBuffer.put(mirrorPage);

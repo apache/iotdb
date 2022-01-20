@@ -266,12 +266,15 @@ public class SchemaFile implements ISchemaFile{
   public IMNode getChildNode(IMNode parent, String childName) throws MetadataException, IOException{
     if (parent.isMeasurement()
     || parent.getChildren().getSegment().getSegmentAddress() < 0) {
-      throw new MetadataException(String.format("Node [] has no child in schema file.", parent.getFullPath()));
+      throw new MetadataException(String.format("Node [%s] has no child in schema file.", parent.getFullPath()));
     }
 
-    int pageIdx = getPageIndex(parent.getChildren().getSegment().getSegmentAddress());
-    ISchemaPage page = getPageInstance(pageIdx);
-    return page.read(getSegIndex(parent.getChildren().getSegment().getSegmentAddress()), childName);
+    long actualSegAddr = getTargetSegmentAddress(parent.getChildren().getSegment().getSegmentAddress(), childName);
+    if (actualSegAddr < 0) {
+      throw new MetadataException(String.format("Node [%s] has no child named [%s].", parent.getFullPath(), childName));
+    }
+
+    return getPageInstance(getPageIndex(actualSegAddr)).read(getSegIndex(actualSegAddr), childName);
   }
 
   @Override
@@ -327,7 +330,7 @@ public class SchemaFile implements ISchemaFile{
     StringBuilder builder = new StringBuilder(String.format(
         "==================\n" +
             "==================\n" +
-            "SchemaFile inspect: %s, totalPages:%d\n", storageGroupName, lastPageIndex));
+            "SchemaFile inspect: %s, totalPages:%d\n", storageGroupName, lastPageIndex+1));
     int cnt = 0;
     while (cnt <= lastPageIndex) {
       ISchemaPage page = getPageInstance(cnt);
@@ -618,7 +621,7 @@ public class SchemaFile implements ISchemaFile{
   }
 
   @TestOnly
-  public SchemaPage getPage(int index) throws IOException, MetadataException{
+  public SchemaPage getPageOnTest(int index) throws IOException, MetadataException{
     return (SchemaPage) getPageInstance(index);
   }
 
