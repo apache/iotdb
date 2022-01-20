@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.series;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -30,6 +31,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -49,6 +51,13 @@ public class SeriesTest {
   protected static final long START_TIMESTAMP = 0;
 
   protected static final long END_TIMESTAMP = START_TIMESTAMP + ITERATION_TIMES * ITERATION_TIMES;
+
+  private static final float oldUdfCollectorMemoryBudgetInMB =
+      IoTDBDescriptor.getInstance().getConfig().getUdfCollectorMemoryBudgetInMB();
+  private static final float oldUdfTransformerMemoryBudgetInMB =
+      IoTDBDescriptor.getInstance().getConfig().getUdfTransformerMemoryBudgetInMB();
+  private static final float oldUdfReaderMemoryBudgetInMB =
+      IoTDBDescriptor.getInstance().getConfig().getUdfReaderMemoryBudgetInMB();
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -181,9 +190,9 @@ public class SeriesTest {
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterClass();
     ConfigFactory.getConfig()
-        .setUdfCollectorMemoryBudgetInMB(100)
-        .setUdfTransformerMemoryBudgetInMB(100)
-        .setUdfReaderMemoryBudgetInMB(100);
+        .setUdfCollectorMemoryBudgetInMB(oldUdfCollectorMemoryBudgetInMB)
+        .setUdfTransformerMemoryBudgetInMB(oldUdfTransformerMemoryBudgetInMB)
+        .setUdfReaderMemoryBudgetInMB(oldUdfReaderMemoryBudgetInMB);
   }
 
   @Test
@@ -197,26 +206,26 @@ public class SeriesTest {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 3;
+      Assert.assertEquals(resultSetLength, 3);
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577808000;
-      assert value == 3;
+      Assert.assertEquals(timeStamp, 1577808000);
+      Assert.assertEquals(value, 3);
 
       resultSet.next();
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577809200;
-      assert value == 4;
+      Assert.assertEquals(timeStamp, 1577809200);
+      Assert.assertEquals(value, 4);
 
       resultSet.next();
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577810700;
-      assert value == 2;
+      Assert.assertEquals(timeStamp, 1577810700);
+      Assert.assertEquals(value, 2);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -233,26 +242,26 @@ public class SeriesTest {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 3;
+      Assert.assertEquals(resultSetLength, 3);
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577808000;
-      assert value == 3;
+      Assert.assertEquals(timeStamp, 1577808000);
+      Assert.assertEquals(value, 3);
 
       resultSet.next();
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577809200;
-      assert value == 4;
+      Assert.assertEquals(timeStamp, 1577809200);
+      Assert.assertEquals(value, 4);
 
       resultSet.next();
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577810700;
-      assert value == 2;
+      Assert.assertEquals(timeStamp, 1577810700);
+      Assert.assertEquals(value, 2);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -269,26 +278,26 @@ public class SeriesTest {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 3;
+      Assert.assertEquals(resultSetLength, 3);
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577808000;
-      assert value == 3;
+      Assert.assertEquals(timeStamp, 1577808000);
+      Assert.assertEquals(value, 3);
 
       resultSet.next();
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577809200;
-      assert value == 4;
+      Assert.assertEquals(timeStamp, 1577809200);
+      Assert.assertEquals(value, 4);
 
       resultSet.next();
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577810700;
-      assert value == 2;
+      Assert.assertEquals(timeStamp, 1577810700);
+      Assert.assertEquals(value, 2);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -305,26 +314,26 @@ public class SeriesTest {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 3;
+      Assert.assertEquals(resultSetLength, 3);
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577808000;
-      assert value == 3;
+      Assert.assertEquals(timeStamp, 1577808000);
+      Assert.assertEquals(value, 3);
 
       resultSet.next();
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577809200;
-      assert value == 4;
+      Assert.assertEquals(timeStamp, 1577809200);
+      Assert.assertEquals(value, 4);
 
       resultSet.next();
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577810700;
-      assert value == 2;
+      Assert.assertEquals(timeStamp, 1577810700);
+      Assert.assertEquals(value, 2);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -341,26 +350,26 @@ public class SeriesTest {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 3;
+      Assert.assertEquals(resultSetLength, 3);
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577808000;
-      assert value == 3;
+      Assert.assertEquals(timeStamp, 1577808000);
+      Assert.assertEquals(value, 3);
 
       resultSet.next();
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577809200;
-      assert value == 3;
+      Assert.assertEquals(timeStamp, 1577809200);
+      Assert.assertEquals(value, 3);
 
       resultSet.next();
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577809500;
-      assert value == 3;
+      Assert.assertEquals(timeStamp, 1577809500);
+      Assert.assertEquals(value, 3);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -377,26 +386,26 @@ public class SeriesTest {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 3;
+      Assert.assertEquals(resultSetLength, 3);
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577808000;
-      assert value == 3;
+      Assert.assertEquals(timeStamp, 1577808000);
+      Assert.assertEquals(value, 3);
 
       resultSet.next();
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577809200;
-      assert value == 3;
+      Assert.assertEquals(timeStamp, 1577809200);
+      Assert.assertEquals(value, 3);
 
       resultSet.next();
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577809500;
-      assert value == 3;
+      Assert.assertEquals(timeStamp, 1577809500);
+      Assert.assertEquals(value, 3);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -414,26 +423,26 @@ public class SeriesTest {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 3;
+      Assert.assertEquals(resultSetLength, 3);
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577808000;
-      assert value == 3;
+      Assert.assertEquals(timeStamp, 1577808000);
+      Assert.assertEquals(value, 3);
 
       resultSet.next();
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577809200;
-      assert value == 3;
+      Assert.assertEquals(timeStamp, 1577809200);
+      Assert.assertEquals(value, 3);
 
       resultSet.next();
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577809500;
-      assert value == 3;
+      Assert.assertEquals(timeStamp, 1577809500);
+      Assert.assertEquals(value, 3);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -451,26 +460,26 @@ public class SeriesTest {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 3;
+      Assert.assertEquals(resultSetLength, 3);
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577808000;
-      assert value == 3;
+      Assert.assertEquals(timeStamp, 1577808000);
+      Assert.assertEquals(value, 3);
 
       resultSet.next();
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577809200;
-      assert value == 3;
+      Assert.assertEquals(timeStamp, 1577809200);
+      Assert.assertEquals(value, 3);
 
       resultSet.next();
 
       timeStamp = Long.parseLong(resultSet.getString(0));
       value = Integer.parseInt(resultSet.getString(1));
-      assert timeStamp == 1577809500;
-      assert value == 3;
+      Assert.assertEquals(timeStamp, 1577809500);
+      Assert.assertEquals(value, 3);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
