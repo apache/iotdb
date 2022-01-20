@@ -80,25 +80,13 @@ public interface MetricManager {
   Timer getOrCreateTimer(String metric, String... tags);
 
   /** Update Counter */
-  void count(int delta, String metric, String... tags);
-
-  /** Update Counter */
   void count(long delta, String metric, String... tags);
-
-  /** update Gauge */
-  void gauge(int value, String metric, String... tags);
 
   /** update Gauge */
   void gauge(long value, String metric, String... tags);
 
   /** update Rate */
-  void rate(int value, String metric, String... tags);
-
-  /** update Rate */
   void rate(long value, String metric, String... tags);
-
-  /** update Histogram */
-  void histogram(int value, String metric, String... tags);
 
   /** update Histogram */
   void histogram(long value, String metric, String... tags);

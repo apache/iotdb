@@ -34,6 +34,10 @@ public class OperatePipePlan extends PhysicalPlan {
     this.pipeName = pipeName;
   }
 
+  public String getPipeName() {
+    return pipeName;
+  }
+
   @Override
   public List<? extends PartialPath> getPaths() {
     return Collections.emptyList();

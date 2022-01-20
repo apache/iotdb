@@ -23,8 +23,6 @@ import org.apache.iotdb.db.exception.PipeSinkException;
 import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.nio.ByteBuffer;
-
 public class IoTDBPipeSink implements PipeSink {
   private final PipeSink.Type type;
 
@@ -52,7 +50,8 @@ public class IoTDBPipeSink implements PipeSink {
         throw new PipeSinkException(attr, value, TSDataType.INT32.name());
       }
     } else {
-      throw new PipeSinkException("there is No attribute " + attr + " in " + Type.IoTDB);
+      throw new PipeSinkException(
+          "there is No attribute " + attr + " in " + Type.IoTDB + " pipeSink.");
     }
   }
 
@@ -70,12 +69,4 @@ public class IoTDBPipeSink implements PipeSink {
   public String showAllAttributes() {
     return String.format("ip='%s',port=%d", ip, port);
   }
-
-  @Override
-  public ByteBuffer serialize() {
-    return null;
-  }
-
-  @Override
-  public void deserialize(ByteBuffer byteBuffer) {}
 }

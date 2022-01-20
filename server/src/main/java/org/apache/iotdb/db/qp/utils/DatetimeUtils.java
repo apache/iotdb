@@ -25,6 +25,7 @@ import org.apache.iotdb.db.utils.TestOnly;
 
 import java.time.DateTimeException;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -657,6 +658,20 @@ public class DatetimeUtils {
       default:
         return System.currentTimeMillis();
     }
+  }
+
+  public static String convertLongToDate(long timestamp) {
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        timestamp /= 1000_000_000;
+        break;
+      case "us":
+        timestamp /= 1000_000;
+        break;
+    }
+    return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault())
+        .toString();
   }
 
   public static ZoneOffset toZoneOffset(ZoneId zoneId) {

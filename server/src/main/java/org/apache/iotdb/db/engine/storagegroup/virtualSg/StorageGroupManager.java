@@ -29,12 +29,14 @@ import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -360,11 +362,11 @@ public class StorageGroupManager {
   }
 
   /** push mergeAll operation down to all virtual storage group processors */
-  public void mergeAll(boolean isFullMerge) {
+  public void mergeAll() {
     for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
         this.virtualStorageGroupProcessor) {
       if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.merge(isFullMerge);
+        virtualStorageGroupProcessor.merge();
       }
     }
   }
@@ -473,6 +475,28 @@ public class StorageGroupManager {
         virtualStorageGroupProcessor.releaseWalDirectByteBufferPool();
       }
     }
+  }
+
+  /** sync methods */
+  public void registerSyncDataCollector(TsFilePipe tsFilePipe) {
+    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
+      processor.registerSyncDataCollecor(tsFilePipe);
+    }
+  }
+
+  /**
+   * This method is for sync. collect all history data in this storage group, and register to
+   * collect real time data.
+   *
+   * @param tsFilePipe the sync data collector
+   * @return ths list the paris of (history tsfile, the offset of its mods file)
+   */
+  public List<Pair<File, Long>> collectDataForSync(TsFilePipe tsFilePipe, long dataStartTime) {
+    List<Pair<File, Long>> historyTsFiles = new ArrayList<>();
+    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
+      historyTsFiles.addAll(processor.collectDataForSync(tsFilePipe, dataStartTime));
+    }
+    return historyTsFiles;
   }
 
   /** only for test */

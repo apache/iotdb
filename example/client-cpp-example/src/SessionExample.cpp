@@ -85,6 +85,31 @@ void createMultiTimeseries() {
     }
 }
 
+void createSchemaTemplate() {
+    Template temp("template1", false);
+
+    InternalNode iNodeD99("d99", false);
+
+    MeasurementNode mNodeS1("s1", TSDataType::INT32, TSEncoding::RLE, CompressionType::SNAPPY);
+    MeasurementNode mNodeS2("s2", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+    MeasurementNode mNodeD99S1("s1", TSDataType::DOUBLE, TSEncoding::RLE, CompressionType::SNAPPY);
+    MeasurementNode mNodeD99S2("s2", TSDataType::BOOLEAN, TSEncoding::RLE, CompressionType::SNAPPY);
+
+    iNodeD99.addChild(mNodeD99S1);
+    iNodeD99.addChild(mNodeD99S2);
+
+    temp.addToTemplate(iNodeD99);
+    temp.addToTemplate(mNodeS1);
+    temp.addToTemplate(mNodeS2);
+
+    session->createSchemaTemplate(temp);
+    session->setSchemaTemplate("template1", "root.sg2");
+}
+
+void ActivateTemplate() {
+    session->executeNonQueryStatement("insert into root.sg2.d1(timestamp,s1, s2) values(200, 1, 1);");
+}
+
 void showTimeseries() {
     unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("show timeseries");
     for (const string &name: dataSet->getColumnNames()) {
@@ -192,7 +217,7 @@ void insertTablets() {
     Tablet tablet2("root.sg1.d2", schemas, 10);
     Tablet tablet3("root.sg1.d3", schemas, 10);
 
-    map<string, Tablet *> tabletMap;
+    unordered_map<string, Tablet *> tabletMap;
     tabletMap["root.sg1.d1"] = &tablet1;
     tabletMap["root.sg1.d2"] = &tablet2;
     tabletMap["root.sg1.d3"] = &tablet3;
@@ -227,12 +252,53 @@ void insertTablets() {
     }
 }
 
+void insertTabletWithNullValues() {
+    /*
+     * A Tablet example:
+     *      device1
+     * time s1,   s2,   s3
+     * 1,   null, 1,    1
+     * 2,   2,    null, 2
+     * 3,   3,    3,    null
+     */
+    pair<string, TSDataType::TSDataType> pairA("s1", TSDataType::INT64);
+    pair<string, TSDataType::TSDataType> pairB("s2", TSDataType::INT64);
+    pair<string, TSDataType::TSDataType> pairC("s3", TSDataType::INT64);
+    vector<pair<string, TSDataType::TSDataType>> schemas;
+    schemas.push_back(pairA);
+    schemas.push_back(pairB);
+    schemas.push_back(pairC);
+
+    Tablet tablet("root.sg1.d1", schemas, 10);
+
+    for (int64_t time = 40; time < 50; time++) {
+        int row = tablet.rowSize++;
+        tablet.timestamps[row] = time;
+        for (int i = 0; i < 3; i++) {
+            tablet.values[i][row] = to_string(i);
+            // mark null value
+            if (row % 3 == i) {
+                tablet.bitMaps[i]->mark(row);
+            }
+        }
+        if (tablet.rowSize == tablet.maxRowNumber) {
+            session->insertTablet(tablet, true);
+            tablet.reset();
+        }
+    }
+
+    if (tablet.rowSize != 0) {
+        session->insertTablet(tablet);
+        tablet.reset();
+    }
+}
+
 void nonQuery() {
-    session->executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(50, 1);");
+    session->executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(100, 1);");
 }
 
 void query() {
-    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select * from root.sg1.d1");
+    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select s1, s2, s3 from root.sg1.d1");
     cout << "timestamp" << "  ";
     for (const string &name: dataSet->getColumnNames()) {
         cout << name << "  ";
@@ -290,9 +356,21 @@ int main() {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session->open(false);
 
-    cout << "setStorageGroup\n" << endl;
+    cout << "setStorageGroup: root.sg1\n" << endl;
     try {
         session->setStorageGroup("root.sg1");
+    }
+    catch (IoTDBConnectionException &e) {
+        string errorMessage(e.what());
+        if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
+            cout << errorMessage << endl;
+        }
+        throw e;
+    }
+
+    cout << "setStorageGroup: root.sg2\n" << endl;
+    try {
+        session->setStorageGroup("root.sg2");
     }
     catch (IoTDBConnectionException &e) {
         string errorMessage(e.what());
@@ -308,6 +386,12 @@ int main() {
     cout << "createMultiTimeseries\n" << endl;
     createMultiTimeseries();
 
+    cout << "createSchemaTemplate\n" << endl;
+    createSchemaTemplate();
+
+    cout << "ActivateTemplate\n" << endl;
+    ActivateTemplate();
+
     cout << "showTimeseries\n" << endl;
     showTimeseries();
 
@@ -322,6 +406,9 @@ int main() {
 
     cout << "insertTablets\n" << endl;
     insertTablets();
+
+    cout << "insertTabletWithNullValues\n" << endl;
+    insertTabletWithNullValues();
 
     cout << "nonQuery\n" << endl;
     nonQuery();

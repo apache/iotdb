@@ -78,6 +78,7 @@ public class IoTDBConstant {
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TAGS = "tags";
   public static final String COLUMN_ATTRIBUTES = "attributes";
+  public static final String COLUMN_IS_ALIGNED = "isAligned";
   public static final String QUERY_ID = "queryId";
   public static final String STATEMENT = "statement";
 
@@ -102,6 +103,7 @@ public class IoTDBConstant {
   public static final String COLUMN_CONTINUOUS_QUERY_NAME = "cq name";
   public static final String COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL = "every interval";
   public static final String COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL = "for interval";
+  public static final String COLUMN_CONTINUOUS_QUERY_BOUNDARY = "boundary";
   public static final String COLUMN_CONTINUOUS_QUERY_TARGET_PATH = "target path";
   public static final String COLUMN_CONTINUOUS_QUERY_QUERY_SQL = "query sql";
 
@@ -124,6 +126,10 @@ public class IoTDBConstant {
   public static final String COLUMN_PIPESINK_NAME = "name";
   public static final String COLUMN_PIPESINK_TYPE = "type";
   public static final String COLUMN_PIPESINK_ATTRIBUTES = "attributes";
+  public static final String COLUMN_PIPE_NAME = "name";
+  public static final String COLUMN_PIPE_CREATE_TIME = "create time";
+  public static final String COLUMN_PIPE2PIPESINK_NAME = "pipeSink";
+  public static final String COLUMN_PIPE_STATUS = "status";
 
   // sync receiver
   public static final String COLUMN_PIPE_NAME = "pipe name";
@@ -180,6 +186,15 @@ public class IoTDBConstant {
   public static final int FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX = 3;
   public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
 
-  // compaction
-  public static final String COMPACTION_TMP_FILE_SUFFIX = ".target";
+  // inner space compaction
+  public static final String INNER_COMPACTION_TMP_FILE_SUFFIX = ".inner";
+
+  // cross space compaction
+  public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX = ".cross";
+
+  // client version number
+  public enum ClientVersion {
+    V_0_12,
+    V_0_13
+  }
 }

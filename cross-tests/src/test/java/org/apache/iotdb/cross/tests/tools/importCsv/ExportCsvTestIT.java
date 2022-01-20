@@ -42,7 +42,6 @@ public class ExportCsvTestIT extends AbstractScript {
 
   @Before
   public void setUp() {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     String os = System.getProperty("os.name").toLowerCase();
     if (os.startsWith("windows")) {

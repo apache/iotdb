@@ -22,9 +22,9 @@ package org.apache.iotdb.db.newsync.sender.pipe;
 import org.apache.iotdb.db.exception.PipeException;
 
 public interface Pipe {
-  void start();
+  void start() throws PipeException;
 
-  void pause();
+  void stop() throws PipeException;
 
   void drop();
 
@@ -36,20 +36,10 @@ public interface Pipe {
 
   PipeStatus getStatus();
 
-  String serialize();
-
+  // a new pipe should be stop status
   enum PipeStatus {
     RUNNING,
-    PAUSED,
+    STOP,
     DROP
-  }
-
-  class PipeFactory {
-    // when adding a new type pipe, should write a factory method to build it from bytebuffer
-    public static Pipe createPipe(String className, String serializationString)
-        throws PipeException {
-      if (TsFilePipe.class.getName().equals(className)) {}
-      throw new UnsupportedOperationException("Not support for pipe type " + className);
-    }
   }
 }

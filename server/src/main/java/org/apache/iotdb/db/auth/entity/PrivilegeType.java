@@ -58,6 +58,7 @@ public enum PrivilegeType {
    * @return Whether this privilege need a seriesPath or not.
    */
   public static boolean isPathRelevant(int type) {
-    return type <= DELETE_TIMESERIES.ordinal();
+    return type <= DELETE_TIMESERIES.ordinal()
+        || (CREATE_TRIGGER.ordinal() <= type && type <= STOP_TRIGGER.ordinal());
   }
 }

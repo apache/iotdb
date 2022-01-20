@@ -25,9 +25,6 @@ import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.rescon.AbstractPoolManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
@@ -41,8 +38,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
-
-import static java.io.File.separator;
 
 public class FlushManager implements FlushManagerMBean, IService {
 
@@ -138,15 +133,6 @@ public class FlushManager implements FlushManagerMBean, IService {
             tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
       }
       registerTsFileProcessor(tsFileProcessor);
-      // update stat monitor cache to system during each flush()
-      if (config.isEnableStatMonitor() && config.isEnableMonitorSeriesWrite()) {
-        try {
-          StatMonitor.getInstance()
-              .saveStatValue(tsFileProcessor.getStorageGroupName().split(separator)[0]);
-        } catch (StorageEngineException | MetadataException e) {
-          LOGGER.error("Inserting monitor series data error.", e);
-        }
-      }
     }
   }
 

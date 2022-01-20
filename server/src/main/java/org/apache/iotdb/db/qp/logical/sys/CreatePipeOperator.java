@@ -58,7 +58,7 @@ public class CreatePipeOperator extends Operator {
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     CreatePipePlan plan = new CreatePipePlan(pipeName, pipeSinkName);
-    plan.setStartTime(startTime);
+    plan.setDataStartTimestamp(startTime);
     Iterator<Map.Entry<String, String>> iterator = pipeAttributes.entrySet().iterator();
     while (iterator.hasNext()) {
       Map.Entry<String, String> entry = iterator.next();

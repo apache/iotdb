@@ -68,7 +68,6 @@ public class FileLoaderTest {
     prevVirtualPartitionNum = IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
     IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(1);
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(true);
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     dataDir =
         new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())

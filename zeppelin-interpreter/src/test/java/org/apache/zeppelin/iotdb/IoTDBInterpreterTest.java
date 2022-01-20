@@ -54,7 +54,6 @@ public class IoTDBInterpreterTest {
 
   @Before
   public void open() {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     Properties properties = new Properties();
     properties.put(IOTDB_HOST, DEFAULT_HOST);
@@ -331,7 +330,8 @@ public class IoTDBInterpreterTest {
   @Test
   public void testShowDevices() {
     InterpreterResult actual = interpreter.internalInterpret("show devices", null);
-    String gt = "devices\n" + "root.test.wf02.wt02\n" + "root.test.wf01.wt01";
+    String gt =
+        "devices\tisAligned\n" + "root.test.wf02.wt02\tfalse\n" + "root.test.wf01.wt01\tfalse";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
@@ -342,9 +342,9 @@ public class IoTDBInterpreterTest {
     InterpreterResult actual =
         interpreter.internalInterpret("show devices with storage group", null);
     String gt =
-        "devices\tstorage group\n"
-            + "root.test.wf02.wt02\troot.test.wf02\n"
-            + "root.test.wf01.wt01\troot.test.wf01";
+        "devices\tstorage group\tisAligned\n"
+            + "root.test.wf02.wt02\troot.test.wf02\tfalse\n"
+            + "root.test.wf01.wt01\troot.test.wf01\tfalse";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     System.out.println(actual.message().get(0).getData());

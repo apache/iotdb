@@ -86,7 +86,7 @@ public class InnerSpaceCompactionUtilsOldTest extends InnerCompactionTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
     File targetFile =
         new File(
             TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
@@ -109,7 +109,7 @@ public class InnerSpaceCompactionUtilsOldTest extends InnerCompactionTest {
       sizeTieredCompactionLogger.logFileInfo(SOURCE_INFO, resource.getTsFile());
     }
     sizeTieredCompactionLogger.logSequence(true);
-    InnerSpaceCompactionUtils.compact(targetTsFileResource, seqResources, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.compact(targetTsFileResource, seqResources, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     sizeTieredCompactionLogger.close();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
