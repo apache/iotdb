@@ -116,6 +116,7 @@ public class ShowPlan extends PhysicalPlan {
     QUERY_PROCESSLIST,
     TRIGGERS,
     LOCK_INFO,
-    CONTINUOUS_QUERY
+    CONTINUOUS_QUERY,
+    QUERY_RESOURCE
   }
 }
