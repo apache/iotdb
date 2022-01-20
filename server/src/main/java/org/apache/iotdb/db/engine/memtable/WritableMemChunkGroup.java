@@ -132,6 +132,6 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   @Override
   public long getCurrentTVListSize(String measurement) {
-    return memChunkMap.get(measurement).getTVList().size();
+    return memChunkMap.get(measurement).getTVList().rowCount();
   }
 }

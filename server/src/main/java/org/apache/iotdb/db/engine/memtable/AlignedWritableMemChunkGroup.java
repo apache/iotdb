@@ -111,7 +111,7 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
   @Override
   public long getCurrentTVListSize(String measurement) {
-    return memChunk.getTVList().size();
+    return memChunk.getTVList().rowCount();
   }
 
   public AlignedWritableMemChunk getAlignedMemChunk() {
