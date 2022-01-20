@@ -22,11 +22,24 @@
 ## RESTful Services  
 IoTDB's RESTful services can be used for query, write, and management operations, using the OpenAPI standard to define interfaces and generate frameworks.
 
+###Enable restful services
 
+RESTful services are disabled by default.
+
+* Developer
+
+  Find the `IoTDBrestServiceConfig` class under `org.apache.iotdb.db.conf.rest` in the sever module, and modify `enableRestService=true`.
+
+* User
+
+  Find the `conf/iotdb.properties` file under the IoTDB installation directory and set `enable_rest_service` to `true` to enable the module.
+
+  ```properties
+  enable_rest_service=true
+  ```
 
 ### Authentication
 RESTful services use the basic authentication. Each URL request needs to carry `'Authorization': 'Basic ' + base64.encode(username + ':' + password)`.
-
 
 
 ### Interface
@@ -95,6 +108,8 @@ Response parameters:
 | values         | array          | A two-dimensional array, the first dimension has the same length as the result set column name array, and the second dimension array represents a column of the result set |
 
 **Examples:**
+
+Tip: to avoid oom problems, select * from root.xx.** is not recommended.
 
 **Expression query**
 
