@@ -172,8 +172,8 @@ public class Example {
 }
 ```
 
-## 写数据到IoTDB
-### 用户指南
+### 写数据到IoTDB
+#### 用户指南
 ``` scala
 // import narrow table
 val df = spark.createDataFrame(List(
@@ -212,6 +212,6 @@ dfWithColumn.write.format("org.apache.iotdb.spark.db")
     .save
 ```
 
-### 注意
+#### 注意
 1. 无论dataframe中存放的是窄表还是宽表，都可以直接将数据写到IoTDB中。
 2. numPartition参数是用来设置分区数，会在写入数据之前给dataframe进行重分区。每一个分区都会开启一个session进行数据的写入，来提高并发数。
