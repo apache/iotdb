@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
 public enum TimeIndexLevel {
   /** old file to time index (small memory foot print) */
-  OLD_FILE_TIME_INDEX,
+  V012_FILE_TIME_INDEX,
 
   /** device to time index (large memory foot print) */
   DEVICE_TIME_INDEX,
@@ -31,8 +31,8 @@ public enum TimeIndexLevel {
 
   public ITimeIndex getTimeIndex() {
     switch (this) {
-      case OLD_FILE_TIME_INDEX:
-        return new OldFileTimeIndex();
+      case V012_FILE_TIME_INDEX:
+        return new V012FileTimeIndex();
       case FILE_TIME_INDEX:
         return new FileTimeIndex();
       case DEVICE_TIME_INDEX:

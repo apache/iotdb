@@ -276,7 +276,6 @@ public class TsFileResource {
     // is file time index
     if (timeIndexType == 0) {
       timeIndexType = 2;
-      timeIndex = new FileTimeIndex(timeIndex.getMinStartTime(), timeIndex.getMaxEndTime());
       serialize();
     }
   }
