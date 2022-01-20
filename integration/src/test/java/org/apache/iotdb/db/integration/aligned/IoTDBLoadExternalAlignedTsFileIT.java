@@ -201,7 +201,9 @@ public class IoTDBLoadExternalAlignedTsFileIT {
         tmpDir.mkdirs();
       }
       for (TsFileResource resource : resources) {
-        statement.execute(String.format("unload '%s' '%s'", resource.getTsFilePath(), tmpDir));
+        // test unload using relative path
+        statement.execute(
+            String.format("unload '%s' '%s'", "./" + resource.getTsFilePath(), tmpDir));
       }
       assertEquals(
           0,
