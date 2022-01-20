@@ -22,7 +22,19 @@
 ## RESTful 服务
 IoTDB 的 RESTful 服务可用于查询、写入和管理操作，它使用 OpenAPI 标准来定义接口并生成框架。
 
-
+### 开启RESTful 服务
+RESTful 服务默认情况是关闭的
+ * 开发者  
+   
+   找到sever模块中`org.apache.iotdb.db.conf.rest` 下面的`IoTDBRestServiceConfig`类，修改`enableRestService=true`即可。
+ 
+* 使用者  
+   
+   找到IoTDB安装目录下面的`conf/iotdb.properties`文件，将 `enable_rest_service` 设置为 `true` 以启用该模块。
+    
+   ```properties
+    enable_rest_service=true
+    ```
 
 ### 鉴权
 RESTful 服务使用了基础（basic）鉴权，每次 URL 请求都需要在 header 中携带 `'Authorization': 'Basic ' + base64.encode(username + ':' + password)`。
@@ -95,6 +107,8 @@ query 接口可以用于处理数据查询和元数据查询。
 |values|array|二维数组，第一维与结果集列名数组的长度相同，第二维数组代表结果集的一列|
 
 请求示例如下所示：
+
+提示:为了避免OOM问题，不推荐使用select * from root.xx.** 这种查找方式。
 
 请求示例 表达式查询:
 ```shell

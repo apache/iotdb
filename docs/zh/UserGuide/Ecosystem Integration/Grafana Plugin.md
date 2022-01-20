@@ -220,7 +220,7 @@ CONTROL 输入框为非必须填写项目，填写内容应当是控制查询类
 *  `group by ((2017-11-01T00:00:00, 2017-11-07T23:00:00], 1d), level=1`
 *  `group by ([0, 20), 2ms, 3ms), level=1`
 
-
+提示：为了避免OOM问题，不推荐使用select * from root.xx.** 这种语句在Grafana plugin中使用。
 
 #### 变量与模板功能的支持
 
