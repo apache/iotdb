@@ -47,11 +47,12 @@ mvn clean scala:compile compile install
     </dependency>
 ```
 
+#### spark-shell user guide
+
 Notice: There is a conflict of thrift version between IoTDB and Spark. 
 Therefore, if you want to debug in spark-shell, you need to execute `rm -f $SPARK_HOME/jars/libthrift*` and `cp $IOTDB_HOME/lib/libthrift* $SPARK_HOME/jars/` to resolve it.
 Otherwise, you can only debug the code in IDE. If you want to run your task by `spark-submit`, you must package with dependency.
 
-#### spark-shell user guide
 
 ```
 spark-shell --jars spark-iotdb-connector-0.13.0.jar,iotdb-jdbc-0.13.0-jar-with-dependencies.jar,iotdb-session-0.13.0-jar-with-dependencies.jar
