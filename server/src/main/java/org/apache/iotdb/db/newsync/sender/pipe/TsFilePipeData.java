@@ -66,6 +66,12 @@ public class TsFilePipeData {
     return tsFilePath != null;
   }
 
+  public boolean isTsFileClosed() {
+    File tsFile = new File(tsFilePath).getAbsoluteFile();
+    File resource = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+    return resource.exists();
+  }
+
   public long getSerialNumber() {
     return serialNumber;
   }
@@ -169,5 +175,20 @@ public class TsFilePipeData {
     TSFILE,
     DELETION,
     PHYSICALPLAN
+  }
+
+  @Override
+  public String toString() {
+    StringBuilder builder = new StringBuilder("TsFilePipeData{");
+    builder.append("serialNumber=" + serialNumber);
+    if (tsFilePath != null) {
+      builder.append(", tsfile=" + tsFilePath);
+    } else if (deletion != null) {
+      builder.append(", deletion=" + deletion);
+    } else if (plan != null) {
+      builder.append(", physicalplan=" + plan);
+    }
+    builder.append("}");
+    return builder.toString();
   }
 }

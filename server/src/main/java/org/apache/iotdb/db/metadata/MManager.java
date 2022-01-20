@@ -2466,22 +2466,27 @@ public class MManager {
     return mtree.getTimeseriesAsPlan(pathPattern);
   }
 
-  public void registerPipe(TsFilePipe syncPipe) {
+  public void registerSyncTask(TsFilePipe syncPipe) {
     syncManager.registerSyncTask(syncPipe);
   }
 
-  public void deregisterPipe() {
+  public void deregisterSyncTask() {
     syncManager.deregisterSyncTask();
   }
 
   private DeleteTimeSeriesPlan splitDeleteTimeseriesPlanByDevice(PartialPath pathPattern)
+      throws MetadataException {
+    return new DeleteTimeSeriesPlan(splitPathPatternByDevice(pathPattern));
+  }
+
+  public List<PartialPath> splitPathPatternByDevice(PartialPath pathPattern)
       throws MetadataException {
     Set<PartialPath> devices = mtree.getDevicesByTimeseries(pathPattern);
     List<PartialPath> resultPathPattern = new LinkedList<>();
     for (PartialPath device : devices) {
       resultPathPattern.addAll(pathPattern.alterPrefixPath(device));
     }
-    return new DeleteTimeSeriesPlan(resultPathPattern);
+    return resultPathPattern;
   }
 
   // endregion

@@ -50,7 +50,9 @@ public class MetadataSyncManager {
     return syncPipe != null;
   }
 
-  public void syncMetadataPlan(PhysicalPlan plan) {}
+  public void syncMetadataPlan(PhysicalPlan plan) {
+    syncPipe.collectRealTimeMetaData(plan);
+  }
 
   public void clear() {
     this.syncPipe = null;

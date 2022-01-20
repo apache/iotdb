@@ -21,7 +21,6 @@ package org.apache.iotdb.db.newsync.sender.recovery;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipeData;
@@ -69,25 +68,45 @@ public class TsFilePipeLog {
   }
 
   /** make hard link for tsfile * */
-  public File addHistoryTsFile(File tsFile) throws IOException {
+  public File addHistoryTsFile(File tsFile, long modsOffset) throws IOException {
     File mods = new File(tsFile.getPath() + ModificationFile.FILE_SUFFIX);
 
     if (mods.exists()) {
-      createHardLink(mods);
+      File modsHardLink = createHardLink(mods);
+      if (modsOffset != 0L) {
+        serializeModsOffset(
+            new File(modsHardLink.getPath() + SenderConf.modsOffsetFileSuffix), modsOffset);
+      }
+    } else if (modsOffset != 0L) {
+      logger.warn(
+          String.format(
+              "Can not find %s mods to create hard link. The mods offset is %d.",
+              mods.getPath(), modsOffset));
     }
     return addRealTimeTsFile(tsFile);
   }
 
-  public File addRealTimeTsFile(File tsFile) throws IOException {
-    File link = createHardLink(tsFile);
-    File resource = new File(tsFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
-
-    if (resource.exists()) {
-      createHardLink(resource);
-    } else {
-      logger.warn(String.format("Can not find resource %s.", resource.getPath()));
+  private void serializeModsOffset(File modsOffsetFile, long modsOffset) {
+    try {
+      createFile(modsOffsetFile);
+      BufferedWriter bw = new BufferedWriter(new FileWriter(modsOffsetFile));
+      bw.write(String.valueOf(modsOffset));
+      bw.flush();
+      bw.close();
+    } catch (IOException e) {
+      logger.warn(
+          String.format(
+              "Serialize mods offset in %s error. The mods offset is %d",
+              modsOffsetFile.getPath(), modsOffset));
     }
-    return link;
+  }
+
+  public File addRealTimeTsFile(File tsFile) throws IOException {
+    return createHardLink(tsFile);
+  }
+
+  public void addRealTimeTsFileResource(File tsFileResource) throws IOException {
+    createHardLink(tsFileResource);
   }
 
   private File createHardLink(File file) throws IOException {
@@ -131,7 +150,7 @@ public class TsFilePipeLog {
     historyOutputStream = new DataOutputStream(new FileOutputStream(historyPipeLog));
   }
 
-  public void addRealTimePipeData(TsFilePipeData pipeData) throws IOException {
+  public synchronized void addRealTimePipeData(TsFilePipeData pipeData) throws IOException {
     getRealTimeOutputStream(pipeData.getSerialNumber());
     currentPipeLogSize += pipeData.serialize(realTimeOutputStream);
   }

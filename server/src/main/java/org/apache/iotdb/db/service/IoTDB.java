@@ -166,12 +166,12 @@ public class IoTDB implements IoTDBMBean {
 
     // Warn: registMonitor() method should be called after systemDataRecovery()
     registerManager.register(StatMonitor.getInstance());
+    registerManager.register(SenderService.getInstance());
     registerManager.register(SyncServerManager.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
     registerManager.register(SettleService.getINSTANCE());
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
-    registerManager.register(SenderService.getInstance());
 
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
