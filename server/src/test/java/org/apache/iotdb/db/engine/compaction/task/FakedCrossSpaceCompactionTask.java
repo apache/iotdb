@@ -58,7 +58,7 @@ public class FakedCrossSpaceCompactionTask extends RewriteCrossSpaceCompactionTa
       ((FakedTsFileResource) resource)
           .setTsFileSize(resource.getTsFileSize() + avgSizeAddToSeqFile);
     }
+    selectedSeqTsFileResourceList.clear();
     selectedUnSeqTsFileResourceList.clear();
-    //    unSeqTsFileResourceList.clear();
   }
 }

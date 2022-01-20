@@ -366,7 +366,7 @@ public class StorageGroupManager {
     for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
         this.virtualStorageGroupProcessor) {
       if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.merge();
+        virtualStorageGroupProcessor.compact();
       }
     }
   }

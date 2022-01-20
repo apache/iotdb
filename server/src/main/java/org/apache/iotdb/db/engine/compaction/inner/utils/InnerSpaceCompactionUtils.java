@@ -21,11 +21,10 @@ package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.MaxFileMergeFileSelector;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.MaxSeriesMergeFileSelector;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.MergeFileStrategy;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -60,9 +59,8 @@ public class InnerSpaceCompactionUtils {
     throw new IllegalStateException("Utility class");
   }
 
-  public static void compact(
-      TsFileResource targetResource, List<TsFileResource> tsFileResources, boolean sequence)
-      throws IOException, MetadataException {
+  public static void compact(TsFileResource targetResource, List<TsFileResource> tsFileResources)
+      throws IOException, MetadataException, InterruptedException {
 
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(tsFileResources);
         TsFileIOWriter writer = new TsFileIOWriter(targetResource.getTsFile())) {
@@ -70,13 +68,13 @@ public class InnerSpaceCompactionUtils {
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
         boolean aligned = deviceInfo.right;
+
         writer.startChunkGroup(device);
         if (aligned) {
           compactAlignedSeries(device, targetResource, writer, deviceIterator);
         } else {
-          compactNotAlignedSeries(device, targetResource, writer, deviceIterator, sequence);
+          compactNotAlignedSeries(device, targetResource, writer, deviceIterator);
         }
-
         writer.endChunkGroup();
       }
 
@@ -88,23 +86,32 @@ public class InnerSpaceCompactionUtils {
     }
   }
 
+  private static void checkThreadInterrupted(TsFileResource tsFileResource)
+      throws InterruptedException {
+    if (Thread.currentThread().isInterrupted()) {
+      throw new InterruptedException(
+          String.format(
+              "[Compaction] compaction for target file %s abort", tsFileResource.toString()));
+    }
+  }
+
   private static void compactNotAlignedSeries(
       String device,
       TsFileResource targetResource,
       TsFileIOWriter writer,
-      MultiTsFileDeviceIterator deviceIterator,
-      boolean sequence)
-      throws IOException, MetadataException {
+      MultiTsFileDeviceIterator deviceIterator)
+      throws IOException, MetadataException, InterruptedException {
     MultiTsFileDeviceIterator.MeasurementIterator seriesIterator =
         deviceIterator.iterateNotAlignedSeries(device, true);
     while (seriesIterator.hasNextSeries()) {
+      checkThreadInterrupted(targetResource);
       // TODO: we can provide a configuration item to enable concurrent between each series
       String currentSeries = seriesIterator.nextSeries();
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
           seriesIterator.getMetadataListForCurrentSeries();
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
           new SingleSeriesCompactionExecutor(
-              device, currentSeries, readerAndChunkMetadataList, writer, targetResource, sequence);
+              device, currentSeries, readerAndChunkMetadataList, writer, targetResource);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
   }
@@ -114,7 +121,8 @@ public class InnerSpaceCompactionUtils {
       TsFileResource targetResource,
       TsFileIOWriter writer,
       MultiTsFileDeviceIterator deviceIterator)
-      throws IOException {
+      throws IOException, InterruptedException {
+    checkThreadInterrupted(targetResource);
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
         deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
     AlignedSeriesCompactionExecutor compactionExecutor =
@@ -172,7 +180,6 @@ public class InnerSpaceCompactionUtils {
             ModificationFile.getCompactionMods(sourceFile);
         Collection<Modification> newModification = compactionModificationFile.getModifications();
         compactionModificationFile.close();
-        sourceFile.resetModFile();
         // write the new modifications to its old modification file
         try (ModificationFile oldModificationFile = sourceFile.getModFile()) {
           for (Modification modification : newModification) {
@@ -223,12 +230,11 @@ public class InnerSpaceCompactionUtils {
 
   public static ICrossSpaceMergeFileSelector getCrossSpaceFileSelector(
       long budget, CrossSpaceMergeResource resource) {
-    MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
+    CrossCompactionStrategy strategy =
+        IoTDBDescriptor.getInstance().getConfig().getCrossCompactionStrategy();
     switch (strategy) {
-      case MAX_FILE_NUM:
-        return new MaxFileMergeFileSelector(resource, budget);
-      case MAX_SERIES_NUM:
-        return new MaxSeriesMergeFileSelector(resource, budget);
+      case REWRITE_COMPACTION:
+        return new RewriteCompactionFileSelector(resource, budget);
       default:
         throw new UnsupportedOperationException("Unknown CrossSpaceFileStrategy " + strategy);
     }

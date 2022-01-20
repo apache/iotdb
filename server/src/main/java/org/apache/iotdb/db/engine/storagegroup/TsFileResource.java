@@ -97,6 +97,8 @@ public class TsFileResource {
 
   private ModificationFile modFile;
 
+  private ModificationFile compactionModFile;
+
   protected volatile boolean closed = false;
   private volatile boolean deleted = false;
   volatile boolean isMerging = false;
@@ -357,14 +359,14 @@ public class TsFileResource {
   }
 
   public ModificationFile getCompactionModFile() {
-    if (modFile == null) {
+    if (compactionModFile == null) {
       synchronized (this) {
-        if (modFile == null) {
-          modFile = ModificationFile.getCompactionMods(this);
+        if (compactionModFile == null) {
+          compactionModFile = ModificationFile.getCompactionMods(this);
         }
       }
     }
-    return modFile;
+    return compactionModFile;
   }
 
   public void resetModFile() {
@@ -441,6 +443,10 @@ public class TsFileResource {
     if (modFile != null) {
       modFile.close();
       modFile = null;
+    }
+    if (compactionModFile != null) {
+      compactionModFile.close();
+      compactionModFile = null;
     }
     processor = null;
     pathToChunkMetadataListMap = null;

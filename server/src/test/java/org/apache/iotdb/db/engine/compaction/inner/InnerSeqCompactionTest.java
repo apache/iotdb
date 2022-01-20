@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionTimeseriesType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -101,6 +102,7 @@ public class InnerSeqCompactionTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    new CompactionConfigRestorer().restoreCompactionConfig();
     CompactionClearUtils.clearAllCompactionFiles();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
@@ -225,7 +227,7 @@ public class InnerSeqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              InnerSpaceCompactionUtils.compact(targetTsFileResource, sourceResources, true);
+              InnerSpaceCompactionUtils.compact(targetTsFileResource, sourceResources);
               InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
               InnerSpaceCompactionUtils.combineModsInCompaction(
                   sourceResources, targetTsFileResource);
@@ -332,6 +334,8 @@ public class InnerSeqCompactionTest {
           }
         }
       }
+    } catch (InterruptedException e) {
+      e.printStackTrace();
     } finally {
       IoTDBDescriptor.getInstance()
           .getConfig()
@@ -343,13 +347,7 @@ public class InnerSeqCompactionTest {
   }
 
   @Test
-  public void testAppendPage() throws IOException, MetadataException {
-    int prevMergePagePointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getMergePagePointNumberThreshold();
-    IoTDBDescriptor.getInstance().getConfig().setMergePagePointNumberThreshold(1);
-    int prevMergeChunkPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
-    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(100000);
+  public void testAppendPage() throws IOException, MetadataException, InterruptedException {
 
     for (int toMergeFileNum : toMergeFileNums) {
       for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
@@ -454,7 +452,7 @@ public class InnerSeqCompactionTest {
                   timeValuePair ->
                       timeValuePair.getTimestamp() >= 250L && timeValuePair.getTimestamp() <= 300L);
             }
-            InnerSpaceCompactionUtils.compact(targetTsFileResource, toMergeResources, true);
+            InnerSpaceCompactionUtils.compact(targetTsFileResource, toMergeResources);
             InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
             InnerSpaceCompactionUtils.combineModsInCompaction(
                 toMergeResources, targetTsFileResource);
@@ -608,13 +606,6 @@ public class InnerSeqCompactionTest {
         }
       }
     }
-
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMergePagePointNumberThreshold(prevMergePagePointNumberThreshold);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMergeChunkPointNumberThreshold(prevMergeChunkPointNumberThreshold);
   }
 
   @Test
@@ -736,7 +727,7 @@ public class InnerSeqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              InnerSpaceCompactionUtils.compact(targetTsFileResource, toMergeResources, true);
+              InnerSpaceCompactionUtils.compact(targetTsFileResource, toMergeResources);
               InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
               InnerSpaceCompactionUtils.combineModsInCompaction(
                   toMergeResources, targetTsFileResource);
@@ -946,6 +937,8 @@ public class InnerSeqCompactionTest {
           }
         }
       }
+    } catch (InterruptedException e) {
+      e.printStackTrace();
     } finally {
       IoTDBDescriptor.getInstance()
           .getConfig()
