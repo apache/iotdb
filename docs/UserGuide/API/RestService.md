@@ -22,7 +22,7 @@
 ## RESTful Services  
 IoTDB's RESTful services can be used for query, write, and management operations, using the OpenAPI standard to define interfaces and generate frameworks.
 
-###Enable restful services
+### Enable RESTful Services
 
 RESTful services are disabled by default.
 
