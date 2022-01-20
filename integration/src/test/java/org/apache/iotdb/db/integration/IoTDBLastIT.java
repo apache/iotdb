@@ -94,7 +94,6 @@ public class IoTDBLastIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     prepareData();
   }

@@ -20,6 +20,6 @@
 package org.apache.iotdb.metrics.utils;
 
 public enum PredefinedMetric {
-  JVM,
-  LOGBACK
+  jvm,
+  logback
 }

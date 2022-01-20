@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -27,7 +29,6 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -113,7 +114,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -122,7 +122,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.COMPACTION_LOG_NAME;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
@@ -262,7 +261,7 @@ public class VirtualStorageGroupProcessor {
   // DEFAULT_POOL_TRIM_INTERVAL_MILLIS
   private long timeWhenPoolNotEmpty = Long.MAX_VALUE;
 
-  private LastFlushTimeManager lastFlushTimeManager = new LastFlushTimeManager();
+  private ILastFlushTimeManager lastFlushTimeManager;
 
   /**
    * record the insertWriteLock in SG is being hold by which method, it will be empty string if on
@@ -270,8 +269,7 @@ public class VirtualStorageGroupProcessor {
    */
   private String insertWriteLockHolder = "";
 
-  private ScheduledExecutorService timedCompactionScheduleTask =
-      Executors.newSingleThreadScheduledExecutor();
+  private ScheduledExecutorService timedCompactionScheduleTask;
 
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
@@ -311,17 +309,16 @@ public class VirtualStorageGroupProcessor {
         // if the queue is empty and current size is less than MAX_BYTEBUFFER_NUM
         // we can construct another two more new byte buffer
         try {
-          currentWalPoolSize += 2;
           res[0] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
           res[1] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
+          currentWalPoolSize += 2;
         } catch (OutOfMemoryError e) {
+          logger.error("Allocate ByteBuffers error", e);
           if (res[0] != null) {
             MmapUtil.clean((MappedByteBuffer) res[0]);
-            currentWalPoolSize -= 1;
           }
           if (res[1] != null) {
             MmapUtil.clean((MappedByteBuffer) res[1]);
-            currentWalPoolSize -= 1;
           }
           return null;
         }
@@ -401,21 +398,20 @@ public class VirtualStorageGroupProcessor {
       logger.error("create Storage Group system Directory {} failed", storageGroupSysDir.getPath());
     }
 
-    ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
-    executorService.scheduleWithFixedDelay(
-        this::trimTask,
-        config.getWalPoolTrimIntervalInMS(),
-        config.getWalPoolTrimIntervalInMS(),
-        TimeUnit.MILLISECONDS);
-    // use id table
+    // if use id table, we use id table flush time manager
     if (config.isEnableIDTable()) {
       try {
         idTable = IDTableManager.getInstance().getIDTable(new PartialPath(logicalStorageGroupName));
+        lastFlushTimeManager = new IDTableFlushTimeManager(idTable);
       } catch (IllegalPathException e) {
         logger.error("failed to create id table");
       }
+    } else {
+      lastFlushTimeManager = new LastFlushTimeManager();
     }
+    // recover tsfiles
     recover();
+
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricsService.getInstance()
           .getMetricManager()
@@ -426,6 +422,20 @@ public class VirtualStorageGroupProcessor {
               Tag.NAME.toString(),
               "storageGroup");
     }
+
+    // start trim task at last
+    ScheduledExecutorService executorService =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.WAL_TRIM.getName()
+                + "-"
+                + logicalStorageGroupName
+                + "-"
+                + virtualStorageGroupId);
+    executorService.scheduleWithFixedDelay(
+        this::trimTask,
+        config.getWalPoolTrimIntervalInMS(),
+        config.getWalPoolTrimIntervalInMS(),
+        TimeUnit.MILLISECONDS);
   }
 
   public String getLogicalStorageGroupName() {
@@ -459,6 +469,7 @@ public class VirtualStorageGroupProcessor {
     try {
       recoverInnerSpaceCompaction(true);
       recoverInnerSpaceCompaction(false);
+      recoverCrossSpaceCompaction();
     } catch (Exception e) {
       throw new StorageGroupProcessorException(e);
     }
@@ -521,9 +532,9 @@ public class VirtualStorageGroupProcessor {
         long endTime = resource.getEndTime(deviceId);
         endTimeMap.put(deviceId, endTime);
       }
-      lastFlushTimeManager.setLastTimeAll(timePartitionId, endTimeMap);
-      lastFlushTimeManager.setFlushedTimeAll(timePartitionId, endTimeMap);
-      lastFlushTimeManager.setGlobalFlushedTimeAll(endTimeMap);
+      lastFlushTimeManager.setMultiDeviceLastTime(timePartitionId, endTimeMap);
+      lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
+      lastFlushTimeManager.setMultiDeviceGlobalFlushedTime(endTimeMap);
     }
 
     // recover and start timed compaction thread
@@ -536,15 +547,25 @@ public class VirtualStorageGroupProcessor {
   }
 
   private void initCompaction() {
-    CompactionTaskManager.getInstance()
-        .submitTask(
-            logicalStorageGroupName + "-" + virtualStorageGroupId,
-            0,
-            new CompactionRecoverTask(
-                this::submitTimedCompactionTask,
-                tsFileManager,
-                logicalStorageGroupName,
-                virtualStorageGroupId));
+    timedCompactionScheduleTask =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.COMPACTION_SCHEDULE.getName()
+                + "-"
+                + logicalStorageGroupName
+                + "-"
+                + virtualStorageGroupId);
+    timedCompactionScheduleTask.scheduleWithFixedDelay(
+        this::executeCompaction,
+        COMPACTION_TASK_SUBMIT_DELAY,
+        IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
+        TimeUnit.MILLISECONDS);
+  }
+
+  /** recover crossSpaceCompaction */
+  private void recoverCrossSpaceCompaction() throws Exception {
+    CompactionRecoverTask compactionRecoverTask =
+        new CompactionRecoverTask(tsFileManager, logicalStorageGroupName, virtualStorageGroupId);
+    compactionRecoverTask.recoverCrossSpaceCompaction();
   }
 
   private void recoverInnerSpaceCompaction(boolean isSequence) throws Exception {
@@ -590,7 +611,8 @@ public class VirtualStorageGroupProcessor {
                           .substring(timePartitionDir.getPath().lastIndexOf(File.separator) + 1)),
                   compactionLog,
                   timePartitionDir.getPath(),
-                  isSequence)
+                  isSequence,
+                  tsFileManager)
               .call();
         }
       }
@@ -612,17 +634,10 @@ public class VirtualStorageGroupProcessor {
               -1,
               logFile,
               logFile.getParent(),
-              isSequence)
+              isSequence,
+              tsFileManager)
           .call();
     }
-  }
-
-  private void submitTimedCompactionTask() {
-    timedCompactionScheduleTask.scheduleWithFixedDelay(
-        this::executeCompaction,
-        COMPACTION_TASK_SUBMIT_DELAY,
-        COMPACTION_TASK_SUBMIT_DELAY,
-        TimeUnit.MILLISECONDS);
   }
 
   private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
@@ -646,13 +661,13 @@ public class VirtualStorageGroupProcessor {
       for (String deviceId : resource.getDevices()) {
         long endTime = resource.getEndTime(deviceId);
         long endTimePartitionId = StorageEngine.getTimePartition(endTime);
-        lastFlushTimeManager.setLastTime(endTimePartitionId, deviceId, endTime);
-        lastFlushTimeManager.setGlobalFlushedTime(deviceId, endTime);
+        lastFlushTimeManager.setOneDeviceLastTime(endTimePartitionId, deviceId, endTime);
+        lastFlushTimeManager.setOneDeviceGlobalFlushedTime(deviceId, endTime);
 
         // set all the covered partition's LatestFlushedTime
         long partitionId = StorageEngine.getTimePartition(resource.getStartTime(deviceId));
         while (partitionId <= endTimePartitionId) {
-          lastFlushTimeManager.setFlushedTime(partitionId, deviceId, endTime);
+          lastFlushTimeManager.setOneDeviceFlushedTime(partitionId, deviceId, endTime);
           if (!timePartitionIdVersionControllerMap.containsKey(partitionId)) {
             File directory =
                 SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, String.valueOf(partitionId));
@@ -693,10 +708,6 @@ public class VirtualStorageGroupProcessor {
       // resources
       continueFailedRenames(fileFolder, TEMP_SUFFIX);
 
-      // some TsFiles were going to be replaced by the merged files when the system crashed and
-      // the process was interrupted before the merged files could be named
-      continueFailedRenames(fileFolder, MERGE_SUFFIX);
-
       File[] subFiles = fileFolder.listFiles();
       if (subFiles != null) {
         for (File partitionFolder : subFiles) {
@@ -707,11 +718,6 @@ public class VirtualStorageGroupProcessor {
             // such
             // resources
             continueFailedRenames(partitionFolder, TEMP_SUFFIX);
-
-            // some TsFiles were going to be replaced by the merged files when the system crashed
-            // and
-            // the process was interrupted before the merged files could be named
-            continueFailedRenames(partitionFolder, MERGE_SUFFIX);
 
             Collections.addAll(
                 tsFiles,
@@ -1509,12 +1515,10 @@ public class VirtualStorageGroupProcessor {
       return;
     }
     long ttlLowerBound = System.currentTimeMillis() - dataTTL;
-    if (logger.isDebugEnabled()) {
-      logger.debug(
-          "{}: TTL removing files before {}",
-          logicalStorageGroupName + "-" + virtualStorageGroupId,
-          new Date(ttlLowerBound));
-    }
+    logger.debug(
+        "{}: TTL removing files before {}",
+        logicalStorageGroupName + "-" + virtualStorageGroupId,
+        new Date(ttlLowerBound));
 
     // copy to avoid concurrent modification of deletion
     List<TsFileResource> seqFiles = new ArrayList<>(tsFileManager.getTsFileList(true));
@@ -1537,19 +1541,16 @@ public class VirtualStorageGroupProcessor {
     resource.setDeleted(true);
 
     // ensure that the file is not used by any queries
-    tsFileManager.remove(resource, isSeq);
-
-    // try to delete physical data file
     if (resource.tryWriteLock()) {
       try {
+        // try to delete physical data file
         resource.remove();
-        if (logger.isInfoEnabled()) {
-          logger.info(
-              "Removed a file {} before {} by ttl ({}ms)",
-              resource.getTsFilePath(),
-              new Date(ttlLowerBound),
-              dataTTL);
-        }
+        tsFileManager.remove(resource, isSeq);
+        logger.info(
+            "Removed a file {} before {} by ttl ({}ms)",
+            resource.getTsFilePath(),
+            new Date(ttlLowerBound),
+            dataTTL);
       } finally {
         resource.writeUnlock();
       }
@@ -2264,12 +2265,8 @@ public class VirtualStorageGroupProcessor {
     resources.clear();
   }
 
-  /**
-   * merge file under this storage group processor
-   *
-   * @param isFullMerge whether this merge is a full merge or not
-   */
-  public void merge(boolean isFullMerge) {
+  /** merge file under this storage group processor */
+  public void compact() {
     writeLock("merge");
     try {
       executeCompaction();
@@ -2353,14 +2350,6 @@ public class VirtualStorageGroupProcessor {
    */
   public void loadNewTsFile(TsFileResource newTsFileResource) throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
-    System.out.println(tsfileToBeInserted.getPath());
-    for (String device : newTsFileResource.getDevices()) {
-      System.out.println(
-          "startTime: "
-              + newTsFileResource.getStartTime(device)
-              + " endTime: "
-              + newTsFileResource.getEndTime(device));
-    }
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock("loadNewTsFile");
     try {
@@ -2782,7 +2771,7 @@ public class VirtualStorageGroupProcessor {
       File targetModFile =
           fsFactory.getFile(targetFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
       try {
-        Files.deleteIfExists(targetFile.toPath());
+        Files.deleteIfExists(targetModFile.toPath());
       } catch (IOException e) {
         logger.warn("Cannot delete localModFile {}", targetModFile, e);
       }
@@ -3025,7 +3014,6 @@ public class VirtualStorageGroupProcessor {
     try {
       // abort ongoing comapctions and merges
       CompactionTaskManager.getInstance().abortCompaction(logicalStorageGroupName);
-      MergeManager.getINSTANCE().abortMerge(logicalStorageGroupName);
       // close all working files that should be removed
       removePartitions(filter, workSequenceTsFileProcessors.entrySet(), true);
       removePartitions(filter, workUnsequenceTsFileProcessors.entrySet(), false);
@@ -3245,5 +3233,10 @@ public class VirtualStorageGroupProcessor {
 
   public IDTable getIdTable() {
     return idTable;
+  }
+
+  @TestOnly
+  public ILastFlushTimeManager getLastFlushTimeManager() {
+    return lastFlushTimeManager;
   }
 }

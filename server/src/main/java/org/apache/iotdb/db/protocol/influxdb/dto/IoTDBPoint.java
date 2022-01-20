@@ -21,7 +21,7 @@ package org.apache.iotdb.db.protocol.influxdb.dto;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.protocol.influxdb.meta.MetaManager;
+import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.DataTypeUtils;
 import org.apache.iotdb.db.utils.ParameterUtils;
@@ -57,7 +57,7 @@ public class IoTDBPoint {
     this.values = values;
   }
 
-  public IoTDBPoint(String database, Point point, MetaManager metaManager) {
+  public IoTDBPoint(String database, Point point, InfluxDBMetaManager metaManager) {
     String measurement = null;
     Map<String, String> tags = new HashMap<>();
     Map<String, Object> fields = new HashMap<>();

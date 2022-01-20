@@ -19,22 +19,21 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossCompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
 import java.io.File;
 import java.util.List;
 
 public enum CrossCompactionStrategy {
-  INPLACE_COMPACTION;
+  REWRITE_COMPACTION;
 
   public static CrossCompactionStrategy getCrossCompactionStrategy(String name) {
-    if ("INPLACE_COMPACTION".equalsIgnoreCase(name)) {
-      return INPLACE_COMPACTION;
+    if ("REWRITE_COMPACTION".equalsIgnoreCase(name)) {
+      return REWRITE_COMPACTION;
     }
     throw new RuntimeException("Illegal Cross Compaction Strategy " + name);
   }
@@ -43,27 +42,21 @@ public enum CrossCompactionStrategy {
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartitionId,
-      CrossSpaceMergeResource mergeResource,
       String storageGroupDir,
-      TsFileResourceList seqTsFileResourceList,
-      TsFileResourceList unSeqTsFileResourceList,
+      TsFileManager tsFileManager,
       List<TsFileResource> selectedSeqTsFileResourceList,
-      List<TsFileResource> selectedUnSeqTsFileResourceList,
-      int concurrentMergeCount) {
+      List<TsFileResource> selectedUnSeqTsFileResourceList) {
     switch (this) {
-      case INPLACE_COMPACTION:
+      case REWRITE_COMPACTION:
       default:
-        return new InplaceCompactionTask(
+        return new RewriteCrossSpaceCompactionTask(
             logicalStorageGroupName,
             virtualStorageGroupName,
             timePartitionId,
-            mergeResource,
             storageGroupDir,
-            seqTsFileResourceList,
-            unSeqTsFileResourceList,
+            tsFileManager,
             selectedSeqTsFileResourceList,
             selectedUnSeqTsFileResourceList,
-            concurrentMergeCount,
             CompactionTaskManager.currentTaskNum);
     }
   }
@@ -73,23 +66,19 @@ public enum CrossCompactionStrategy {
       String virtualStorageGroupName,
       long timePartitionId,
       String storageGroupDir,
-      TsFileResourceList seqTsFileResourceList,
-      TsFileResourceList unSeqTsFileResourceList,
-      int concurrentMergeCount,
-      File logFile) {
+      File logFile,
+      TsFileManager tsFileManager) {
     switch (this) {
-      case INPLACE_COMPACTION:
+      case REWRITE_COMPACTION:
       default:
-        return new InplaceCompactionRecoverTask(
+        return new RewriteCrossCompactionRecoverTask(
             logicalStorageGroupName,
             virtualStorageGroupName,
             timePartitionId,
             storageGroupDir,
-            seqTsFileResourceList,
-            unSeqTsFileResourceList,
-            concurrentMergeCount,
             logFile,
-            CompactionTaskManager.currentTaskNum);
+            CompactionTaskManager.currentTaskNum,
+            tsFileManager);
     }
   }
 
@@ -98,19 +87,17 @@ public enum CrossCompactionStrategy {
       String virtualGroupId,
       String storageGroupDir,
       long timePartition,
-      TsFileResourceList sequenceFileList,
-      TsFileResourceList unsequenceFileList,
+      TsFileManager tsFileManager,
       CrossSpaceCompactionTaskFactory taskFactory) {
     switch (this) {
-      case INPLACE_COMPACTION:
+      case REWRITE_COMPACTION:
       default:
-        return new InplaceCompactionSelector(
+        return new RewriteCrossSpaceCompactionSelector(
             logicalStorageGroupName,
             virtualGroupId,
             storageGroupDir,
             timePartition,
-            sequenceFileList,
-            unsequenceFileList,
+            tsFileManager,
             taskFactory);
     }
   }
