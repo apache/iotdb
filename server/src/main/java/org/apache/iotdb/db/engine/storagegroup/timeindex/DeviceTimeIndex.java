@@ -160,7 +160,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<String> getDevices(String tsFilePath) {
+  public Set<String> getDevices() {
     return deviceToIndex.keySet();
   }
 

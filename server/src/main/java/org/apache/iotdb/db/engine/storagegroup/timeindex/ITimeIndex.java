@@ -62,7 +62,7 @@ public interface ITimeIndex {
    *
    * @return device names
    */
-  Set<String> getDevices(String tsFilePath);
+  Set<String> getDevices();
 
   /** @return whether end time is empty (Long.MIN_VALUE) */
   boolean endTimeEmpty();

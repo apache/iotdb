@@ -21,8 +21,7 @@ package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -34,8 +33,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class FileTimeIndex implements ITimeIndex {
 
@@ -47,30 +46,46 @@ public class FileTimeIndex implements ITimeIndex {
   /** end times. The value is Long.MIN_VALUE if it's an unsealed sequence tsfile */
   protected long endTime;
 
+  private Set<String> devices;
+
   public FileTimeIndex() {
+    this.devices = ConcurrentHashMap.newKeySet();
     this.startTime = Long.MAX_VALUE;
     this.endTime = Long.MIN_VALUE;
   }
 
   public FileTimeIndex(long startTime, long endTime) {
+    this.devices = ConcurrentHashMap.newKeySet();
     this.startTime = startTime;
     this.endTime = endTime;
   }
 
   @Override
   public void serialize(OutputStream outputStream) throws IOException {
+    devices.clear();
+    devices = null;
+    ReadWriteIOUtils.write(0, outputStream);
     ReadWriteIOUtils.write(startTime, outputStream);
     ReadWriteIOUtils.write(endTime, outputStream);
   }
 
   @Override
   public FileTimeIndex deserialize(InputStream inputStream) throws IOException {
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; i++) {
+      ReadWriteIOUtils.readString(inputStream);
+    }
     return new FileTimeIndex(
         ReadWriteIOUtils.readLong(inputStream), ReadWriteIOUtils.readLong(inputStream));
   }
 
   @Override
   public FileTimeIndex deserialize(ByteBuffer buffer) {
+    int size = buffer.getInt();
+    for (int i = 0; i < size; i++) {
+      SerializeUtils.deserializeString(buffer);
+    }
+
     return new FileTimeIndex(buffer.getLong(), buffer.getLong());
   }
 
@@ -80,14 +95,8 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<String> getDevices(String tsFilePath) {
-    try {
-      TsFileSequenceReader fileReader = FileReaderManager.getInstance().get(tsFilePath, true);
-      return new HashSet<>(fileReader.getAllDevices());
-    } catch (IOException e) {
-      logger.error("Can't read file {} from disk ", tsFilePath, e);
-      throw new RuntimeException("Can't read file " + tsFilePath + " from disk");
-    }
+  public Set<String> getDevices() {
+    return devices;
   }
 
   @Override
@@ -145,6 +154,7 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public void updateStartTime(String deviceId, long time) {
+    devices.add(deviceId.intern());
     if (this.startTime > time) {
       this.startTime = time;
     }
@@ -152,6 +162,7 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public void updateEndTime(String deviceId, long time) {
+    devices.add(deviceId.intern());
     if (this.endTime < time) {
       this.endTime = time;
     }

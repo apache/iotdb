@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -51,6 +52,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ref.WeakReference;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -154,6 +156,8 @@ public class TsFileResource {
    * lock of originTsFileResource
    */
   private TsFileResource originTsFileResource;
+
+  private WeakReference<Set<String>> devices;
 
   public TsFileResource() {}
 
@@ -427,7 +431,28 @@ public class TsFileResource {
   }
 
   public Set<String> getDevices() {
-    return timeIndex.getDevices(file.getPath());
+    if (!closed || timeIndex instanceof DeviceTimeIndex) {
+      return timeIndex.getDevices();
+    } else {
+      if (devices != null && devices.get() != null) {
+        return devices.get();
+      } else {
+        synchronized (this) {
+          try {
+            TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath());
+            Set<String> innerDevices = new HashSet<>();
+            innerDevices.addAll(reader.getAllDevices());
+            devices = new WeakReference<>(innerDevices);
+            return devices.get();
+          } catch (Exception e) {
+            LOGGER.error("load devices fail.", e);
+            Set<String> emptySet = new HashSet<>();
+            devices = new WeakReference<>(emptySet);
+            return emptySet;
+          }
+        }
+      }
+    }
   }
 
   public boolean endTimeEmpty() {
@@ -672,14 +697,6 @@ public class TsFileResource {
       return false;
     }
 
-    if (!getDevices().contains(deviceId)) {
-      if (debug) {
-        DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of no device!", deviceId, file);
-      }
-      return false;
-    }
-
     long startTime = getStartTime(deviceId);
     long endTime = closed || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
 
@@ -691,6 +708,16 @@ public class TsFileResource {
       }
       return res;
     }
+
+    // put the device check to last to avoid loading device set frequently
+    if (!getDevices().contains(deviceId)) {
+      if (debug) {
+        DEBUG_LOGGER.info(
+            "Path: {} file {} is not satisfied because of no device!", deviceId, file);
+      }
+      return false;
+    }
+
     return true;
   }
 
