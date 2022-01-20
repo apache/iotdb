@@ -122,6 +122,13 @@ public class IoTDBSelectIntoIT {
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
+
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.sg.d1.datatype"),
+        TSDataType.DOUBLE,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
   }
 
   private static void generateData() {
@@ -394,6 +401,20 @@ public class IoTDBSelectIntoIT {
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testSourceAndTargetPathDataTypeUnmatched() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("select s1 " + "into root.sg.d1.`datatype` " + "from root.sg.d1");
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(throwable.getMessage().contains("506"));
+      assertTrue(throwable.getMessage().contains("mismatch"));
     }
   }
 
