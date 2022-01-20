@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.frequency;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -30,6 +31,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -43,6 +45,13 @@ public class FrequencyTests {
   protected static final int PERIOD_1 = 10;
   protected static final int PEROID_2 = 200;
   protected static final double pi = Math.PI;
+
+  private static final float oldUdfCollectorMemoryBudgetInMB =
+      IoTDBDescriptor.getInstance().getConfig().getUdfCollectorMemoryBudgetInMB();
+  private static final float oldUdfTransformerMemoryBudgetInMB =
+      IoTDBDescriptor.getInstance().getConfig().getUdfTransformerMemoryBudgetInMB();
+  private static final float oldUdfReaderMemoryBudgetInMB =
+      IoTDBDescriptor.getInstance().getConfig().getUdfReaderMemoryBudgetInMB();
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -146,9 +155,9 @@ public class FrequencyTests {
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterClass();
     ConfigFactory.getConfig()
-        .setUdfCollectorMemoryBudgetInMB(100)
-        .setUdfTransformerMemoryBudgetInMB(100)
-        .setUdfReaderMemoryBudgetInMB(100);
+        .setUdfCollectorMemoryBudgetInMB(oldUdfCollectorMemoryBudgetInMB)
+        .setUdfTransformerMemoryBudgetInMB(oldUdfTransformerMemoryBudgetInMB)
+        .setUdfReaderMemoryBudgetInMB(oldUdfReaderMemoryBudgetInMB);
   }
 
   // No possible tests for IDWT, IFFT
@@ -177,7 +186,7 @@ public class FrequencyTests {
       Double result1 = Double.parseDouble(resultSet.getString(1));
       resultSet.next();
       Double result2 = Double.parseDouble(resultSet.getString(1));
-      assert Math.abs(result1 - 2d) < 1e-5 && Math.abs(result2 - 7d) < 1e-5;
+      Assert.assertTrue(Math.abs(result1 - 2d) < 1e-5 && Math.abs(result2 - 7d) < 1e-5);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -198,10 +207,11 @@ public class FrequencyTests {
       Double result3 = Double.parseDouble(resultSet.getString(1));
       resultSet.next();
       Double result4 = Double.parseDouble(resultSet.getString(1));
-      assert Math.abs(result1) < 1e-5
-          && Math.abs(result2) < 1e-5
-          && Math.abs(result3 - 2d) < 1e-5
-          && Math.abs(result4 - 2d) < 1e-5;
+      Assert.assertTrue(
+          Math.abs(result1) < 1e-5
+              && Math.abs(result2) < 1e-5
+              && Math.abs(result3 - 2d) < 1e-5
+              && Math.abs(result4 - 2d) < 1e-5);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -260,7 +270,7 @@ public class FrequencyTests {
         Double result2 = Double.parseDouble(resultSet2.getString(1));
         resultSet1.next();
         resultSet2.next();
-        assert Math.abs(result1 - 0.5 * result2) < 1e-2;
+        Assert.assertTrue(Math.abs(result1 - 0.5 * result2) < 1e-2);
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -281,7 +291,7 @@ public class FrequencyTests {
         Double result2 = Double.parseDouble(resultSet2.getString(1));
         resultSet1.next();
         resultSet2.next();
-        assert Math.abs(result1 - result2) < 1e-2;
+        Assert.assertTrue(Math.abs(result1 - result2) < 1e-2);
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
