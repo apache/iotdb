@@ -22,8 +22,8 @@ echo ------------------------------------------
 echo Starting IoTDB Client Export Script
 echo ------------------------------------------
 
-if [ -z "${IOTDB_HOME}" ]; then
-    export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
+if [ -z "${IOTDB_CLI_HOME}" ]; then
+    export IOTDB_CLI_HOME="$(cd "`dirname "$0"`"/..; pwd)"
 fi
 
 if [ -n "$JAVA_HOME" ]; then
@@ -43,11 +43,11 @@ if [ -z $JAVA ] ; then
 fi
 
 CLASSPATH=""
-for f in ${IOTDB_HOME}/lib/*.jar; do
+for f in ${IOTDB_CLI_HOME}/lib/*.jar; do
     CLASSPATH=${CLASSPATH}":"$f
 done
 
 MAIN_CLASS=org.apache.iotdb.tool.ExportCsv
 
-"$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+"$JAVA" -DIOTDB_CLI_HOME=${IOTDB_CLI_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

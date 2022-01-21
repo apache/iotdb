@@ -21,17 +21,16 @@
 # You can put your env variable here
 # export JAVA_HOME=$JAVA_HOME
 
-if [ -z "${IOTDB_HOME}" ]; then
-  export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
+if [ -z "${IOTDB_CLI_HOME}" ]; then
+  export IOTDB_CLI_HOME="$(cd "`dirname "$0"`"/..; pwd)"
 fi
 
-IOTDB_CLI_CONF=${IOTDB_HOME}/conf
 
 MAIN_CLASS=org.apache.iotdb.cli.Cli
 
 
 CLASSPATH=""
-for f in ${IOTDB_HOME}/lib/*.jar; do
+for f in ${IOTDB_CLI_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 
@@ -77,7 +76,7 @@ esac
 # echo $PARAMETERS
 
 set -o noglob
-iotdb_cli_params="-Dlogback.configurationFile=${IOTDB_CLI_CONF}/logback-cli.xml"
-exec "$JAVA" $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
+exec "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
+
 
 exit $?
