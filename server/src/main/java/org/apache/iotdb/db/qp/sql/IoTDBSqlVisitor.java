@@ -2021,6 +2021,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
   }
 
+  // Show Query Resource
+
+  @Override
+  public Operator visitShowQueryResource(IoTDBSqlParser.ShowQueryResourceContext ctx) {
+    return new ShowQueryResourceOperate(SQLConstant.TOK_SHOW_QUERY_RESOURCE);
+  }
   // Show Query Processlist
 
   @Override

@@ -929,6 +929,11 @@ public class SeriesReader {
       currentPageEndpointTime = orderUtils.getOverlapCheckTime(firstPageReader.getStatistics());
     }
 
+    // unpack all overlapped data for currentPageEndpointTime
+    unpackAllOverlappedTsFilesToTimeSeriesMetadata(currentPageEndpointTime);
+    unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(currentPageEndpointTime, false);
+    unpackAllOverlappedChunkMetadataToPageReaders(currentPageEndpointTime, false);
+
     /*
      * put all currently directly overlapped unseq page reader to merge reader
      */

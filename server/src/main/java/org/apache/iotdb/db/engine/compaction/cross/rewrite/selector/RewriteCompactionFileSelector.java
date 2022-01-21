@@ -41,9 +41,9 @@ import java.util.Map;
  * merged without exceeding given memory budget. It always assume the number of timeseries being
  * queried at the same time is 1 to maximize the number of file merged.
  */
-public class MaxFileMergeFileSelector implements ICrossSpaceMergeFileSelector {
+public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelector {
 
-  private static final Logger logger = LoggerFactory.getLogger(MaxFileMergeFileSelector.class);
+  private static final Logger logger = LoggerFactory.getLogger(RewriteCompactionFileSelector.class);
   private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
 
   CrossSpaceMergeResource resource;
@@ -69,7 +69,7 @@ public class MaxFileMergeFileSelector implements ICrossSpaceMergeFileSelector {
   private boolean[] seqSelected;
   private int seqSelectedNum;
 
-  public MaxFileMergeFileSelector(CrossSpaceMergeResource resource, long memoryBudget) {
+  public RewriteCompactionFileSelector(CrossSpaceMergeResource resource, long memoryBudget) {
     this.resource = resource;
     this.memoryBudget = memoryBudget;
   }
@@ -155,7 +155,8 @@ public class MaxFileMergeFileSelector implements ICrossSpaceMergeFileSelector {
     int unseqIndex = 0;
     long startTime = System.currentTimeMillis();
     long timeConsumption = 0;
-    long timeLimit = IoTDBDescriptor.getInstance().getConfig().getMergeFileSelectionTimeBudget();
+    long timeLimit =
+        IoTDBDescriptor.getInstance().getConfig().getCrossCompactionFileSelectionTimeBudget();
     if (timeLimit < 0) {
       timeLimit = Long.MAX_VALUE;
     }

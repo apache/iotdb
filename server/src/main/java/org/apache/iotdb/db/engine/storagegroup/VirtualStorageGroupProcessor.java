@@ -557,7 +557,7 @@ public class VirtualStorageGroupProcessor {
     timedCompactionScheduleTask.scheduleWithFixedDelay(
         this::executeCompaction,
         COMPACTION_TASK_SUBMIT_DELAY,
-        IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleInterval(),
+        IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
         TimeUnit.MILLISECONDS);
   }
 
@@ -2006,10 +2006,13 @@ public class VirtualStorageGroupProcessor {
         // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
         // change after compaction
         deletion.setFileOffset(Long.MAX_VALUE);
-        // write deletion into modification file
+        // write deletion into compaction modification file
         tsFileResource.getCompactionModFile().write(deletion);
+        // write deletion into modification file to enable query during compaction
+        tsFileResource.getModFile().write(deletion);
         // remember to close mod file
         tsFileResource.getCompactionModFile().close();
+        tsFileResource.getModFile().close();
       } else {
         deletion.setFileOffset(tsFileResource.getTsFileSize());
         // write deletion into modification file
@@ -2266,7 +2269,7 @@ public class VirtualStorageGroupProcessor {
   }
 
   /** merge file under this storage group processor */
-  public void merge() {
+  public void compact() {
     writeLock("merge");
     try {
       executeCompaction();

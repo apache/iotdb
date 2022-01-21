@@ -101,7 +101,7 @@
 - `%` 表示任意0个或多个字符。
 - `_` 表示任意单个字符。
 
-**示例 1：**查询 `root.sg.d1` 下 `value` 含有`'cc'`的数据。
+**示例 1：** 查询 `root.sg.d1` 下 `value` 含有`'cc'`的数据。
 
 ```
 IoTDB> select * from root.sg.d1 where value like '%cc%'
@@ -115,7 +115,7 @@ Total line number = 2
 It costs 0.002s
 ```
 
-**示例 2：**查询 `root.sg.d1` 下 `value` 中间为 `'b'`、前后为任意单个字符的数据。
+**示例 2：** 查询 `root.sg.d1` 下 `value` 中间为 `'b'`、前后为任意单个字符的数据。
 
 ```
 IoTDB> select * from root.sg.device where value like '_b_'
@@ -141,7 +141,7 @@ It costs 0.002s
 以a开头的：^a.*
 ```
 
-**示例 1：**查询 root.sg.d1 下 value 值为26个英文字符组成的字符串。
+**示例 1：** 查询 root.sg.d1 下 value 值为26个英文字符组成的字符串。
 
 ```shell
 IoTDB> select * from root.sg.d1 where value regexp '^[A-Za-z]+$'
@@ -155,7 +155,7 @@ Total line number = 2
 It costs 0.002s
 ```
 
-**示例 2：**查询 root.sg.d1 下 value 值为26个小写英文字符组成的字符串且时间大于100的。
+**示例 2：** 查询 root.sg.d1 下 value 值为26个小写英文字符组成的字符串且时间大于100的。
 
 ```shell
 IoTDB> select * from root.sg.d1 where value regexp '^[a-z]+$' and time > 100

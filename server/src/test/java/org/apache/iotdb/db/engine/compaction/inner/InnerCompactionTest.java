@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -79,21 +79,16 @@ public abstract class InnerCompactionTest {
   public void setUp() throws IOException, WriteProcessException, MetadataException, Exception {
     EnvironmentUtils.envSetUp();
     IoTDB.metaManager.init();
-    prevMergeChunkThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
-    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(-1);
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    new CompactionConfigRestorer().restoreCompactionConfig();
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMergeChunkPointNumberThreshold(prevMergeChunkThreshold);
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();

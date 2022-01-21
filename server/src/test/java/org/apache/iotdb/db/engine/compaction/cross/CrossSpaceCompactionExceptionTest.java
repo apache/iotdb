@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -65,6 +66,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
     Thread.currentThread().setName(oldThreadName);
+    new CompactionConfigRestorer().restoreCompactionConfig();
   }
 
   @Test
@@ -91,7 +93,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SEQ_FILES);
     compactionLogger.logFiles(unseqResources, STR_UNSEQ_FILES);
-    CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
     compactionLogger.logStringInfo(MAGIC_STRING);
     compactionLogger.close();
     CrossSpaceCompactionExceptionHandler.handleException(
@@ -160,7 +162,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SEQ_FILES);
     compactionLogger.logFiles(unseqResources, STR_UNSEQ_FILES);
-    CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
     compactionLogger.logStringInfo(MAGIC_STRING);
     compactionLogger.close();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
@@ -230,7 +232,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SEQ_FILES);
     compactionLogger.logFiles(unseqResources, STR_UNSEQ_FILES);
-    CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     seqResources.get(0).getTsFile().delete();
     compactionLogger.logStringInfo(MAGIC_STRING);
@@ -301,7 +303,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SEQ_FILES);
     compactionLogger.logFiles(unseqResources, STR_UNSEQ_FILES);
-    CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     compactionLogger.logStringInfo(MAGIC_STRING);
     compactionLogger.close();
@@ -405,7 +407,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SEQ_FILES);
     compactionLogger.logFiles(unseqResources, STR_UNSEQ_FILES);
-    CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     compactionLogger.logStringInfo(MAGIC_STRING);
     compactionLogger.close();

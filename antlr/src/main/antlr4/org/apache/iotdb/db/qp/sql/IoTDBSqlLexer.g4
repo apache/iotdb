@@ -414,6 +414,10 @@ RESAMPLE
     : R E S A M P L E
     ;
 
+RESOURCE
+    : R E S O U R C E
+    ;
+
 REVOKE
     : R E V O K E
     ;

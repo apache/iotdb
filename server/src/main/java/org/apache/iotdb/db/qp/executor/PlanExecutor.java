@@ -122,6 +122,8 @@ import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -173,6 +175,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -222,6 +225,7 @@ public class PlanExecutor implements IPlanExecutor {
   private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
   private static final Logger AUDIT_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   // for data query
   protected IQueryRouter queryRouter;
   // for administration
@@ -389,9 +393,11 @@ public class PlanExecutor implements IPlanExecutor {
       case SETTLE:
         settle((SettlePlan) plan);
         return true;
+      case SHOW_QUERY_RESOURCE:
+        return processShowQueryResource();
       default:
         throw new UnsupportedOperationException(
-            String.format("operation %s is not supported", plan.getOperatorType()));
+            String.format("operation %s is not supported", plan.getOperatorName()));
     }
   }
 
@@ -2201,6 +2207,14 @@ public class PlanExecutor implements IPlanExecutor {
   @SuppressWarnings("unused") // for the distributed version
   protected void loadConfiguration(LoadConfigurationPlan plan) throws QueryProcessException {
     IoTDBDescriptor.getInstance().loadHotModifiedProps();
+  }
+
+  private boolean processShowQueryResource() {
+    DEBUG_LOGGER.info(String.format("**********%s**********\n\n", new Date()));
+    FileReaderManager.getInstance().writeFileReferenceInfo();
+    QueryResourceManager.getInstance().writeQueryFileInfo();
+    DEBUG_LOGGER.info("\n****************************************************\n\n");
+    return true;
   }
 
   private QueryDataSet processShowQueryProcesslist() {

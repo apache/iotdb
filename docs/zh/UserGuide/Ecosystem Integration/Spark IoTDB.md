@@ -45,7 +45,10 @@ mvn clean scala:compile compile install
 
 #### Spark-shell用户指南
 
-```
+注意：因为IoTDB与Spark的thrift版本有冲突，所以需要通过执行`rm -f $SPARK_HOME/jars/libthrift*`和`cp $IOTDB_HOME/lib/libthrift* $SPARK_HOME/jars/`这两个命令来解决。
+否则的话，就只能在IDE里面进行代码调试。而且如果你需要通过`spark-submit`命令提交任务的话，你打包时必须要带上依赖。
+
+```shell
 spark-shell --jars spark-iotdb-connector-0.13.0.jar,iotdb-jdbc-0.13.0-jar-with-dependencies.jar
 
 import org.apache.iotdb.spark.db._
@@ -59,7 +62,7 @@ df.show()
 
 如果要对rdd进行分区，可以执行以下操作
 
-```
+```shell
 spark-shell --jars spark-iotdb-connector-0.13.0.jar,iotdb-jdbc-0.13.0-jar-with-dependencies.jar
 
 import org.apache.iotdb.spark.db._
@@ -123,7 +126,7 @@ TsFile中的现有数据如下：
 
 * 从宽到窄
 
-```
+```scala
 import org.apache.iotdb.spark.db._
 
 val wide_df = spark.read.format("org.apache.iotdb.spark.db").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root where time < 1100 and time > 1000").load
@@ -132,7 +135,7 @@ val narrow_df = Transformer.toNarrowForm(spark, wide_df)
 
 * 从窄到宽
 
-```
+```scala
 import org.apache.iotdb.spark.db._
 
 val wide_df = Transformer.toWideForm(spark, narrow_df)
@@ -140,11 +143,11 @@ val wide_df = Transformer.toWideForm(spark, narrow_df)
 
 #### Java用户指南
 
-```
+```java
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.apache.iotdb.spark.db.*
+import org.apache.iotdb.spark.db.*;
 
 public class Example {
 
@@ -163,14 +166,14 @@ public class Example {
 
     df.show();
     
-    Dataset<Row> narrowTable = Transformer.toNarrowForm(spark, df)
-    narrowTable.show()
+    Dataset<Row> narrowTable = Transformer.toNarrowForm(spark, df);
+    narrowTable.show();
   }
 }
 ```
 
-## 写数据到IoTDB
-### 用户指南
+### 写数据到IoTDB
+#### 用户指南
 ``` scala
 // import narrow table
 val df = spark.createDataFrame(List(
@@ -209,6 +212,6 @@ dfWithColumn.write.format("org.apache.iotdb.spark.db")
     .save
 ```
 
-### 注意
+#### 注意
 1. 无论dataframe中存放的是窄表还是宽表，都可以直接将数据写到IoTDB中。
 2. numPartition参数是用来设置分区数，会在写入数据之前给dataframe进行重分区。每一个分区都会开启一个session进行数据的写入，来提高并发数。

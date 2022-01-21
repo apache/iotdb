@@ -80,7 +80,7 @@ public class CompactionTaskManager implements IService {
   private ScheduledExecutorService compactionTaskSubmissionThreadPool;
 
   private final long TASK_SUBMIT_INTERVAL =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionSubmissionInterval();
+      IoTDBDescriptor.getInstance().getConfig().getCompactionSubmissionIntervalInMs();
 
   private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
@@ -122,6 +122,7 @@ public class CompactionTaskManager implements IService {
       logger.info("Waiting for task taskExecutionPool to shut down");
       waitTermination();
       storageGroupTasks.clear();
+      candidateCompactionTaskQueue.clear();
     }
   }
 

@@ -16,16 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.qp.logical.sys;
 
-package org.apache.iotdb.db.engine.compaction.cross;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowQueryResourcePlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-import java.util.concurrent.atomic.AtomicInteger;
+public class ShowQueryResourceOperate extends Operator {
 
-public abstract class AbstractCrossSpaceCompactionRecoverTask
-    extends AbstractCrossSpaceCompactionTask {
+  public ShowQueryResourceOperate(int tokenIntType) {
+    super(tokenIntType);
+    setOperatorType(OperatorType.SHOW_QUERY_RESOURCE);
+  }
 
-  public AbstractCrossSpaceCompactionRecoverTask(
-      String fullStorageGroupName, long timePartition, AtomicInteger currentTaskNum) {
-    super(fullStorageGroupName, timePartition, currentTaskNum);
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new ShowQueryResourcePlan();
   }
 }
