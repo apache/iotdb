@@ -18,23 +18,31 @@
  */
 package org.apache.iotdb.db.newsync.receiver.load;
 
-import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
+import java.io.IOException;
+
+/**
+ * This loader is used to PhysicalPlan. Support four types of physical plans: CREATE_TIMESERIES |
+ * CREATE_ALIGNED_TIMESERIES | DELETE_TIMESERIES | SET_STORAGE_GROUP
+ */
 public class SchemaLoader implements ILoader {
+
+  private PhysicalPlan plan;
+
+  public SchemaLoader(PhysicalPlan plan) {
+    this.plan = plan;
+  }
+
   @Override
-  public boolean load() throws StorageEngineException, LoadFileException, MetadataException {
-    return false;
-  }
-
-  public void createTimeseries(){
-//    MManager.getInstance().createTimeseries();
-//    MManager.getInstance().createAlignedTimeSeries();
-  }
-
-  public void setStorageGroup() throws MetadataException {
-    MManager.getInstance().setStorageGroup(null);
+  public void load() throws IOException, MetadataException {
+    try {
+      MManager.getInstance().operation(plan);
+    } catch (StorageGroupAlreadySetException e) {
+      // do nothing
+    }
   }
 }

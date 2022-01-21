@@ -25,46 +25,43 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/** This loader is used to load tsFiles. */
+/** This loader is used to load tsFiles. If .mods file exists, it will be loaded as well. */
 public class TsFileLoader implements ILoader {
 
-  private String syncTask;
   private File tsFile;
 
-  public TsFileLoader(String syncTask, File tsFile) {
-    this.syncTask = syncTask;
+  public TsFileLoader(File tsFile) {
     this.tsFile = tsFile;
   }
 
   @Override
-  public boolean load() throws StorageEngineException, LoadFileException, MetadataException {
+  public void load()
+      throws IOException, MetadataException, WriteProcessException, StorageEngineException,
+          LoadFileException {
     TsFileResource tsFileResource = new TsFileResource(tsFile);
     tsFileResource.setClosed(true);
-    try {
-      FileLoaderUtils.checkTsFileResource(tsFileResource);
-      List<TsFileResource> splitResources = new ArrayList();
-      if (tsFileResource.isSpanMultiTimePartitions()) {
-        TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResources);
-        tsFileResource.writeLock();
-        tsFileResource.removeModFile();
-        tsFileResource.writeUnlock();
-      }
+    FileLoaderUtils.checkTsFileResource(tsFileResource);
+    List<TsFileResource> splitResources = new ArrayList();
+    if (tsFileResource.isSpanMultiTimePartitions()) {
+      TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResources);
+      tsFileResource.writeLock();
+      tsFileResource.removeModFile();
+      tsFileResource.writeUnlock();
+    }
 
-      if (splitResources.isEmpty()) {
-        splitResources.add(tsFileResource);
-      }
+    if (splitResources.isEmpty()) {
+      splitResources.add(tsFileResource);
+    }
 
-      for (TsFileResource resource : splitResources) {
-        StorageEngine.getInstance().loadNewTsFile(resource);
-      }
-      return true;
-    } catch (Exception e) {
-      return false;
+    for (TsFileResource resource : splitResources) {
+      StorageEngine.getInstance().loadNewTsFile(resource);
     }
   }
 }

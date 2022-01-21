@@ -37,7 +37,6 @@ public class ReceiverManagerTest {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
 

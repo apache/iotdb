@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.newsync.receiver.manager;
 
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.newsync.receiver.recover.ReceiverLog;
-import org.apache.iotdb.db.newsync.receiver.recover.ReceiverLogAnalyzer;
+import org.apache.iotdb.db.newsync.receiver.recovery.ReceiverLog;
+import org.apache.iotdb.db.newsync.receiver.recovery.ReceiverLogAnalyzer;
 import org.apache.iotdb.db.service.ServiceType;
 
 import java.io.IOException;

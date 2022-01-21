@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.newsync.receiver.recover;
+package org.apache.iotdb.db.newsync.receiver.recovery;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
@@ -41,7 +41,6 @@ public class ReceiverLogAnalyzerTest {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
 

@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.newsync.receiver.recover;
+package org.apache.iotdb.db.newsync.receiver.recovery;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
+import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.db.service.ServiceType;
 
 import org.slf4j.Logger;
@@ -43,8 +43,7 @@ public class ReceiverLogAnalyzer {
     logger.info("Start to recover all sync state for sync receiver.");
     pipeInfoMap = new HashMap<>();
     pipeServerEnable = false;
-    String syncSystemDir = IoTDBDescriptor.getInstance().getConfig().getSyncDir();
-    File logFile = new File(syncSystemDir, SyncConstant.RECEIVER_LOG_NAME);
+    File logFile = new File(SenderConf.sysDir, SyncConstant.RECEIVER_LOG_NAME);
     try (BufferedReader loadReader = new BufferedReader(new FileReader(logFile))) {
       String line;
       int lineNum = 0;

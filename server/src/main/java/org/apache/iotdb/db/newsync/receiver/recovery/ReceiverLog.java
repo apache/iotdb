@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.newsync.receiver.recover;
+package org.apache.iotdb.db.newsync.receiver.recovery;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
+import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -31,9 +31,7 @@ public class ReceiverLog {
   private BufferedWriter bw;
 
   public ReceiverLog() throws IOException {
-    String syncSystemDir = IoTDBDescriptor.getInstance().getConfig().getSyncDir();
-    // TODO: set new sync dir
-    File logFile = new File(syncSystemDir, SyncConstant.RECEIVER_LOG_NAME);
+    File logFile = new File(SenderConf.sysDir, SyncConstant.RECEIVER_LOG_NAME);
     if (!logFile.getParentFile().exists()) {
       logFile.getParentFile().mkdirs();
     }

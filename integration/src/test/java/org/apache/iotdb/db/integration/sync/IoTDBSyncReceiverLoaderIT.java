@@ -19,14 +19,24 @@
 package org.apache.iotdb.db.integration.sync;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.newsync.receiver.load.DeletionPlanLoader;
+import org.apache.iotdb.db.newsync.receiver.load.DeletionLoader;
 import org.apache.iotdb.db.newsync.receiver.load.ILoader;
+import org.apache.iotdb.db.newsync.receiver.load.SchemaLoader;
 import org.apache.iotdb.db.newsync.receiver.load.TsFileLoader;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -54,20 +64,8 @@ public class IoTDBSyncReceiverLoaderIT {
   /** create tsfile and move to tmpDir for sync test */
   File tmpDir = new File("target/synctest");
 
-  private static final String[] schemaSqls =
-      new String[] {
-        "SET STORAGE GROUP TO root.vehicle",
-        "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-        "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.vehicle.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
-        "CREATE TIMESERIES root.vehicle.d1.s3 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "SET STORAGE GROUP TO root.sg1",
-        "create aligned timeseries root.sg1.d1(s1 FLOAT encoding=RLE, s2 INT32 encoding=Gorilla compression=SNAPPY, s3 INT64, s4 BOOLEAN, s5 TEXT)",
-      };
-
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     enableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -104,31 +102,79 @@ public class IoTDBSyncReceiverLoaderIT {
     EnvironmentUtils.envSetUp();
 
     // 2. test for SchemaLoader
-    // TODO: use mock
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      for (String sql : schemaSqls) {
-        statement.execute(sql);
+    List<PhysicalPlan> planList = new ArrayList<>();
+    planList.add(new SetStorageGroupPlan(new PartialPath("root.vehicle")));
+    planList.add(
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.vehicle.d0.s0"),
+            new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.RLE)));
+    planList.add(
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.vehicle.d0.s1"),
+            new MeasurementSchema("s1", TSDataType.TEXT, TSEncoding.PLAIN)));
+    planList.add(
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.vehicle.d1.s2"),
+            new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE)));
+    planList.add(
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.vehicle.d1.s3"),
+            new MeasurementSchema("s3", TSDataType.BOOLEAN, TSEncoding.PLAIN)));
+    planList.add(new SetStorageGroupPlan(new PartialPath("root.sg1")));
+    planList.add(
+        new CreateAlignedTimeSeriesPlan(
+            new PartialPath("root.sg1.d1"),
+            Arrays.asList("s1", "s2", "s3", "s4", "s5"),
+            Arrays.asList(
+                TSDataType.FLOAT,
+                TSDataType.INT32,
+                TSDataType.INT64,
+                TSDataType.BOOLEAN,
+                TSDataType.TEXT),
+            Arrays.asList(
+                TSEncoding.RLE,
+                TSEncoding.GORILLA,
+                TSEncoding.RLE,
+                TSEncoding.RLE,
+                TSEncoding.PLAIN),
+            Arrays.asList(
+                CompressionType.SNAPPY,
+                CompressionType.SNAPPY,
+                CompressionType.SNAPPY,
+                CompressionType.SNAPPY,
+                CompressionType.SNAPPY),
+            null));
+    for (PhysicalPlan plan : planList) {
+      ILoader planLoader = new SchemaLoader(plan);
+      try {
+        planLoader.load();
+      } catch (Exception e) {
+        e.printStackTrace();
+        Assert.fail();
       }
-    } catch (Exception e) {
-      Assert.fail();
-      e.printStackTrace();
     }
 
     // 3. test for TsFileLoader
     List<File> tsFiles = getTsFilePaths(tmpDir);
     for (File tsfile : tsFiles) {
-      ILoader tsFileLoader = new TsFileLoader("", tsfile);
-      boolean res = tsFileLoader.load();
-      System.out.println(tsfile.getAbsolutePath());
-      Assert.assertTrue(res);
+      ILoader tsFileLoader = new TsFileLoader(tsfile);
+      try {
+        tsFileLoader.load();
+      } catch (Exception e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
     }
 
     // 4. test for DeletionPlanLoader
-    DeletionPlanLoader deletionLoader = new DeletionPlanLoader();
-    deletionLoader.deleteTimeSeries(33, 38, Arrays.asList(new PartialPath("root.vehicle.**")));
+    Deletion deletion = new Deletion(new PartialPath("root.vehicle.**"), 0, 33, 38);
+    ILoader deletionLoader = new DeletionLoader(deletion);
+    try {
+      deletionLoader.load();
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
 
     // 5. check result after loading
     // 5.1 check normal timeseries
