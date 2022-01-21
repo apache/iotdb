@@ -219,13 +219,13 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   }
 
   private boolean checkClosedAndNotMerging(TsFileResource unseqFile) {
-    boolean isClosedAndNotMerging = unseqFile.isClosed() && !unseqFile.isMerging();
+    boolean isClosedAndNotMerging = unseqFile.isClosed() && !unseqFile.isCompacting();
     if (!isClosedAndNotMerging) {
       return false;
     }
     for (Integer seqIdx : tmpSelectedSeqFiles) {
       if (!resource.getSeqFiles().get(seqIdx).isClosed()
-          || resource.getSeqFiles().get(seqIdx).isMerging()) {
+          || resource.getSeqFiles().get(seqIdx).isCompacting()) {
         isClosedAndNotMerging = false;
         break;
       }

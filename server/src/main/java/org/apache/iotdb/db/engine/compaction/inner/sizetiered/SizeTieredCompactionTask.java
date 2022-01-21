@@ -55,8 +55,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
   protected TsFileManager tsFileManager;
   protected boolean[] isHoldingReadLock;
   protected boolean[] isHoldingWriteLock;
-  private final long ACQUIRE_WRITE_LOCK_TIMEOUT =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionAcquireWriteLockTimeout();
 
   public SizeTieredCompactionTask(
       String logicalStorageGroupName,
@@ -93,6 +91,8 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
     }
     long startTime = System.currentTimeMillis();
     boolean getWriteLockOfManager = false;
+    final long ACQUIRE_WRITE_LOCK_TIMEOUT =
+        IoTDBDescriptor.getInstance().getConfig().getCompactionAcquireWriteLockTimeout();
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     // Here is tmpTargetFile, which is xxx.target
@@ -261,7 +261,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         TsFileResource resource = selectedTsFileResourceList.get(i);
         resource.readLock();
         isHoldingReadLock[i] = true;
-        if (resource.isMerging() | !resource.isClosed()
+        if (resource.isCompacting() | !resource.isClosed()
             || !resource.getTsFile().exists()
             || resource.isDeleted()) {
           // this source file cannot be compacted
@@ -272,7 +272,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       }
 
       for (TsFileResource resource : selectedTsFileResourceList) {
-        resource.setMerging(true);
+        resource.setCompacting(true);
       }
       return true;
     } finally {
@@ -293,7 +293,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         selectedTsFileResourceList.get(i).writeUnlock();
       }
       if (resetCompactingStatus) {
-        selectedTsFileResourceList.get(i).setMerging(false);
+        selectedTsFileResourceList.get(i).setCompacting(false);
       }
     }
   }

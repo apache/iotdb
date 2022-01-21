@@ -60,7 +60,7 @@ import static org.junit.Assert.fail;
 public class CompactionSchedulerTest {
   private static final Logger logger = LoggerFactory.getLogger(CompactionSchedulerTest.class);
   static final String COMPACTION_TEST_SG = "root.compactionTest";
-  static final long MAX_WAITING_TIME = 240_000;
+  static final long MAX_WAITING_TIME = 60_000;
   static final long SCHEDULE_AGAIN_TIME = 30_000;
   static final String[] fullPaths =
       new String[] {
@@ -101,6 +101,7 @@ public class CompactionSchedulerTest {
           Collections.emptyMap());
     }
     File basicOutputDir = new File(TestConstant.BASE_OUTPUT_PATH);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.INNER_CROSS);
     if (!basicOutputDir.exists()) {
       assertTrue(basicOutputDir.mkdirs());
     }

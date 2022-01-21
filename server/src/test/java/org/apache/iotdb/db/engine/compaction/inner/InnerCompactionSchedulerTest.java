@@ -107,7 +107,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     TsFileResourceList tsFileResources = new TsFileResourceList();
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
     createFiles(2, 3, 5, 50, 250, 250, 50, 50, false, true);
-    seqResources.get(0).setMerging(true);
+    seqResources.get(0).setCompacting(true);
     TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
     tsFileManager.addAll(seqResources, true);
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
