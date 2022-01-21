@@ -427,20 +427,6 @@ public class PlanExecutor implements IPlanExecutor {
       case DROP_PIPE:
         operatePipe((OperatePipePlan) plan);
         return true;
-      case CREATE_PIPESINK:
-        createPipeSink((CreatePipeSinkPlan) plan);
-        return true;
-      case DROP_PIPESINK:
-        dropPipeSink((DropPipeSinkPlan) plan);
-        return true;
-      case CREATE_PIPE:
-        createPipe((CreatePipePlan) plan);
-        return true;
-      case STOP_PIPE:
-      case START_PIPE:
-      case DROP_PIPE:
-        operatePipe((OperatePipePlan) plan);
-        return true;
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));

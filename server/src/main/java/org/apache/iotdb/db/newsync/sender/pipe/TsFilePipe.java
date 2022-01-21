@@ -220,6 +220,7 @@ public class TsFilePipe implements Pipe {
   }
 
   private void registerTsFile() {
+    StorageEngine.getInstance().registerSyncDataCollector(this);
     Iterator<Map.Entry<PartialPath, StorageGroupManager>> sgIterator =
         StorageEngine.getInstance().getProcessorMap().entrySet().iterator();
     while (sgIterator.hasNext()) {
@@ -228,6 +229,7 @@ public class TsFilePipe implements Pipe {
   }
 
   private void deregisterTsFile() {
+    StorageEngine.getInstance().registerSyncDataCollector(null);
     Iterator<Map.Entry<PartialPath, StorageGroupManager>> sgIterator =
         StorageEngine.getInstance().getProcessorMap().entrySet().iterator();
     while (sgIterator.hasNext()) {
@@ -237,6 +239,7 @@ public class TsFilePipe implements Pipe {
 
   private List<Pair<File, Long>> collectTsFile() {
     List<Pair<File, Long>> historyTsFiles = new ArrayList<>();
+    StorageEngine.getInstance().registerSyncDataCollector(this);
     Iterator<Map.Entry<PartialPath, StorageGroupManager>> sgIterator =
         StorageEngine.getInstance().getProcessorMap().entrySet().iterator();
     while (sgIterator.hasNext()) {

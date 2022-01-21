@@ -200,7 +200,9 @@ public class TsFilePipeLog {
   }
 
   private void moveToNextPipeLog(long startSerialNumber) throws IOException {
-    realTimeOutputStream.close();
+    if (realTimeOutputStream != null) {
+      realTimeOutputStream.close();
+    }
     File newPipeLog = new File(pipeLogDir, SenderConf.getRealTimePipeLogName(startSerialNumber));
     createFile(newPipeLog);
 

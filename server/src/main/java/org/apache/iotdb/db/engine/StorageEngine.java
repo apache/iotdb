@@ -50,6 +50,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -119,6 +120,9 @@ public class StorageEngine implements IService {
   // add customized listeners here for flush and close events
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
+
+  /** collector for sync */
+  private TsFilePipe syncDataCollector;
 
   private StorageEngine() {}
 
@@ -552,6 +556,9 @@ public class StorageEngine implements IService {
     processor.setDataTTL(storageGroupMNode.getDataTTL());
     processor.setCustomFlushListeners(customFlushListeners);
     processor.setCustomCloseFileListeners(customCloseFileListeners);
+    if (syncDataCollector != null) {
+      processor.registerSyncDataCollector(syncDataCollector);
+    }
     return processor;
   }
 
@@ -1057,6 +1064,11 @@ public class StorageEngine implements IService {
     } catch (IOException e) {
       throw new StorageEngineException(e);
     }
+  }
+
+  /** sync methods */
+  public void registerSyncDataCollector(TsFilePipe tsFilePipe) {
+    this.syncDataCollector = tsFilePipe;
   }
 
   static class InstanceHolder {

@@ -3187,7 +3187,7 @@ public class VirtualStorageGroupProcessor {
   }
 
   /** sync methods */
-  public void registerSyncDataCollecor(TsFilePipe tsFilePipe) {
+  public void registerSyncDataCollector(TsFilePipe tsFilePipe) {
     writeLock("Register collector for sync");
     this.syncDataCollector = tsFilePipe;
     registerTsFileResourceList(tsFileManager.getTsFileList(true), tsFilePipe);
