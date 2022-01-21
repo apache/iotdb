@@ -3,7 +3,9 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.SchemaPageOverflowException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -39,11 +41,11 @@ public class SchemaFile implements ISchemaFile {
   public static short PAGE_HEADER_SIZE = 16;
   public static int PAGE_CACHE_SIZE = 48; // size of page cache
   public static int ROOT_INDEX = 0; // index of header page
-  public static int INDEX_LENGTH =
-      4; // 32 bit for page pointer, maximum .pmt file as 2^(32+14) bytes, 64 TiB
+  // 32 bit for page pointer, maximum .pmt file as 2^(32+14) bytes, 64 TiB
+  public static int INDEX_LENGTH = 4;
 
-  public static short SEG_OFF_DIG =
-      2; // byte length of short, which is the type of index of segment inside a page
+  // byte length of short, which is the type of index of segment inside a page
+  public static short SEG_OFF_DIG = 2;
   public static short SEG_MAX_SIZ = (short) (16 * 1024 - SchemaFile.PAGE_HEADER_SIZE - SEG_OFF_DIG);
   public static short[] SEG_SIZE_LST = {1024, 2 * 1024, 4 * 1024, 8 * 1024, SEG_MAX_SIZ};
   public static int SEG_INDEX_DIGIT = 16; // for type short
@@ -94,6 +96,12 @@ public class SchemaFile implements ISchemaFile {
   // region Interface Implementation
 
   @Override
+  public IMNode init() throws MetadataException {
+    String[] sgPathNodes = MetaUtils.splitPathToDetachedPath(storageGroupName);
+    return setNodeAddress(new InternalMNode(null, sgPathNodes[sgPathNodes.length - 1]), 0L);
+  }
+
+  @Override
   public void writeMNode(IMNode node) throws MetadataException, IOException {
     int pageIndex;
     short curSegIdx;
@@ -102,7 +110,7 @@ public class SchemaFile implements ISchemaFile {
     // Get corresponding page instance, segment id
     long curSegAddr = getNodeAddress(node);
     if (curSegAddr < 0) {
-      if (node.getParent() == null) {
+      if (isStorageGroupNode(node)) {
         // root node
         curPage = getRootPage();
         pageIndex = curPage.getPageIndex();
@@ -260,8 +268,7 @@ public class SchemaFile implements ISchemaFile {
 
   @Override
   public void delete(IMNode node) throws IOException, MetadataException {
-    long recSegAddr =
-        node.getParent() == null ? ROOT_INDEX : getNodeAddress(node);
+    long recSegAddr = node.getParent() == null ? ROOT_INDEX : getNodeAddress(node);
     recSegAddr = getTargetSegmentAddress(recSegAddr, node.getName());
     getPageInstance(getPageIndex(recSegAddr)).removeRecord(getSegIndex(recSegAddr), node.getName());
 
@@ -279,9 +286,7 @@ public class SchemaFile implements ISchemaFile {
           String.format("Node [%s] has no child in schema file.", parent.getFullPath()));
     }
 
-    long actualSegAddr =
-        getTargetSegmentAddress(
-            getNodeAddress(parent), childName);
+    long actualSegAddr = getTargetSegmentAddress(getNodeAddress(parent), childName);
     if (actualSegAddr < 0) {
       throw new MetadataException(
           String.format("Node [%s] has no child named [%s].", parent.getFullPath(), childName));
@@ -292,34 +297,40 @@ public class SchemaFile implements ISchemaFile {
 
   @Override
   public Iterator<IMNode> getChildren(IMNode parent) throws MetadataException, IOException {
-    if (parent.isMeasurement()
-        || getNodeAddress(parent) < 0) {
+    if (parent.isMeasurement() || getNodeAddress(parent) < 0) {
       throw new MetadataException(
           String.format("Node [] has no child in schema file.", parent.getFullPath()));
     }
 
-    int pageIdx =
-        getPageIndex(getNodeAddress(parent));
-    short segId =
-        getSegIndex(getNodeAddress(parent));
+    int pageIdx = getPageIndex(getNodeAddress(parent));
+    short segId = getSegIndex(getNodeAddress(parent));
     ISchemaPage page = getPageInstance(pageIdx);
 
     return new Iterator<IMNode>() {
       long nextSeg = page.getNextSegAddress(segId);
+      long prevSeg = page.getPrevSegAddress(segId);
       Queue<IMNode> children = page.getChildren(segId);
 
       @Override
       public boolean hasNext() {
         if (children.size() == 0) {
           // actually, 0 can never be nextSeg forever
-          if (nextSeg < 0) {
+          if (nextSeg < 0 && prevSeg < 0) {
             return false;
           }
           try {
-            ISchemaPage newPage = getPageInstance(getPageIndex(nextSeg));
-            children.addAll(newPage.getChildren(getSegIndex(nextSeg)));
-            nextSeg = newPage.getNextSegAddress(getSegIndex(nextSeg));
-            return true;
+            if (nextSeg >= 0) {
+              ISchemaPage newPage = getPageInstance(getPageIndex(nextSeg));
+              children.addAll(newPage.getChildren(getSegIndex(nextSeg)));
+              nextSeg = newPage.getNextSegAddress(getSegIndex(nextSeg));
+              return true;
+            }
+            if (prevSeg >= 0) {
+              ISchemaPage newPage = getPageInstance(getPageIndex(prevSeg));
+              children.addAll(newPage.getChildren(getSegIndex(prevSeg)));
+              prevSeg = newPage.getPrevSegAddress(getSegIndex(prevSeg));
+              return true;
+            }
           } catch (IOException | MetadataException e) {
             return false;
           }
@@ -404,6 +415,10 @@ public class SchemaFile implements ISchemaFile {
 
       pageInstCache.put(rootPage.getPageIndex(), rootPage);
     }
+  }
+
+  private boolean isStorageGroupNode(IMNode node) {
+    return node.getFullPath().equals(this.storageGroupName);
   }
 
   // endregion
@@ -583,8 +598,7 @@ public class SchemaFile implements ISchemaFile {
 
   private void updateParentalRecord(IMNode parent, String key, long newSegAddr)
       throws IOException, MetadataException {
-    long parSegAddr =
-        parent.getParent() == null ? ROOT_INDEX : getNodeAddress(parent);
+    long parSegAddr = parent.getParent() == null ? ROOT_INDEX : getNodeAddress(parent);
     parSegAddr = getTargetSegmentAddress(parSegAddr, key);
     ISchemaPage page = getPageInstance(getPageIndex(parSegAddr));
     ((SchemaPage) page).updateRecordSegAddr(getSegIndex(parSegAddr), key, newSegAddr);
@@ -633,8 +647,9 @@ public class SchemaFile implements ISchemaFile {
     return ICachedMNodeContainer.getCachedMNodeContainer(node).getSegmentAddress();
   }
 
-  public static void setNodeAddress(IMNode node, long addr) {
+  public static IMNode setNodeAddress(IMNode node, long addr) {
     ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(addr);
+    return node;
   }
 
   private int loadFromFile(ByteBuffer dst, int pageIndex) throws IOException {

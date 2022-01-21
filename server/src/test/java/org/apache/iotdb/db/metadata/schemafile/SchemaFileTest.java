@@ -43,9 +43,9 @@ public class SchemaFileTest {
 
   @Test
   public void essentialTestSchemaFile() throws IOException, MetadataException {
-    ISchemaFile sf = new SchemaFile("tsg5", true);
+    ISchemaFile sf = new SchemaFile("root.test.vRoot1", true);
 
-    IMNode root = virtualTriangleMTree(5);
+    IMNode root = virtualTriangleMTree(5, "root.test");
     IMNode int0 = root.getChild("int0");
     IMNode int1 = root.getChild("int0").getChild("int1");
     IMNode int4 =
@@ -66,13 +66,13 @@ public class SchemaFileTest {
     ICachedMNodeContainer.getCachedMNodeContainer(int0).getNewChildBuffer().clear();
     addNodeToUpdateBuffer(int0, getMeasurementNode(int0, "mint1", "alas99999"));
 
-
     sf.writeMNode(int0);
     Assert.assertEquals(
         "alas99999", sf.getChildNode(int0, "mint1").getAsMeasurementMNode().getAlias());
 
     ICachedMNodeContainer.getCachedMNodeContainer(int1).getNewChildBuffer().clear();
-    ICachedMNodeContainer.getCachedMNodeContainer(int1).appendMNode(getMeasurementNode(int1, "int1newM", "alas"));
+    ICachedMNodeContainer.getCachedMNodeContainer(int1)
+        .appendMNode(getMeasurementNode(int1, "int1newM", "alas"));
     sf.writeMNode(int1);
     Assert.assertEquals(
         "alas", sf.getChildNode(int1, "int1newM").getAsMeasurementMNode().getAlias());
@@ -101,7 +101,7 @@ public class SchemaFileTest {
 
     sf.close();
 
-    ISchemaFile nsf = new SchemaFile("tsg5");
+    ISchemaFile nsf = new SchemaFile("root.test.vRoot1");
     Assert.assertEquals(
         "alas99999", nsf.getChildNode(int0, "mint1").getAsMeasurementMNode().getAlias());
     Assert.assertEquals(
@@ -117,16 +117,14 @@ public class SchemaFileTest {
 
   @Test
   public void inspectFile() throws MetadataException, IOException {
-    ISchemaFile sf = new SchemaFile("tsg5");
+    ISchemaFile sf = new SchemaFile("root.test.vRoot1");
     System.out.println(((SchemaFile) sf).inspect());
     sf.close();
   }
 
   @Test
   public void testReadFromFlat() throws MetadataException, IOException {
-    IMNode node = new InternalMNode(null, "test");
-    ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(0L);
-    ISchemaFile sf = new SchemaFile("flat", true);
+    ISchemaFile sf = new SchemaFile("root.test.vRoot1", true);
 
     Iterator<IMNode> ite = getTreeBFT(getFlatTree(10, "aa"));
     while (ite.hasNext()) {
@@ -136,6 +134,8 @@ public class SchemaFileTest {
       }
     }
 
+    IMNode node = new InternalMNode(null, "a");
+    ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(0L);
     IMNode target = sf.getChildNode(node, "aa1");
     Assert.assertEquals("aa1als", target.getAsMeasurementMNode().getAlias());
     sf.close();
@@ -143,9 +143,13 @@ public class SchemaFileTest {
 
   @Test
   public void testGetChildren() throws MetadataException, IOException {
+    essentialTestSchemaFile();
+
     IMNode node = new InternalMNode(null, "test");
     ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(196608L);
-    ISchemaFile sf = new SchemaFile("tsg5");
+    ISchemaFile sf = new SchemaFile("root.test.vRoot1");
+
+    printSF(sf);
 
     Iterator<IMNode> res = sf.getChildren(node);
     int cnt = 0;
@@ -158,7 +162,7 @@ public class SchemaFileTest {
 
   @Test
   public void testVerticalTree() throws MetadataException, IOException {
-    ISchemaFile sf = new SchemaFile("vt", true);
+    ISchemaFile sf = new SchemaFile("root.sgvt.vt", true);
     IMNode root = getVerticalTree(100, "VT");
     Iterator<IMNode> ite = getTreeBFT(root);
     while (ite.hasNext()) {
@@ -186,7 +190,7 @@ public class SchemaFileTest {
             .size());
     sf.close();
 
-    ISchemaFile nsf = new SchemaFile("vt");
+    ISchemaFile nsf = new SchemaFile("root.sgvt.vt");
 
     ICachedMNodeContainer.getCachedMNodeContainer(vt1).getNewChildBuffer().clear();
     ICachedMNodeContainer.getCachedMNodeContainer(vt4).getNewChildBuffer().clear();
@@ -201,7 +205,7 @@ public class SchemaFileTest {
     nsf.writeMNode(vt4);
 
     nsf.close();
-    nsf = new SchemaFile("vt");
+    nsf = new SchemaFile("root.sgvt.vt");
 
     Iterator<IMNode> vt1Children = nsf.getChildren(vt1);
     Iterator<IMNode> vt4Children = nsf.getChildren(vt4);
@@ -246,8 +250,14 @@ public class SchemaFileTest {
     System.out.println(o.toString());
   }
 
-  private IMNode virtualTriangleMTree(int size) {
-    IMNode internalNode = new EntityMNode(null, "vRoot1");
+  private IMNode virtualTriangleMTree(int size, String sgPath) throws MetadataException {
+    String[] sgPathNodes = MetaUtils.splitPathToDetachedPath(sgPath);
+    IMNode upperNode = null;
+    for (String name : sgPathNodes) {
+      IMNode child = new InternalMNode(upperNode, name);
+      upperNode = child;
+    }
+    IMNode internalNode = new EntityMNode(upperNode, "vRoot1");
 
     for (int idx = 0; idx < size; idx++) {
       String measurementId = "mid" + idx;
@@ -278,10 +288,13 @@ public class SchemaFileTest {
         MeasurementMNode.getMeasurementMNode(
             internalNode.getAsEntityMNode(), "finalM", schema, "finalals");
     curNode.addChild(mNode);
+    upperNode.addChild(internalNode);
     return internalNode;
   }
 
   private IMNode getFlatTree(int flatSize, String id) {
+    IMNode root = new InternalMNode(null, "root");
+    IMNode test = new InternalMNode(root, "test");
     IMNode internalNode = new EntityMNode(null, "vRoot1");
 
     for (int idx = 0; idx < flatSize; idx++) {
@@ -293,11 +306,14 @@ public class SchemaFileTest {
       internalNode.addChild(mNode);
     }
 
+    test.addChild(internalNode);
     return internalNode;
   }
 
   private IMNode getVerticalTree(int height, String id) {
-    IMNode root = new EntityMNode(null, "root");
+    IMNode trueRoot = new InternalMNode(null, "root");
+    trueRoot.addChild(new InternalMNode(trueRoot, "sgvt"));
+    IMNode root = new EntityMNode(null, "vt");
     int cnt = 0;
     IMNode cur = root;
     while (cnt < height) {
@@ -305,6 +321,7 @@ public class SchemaFileTest {
       cur = cur.getChild(id + "_" + cnt);
       cnt++;
     }
+    trueRoot.getChild("sgvt").addChild(root);
     return root;
   }
 
@@ -370,7 +387,7 @@ public class SchemaFileTest {
     return mNode;
   }
 
-  public static void addNodeToUpdateBuffer(IMNode par, IMNode child){
+  public static void addNodeToUpdateBuffer(IMNode par, IMNode child) {
     ICachedMNodeContainer.getCachedMNodeContainer(par).remove(child.getName());
     ICachedMNodeContainer.getCachedMNodeContainer(par).appendMNode(child);
     ICachedMNodeContainer.getCachedMNodeContainer(par).moveMNodeToCache(child.getName());
