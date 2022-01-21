@@ -202,26 +202,8 @@ public abstract class AbstractInnerSpaceCompactionTest {
       tsFileResource.setClosed(true);
       tsFileResource.updatePlanIndexes(i + seqFileNum);
       unseqResources.add(tsFileResource);
-      prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
+      prepareFile(tsFileResource, i * 2 * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
-
-    File file =
-        new File(
-            UNSEQ_DIRS
-                + File.separator.concat(
-                    unseqFileNum
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + unseqFileNum
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile"));
-    TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setClosed(true);
-    tsFileResource.updatePlanIndexes(seqFileNum + unseqFileNum);
-    unseqResources.add(tsFileResource);
-    prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
   }
 
   void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum, long valueOffset)
@@ -271,6 +253,7 @@ public abstract class AbstractInnerSpaceCompactionTest {
   }
 
   private void removeFiles() throws IOException {
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     for (TsFileResource tsFileResource : seqResources) {
       if (tsFileResource.getTsFile().exists()) {
         tsFileResource.remove();
@@ -290,6 +273,9 @@ public abstract class AbstractInnerSpaceCompactionTest {
     for (File resourceFile : resourceFiles) {
       resourceFile.delete();
     }
-    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+  }
+
+  public void setUnseqFileNum(int num) {
+    this.unseqFileNum = num;
   }
 }

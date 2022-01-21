@@ -97,4 +97,8 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
     retPath.setUnderAlignedEntity(par.getAsEntityMNode().isAligned());
     return retPath;
   }
+
+  protected boolean isUnderAlignedEntity() {
+    return traverseContext.peek().getAsEntityMNode().isAligned();
+  }
 }

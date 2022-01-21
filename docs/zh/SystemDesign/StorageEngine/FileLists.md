@@ -25,27 +25,31 @@
 
 * data/system/schema/mlog.txt （元数据日志）
 
-	http://iotdb.apache.org/SystemDesign/SchemaManager/SchemaManager.html#log-management-of-metadata
+    http://iotdb.apache.org/SystemDesign/SchemaManager/SchemaManager.html#log-management-of-metadata
 
 * data/system/schema/system.properties （系统不可变参数）
 
-	```
-	partition_interval=9223372036854775807
-	timestamp_precision=ms
-	tsfile_storage_fs=LOCAL
-	enable_partition=false
-	max_degree_of_index_node=256
-	tag_attribute_total_size=700
-	iotdb_version=UNKNOWN
-	```
+    ```
+    partition_interval=9223372036854775807
+    timestamp_precision=ms
+    tsfile_storage_fs=LOCAL
+    enable_partition=false
+    max_degree_of_index_node=256
+    tag_attribute_total_size=700
+    iotdb_version=UNKNOWN
+    ```
 
 * data/system/schema/tlog.txt （标签、属性文件）
 
-	http://iotdb.apache.org/SystemDesign/SchemaManager/SchemaManager.html#tlog
+    http://iotdb.apache.org/SystemDesign/SchemaManager/SchemaManager.html#tlog
 
 * data/system/storage_groups/{sg_name}/{partition}/Version-xxx （每个分区的版本控制文件，无内容）
 
 * data/system/storage_groups/upgrade/Version-xxx （升级过程的版本控制文件）
+
+* data/system/storage_groups/compression_ratio/Ratio-{ratio_sum}-{memtable_flush_time} （压缩比统计信息文件）
+  * ratio_sum: memtable压缩比的总和
+  * memtable_flush_time: memtable刷盘的总次数
 
 * data/system/upgrade/upgrade.txt （升级日志文件）
 

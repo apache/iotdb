@@ -64,7 +64,7 @@ git clone https://github.com/apache/iotdb.git
 * 使用 maven 编译，在 `grafana-plugin` 目录下执行：
 
 ```shell
-mvn install package
+mvn install package -P compile-grafana-plugin
 ```
 
 * 或使用 yarn 编译，在 `grafana-plugin` 目录下执行：
@@ -85,7 +85,7 @@ yarn build
 在 IoTDB 仓库的根目录下执行：
 
 ```shell
- mvn clean package -pl distribution -am -DskipTests 
+ mvn clean package -pl distribution -am -DskipTests -P compile-grafana-plugin
 ```
 
 如果编译成功，我们将看到 `distribution/target` 路径下包含了编译好的 Grafana 前端插件：
@@ -139,7 +139,7 @@ brew services start grafana
 
 ```properties
 # Is the REST service enabled
-enable_rest_service=false
+enable_rest_service=true
 
 # the binding port of the REST service
 rest_service_port=18080
@@ -165,7 +165,7 @@ Grafana 以网页的 dashboard 形式为您展示数据，在使用时请您打�
 
 #### 添加 IoTDB 数据源
 
-点击左侧的 “设置” 图标，选择 `Data Source` 选项，然后再点击 `Add data source`。
+点击左侧的 `设置` 图标，选择 `Data Source` 选项，然后再点击 `Add data source`。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/datasource_1.png?raw=true">
 
@@ -234,7 +234,7 @@ CONTROL 输入框为非必须填写项目，填写内容应当是控制查询类
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/addvaribles.png?raw=true">
 
-输入 Name，Label，和 Query 点击 Update 按钮，如下图所示：
+输入 `Name`，`Label`，和 `Query`， 点击 `Update` 按钮，如下图所示：
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/variblesinput.png?raw=true">
 

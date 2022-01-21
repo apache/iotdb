@@ -46,7 +46,6 @@ public class IoTDBInsertWithoutTimeIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     initCreateSQLStatement();
     EnvironmentUtils.envSetUp();
     insertData();

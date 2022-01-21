@@ -40,6 +40,7 @@ public class ClientPoolFactory {
 
   protected long waitClientTimeoutMS;
   protected int maxConnectionForEachNode;
+  protected int maxIdleConnectionForEachNode;
   private final TProtocolFactory protocolFactory;
   private GenericKeyedObjectPoolConfig poolConfig;
   private IClientManager clientManager;
@@ -48,12 +49,14 @@ public class ClientPoolFactory {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     this.waitClientTimeoutMS = config.getWaitClientTimeoutMS();
     this.maxConnectionForEachNode = config.getMaxClientPerNodePerMember();
+    this.maxIdleConnectionForEachNode = config.getMaxIdleClientPerNodePerMember();
     protocolFactory =
         config.isRpcThriftCompressionEnabled()
             ? new TCompactProtocol.Factory()
             : new TBinaryProtocol.Factory();
     poolConfig = new GenericKeyedObjectPoolConfig();
     poolConfig.setMaxTotalPerKey(maxConnectionForEachNode);
+    poolConfig.setMaxIdlePerKey(maxIdleConnectionForEachNode);
     poolConfig.setMaxWait(Duration.ofMillis(waitClientTimeoutMS));
     poolConfig.setTestOnReturn(true);
     poolConfig.setTestOnBorrow(true);

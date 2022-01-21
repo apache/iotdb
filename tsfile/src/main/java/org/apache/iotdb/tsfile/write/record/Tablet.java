@@ -37,7 +37,7 @@ import java.util.Map;
  *
  * <p>time, m1, m2, m3 1, 1, 2, 3 2, 1, 2, 3 3, 1, 2, 3
  *
- * <p>Notice: The tablet should not have empty cell
+ * <p>Notice: The tablet should not have empty cell, please use BitMap to denote null value
  */
 public class Tablet {
 

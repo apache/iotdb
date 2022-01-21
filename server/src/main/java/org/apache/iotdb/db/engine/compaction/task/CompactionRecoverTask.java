@@ -21,10 +21,8 @@ package org.apache.iotdb.db.engine.compaction.task;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.CompactionRecoverCallBack;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,42 +30,30 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
 
 /**
  * CompactionRecoverTask execute the recover process for all compaction task sequentially, including
  * InnerCompactionTask in sequence/unsequence space, CrossSpaceCompaction.
  */
-public class CompactionRecoverTask implements Callable<Void> {
+public class CompactionRecoverTask {
   private static final Logger logger = LoggerFactory.getLogger(CompactionRecoverTask.class);
-  private CompactionRecoverCallBack compactionRecoverCallBack;
   private TsFileManager tsFileManager;
   private String logicalStorageGroupName;
   private String virtualStorageGroupId;
 
   public CompactionRecoverTask(
-      CompactionRecoverCallBack compactionRecoverCallBack,
-      TsFileManager tsFileManager,
-      String logicalStorageGroupName,
-      String virtualStorageGroupId) {
-    this.compactionRecoverCallBack = compactionRecoverCallBack;
+      TsFileManager tsFileManager, String logicalStorageGroupName, String virtualStorageGroupId) {
     this.tsFileManager = tsFileManager;
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.virtualStorageGroupId = virtualStorageGroupId;
   }
 
-  @Override
-  public Void call() throws Exception {
+  public void recoverCrossSpaceCompaction() throws Exception {
     logger.info("recovering cross compaction");
     recoverCrossCompaction();
     logger.info("try to synchronize CompactionScheduler");
     CompactionScheduler.decPartitionCompaction(
         logicalStorageGroupName + "-" + virtualStorageGroupId, 0);
-    compactionRecoverCallBack.call();
-    logger.info(
-        "recover task finish, current compaction thread is {}",
-        CompactionTaskManager.getInstance().getExecutingTaskCount());
-    return null;
   }
 
   private void recoverCrossCompaction() throws Exception {
@@ -79,7 +65,7 @@ public class CompactionRecoverTask implements Callable<Void> {
       for (Long timePartition : timePartitions) {
         String timePartitionDir = storageGroupDir + File.separator + timePartition;
         File[] compactionLogs =
-            InplaceCompactionLogger.findCrossSpaceCompactionLogs(timePartitionDir);
+            RewriteCrossSpaceCompactionLogger.findCrossSpaceCompactionLogs(timePartitionDir);
         for (File compactionLog : compactionLogs) {
           logger.info("calling cross compaction task");
           IoTDBDescriptor.getInstance()
@@ -90,10 +76,8 @@ public class CompactionRecoverTask implements Callable<Void> {
                   virtualStorageGroupId,
                   timePartition,
                   storageGroupDir,
-                  tsFileManager.getSequenceListByTimePartition(timePartition),
-                  tsFileManager.getUnsequenceListByTimePartition(timePartition),
-                  1,
-                  compactionLog)
+                  compactionLog,
+                  tsFileManager)
               .call();
         }
       }

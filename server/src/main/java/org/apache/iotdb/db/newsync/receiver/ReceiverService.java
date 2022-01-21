@@ -20,6 +20,7 @@ package org.apache.iotdb.db.newsync.receiver;
 
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.newsync.receiver.collector.Collector;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.ReceiverManager;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
@@ -47,12 +48,13 @@ public class ReceiverService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(ReceiverService.class);
   private final SimpleDateFormat dateformat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
   private static final ReceiverManager receiverManager = ReceiverManager.getInstance();
+  private Collector collector;
 
   /** start receiver service */
-  // TODO: return value no use
   public boolean startPipeServer() {
     try {
       receiverManager.startServer();
+      // TODO: start socket and collector
     } catch (IOException e) {
       e.printStackTrace();
       return false;
@@ -64,6 +66,7 @@ public class ReceiverService implements IService {
   public boolean stopPipeServer() {
     try {
       receiverManager.stopServer();
+      // TODO: stop socket and collector
     } catch (IOException e) {
       e.printStackTrace();
       return false;
@@ -143,7 +146,9 @@ public class ReceiverService implements IService {
     dataSet.putRecord(rowRecord);
   }
 
-  private ReceiverService() {}
+  private ReceiverService() {
+    collector = new Collector();
+  }
 
   public static ReceiverService getInstance() {
     return ReceiverServiceHolder.INSTANCE;
@@ -154,12 +159,13 @@ public class ReceiverService implements IService {
   public void start() throws StartupException {
     receiverManager.init();
     if (receiverManager.isPipeServerEnable()) {
-      // TODO: start collector
+      startPipeServer();
     }
   }
 
   @Override
   public void stop() {
+    stopPipeServer();
     try {
       receiverManager.close();
     } catch (IOException e) {

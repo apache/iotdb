@@ -50,6 +50,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -70,14 +71,17 @@ public class ImportCsv extends AbstractCsvTool {
   private static final String FAILED_FILE_ARGS = "fd";
   private static final String FAILED_FILE_NAME = "failed file directory";
 
+  private static final String ALIGNED_ARGS = "aligned";
+  private static final String ALIGNED_NAME = "use the aligned interface";
+
   private static final String CSV_SUFFIXS = "csv";
   private static final String TXT_SUFFIXS = "txt";
 
   private static final String TSFILEDB_CLI_PREFIX = "ImportCsv";
-  private static final String ILLEGAL_PATH_ARGUMENT = "Path parameter is null";
 
   private static String targetPath;
   private static String failedFileDirectory = null;
+  private static Boolean aligned = false;
 
   /**
    * create the commandline options.
@@ -106,6 +110,14 @@ public class ImportCsv extends AbstractCsvTool {
                 "Specifying a directory to save failed file, default YOUR_CSV_FILE_PATH (optional)")
             .build();
     options.addOption(opFailedFile);
+
+    Option opAligned =
+        Option.builder(ALIGNED_ARGS)
+            .argName(ALIGNED_NAME)
+            .hasArg()
+            .desc("Whether to use the interface of aligned (optional)")
+            .build();
+    options.addOption(opAligned);
 
     Option opHelp =
         Option.builder(HELP_ARGS)
@@ -142,9 +154,12 @@ public class ImportCsv extends AbstractCsvTool {
         failedFileDirectory = file.getAbsolutePath() + File.separator;
       }
     }
+    if (commandLine.getOptionValue(ALIGNED_ARGS) != null) {
+      aligned = Boolean.valueOf(commandLine.getOptionValue(ALIGNED_ARGS));
+    }
   }
 
-  public static void main(String[] args) throws IOException, IoTDBConnectionException {
+  public static void main(String[] args) throws IoTDBConnectionException {
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
     hf.setOptionComparator(null);
@@ -248,7 +263,7 @@ public class ImportCsv extends AbstractCsvTool {
           System.out.println("Empty file!");
           return;
         }
-        if (!headerNames.contains("Time")) {
+        if (!"TIME".equalsIgnoreCase(headerNames.get(0))) {
           System.out.println("No headers!");
           return;
         }
@@ -262,7 +277,7 @@ public class ImportCsv extends AbstractCsvTool {
         } else {
           failedFilePath = failedFileDirectory + file.getName() + ".failed";
         }
-        if (!headerNames.contains("Device")) {
+        if (!"DEVICE".equalsIgnoreCase(headerNames.get(1))) {
           writeDataAlignedByTime(headerNames, records, failedFilePath);
         } else {
           writeDataAlignedByDevice(headerNames, records, failedFilePath);
@@ -293,7 +308,7 @@ public class ImportCsv extends AbstractCsvTool {
     String devicesStr = StringUtils.join(devices, ",");
     try {
       queryType(devicesStr, headerTypeMap, "Time");
-    } catch (StatementExecutionException | IoTDBConnectionException e) {
+    } catch (IoTDBConnectionException e) {
       e.printStackTrace();
     }
 
@@ -308,6 +323,9 @@ public class ImportCsv extends AbstractCsvTool {
       List<List<TSDataType>> typesList = new ArrayList<>();
       List<List<Object>> valuesList = new ArrayList<>();
       List<List<String>> measurementsList = new ArrayList<>();
+
+      final int BATCH_SIZE = 1000;
+      AtomicInteger recordSize = new AtomicInteger();
       records.stream()
           .forEach(
               record -> {
@@ -374,14 +392,15 @@ public class ImportCsv extends AbstractCsvTool {
                   typesList.add(types);
                   valuesList.add(values);
                   measurementsList.add(measurements);
+                  recordSize.getAndIncrement();
+                  if (recordSize.get() >= BATCH_SIZE) {
+                    writeAndEmptyDataSet(
+                        deviceId, times, typesList, valuesList, measurementsList, 3);
+                    recordSize.set(0);
+                  }
                 }
               });
-      try {
-        session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList);
-      } catch (StatementExecutionException | IoTDBConnectionException e) {
-        System.out.println("Meet error when insert csv because " + e.getMessage());
-        System.exit(0);
-      }
+      writeAndEmptyDataSet(deviceId, times, typesList, valuesList, measurementsList, 3);
     }
     if (!failedRecords.isEmpty()) {
       writeCsvFile(headerNames, failedRecords, failedFilePath);
@@ -406,7 +425,7 @@ public class ImportCsv extends AbstractCsvTool {
     String devicesStr = StringUtils.join(devices, ",");
     try {
       queryType(devicesStr, headerTypeMap, "Device");
-    } catch (StatementExecutionException | IoTDBConnectionException e) {
+    } catch (IoTDBConnectionException e) {
       e.printStackTrace();
     }
 
@@ -423,6 +442,8 @@ public class ImportCsv extends AbstractCsvTool {
               List<List<Object>> valuesList = new ArrayList<>();
               List<List<String>> measurementsList = new ArrayList<>();
 
+              final int BATCH_SIZE = 1000;
+              AtomicInteger recordSize = new AtomicInteger();
               records.stream()
                   .filter(record -> record.get("Device").equals(device))
                   .forEach(
@@ -494,20 +515,55 @@ public class ImportCsv extends AbstractCsvTool {
                           typesList.add(types);
                           valuesList.add(values);
                           measurementsList.add(measurements);
+                          recordSize.getAndIncrement();
+                          if (recordSize.get() >= BATCH_SIZE) {
+                            writeAndEmptyDataSet(
+                                device, times, typesList, valuesList, measurementsList, 3);
+                            recordSize.set(0);
+                          }
                         }
                       });
-              try {
-                session.insertRecordsOfOneDevice(
-                    device, times, measurementsList, typesList, valuesList);
-              } catch (StatementExecutionException | IoTDBConnectionException e) {
-                System.out.println("Meet error when insert csv because " + e.getMessage());
-                System.exit(0);
-              }
+              writeAndEmptyDataSet(device, times, typesList, valuesList, measurementsList, 3);
             });
     if (!failedRecords.isEmpty()) {
       writeCsvFile(headerNames, failedRecords, failedFilePath);
     }
     System.out.println("Import completely!");
+  }
+
+  private static void writeAndEmptyDataSet(
+      String device,
+      List<Long> times,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      List<List<String>> measurementsList,
+      int retryTime) {
+    try {
+      if (!aligned) {
+        session.insertRecordsOfOneDevice(device, times, measurementsList, typesList, valuesList);
+      } else {
+        session.insertAlignedRecordsOfOneDevice(
+            device, times, measurementsList, typesList, valuesList);
+      }
+    } catch (IoTDBConnectionException e) {
+      try {
+        session.open();
+      } catch (IoTDBConnectionException ex) {
+        System.out.println("Meet error when insert csv because " + e.getMessage());
+      }
+      if (retryTime > 0) {
+        writeAndEmptyDataSet(device, times, typesList, valuesList, measurementsList, --retryTime);
+      } else {
+        return;
+      }
+    } catch (StatementExecutionException e) {
+      System.out.println("Meet error when insert csv because " + e.getMessage());
+    } finally {
+      times.clear();
+      typesList.clear();
+      valuesList.clear();
+      measurementsList.clear();
+    }
   }
 
   /**
@@ -579,9 +635,16 @@ public class ImportCsv extends AbstractCsvTool {
    */
   private static void queryType(
       String deviceNames, HashMap<String, TSDataType> headerTypeMap, String alignedType)
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException {
     String sql = "select * from " + deviceNames + " limit 1";
-    SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
+    SessionDataSet sessionDataSet = null;
+    try {
+      sessionDataSet = session.executeQueryStatement(sql);
+    } catch (StatementExecutionException e) {
+      System.out.println(
+          "Meet error when query the type of timeseries because the IoTDB v0.13 don't support that the path contains any purely digital path.");
+      return;
+    }
     List<String> columnNames = sessionDataSet.getColumnNames();
     List<String> columnTypes = sessionDataSet.getColumnTypes();
     for (int i = 1; i < columnNames.size(); i++) {
@@ -656,6 +719,7 @@ public class ImportCsv extends AbstractCsvTool {
   private static TSDataType typeInfer(String value) {
     if (value.contains("\"")) return TEXT;
     else if (value.equals("true") || value.equals("false")) return BOOLEAN;
+    else if (value.equals("NaN")) return DOUBLE;
     else if (!value.contains(".")) {
       try {
         Integer.valueOf(value);
@@ -669,9 +733,7 @@ public class ImportCsv extends AbstractCsvTool {
         }
       }
     } else {
-      if (Float.valueOf(value).toString().length() == Double.valueOf(value).toString().length())
-        return FLOAT;
-      else return DOUBLE;
+      return DOUBLE;
     }
   }
 

@@ -73,17 +73,7 @@ public class DoNothingMetricManager implements MetricManager {
   }
 
   @Override
-  public void count(int delta, String metric, String... tags) {
-    // do nothing
-  }
-
-  @Override
   public void count(long delta, String metric, String... tags) {
-    // do nothing
-  }
-
-  @Override
-  public void histogram(int value, String metric, String... tags) {
     // do nothing
   }
 
@@ -93,17 +83,7 @@ public class DoNothingMetricManager implements MetricManager {
   }
 
   @Override
-  public void gauge(int value, String metric, String... tags) {
-    // do nothing
-  }
-
-  @Override
   public void gauge(long value, String metric, String... tags) {
-    // do nothing
-  }
-
-  @Override
-  public void rate(int value, String metric, String... tags) {
     // do nothing
   }
 

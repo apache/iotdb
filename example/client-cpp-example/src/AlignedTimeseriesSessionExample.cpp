@@ -39,6 +39,47 @@ void createAlignedTimeseries() {
     session->createAlignedTimeseries(alignedDeviceId, measurements, dataTypes, encodings, compressors);
 }
 
+void createSchemaTemplate() {
+    Template temp("template1", false);
+
+    InternalNode iNodeD99("d99", true);
+
+    MeasurementNode mNodeS1("s1", TSDataType::INT32, TSEncoding::RLE, CompressionType::SNAPPY);
+    MeasurementNode mNodeS2("s2", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+    MeasurementNode mNodeD99S1("s1", TSDataType::DOUBLE, TSEncoding::RLE, CompressionType::SNAPPY);
+    MeasurementNode mNodeD99S2("s2", TSDataType::BOOLEAN, TSEncoding::RLE, CompressionType::SNAPPY);
+
+    iNodeD99.addChild(mNodeD99S1);
+    iNodeD99.addChild(mNodeD99S2);
+
+    temp.addToTemplate(iNodeD99);
+    temp.addToTemplate(mNodeS1);
+    temp.addToTemplate(mNodeS2);
+
+    session->createSchemaTemplate(temp);
+    session->setSchemaTemplate("template1", "root.sg2");
+}
+
+void ActivateTemplate() {
+    session->executeNonQueryStatement("insert into root.sg2.d1(timestamp,s1, s2) values(200, 1, 1);");
+}
+
+void showDevices() {
+    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("show devices with storage group");
+    for (const string &name: dataSet->getColumnNames()) {
+        cout << name << "  ";
+    }
+    cout << endl;
+
+    dataSet->setBatchSize(1024);
+    while (dataSet->hasNext()) {
+        cout << dataSet->next()->toString();
+    }
+    cout << endl;
+
+    dataSet->closeOperationHandle();
+}
+
 void showTimeseries() {
     unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("show timeseries");
     for (const string &name: dataSet->getColumnNames()) {
@@ -148,7 +189,7 @@ void insertAlignedTablets() {
     Tablet tablet2("root.sg1.d2", schemas, 10);
     Tablet tablet3("root.sg1.d3", schemas, 10);
 
-    map<string, Tablet *> tabletMap;
+    unordered_map<string, Tablet *> tabletMap;
     tabletMap["root.sg1.d1"] = &tablet1;
     tabletMap["root.sg1.d2"] = &tablet2;
     tabletMap["root.sg1.d3"] = &tablet3;
@@ -190,6 +231,46 @@ void insertAlignedTablets() {
     }
 }
 
+void insertNullableTabletWithAlignedTimeseries() {
+    pair<string, TSDataType::TSDataType> pairA("s1", TSDataType::INT32);
+    pair<string, TSDataType::TSDataType> pairB("s2", TSDataType::DOUBLE);
+    pair<string, TSDataType::TSDataType> pairC("s3", TSDataType::BOOLEAN);
+    vector<pair<string, TSDataType::TSDataType>> schemas;
+    schemas.push_back(pairA);
+    schemas.push_back(pairB);
+    schemas.push_back(pairC);
+
+    Tablet tablet("root.sg1.d1", schemas, 10);
+    tablet.setAligned(true);
+
+    for (int64_t time = 40; time < 50; time++) {
+        int row = tablet.rowSize++;
+        tablet.timestamps[row] = time;
+        for (int i = 0; i < 3; i++) {
+            if (i == 0) {
+                tablet.values[i][row] = "1";
+            } else if (i == 1) {
+                tablet.values[i][row] = "1.0";
+            } else {
+                tablet.values[i][row] = "true";
+            }
+            // mark null value
+            if (row % 3 == i) {
+                tablet.bitMaps[i]->mark(row);
+            }
+        }
+        if (tablet.rowSize == tablet.maxRowNumber) {
+            session->insertTablet(tablet, true);
+            tablet.reset();
+        }
+    }
+
+    if (tablet.rowSize != 0) {
+        session->insertTablet(tablet);
+        tablet.reset();
+    }
+}
+
 void query() {
     unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select * from root.sg1.d1");
     cout << "timestamp" << "  ";
@@ -209,7 +290,7 @@ void query() {
 
 void deleteData() {
     string path = "root.sg1.d1.s1";
-    int64_t deleteTime = 39;
+    int64_t deleteTime = 49;
     session->deleteData(path, deleteTime);
 }
 
@@ -245,6 +326,15 @@ int main() {
     cout << "createAlignedTimeseries\n" << endl;
     createAlignedTimeseries();
 
+    cout << "createSchemaTemplate\n" << endl;
+    createSchemaTemplate();
+
+    cout << "ActivateTemplate\n" << endl;
+    ActivateTemplate();
+
+    cout << "showDevices\n" << endl;
+    showDevices();
+
     cout << "showTimeseries\n" << endl;
     showTimeseries();
 
@@ -259,6 +349,9 @@ int main() {
 
     cout << "insertAlignedTablets\n" << endl;
     insertAlignedTablets();
+
+    cout << "insertNullableTabletWithAlignedTimeseries\n" << endl;
+    insertNullableTabletWithAlignedTimeseries();
 
     cout << "query\n" << endl;
     query();

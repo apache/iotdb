@@ -21,11 +21,16 @@ package org.apache.iotdb.db.newsync.receiver.load;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+
+import java.io.IOException;
 
 /**
  * This interface is used to load files, including tsFile, syncTask, schema, modsFile and
  * deletePlan.
  */
 public interface ILoader {
-  boolean load() throws StorageEngineException, LoadFileException, MetadataException;
+  void load()
+      throws StorageEngineException, IOException, MetadataException, WriteProcessException,
+          LoadFileException;
 }

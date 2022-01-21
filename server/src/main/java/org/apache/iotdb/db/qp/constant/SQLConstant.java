@@ -196,7 +196,7 @@ public class SQLConstant {
   public static final int TOK_SHOW_PIPESINKTYPE = 119;
   public static final int TOK_CREATE_PIPE = 120;
   public static final int TOK_SHOW_PIPE = 121;
-  public static final int TOK_PAUSE_PIPE = 122;
+  public static final int TOK_STOP_PIPE = 122;
   public static final int TOK_START_PIPE = 123;
   public static final int TOK_DROP_PIPE = 124;
   public static final int TOK_SHOW_PIPE_SERVER = 125;
@@ -287,7 +287,7 @@ public class SQLConstant {
     tokenNames.put(TOK_SHOW_PIPESINKTYPE, "TOK_SHOW_PIPESINKTYPE");
     tokenNames.put(TOK_CREATE_PIPE, "TOK_CREATE_PIPE");
     tokenNames.put(TOK_SHOW_PIPE, "TOK_SHOW_PIPE");
-    tokenNames.put(TOK_PAUSE_PIPE, "TOK_PAUSE_PIPE");
+    tokenNames.put(TOK_STOP_PIPE, "TOK_STOP_PIPE");
     tokenNames.put(TOK_START_PIPE, "TOK_START_PIPE");
     tokenNames.put(TOK_DROP_PIPE, "TOK_DROP_PIPE");
     tokenNames.put(TOK_SHOW_PIPE_SERVER, "TOK_SHOW_PIPE_SERVER");

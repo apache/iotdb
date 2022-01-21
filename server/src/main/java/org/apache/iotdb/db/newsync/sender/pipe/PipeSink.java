@@ -21,8 +21,6 @@ package org.apache.iotdb.db.newsync.sender.pipe;
 
 import org.apache.iotdb.db.exception.PipeSinkException;
 
-import java.nio.ByteBuffer;
-
 public interface PipeSink {
   void setAttribute(String attr, String value) throws PipeSinkException;
 
@@ -32,30 +30,17 @@ public interface PipeSink {
 
   String showAllAttributes();
 
-  ByteBuffer serialize();
-
-  void deserialize(ByteBuffer byteBuffer);
-
   enum Type {
     IoTDB;
   }
 
   class PipeSinkFactory {
     public static PipeSink createPipeSink(String type, String name) {
-      PipeSink.Type pipeSinkType;
-      try {
-        pipeSinkType = PipeSink.Type.valueOf(type);
-      } catch (IllegalArgumentException e) {
-        throw new UnsupportedOperationException("do not support for " + type + "pipeSink");
-      }
-      return createPipeSink(pipeSinkType, name);
-    }
-
-    public static PipeSink createPipeSink(PipeSink.Type type, String name) {
-      if (type == PipeSink.Type.IoTDB) {
+      type = type.toLowerCase();
+      if (Type.IoTDB.name().toLowerCase().equals(type)) {
         return new IoTDBPipeSink(name);
       }
-      throw new UnsupportedOperationException("do not support for " + type + " pipeSink");
+      throw new UnsupportedOperationException("Not support for " + type + " pipeSink");
     }
   }
 }

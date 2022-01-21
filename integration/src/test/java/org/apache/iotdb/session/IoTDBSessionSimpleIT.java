@@ -82,7 +82,6 @@ public class IoTDBSessionSimpleIT {
   @Before
   public void setUp() {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
 
@@ -1285,17 +1284,18 @@ public class IoTDBSessionSimpleIT {
 
     dataSet = session.executeQueryStatement("show devices");
 
-    checkSet.add("root.sg.loc");
-    checkSet.add("root.sg.loc.GPS");
-    checkSet.add("root.sg.loc.vehicle");
-    checkSet.add("root.sg.loc.vehicle.GPS");
-    checkSet.add("root.sg.loc.area");
-    checkSet.add("root.sg.loc.area.GPS");
-    checkSet.add("root.sg.loc.area.vehicle");
-    checkSet.add("root.sg.loc.area.vehicle.GPS");
+    checkSet.add("root.sg.loc,true");
+    checkSet.add("root.sg.loc.GPS,false");
+    checkSet.add("root.sg.loc.vehicle,true");
+    checkSet.add("root.sg.loc.vehicle.GPS,false");
+    checkSet.add("root.sg.loc.area,true");
+    checkSet.add("root.sg.loc.area.GPS,false");
+    checkSet.add("root.sg.loc.area.vehicle,true");
+    checkSet.add("root.sg.loc.area.vehicle.GPS,false");
 
     while (dataSet.hasNext()) {
-      checkSet.remove(dataSet.next().getFields().get(0).toString());
+      List<Field> fields = dataSet.next().getFields();
+      checkSet.remove(fields.get(0).toString() + "," + fields.get(1).toString());
     }
 
     assertTrue(checkSet.isEmpty());
