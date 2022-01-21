@@ -434,7 +434,7 @@ public class TsFileResource {
   }
 
   public Set<String> getDevices() {
-    return timeIndex.getDevices(file.getPath());
+    return timeIndex.getDevices(file.getPath(), this);
   }
 
   public boolean endTimeEmpty() {
