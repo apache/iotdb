@@ -92,7 +92,7 @@ public class TsFileResource {
   /** time index */
   protected ITimeIndex timeIndex;
 
-  /** time index type, fileTimeIndex = 0, deviceTimeIndex = 1 */
+  /** time index type, V012FileTimeIndex = 0, deviceTimeIndex = 1, fileTimeIndex = 2 */
   private byte timeIndexType;
 
   private ModificationFile modFile;
@@ -271,6 +271,13 @@ public class TsFileResource {
         }
       }
     }
+
+    // upgrade from v0.12 to v0.13, we need to rewrite the TsFileResource if the previous time index
+    // is file time index
+    if (timeIndexType == 0) {
+      timeIndexType = 2;
+      serialize();
+    }
   }
 
   /** deserialize tsfile resource from old file */
@@ -427,7 +434,7 @@ public class TsFileResource {
   }
 
   public Set<String> getDevices() {
-    return timeIndex.getDevices(file.getPath());
+    return timeIndex.getDevices(file.getPath(), this);
   }
 
   public boolean endTimeEmpty() {
@@ -954,7 +961,7 @@ public class TsFileResource {
     long endTime = timeIndex.getMaxEndTime();
     // replace the DeviceTimeIndex with FileTimeIndex
     timeIndex = new FileTimeIndex(startTime, endTime);
-    timeIndexType = 0;
+    timeIndexType = 2;
     return ramSize - timeIndex.calculateRamSize();
   }
 
