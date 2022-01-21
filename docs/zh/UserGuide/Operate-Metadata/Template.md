@@ -38,19 +38,19 @@ templateMeasurementClause
     ;
 ```
 
-示例1：创建包含两个非对齐序列的元数据模板
+**示例1：** 创建包含两个非对齐序列的元数据模板
 
 ```shell
 IoTDB> create schema template temp1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
 
-示例2：创建包含一组对齐序列的元数据模板
+**示例2：** 创建包含一组对齐序列的元数据模板
 
 ```shell
-IoTDB> create schema template aligned temp2 (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla)
+IoTDB> create schema template temp2 aligned (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla)
 ```
 
-示例3：创建混合对齐序列和非对齐序列的元数据模板
+**示例3：** 创建混合对齐序列和非对齐序列的元数据模板
 
 ```shell
 IoTDB> create schema template temp3 (GPS aligned (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla compression=SNAPPY), status BOOLEAN encoding=PLAIN compression=SNAPPY)
@@ -74,7 +74,50 @@ IoTDB> set schema template temp1 to root.ln.wf01
 IoTDB> create timeseries of schema template on root.ln.wf01
 ```
 
+**示例：** 执行以下语句
+```shell
+set schema template temp1 to root.sg1.d1
+set schema template temp2 to root.sg1.d2
+set schema template temp3 to root.sg1.d3
+create timeseries of schema template on root.sg1.d1
+create timeseries of schema template on root.sg1.d2
+create timeseries of schema template on root.sg1.d3
+```
 
+查看此时的时间序列：
+```sql
+show timeseries root.sg1.**
+```
+
+```shell
++-----------------------+-----+-------------+--------+--------+-----------+----+----------+
+|             timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
++-----------------------+-----+-------------+--------+--------+-----------+----+----------+
+|root.sg1.d1.temperature| null|     root.sg1|   FLOAT|     RLE|     SNAPPY|null|      null|
+|     root.sg1.d1.status| null|     root.sg1| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
+|        root.sg1.d2.lon| null|     root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|
+|        root.sg1.d2.lat| null|     root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|
+|    root.sg1.d3.GPS.lon| null|     root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|
+|    root.sg1.d3.GPS.lat| null|     root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|
+|     root.sg1.d3.status| null|     root.sg1| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
++-----------------------+-----+-------------+--------+--------+-----------+----+----------+
+```
+
+查看此时的设备：
+```sql
+show devices root.sg1.**
+```
+
+```shell
++---------------+---------+
+|        devices|isAligned|
++---------------+---------+
+|    root.sg1.d1|    false|
+|    root.sg1.d2|     true|
+|    root.sg1.d3|    false|
+|root.sg1.d3.GPS|     true|
++---------------+---------+
+```
 
 ## 查看元数据模板
 
@@ -83,7 +126,7 @@ IoTDB> create timeseries of schema template on root.ln.wf01
 SQL 语句如下所示：
 
 ```shell
-IoTDB> show schema templates on root.ln.wf01
+IoTDB> show schema templates
 ```
 
 执行结果如下：
@@ -91,6 +134,8 @@ IoTDB> show schema templates on root.ln.wf01
 +-------------+
 |template name|
 +-------------+
+|        temp2|
+|        temp3|
 |        temp1|
 +-------------+
 ```
@@ -100,24 +145,24 @@ IoTDB> show schema templates on root.ln.wf01
 SQL 语句如下所示：
 
 ```shell
-IoTDB> show nodes in schema template templ1
+IoTDB> show nodes in schema template temp3
 ```
 
 执行结果如下：
 ```shell
-+-----------+
-|child nodes|
-+-----------+
-|     status|
-|    GPS.lat|
-|    GPS.lon|
-+-----------+
++-----------+--------+--------+-----------+
+|child nodes|dataType|encoding|compression|
++-----------+--------+--------+-----------+
+|    GPS.lon|   FLOAT| GORILLA|     SNAPPY|
+|    GPS.lat|   FLOAT| GORILLA|     SNAPPY|
+|     status| BOOLEAN|   PLAIN|     SNAPPY|
++-----------+--------+--------+-----------+
 ```
 
 - 查看挂载了某个元数据模板的路径前缀
 
 ```shell
-IoTDB> show paths set schema template templ1
+IoTDB> show paths set schema template temp1
 ```
 
 执行结果如下：
@@ -132,7 +177,7 @@ IoTDB> show paths set schema template templ1
 - 查看使用了某个元数据模板（即序列已创建）的路径前缀
 
 ```shell
-IoTDB> show paths using schema template templ1
+IoTDB> show paths using schema template temp1
 ```
 
 执行结果如下：

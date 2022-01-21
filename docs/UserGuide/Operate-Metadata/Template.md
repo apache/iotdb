@@ -30,18 +30,30 @@ Note: The `schema` keyword in the following statements can be omitted.
 The SQL syntax for creating a metadata template is as follows:
 
 ```sql
-CREATE SCHEMA? TEMPLATE <templateName> '(' templateMeasurementClause [',' templateMeasurementClause]+ ')'
+CREATE SCHEMA? TEMPLATE <templateName> ALIGNED '(' templateMeasurementClause [',' templateMeasurementClause]+ ')'
 
 templateMeasurementClause
-    : <measurementId> <attributeClauses> # non-aligned measurement
-    | <deviceId> '(' <measurementId> <attributeClauses> [',' <measurementId> <attributeClauses>]+ ')' # a group of aligned measurements
+    : <measurementId> <attributeClauses> # single measurement
+    | <deviceId> ALIGNED '(' <measurementId> <attributeClauses> [',' <measurementId> <attributeClauses>]+ ')' # a group of aligned measurements
     ;
 ```
 
-For example:
+**Example 1:** Create a template containing two non-aligned timeseires
 
 ```shell
-IoTDB> create schema template temp1(GPS (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla compression=SNAPPY), status BOOLEAN encoding=PLAIN compression=SNAPPY)
+IoTDB> create schema template temp1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
+```
+
+**Example 2:** Create a template containing a group of aligned timeseires
+
+```shell
+IoTDB> create schema template temp2 aligned (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla)
+```
+
+**Example 3:** Creating a template that mixes aligned and non-aligned timeseires
+
+```shell
+IoTDB> create schema template temp3 (GPS aligned (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla compression=SNAPPY), status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
 
 The` lat` and `lon` measurements under the `GPS` device are aligned.
@@ -62,6 +74,51 @@ After setting the schema template, you can insert data into the timeseries. For 
 IoTDB> create timeseries of schema template on root.ln.wf01
 ```
 
+**Example:** Execute the following statement
+```shell
+set schema template temp1 to root.sg1.d1
+set schema template temp2 to root.sg1.d2
+set schema template temp3 to root.sg1.d3
+create timeseries of schema template on root.sg1.d1
+create timeseries of schema template on root.sg1.d2
+create timeseries of schema template on root.sg1.d3
+````
+
+Show the time series:
+```sql
+show timeseries root.sg1.**
+````
+
+```shell
++-----------------------+-----+-------------+--------+--------+-----------+----+----------+
+|             timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
++-----------------------+-----+-------------+--------+--------+-----------+----+----------+
+|root.sg1.d1.temperature| null|     root.sg1|   FLOAT|     RLE|     SNAPPY|null|      null|
+|     root.sg1.d1.status| null|     root.sg1| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
+|        root.sg1.d2.lon| null|     root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|
+|        root.sg1.d2.lat| null|     root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|
+|    root.sg1.d3.GPS.lon| null|     root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|
+|    root.sg1.d3.GPS.lat| null|     root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|
+|     root.sg1.d3.status| null|     root.sg1| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
++-----------------------+-----+-------------+--------+--------+-----------+----+----------+
+````
+
+Show the devices:
+```sql
+show devices root.sg1.**
+````
+
+```shell
++---------------+---------+
+|        devices|isAligned|
++---------------+---------+
+|    root.sg1.d1|    false|
+|    root.sg1.d2|     true|
+|    root.sg1.d3|    false|
+|root.sg1.d3.GPS|     true|
++---------------+---------+
+````
+
 ## Show Schema Template
 
 - Show all schema templates
@@ -77,7 +134,9 @@ The execution result is as follows:
 +-------------+
 |template name|
 +-------------+
-|temp1|
+|        temp2|
+|        temp3|
+|        temp1|
 +-------------+
 ````
 
@@ -86,24 +145,24 @@ The execution result is as follows:
 The SQL statement looks like this:
 
 ```shell
-IoTDB> show nodes in schema template templ1
+IoTDB> show nodes in schema template temp3
 ````
 
 The execution result is as follows:
 ```shell
-+------------+
-|child nodes|
-+------------+
-| status|
-|GPS.lat|
-| GPS.lon|
-+------------+
++-----------+--------+--------+-----------+
+|child nodes|dataType|encoding|compression|
++-----------+--------+--------+-----------+
+|    GPS.lon|   FLOAT| GORILLA|     SNAPPY|
+|    GPS.lat|   FLOAT| GORILLA|     SNAPPY|
+|     status| BOOLEAN|   PLAIN|     SNAPPY|
++-----------+--------+--------+-----------+
 ````
 
 - Show the path prefix where a schema template is set
 
 ```shell
-IoTDB> show paths set schema template templ1
+IoTDB> show paths set schema template temp1
 ````
 
 The execution result is as follows:
@@ -118,7 +177,7 @@ The execution result is as follows:
 - Show the path prefix where a schema template is used (i.e. the time series has been created)
 
 ```shell
-IoTDB> show paths using schema template templ1
+IoTDB> show paths using schema template temp1
 ````
 
 The execution result is as follows:
