@@ -83,6 +83,9 @@ public class ImportCsv extends AbstractCsvTool {
   private static String failedFileDirectory = null;
   private static Boolean aligned = false;
 
+  private static String timeColumn = "Time";
+  private static String deviceColumn = "Device";
+
   /**
    * create the commandline options.
    *
@@ -263,7 +266,7 @@ public class ImportCsv extends AbstractCsvTool {
           System.out.println("Empty file!");
           return;
         }
-        if (!"TIME".equalsIgnoreCase(headerNames.get(0))) {
+        if (!timeColumn.equalsIgnoreCase(headerNames.get(0))) {
           System.out.println("No headers!");
           return;
         }
@@ -277,7 +280,7 @@ public class ImportCsv extends AbstractCsvTool {
         } else {
           failedFilePath = failedFileDirectory + file.getName() + ".failed";
         }
-        if (!"DEVICE".equalsIgnoreCase(headerNames.get(1))) {
+        if (!deviceColumn.equalsIgnoreCase(headerNames.get(1))) {
           writeDataAlignedByTime(headerNames, records, failedFilePath);
         } else {
           writeDataAlignedByDevice(headerNames, records, failedFilePath);
@@ -312,7 +315,7 @@ public class ImportCsv extends AbstractCsvTool {
       e.printStackTrace();
     }
 
-    SimpleDateFormat timeFormatter = formatterInit(records.get(0).get("Time"));
+    SimpleDateFormat timeFormatter = formatterInit(records.get(0).get(timeColumn));
 
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
 
@@ -377,14 +380,14 @@ public class ImportCsv extends AbstractCsvTool {
                   try {
                     if (timeFormatter == null) {
                       try {
-                        times.add(Long.valueOf(record.get("Time")));
+                        times.add(Long.valueOf(record.get(timeColumn)));
                       } catch (Exception e) {
                         System.out.println(
                             "Meet error when insert csv because the format of time is not supported");
                         System.exit(0);
                       }
                     } else {
-                      times.add(timeFormatter.parse(record.get("Time")).getTime());
+                      times.add(timeFormatter.parse(record.get(timeColumn)).getTime());
                     }
                   } catch (ParseException e) {
                     e.printStackTrace();
@@ -421,7 +424,7 @@ public class ImportCsv extends AbstractCsvTool {
     HashMap<String, String> headerNameMap = new HashMap<>();
     parseHeaders(headerNames, null, headerTypeMap, headerNameMap);
     Set<String> devices =
-        records.stream().map(record -> record.get("Device")).collect(Collectors.toSet());
+        records.stream().map(record -> record.get(deviceColumn)).collect(Collectors.toSet());
     String devicesStr = StringUtils.join(devices, ",");
     try {
       queryType(devicesStr, headerTypeMap, "Device");
@@ -429,7 +432,7 @@ public class ImportCsv extends AbstractCsvTool {
       e.printStackTrace();
     }
 
-    SimpleDateFormat timeFormatter = formatterInit(records.get(0).get("Time"));
+    SimpleDateFormat timeFormatter = formatterInit(records.get(0).get(timeColumn));
     Set<String> measurementNames = headerNameMap.keySet();
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
 
@@ -445,7 +448,7 @@ public class ImportCsv extends AbstractCsvTool {
               final int BATCH_SIZE = 1000;
               AtomicInteger recordSize = new AtomicInteger();
               records.stream()
-                  .filter(record -> record.get("Device").equals(device))
+                  .filter(record -> record.get(deviceColumn).equals(device))
                   .forEach(
                       record -> {
                         ArrayList<TSDataType> types = new ArrayList<>();
@@ -500,14 +503,14 @@ public class ImportCsv extends AbstractCsvTool {
                           try {
                             if (timeFormatter == null) {
                               try {
-                                times.add(Long.valueOf(record.get("Time")));
+                                times.add(Long.valueOf(record.get(timeColumn)));
                               } catch (Exception e) {
                                 System.out.println(
                                     "Meet error when insert csv because the format of time is not supported");
                                 System.exit(0);
                               }
                             } else {
-                              times.add(timeFormatter.parse(record.get("Time")).getTime());
+                              times.add(timeFormatter.parse(record.get(timeColumn)).getTime());
                             }
                           } catch (ParseException e) {
                             e.printStackTrace();
@@ -598,7 +601,11 @@ public class ImportCsv extends AbstractCsvTool {
     String regex = "(?<=\\()\\S+(?=\\))";
     Pattern pattern = Pattern.compile(regex);
     for (String headerName : headerNames) {
-      if ("Time".equals(headerName) || "Device".equals(headerName)) {
+      if ("Time".equalsIgnoreCase(headerName)) {
+        timeColumn = headerName;
+        continue;
+      } else if ("Device".equalsIgnoreCase(headerName)) {
+        deviceColumn = headerName;
         continue;
       }
       Matcher matcher = pattern.matcher(headerName);
@@ -746,7 +753,8 @@ public class ImportCsv extends AbstractCsvTool {
     try {
       switch (type) {
         case TEXT:
-          return value.substring(1, value.length() - 1);
+          if (value.startsWith("\"") && value.endsWith("\"")) return value.substring(1, value.length() - 1);
+          else return null;
         case BOOLEAN:
           if (!"true".equals(value) && !"false".equals(value)) {
             return null;
