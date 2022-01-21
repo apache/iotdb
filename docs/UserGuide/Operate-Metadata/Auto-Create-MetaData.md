@@ -31,7 +31,7 @@ but also provide users with an out-of-the-box writing experience.
 
 | Name | enable\_auto\_create\_schema |
 |:---:|:---|
-| Description | whether creating schema automatically is enabled，enabled by default |
+| Description | whether creating schema automatically is enabled |
 | Type | boolean |
 | Default | true |
 | Effective | After restarting system |
