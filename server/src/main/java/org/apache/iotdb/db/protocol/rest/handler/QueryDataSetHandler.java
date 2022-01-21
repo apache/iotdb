@@ -28,6 +28,7 @@ import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.dataset.ShowDevicesDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByLevelDataSet;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -66,6 +67,8 @@ public class QueryDataSetHandler {
         && ((AggregationPlan) physicalPlan).getLevels() != null) {
       return fillAggregationPlanDataSet(
           sourceDataSet, (AggregationPlan) physicalPlan, actualRowSizeLimit);
+    } else if (sourceDataSet instanceof GroupByLevelDataSet) {
+      return fillGroupByLevelDataSet(sourceDataSet, actualRowSizeLimit);
     } else if (physicalPlan instanceof QueryPlan) {
       return fillDataSetWithTimestamps(sourceDataSet, (QueryPlan) physicalPlan, actualRowSizeLimit);
     } else {
@@ -107,6 +110,18 @@ public class QueryDataSetHandler {
     org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet =
         new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
     initTargetDatasetOrderByOrderWithSourceDataSet(
+        sourceDataSet, targetDataSetIndexToSourceDataSetIndex, targetDataSet);
+
+    return fillQueryDataSetWithTimestamps(
+        sourceDataSet, actualRowSizeLimit, targetDataSetIndexToSourceDataSetIndex, targetDataSet);
+  }
+
+  public static Response fillGroupByLevelDataSet(
+      QueryDataSet sourceDataSet, final int actualRowSizeLimit) throws IOException {
+    int[] targetDataSetIndexToSourceDataSetIndex = new int[sourceDataSet.getPaths().size()];
+    org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet =
+        new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
+    initTargetDatasetExpByOrderWithSourceDataSet(
         sourceDataSet, targetDataSetIndexToSourceDataSetIndex, targetDataSet);
 
     return fillQueryDataSetWithTimestamps(
@@ -156,6 +171,20 @@ public class QueryDataSetHandler {
       for (int i = 0; i < sourceDataSet.getPaths().size(); i++) {
         Path path = sourceDataSet.getPaths().get(i);
         targetDataSet.addColumnNamesItem(path.getFullPath());
+        targetDataSet.addValuesItem(new ArrayList<>());
+        targetDataSetIndexToSourceDataSetIndex[i] = i;
+      }
+    }
+  }
+
+  private static void initTargetDatasetExpByOrderWithSourceDataSet(
+      QueryDataSet sourceDataSet,
+      int[] targetDataSetIndexToSourceDataSetIndex,
+      org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet) {
+    if (sourceDataSet.getPaths() != null) {
+      for (int i = 0; i < sourceDataSet.getPaths().size(); i++) {
+        Path path = sourceDataSet.getPaths().get(i);
+        targetDataSet.addExpressionsItem(path.getFullPath());
         targetDataSet.addValuesItem(new ArrayList<>());
         targetDataSetIndexToSourceDataSetIndex[i] = i;
       }

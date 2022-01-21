@@ -679,7 +679,7 @@ var config = {
 					},
 					{
 						title: 'Syntax Conventions',
-						sidebarDepth: 2,
+						sidebarDepth: 1,
 						children: [
 							['Reference/Syntax-Conventions','Syntax Conventions'],
 						]
@@ -699,6 +699,7 @@ var config = {
 					},
 					{
 						title: 'Operate Metadata',
+						sidebarDepth: 1,
 						children: [
 							['Operate-Metadata/Storage-Group','Storage Group'],
 							['Operate-Metadata/Node','Node'],
@@ -709,6 +710,7 @@ var config = {
 					},
 					{
 						title: 'Write and Delete Data',
+						sidebarDepth: 1,
 						children: [
 							['Write-And-Delete-Data/Write-Data','Write Data'],
 							['Write-And-Delete-Data/Load-External-Tsfile','Load External Tsfile'],
@@ -835,7 +837,7 @@ var config = {
 					},
 					{
 						title: 'Syntax Conventions',
-						sidebarDepth: 2,
+						sidebarDepth: 1,
 						children: [
 							['Reference/Syntax-Conventions','Syntax Conventions'],
 						]
@@ -849,12 +851,14 @@ var config = {
 							['API/Programming-Go-Native-API','Go Native API'],
 							['API/Programming-JDBC','JDBC (Not Recommend)'],
 							['API/Programming-MQTT','MQTT'],
+							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/Status-Codes','Status Codes']
 						]
 					},
 					{
 						title: 'Operate Metadata',
+						sidebarDepth: 1,
 						children: [
 							['Operate-Metadata/Storage-Group','Storage Group'],
 							['Operate-Metadata/Node','Node'],
@@ -865,6 +869,7 @@ var config = {
 					},
 					{
 						title: 'Write and Delete Data',
+						sidebarDepth: 1,
 						children: [
 							['Write-And-Delete-Data/Write-Data','Write Data'],
 							['Write-And-Delete-Data/Load-External-Tsfile','Load External Tsfile'],
@@ -923,7 +928,8 @@ var config = {
 					{
 						title: 'Ecosystem Integration',
 						children: [
-							['Ecosystem Integration/Grafana Connector','Grafana Connector'],
+							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
+							['Ecosystem Integration/Grafana Connector','Grafana Connector (Not Recommended)'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
 							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
@@ -1639,7 +1645,7 @@ var config = {
 					},
 					{
 						title: '语法约定',
-						sidebarDepth: 2,
+						sidebarDepth: 1,
 						children: [
 							['Reference/Syntax-Conventions', '语法约定'],
 						]
@@ -1653,15 +1659,13 @@ var config = {
 							['API/Programming-Go-Native-API','Go 原生接口'],
 							['API/Programming-JDBC','JDBC (不推荐)'],
 							['API/Programming-MQTT','MQTT'],
-							['API/RestService','REST'],
-							['API/RestService','HTTP API'],
 							['API/Programming-TsFile-API','TsFile API'],
-							['API/InfluxDB-Protocol','InfluxDB 协议适配器（开发中)'],
 							['API/Status-Codes','状态码']
 						]
 					},
 					{
 						title: '元数据操作',
+						sidebarDepth: 1,
 						children: [
 							['Operate-Metadata/Storage-Group','存储组操作'],
 							['Operate-Metadata/Node','节点操作'],
@@ -1800,7 +1804,7 @@ var config = {
 					},
 					{
 						title: '语法约定',
-						sidebarDepth: 2,
+						sidebarDepth: 1,
 						children: [
 							['Reference/Syntax-Conventions', '语法约定'],
 						]
@@ -1814,8 +1818,7 @@ var config = {
 							['API/Programming-Go-Native-API','Go 原生接口'],
 							['API/Programming-JDBC','JDBC (不推荐)'],
 							['API/Programming-MQTT','MQTT'],
-							['API/RestService','REST'],
-							['API/RestService','HTTP API'],
+							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/InfluxDB-Protocol','InfluxDB 协议适配器（开发中)'],
 							['API/Status-Codes','状态码']
@@ -1823,6 +1826,7 @@ var config = {
 					},
 					{
 						title: '元数据操作',
+						sidebarDepth: 1,
 						children: [
 							['Operate-Metadata/Storage-Group','存储组操作'],
 							['Operate-Metadata/Node','节点操作'],

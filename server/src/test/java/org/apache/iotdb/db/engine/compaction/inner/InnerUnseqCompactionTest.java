@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionOverlapType;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionTimeseriesType;
@@ -113,6 +114,7 @@ public class InnerUnseqCompactionTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    new CompactionConfigRestorer().restoreCompactionConfig();
     CompactionClearUtils.clearAllCompactionFiles();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
@@ -125,7 +127,8 @@ public class InnerUnseqCompactionTest {
   // unseq space only do deserialize page
   @Test
   public void test()
-      throws MetadataException, IOException, StorageEngineException, WriteProcessException {
+      throws MetadataException, IOException, StorageEngineException, WriteProcessException,
+          InterruptedException {
     for (int toMergeFileNum : toMergeFileNums) {
       for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
         for (boolean compactionBeforeHasMod : compactionBeforeHasMods) {
@@ -366,8 +369,7 @@ public class InnerUnseqCompactionTest {
               CompactionUtils.compact(
                   Collections.emptyList(),
                   toMergeResources,
-                  Collections.singletonList(targetTsFileResource),
-                  COMPACTION_TEST_SG);
+                  Collections.singletonList(targetTsFileResource));
               CompactionUtils.moveTargetFile(
                   Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
               InnerSpaceCompactionUtils.combineModsInCompaction(

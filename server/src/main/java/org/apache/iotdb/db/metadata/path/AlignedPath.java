@@ -414,7 +414,7 @@ public class AlignedPath extends PartialPath {
     }
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList alignedTvListCopy = alignedMemChunk.getSortedTvListForQuery(schemaList);
-    int curSize = alignedTvListCopy.size();
+    int curSize = alignedTvListCopy.rowCount();
     List<List<TimeRange>> deletionList = null;
     if (modsToMemtable != null) {
       deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);

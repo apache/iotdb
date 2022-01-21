@@ -955,8 +955,11 @@ public class TSServiceImpl implements TSIService.Iface {
               selectIntoPlan.getIntoPaths(),
               selectIntoPlan.isIntoPathsAligned());
       while (insertTabletPlansIterator.hasNext()) {
-        TSStatus executionStatus =
-            insertTabletsInternally(insertTabletPlansIterator.next(), sessionId);
+        List<InsertTabletPlan> insertTabletPlans = insertTabletPlansIterator.next();
+        if (insertTabletPlans.isEmpty()) {
+          continue;
+        }
+        TSStatus executionStatus = insertTabletsInternally(insertTabletPlans, sessionId);
         if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && executionStatus.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
           return RpcUtils.getTSExecuteStatementResp(executionStatus).setQueryId(queryId);

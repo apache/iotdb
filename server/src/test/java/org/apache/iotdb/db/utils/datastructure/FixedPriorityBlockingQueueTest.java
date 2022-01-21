@@ -26,10 +26,12 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class FixedPriorityBlockingQueueTest {
@@ -282,5 +284,38 @@ public class FixedPriorityBlockingQueueTest {
 
     Assert.assertArrayEquals(
         expectedList.toArray(new Integer[0]), resultList.toArray(new Integer[0]));
+  }
+
+  @Test
+  public void testHooks() throws InterruptedException {
+    List<AtomicInteger> integers = new ArrayList<>();
+    Random random = new Random(100);
+    FixedPriorityBlockingQueue<AtomicInteger> testQueue =
+        new FixedPriorityBlockingQueue<>(10, Comparator.comparingInt(AtomicInteger::get));
+    for (int i = 0; i < 20; ++i) {
+      integers.add(new AtomicInteger(random.nextInt(1000)));
+    }
+
+    testQueue.regsitPollLastHook(x -> x.set(x.get() + 1));
+    testQueue.regsitPollLastHook(x -> x.set(x.get() * 5));
+    testQueue.regsitPollLastHook(x -> x.set(x.get() * x.get()));
+
+    integers.sort(Comparator.comparingInt(AtomicInteger::get));
+
+    List<AtomicInteger> expectedList = new ArrayList<>();
+    List<AtomicInteger> tempList = integers.subList(10, 20);
+    for (AtomicInteger i : tempList) {
+      expectedList.add(new AtomicInteger(i.get()));
+    }
+    for (AtomicInteger atomicInteger : integers) {
+      testQueue.put(atomicInteger);
+    }
+    expectedList.forEach(x -> x.set(x.get() + 1));
+    expectedList.forEach(x -> x.set(x.get() * 5));
+    expectedList.forEach(x -> x.set(x.get() * x.get()));
+
+    for (int i = 0; i < expectedList.size(); ++i) {
+      Assert.assertEquals(expectedList.get(i).get(), tempList.get(i).get());
+    }
   }
 }

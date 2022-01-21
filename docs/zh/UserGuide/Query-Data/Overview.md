@@ -209,7 +209,7 @@ It costs 0.016s
 
 数据查询语句支持在 SQL 命令行终端、JDBC、JAVA / C++ / Python / Go 等编程语言 API、RESTful API 中使用。
 
-- 在 SQL 命令行终端中执行查询语句：启动 SQL 命令行终端，直接输入查询语句执行即可，详见 [SQL 命令行终端](../QuickStart/Command-Line-Interface,md)。
+- 在 SQL 命令行终端中执行查询语句：启动 SQL 命令行终端，直接输入查询语句执行即可，详见 [SQL 命令行终端](../QuickStart/Command-Line-Interface.md)。
 
 - 在 JDBC 中执行查询语句，详见 [JDBC](../API/Programming-JDBC.md) 。
 

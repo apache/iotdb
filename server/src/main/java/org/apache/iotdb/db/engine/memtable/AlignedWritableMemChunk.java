@@ -192,11 +192,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long count() {
-    return (long) list.size() * measurementIndexMap.size();
+    return (long) list.rowCount() * measurementIndexMap.size();
   }
 
   public long alignedListSize() {
-    return list.size();
+    return list.rowCount();
   }
 
   @Override
@@ -270,11 +270,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   public void encode(IChunkWriter chunkWriter) {
     AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
     List<Integer> timeDuplicateAlignedRowIndexList = null;
-    for (int sortedRowIndex = 0; sortedRowIndex < list.size(); sortedRowIndex++) {
+    for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
 
       // skip duplicated data
-      if ((sortedRowIndex + 1 < list.size() && (time == list.getTime(sortedRowIndex + 1)))) {
+      if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
         // record the time duplicated row index list for vector type
         if (timeDuplicateAlignedRowIndexList == null) {
           timeDuplicateAlignedRowIndexList = new ArrayList<>();
@@ -340,7 +340,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long getFirstPoint() {
-    if (list.size() == 0) {
+    if (list.rowCount() == 0) {
       return Long.MAX_VALUE;
     }
     return getSortedTvListForQuery().getTimeValuePair(0).getTimestamp();
@@ -348,11 +348,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long getLastPoint() {
-    if (list.size() == 0) {
+    if (list.rowCount() == 0) {
       return Long.MIN_VALUE;
     }
     return getSortedTvListForQuery()
-        .getTimeValuePair(getSortedTvListForQuery().size() - 1)
+        .getTimeValuePair(getSortedTvListForQuery().rowCount() - 1)
         .getTimestamp();
   }
 }

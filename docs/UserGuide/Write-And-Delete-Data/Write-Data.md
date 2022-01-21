@@ -19,13 +19,13 @@
 
 -->
 
-## INSERT
+# INSERT
 
 IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](../Reference/SQL-Reference.md) in [Client/Shell tools](../QuickStart/Command-Line-Interface.md), or using [Java JDBC](../API/Programming-JDBC.md) to perform single or batch execution of [INSERT SQL statement](../Reference/SQL-Reference.md).
 
 This section mainly introduces the use of [INSERT SQL statement](../Reference/SQL-Reference.md) for real-time data import in the scenario.
 
-### Use of INSERT Statements
+## Use of INSERT Statements
 
 The [INSERT SQL statement](../Reference/SQL-Reference.md) statement is used to insert data into one or more specified timeseries created. For each point of data inserted, it consists of a [timestamp](../Data-Concept/Data-Model-and-Terminology.md) and a sensor acquisition value (see [Data Type](../Data-Concept/Data-Type.md)).
 
@@ -80,7 +80,7 @@ IoTDB > insert into root.ln.wf02.wt02(status, hardware) values (false, 'v2')
 ```
 **Note:** Timestamps must be specified when inserting multiple rows of data in a SQL.
 
-### Insert Data Into Aligned Timeseries
+## Insert Data Into Aligned Timeseries
 
 To insert data into a group of aligned time series, we only need to add the `ALIGNED` keyword in SQL, and others are similar.
 

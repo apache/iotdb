@@ -31,6 +31,7 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -146,8 +147,11 @@ public class ContinuousQueryTask extends WrappedRunnable {
             generateTargetPaths(queryDataSet.getPaths()),
             false);
     while (insertTabletPlansIterator.hasNext()) {
-      if (!serviceProvider.executeNonQuery(
-          new InsertMultiTabletPlan(insertTabletPlansIterator.next()))) {
+      List<InsertTabletPlan> insertTabletPlans = insertTabletPlansIterator.next();
+      if (insertTabletPlans.isEmpty()) {
+        continue;
+      }
+      if (!serviceProvider.executeNonQuery(new InsertMultiTabletPlan(insertTabletPlans))) {
         throw new ContinuousQueryException(
             String.format(
                 "failed to execute cq task %s, sql: %s",

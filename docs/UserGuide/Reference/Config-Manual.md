@@ -508,153 +508,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 10000 |
 |Effective|After restarting system|
 
-### Compaction Config
-
-* concurrent\_compaction\_thread
-
-|Name| concurrent\_compaction\_thread |
-|:---:|:---|
-|Description| thread num to execute compaction |
-|Type| Integer |
-|Default| 10 |
-|Effective|After restart system|
-
-* compaction\_schedule\_interval
-
-|Name| compaction\_schedule\_interval |
-|:---:|:---|
-|Description| interval of scheduling compaction |
-|Type| Long, the unit is millisecond |
-|Default| 60000, don't set it a small value |
-|Effective|After restart system|
-
-* compaction\_submission\_interval
-
-|Name| compaction\_submission\_interval |
-|:---:|:---|
-|Description| interval of submitting compaction task |
-|Type| Long, the unit is millisecond |
-|Default| 60000, don't set it a small value |
-|Effective|After restart system|
-
-* enable\_seq\_space\_compaction
-
-|Name| enable\_seq\_space\_compaction |
-|:---:|:---|
-|Description| enable the compaction between sequence files |
-|Type| Boolean |
-|Default| true |
-|Effective|After restart system|
-
-* enable\_unseq\_space\_compaction
-
-|Name| enable\_unseq\_space\_compaction |
-|:---:|:---|
-|Description| enable the compaction between unsequence files |
-|Type| Boolean |
-|Default| false |
-|Effective|After restart system|
-
-* enable\_cross\_space\_compaction
-
-|Name| enable\_cross\_space\_compaction |
-|:---:|:---|
-|Description| enable the compaction between sequence files and unsequence files |
-|Type| Boolean |
-|Default| true |
-|Effective|After restart system|
-
-* cross\_compaction\_strategy
-
-|Name| cross\_compaction\_strategy |
-|:---:|:---|
-|Description| strategy of cross space compaction |
-|Type| String |
-|Default| inplace_compaction, current option is only inplace_compaction |
-|Effective|After restart system|
-
-* inner\_compaction\_strategy
-
-|Name| inner\_compaction\_strategy |
-|:---:|:---|
-|Description| strategy of inner space compaction |
-|Type| String |
-|Default| size_tiered_compaction, current option is only size_tiered_compaction |
-|Effective|After restart system|
-
-* compaction\_priority
-
-|Name| compaction\_priority |
-|:---:|:---|
-|Description| Priority of compaction task. When it is balance, system executes all types of compaction equally; when it is inner_cross, system takes precedence over executing inner space compaction task; when it is cross_inner, system takes precedence over executing cross space compaction task |
-|Type| String |
-|Default| inner_cross, options are inner_cross, balance, cross_inner |
-|Effective|After restart system|
-
-
-* target\_compaction\_file\_size
-
-|Name| target\_compaction\_file\_size |
-|:---:|:---|
-|Description| The target file is in inner space compaction |
-|Type| Long, the unit is byte |
-|Default| 1073741824 (1GB) |
-|Effective|After restart system|
-
-* max\_compaction\_candidate\_file\_num
-
-|Name| max\_compaction\_candidate\_file\_num |
-|:---:|:---|
-|Description| The max num of files encounter in compaction |
-|Type| Integer |
-|Default| 30, don't set it a small value |
-|Effective|After restart system|
-
-* target\_chunk\_size
-
-|Name| target\_chunk\_size |
-|:---:|:---|
-|Description| The target size of compacted chunk |
-|Type| Long, the unit is byte |
-|Default| 1048576 (1MB) |
-|Effective|After restart system|
-
-* target\_chunk\_point\_num
-
-|Name| target\_chunk\_point\_num |
-|:---:|:---|
-|Description| The target point number of compacted chunk |
-|Type| Integer |
-|Default| 100000 |
-|Effective|After restart system|
-
-* chunk\_size\_lower\_bound\_in\_compaction
-
-|Name| chunk\_size\_lower\_bound\_in\_compaction |
-|:---:|:---|
-|Description| A source chunk will be deserialized in compaction when its size is less than this value |
-|Type| Long, the unit is byte |
-|Default| 128 |
-|Effective|After restart system|
-
-* chunk\_point\_num\_lower\_bound\_in\_compaction
-
-|Name| chunk\_size\_lower\_bound\_in\_compaction |
-|:---:|:---|
-|Description| A source chunk will be deserialized in compaction when its point num is less than this value |
-|Type| Integer |
-|Default| 100 |
-|Effective|After restart system|
-
-* compaction\_write\_throughput\_mb\_per\_sec\
-
-|Name| compaction\_write\_throughput\_mb\_per\_sec\ |
-|:---:|:---|
-|Description| The write rate of all compaction tasks in MB/s |
-|Type| Integer |
-|Default| 8, don't set it a large value|
-|Effective|After restart system|
-
 * enable\_stat\_monitor
 
 |Name| enable\_stat\_monitor |
@@ -868,6 +721,179 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |    Type     | Float                               |
 |   Default   | 1.0                                 |
 |  Effective  | After restarting system             |
+
+### Compaction Config
+
+* enable\_seq\_space\_compaction
+
+|Name| enable\_seq\_space\_compaction |
+|:---:|:---|
+|Description| enable the compaction between sequence files |
+|Type| Boolean |
+|Default| true |
+|Effective|After restart system|
+
+* enable\_unseq\_space\_compaction
+
+|Name| enable\_unseq\_space\_compaction |
+|:---:|:---|
+|Description| enable the compaction between unsequence files |
+|Type| Boolean |
+|Default| false |
+|Effective|After restart system|
+
+* enable\_cross\_space\_compaction
+
+|Name| enable\_cross\_space\_compaction |
+|:---:|:---|
+|Description| enable the compaction between sequence files and unsequence files |
+|Type| Boolean |
+|Default| true |
+|Effective|After restart system|
+
+* cross\_compaction\_strategy
+
+|Name| cross\_compaction\_strategy |
+|:---:|:---|
+|Description| strategy of cross space compaction |
+|Type| String |
+|Default| rewrite\_compaction|
+|Effective|After restart system|
+
+* inner\_compaction\_strategy
+
+|Name| inner\_compaction\_strategy |
+|:---:|:---|
+|Description| strategy of inner space compaction |
+|Type| String |
+|Default| size\_tiered\_compaction |
+|Effective|After restart system|
+
+* compaction\_priority
+
+|Name| compaction\_priority |
+|:---:|:---|
+|Description| Priority of compaction task. When it is balance, system executes all types of compaction equally; when it is inner_cross, system takes precedence over executing inner space compaction task; when it is cross_inner, system takes precedence over executing cross space compaction task |
+|Type| String |
+|Default| balance|
+|Effective|After restart system|
+
+* target\_compaction\_file\_size
+
+|Name| target\_compaction\_file\_size |
+|:---:|:---|
+|Description| The target file is in inner space compaction |
+|Type| Int64 |
+|Default| 1073741824 |
+|Effective|After restart system|
+
+* target\_chunk\_size
+
+|Name| target\_chunk\_size |
+|:---:|:---|
+|Description| The target size of compacted chunk |
+|Type| Int64 |
+|Default| 1048576 |
+|Effective|After restart system|
+
+* target\_chunk\_point\_num
+
+|Name| target\_chunk\_point\_num |
+|:---:|:---|
+|Description| The target point number of compacted chunk |
+|Type| Int32 |
+|Default| 100000 |
+|Effective|After restart system|
+
+* chunk\_size\_lower\_bound\_in\_compaction
+
+|Name| chunk\_size\_lower\_bound\_in\_compaction |
+|:---:|:---|
+|Description| A source chunk will be deserialized in compaction when its size is less than this value |
+|Type| Int64 |
+|Default| 128 |
+|Effective|After restart system|
+
+* chunk\_point\_num\_lower\_bound\_in\_compaction
+
+|Name| chunk\_size\_lower\_bound\_in\_compaction |
+|:---:|:---|
+|Description| A source chunk will be deserialized in compaction when its point num is less than this value |
+|Type| Int32 |
+|Default| 100 |
+|Effective|After restart system|
+
+* max\_compaction\_candidate\_file\_num
+
+|Name| max\_compaction\_candidate\_file\_num |
+|:---:|:---|
+|Description| The max num of files encounter in compaction |
+|Type| Int32 |
+|Default| 30 |
+|Effective|After restart system|
+
+* max\_open\_file\_num\_in\_cross\_space\_compaction
+
+|Name| max\_open\_file\_num\_in\_cross\_space\_compaction |
+|:---:|:---|
+|Description| Max open file num in a cross compaction |
+|Type| Int32 |
+|Default| 100 |
+|Effective|After restart system|
+
+* cross\_compaction\_file\_selection\_time\_budget
+
+|Name| cross\_compaction\_file\_selection\_time\_budget |
+|:---:|:---|
+|Description| Time budget for cross space compaction file selection |
+|Type| Int32 |
+|Default| 30000 |
+|Effective|After restart system|
+
+* cross\_compaction\_memory\_budget
+
+|Name| cross\_compaction\_memory\_budget |
+|:---:|:---|
+|Description| Memory budget for a cross space compaction |
+|Type| Int32 |
+|Default| 2147483648 |
+|Effective|After restart system|
+
+* concurrent\_compaction\_thread
+
+|Name| concurrent\_compaction\_thread |
+|:---:|:---|
+|Description| thread num to execute compaction |
+|Type| Int32 |
+|Default| 10 |
+|Effective|After restart system|
+
+* compaction\_schedule\_interval\_in\_ms
+
+|Name| compaction\_schedule\_interval\_in\_ms |
+|:---:|:---|
+|Description| interval of scheduling compaction |
+|Type| Int64 |
+|Default| 60000 |
+|Effective|After restart system|
+
+* compaction\_submission\_interval\_in\_ms
+
+|Name| compaction\_submission\_interval\_in\_ms |
+|:---:|:---|
+|Description| interval of submitting compaction task |
+|Type| Int64 |
+|Default| 60000 |
+|Effective|After restart system|
+
+* compaction\_write\_throughput\_mb\_per\_sec
+
+|Name| compaction\_write\_throughput\_mb\_per\_sec |
+|:---:|:---|
+|Description| The write rate of all compaction tasks in MB/s |
+|Type| Int32 |
+|Default| 8 |
+|Effective|After restart system|
 
 ### Insertion
 

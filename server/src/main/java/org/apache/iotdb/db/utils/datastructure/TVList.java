@@ -45,7 +45,7 @@ public abstract class TVList {
   // list of timestamp array, add 1 when expanded -> data point timestamp array
   // index relation: arrayIndex -> elementIndex
   protected List<long[]> timestamps;
-  protected int size;
+  protected int rowCount;
 
   protected long[][] sortedTimestamps;
   protected boolean sorted = true;
@@ -59,7 +59,7 @@ public abstract class TVList {
 
   public TVList() {
     timestamps = new ArrayList<>();
-    size = 0;
+    rowCount = 0;
     minTime = Long.MAX_VALUE;
     referenceCount = new AtomicInteger();
   }
@@ -109,12 +109,12 @@ public abstract class TVList {
     return referenceCount.get();
   }
 
-  public int size() {
-    return size;
+  public int rowCount() {
+    return rowCount;
   }
 
   public long getTime(int index) {
-    if (index >= size) {
+    if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     int arrayIndex = index / ARRAY_SIZE;
@@ -256,15 +256,15 @@ public abstract class TVList {
   public int delete(long lowerBound, long upperBound) {
     int newSize = 0;
     minTime = Long.MAX_VALUE;
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < rowCount; i++) {
       long time = getTime(i);
       if (time < lowerBound || time > upperBound) {
         set(i, newSize++);
         minTime = Math.min(time, minTime);
       }
     }
-    int deletedNumber = size - newSize;
-    size = newSize;
+    int deletedNumber = rowCount - newSize;
+    rowCount = newSize;
     // release primitive arrays that are empty
     int newArrayNum = newSize / ARRAY_SIZE;
     if (newSize % ARRAY_SIZE != 0) {
@@ -282,13 +282,13 @@ public abstract class TVList {
     for (long[] timestampArray : timestamps) {
       cloneList.timestamps.add(cloneTime(timestampArray));
     }
-    cloneList.size = size;
+    cloneList.rowCount = rowCount;
     cloneList.sorted = sorted;
     cloneList.minTime = minTime;
   }
 
   public void clear() {
-    size = 0;
+    rowCount = 0;
     sorted = true;
     minTime = Long.MAX_VALUE;
     clearTime();
@@ -322,7 +322,7 @@ public abstract class TVList {
   abstract void clearSortedValue();
 
   protected void checkExpansion() {
-    if ((size % ARRAY_SIZE) == 0) {
+    if ((rowCount % ARRAY_SIZE) == 0) {
       expandValues();
       timestamps.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
     }
@@ -501,7 +501,7 @@ public abstract class TVList {
       }
     }
     minTime = Math.min(inPutMinTime, minTime);
-    sorted = sorted && inputSorted && (size == 0 || inPutMinTime >= getTime(size - 1));
+    sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
   }
 
   /** for log */
@@ -544,7 +544,7 @@ public abstract class TVList {
     private List<TimeRange> deletionList;
 
     public Ite() {
-      this.iteSize = TVList.this.size;
+      this.iteSize = TVList.this.rowCount;
     }
 
     public Ite(int floatPrecision, TSEncoding encoding, int size, List<TimeRange> deletionList) {
@@ -562,7 +562,7 @@ public abstract class TVList {
 
       while (cur < iteSize) {
         long time = getTime(cur);
-        if (isPointDeleted(time) || (cur + 1 < size() && (time == getTime(cur + 1)))) {
+        if (isPointDeleted(time) || (cur + 1 < rowCount() && (time == getTime(cur + 1)))) {
           cur++;
           continue;
         }
@@ -616,6 +616,6 @@ public abstract class TVList {
   public abstract TSDataType getDataType();
 
   public long getLastTime() {
-    return getTime(size - 1);
+    return getTime(rowCount - 1);
   }
 }

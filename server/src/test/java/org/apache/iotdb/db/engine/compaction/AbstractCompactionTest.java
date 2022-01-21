@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -190,15 +191,16 @@ public class AbstractCompactionTest {
     TsFileResource resource = new TsFileResource(file);
     int deviceStartindex = 0;
     if (isAlign) {
+      deviceStartindex = TsFileGeneratorUtils.getAlignDeviceOffset();
       for (int i = deviceStartindex; i < deviceStartindex + deviceNum; i++) {
         resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, startTime);
         resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, endTime);
       }
-      deviceStartindex = TsFileGeneratorUtils.getAlignDeviceOffset();
-    }
-    for (int i = deviceStartindex; i < deviceStartindex + deviceNum; i++) {
-      resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, startTime);
-      resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, endTime);
+    } else {
+      for (int i = deviceStartindex; i < deviceStartindex + deviceNum; i++) {
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, startTime);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, endTime);
+      }
     }
     resource.updatePlanIndexes(fileVersion);
     resource.setClosed(true);
@@ -251,6 +253,7 @@ public class AbstractCompactionTest {
   }
 
   public void tearDown() throws IOException, StorageEngineException {
+    new CompactionConfigRestorer().restoreCompactionConfig();
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
