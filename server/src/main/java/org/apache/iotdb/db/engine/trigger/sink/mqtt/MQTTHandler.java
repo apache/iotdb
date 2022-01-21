@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.fusesource.mqtt.client.BlockingConnection;
 import org.fusesource.mqtt.client.MQTT;
 
+import java.net.InetAddress;
+
 public class MQTTHandler implements Handler<MQTTConfiguration, MQTTEvent> {
 
   private BlockingConnection connection;
@@ -35,6 +37,7 @@ public class MQTTHandler implements Handler<MQTTConfiguration, MQTTEvent> {
   @Override
   public void open(MQTTConfiguration configuration) throws Exception {
     MQTT mqtt = new MQTT();
+    ping(configuration.getHost());
     mqtt.setHost(configuration.getHost(), configuration.getPort());
     mqtt.setUserName(configuration.getUsername());
     mqtt.setPassword(configuration.getPassword());
@@ -42,8 +45,14 @@ public class MQTTHandler implements Handler<MQTTConfiguration, MQTTEvent> {
     mqtt.setReconnectDelay(configuration.getReconnectDelay());
     connection = mqtt.blockingConnection();
     connection.connect();
-
     payloadFormatter = generatePayloadFormatter(configuration);
+  }
+
+  private void ping(String host) throws Exception {
+    InetAddress inet = InetAddress.getByName(host);
+    if (!inet.isReachable(1000)) {
+      throw new Exception("Connection refused");
+    }
   }
 
   private static String generatePayloadFormatter(MQTTConfiguration configuration)
