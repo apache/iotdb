@@ -1223,22 +1223,12 @@ public class MManager {
    * to match prefix path. All timeseries start with the matched prefix path will be collected.
    *
    * @param pathPattern the pattern of the target devices.
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path.
    * @return A HashSet instance which stores devices paths matching the given path pattern.
    */
   public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getDevices(pathPattern, isPrefixMatch);
-  }
-
-  /**
-   * Get all device paths matching the path pattern.
-   *
-   * @param pathPattern the pattern of the target devices.
-   * @return A HashSet instance which stores devices paths matching the given path pattern.
-   */
-  public Set<PartialPath> getMatchedDevices(PartialPath pathPattern) throws MetadataException {
-    return getMatchedDevices(pathPattern, false);
   }
 
   /**
