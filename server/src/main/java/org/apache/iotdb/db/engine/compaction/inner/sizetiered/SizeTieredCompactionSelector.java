@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
@@ -79,16 +80,8 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
    */
   @Override
   public boolean selectAndSubmit() {
-    LOGGER.debug(
-        "{} [Compaction] SizeTiredCompactionSelector start to select, target file size is {}, "
-            + "target file num is {}, current task num is {}, total task num is {}, "
-            + "max task num is {}",
-        logicalStorageGroupName + "-" + virtualStorageGroupName,
-        IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize(),
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum(),
-        CompactionTaskManager.currentTaskNum.get(),
-        CompactionTaskManager.getInstance().getExecutingTaskCount(),
-        IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
+    final CompactionPriority priority =
+        IoTDBDescriptor.getInstance().getConfig().getCompactionPriority();
     tsFileResources.readLock();
     PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
@@ -102,6 +95,9 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
       }
       while (taskPriorityQueue.size() > 0) {
         taskSubmitted = createAndSubmitTask(taskPriorityQueue.poll().left) || taskSubmitted;
+        if (taskSubmitted && priority == CompactionPriority.BALANCE) {
+          break;
+        }
       }
     } catch (Exception e) {
       LOGGER.error("Exception occurs while selecting files", e);

@@ -101,6 +101,7 @@ public class CompactionSchedulerTest {
           Collections.emptyMap());
     }
     File basicOutputDir = new File(TestConstant.BASE_OUTPUT_PATH);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.INNER_CROSS);
     if (!basicOutputDir.exists()) {
       assertTrue(basicOutputDir.mkdirs());
     }

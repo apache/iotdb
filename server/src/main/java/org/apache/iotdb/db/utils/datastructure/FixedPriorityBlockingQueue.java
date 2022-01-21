@@ -44,17 +44,17 @@ public class FixedPriorityBlockingQueue<T> {
   public FixedPriorityBlockingQueue(int maxSize, Comparator<T> comparator) {
     this.maxSize = maxSize;
     this.comparator = comparator;
-    this.queue = MinMaxPriorityQueue.orderedBy(comparator).maximumSize(maxSize).create();
+    this.queue = MinMaxPriorityQueue.orderedBy(comparator).maximumSize(maxSize + 1).create();
   }
 
   public void put(T element) throws InterruptedException {
     final ReentrantLock lock = this.lock;
     lock.lockInterruptibly();
     try {
-      if (queue.size() >= maxSize) {
-        pollLast();
-      }
       queue.add(element);
+      if (queue.size() > maxSize) {
+        queue.pollLast();
+      }
       notEmpty.signal();
     } finally {
       lock.unlock();
