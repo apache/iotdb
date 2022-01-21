@@ -133,7 +133,7 @@ public class ExportCsv extends AbstractCsvTool {
         String sql;
 
         if (sqlFile == null) {
-          LineReader lineReader = JlineUtils.getLineReader();
+          LineReader lineReader = JlineUtils.getLineReader(username, host, port);
           sql = lineReader.readLine(TSFILEDB_CLI_PREFIX + "> please input query: ");
           System.out.println(sql);
           String[] values = sql.trim().split(";");
@@ -298,7 +298,7 @@ public class ExportCsv extends AbstractCsvTool {
   private static void dumpResult(String sql, int index) {
     final String path = targetDirectory + targetFile + index + ".csv";
     try {
-      SessionDataSet sessionDataSet = session.executeQueryStatement(sql, 10000);
+      SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
       writeCsvFile(sessionDataSet, path);
       sessionDataSet.closeOperationHandle();
       System.out.println("Export completely!");

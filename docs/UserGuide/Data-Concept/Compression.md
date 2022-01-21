@@ -35,7 +35,7 @@ IoTDB allows you to specify the compression method of the column when creating a
 
 * GZIP
 
-The specified syntax for compression is detailed in [Create Timeseries Statement](../Appendix/SQL-Reference.md).
+The specified syntax for compression is detailed in [Create Timeseries Statement](../Reference/SQL-Reference.md).
 
 ## SDT
 
@@ -65,7 +65,7 @@ If the time interval between the current point and the last stored point is grea
 current point will be stored regardless of compression deviation.
 The default value is 9,223,372,036,854,775,807 with time unit ms.
 
-The specified syntax for SDT is detailed in [Create Timeseries Statement](../Appendix/SQL-Reference.md).
+The specified syntax for SDT is detailed in [Create Timeseries Statement](../Reference/SQL-Reference.md).
 
 Supported datatypes:
 

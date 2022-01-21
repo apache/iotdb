@@ -88,7 +88,6 @@ public class IoTDBManageTsFileResourceIT {
 
   @Before
   public void setUp() throws ClassNotFoundException {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     prevTimeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
     prevCompactionThreadNum = CONFIG.getConcurrentCompactionThread();

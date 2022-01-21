@@ -21,7 +21,7 @@ package org.apache.iotdb.db.conf;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.MergeFileStrategy;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
@@ -57,7 +57,7 @@ public class IoTDBConfig {
 
   // e.g., a31+/$%#&[]{}3e4
   private static final String ID_MATCHER =
-      "([a-zA-Z0-9/\"`[ ],:@#$%&{}()*=?!~\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
+      "([a-zA-Z0-9/\"'`[ ],:@#$%&{}()*=?!~\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
 
   private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\-\\u2E80-\\u9FFF]+)";
 
@@ -306,13 +306,11 @@ public class IoTDBConfig {
   /** index directory. */
   private String indexRootFolder = "data" + File.separator + "index";
 
-  /** When a TsFile's file size (in byte) exceed this, the TsFile is forced closed. Unit: byte */
-  private long tsFileSizeThreshold = 1L;
   /** When a unSequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
-  private long unSeqTsFileSize = 1L;
+  private long unSeqTsFileSize = 0L;
 
   /** When a sequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
-  private long seqTsFileSize = 1L;
+  private long seqTsFileSize = 0L;
 
   /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. Unit: byte */
   private long memtableSizeThreshold = 1024 * 1024 * 1024L;
@@ -360,7 +358,7 @@ public class IoTDBConfig {
   private boolean enableSeqSpaceCompaction = true;
 
   /** Only compact the unsequence files */
-  private boolean enableUnseqSpaceCompaction = true;
+  private boolean enableUnseqSpaceCompaction = false;
 
   /** Compact the unsequence files into the overlapped sequence files */
   private boolean enableCrossSpaceCompaction = true;
@@ -430,10 +428,10 @@ public class IoTDBConfig {
   private int mergePagePointNumberThreshold = 100;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
-  private long compactionScheduleInterval = 10_000L;
+  private long compactionScheduleInterval = 60_000L;
 
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
-  private long compactionSubmissionInterval = 1_000L;
+  private long compactionSubmissionInterval = 60_000L;
 
   /**
    * The max open file num in each unseq compaction task. We use the unseq file num as the open file
@@ -589,27 +587,13 @@ public class IoTDBConfig {
   private long mergeFileSelectionTimeBudget = 30 * 1000L;
 
   /**
-   * When set to true, if some crashed merges are detected during system rebooting, such merges will
-   * be continued, otherwise, the unfinished parts of such merges will not be continued while the
-   * finished parts still remain as they are.
-   */
-  private boolean continueMergeAfterReboot = false;
-
-  /**
    * A global merge will be performed each such interval, that is, each storage group will be merged
    * (if proper merge candidates can be found). Unit: second.
    */
   private long mergeIntervalSec = 0L;
 
-  /**
-   * When set to true, all cross space compaction becomes full merge (the whole SeqFiles are
-   * re-written despite how much they are overflowed). This may increase merge overhead depending on
-   * how much the SeqFiles are overflowed.
-   */
-  private boolean forceFullMerge = true;
-
   /** The limit of compaction merge can reach per second */
-  private int mergeWriteThroughputMbPerSec = 8;
+  private int compactionWriteThroughputMbPerSec = 8;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
@@ -1277,22 +1261,6 @@ public class IoTDBConfig {
     this.unSeqTsFileSize = unSeqTsFileSize;
   }
 
-  public boolean isEnableStatMonitor() {
-    return enableStatMonitor;
-  }
-
-  public void setEnableStatMonitor(boolean enableStatMonitor) {
-    this.enableStatMonitor = enableStatMonitor;
-  }
-
-  public boolean isEnableMonitorSeriesWrite() {
-    return enableMonitorSeriesWrite;
-  }
-
-  public void setEnableMonitorSeriesWrite(boolean enableMonitorSeriesWrite) {
-    this.enableMonitorSeriesWrite = enableMonitorSeriesWrite;
-  }
-
   public int getRpcMaxConcurrentClientNum() {
     return rpcMaxConcurrentClientNum;
   }
@@ -1471,14 +1439,6 @@ public class IoTDBConfig {
     this.mergeMemoryBudget = mergeMemoryBudget;
   }
 
-  public boolean isContinueMergeAfterReboot() {
-    return continueMergeAfterReboot;
-  }
-
-  void setContinueMergeAfterReboot(boolean continueMergeAfterReboot) {
-    this.continueMergeAfterReboot = continueMergeAfterReboot;
-  }
-
   public long getMergeIntervalSec() {
     return mergeIntervalSec;
   }
@@ -1591,14 +1551,6 @@ public class IoTDBConfig {
     this.enablePartialInsert = enablePartialInsert;
   }
 
-  public boolean isForceFullMerge() {
-    return forceFullMerge;
-  }
-
-  void setForceFullMerge(boolean forceFullMerge) {
-    this.forceFullMerge = forceFullMerge;
-  }
-
   public int getConcurrentCompactionThread() {
     return concurrentCompactionThread;
   }
@@ -1649,12 +1601,12 @@ public class IoTDBConfig {
         insertMultiTabletEnableMultithreadingColumnThreshold;
   }
 
-  public int getMergeWriteThroughputMbPerSec() {
-    return mergeWriteThroughputMbPerSec;
+  public int getCompactionWriteThroughputMbPerSec() {
+    return compactionWriteThroughputMbPerSec;
   }
 
-  public void setMergeWriteThroughputMbPerSec(int mergeWriteThroughputMbPerSec) {
-    this.mergeWriteThroughputMbPerSec = mergeWriteThroughputMbPerSec;
+  public void setCompactionWriteThroughputMbPerSec(int compactionWriteThroughputMbPerSec) {
+    this.compactionWriteThroughputMbPerSec = compactionWriteThroughputMbPerSec;
   }
 
   public boolean isEnableMemControl() {
@@ -2185,14 +2137,6 @@ public class IoTDBConfig {
 
   public void setThriftServerAwaitTimeForStopService(int thriftServerAwaitTimeForStopService) {
     this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
-  }
-
-  public int getQueryCacheSizeInMetric() {
-    return queryCacheSizeInMetric;
-  }
-
-  public void setQueryCacheSizeInMetric(int queryCacheSizeInMetric) {
-    this.queryCacheSizeInMetric = queryCacheSizeInMetric;
   }
 
   public boolean isEnableMQTTService() {

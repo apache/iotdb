@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 
@@ -68,10 +69,6 @@ public interface IMNode extends Serializable {
 
   void setSchemaTemplate(Template schemaTemplate);
 
-  // EmptyInternal means there's no child or template under this node
-  // and this node is not the root nor a storageGroup nor a measurement.
-  boolean isEmptyInternal();
-
   boolean isStorageGroup();
 
   boolean isEntity();
@@ -85,4 +82,8 @@ public interface IMNode extends Serializable {
   IMeasurementMNode getAsMeasurementMNode();
 
   void serializeTo(MLogWriter logWriter) throws IOException;
+
+  CacheEntry getCacheEntry();
+
+  void setCacheEntry(CacheEntry cacheEntry);
 }

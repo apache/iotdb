@@ -24,17 +24,29 @@ import java.util.List;
 
 public interface ICacheStrategy {
 
+  boolean isCached(IMNode node);
+
+  void cacheMNode(IMNode node);
+
   void updateCacheStatusAfterRead(IMNode node);
 
   void updateCacheStatusAfterAppend(IMNode node);
 
   void updateCacheStatusAfterUpdate(IMNode node);
 
-  void remove(IMNode node);
+  void updateCacheStatusAfterPersist(IMNode node);
+
+  List<IMNode> collectVolatileMNodes(IMNode node);
+
+  List<IMNode> remove(IMNode node);
 
   List<IMNode> evict();
 
   void pinMNode(IMNode node);
 
-  void unPinMNode(IMNode node);
+  List<IMNode> unPinMNode(IMNode node);
+
+  boolean isPinned(IMNode node);
+
+  void clear();
 }

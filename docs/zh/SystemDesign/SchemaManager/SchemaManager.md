@@ -324,7 +324,7 @@ mlog.bin 存储二进制编码。我们可以使用 [MlogParser Tool](https://io
 
 ### 带过滤条件的元数据查询
 
-这里的过滤条件只能是 tag 属性，否则抛异常。
+目前仅支持以 tag 为索引条件。如果过滤条件中的 tag 不存在，则会返回空结果集。
 
 通过在 MManager 中维护的 tag 的倒排索引，获得所有满足索引条件的`MeasurementMNode`。
 

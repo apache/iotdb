@@ -130,6 +130,8 @@ public class TsFileResource {
 
   private long ramSize;
 
+  private long tsFileSize = -1L;
+
   private TsFileProcessor processor;
 
   /**
@@ -170,6 +172,7 @@ public class TsFileResource {
     this.maxPlanIndex = other.maxPlanIndex;
     this.minPlanIndex = other.minPlanIndex;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
+    this.tsFileSize = other.tsFileSize;
   }
 
   /** for sealed TsFile, call setClosed to close TsFileResource */
@@ -385,7 +388,18 @@ public class TsFileResource {
   }
 
   public long getTsFileSize() {
-    return file.length();
+    if (closed) {
+      if (tsFileSize == -1) {
+        synchronized (this) {
+          if (tsFileSize == -1) {
+            tsFileSize = file.length();
+          }
+        }
+      }
+      return tsFileSize;
+    } else {
+      return file.length();
+    }
   }
 
   public long getStartTime(String deviceId) {
@@ -872,9 +886,11 @@ public class TsFileResource {
   }
 
   // ({systemTime}-{versionNum}-{innerMergeNum}-{crossMergeNum}.tsfile)
-  public static int compareFileName(File o1, File o2) {
-    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
-    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
+  public static int compareFileName(TsFileResource o1, TsFileResource o2) {
+    String[] items1 =
+        o1.getTsFile().getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
+    String[] items2 =
+        o2.getTsFile().getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
     long ver1 = Long.parseLong(items1[0]);
     long ver2 = Long.parseLong(items2[0]);
     int cmp = Long.compare(ver1, ver2);
@@ -908,6 +924,11 @@ public class TsFileResource {
 
   public byte getTimeIndexType() {
     return timeIndexType;
+  }
+
+  @TestOnly
+  public void setTimeIndexType(byte type) {
+    this.timeIndexType = type;
   }
 
   public long getRamSize() {

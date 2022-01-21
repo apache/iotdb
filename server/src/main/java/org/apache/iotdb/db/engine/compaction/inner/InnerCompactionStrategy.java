@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompacti
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
 import java.io.File;
 import java.util.List;
@@ -45,7 +44,6 @@ public enum InnerCompactionStrategy {
       String virtualStorageGroup,
       long timePartition,
       TsFileManager tsFileManager,
-      TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence) {
     switch (this) {
@@ -56,7 +54,6 @@ public enum InnerCompactionStrategy {
             virtualStorageGroup,
             timePartition,
             tsFileManager,
-            tsFileResourceList,
             selectedTsFileResourceList,
             sequence,
             CompactionTaskManager.currentTaskNum);
@@ -69,7 +66,8 @@ public enum InnerCompactionStrategy {
       long timePartition,
       File compactionLogFile,
       String dataDir,
-      boolean sequence) {
+      boolean sequence,
+      TsFileManager tsFileManager) {
     switch (this) {
       case SIZE_TIERED_COMPACTION:
       default:
@@ -80,7 +78,8 @@ public enum InnerCompactionStrategy {
             compactionLogFile,
             dataDir,
             sequence,
-            CompactionTaskManager.currentTaskNum);
+            CompactionTaskManager.currentTaskNum,
+            tsFileManager);
     }
   }
 
@@ -89,7 +88,6 @@ public enum InnerCompactionStrategy {
       String virtualStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
-      TsFileResourceList tsFileResources,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
     switch (this) {
@@ -100,7 +98,6 @@ public enum InnerCompactionStrategy {
             virtualStorageGroupName,
             timePartition,
             tsFileManager,
-            tsFileResources,
             sequence,
             taskFactory);
     }

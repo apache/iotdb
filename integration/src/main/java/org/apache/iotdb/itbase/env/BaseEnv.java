@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.itbase.env;
 
+import org.apache.iotdb.jdbc.Constant;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 
@@ -32,4 +34,6 @@ public interface BaseEnv {
   void cleanAfterTest();
 
   Connection getConnection() throws SQLException;
+
+  Connection getConnection(Constant.Version version) throws SQLException;
 }

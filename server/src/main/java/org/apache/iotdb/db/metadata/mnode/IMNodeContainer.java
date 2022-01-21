@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.mtree.store.disk.ISegment;
-
 import java.util.Map;
 
-public interface IMNodeContainer extends Map<String, IMNode> {
-
-  ISegment getSegment();
-}
+public interface IMNodeContainer extends Map<String, IMNode> {}

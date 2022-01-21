@@ -11,8 +11,7 @@ import java.util.Queue;
 
 public interface ISchemaPage {
 
-  long write(short segIdx, String key, ByteBuffer buffer)
-      throws MetadataException;
+  long write(short segIdx, String key, ByteBuffer buffer) throws MetadataException;
 
   IMNode read(short segIdx, String key) throws SegmentNotFoundException;
 
@@ -55,4 +54,3 @@ public interface ISchemaPage {
 
   String inspect() throws SegmentNotFoundException;
 }
-

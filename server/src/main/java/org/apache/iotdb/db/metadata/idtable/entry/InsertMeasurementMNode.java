@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -194,11 +195,6 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   @Override
-  public boolean isEmptyInternal() {
-    throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
-  }
-
-  @Override
   public boolean isStorageGroup() {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
@@ -232,6 +228,14 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   public void serializeTo(MLogWriter logWriter) {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
+
+  @Override
+  public CacheEntry getCacheEntry() {
+    return null;
+  }
+
+  @Override
+  public void setCacheEntry(CacheEntry cacheEntry) {}
 
   @Override
   public MeasurementPath getMeasurementPath() {

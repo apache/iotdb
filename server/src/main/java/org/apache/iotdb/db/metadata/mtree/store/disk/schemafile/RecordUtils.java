@@ -1,7 +1,7 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.*;
+import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -14,14 +14,14 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.nio.ByteBuffer;
 
 /**
- * This class translate an IMNode into a bytebuffer, or otherwise.
- * Expected to support record as entry of segment-level index further.
- * Coupling with IMNode structure.
+ * This class translate an IMNode into a bytebuffer, or otherwise. Expected to support record as
+ * entry of segment-level index further. Coupling with IMNode structure.
  */
 public class RecordUtils {
 
   /**
    * Entry of the Class
+   *
    * @param node
    * @return
    */
@@ -34,14 +34,12 @@ public class RecordUtils {
   }
 
   /**
-   * Internal/Entity MNode Record Structure (in bytes): (fixed length record)
-   * 1 byte: nodeType, 0 for internal, 1 for entity, 4 for measurement
-   * 1 short (2 bytes): recLen, length of record (remove it may reduce space overhead while a bit slower)
-   * 1 long (8 bytes): glbIndex, combined index to its children records
-   * 1 byte: templateIndex, index for template
-   * -- bitwise flags --
-   * 1 bit: usingTemplate, whether using template
-   * 1 bit: isAligned
+   * Internal/Entity MNode Record Structure (in bytes): (fixed length record) 1 byte: nodeType, 0
+   * for internal, 1 for entity, 4 for measurement 1 short (2 bytes): recLen, length of record
+   * (remove it may reduce space overhead while a bit slower) 1 long (8 bytes): glbIndex, combined
+   * index to its children records 1 byte: templateIndex, index for template -- bitwise flags -- 1
+   * bit: usingTemplate, whether using template 1 bit: isAligned
+   *
    * @param node
    * @return
    */
@@ -58,7 +56,8 @@ public class RecordUtils {
     ByteBuffer buffer = ByteBuffer.allocate(recLen);
     ReadWriteIOUtils.write(nodeType, buffer);
     ReadWriteIOUtils.write(recLen, buffer);
-    ReadWriteIOUtils.write(node.getChildren().getSegment().getSegmentAddress(), buffer);
+    ReadWriteIOUtils.write(
+        ICachedMNodeContainer.getCachedMNodeContainer(node).getSegmentAddress(), buffer);
     ReadWriteIOUtils.write(convertTemplate2Byte(node.getSchemaTemplate()), buffer);
 
     // encode bitwise flag
@@ -69,15 +68,13 @@ public class RecordUtils {
   }
 
   /**
-   * TODO: properties and tags unhandled yet
-   * Measurement MNode Record Structure: (var length record, with length member)
-   * 1 byte: nodeType, as above
-   * 1 short (2 bytes): recLength, length of whole record
-   * 1 long (8 bytes): tagIndex, related to tag module
-   * 1 long (8 bytes): schemaBytes, including datatype/compressionType/encoding and so on
-   * var length string (4+var_length bytes): alias
+   * TODO: properties and tags unhandled yet Measurement MNode Record Structure: (var length record,
+   * with length member) 1 byte: nodeType, as above 1 short (2 bytes): recLength, length of whole
+   * record 1 long (8 bytes): tagIndex, related to tag module 1 long (8 bytes): schemaBytes,
+   * including datatype/compressionType/encoding and so on var length string (4+var_length bytes):
+   * alias
    *
-   * It doesn't use MeasurementSchema.serializeTo for duplication of measurementId
+   * <p>It doesn't use MeasurementSchema.serializeTo for duplication of measurementId
    */
   private static ByteBuffer measurement2Buffer(IMeasurementMNode node) {
     byte nodeType = 4;
@@ -94,7 +91,9 @@ public class RecordUtils {
   }
 
   /**
-   * NOTICE: Make sure that buffer has set its position and limit clearly before pass to this method.
+   * NOTICE: Make sure that buffer has set its position and limit clearly before pass to this
+   * method.
+   *
    * @param nodeName name of the constructed node
    * @param buffer content of the node
    * @return node constructed from buffer
@@ -121,7 +120,7 @@ public class RecordUtils {
         resNode.getAsEntityMNode().setAligned(isAligned);
       }
 
-      resNode.getChildren().getSegment().setSegmentAddress(segAddr);
+      ICachedMNodeContainer.getCachedMNodeContainer(resNode).setSegmentAddress(segAddr);
       resNode.setUseTemplate(usingTemplate);
 
       return paddingTemplate(resNode, templateIndex);
@@ -182,9 +181,16 @@ public class RecordUtils {
     if (node.isMeasurement()) {
       builder.append("measurementNode, ");
       builder.append(String.format("alias: %s, ", node.getAsMeasurementMNode().getAlias()));
-      builder.append(String.format("type: %s, ", node.getAsMeasurementMNode().getDataType("").toString()));
-      builder.append(String.format("encoding: %s, ", node.getAsMeasurementMNode().getSchema().getEncodingType().toString()));
-      builder.append(String.format("compressor: %s]", node.getAsMeasurementMNode().getSchema().getCompressor().toString()));
+      builder.append(
+          String.format("type: %s, ", node.getAsMeasurementMNode().getDataType("").toString()));
+      builder.append(
+          String.format(
+              "encoding: %s, ",
+              node.getAsMeasurementMNode().getSchema().getEncodingType().toString()));
+      builder.append(
+          String.format(
+              "compressor: %s]",
+              node.getAsMeasurementMNode().getSchema().getCompressor().toString()));
       return builder.toString();
     } else if (node.isEntity()) {
       builder.append("entityNode, ");
@@ -209,9 +215,7 @@ public class RecordUtils {
   }
 
   // region padding with IMNode
-  /**
-   * These 2 convert methods are coupling with tag, template module respectively.
-   */
+  /** These 2 convert methods are coupling with tag, template module respectively. */
   private static long convertTags2Long(IMeasurementMNode node) {
     return 0L;
   }
@@ -232,15 +236,18 @@ public class RecordUtils {
     return (dataType << 16 | encoding << 8 | compressor);
   }
 
-  private static IMNode paddingMeasurement(String nodeName, long tagIndex, long schemaBytes, String alias) {
+  private static IMNode paddingMeasurement(
+      String nodeName, long tagIndex, long schemaBytes, String alias) {
     byte dataType = (byte) (schemaBytes >>> 16);
     byte encoding = (byte) ((schemaBytes >>> 8) & 0xffL);
     byte compressor = (byte) (schemaBytes & 0xffL);
 
-    IMeasurementSchema schema = new MeasurementSchema(nodeName,
-        TSDataType.values()[dataType],
-        TSEncoding.values()[encoding],
-        CompressionType.values()[compressor]);
+    IMeasurementSchema schema =
+        new MeasurementSchema(
+            nodeName,
+            TSDataType.values()[dataType],
+            TSEncoding.values()[encoding],
+            CompressionType.values()[compressor]);
 
     return MeasurementMNode.getMeasurementMNode(null, nodeName, schema, alias);
   }

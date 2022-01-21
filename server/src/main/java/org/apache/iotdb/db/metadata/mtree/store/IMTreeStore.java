@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * This interface defines the basic access methods of an MTreeStore.
@@ -40,17 +41,21 @@ public interface IMTreeStore {
 
   IMNode getChild(IMNode parent, String name);
 
+  IMNode getPinnedChild(IMNode parent, String name);
+
   Iterator<IMNode> getChildrenIterator(IMNode parent);
 
   void addChild(IMNode parent, String childName, IMNode child);
 
   void addAlias(IEntityMNode parent, String alias, IMeasurementMNode child);
 
-  void deleteChild(IMNode parent, String childName);
+  List<IMeasurementMNode> deleteChild(IMNode parent, String childName);
 
   void deleteAliasChild(IEntityMNode parent, String alias);
 
   void updateMNode(IMNode node);
+
+  void unPin(IMNode node);
 
   void createSnapshot() throws IOException;
 

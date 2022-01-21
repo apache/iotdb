@@ -44,7 +44,6 @@ public class InnerSpaceCompactionTaskFactory {
             virtualStorageGroup,
             timePartition,
             tsFileManager,
-            tsFileResourceList,
             selectedTsFileResourceList,
             sequence);
   }

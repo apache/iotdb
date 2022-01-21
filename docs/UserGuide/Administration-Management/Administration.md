@@ -23,7 +23,7 @@
 
 IoTDB provides users with account privilege management operations, so as to ensure data security.
 
-We will show you basic user privilege management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [SQL Documentation](../Appendix/SQL-Reference.md). 
+We will show you basic user privilege management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [SQL Documentation](../Reference/SQL-Reference.md). 
 At the same time, in the JAVA programming environment, you can use the [Java JDBC](../API/Programming-JDBC.md) to execute privilege management statements in a single or batch mode. 
 
 ## Basic Concepts
@@ -144,10 +144,10 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |REVOKE\_ROLE\_PRIVILEGE|revoke role privileges; path independent|
 |CREATE_FUNCTION|register UDFs; path independent|
 |DROP_FUNCTION|deregister UDFs; path independent|
-|CREATE_TRIGGER|create triggers; path independent|
-|DROP_TRIGGER|drop triggers; path independent|
-|START_TRIGGER|start triggers; path independent|
-|STOP_TRIGGER|stop triggers; path independent|
+|CREATE_TRIGGER|create triggers; path dependent|
+|DROP_TRIGGER|drop triggers; path dependent|
+|START_TRIGGER|start triggers; path dependent|
+|STOP_TRIGGER|stop triggers; path dependent|
 |CREATE_CONTINUOUS_QUERY|create continuous queries; path independent|
 |DROP_CONTINUOUS_QUERY|drop continuous queries; path independent|
 

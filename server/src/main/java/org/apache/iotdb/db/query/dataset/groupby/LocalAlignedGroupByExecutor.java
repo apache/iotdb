@@ -68,7 +68,7 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
       boolean ascending)
       throws StorageEngineException, QueryProcessException {
     queryDataSource =
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter, ascending);
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 

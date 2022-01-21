@@ -21,52 +21,309 @@ package org.apache.iotdb.db.metadata.mtree.store;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeContainers;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheStrategy;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheStrategy;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.IMemManager;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.MemManager;
+import org.apache.iotdb.db.metadata.mtree.store.disk.file.ISchemaFile;
+import org.apache.iotdb.db.metadata.mtree.store.disk.file.MockSchemaFile;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Queue;
+
+import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer.getCachedMNodeContainer;
 
 public class CachedMTreeStore implements IMTreeStore {
+
+  private IMemManager memManager = new MemManager();
+
+  private ICacheStrategy cacheStrategy = new CacheStrategy();
+
+  private ISchemaFile file;
+
+  private IMNode root;
+
   @Override
-  public void init() throws IOException {}
+  public void init() throws IOException {
+    MNodeContainers.IS_DISK_MODE = true;
+    file = new MockSchemaFile();
+    root = file.init();
+    cacheStrategy.cacheMNode(root);
+    cacheStrategy.pinMNode(root);
+  }
 
   @Override
   public IMNode getRoot() {
-    return null;
+    return root;
   }
 
   @Override
   public boolean hasChild(IMNode parent, String name) {
-    return false;
+    return getChild(parent, name) != null;
   }
 
   @Override
   public IMNode getChild(IMNode parent, String name) {
-    return null;
+    IMNode node = parent.getChild(name);
+    if (node == null) {
+      if (!getCachedMNodeContainer(parent).isVolatile()) {
+        node = file.getChildNode(parent, name);
+        if (node != null) {
+          node.setParent(parent);
+          if (cacheMNodeInMemory(node)) {
+            cacheStrategy.updateCacheStatusAfterRead(node);
+          }
+        }
+      }
+    } else {
+      if (cacheStrategy.isCached(node) || cacheMNodeInMemory(node)) {
+        cacheStrategy.updateCacheStatusAfterRead(node);
+      }
+    }
+
+    if (node != null && node.isMeasurement()) {
+      processAlias(parent.getAsEntityMNode(), node.getAsMeasurementMNode());
+    }
+
+    return node;
+  }
+
+  private void processAlias(IEntityMNode parent, IMeasurementMNode node) {
+    String alias = node.getAlias();
+    if (alias != null) {
+      parent.addAlias(alias, node);
+    }
+  }
+
+  // must pin parent first
+  @Override
+  public IMNode getPinnedChild(IMNode parent, String name) {
+    IMNode node = parent.getChild(name);
+    if (node == null) {
+      if (!getCachedMNodeContainer(parent).isVolatile()) {
+        node = file.getChildNode(parent, name);
+        if (node != null) {
+          pinMNodeInMemory(node);
+          cacheStrategy.updateCacheStatusAfterRead(node);
+        }
+      }
+    } else {
+      pinMNodeInMemory(node);
+      cacheStrategy.updateCacheStatusAfterRead(node);
+    }
+    return node;
   }
 
   @Override
   public Iterator<IMNode> getChildrenIterator(IMNode parent) {
-    return null;
+    return new CachedMNodeIterator(parent);
+  }
+
+  // must pin parent first
+  @Override
+  public void addChild(IMNode parent, String childName, IMNode child) {
+    child.setParent(parent);
+    pinMNodeInMemory(child);
+    cacheStrategy.updateCacheStatusAfterAppend(child);
   }
 
   @Override
-  public void addChild(IMNode parent, String childName, IMNode child) {}
+  public void addAlias(IEntityMNode parent, String alias, IMeasurementMNode child) {
+    parent.addAlias(alias, child);
+  }
 
   @Override
-  public void addAlias(IEntityMNode parent, String alias, IMeasurementMNode child) {}
+  public List<IMeasurementMNode> deleteChild(IMNode parent, String childName) {
+    IMNode deletedMNode = parent.getChild(childName);
+    // collect all the LeafMNode in this storage group
+    List<IMeasurementMNode> leafMNodes = new LinkedList<>();
+    Queue<IMNode> queue = new LinkedList<>();
+    queue.add(deletedMNode);
+    while (!queue.isEmpty()) {
+      IMNode node = queue.poll();
+      Iterator<IMNode> iterator = getChildrenIterator(node);
+      IMNode child;
+      while (iterator.hasNext()) {
+        child = iterator.next();
+        if (child.isMeasurement()) {
+          leafMNodes.add(child.getAsMeasurementMNode());
+        } else {
+          queue.add(child);
+        }
+      }
+    }
+
+    parent.deleteChild(childName);
+    if (cacheStrategy.isCached(deletedMNode)) {
+      List<IMNode> removedMNodes = cacheStrategy.remove(deletedMNode);
+      for (IMNode removedMNode : removedMNodes) {
+        if (cacheStrategy.isPinned(removedMNode)) {
+          memManager.releasePinnedMemResource(removedMNode);
+        }
+        memManager.releaseMemResource(removedMNode);
+      }
+    }
+    if (!getCachedMNodeContainer(parent).isVolatile()) {
+      file.deleteMNode(deletedMNode);
+    }
+
+    return leafMNodes;
+  }
 
   @Override
-  public void deleteChild(IMNode parent, String childName) {}
+  public void deleteAliasChild(IEntityMNode parent, String alias) {
+    parent.deleteAliasChild(alias);
+  }
+
+  // must pin first
+  @Override
+  public void updateMNode(IMNode node) {
+    cacheStrategy.updateCacheStatusAfterUpdate(node);
+  }
 
   @Override
-  public void deleteAliasChild(IEntityMNode parent, String alias) {}
-
-  @Override
-  public void updateMNode(IMNode node) {}
+  public void unPin(IMNode node) {
+    List<IMNode> releasedMNodes = cacheStrategy.unPinMNode(node);
+    for (IMNode releasedMNode : releasedMNodes) {
+      memManager.releasePinnedMemResource(releasedMNode);
+    }
+    if (!memManager.isUnderThreshold()) {
+      executeMemoryRelease();
+    }
+  }
 
   @Override
   public void createSnapshot() throws IOException {}
 
   @Override
-  public void clear() {}
+  public void clear() {
+    root = null;
+    cacheStrategy.clear();
+    memManager.clear();
+    if (file != null) {
+      file.close();
+    }
+    file = null;
+  }
+
+  private boolean cacheMNodeInMemory(IMNode node) {
+    if (!cacheStrategy.isCached(node.getParent())) {
+      return false;
+    }
+    if (!memManager.requestMemResource(node)) {
+      executeMemoryRelease();
+      if (cacheStrategy.isCached(node.getParent())) {
+        if (memManager.requestMemResource(node)) {
+          cacheStrategy.cacheMNode(node);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private void executeMemoryRelease() {
+    flushVolatileNodes();
+    List<IMNode> evictedMNodes;
+    while (!memManager.isUnderThreshold()) {
+      evictedMNodes = cacheStrategy.evict();
+      for (IMNode evictedMNode : evictedMNodes) {
+        memManager.releaseMemResource(evictedMNode);
+      }
+    }
+  }
+
+  private void flushVolatileNodes() {
+    List<IMNode> nodesToPersist = cacheStrategy.collectVolatileMNodes(root);
+    for (IMNode volatileNode : nodesToPersist) {
+      file.writeMNode(volatileNode);
+      if (cacheStrategy.isCached(volatileNode)) {
+        cacheStrategy.updateCacheStatusAfterPersist(volatileNode);
+      }
+    }
+  }
+
+  private void pinMNodeInMemory(IMNode node) {
+    if (!cacheStrategy.isPinned(node)) {
+      if (cacheStrategy.isCached(node)) {
+        memManager.upgradeMemResource(node);
+      } else {
+        cacheStrategy.cacheMNode(node);
+        memManager.requestPinnedMemResource(node);
+      }
+    }
+    cacheStrategy.pinMNode(node);
+    if (!memManager.isUnderThreshold()) {
+      executeMemoryRelease();
+    }
+  }
+
+  private class CachedMNodeIterator implements Iterator<IMNode> {
+
+    IMNode parent;
+    Iterator<IMNode> iterator;
+    boolean isIteratingDisk = false;
+    IMNode nextNode;
+
+    CachedMNodeIterator(IMNode parent) {
+      this.parent = parent;
+      this.iterator = getCachedMNodeContainer(parent).getChildrenIterator();
+    }
+
+    @Override
+    public boolean hasNext() {
+      readNext();
+      return nextNode != null;
+    }
+
+    // must invoke hasNext() first
+    @Override
+    public IMNode next() {
+      if (nextNode == null) {
+        throw new NoSuchElementException();
+      }
+      if (!isIteratingDisk) {
+        if (cacheStrategy.isCached(nextNode)) {
+          cacheStrategy.updateCacheStatusAfterRead(nextNode);
+        }
+      } else {
+        if (cacheStrategy.isCached(parent)) {
+          if (cacheMNodeInMemory(nextNode)) {
+            cacheStrategy.updateCacheStatusAfterRead(nextNode);
+          }
+        }
+      }
+      IMNode result = nextNode;
+      nextNode = null;
+      return result;
+    }
+
+    private void readNext() {
+      if (!isIteratingDisk) {
+        if (iterator.hasNext()) {
+          nextNode = iterator.next();
+          return;
+        } else {
+          startIteratingDisk();
+        }
+      }
+
+      while (iterator.hasNext()) {
+        nextNode = iterator.next();
+        if (!parent.hasChild(nextNode.getName())) {
+          break;
+        }
+      }
+    }
+
+    private void startIteratingDisk() {
+      iterator = file.getChildren(parent);
+      isIteratingDisk = true;
+    }
+  }
 }

@@ -50,6 +50,9 @@ import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
 
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
 public class MemMTreeStore implements IMTreeStore {
@@ -107,6 +110,11 @@ public class MemMTreeStore implements IMTreeStore {
   }
 
   @Override
+  public IMNode getPinnedChild(IMNode parent, String name) {
+    return parent.getChild(name);
+  }
+
+  @Override
   public Iterator<IMNode> getChildrenIterator(IMNode parent) {
     return parent.getChildren().values().iterator();
   }
@@ -122,8 +130,27 @@ public class MemMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public void deleteChild(IMNode parent, String childName) {
+  public List<IMeasurementMNode> deleteChild(IMNode parent, String childName) {
+    IMNode cur = parent.getChild(childName);
     parent.deleteChild(childName);
+    // collect all the LeafMNode in this storage group
+    List<IMeasurementMNode> leafMNodes = new LinkedList<>();
+    Queue<IMNode> queue = new LinkedList<>();
+    queue.add(cur);
+    while (!queue.isEmpty()) {
+      IMNode node = queue.poll();
+      Iterator<IMNode> iterator = getChildrenIterator(node);
+      IMNode child;
+      while (iterator.hasNext()) {
+        child = iterator.next();
+        if (child.isMeasurement()) {
+          leafMNodes.add(child.getAsMeasurementMNode());
+        } else {
+          queue.add(child);
+        }
+      }
+    }
+    return leafMNodes;
   }
 
   @Override
@@ -133,6 +160,9 @@ public class MemMTreeStore implements IMTreeStore {
 
   @Override
   public void updateMNode(IMNode node) {}
+
+  @Override
+  public void unPin(IMNode node) {}
 
   @Override
   public void createSnapshot() throws IOException {

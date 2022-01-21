@@ -48,7 +48,6 @@ public class IoTDBEncodingIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("REGULAR");
     StorageEngine.setEnablePartition(true);

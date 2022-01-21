@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.rescon.CachedStringPool;
 
@@ -40,6 +41,8 @@ public abstract class MNode implements IMNode {
 
   /** from root to this node, only be set when used once for InternalMNode */
   protected String fullPath;
+
+  protected CacheEntry cacheEntry;
 
   /** Constructor of MNode. */
   public MNode(IMNode parent, String name) {
@@ -122,16 +125,6 @@ public abstract class MNode implements IMNode {
   }
 
   @Override
-  public boolean isEmptyInternal() {
-    return !IoTDBConstant.PATH_ROOT.equals(name)
-        && !isStorageGroup()
-        && !isMeasurement()
-        && getSchemaTemplate() == null
-        && !isUseTemplate()
-        && getChildren().size() == 0;
-  }
-
-  @Override
   public boolean isUseTemplate() {
     return false;
   }
@@ -206,5 +199,15 @@ public abstract class MNode implements IMNode {
   @Override
   public String toString() {
     return this.getName();
+  }
+
+  @Override
+  public CacheEntry getCacheEntry() {
+    return cacheEntry;
+  }
+
+  @Override
+  public void setCacheEntry(CacheEntry cacheEntry) {
+    this.cacheEntry = cacheEntry;
   }
 }
