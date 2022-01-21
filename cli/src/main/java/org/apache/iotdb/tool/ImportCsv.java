@@ -753,7 +753,7 @@ public class ImportCsv extends AbstractCsvTool {
     try {
       switch (type) {
         case TEXT:
-          if ("NaN".equals(value)) return value;
+          if ("NaN".equals(value)) return null;
           else return value.substring(1, value.length() - 1);
         case BOOLEAN:
           if (!"true".equals(value) && !"false".equals(value)) {
