@@ -51,10 +51,12 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.sync.MetadataSyncManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
+import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -202,6 +204,7 @@ public class MManager {
   private LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager = TagManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
+  private MetadataSyncManager syncManager = MetadataSyncManager.getInstance();
 
   // region MManager Singleton
   private static class MManagerHolder {
@@ -429,6 +432,7 @@ public class MManager {
         logWriter = null;
       }
       tagManager.clear();
+      syncManager.clear();
       initialized = false;
       if (config.isEnableMTreeSnapshot() && timedCreateMTreeSnapshotThread != null) {
         timedCreateMTreeSnapshotThread.shutdownNow();
@@ -611,6 +615,9 @@ public class MManager {
         }
         plan.setTagOffset(offset);
         logWriter.createTimeseries(plan);
+        if (syncManager.isEnableSync()) {
+          syncManager.syncMetadataPlan(plan);
+        }
       }
       leafMNode.setOffset(offset);
 
@@ -708,6 +715,9 @@ public class MManager {
       // write log
       if (!isRecovering) {
         logWriter.createAlignedTimeseries(plan);
+        if (syncManager.isEnableSync()) {
+          syncManager.syncMetadataPlan(plan);
+        }
       }
     } catch (IOException e) {
       throw new MetadataException(e);
@@ -792,6 +802,9 @@ public class MManager {
         }
         deleteTimeSeriesPlan.setDeletePathList(Collections.singletonList(p));
         logWriter.deleteTimeseries(deleteTimeSeriesPlan);
+        if (syncManager.isEnableSync()) {
+          syncManager.syncMetadataPlan(deleteTimeSeriesPlan);
+        }
       }
     } catch (DeleteFailedException e) {
       failedNames.add(e.getName());
@@ -851,6 +864,9 @@ public class MManager {
       }
       if (!isRecovering) {
         logWriter.setStorageGroup(storageGroup);
+        if (syncManager.isEnableSync()) {
+          syncManager.syncMetadataPlan(new SetStorageGroupPlan(storageGroup));
+        }
       }
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
@@ -865,6 +881,7 @@ public class MManager {
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     try {
       for (PartialPath storageGroup : storageGroups) {
+        DeleteTimeSeriesPlan plansForSync = splitDeleteTimeseriesPlanByDevice(storageGroup);
         totalSeriesNumber.addAndGet(
             -mtree.getAllTimeseriesCount(storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD)));
         // clear cached MNode
@@ -891,6 +908,9 @@ public class MManager {
         // if success
         if (!isRecovering) {
           logWriter.deleteStorageGroup(storageGroup);
+          if (syncManager.isEnableSync()) {
+            syncManager.syncMetadataPlan(plansForSync);
+          }
         }
       }
     } catch (IOException e) {
@@ -2425,5 +2445,45 @@ public class MManager {
       throw new MetadataException(e);
     }
   }
+  // endregion
+
+  // region Interfaces for Sync
+
+  public List<SetStorageGroupPlan> getStorageGroupAsPlan() {
+    List<PartialPath> allStorageGroups = mtree.getAllStorageGroupPaths();
+    List<SetStorageGroupPlan> result = new LinkedList<>();
+    for (PartialPath sgPath : allStorageGroups) {
+      result.add(new SetStorageGroupPlan(sgPath));
+    }
+    return result;
+  }
+
+  public List<PhysicalPlan> getTimeseriesAsPlan(PartialPath pathPattern) throws MetadataException {
+    return mtree.getTimeseriesAsPlan(pathPattern);
+  }
+
+  public void registerSyncTask(TsFilePipe syncPipe) {
+    syncManager.registerSyncTask(syncPipe);
+  }
+
+  public void deregisterSyncTask() {
+    syncManager.deregisterSyncTask();
+  }
+
+  private DeleteTimeSeriesPlan splitDeleteTimeseriesPlanByDevice(PartialPath pathPattern)
+      throws MetadataException {
+    return new DeleteTimeSeriesPlan(splitPathPatternByDevice(pathPattern));
+  }
+
+  public List<PartialPath> splitPathPatternByDevice(PartialPath pathPattern)
+      throws MetadataException {
+    Set<PartialPath> devices = mtree.getDevicesByTimeseries(pathPattern);
+    List<PartialPath> resultPathPattern = new LinkedList<>();
+    for (PartialPath device : devices) {
+      resultPathPattern.addAll(pathPattern.alterPrefixPath(device));
+    }
+    return resultPathPattern;
+  }
+
   // endregion
 }

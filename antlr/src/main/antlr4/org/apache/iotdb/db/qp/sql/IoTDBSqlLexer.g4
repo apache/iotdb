@@ -358,6 +358,18 @@ PATHS
     : P A T H S
     ;
 
+PIPE
+    : P I P E
+    ;
+
+PIPESINK
+    : P I P E S I N K
+    ;
+
+PIPESINKTYPE
+    : P I P E S I N K T Y P E
+    ;
+
 PREVIOUS
     : P R E V I O U S
     ;

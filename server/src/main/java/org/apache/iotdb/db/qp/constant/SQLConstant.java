@@ -192,6 +192,16 @@ public class SQLConstant {
 
   public static final int TOK_SHOW_QUERY_RESOURCE = 116;
 
+  public static final int TOK_CREATE_PIPESINK = 200;
+  public static final int TOK_DROP_PIPESINK = 201;
+  public static final int TOK_SHOW_PIPESINK = 202;
+  public static final int TOK_SHOW_PIPESINKTYPE = 203;
+  public static final int TOK_CREATE_PIPE = 204;
+  public static final int TOK_SHOW_PIPE = 205;
+  public static final int TOK_STOP_PIPE = 206;
+  public static final int TOK_START_PIPE = 207;
+  public static final int TOK_DROP_PIPE = 208;
+
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 
   public static String[] getSingleRootArray() {
@@ -271,6 +281,16 @@ public class SQLConstant {
     tokenNames.put(TOK_SCHEMA_TEMPLATE_UNSET, "TOK_SCHEMA_TEMPLATE_UNSET");
 
     tokenNames.put(TOK_SHOW_QUERY_RESOURCE, "TOK_SHOW_QUERY_RESOURCE");
+
+    tokenNames.put(TOK_CREATE_PIPESINK, "TOK_CREATE_PIPESINK");
+    tokenNames.put(TOK_DROP_PIPESINK, "TOK_DROP_PIPESINK");
+    tokenNames.put(TOK_SHOW_PIPESINK, "TOK_SHOW_PIPESINK");
+    tokenNames.put(TOK_SHOW_PIPESINKTYPE, "TOK_SHOW_PIPESINKTYPE");
+    tokenNames.put(TOK_CREATE_PIPE, "TOK_CREATE_PIPE");
+    tokenNames.put(TOK_SHOW_PIPE, "TOK_SHOW_PIPE");
+    tokenNames.put(TOK_STOP_PIPE, "TOK_STOP_PIPE");
+    tokenNames.put(TOK_START_PIPE, "TOK_START_PIPE");
+    tokenNames.put(TOK_DROP_PIPE, "TOK_DROP_PIPE");
   }
 
   public static boolean isReservedPath(PartialPath pathStr) {

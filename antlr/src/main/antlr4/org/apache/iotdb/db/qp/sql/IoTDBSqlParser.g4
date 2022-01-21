@@ -31,7 +31,7 @@ singleStatement
     ;
 
 statement
-    : ddlStatement | dmlStatement | dclStatement | utilityStatement
+    : ddlStatement | dmlStatement | dclStatement | utilityStatement | syncStatement
     ;
 
 ddlStatement
@@ -62,6 +62,9 @@ utilityStatement
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
+syncStatement
+    : createPipeSink | showPipeSinkType | showPipeSink | dropPipeSink
+    | createPipe | showPipe | stopPipe | startPipe | dropPipe;
 
 /**
  * 2. Data Definition Language (DDL)
@@ -656,9 +659,55 @@ unloadFile
     : UNLOAD srcFileName=STRING_LITERAL dstFileDir=STRING_LITERAL
     ;
 
+/**
+ * 6. syncStatement
+ */
+
+// pipesink statement
+createPipeSink
+    : CREATE PIPESINK pipeSinkType=ID (LR_BRACKET syncAttributeClauses RR_BRACKET)? AS pipeSinkName=ID
+    ;
+
+showPipeSinkType
+    : SHOW PIPESINKTYPE
+    ;
+
+showPipeSink
+    : SHOW PIPESINK (pipeSinkName=ID)?
+    ;
+
+dropPipeSink
+    : DROP PIPESINK pipeSinkName=ID
+    ;
+
+// pipe statement
+createPipe
+    : CREATE PIPE pipeName=ID TO pipeSinkName=ID (FROM LR_BRACKET selectStatement RR_BRACKET)? (WITH syncAttributeClauses)?
+    ;
+
+showPipe
+    : SHOW PIPE (pipeName=ID)?
+    ;
+
+stopPipe
+    : STOP PIPE pipeName=ID
+    ;
+
+startPipe
+    : START PIPE pipeName=ID
+    ;
+
+dropPipe
+    : DROP PIPE pipeName=ID
+    ;
+
+// attribute clauses
+syncAttributeClauses
+    : propertyClause (COMMA propertyClause)*
+    ;
 
 /**
- * 6. Common Clauses
+ * 7. Common Clauses
  */
 
 // IoTDB Objects

@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -75,6 +76,15 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
       this.props = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       this.props.putAll(props);
     }
+  }
+
+  public CreateTimeSeriesPlan(PartialPath path, MeasurementSchema schema) {
+    super(Operator.OperatorType.CREATE_TIMESERIES);
+    this.path = path;
+    this.dataType = schema.getType();
+    this.encoding = schema.getEncodingType();
+    this.compressor = schema.getCompressor();
+    canBeSplit = false;
   }
 
   public PartialPath getPath() {

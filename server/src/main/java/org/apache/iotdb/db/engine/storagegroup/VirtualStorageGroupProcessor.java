@@ -61,6 +61,7 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -274,6 +275,9 @@ public class VirtualStorageGroupProcessor {
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   private IDTable idTable;
+
+  /** for sync collecting data */
+  private TsFilePipe syncDataCollector;
 
   /**
    * get the direct byte buffer from pool, each fetch contains two ByteBuffer, return null if fetch
@@ -1313,6 +1317,9 @@ public class VirtualStorageGroupProcessor {
               this::unsequenceFlushCallback,
               false);
     }
+    if (syncDataCollector != null) {
+      tsFileProcessor.registerSyncDataCollector(syncDataCollector);
+    }
 
     if (enableMemControl) {
       TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
@@ -2033,6 +2040,8 @@ public class VirtualStorageGroupProcessor {
       if (!tsFileResource.isClosed()) {
         TsFileProcessor tsfileProcessor = tsFileResource.getProcessor();
         tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
+      } else if (syncDataCollector != null) {
+        syncDataCollector.collectRealTimeDeletion(deletion);
       }
 
       // add a record in case of rollback
@@ -3173,6 +3182,69 @@ public class VirtualStorageGroupProcessor {
             }
           }
         }
+      }
+    }
+  }
+
+  /** sync methods */
+  public void registerSyncDataCollector(TsFilePipe tsFilePipe) {
+    writeLock("Register collector for sync");
+    this.syncDataCollector = tsFilePipe;
+    registerTsFileResourceList(tsFileManager.getTsFileList(true), tsFilePipe);
+    registerTsFileResourceList(tsFileManager.getTsFileList(false), tsFilePipe);
+    writeUnlock();
+  }
+
+  private void registerTsFileResourceList(
+      List<TsFileResource> tsFileResources, TsFilePipe tsFilePipe) {
+    int size = tsFileResources.size();
+    for (int i = 0; i < size; i++) {
+      TsFileProcessor tsFileProcessor = tsFileResources.get(i).getProcessor();
+      if (tsFileProcessor != null) {
+        tsFileResources.get(i).getProcessor().registerSyncDataCollector(tsFilePipe);
+      }
+    }
+  }
+
+  /**
+   * This method is for sync. Collect history tsfile data and register in every TsFileProcessor to
+   * collect real time tsfile and deletion.
+   *
+   * @param tsFilePipe the sync data collector
+   * @return ths list the paris of (history tsfile, the offset of its mods file)
+   */
+  public List<Pair<File, Long>> collectDataForSync(TsFilePipe tsFilePipe, long dataStartTime) {
+    List<Pair<File, Long>> historyTsFiles = new ArrayList<>();
+    writeLock("Collect data for sync");
+    this.syncDataCollector = tsFilePipe;
+    List<TsFileResource> seqTsFileResource = tsFileManager.getTsFileList(true);
+    List<TsFileResource> unseqTsFileResource = tsFileManager.getTsFileList(false);
+    collectTsFiles(seqTsFileResource, historyTsFiles, dataStartTime);
+    collectTsFiles(unseqTsFileResource, historyTsFiles, dataStartTime);
+    writeUnlock();
+    return historyTsFiles;
+  }
+
+  private void collectTsFiles(
+      List<TsFileResource> tsFileResources,
+      List<Pair<File, Long>> historyTsFiles,
+      long dataStartTime) {
+    for (TsFileResource tsFileResource : tsFileResources) {
+      if (tsFileResource.getFileEndTime() < dataStartTime) {
+        continue;
+      }
+      TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+      boolean isRealTimeTsFile = false;
+      if (tsFileProcessor != null) {
+        isRealTimeTsFile =
+            tsFileResource
+                .getProcessor()
+                .registerSyncDataCollector(syncDataCollector); // register to collect real time data
+      }
+      if (!isRealTimeTsFile) {
+        File mods = new File(tsFileResource.getModFile().getFilePath());
+        long modsOffset = mods.exists() ? mods.length() : 0L;
+        historyTsFiles.add(new Pair<>(tsFileResource.getTsFile(), modsOffset));
       }
     }
   }
