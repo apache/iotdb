@@ -64,13 +64,16 @@ public class IoTDBSchemaTemplateIT {
     // test create schema template repeatedly
     try {
       statement.execute(
-          "CREATE SCHEMA TEMPLATE temp1 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 (s1 FLOAT, s2 INT64))");
+          "CREATE SCHEMA TEMPLATE temp1 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 aligned (s1 FLOAT, s2 INT64))");
     } catch (IoTDBSQLException e) {
       Assert.assertEquals("303: Duplicated template name: temp1", e.getMessage());
     }
 
     // set schema template
     statement.execute("SET SCHEMA TEMPLATE temp1 TO root.sg1.d1");
+    statement.execute("SET SCHEMA TEMPLATE temp2 TO root.sg1.d2");
+    statement.execute("SET SCHEMA TEMPLATE temp3 TO root.sg1.d3");
+    statement.execute("SET SCHEMA TEMPLATE temp4 TO root.sg1.d4");
 
     // test drop template which has been set
     try {
@@ -87,21 +90,32 @@ public class IoTDBSchemaTemplateIT {
 
     // create timeseries of schema template
     statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d1");
+    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d2");
+    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d3");
+    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d4");
 
     boolean hasResult = statement.execute("SHOW TIMESERIES root.sg1.**");
     Assert.assertTrue(hasResult);
 
-    String[] expectedResult =
-        new String[] {
-          "root.sg1.d1.vector1.s1,FLOAT,GORILLA,SNAPPY",
-          "root.sg1.d1.vector1.s2,INT64,RLE,SNAPPY",
-          "root.sg1.d1.s1,INT64,RLE,SNAPPY"
-        };
+    Set<String> expectedResult =
+        new HashSet<>(
+            Arrays.asList(
+                "root.sg1.d4.vector1.s1,FLOAT,GORILLA,SNAPPY",
+                "root.sg1.d4.vector1.s2,DOUBLE,GORILLA,SNAPPY",
+                "root.sg1.d4.s1,INT64,RLE,SNAPPY",
+                "root.sg1.d4.s2,INT32,RLE,SNAPPY",
+                "root.sg1.d1.s1,INT64,RLE,SNAPPY",
+                "root.sg1.d1.s2,INT32,RLE,SNAPPY",
+                "root.sg1.d2.s1,INT64,RLE,SNAPPY",
+                "root.sg1.d2.s2,INT32,RLE,SNAPPY",
+                "root.sg1.d3.vector1.s1,FLOAT,GORILLA,SNAPPY",
+                "root.sg1.d3.vector1.s2,DOUBLE,GORILLA,SNAPPY",
+                "root.sg1.d3.s1,INT64,RLE,SNAPPY",
+                "root.sg1.d3.s2,INT32,RLE,SNAPPY"));
 
-    int count = 0;
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        String ActualResult =
+        String actualResult =
             resultSet.getString("timeseries")
                 + ","
                 + resultSet.getString("dataType")
@@ -109,27 +123,34 @@ public class IoTDBSchemaTemplateIT {
                 + resultSet.getString("encoding")
                 + ","
                 + resultSet.getString("compression");
-        Assert.assertEquals(expectedResult[count], ActualResult);
-        count++;
+        Assert.assertTrue(expectedResult.contains(actualResult));
+        expectedResult.remove(actualResult);
       }
     }
-    Assert.assertEquals(3, count);
+    Assert.assertTrue(expectedResult.isEmpty());
 
     hasResult = statement.execute("SHOW DEVICES");
     Assert.assertTrue(hasResult);
 
-    expectedResult = new String[] {"root.sg1.d1,false", "root.sg1.d1.vector1,true"};
+    expectedResult =
+        new HashSet<>(
+            Arrays.asList(
+                "root.sg1.d4,true",
+                "root.sg1.d4.vector1,true",
+                "root.sg1.d1,false",
+                "root.sg1.d2,true",
+                "root.sg1.d3,false",
+                "root.sg1.d3.vector1,true"));
 
-    count = 0;
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        String ActualResult =
+        String actualResult =
             resultSet.getString("devices") + "," + resultSet.getString("isAligned");
-        Assert.assertEquals(expectedResult[count], ActualResult);
-        count++;
+        Assert.assertTrue(expectedResult.contains(actualResult));
+        expectedResult.remove(actualResult);
       }
     }
-    Assert.assertEquals(2, count);
+    Assert.assertTrue(expectedResult.isEmpty());
 
     try {
       statement.execute("UNSET SCHEMA TEMPLATE temp1 FROM root.sg1.d1");
@@ -143,13 +164,16 @@ public class IoTDBSchemaTemplateIT {
     // test create schema template repeatedly
     try {
       statement.execute(
-          "CREATE SCHEMA TEMPLATE temp1 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 (s1 FLOAT, s2 INT64))");
+          "CREATE SCHEMA TEMPLATE temp1 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 aligned (s1 FLOAT, s2 INT64))");
     } catch (IoTDBSQLException e) {
       Assert.assertEquals("303: Duplicated template name: temp1", e.getMessage());
     }
 
     // set schema template
     statement.execute("SET SCHEMA TEMPLATE temp1 TO root.sg1.d1");
+    statement.execute("SET SCHEMA TEMPLATE temp2 TO root.sg1.d2");
+    statement.execute("SET SCHEMA TEMPLATE temp3 TO root.sg1.d3");
+    statement.execute("SET SCHEMA TEMPLATE temp4 TO root.sg1.d4");
 
     statement.execute("SHOW TIMESERIES root.sg1.**");
     try (ResultSet resultSet = statement.getResultSet()) {
@@ -158,21 +182,32 @@ public class IoTDBSchemaTemplateIT {
 
     // set using schema template
     statement.execute("INSERT INTO root.sg1.d1(time,s1) VALUES (1,1)");
+    statement.execute("INSERT INTO root.sg1.d2(time,s1) ALIGNED VALUES (1,1)");
+    statement.execute("INSERT INTO root.sg1.d3(time,s1) VALUES (1,1)");
+    statement.execute("INSERT INTO root.sg1.d4(time,s1) ALIGNED VALUES (1,1)");
 
     boolean hasResult = statement.execute("SHOW TIMESERIES root.sg1.**");
     Assert.assertTrue(hasResult);
 
-    String[] expectedResult =
-        new String[] {
-          "root.sg1.d1.vector1.s1,FLOAT,GORILLA,SNAPPY",
-          "root.sg1.d1.vector1.s2,INT64,RLE,SNAPPY",
-          "root.sg1.d1.s1,INT64,RLE,SNAPPY"
-        };
+    Set<String> expectedResult =
+        new HashSet<>(
+            Arrays.asList(
+                "root.sg1.d4.vector1.s1,FLOAT,GORILLA,SNAPPY",
+                "root.sg1.d4.vector1.s2,DOUBLE,GORILLA,SNAPPY",
+                "root.sg1.d4.s1,INT64,RLE,SNAPPY",
+                "root.sg1.d4.s2,INT32,RLE,SNAPPY",
+                "root.sg1.d1.s1,INT64,RLE,SNAPPY",
+                "root.sg1.d1.s2,INT32,RLE,SNAPPY",
+                "root.sg1.d2.s1,INT64,RLE,SNAPPY",
+                "root.sg1.d2.s2,INT32,RLE,SNAPPY",
+                "root.sg1.d3.vector1.s1,FLOAT,GORILLA,SNAPPY",
+                "root.sg1.d3.vector1.s2,DOUBLE,GORILLA,SNAPPY",
+                "root.sg1.d3.s1,INT64,RLE,SNAPPY",
+                "root.sg1.d3.s2,INT32,RLE,SNAPPY"));
 
-    int count = 0;
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        String ActualResult =
+        String actualResult =
             resultSet.getString("timeseries")
                 + ","
                 + resultSet.getString("dataType")
@@ -180,27 +215,34 @@ public class IoTDBSchemaTemplateIT {
                 + resultSet.getString("encoding")
                 + ","
                 + resultSet.getString("compression");
-        Assert.assertEquals(expectedResult[count], ActualResult);
-        count++;
+        Assert.assertTrue(expectedResult.contains(actualResult));
+        expectedResult.remove(actualResult);
       }
     }
-    Assert.assertEquals(3, count);
+    Assert.assertTrue(expectedResult.isEmpty());
 
     hasResult = statement.execute("SHOW DEVICES");
     Assert.assertTrue(hasResult);
 
-    expectedResult = new String[] {"root.sg1.d1,false", "root.sg1.d1.vector1,true"};
+    expectedResult =
+        new HashSet<>(
+            Arrays.asList(
+                "root.sg1.d4,true",
+                "root.sg1.d4.vector1,true",
+                "root.sg1.d1,false",
+                "root.sg1.d2,true",
+                "root.sg1.d3,false",
+                "root.sg1.d3.vector1,true"));
 
-    count = 0;
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        String ActualResult =
+        String actualResult =
             resultSet.getString("devices") + "," + resultSet.getString("isAligned");
-        Assert.assertEquals(expectedResult[count], ActualResult);
-        count++;
+        Assert.assertTrue(expectedResult.contains(actualResult));
+        expectedResult.remove(actualResult);
       }
     }
-    Assert.assertEquals(2, count);
+    Assert.assertTrue(expectedResult.isEmpty());
 
     try {
       statement.execute("UNSET SCHEMA TEMPLATE temp1 FROM root.sg1.d1");
@@ -213,7 +255,7 @@ public class IoTDBSchemaTemplateIT {
   public void testDropAndShowSchemaTemplates() throws SQLException {
     // show schema templates
     statement.execute("SHOW SCHEMA TEMPLATES");
-    String[] expectedResult = new String[] {"temp1", "temp2", "temp3"};
+    String[] expectedResult = new String[] {"temp1", "temp2", "temp3", "temp4"};
     Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
@@ -226,7 +268,7 @@ public class IoTDBSchemaTemplateIT {
     // drop schema template
     statement.execute("DROP SCHEMA TEMPLATE temp2");
     statement.execute("SHOW SCHEMA TEMPLATES");
-    expectedResult = new String[] {"temp1", "temp3"};
+    expectedResult = new String[] {"temp1", "temp3", "temp4"};
     expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
@@ -240,13 +282,26 @@ public class IoTDBSchemaTemplateIT {
   @Test
   public void testShowNodesInSchemaTemplate() throws SQLException {
     // set schema template
-    statement.execute("SHOW NODES IN SCHEMA TEMPLATE temp1");
-    String[] expectedResult = new String[] {"s1", "vector1.s1", "vector1.s2"};
-    Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+    statement.execute("SHOW NODES IN SCHEMA TEMPLATE temp3");
+    Set<String> expectedResultSet =
+        new HashSet<>(
+            Arrays.asList(
+                "vector1.s1,FLOAT,GORILLA,SNAPPY",
+                "vector1.s2,DOUBLE,GORILLA,SNAPPY",
+                "s1,INT64,RLE,SNAPPY",
+                "s2,INT32,RLE,SNAPPY"));
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child nodes")));
-        expectedResultSet.remove(resultSet.getString("child nodes"));
+        String actualResult =
+            resultSet.getString("child nodes")
+                + ","
+                + resultSet.getString("dataType")
+                + ","
+                + resultSet.getString("encoding")
+                + ","
+                + resultSet.getString("compression");
+        Assert.assertTrue(expectedResultSet.contains(actualResult));
+        expectedResultSet.remove(actualResult);
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -313,11 +368,11 @@ public class IoTDBSchemaTemplateIT {
     statement.execute("CREATE STORAGE GROUP root.sg3");
 
     // create schema template
+    statement.execute("CREATE SCHEMA TEMPLATE temp1 (s1 INT64, s2 INT32)");
+    statement.execute("CREATE SCHEMA TEMPLATE temp2 aligned (s1 INT64, s2 INT32)");
     statement.execute(
-        "CREATE SCHEMA TEMPLATE temp1 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 (s1 FLOAT, s2 INT64))");
+        "CREATE SCHEMA TEMPLATE temp3 (s1 INT64, s2 INT32, vector1 aligned (s1 FLOAT, s2 DOUBLE))");
     statement.execute(
-        "CREATE SCHEMA TEMPLATE temp2 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 (s1 FLOAT, s2 INT64))");
-    statement.execute(
-        "CREATE SCHEMA TEMPLATE temp3 (s1 INT64 encoding=RLE compressor=SNAPPY, vector1 (s1 FLOAT, s2 INT64))");
+        "CREATE SCHEMA TEMPLATE temp4 aligned (s1 INT64, s2 INT32, vector1 aligned (s1 FLOAT, s2 DOUBLE))");
   }
 }

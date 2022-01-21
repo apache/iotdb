@@ -30,18 +30,30 @@ IoTDB 支持元数据模板功能，实现同类型不同实体的物理量元�
 创建元数据模板的 SQL 语法如下：
 
 ```sql
-CREATE SCHEMA? TEMPLATE <templateName> '(' templateMeasurementClause [',' templateMeasurementClause]+ ')'
+CREATE SCHEMA? TEMPLATE <templateName> ALIGNED '(' templateMeasurementClause [',' templateMeasurementClause]+ ')'
 
 templateMeasurementClause
-    : <measurementId> <attributeClauses> #非对齐物理量
-    | <deviceId> '(' <measurementId> <attributeClauses> [',' <measurementId> <attributeClauses>]+ ')'  #一组对齐的物理量
+    : <measurementId> <attributeClauses> #单个物理量
+    | <deviceId> ALIGNED '(' <measurementId> <attributeClauses> [',' <measurementId> <attributeClauses>]+ ')'  #一组对齐的物理量
     ;
 ```
 
-例如：
+示例1：创建包含两个非对齐序列的元数据模板
 
 ```shell
-IoTDB> create schema template temp1(GPS (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla compression=SNAPPY), status BOOLEAN encoding=PLAIN compression=SNAPPY)
+IoTDB> create schema template temp1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
+```
+
+示例2：创建包含一组对齐序列的元数据模板
+
+```shell
+IoTDB> create schema template aligned temp2 (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla)
+```
+
+示例3：创建混合对齐序列和非对齐序列的元数据模板
+
+```shell
+IoTDB> create schema template temp3 (GPS aligned (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla compression=SNAPPY), status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
 
 其中，`GPS` 设备下的物理量 `lat` 和 `lon` 是对齐的。
@@ -54,13 +66,15 @@ IoTDB> create schema template temp1(GPS (lat FLOAT encoding=Gorilla, lon FLOAT e
 IoTDB> set schema template temp1 to root.ln.wf01
 ```
 
-挂载好元数据模板后，即可进行数据的写入。例如存储组为root.ln，模板temp1被挂载到了节点root.ln.wf01，那么可直接向时间序列（如root.ln.wf01.GPS.lat和root.ln.wf01.status）写入时间序列数据，该时间序列已可被当作正常创建的序列使用。
+挂载好元数据模板后，即可进行数据的写入。例如存储组为 root.ln，模板 temp1 被挂载到了节点 root.ln.wf01，那么可直接向时间序列（如root.ln.wf01.GPS.lat和root.ln.wf01.status）写入时间序列数据，该时间序列已可被当作正常创建的序列使用。
 
 **注意**：在插入数据之前，模板定义的时间序列不会被创建。可以使用如下SQL语句在插入数据前创建时间序列：
 
 ```shell
 IoTDB> create timeseries of schema template on root.ln.wf01
 ```
+
+
 
 ## 查看元数据模板
 

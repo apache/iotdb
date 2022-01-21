@@ -92,13 +92,13 @@ alignedMeasurements
 // Create Schema Template
 createSchemaTemplate
     : CREATE SCHEMA? TEMPLATE templateName=identifier
-    LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
+    ALIGNED? LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
     ;
 
 templateMeasurementClause
-    : suffixPath attributeClauses #nonAlignedTemplateMeasurement
-    | suffixPath LR_BRACKET nodeNameWithoutWildcard attributeClauses
-    (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET  #alignedTemplateMeasurement
+    : nodeNameWithoutWildcard attributeClauses #singleTemplateMeasurement
+    | deviceId=nodeNameWithoutWildcard ALIGNED LR_BRACKET nodeNameWithoutWildcard attributeClauses
+    (COMMA nodeNameWithoutWildcard attributeClauses)* RR_BRACKET  #multiTemplateMeasurement
     ;
 
 // Create Timeseries Of Schema Template

@@ -311,9 +311,30 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     CreateTemplateOperator createTemplateOperator =
         new CreateTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_CREATE);
     createTemplateOperator.setName(ctx.templateName.getText());
-    for (IoTDBSqlParser.TemplateMeasurementClauseContext templateClauseContext :
-        ctx.templateMeasurementClause()) {
-      parseTemplateMeasurementClause(templateClauseContext, createTemplateOperator);
+    if (ctx.ALIGNED() != null) {
+      List<String> measurements = new ArrayList<>();
+      List<TSDataType> dataTypes = new ArrayList<>();
+      List<TSEncoding> encodings = new ArrayList<>();
+      List<CompressionType> compressors = new ArrayList<>();
+      for (IoTDBSqlParser.TemplateMeasurementClauseContext templateClauseContext :
+          ctx.templateMeasurementClause()) {
+        parseTemplateMeasurementClause(
+            templateClauseContext,
+            createTemplateOperator,
+            measurements,
+            dataTypes,
+            encodings,
+            compressors);
+      }
+      createTemplateOperator.addMeasurements(measurements);
+      createTemplateOperator.addDataTypes(dataTypes);
+      createTemplateOperator.addEncodings(encodings);
+      createTemplateOperator.addCompressor(compressors);
+    } else {
+      for (IoTDBSqlParser.TemplateMeasurementClauseContext templateClauseContext :
+          ctx.templateMeasurementClause()) {
+        parseTemplateMeasurementClause(templateClauseContext, createTemplateOperator);
+      }
     }
     return createTemplateOperator;
   }
@@ -325,27 +346,30 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     List<TSDataType> dataTypes = new ArrayList<>();
     List<TSEncoding> encodings = new ArrayList<>();
     List<CompressionType> compressors = new ArrayList<>();
-    if (ctx instanceof IoTDBSqlParser.AlignedTemplateMeasurementContext) {
+
+    if (ctx instanceof IoTDBSqlParser.MultiTemplateMeasurementContext) {
       // aligned measurement
-      String alignedSuffixPath =
-          ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).suffixPath().getText();
+      String alignedDeviceId =
+          parseNodeNameWithoutWildcard(
+              ((IoTDBSqlParser.MultiTemplateMeasurementContext) ctx).deviceId);
       List<IoTDBSqlParser.NodeNameWithoutWildcardContext> measurementList =
-          ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).nodeNameWithoutWildcard();
+          ((IoTDBSqlParser.MultiTemplateMeasurementContext) ctx).nodeNameWithoutWildcard();
       List<IoTDBSqlParser.AttributeClausesContext> attributeList =
-          ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).attributeClauses();
+          ((IoTDBSqlParser.MultiTemplateMeasurementContext) ctx).attributeClauses();
       for (int i = 0; i < attributeList.size(); i++) {
         measurements.add(
-            alignedSuffixPath.concat(
+            alignedDeviceId.concat(
                 TsFileConstant.PATH_SEPARATOR
-                    + parseNodeNameWithoutWildcard(measurementList.get(i))));
+                    + parseNodeNameWithoutWildcard(measurementList.get(i + 1))));
         parseAttributeClause(attributeList.get(i), dataTypes, encodings, compressors);
       }
     } else {
-      // non-aligned template measurement
+      // single template measurement
       measurements.add(
-          ((IoTDBSqlParser.NonAlignedTemplateMeasurementContext) ctx).suffixPath().getText());
+          parseNodeNameWithoutWildcard(
+              ((IoTDBSqlParser.SingleTemplateMeasurementContext) ctx).nodeNameWithoutWildcard()));
       parseAttributeClause(
-          ((IoTDBSqlParser.NonAlignedTemplateMeasurementContext) ctx).attributeClauses(),
+          ((IoTDBSqlParser.SingleTemplateMeasurementContext) ctx).attributeClauses(),
           dataTypes,
           encodings,
           compressors);
@@ -354,6 +378,50 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     createTemplateOperator.addDataTypes(dataTypes);
     createTemplateOperator.addEncodings(encodings);
     createTemplateOperator.addCompressor(compressors);
+  }
+
+  private void parseTemplateMeasurementClause(
+      IoTDBSqlParser.TemplateMeasurementClauseContext ctx,
+      CreateTemplateOperator createTemplateOperator,
+      List<String> alignedMeasurements,
+      List<TSDataType> alignedDataTypes,
+      List<TSEncoding> alignedEncodings,
+      List<CompressionType> alignedCompressors) {
+    if (ctx instanceof IoTDBSqlParser.MultiTemplateMeasurementContext) {
+      List<String> measurements = new ArrayList<>();
+      List<TSDataType> dataTypes = new ArrayList<>();
+      List<TSEncoding> encodings = new ArrayList<>();
+      List<CompressionType> compressors = new ArrayList<>();
+      // aligned measurement
+      String alignedDeviceId =
+          parseNodeNameWithoutWildcard(
+              ((IoTDBSqlParser.MultiTemplateMeasurementContext) ctx).deviceId);
+      List<IoTDBSqlParser.NodeNameWithoutWildcardContext> measurementList =
+          ((IoTDBSqlParser.MultiTemplateMeasurementContext) ctx).nodeNameWithoutWildcard();
+      List<IoTDBSqlParser.AttributeClausesContext> attributeList =
+          ((IoTDBSqlParser.MultiTemplateMeasurementContext) ctx).attributeClauses();
+      for (int i = 0; i < attributeList.size(); i++) {
+        measurements.add(
+            alignedDeviceId.concat(
+                TsFileConstant.PATH_SEPARATOR
+                    + parseNodeNameWithoutWildcard(measurementList.get(i + 1))));
+        parseAttributeClause(attributeList.get(i), dataTypes, encodings, compressors);
+      }
+      createTemplateOperator.addMeasurements(measurements);
+      createTemplateOperator.addDataTypes(dataTypes);
+      createTemplateOperator.addEncodings(encodings);
+      createTemplateOperator.addCompressor(compressors);
+    } else {
+      // single template measurement
+      alignedMeasurements.add(
+          parseNodeNameWithoutWildcard(
+              ((IoTDBSqlParser.SingleTemplateMeasurementContext) ctx).nodeNameWithoutWildcard()));
+      parseAttributeClause(
+          ((IoTDBSqlParser.SingleTemplateMeasurementContext) ctx).attributeClauses(),
+          alignedDataTypes,
+          alignedEncodings,
+          alignedCompressors);
+    }
   }
 
   void parseAttributeClause(
