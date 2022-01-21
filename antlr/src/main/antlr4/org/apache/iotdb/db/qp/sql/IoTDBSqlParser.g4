@@ -58,7 +58,7 @@ dclStatement
 
 utilityStatement
     : merge | fullMerge | flush | clearCache | settle
-    | setSystemStatus | showVersion | showFlushInfo | showLockInfo
+    | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
@@ -66,6 +66,7 @@ syncStatement
     : startPipeServer | stopPipeServer | showPipeServer
     | createPipeSink | showPipeSinkType | showPipeSink | dropPipeSink
     | createPipe | showPipe | stopPipe | startPipe | dropPipe;
+
 /**
  * 2. Data Definition Language (DDL)
  */
@@ -602,6 +603,11 @@ showLockInfo
     : SHOW LOCK INFO prefixPath
     ;
 
+
+// Show Query Resource
+showQueryResource
+    : SHOW QUERY RESOURCE
+    ;
 
 // Show Query Processlist
 showQueryProcesslist

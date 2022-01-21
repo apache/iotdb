@@ -95,6 +95,7 @@ public class TsFileResourceManager {
         throw new RuntimeException("Can't degrade any more");
       }
       long memoryReduce = tsFileResource.degradeTimeIndex();
+      logger.info("Degrade tsfile resource {}", tsFileResource.getTsFilePath());
       releaseTimeIndexMemCost(memoryReduce);
       // add the polled tsFileResource to the priority queue
       sealedTsFileResources.add(tsFileResource);

@@ -308,28 +308,17 @@ public class IoTDBDescriptor {
                   "io_task_queue_size_for_flushing",
                   Integer.toString(conf.getIoTaskQueueSizeForFlushing()))));
 
-      conf.setMergeChunkPointNumberThreshold(
-          Integer.parseInt(
-              properties.getProperty(
-                  "merge_chunk_point_number",
-                  Integer.toString(conf.getMergeChunkPointNumberThreshold()))));
-
-      conf.setMergePagePointNumberThreshold(
-          Integer.parseInt(
-              properties.getProperty(
-                  "merge_page_point_number",
-                  Integer.toString(conf.getMergePagePointNumberThreshold()))));
-      conf.setCompactionScheduleInterval(
+      conf.setCompactionScheduleIntervalInMs(
           Long.parseLong(
               properties.getProperty(
-                  "compaction_schedule_interval",
-                  Long.toString(conf.getCompactionScheduleInterval()))));
+                  "compaction_schedule_interval_in_ms",
+                  Long.toString(conf.getCompactionScheduleIntervalInMs()))));
 
-      conf.setCompactionSubmissionInterval(
+      conf.setCompactionSubmissionIntervalInMs(
           Long.parseLong(
               properties.getProperty(
-                  "compaction_submission_interval",
-                  Long.toString(conf.getCompactionSubmissionInterval()))));
+                  "compaction_submission_interval_in_ms",
+                  Long.toString(conf.getCompactionSubmissionIntervalInMs()))));
 
       conf.setEnableCrossSpaceCompaction(
           Boolean.parseBoolean(
@@ -495,20 +484,16 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "upgrade_thread_num", Integer.toString(conf.getUpgradeThreadNum()))));
-      conf.setMergeMemoryBudget(
+      conf.setCrossCompactionMemoryBudget(
           Long.parseLong(
               properties.getProperty(
-                  "merge_memory_budget", Long.toString(conf.getMergeMemoryBudget()))));
-      conf.setMergeChunkSubThreadNum(
-          Integer.parseInt(
-              properties.getProperty(
-                  "merge_chunk_subthread_num",
-                  Integer.toString(conf.getMergeChunkSubThreadNum()))));
-      conf.setMergeFileSelectionTimeBudget(
+                  "cross_compaction_memory_budget",
+                  Long.toString(conf.getCrossCompactionMemoryBudget()))));
+      conf.setCrossCompactionFileSelectionTimeBudget(
           Long.parseLong(
               properties.getProperty(
-                  "merge_fileSelection_time_budget",
-                  Long.toString(conf.getMergeFileSelectionTimeBudget()))));
+                  "cross_compaction_file_selection_time_budget",
+                  Long.toString(conf.getCrossCompactionFileSelectionTimeBudget()))));
       conf.setMergeIntervalSec(
           Long.parseLong(
               properties.getProperty(
@@ -639,9 +624,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "concurrent_writing_time_partition",
                   String.valueOf(conf.getConcurrentWritingTimePartition()))));
-
-      conf.setTimeIndexLevel(
-          properties.getProperty("time_index_level", String.valueOf(conf.getTimeIndexLevel())));
 
       // the default fill interval in LinearFill and PreviousFill
       conf.setDefaultFillInterval(

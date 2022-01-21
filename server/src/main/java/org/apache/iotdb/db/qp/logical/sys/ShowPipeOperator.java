@@ -15,6 +15,10 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+<<<<<<< HEAD
+=======
+ *
+>>>>>>> new_sync
  */
 package org.apache.iotdb.db.qp.logical.sys;
 

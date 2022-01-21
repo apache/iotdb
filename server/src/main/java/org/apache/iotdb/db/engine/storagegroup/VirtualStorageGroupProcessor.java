@@ -561,7 +561,7 @@ public class VirtualStorageGroupProcessor {
     timedCompactionScheduleTask.scheduleWithFixedDelay(
         this::executeCompaction,
         COMPACTION_TASK_SUBMIT_DELAY,
-        IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleInterval(),
+        IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
         TimeUnit.MILLISECONDS);
   }
 
@@ -2013,10 +2013,13 @@ public class VirtualStorageGroupProcessor {
         // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
         // change after compaction
         deletion.setFileOffset(Long.MAX_VALUE);
-        // write deletion into modification file
+        // write deletion into compaction modification file
         tsFileResource.getCompactionModFile().write(deletion);
+        // write deletion into modification file to enable query during compaction
+        tsFileResource.getModFile().write(deletion);
         // remember to close mod file
         tsFileResource.getCompactionModFile().close();
+        tsFileResource.getModFile().close();
       } else {
         deletion.setFileOffset(tsFileResource.getTsFileSize());
         // write deletion into modification file
@@ -2275,7 +2278,7 @@ public class VirtualStorageGroupProcessor {
   }
 
   /** merge file under this storage group processor */
-  public void merge() {
+  public void compact() {
     writeLock("merge");
     try {
       executeCompaction();
@@ -3184,7 +3187,7 @@ public class VirtualStorageGroupProcessor {
   }
 
   /** sync methods */
-  public void registerSyncDataCollecor(TsFilePipe tsFilePipe) {
+  public void registerSyncDataCollector(TsFilePipe tsFilePipe) {
     writeLock("Register collector for sync");
     this.syncDataCollector = tsFilePipe;
     registerTsFileResourceList(tsFileManager.getTsFileList(true), tsFilePipe);
@@ -3196,7 +3199,10 @@ public class VirtualStorageGroupProcessor {
       List<TsFileResource> tsFileResources, TsFilePipe tsFilePipe) {
     int size = tsFileResources.size();
     for (int i = 0; i < size; i++) {
-      tsFileResources.get(i).getProcessor().registerSyncDataCollector(tsFilePipe);
+      TsFileProcessor tsFileProcessor = tsFileResources.get(i).getProcessor();
+      if (tsFileProcessor != null) {
+        tsFileResources.get(i).getProcessor().registerSyncDataCollector(tsFilePipe);
+      }
     }
   }
 
@@ -3227,10 +3233,14 @@ public class VirtualStorageGroupProcessor {
       if (tsFileResource.getFileEndTime() < dataStartTime) {
         continue;
       }
-      boolean isRealTimeTsFile =
-          tsFileResource
-              .getProcessor()
-              .registerSyncDataCollector(syncDataCollector); // register to collect real time data
+      TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+      boolean isRealTimeTsFile = false;
+      if (tsFileProcessor != null) {
+        isRealTimeTsFile =
+            tsFileResource
+                .getProcessor()
+                .registerSyncDataCollector(syncDataCollector); // register to collect real time data
+      }
       if (!isRealTimeTsFile) {
         File mods = new File(tsFileResource.getModFile().getFilePath());
         long modsOffset = mods.exists() ? mods.length() : 0L;

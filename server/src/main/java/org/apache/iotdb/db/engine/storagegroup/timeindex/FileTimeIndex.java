@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
@@ -81,8 +80,7 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public Set<String> getDevices(String tsFilePath) {
-    try {
-      TsFileSequenceReader fileReader = FileReaderManager.getInstance().get(tsFilePath, true);
+    try (TsFileSequenceReader fileReader = new TsFileSequenceReader(tsFilePath)) {
       return new HashSet<>(fileReader.getAllDevices());
     } catch (IOException e) {
       logger.error("Can't read file {} from disk ", tsFilePath, e);

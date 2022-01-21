@@ -75,7 +75,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public boolean hasNextDevice() {
     boolean hasNext = false;
     for (TsFileDeviceIterator iterator : deviceIteratorMap.values()) {
-      hasNext = hasNext | iterator.hasNext();
+      hasNext = hasNext || iterator.hasNext() || !iterator.current().equals(currentDevice);
     }
     return hasNext;
   }

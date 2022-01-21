@@ -373,7 +373,7 @@ public class TsFileProcessor {
       } else {
         // here currentChunkPointNum >= 1
         long currentChunkPointNum =
-            workMemTable.getCurrentChunkPointNum(deviceID, insertRowPlan.getMeasurements()[i]);
+            workMemTable.getCurrentTVListSize(deviceID, insertRowPlan.getMeasurements()[i]);
         memTableIncrement +=
             (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
                 ? TVList.tvListArrayMemCost(insertRowPlan.getDataTypes()[i])
@@ -413,7 +413,7 @@ public class TsFileProcessor {
     } else {
       // here currentChunkPointNum >= 1
       long currentChunkPointNum =
-          workMemTable.getCurrentChunkPointNum(deviceID, AlignedPath.VECTOR_PLACEHOLDER);
+          workMemTable.getCurrentTVListSize(deviceID, AlignedPath.VECTOR_PLACEHOLDER);
       memTableIncrement +=
           (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
               ? AlignedTVList.alignedTvListArrayMemCost(insertRowPlan.getDataTypes())
@@ -522,7 +522,7 @@ public class TsFileProcessor {
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
               * TVList.tvListArrayMemCost(dataType);
     } else {
-      long currentChunkPointNum = workMemTable.getCurrentChunkPointNum(deviceId, measurement);
+      long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceId, measurement);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
@@ -562,7 +562,7 @@ public class TsFileProcessor {
               * AlignedTVList.alignedTvListArrayMemCost(dataTypes);
     } else {
       int currentChunkPointNum =
-          (int) workMemTable.getCurrentChunkPointNum(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
+          (int) workMemTable.getCurrentTVListSize(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)

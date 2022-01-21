@@ -220,6 +220,7 @@ public class TsFilePipe implements Pipe {
   }
 
   private void registerTsFile() {
+    StorageEngine.getInstance().registerSyncDataCollector(this);
     Iterator<Map.Entry<PartialPath, StorageGroupManager>> sgIterator =
         StorageEngine.getInstance().getProcessorMap().entrySet().iterator();
     while (sgIterator.hasNext()) {
@@ -228,6 +229,7 @@ public class TsFilePipe implements Pipe {
   }
 
   private void deregisterTsFile() {
+    StorageEngine.getInstance().registerSyncDataCollector(null);
     Iterator<Map.Entry<PartialPath, StorageGroupManager>> sgIterator =
         StorageEngine.getInstance().getProcessorMap().entrySet().iterator();
     while (sgIterator.hasNext()) {
@@ -237,6 +239,7 @@ public class TsFilePipe implements Pipe {
 
   private List<Pair<File, Long>> collectTsFile() {
     List<Pair<File, Long>> historyTsFiles = new ArrayList<>();
+    StorageEngine.getInstance().registerSyncDataCollector(this);
     Iterator<Map.Entry<PartialPath, StorageGroupManager>> sgIterator =
         StorageEngine.getInstance().getProcessorMap().entrySet().iterator();
     while (sgIterator.hasNext()) {
@@ -297,7 +300,7 @@ public class TsFilePipe implements Pipe {
 
   public void collectRealTimeTsFileResource(File tsFile) {
     try {
-      pipeLog.addRealTimeTsFileResource(tsFile);
+      pipeLog.addTsFileResource(tsFile);
     } catch (IOException e) {
       logger.warn(
           String.format(
@@ -307,6 +310,7 @@ public class TsFilePipe implements Pipe {
 
   /** transport data * */
   private void transport() {
+    // handshake
     try {
       while (true) {
         if (status == PipeStatus.STOP || status == PipeStatus.DROP) {
