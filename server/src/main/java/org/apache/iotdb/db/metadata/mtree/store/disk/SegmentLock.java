@@ -21,20 +21,18 @@ package org.apache.iotdb.db.metadata.mtree.store.disk;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- * Segment lock for saving memory space
- * Notice that this class is a static class and all it's methods are static
+ * Segment lock for saving memory space Notice that this class is a static class and all it's
+ * methods are static
  */
 public class SegmentLock {
 
   /**
-   * number of reentrant read write lock.
-   * Notice that this number should be a prime number for uniform hash
+   * number of reentrant read write lock. Notice that this number should be a prime number for
+   * uniform hash
    */
   private static final int NUM_OF_LOCKS = 1013;
 
-  /**
-   * locks array
-   */
+  /** locks array */
   private static ReentrantReadWriteLock[] locks;
 
   // initialize locks
@@ -47,42 +45,47 @@ public class SegmentLock {
 
   /**
    * read lock of lock at slot[hash % NUM_OF_LOCKS]
+   *
    * @param hash hash value of object to be locked
    */
-  public static void readLock(int hash){
+  public static void readLock(int hash) {
     findLock(hash).readLock().lock();
   }
 
   /**
    * read unlock of lock at slot[hash % NUM_OF_LOCKS]
+   *
    * @param hash hash value of object to be locked
    */
-  public static void readUnlock(int hash){
+  public static void readUnlock(int hash) {
     findLock(hash).readLock().unlock();
   }
 
   /**
    * write lock of lock at slot[hash % NUM_OF_LOCKS]
+   *
    * @param hash hash value of object to be locked
    */
-  public static void writeLock(int hash){
+  public static void writeLock(int hash) {
     findLock(hash).writeLock().lock();
   }
 
   /**
    * write unlock of lock at slot[hash % NUM_OF_LOCKS]
+   *
    * @param hash hash value of object to be locked
    */
-  public static void writeUnlock(int hash){
+  public static void writeUnlock(int hash) {
     findLock(hash).writeLock().unlock();
   }
 
   /**
    * find lock at slot[hash % NUM_OF_LOCKS]
+   *
    * @param hash hash value of object to be locked
    * @return lock at slot[hash % NUM_OF_LOCKS]
    */
-  private static ReentrantReadWriteLock findLock(int hash){
+  private static ReentrantReadWriteLock findLock(int hash) {
     return locks[hash % NUM_OF_LOCKS];
   }
 }

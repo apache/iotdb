@@ -20,16 +20,29 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
 
+import org.jetbrains.annotations.NotNull;
+
+import java.util.AbstractMap;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
+
+import static java.util.Collections.emptySet;
+
 public class MNodeContainers {
 
   public static boolean IS_DISK_MODE = false;
 
   @SuppressWarnings("rawtypes")
-  private static final IMNodeContainer EMPTY_CONTAINER = new MNodeContainerMapImpl();
+  private static final IMNodeContainer EMPTY_CONTAINER = new EmptyContainer();
 
   @SuppressWarnings("unchecked")
   public static IMNodeContainer emptyMNodeContainer() {
     return EMPTY_CONTAINER;
+  }
+
+  public static boolean isEmptyContainer(IMNodeContainer container) {
+    return EMPTY_CONTAINER.equals(container);
   }
 
   public static IMNodeContainer getNewMNodeContainer() {
@@ -37,6 +50,45 @@ public class MNodeContainers {
       return new CachedMNodeContainer();
     } else {
       return new MNodeContainerMapImpl();
+    }
+  }
+
+  private static class EmptyContainer extends AbstractMap<String, IMNode>
+      implements IMNodeContainer {
+
+    public int size() {
+      return 0;
+    }
+
+    public boolean isEmpty() {
+      return true;
+    }
+
+    public boolean containsKey(Object key) {
+      return false;
+    }
+
+    public boolean containsValue(Object value) {
+      return false;
+    }
+
+    public IMNode get(Object key) {
+      return null;
+    }
+
+    @NotNull
+    public Set<String> keySet() {
+      return emptySet();
+    }
+
+    @NotNull
+    public Collection<IMNode> values() {
+      return emptySet();
+    }
+
+    @NotNull
+    public Set<Map.Entry<String, IMNode>> entrySet() {
+      return emptySet();
     }
   }
 }

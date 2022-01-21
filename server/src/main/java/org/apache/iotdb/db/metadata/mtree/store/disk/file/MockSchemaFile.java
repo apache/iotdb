@@ -213,8 +213,7 @@ public class MockSchemaFile implements ISchemaFile {
 
     @Override
     public IMNode next() {
-      IMNode result = cloneMNode(iterator.next());
-      return result;
+      return cloneMNode(iterator.next());
     }
   }
 }
