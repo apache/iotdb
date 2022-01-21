@@ -53,7 +53,7 @@ public class FixedPriorityBlockingQueue<T> {
     try {
       queue.add(element);
       if (queue.size() > maxSize) {
-        queue.pollLast();
+        this.pollLast();
       }
       notEmpty.signal();
     } finally {
