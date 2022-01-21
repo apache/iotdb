@@ -329,6 +329,19 @@ public class TemplateTest {
   }
 
   @Test
+  public void testShowAllSchemas() throws MetadataException {
+    MManager manager = IoTDB.metaManager;
+    CreateTemplatePlan plan1 = getTreeTemplatePlan();
+    CreateTemplatePlan plan2 = getCreateTemplatePlan();
+    manager.createSchemaTemplate(plan1);
+    manager.createSchemaTemplate(plan2);
+    assertEquals(4, manager.getSchemasInTemplate("treeTemplate", "").size());
+    assertEquals(2, manager.getSchemasInTemplate("treeTemplate", "GPS").size());
+    assertEquals(11, manager.getSchemasInTemplate("template1", "").size());
+    assertEquals(10, manager.getSchemasInTemplate("template1", "vector").size());
+  }
+
+  @Test
   public void testDropTemplate() throws MetadataException {
     MManager manager = IoTDB.metaManager;
     CreateTemplatePlan plan1 = getTreeTemplatePlan();
