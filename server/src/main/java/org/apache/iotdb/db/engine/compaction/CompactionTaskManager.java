@@ -326,7 +326,6 @@ public class CompactionTaskManager implements IService {
       throws RejectedExecutionException {
     if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
       Future<Void> future = taskExecutionPool.submit(compactionMergeTask);
-      CompactionScheduler.addPartitionCompaction(fullStorageGroupName, timePartition);
       compactionTaskFutures
           .computeIfAbsent(fullStorageGroupName, k -> new ConcurrentHashMap<>())
           .computeIfAbsent(timePartition, k -> new HashSet<>())

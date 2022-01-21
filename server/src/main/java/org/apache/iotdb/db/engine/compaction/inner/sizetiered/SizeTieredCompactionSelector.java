@@ -79,13 +79,12 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
-  public boolean selectAndSubmit() {
+  public void selectAndSubmit() {
     final CompactionPriority priority =
         IoTDBDescriptor.getInstance().getConfig().getCompactionPriority();
     tsFileResources.readLock();
     PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
-    boolean taskSubmitted = false;
     try {
       int maxLevel = searchMaxFileLevel();
       for (int currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
@@ -94,17 +93,13 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         }
       }
       while (taskPriorityQueue.size() > 0) {
-        taskSubmitted = createAndSubmitTask(taskPriorityQueue.poll().left) || taskSubmitted;
-        if (taskSubmitted && priority == CompactionPriority.BALANCE) {
-          break;
-        }
+        createAndSubmitTask(taskPriorityQueue.poll().left);
       }
     } catch (Exception e) {
       LOGGER.error("Exception occurs while selecting files", e);
     } finally {
       tsFileResources.readUnlock();
     }
-    return taskSubmitted;
   }
 
   /**

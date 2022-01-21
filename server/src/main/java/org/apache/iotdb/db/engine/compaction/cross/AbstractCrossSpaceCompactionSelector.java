@@ -50,5 +50,5 @@ public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompa
   }
 
   @Override
-  public abstract boolean selectAndSubmit();
+  public abstract void selectAndSubmit();
 }
