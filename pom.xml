@@ -687,6 +687,8 @@
                             <exclude>**/resources/META-INF/services/**</exclude>
                             <!-- grafana plugin -->
                             <exclude>**/yarn.lock</exclude>
+                            <!-- site-->
+                            <exclude>**/redirects</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
