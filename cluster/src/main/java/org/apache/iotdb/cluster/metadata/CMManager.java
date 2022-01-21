@@ -923,12 +923,15 @@ public class CMManager extends MManager {
   /**
    * Get all devices after removing wildcards in the path
    *
-   * @param originPath a path potentially with wildcard
-   * @return all paths after removing wildcards in the path
+   * @param originPath a path potentially with wildcard.
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   * @return all paths after removing wildcards in the path.
    */
-  public Set<PartialPath> getMatchedDevices(PartialPath originPath) throws MetadataException {
+  @Override
+  public Set<PartialPath> getMatchedDevices(PartialPath originPath, boolean isPrefixMatch)
+      throws MetadataException {
     Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(originPath);
-    Set<PartialPath> ret = getMatchedDevices(sgPathMap);
+    Set<PartialPath> ret = getMatchedDevices(sgPathMap, isPrefixMatch);
     logger.debug("The devices of path {} are {}", originPath, ret);
     return ret;
   }
@@ -1088,10 +1091,11 @@ public class CMManager extends MManager {
    *
    * @param sgPathMap the key is the storage group name and the value is the path pattern to be
    *     queried with storage group added
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return a collection of all queried devices
    */
-  private Set<PartialPath> getMatchedDevices(Map<String, List<PartialPath>> sgPathMap)
-      throws MetadataException {
+  private Set<PartialPath> getMatchedDevices(
+      Map<String, List<PartialPath>> sgPathMap, boolean isPrefixMatch) throws MetadataException {
     Set<PartialPath> result = new HashSet<>();
     // split the paths by the data group they belong to
     Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
@@ -1113,7 +1117,7 @@ public class CMManager extends MManager {
         }
         Set<PartialPath> allDevices = new HashSet<>();
         for (PartialPath path : paths) {
-          allDevices.addAll(super.getMatchedDevices(path));
+          allDevices.addAll(super.getMatchedDevices(path, isPrefixMatch));
         }
         logger.debug(
             "{}: get matched paths of {} locally, result {}",
@@ -1136,19 +1140,21 @@ public class CMManager extends MManager {
       PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
       List<String> pathsToQuery = partitionGroupPathEntry.getValue();
 
-      result.addAll(getMatchedDevices(partitionGroup, pathsToQuery));
+      result.addAll(getMatchedDevices(partitionGroup, pathsToQuery, isPrefixMatch));
     }
 
     return result;
   }
 
   private Set<PartialPath> getMatchedDevices(
-      PartitionGroup partitionGroup, List<String> pathsToQuery) throws MetadataException {
+      PartitionGroup partitionGroup, List<String> pathsToQuery, boolean isPrefixMatch)
+      throws MetadataException {
     // choose the node with lowest latency or highest throughput
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : coordinatedNodes) {
       try {
-        Set<String> paths = getMatchedDevices(node, partitionGroup.getHeader(), pathsToQuery);
+        Set<String> paths =
+            getMatchedDevices(node, partitionGroup.getHeader(), pathsToQuery, isPrefixMatch);
         logger.debug(
             "{}: get matched paths of {} from {}, result {} for {}",
             metaGroupMember.getName(),
@@ -1175,14 +1181,15 @@ public class CMManager extends MManager {
     return Collections.emptySet();
   }
 
-  private Set<String> getMatchedDevices(Node node, RaftNode header, List<String> pathsToQuery)
+  private Set<String> getMatchedDevices(
+      Node node, RaftNode header, List<String> pathsToQuery, boolean isPrefixMatch)
       throws IOException, TException, InterruptedException {
     Set<String> paths;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
           ClusterIoTDB.getInstance()
               .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-      paths = SyncClientAdaptor.getAllDevices(client, header, pathsToQuery);
+      paths = SyncClientAdaptor.getAllDevices(client, header, pathsToQuery, isPrefixMatch);
     } else {
       SyncDataClient syncDataClient = null;
       try {
@@ -1190,7 +1197,7 @@ public class CMManager extends MManager {
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         try {
-          paths = syncDataClient.getAllDevices(header, pathsToQuery);
+          paths = syncDataClient.getAllDevices(header, pathsToQuery, isPrefixMatch);
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
           syncDataClient.close();
@@ -1321,12 +1328,15 @@ public class CMManager extends MManager {
   /**
    * Get the local devices that match any path in "paths". The result is deduplicated.
    *
-   * @param paths paths potentially contain wildcards
+   * @param paths paths potentially contain wildcards.
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path.
+   * @return A HashSet instance which stores devices paths matching the given path pattern.
    */
-  public Set<String> getAllDevices(List<String> paths) throws MetadataException {
+  public Set<String> getAllDevices(List<String> paths, boolean isPrefixMatch)
+      throws MetadataException {
     Set<String> results = new HashSet<>();
     for (String path : paths) {
-      this.getMatchedDevices(new PartialPath(path)).stream()
+      this.getMatchedDevices(new PartialPath(path), isPrefixMatch).stream()
           .map(PartialPath::getFullPath)
           .forEach(results::add);
     }
