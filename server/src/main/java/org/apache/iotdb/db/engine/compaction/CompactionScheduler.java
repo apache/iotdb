@@ -28,9 +28,6 @@ import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFacto
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 /**
  * CompactionScheduler schedules and submits the compaction task periodically, and it counts the
  * total number of running compaction task. There are three compaction strategy: BALANCE,
@@ -45,8 +42,6 @@ public class CompactionScheduler {
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   // fullStorageGroupName -> timePartition -> compactionCount
-  private static volatile Map<String, Map<Long, Long>> compactionCountInPartition =
-      new ConcurrentHashMap<>();
 
   public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition) {
     if (!tsFileManager.isAllowCompaction()) {

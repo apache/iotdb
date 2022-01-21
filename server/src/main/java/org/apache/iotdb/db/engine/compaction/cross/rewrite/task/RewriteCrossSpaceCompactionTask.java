@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionExceptionHandler;
@@ -29,7 +28,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
@@ -65,9 +63,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   private List<TsFileResource> targetTsfileResourceList;
   private List<TsFileResource> holdReadLockList = new ArrayList<>();
   private List<TsFileResource> holdWriteLockList = new ArrayList<>();
-  private boolean getWriteLockOfManager = false;
-  private final long ACQUIRE_WRITE_LOCK_TIMEOUT =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionAcquireWriteLockTimeout();
 
   String storageGroupName;
 
@@ -106,14 +101,10 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
           targetTsfileResourceList,
           selectedSeqTsFileResourceList,
           selectedUnSeqTsFileResourceList,
-          tsFileManager,
-          timePartition);
+          tsFileManager);
       throw throwable;
     } finally {
       releaseAllLock();
-      if (getWriteLockOfManager) {
-        tsFileManager.writeUnlock();
-      }
     }
   }
 
@@ -166,22 +157,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
 
       CompactionUtils.combineModsInCompaction(
           selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
-      try {
-        tsFileManager.writeLockWithTimeout(
-            "rewrite-cross-space compaction", ACQUIRE_WRITE_LOCK_TIMEOUT);
-        getWriteLockOfManager = true;
-      } catch (WriteLockFailedException e) {
-        // if current compaction thread couldn't get write lock
-        // a WriteLockFailException will be thrown, then terminate the thread itself
-        logger.error(
-            "{} [Compaction] CrossSpaceCompactionTask failed to get write lock, abort the task.",
-            fullStorageGroupName,
-            e);
-        throw new InterruptedException(
-            String.format(
-                "%s [Compaction] compaction abort because cannot acquire write lock",
-                fullStorageGroupName));
-      }
 
       deleteOldFiles(selectedSeqTsFileResourceList);
       deleteOldFiles(selectedUnSeqTsFileResourceList);
@@ -218,11 +193,11 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       if (tsFileResource.isCompacting()
           || !tsFileResource.isClosed()
           || !tsFileResource.getTsFile().exists()
-          || tsFileResource.isDeleted()) {
+          || tsFileResource.isDeleted()
+          || !tsFileResource.tryReadLock()) {
         releaseAllLock();
         return false;
       }
-      tsFileResource.readLock();
       holdReadLockList.add(tsFileResource);
       tsFileResource.setCompacting(true);
     }

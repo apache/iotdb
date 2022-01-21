@@ -389,4 +389,9 @@ public class CompactionTaskManager implements IService {
     currentTaskNum = new AtomicInteger(0);
     logger.info("Compaction task manager started.");
   }
+
+  @TestOnly
+  public void clearCandidateQueue() {
+    candidateCompactionTaskQueue.clear();
+  }
 }

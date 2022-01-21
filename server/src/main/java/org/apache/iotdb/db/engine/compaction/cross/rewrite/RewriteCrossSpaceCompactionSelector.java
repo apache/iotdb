@@ -71,17 +71,6 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
   public void selectAndSubmit() {
     if ((CompactionTaskManager.currentTaskNum.get() >= config.getConcurrentCompactionThread())
         || (!config.isEnableCrossSpaceCompaction())) {
-      if (CompactionTaskManager.currentTaskNum.get() >= config.getConcurrentCompactionThread()) {
-        LOGGER.debug("End selection because too many threads");
-      } else if (!config.isEnableCrossSpaceCompaction()) {
-        LOGGER.debug("End selection because cross compaction is not enable");
-      } else {
-        LOGGER.debug(
-            "End selection because {}-{} is compacting, task num in CompactionTaskManager is {}",
-            logicalStorageGroupName,
-            virtualGroupId,
-            CompactionTaskManager.currentTaskNum.get());
-      }
       return;
     }
     Iterator<TsFileResource> seqIterator = sequenceFileList.iterator();
@@ -136,8 +125,6 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
                 timePartition,
                 storageGroupDir,
                 tsFileManager,
-                sequenceFileList,
-                unsequenceFileList,
                 mergeFiles[0],
                 mergeFiles[1]);
         CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
