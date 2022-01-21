@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -33,6 +34,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.file.NoSuchFileException;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -79,9 +82,17 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<String> getDevices(String tsFilePath) {
+  public Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource) {
     try (TsFileSequenceReader fileReader = new TsFileSequenceReader(tsFilePath)) {
       return new HashSet<>(fileReader.getAllDevices());
+    } catch (NoSuchFileException e) {
+      // deleted by ttl
+      if (tsFileResource.isDeleted()) {
+        return Collections.emptySet();
+      } else {
+        logger.error("Can't read file {} from disk ", tsFilePath, e);
+        throw new RuntimeException("Can't read file " + tsFilePath + " from disk");
+      }
     } catch (IOException e) {
       logger.error("Can't read file {} from disk ", tsFilePath, e);
       throw new RuntimeException("Can't read file " + tsFilePath + " from disk");
