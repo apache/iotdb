@@ -19,13 +19,13 @@
 
 -->
 
-# CSV Tool
+# 导入导出 CSV
 
 CSV 工具可帮您将 CSV 格式的数据导入到 IoTDB 或者将数据从 IoTDB 导出到 CSV 文件。
 
 ## 使用 export-csv.sh
 
-#### 运行方法
+### 运行方法
 
 ```shell
 # Unix/OS X
@@ -79,7 +79,7 @@ CSV 工具可帮您将 CSV 格式的数据导入到 IoTDB 或者将数据从 IoT
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt
 ```
 
-#### SQL 文件示例
+### SQL 文件示例
 
 ```sql
 select * from root;

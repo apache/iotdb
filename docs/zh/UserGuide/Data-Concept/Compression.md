@@ -119,3 +119,12 @@ SDT 在刷新到磁盘时进行压缩。 SDT 算法始终存储第一个点，�
 时间范围在 [2017-11-01T00:06:00.001, 2017-11-01T00:06:00.007] 的数据在压缩偏差内，因此被压缩和丢弃。
 之所以存储时间为 2017-11-01T00:06:00.007 的数据点，是因为下一个数据点 2017-11-01T00:06:00.015 的值超过压缩偏差。
 当一个数据点超过压缩偏差时，SDT 将存储上一个读取的数据点，并重新计算上下压缩边界。作为最后一个数据点，不存储时间 2017-11-01T00:06:00.018。
+
+## 压缩比统计信息
+
+压缩比统计信息文件：data/system/storage_groups/compression_ratio/Ratio-{ratio_sum}-{memtable_flush_time}
+
+* ratio_sum: memtable压缩比的总和
+* memtable_flush_time: memtable刷盘的总次数
+
+通过 `ratio_sum / memtable_flush_time` 可以计算出平均压缩比

@@ -16,38 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.engine.memtable;
+package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
-public interface IWritableMemChunkGroup {
+public class ShowQueryResourcePlan extends PhysicalPlan {
 
-  void writeValues(
-      long[] times,
-      Object[] columns,
-      BitMap[] bitMaps,
-      List<IMeasurementSchema> schemaList,
-      int start,
-      int end);
+  public ShowQueryResourcePlan() {
+    super(Operator.OperatorType.SHOW_QUERY_RESOURCE);
+  }
 
-  void release();
-
-  long count();
-
-  boolean contains(String measurement);
-
-  void write(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
-
-  Map<String, IWritableMemChunk> getMemChunkMap();
-
-  int delete(
-      PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp);
-
-  long getCurrentTVListSize(String measurement);
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
+  }
 }

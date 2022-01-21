@@ -73,7 +73,8 @@ public class CrossSpaceMergeResource {
     return res.getTsFile().exists()
         && !res.isDeleted()
         && (!res.isClosed() || res.stillLives(ttlLowerBound))
-        && !res.isMerging();
+        && !res.isCompacting()
+        && !res.isCompactionCandidate();
   }
 
   public CrossSpaceMergeResource(

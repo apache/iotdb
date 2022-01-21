@@ -22,6 +22,8 @@ package org.apache.iotdb.db.utils.datastructure;
 import com.google.common.collect.MinMaxPriorityQueue;
 
 import java.util.Comparator;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -37,10 +39,12 @@ public class FixedPriorityBlockingQueue<T> {
   private ReentrantLock lock = new ReentrantLock();
   private Condition notEmpty = lock.newCondition();
 
+  private List<PollLastHook> pollLastHookList = new CopyOnWriteArrayList<>();
+
   public FixedPriorityBlockingQueue(int maxSize, Comparator<T> comparator) {
     this.maxSize = maxSize;
     this.comparator = comparator;
-    this.queue = MinMaxPriorityQueue.orderedBy(comparator).maximumSize(maxSize).create();
+    this.queue = MinMaxPriorityQueue.orderedBy(comparator).maximumSize(maxSize + 1).create();
   }
 
   public void put(T element) throws InterruptedException {
@@ -48,6 +52,9 @@ public class FixedPriorityBlockingQueue<T> {
     lock.lockInterruptibly();
     try {
       queue.add(element);
+      if (queue.size() > maxSize) {
+        this.pollLast();
+      }
       notEmpty.signal();
     } finally {
       lock.unlock();
@@ -94,6 +101,18 @@ public class FixedPriorityBlockingQueue<T> {
     }
   }
 
+  /**
+   * Add a hook for this queue. If an element is kicked out because the queue's size exceed the
+   * largest value, the hook will apply to this element. Notice, multiple hooks can be added to a
+   * queue, and all of them will be applied to the element kicked out. The order in which they are
+   * applied depends on the order in which they were registered.
+   *
+   * @param hook
+   */
+  public void regsitPollLastHook(PollLastHook<T> hook) {
+    this.pollLastHookList.add(hook);
+  }
+
   public boolean contains(T element) {
     final ReentrantLock lock = this.lock;
     lock.lock();
@@ -124,11 +143,41 @@ public class FixedPriorityBlockingQueue<T> {
     }
   }
 
+  public boolean isEmpty() {
+    final ReentrantLock lock = this.lock;
+    lock.lock();
+    try {
+      return queue.isEmpty();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  private void pollLast() {
+    final ReentrantLock lock = this.lock;
+    lock.lock();
+    T element = null;
+    try {
+      element = queue.pollLast();
+    } finally {
+      lock.unlock();
+    }
+    if (element != null) {
+      T finalElement = element;
+      pollLastHookList.forEach(x -> x.apply(finalElement));
+    }
+  }
+
   public Comparator<T> getComparator() {
     return this.comparator;
   }
 
   public int getMaxSize() {
     return this.maxSize;
+  }
+
+  @FunctionalInterface
+  public interface PollLastHook<T> {
+    void apply(T x);
   }
 }

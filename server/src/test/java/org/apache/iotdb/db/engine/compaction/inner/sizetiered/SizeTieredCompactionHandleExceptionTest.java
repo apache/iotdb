@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTest;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -46,6 +47,7 @@ public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceC
 
   @After
   public void tearDown() throws StorageEngineException, IOException {
+    new CompactionConfigRestorer().restoreCompactionConfig();
     super.tearDown();
   }
 

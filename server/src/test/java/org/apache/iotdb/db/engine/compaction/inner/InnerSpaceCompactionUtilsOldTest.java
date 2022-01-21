@@ -73,7 +73,7 @@ public class InnerSpaceCompactionUtilsOldTest extends InnerCompactionTest {
   }
 
   @Test
-  public void testCompact() throws IOException, MetadataException {
+  public void testCompact() throws IOException, MetadataException, InterruptedException {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
@@ -109,7 +109,7 @@ public class InnerSpaceCompactionUtilsOldTest extends InnerCompactionTest {
       sizeTieredCompactionLogger.logFileInfo(SOURCE_INFO, resource.getTsFile());
     }
     sizeTieredCompactionLogger.logSequence(true);
-    InnerSpaceCompactionUtils.compact(targetTsFileResource, seqResources, true);
+    InnerSpaceCompactionUtils.compact(targetTsFileResource, seqResources);
     InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     sizeTieredCompactionLogger.close();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());

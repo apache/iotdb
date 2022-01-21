@@ -46,7 +46,7 @@ IoTDB 支持的聚合函数如下：
 | MAX_TIME    | 求最大时间戳。                                               | 所有类型                 | Timestamp      |
 | MIN_TIME    | 求最小时间戳。                                               | 所有类型                 | Timestamp      |
 
-**示例：**统计总点数
+**示例：** 统计总点数
 
 ```sql
 select count(status) from root.ln.wf01.wt01;
@@ -70,7 +70,7 @@ It costs 0.016s
 - 使用 `GROUP BY LEVEL = INT` 来指定需要聚合的层级，并约定 `ROOT` 为第 0 层。若统计 "root.ln" 下所有序列则需指定 level 为 1。
 - 分层聚合查询支持使用所有内置聚合函数。对于 `sum`，`avg`，`min_value`， `max_value`， `extreme` 五种聚合函数，需保证所有聚合的时间序列数据类型相同。其他聚合函数没有此限制。
 
-**示例1：**不同存储组下均存在名为 status 的序列， 如 "root.ln.wf01.wt01.status", "root.ln.wf02.wt02.status", 以及 "root.sgcc.wf03.wt01.status", 如果需要统计不同存储组下 status 序列的数据点个数，使用以下查询：
+**示例1：** 不同存储组下均存在名为 status 的序列， 如 "root.ln.wf01.wt01.status", "root.ln.wf02.wt02.status", 以及 "root.sgcc.wf03.wt01.status", 如果需要统计不同存储组下 status 序列的数据点个数，使用以下查询：
 
 ```sql
 select count(status) from root.** group by level = 1
@@ -88,7 +88,7 @@ Total line number = 1
 It costs 0.003s
 ```
 
-**示例2：**统计不同设备下 status 序列的数据点个数，可以规定 level = 3，
+**示例2：** 统计不同设备下 status 序列的数据点个数，可以规定 level = 3，
 
 ```sql
 select count(status) from root.** group by level = 3
@@ -108,7 +108,7 @@ It costs 0.003s
 
 注意，这时会将存储组 `ln` 和 `sgcc` 下名为 `wt01` 的设备视为同名设备聚合在一起。
 
-**示例3：**统计不同存储组下的不同设备中 status 序列的数据点个数，可以使用以下查询：
+**示例3：** 统计不同存储组下的不同设备中 status 序列的数据点个数，可以使用以下查询：
 
 ```sql
 select count(status) from root.** group by level = 1, 3
@@ -126,7 +126,7 @@ Total line number = 1
 It costs 0.003s
 ```
 
-**示例4：**查询所有序列下温度传感器 temperature 的最大值，可以使用下列查询语句：
+**示例4：** 查询所有序列下温度传感器 temperature 的最大值，可以使用下列查询语句：
 
 ```sql
 select max_value(temperature) from root.** group by level = 0
@@ -144,7 +144,7 @@ Total line number = 1
 It costs 0.013s
 ```
 
-**示例5：**上面的查询都是针对某一个传感器，特别地，**如果想要查询某一层级下所有传感器拥有的总数据点数，则需要显式规定测点为 `*`**
+**示例5：** 上面的查询都是针对某一个传感器，特别地，**如果想要查询某一层级下所有传感器拥有的总数据点数，则需要显式规定测点为 `*`**
 
 ```sql
 select count(*) from root.ln.** group by level = 2
