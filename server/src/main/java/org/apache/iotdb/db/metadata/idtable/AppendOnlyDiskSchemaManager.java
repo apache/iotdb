@@ -26,10 +26,12 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -45,6 +47,9 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
 
   private static final String FILE_NAME = "SeriesKeyMapping.meta";
 
+  // file version to distinguish different id table file
+  private static final String FILE_VERSION = "AppendOnly_V1";
+
   File dataFile;
 
   OutputStream outputStream;
@@ -57,6 +62,10 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
     try {
       initFile(dir);
       outputStream = new FileOutputStream(dataFile, true);
+      // we write file version to new file
+      if (loc == 0) {
+        ReadWriteIOUtils.write(FILE_VERSION, outputStream);
+      }
     } catch (IOException e) {
       logger.error(e.getMessage());
       throw new IllegalArgumentException("can't initialize disk schema manager at " + dataFile);
@@ -74,7 +83,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
     dataFile = new File(dir, FILE_NAME);
     if (dataFile.exists()) {
       loc = dataFile.length();
-      if (!checkLastEntry(loc)) {
+      if (!checkFileConsistency(loc)) {
         throw new IOException("File corruption");
       }
     } else {
@@ -89,7 +98,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
     }
   }
 
-  private boolean checkLastEntry(long pos) {
+  private boolean checkFileConsistency(long pos) {
     // empty file
     if (pos == 0) {
       return true;
@@ -102,20 +111,33 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
 
     pos -= Integer.BYTES;
     try (RandomAccessFile randomAccessFile = new RandomAccessFile(dataFile, "r");
-        FileInputStream inputStream = new FileInputStream(dataFile)) {
+        BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(dataFile))) {
+      // check file version
+      inputStream.mark(Integer.BYTES + (FILE_VERSION.length() << 2));
+      String version = ReadWriteIOUtils.readString(inputStream);
+      if (!FILE_VERSION.equals(version)) {
+        logger.error("File version isn't right, need: {}, actual: {} ", FILE_VERSION, version);
+        return false;
+      }
+      inputStream.reset();
+
+      // check last entry
       randomAccessFile.seek(pos);
       int lastEntrySize = randomAccessFile.readInt();
       // last int is not right
       if (pos - lastEntrySize < 0) {
+        logger.error("Last entry size isn't right");
         return false;
       }
 
       long realSkip = inputStream.skip(pos - lastEntrySize);
       // file length isn't right
       if (realSkip != pos - lastEntrySize) {
+        logger.error("File length isn't right");
         return false;
       }
 
+      // try to deserialize last entry
       DiskSchemaEntry.deserialize(inputStream);
     } catch (Exception e) {
       logger.error("can't deserialize last entry, file corruption." + e);
@@ -143,6 +165,9 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
     long loc = 0;
 
     try (FileInputStream inputStream = new FileInputStream(dataFile)) {
+      // read file version
+      ReadWriteIOUtils.readString(inputStream);
+
       while (inputStream.available() > 0) {
         DiskSchemaEntry cur = DiskSchemaEntry.deserialize(inputStream);
         SchemaEntry schemaEntry =
@@ -161,24 +186,25 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
 
   @TestOnly
   public Collection<DiskSchemaEntry> getAllSchemaEntry() throws IOException {
-    FileInputStream inputStream = new FileInputStream(dataFile);
     List<DiskSchemaEntry> res = new ArrayList<>();
-    // for test, we read at most 1000 entries.
-    int maxCount = 1000;
 
-    while (maxCount > 0) {
-      try {
-        maxCount--;
-        DiskSchemaEntry cur = DiskSchemaEntry.deserialize(inputStream);
-        res.add(cur);
-      } catch (IOException e) {
-        logger.debug("read finished");
-        break;
+    try (FileInputStream inputStream = new FileInputStream(dataFile)) {
+      // read file version
+      ReadWriteIOUtils.readString(inputStream);
+      // for test, we read at most 1000 entries.
+      int maxCount = 1000;
+
+      while (maxCount > 0) {
+        try {
+          maxCount--;
+          DiskSchemaEntry cur = DiskSchemaEntry.deserialize(inputStream);
+          res.add(cur);
+        } catch (IOException e) {
+          logger.debug("read finished");
+          break;
+        }
       }
     }
-
-    // free resource
-    inputStream.close();
 
     return res;
   }

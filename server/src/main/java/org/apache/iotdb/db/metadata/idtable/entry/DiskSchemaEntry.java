@@ -29,20 +29,28 @@ import java.io.OutputStream;
  * the disk schema entry of schema entry of id table. This is a po class, so every field is public
  */
 public class DiskSchemaEntry {
+  // id form device path, eg: 1#2#3#4
   public String deviceID;
 
+  // full timeseries path, eg: root.sg1.d1.s1
   public String seriesKey;
 
+  // measurement name of timeseries: eg: s1
   public String measurementName;
 
+  // timeseries data type
   public byte type;
 
+  // timeseries encoding type
   public byte encoding;
 
+  // timeseries compressor type
   public byte compressor;
 
+  // whether this device is aligned
   public boolean isAligned;
 
+  // this entry's serialized size
   public transient long entrySize;
 
   private DiskSchemaEntry() {}
