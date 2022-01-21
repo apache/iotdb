@@ -21,15 +21,20 @@
 
 # Auto create metadata
 
-This function is enabled by default, and it can be disabled by setting enabling_auto_create_schema to false.
-
-## Background
-
-* Unable to predict entities and measurements exactly, so unable to model them in advance
-
-* Avoid creating metadata manually
+Automatically creating schema means creating time series based on the characteristics of written data in case time series haven't defined by users themselves.
+This function can not only solve the problem that entities and measurements are difficult to predict and model in advance under massive time series scenarios,
+but also provide users with an out-of-the-box writing experience.
 
 ## Auto create storage group metadata
+
+* enable\_auto\_create\_schema
+
+| Name | enable\_auto\_create\_schema |
+|:---:|:---|
+| Description | whether creating schema automatically is enabled，enabled by default |
+| Type | boolean |
+| Default | true |
+| Effective | After restarting system |
 
 * default\_storage\_group\_level
 
