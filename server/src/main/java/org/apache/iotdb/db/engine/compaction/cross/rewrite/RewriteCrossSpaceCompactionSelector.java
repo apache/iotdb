@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTaskFactory;
@@ -69,12 +68,9 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
-  public boolean selectAndSubmit() {
-    boolean taskSubmitted = false;
+  public void selectAndSubmit() {
     if ((CompactionTaskManager.currentTaskNum.get() >= config.getConcurrentCompactionThread())
-        || (!config.isEnableCrossSpaceCompaction())
-        || CompactionScheduler.isPartitionCompacting(
-            logicalStorageGroupName + "-" + virtualGroupId, timePartition)) {
+        || (!config.isEnableCrossSpaceCompaction())) {
       if (CompactionTaskManager.currentTaskNum.get() >= config.getConcurrentCompactionThread()) {
         LOGGER.debug("End selection because too many threads");
       } else if (!config.isEnableCrossSpaceCompaction()) {
@@ -86,7 +82,7 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
             virtualGroupId,
             CompactionTaskManager.currentTaskNum.get());
       }
-      return false;
+      return;
     }
     Iterator<TsFileResource> seqIterator = sequenceFileList.iterator();
     Iterator<TsFileResource> unSeqIterator = unsequenceFileList.iterator();
@@ -99,7 +95,7 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
       unSeqFileList.add(unSeqIterator.next());
     }
     if (seqFileList.isEmpty() || unSeqFileList.isEmpty()) {
-      return false;
+      return;
     }
     if (unSeqFileList.size() > config.getMaxCompactionCandidateFileNum()) {
       unSeqFileList = unSeqFileList.subList(0, config.getMaxCompactionCandidateFileNum());
@@ -118,7 +114,7 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
             "{} cannot select merge candidates under the budget {}",
             logicalStorageGroupName,
             budget);
-        return false;
+        return;
       }
       LOGGER.info(
           "select files for cross compaction, sequence files: {}, unsequence files {}",
@@ -131,6 +127,8 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
       mergeResource.setCacheDeviceMeta(true);
 
       if (mergeFiles[0].size() > 0 && mergeFiles[1].size() > 0) {
+        mergeFiles[0].forEach(x -> ((TsFileResource) x).setCompactionCandidate(true));
+        mergeFiles[1].forEach(x -> ((TsFileResource) x).setCompactionCandidate(true));
         AbstractCompactionTask compactionTask =
             taskFactory.createTask(
                 logicalStorageGroupName,
@@ -143,7 +141,6 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
                 mergeFiles[0],
                 mergeFiles[1]);
         CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
-        taskSubmitted = true;
         LOGGER.info(
             "{} [Compaction] submit a task with {} sequence file and {} unseq files",
             logicalStorageGroupName + "-" + virtualGroupId,
@@ -151,10 +148,8 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
             mergeResource.getUnseqFiles().size());
       }
 
-    } catch (MergeException | IOException e) {
+    } catch (MergeException | IOException | InterruptedException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }
-
-    return taskSubmitted;
   }
 }
