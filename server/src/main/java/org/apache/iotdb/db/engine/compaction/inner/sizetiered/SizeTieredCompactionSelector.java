@@ -172,7 +172,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
             virtualStorageGroupName,
             timePartition,
             tsFileManager,
-            tsFileResources,
+            selectedFileList,
             sequence);
     return CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
   }

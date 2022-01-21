@@ -231,13 +231,13 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
 
       if (resource.isCompacting() | !resource.isClosed()
           || !resource.getTsFile().exists()
-          || resource.isDeleted()
-          || !resource.tryReadLock()) {
+          || resource.isDeleted()) {
         // this source file cannot be compacted
         // release the lock of locked files, and return
         releaseFileLocksAndResetMergingStatus(false);
         return false;
       }
+      resource.readLock();
       isHoldingReadLock[i] = true;
     }
 

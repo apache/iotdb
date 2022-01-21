@@ -67,12 +67,12 @@ public class TsFileManager {
   }
 
   public List<TsFileResource> getTsFileList(boolean sequence) {
+    // the iteration of ConcurrentSkipListMap is not concurrent secure
+    // so we must add read lock here
     readLock();
     try {
       List<TsFileResource> allResources = new ArrayList<>();
       Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
-      // the iteration of ConcurrentSkipListMap is not concurrent secure
-      // so we must add read lock here
       for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
         allResources.addAll(entry.getValue().getArrayList());
       }
@@ -100,13 +100,18 @@ public class TsFileManager {
   }
 
   public void remove(TsFileResource tsFileResource, boolean sequence) {
-    Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
-    for (Map.Entry<Long, TsFileResourceList> entry : selectedMap.entrySet()) {
-      if (entry.getValue().contains(tsFileResource)) {
-        entry.getValue().remove(tsFileResource);
-        TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
-        break;
+    readLock();
+    try {
+      Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
+      for (Map.Entry<Long, TsFileResourceList> entry : selectedMap.entrySet()) {
+        if (entry.getValue().contains(tsFileResource)) {
+          entry.getValue().remove(tsFileResource);
+          TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
+          break;
+        }
       }
+    } finally {
+      readUnlock();
     }
   }
 

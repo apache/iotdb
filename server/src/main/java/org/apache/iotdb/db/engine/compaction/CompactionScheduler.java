@@ -41,7 +41,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 public class CompactionScheduler {
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  // fullStorageGroupName -> timePartition -> compactionCount
 
   public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition) {
     if (!tsFileManager.isAllowCompaction()) {
