@@ -37,24 +37,52 @@ RESTful 服务默认情况是关闭的
     ```
 
 ### 鉴权
-RESTful 服务使用了基础（basic）鉴权，每次 URL 请求都需要在 header 中携带 `'Authorization': 'Basic ' + base64.encode(username + ':' + password)`。
+除了检活接口 `/ping`，RESTful 服务使用了基础（basic）鉴权，每次 URL 请求都需要在 header 中携带 `'Authorization': 'Basic ' + base64.encode(username + ':' + password)`。
 
+示例中使用的用户名为：`root`，密码为：`root`，对应的 Basic 鉴权 Header 格式为
 
+```
+Authorization: Basic cm9vdDpyb2901
+```
+
+- 若用户名密码认证失败，则返回如下信息：
+
+    HTTP 状态码：`401`
+
+    返回结构体如下
+    ```json
+    {
+      "code": 600,
+      "message": "WRONG_LOGIN_PASSWORD_ERROR"
+    }
+    ```
+
+- 若未设置 `Authorization`，则返回如下信息：
+
+  HTTP 状态码：`401`
+
+  返回结构体如下
+    ```json
+    {
+      "code": 603,
+      "message": "UNINITIALIZED_AUTH_ERROR"
+    }
+    ```
 
 ### 接口
 
 #### ping
 
+ping 接口可以用于线上服务检活。
+
 请求方式：`GET`
 
 请求路径：http://ip:port/ping
 
-示例中使用的用户名为：root，密码为：root
-
 请求示例：
 
 ```shell
-$ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
+$ curl http://127.0.0.1:18080/ping
 ```
 响应参数：
 
@@ -70,15 +98,8 @@ $ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
   "message": "SUCCESS_STATUS"
 }
 ```
-用户名密码认证失败示例：
-```json
-{
-  "code": 600,
-  "message": "WRONG_LOGIN_PASSWORD_ERROR"
-}
-```
 
-
+> `/ping` 接口访问不需要鉴权。
 
 #### query
 
@@ -900,4 +921,3 @@ trust_store_pwd=
 ```properties
 idle_timeout=5000
 ```
-

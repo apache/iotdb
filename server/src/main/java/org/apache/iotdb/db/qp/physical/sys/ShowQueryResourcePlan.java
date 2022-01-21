@@ -16,35 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.qp.physical.sys;
 
-package org.apache.iotdb.db.engine.storagegroup.timeindex;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-public enum TimeIndexLevel {
-  /** v0.12 file to time index (small memory foot print) */
-  V012_FILE_TIME_INDEX,
+import java.util.Collections;
+import java.util.List;
 
-  /** device to time index (large memory foot print) */
-  DEVICE_TIME_INDEX,
+public class ShowQueryResourcePlan extends PhysicalPlan {
 
-  /** file to time index (small memory foot print) */
-  FILE_TIME_INDEX;
-
-  public ITimeIndex getTimeIndex() {
-    switch (this) {
-      case V012_FILE_TIME_INDEX:
-        return new V012FileTimeIndex();
-      case FILE_TIME_INDEX:
-        return new FileTimeIndex();
-      case DEVICE_TIME_INDEX:
-      default:
-        return new DeviceTimeIndex();
-    }
+  public ShowQueryResourcePlan() {
+    super(Operator.OperatorType.SHOW_QUERY_RESOURCE);
   }
 
-  public static TimeIndexLevel valueOf(int ordinal) {
-    if (ordinal < 0 || ordinal >= values().length) {
-      throw new IndexOutOfBoundsException("Invalid ordinal");
-    }
-    return values()[ordinal];
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 }

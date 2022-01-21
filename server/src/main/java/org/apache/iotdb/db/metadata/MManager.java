@@ -2242,6 +2242,18 @@ public class MManager {
     return templateManager.getTemplate(templateName).getMeasurementsUnderPath(path);
   }
 
+  public List<Pair<String, IMeasurementSchema>> getSchemasInTemplate(
+      String templateName, String path) throws MetadataException {
+    Set<Map.Entry<String, IMeasurementSchema>> rawSchemas =
+        templateManager.getTemplate(templateName).getSchemaMap().entrySet();
+    return rawSchemas.stream()
+        .filter(e -> e.getKey().startsWith(path))
+        .collect(
+            ArrayList::new,
+            (res, elem) -> res.add(new Pair<>(elem.getKey(), elem.getValue())),
+            ArrayList::addAll);
+  }
+
   public Set<String> getAllTemplates() {
     return templateManager.getAllTemplateName();
   }

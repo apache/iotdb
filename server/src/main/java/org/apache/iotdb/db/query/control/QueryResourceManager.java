@@ -228,6 +228,10 @@ public class QueryResourceManager {
     cachedQueryDataSourcesMap.remove(queryId);
   }
 
+  public void writeQueryFileInfo() {
+    filePathsManager.writeQueryFileInfo();
+  }
+
   public QueryFileManager getQueryFileManager() {
     return filePathsManager;
   }
