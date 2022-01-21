@@ -226,8 +226,18 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
+  public boolean hasChildInBuffer(String name) {
+    return containsKey(updatedChildBuffer, name) || containsKey(newChildBuffer, name);
+  }
+
+  @Override
   public Iterator<IMNode> getChildrenIterator() {
     return new CachedMNodeContainerIterator();
+  }
+
+  @Override
+  public Iterator<IMNode> getNewChildBufferIterator() {
+    return getNewChildBuffer().values().iterator();
   }
 
   @Override

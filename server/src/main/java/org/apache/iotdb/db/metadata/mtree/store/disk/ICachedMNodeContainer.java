@@ -37,7 +37,11 @@ public interface ICachedMNodeContainer extends IMNodeContainer {
 
   boolean isExpelled();
 
+  boolean hasChildInBuffer(String name);
+
   Iterator<IMNode> getChildrenIterator();
+
+  Iterator<IMNode> getNewChildBufferIterator();
 
   Map<String, IMNode> getChildCache();
 

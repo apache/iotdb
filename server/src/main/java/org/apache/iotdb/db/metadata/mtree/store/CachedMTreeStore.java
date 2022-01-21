@@ -108,6 +108,7 @@ public class CachedMTreeStore implements IMTreeStore {
       if (!getCachedMNodeContainer(parent).isVolatile()) {
         node = file.getChildNode(parent, name);
         if (node != null) {
+          node.setParent(parent);
           pinMNodeInMemory(node);
           cacheStrategy.updateCacheStatusAfterRead(node);
         }
@@ -129,6 +130,7 @@ public class CachedMTreeStore implements IMTreeStore {
   public void addChild(IMNode parent, String childName, IMNode child) {
     child.setParent(parent);
     pinMNodeInMemory(child);
+    parent.addChild(childName, child);
     cacheStrategy.updateCacheStatusAfterAppend(child);
   }
 
@@ -192,7 +194,7 @@ public class CachedMTreeStore implements IMTreeStore {
     for (IMNode releasedMNode : releasedMNodes) {
       memManager.releasePinnedMemResource(releasedMNode);
     }
-    if (!memManager.isUnderThreshold()) {
+    if (memManager.isExceedCapacity()) {
       executeMemoryRelease();
     }
   }
@@ -215,22 +217,21 @@ public class CachedMTreeStore implements IMTreeStore {
     if (!cacheStrategy.isCached(node.getParent())) {
       return false;
     }
+
     if (!memManager.requestMemResource(node)) {
       executeMemoryRelease();
-      if (cacheStrategy.isCached(node.getParent())) {
-        if (memManager.requestMemResource(node)) {
-          cacheStrategy.cacheMNode(node);
-          return true;
-        }
+      if (!cacheStrategy.isCached(node.getParent()) || !memManager.requestMemResource(node)) {
+        return false;
       }
     }
-    return false;
+    cacheStrategy.cacheMNode(node);
+    return true;
   }
 
   private void executeMemoryRelease() {
     flushVolatileNodes();
     List<IMNode> evictedMNodes;
-    while (!memManager.isUnderThreshold()) {
+    while (memManager.isExceedThreshold()) {
       evictedMNodes = cacheStrategy.evict();
       for (IMNode evictedMNode : evictedMNodes) {
         memManager.releaseMemResource(evictedMNode);
@@ -258,7 +259,7 @@ public class CachedMTreeStore implements IMTreeStore {
       }
     }
     cacheStrategy.pinMNode(node);
-    if (!memManager.isUnderThreshold()) {
+    if (memManager.isExceedCapacity()) {
       executeMemoryRelease();
     }
   }
@@ -267,18 +268,24 @@ public class CachedMTreeStore implements IMTreeStore {
 
     IMNode parent;
     Iterator<IMNode> iterator;
-    boolean isIteratingDisk = false;
+    boolean isIteratingDisk = true;
+    boolean loadedFromDisk = true;
     IMNode nextNode;
 
     CachedMNodeIterator(IMNode parent) {
       this.parent = parent;
-      this.iterator = getCachedMNodeContainer(parent).getChildrenIterator();
+      this.iterator = file.getChildren(parent);
+      readNext();
     }
 
     @Override
     public boolean hasNext() {
-      readNext();
-      return nextNode != null;
+      if (nextNode != null) {
+        return true;
+      } else {
+        readNext();
+        return nextNode != null;
+      }
     }
 
     // must invoke hasNext() first
@@ -287,15 +294,14 @@ public class CachedMTreeStore implements IMTreeStore {
       if (nextNode == null) {
         throw new NoSuchElementException();
       }
-      if (!isIteratingDisk) {
-        if (cacheStrategy.isCached(nextNode)) {
+      if (!loadedFromDisk) {
+        if (cacheStrategy.isCached(nextNode) || cacheMNodeInMemory(nextNode)) {
           cacheStrategy.updateCacheStatusAfterRead(nextNode);
         }
       } else {
-        if (cacheStrategy.isCached(parent)) {
-          if (cacheMNodeInMemory(nextNode)) {
-            cacheStrategy.updateCacheStatusAfterRead(nextNode);
-          }
+        nextNode.setParent(parent);
+        if (cacheMNodeInMemory(nextNode)) {
+          cacheStrategy.updateCacheStatusAfterRead(nextNode);
         }
       }
       IMNode result = nextNode;
@@ -304,26 +310,35 @@ public class CachedMTreeStore implements IMTreeStore {
     }
 
     private void readNext() {
-      if (!isIteratingDisk) {
+      IMNode node = null;
+      if (isIteratingDisk) {
         if (iterator.hasNext()) {
-          nextNode = iterator.next();
+          node = iterator.next();
+          if (parent.hasChild(node.getName())) {
+            node = parent.getChild(node.getName());
+            loadedFromDisk = false;
+          } else {
+            loadedFromDisk = true;
+          }
+        }
+        if (node != null) {
+          nextNode = node;
           return;
         } else {
-          startIteratingDisk();
+          startIteratingBuffer();
         }
       }
 
-      while (iterator.hasNext()) {
-        nextNode = iterator.next();
-        if (!parent.hasChild(nextNode.getName())) {
-          break;
-        }
+      if (iterator.hasNext()) {
+        node = iterator.next();
       }
+      nextNode = node;
     }
 
-    private void startIteratingDisk() {
-      iterator = file.getChildren(parent);
-      isIteratingDisk = true;
+    private void startIteratingBuffer() {
+      iterator = getCachedMNodeContainer(parent).getNewChildBufferIterator();
+      isIteratingDisk = false;
+      loadedFromDisk = false;
     }
   }
 }
