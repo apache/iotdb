@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -66,7 +67,7 @@ public class V012FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<String> getDevices(String tsFilePath) {
+  public Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource) {
     throw new UnsupportedOperationException(
         "V012FileTimeIndex should be rewritten while upgrading and getDevices() method should not be called any more.");
   }
