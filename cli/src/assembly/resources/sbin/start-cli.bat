@@ -25,7 +25,7 @@
 if "%OS%" == "Windows_NT" setlocal
 
 pushd %~dp0..
-if NOT DEFINED IOTDB_CLI_HOME set IOTDB_CLI_HOME=%CD%
+if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%CD%
 popd
 
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cli.Cli
@@ -34,10 +34,10 @@ if NOT DEFINED JAVA_HOME goto :err
 @REM -----------------------------------------------------------------------------
 @REM JVM Opts we'll use in legacy run or installation
 set JAVA_OPTS=-ea^
- -DIOTDB_CLI_HOME="%IOTDB_CLI_HOME%"
+ -DIOTDB_HOME="%IOTDB_HOME%"
 
-REM For each jar in the IOTDB_CLI_HOME lib directory call append to build the CLASSPATH variable.
-set CLASSPATH="%IOTDB_CLI_HOME%\lib\*"
+REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
+set CLASSPATH="%IOTDB_HOME%\lib\*"
 
 REM -----------------------------------------------------------------------------
 set PARAMETERS=%*
