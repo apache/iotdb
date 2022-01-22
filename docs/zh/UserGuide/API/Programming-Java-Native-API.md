@@ -418,6 +418,12 @@ void deleteData(List<String> paths, long endTime)
 SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
 ```
 
+* 查詢最後一條時間戳大於等於某個時間點的數據
+
+```java
+SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
+```
+
 ### IoTDB-SQL 接口
 
 * 执行查询语句
