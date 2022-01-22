@@ -134,10 +134,7 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
                 logicalStorageGroupName,
                 virtualGroupId,
                 timePartition,
-                storageGroupDir,
                 tsFileManager,
-                sequenceFileList,
-                unsequenceFileList,
                 mergeFiles[0],
                 mergeFiles[1]);
         CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);

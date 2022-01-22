@@ -42,7 +42,6 @@ public enum CrossCompactionStrategy {
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartitionId,
-      String storageGroupDir,
       TsFileManager tsFileManager,
       List<TsFileResource> selectedSeqTsFileResourceList,
       List<TsFileResource> selectedUnSeqTsFileResourceList) {
@@ -53,7 +52,6 @@ public enum CrossCompactionStrategy {
             logicalStorageGroupName,
             virtualStorageGroupName,
             timePartitionId,
-            storageGroupDir,
             tsFileManager,
             selectedSeqTsFileResourceList,
             selectedUnSeqTsFileResourceList,
@@ -65,7 +63,6 @@ public enum CrossCompactionStrategy {
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartitionId,
-      String storageGroupDir,
       File logFile,
       TsFileManager tsFileManager) {
     switch (this) {
@@ -75,7 +72,6 @@ public enum CrossCompactionStrategy {
             logicalStorageGroupName,
             virtualStorageGroupName,
             timePartitionId,
-            storageGroupDir,
             logFile,
             CompactionTaskManager.currentTaskNum,
             tsFileManager);
