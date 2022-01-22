@@ -193,8 +193,6 @@ public abstract class Operator {
     PRUNE_TEMPLATE,
     APPEND_TEMPLATE,
     DROP_TEMPLATE,
-    START_PIPE_SERVER,
-    STOP_PIPE_SERVER,
     SHOW_QUERY_RESOURCE,
     CREATE_PIPESINK,
     DROP_PIPESINK,
@@ -204,6 +202,8 @@ public abstract class Operator {
     SHOW_PIPE,
     STOP_PIPE,
     START_PIPE,
-    DROP_PIPE
+    DROP_PIPE,
+    START_PIPE_SERVER,
+    STOP_PIPE_SERVER,
   }
 }

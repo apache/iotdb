@@ -23,10 +23,15 @@ import org.apache.iotdb.db.newsync.receiver.recovery.ReceiverLog;
 import org.apache.iotdb.db.newsync.receiver.recovery.ReceiverLogAnalyzer;
 import org.apache.iotdb.db.service.ServiceType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.*;
 
 public class ReceiverManager {
+
+  private static final Logger logger = LoggerFactory.getLogger(ReceiverManager.class);
 
   private boolean pipeServerEnable;
   // <pipeName, <remoteIp, pipeInfo>>
@@ -37,6 +42,7 @@ public class ReceiverManager {
     try {
       log = new ReceiverLog();
     } catch (IOException e) {
+      logger.error(e.getMessage());
       e.printStackTrace();
       throw new StartupException(
           ServiceType.RECEIVER_SERVICE.getName(), "cannot create receiver log");

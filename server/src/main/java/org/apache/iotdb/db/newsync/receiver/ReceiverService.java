@@ -56,7 +56,7 @@ public class ReceiverService implements IService {
       receiverManager.startServer();
       // TODO: start socket and collector
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error(e.getMessage());
       return false;
     }
     return true;
@@ -68,7 +68,7 @@ public class ReceiverService implements IService {
       receiverManager.stopServer();
       // TODO: stop socket and collector
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error(e.getMessage());
       return false;
     }
     return true;
@@ -106,14 +106,8 @@ public class ReceiverService implements IService {
                 new PartialPath(COLUMN_PIPE_NAME, false),
                 new PartialPath(COLUMN_PIPE_REMOTE_IP, false),
                 new PartialPath(COLUMN_PIPE_STATUS, false),
-                new PartialPath(COLUMN_PIPE_ROLE, false),
                 new PartialPath(COLUMN_CREATED_TIME, false)),
-            Arrays.asList(
-                TSDataType.TEXT,
-                TSDataType.TEXT,
-                TSDataType.TEXT,
-                TSDataType.TEXT,
-                TSDataType.TEXT));
+            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
     List<PipeInfo> pipeInfos;
     if (!StringUtils.isEmpty(plan.getPipeName())) {
       pipeInfos = receiverManager.getPipeInfos(plan.getPipeName());
@@ -131,17 +125,14 @@ public class ReceiverService implements IService {
     Field pipeNameField = new Field(TSDataType.TEXT);
     Field pipeRemoteIp = new Field(TSDataType.TEXT);
     Field pipeStatusField = new Field(TSDataType.TEXT);
-    Field pipeRoleField = new Field(TSDataType.TEXT);
     Field pipeCreateTimeField = new Field(TSDataType.TEXT);
     pipeNameField.setBinaryV(new Binary(pipeInfo.getPipeName()));
     pipeRemoteIp.setBinaryV(new Binary(pipeInfo.getRemoteIp()));
     pipeStatusField.setBinaryV(new Binary(pipeInfo.getStatus().name()));
-    pipeRoleField.setBinaryV(new Binary("receiver"));
     pipeCreateTimeField.setBinaryV(new Binary(dateformat.format(pipeInfo.getCreateTime())));
     rowRecord.addField(pipeNameField);
     rowRecord.addField(pipeRemoteIp);
     rowRecord.addField(pipeStatusField);
-    rowRecord.addField(pipeRoleField);
     rowRecord.addField(pipeCreateTimeField);
     dataSet.putRecord(rowRecord);
   }
@@ -169,7 +160,7 @@ public class ReceiverService implements IService {
     try {
       receiverManager.close();
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error(e.getMessage());
     }
   }
 

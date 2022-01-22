@@ -23,6 +23,9 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 
 /**
@@ -30,6 +33,7 @@ import java.io.IOException;
  * CREATE_ALIGNED_TIMESERIES | DELETE_TIMESERIES | SET_STORAGE_GROUP
  */
 public class SchemaLoader implements ILoader {
+  private static final Logger logger = LoggerFactory.getLogger(SchemaLoader.class);
 
   private PhysicalPlan plan;
 
@@ -42,7 +46,9 @@ public class SchemaLoader implements ILoader {
     try {
       MManager.getInstance().operation(plan);
     } catch (StorageGroupAlreadySetException e) {
-      // do nothing
+      logger.warn(
+          "Sync receiver try to set storage group {} that has already been set",
+          e.getStorageGroupPath());
     }
   }
 }

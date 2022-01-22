@@ -53,7 +53,7 @@ public class ReceiverLogAnalyzer {
           analyzeLog(line);
         } catch (Exception e) {
           logger.error("Receiver log recovery error: log file parse error at line " + lineNum);
-          e.printStackTrace();
+          logger.error(e.getMessage());
           throw new StartupException(
               ServiceType.RECEIVER_SERVICE.getName(), "log file recover error at line " + lineNum);
         }

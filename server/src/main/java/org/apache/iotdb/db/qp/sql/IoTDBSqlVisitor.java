@@ -2282,6 +2282,25 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
   }
 
+  @Override
+  public Operator visitStartPipeServer(IoTDBSqlParser.StartPipeServerContext ctx) {
+    return new StartPipeServerOperator(SQLConstant.TOK_PIPE_SERVER_START);
+  }
+
+  @Override
+  public Operator visitStopPipeServer(IoTDBSqlParser.StopPipeServerContext ctx) {
+    return new StopPipeServerOperator(SQLConstant.TOK_PIPE_SERVER_STOP);
+  }
+
+  @Override
+  public Operator visitShowPipeServer(IoTDBSqlParser.ShowPipeServerContext ctx) {
+    if (ctx.pipeName != null) {
+      return new ShowPipeServerOperator(ctx.pipeName.getText(), SQLConstant.TOK_SHOW_PIPE_SERVER);
+    } else {
+      return new ShowPipeServerOperator(SQLConstant.TOK_SHOW_PIPE_SERVER);
+    }
+  }
+
   /** 7. Common Clauses */
 
   // IoTDB Objects
@@ -3058,25 +3077,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         return new Pair<>(time, time);
       default:
         throw new SQLParserException(DELETE_RANGE_ERROR_MSG);
-    }
-  }
-
-  @Override
-  public Operator visitStartPipeServer(IoTDBSqlParser.StartPipeServerContext ctx) {
-    return new StartPipeServerOperator(SQLConstant.TOK_PIPE_SERVER_START);
-  }
-
-  @Override
-  public Operator visitStopPipeServer(IoTDBSqlParser.StopPipeServerContext ctx) {
-    return new StopPipeServerOperator(SQLConstant.TOK_PIPE_SERVER_STOP);
-  }
-
-  @Override
-  public Operator visitShowPipeServer(IoTDBSqlParser.ShowPipeServerContext ctx) {
-    if (ctx.pipeName != null) {
-      return new ShowPipeServerOperator(ctx.pipeName.getText(), SQLConstant.TOK_SHOW_PIPE_SERVER);
-    } else {
-      return new ShowPipeServerOperator(SQLConstant.TOK_SHOW_PIPE_SERVER);
     }
   }
 }

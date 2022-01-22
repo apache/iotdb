@@ -19,5 +19,5 @@
 package org.apache.iotdb.db.newsync.conf;
 
 public class SyncConstant {
-  public static final String RECEIVER_LOG_NAME = "sync-receiver.log";
+  public static final String RECEIVER_LOG_NAME = "receiverService.log";
 }
