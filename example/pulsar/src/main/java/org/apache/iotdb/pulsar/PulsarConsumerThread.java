@@ -91,13 +91,9 @@ public class PulsarConsumerThread implements Runnable {
     int size = datas.size();
     List<String> deviceIds = new ArrayList<>(size);
     List<Long> times = new ArrayList<>(size);
-    ;
     List<List<String>> measurementsList = new ArrayList<>(size);
-    ;
     List<List<TSDataType>> typesList = new ArrayList<>(size);
-    ;
     List<List<Object>> valuesList = new ArrayList<>(size);
-    ;
     for (String data : datas) {
       String[] dataArray = data.split(",");
       String device = dataArray[0];
