@@ -61,7 +61,6 @@ public class ImportCsvTestIT extends AbstractScript {
     "````````````````````````````````````````````````",
     "Starting IoTDB Client Import Script",
     "````````````````````````````````````````````````",
-    "Start to import data from: test.csv",
     "No records!"
   };
 
