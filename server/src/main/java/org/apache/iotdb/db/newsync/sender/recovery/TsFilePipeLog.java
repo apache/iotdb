@@ -158,7 +158,7 @@ public class TsFilePipeLog {
     logDir.mkdirs();
     File historyPipeLog = new File(pipeLogDir, SenderConf.historyPipeLogName);
     createFile(historyPipeLog);
-    historyOutputStream = new DataOutputStream(new FileOutputStream(historyPipeLog));
+    historyOutputStream = new DataOutputStream(new FileOutputStream(historyPipeLog, true));
   }
 
   public synchronized void addRealTimePipeData(TsFilePipeData pipeData) throws IOException {
@@ -187,7 +187,7 @@ public class TsFilePipeLog {
             new File(
                 pipeLogDir,
                 SenderConf.getRealTimePipeLogName(startNumbers.get(startNumbers.size() - 1)));
-        realTimeOutputStream = new DataOutputStream(new FileOutputStream(writingPipeLog));
+        realTimeOutputStream = new DataOutputStream(new FileOutputStream(writingPipeLog, true));
         currentPipeLogSize = writingPipeLog.length();
       } else {
         moveToNextPipeLog(serialNumber);

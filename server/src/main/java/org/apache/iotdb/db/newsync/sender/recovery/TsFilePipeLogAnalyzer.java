@@ -113,7 +113,7 @@ public class TsFilePipeLogAnalyzer {
       } catch (IOException e) {
         logger.error(
             String.format(
-                "Can not parse history pipe log %s, because %s", historyPipeLog.getPath()));
+                "Can not parse history pipe log %s, because %s", historyPipeLog.getPath(), e));
       }
     } else {
       try {

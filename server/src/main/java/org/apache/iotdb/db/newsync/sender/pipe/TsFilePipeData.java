@@ -162,7 +162,7 @@ public class TsFilePipeData {
 
     TsFilePipeData pipeData = null;
     if (type.equals(Type.TSFILE)) {
-      pipeData = new TsFilePipeData(ReadWriteIOUtils.readString(stream), serialNumber);
+      pipeData = new TsFilePipeData(ReadWriteIOUtils.readString(ByteBuffer.wrap(bytes)), serialNumber);
     } else if (type.equals(Type.DELETION)) {
       pipeData =
           new TsFilePipeData(

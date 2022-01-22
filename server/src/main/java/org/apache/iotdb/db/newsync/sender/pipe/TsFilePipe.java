@@ -140,11 +140,11 @@ public class TsFilePipe implements Pipe {
     int historyTsFilesSize = historyTsFiles.size();
     List<TsFilePipeData> historyData = new ArrayList<>();
     for (int i = 0; i < historyMetadataSize; i++) {
-      long serialNumber = 1 - historyTsFilesSize - i;
+      long serialNumber = 1 - historyTsFilesSize - historyMetadataSize  + i;
       historyData.add(new TsFilePipeData(historyMetadata.get(i), serialNumber));
     }
     for (int i = 0; i < historyTsFilesSize; i++) {
-      long serialNumber = 1 - i;
+      long serialNumber = 1 - historyTsFilesSize + i;
       try {
         File hardLink =
             pipeLog.addHistoryTsFile(historyTsFiles.get(i).left, historyTsFiles.get(i).right);
@@ -207,7 +207,7 @@ public class TsFilePipe implements Pipe {
     try {
       maxSerialNumber += 1L;
       TsFilePipeData metaData = new TsFilePipeData(plan, maxSerialNumber);
-      pipeData.offer(metaData); // ensure can be transport
+      collectRealTimePipeData(metaData); // ensure can be transport
       pipeLog.addRealTimePipeData(metaData);
     } catch (IOException e) {
       logger.warn(
@@ -266,7 +266,7 @@ public class TsFilePipe implements Pipe {
         maxSerialNumber += 1L;
         TsFilePipeData deletionData = new TsFilePipeData(splitDeletion, maxSerialNumber);
         pipeLog.addRealTimePipeData(deletionData);
-        pipeData.offer(deletionData);
+        collectRealTimePipeData(deletionData);
       }
     } catch (MetadataException e) {
       logger.warn(String.format("Collect deletion %s error, because %s.", deletion, e));
@@ -287,7 +287,7 @@ public class TsFilePipe implements Pipe {
       TsFilePipeData tsFileData =
           new TsFilePipeData(pipeLog.addRealTimeTsFile(tsFile).getPath(), maxSerialNumber);
       pipeLog.addRealTimePipeData(tsFileData);
-      pipeData.offer(tsFileData);
+      collectRealTimePipeData(tsFileData);
     } catch (IOException e) {
       logger.warn(
           String.format(
@@ -305,6 +305,13 @@ public class TsFilePipe implements Pipe {
       logger.warn(
           String.format(
               "Record tsfile resource %s on disk error, because %s.", tsFile.getPath(), e));
+    }
+  }
+
+  private void collectRealTimePipeData(TsFilePipeData data) {
+    pipeData.offer(data);
+    synchronized (pipeData) {
+      pipeData.notifyAll();
     }
   }
 
@@ -375,10 +382,12 @@ public class TsFilePipe implements Pipe {
       throw new PipeException(
           String.format("Can not stop pipe %s, because the pipe is drop.", name));
     }
-    if (status == PipeStatus.STOP) {
-      return;
-    }
 
+    if (!isCollectingRealTimeData) {
+      registerMetadata();
+      registerTsFile();
+      isCollectingRealTimeData = true;
+    }
     status = PipeStatus.STOP;
     synchronized (pipeData) {
       pipeData.notifyAll();
