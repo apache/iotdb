@@ -37,7 +37,6 @@ public class StandaloneEnv implements BaseEnv {
 
   @Override
   public void initBeforeClass() {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
 
@@ -53,7 +52,7 @@ public class StandaloneEnv implements BaseEnv {
 
   @Override
   public void initBeforeTest() {
-    EnvironmentUtils.closeStatMonitor();
+
     EnvironmentUtils.envSetUp();
   }
 

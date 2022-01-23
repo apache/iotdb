@@ -219,4 +219,21 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
       valueChunkWriter.clearPageWriter();
     }
   }
+
+  /** Used for compaction to control the target chunk size. */
+  public boolean checkIsChunkSizeOverThreshold(long threshold) {
+    if (timeChunkWriter.estimateMaxSeriesMemSize() > threshold) {
+      return true;
+    }
+    for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
+      if (valueChunkWriter.estimateMaxSeriesMemSize() > threshold) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public TSDataType getCurrentValueChunkType() {
+    return valueChunkWriterList.get(valueIndex).getDataType();
+  }
 }

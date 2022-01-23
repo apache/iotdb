@@ -50,7 +50,6 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -73,23 +72,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.ConcurrentModificationException;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -601,16 +588,6 @@ public class StorageEngine implements IService {
 
     try {
       virtualStorageGroupProcessor.insert(insertRowPlan);
-      if (config.isEnableStatMonitor()) {
-        try {
-          updateMonitorStatistics(
-              processorMap.get(
-                  IoTDB.metaManager.getBelongedStorageGroup(insertRowPlan.getDevicePath())),
-              insertRowPlan);
-        } catch (MetadataException e) {
-          logger.error("failed to record status", e);
-        }
-      }
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }
@@ -668,28 +645,6 @@ public class StorageEngine implements IService {
 
     getSeriesSchemas(insertTabletPlan, virtualStorageGroupProcessor);
     virtualStorageGroupProcessor.insertTablet(insertTabletPlan);
-
-    if (config.isEnableStatMonitor()) {
-      try {
-        updateMonitorStatistics(
-            processorMap.get(
-                IoTDB.metaManager.getBelongedStorageGroup(insertTabletPlan.getDevicePath())),
-            insertTabletPlan);
-      } catch (MetadataException e) {
-        logger.error("failed to record status", e);
-      }
-    }
-  }
-
-  private void updateMonitorStatistics(
-      StorageGroupManager storageGroupManager, InsertPlan insertPlan) {
-    StatMonitor monitor = StatMonitor.getInstance();
-    int successPointsNum =
-        insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
-    // update to storage group statistics
-    storageGroupManager.updateMonitorSeriesValue(successPointsNum);
-    // update to global statistics
-    monitor.updateStatGlobalValue(successPointsNum);
   }
 
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
@@ -844,13 +799,13 @@ public class StorageEngine implements IService {
    *
    * @throws StorageEngineException StorageEngineException
    */
-  public void mergeAll(boolean isFullMerge) throws StorageEngineException {
+  public void mergeAll() throws StorageEngineException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
 
     for (StorageGroupManager storageGroupManager : processorMap.values()) {
-      storageGroupManager.mergeAll(isFullMerge);
+      storageGroupManager.mergeAll();
     }
   }
 
@@ -960,9 +915,12 @@ public class StorageEngine implements IService {
       if (dataDir.exists()) {
         String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
         for (String dir : dataDirs) {
-          File f = new File(dir);
-          if (dataDir.getAbsolutePath().equals(f.getAbsolutePath())) {
-            return file.getParentFile().getParentFile().getParentFile().getName();
+          try {
+            if (Files.isSameFile(Paths.get(dir), dataDir.toPath())) {
+              return file.getParentFile().getParentFile().getParentFile().getName();
+            }
+          } catch (IOException e) {
+            throw new IllegalPathException(file.getAbsolutePath(), e.getMessage());
           }
         }
       }

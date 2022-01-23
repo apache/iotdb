@@ -55,7 +55,6 @@ import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -619,8 +618,8 @@ public class MManager {
       throw new MetadataException(e);
     }
 
-    // update id table
-    if (config.isEnableIDTable()) {
+    // update id table if not in recovering or disable id table log file
+    if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPath().getDevicePath());
       idTable.createTimeseries(plan);
     }
@@ -714,8 +713,8 @@ public class MManager {
       throw new MetadataException(e);
     }
 
-    // update id table
-    if (config.isEnableIDTable()) {
+    // update id table if not in recovering or disable id table log file
+    if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
       idTable.createAlignedTimeseries(plan);
     }
@@ -759,9 +758,6 @@ public class MManager {
         // PathNotExistException.
         throw new PathNotExistException(pathPattern.getFullPath());
       }
-
-      // Monitor storage group seriesPath is not allowed to be deleted
-      allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_ARRAY));
 
       Set<String> failedNames = new HashSet<>();
       for (PartialPath p : allTimeseries) {
@@ -1227,22 +1223,12 @@ public class MManager {
    * to match prefix path. All timeseries start with the matched prefix path will be collected.
    *
    * @param pathPattern the pattern of the target devices.
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path.
    * @return A HashSet instance which stores devices paths matching the given path pattern.
    */
   public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getDevices(pathPattern, isPrefixMatch);
-  }
-
-  /**
-   * Get all device paths matching the path pattern.
-   *
-   * @param pathPattern the pattern of the target devices.
-   * @return A HashSet instance which stores devices paths matching the given path pattern.
-   */
-  public Set<PartialPath> getMatchedDevices(PartialPath pathPattern) throws MetadataException {
-    return getMatchedDevices(pathPattern, false);
   }
 
   /**
@@ -2244,6 +2230,18 @@ public class MManager {
   public List<String> getMeasurementsInTemplate(String templateName, String path)
       throws MetadataException {
     return templateManager.getTemplate(templateName).getMeasurementsUnderPath(path);
+  }
+
+  public List<Pair<String, IMeasurementSchema>> getSchemasInTemplate(
+      String templateName, String path) throws MetadataException {
+    Set<Map.Entry<String, IMeasurementSchema>> rawSchemas =
+        templateManager.getTemplate(templateName).getSchemaMap().entrySet();
+    return rawSchemas.stream()
+        .filter(e -> e.getKey().startsWith(path))
+        .collect(
+            ArrayList::new,
+            (res, elem) -> res.add(new Pair<>(elem.getKey(), elem.getValue())),
+            ArrayList::addAll);
   }
 
   public Set<String> getAllTemplates() {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 
 import java.io.IOException;
@@ -62,7 +63,7 @@ public interface ITimeIndex {
    *
    * @return device names
    */
-  Set<String> getDevices(String tsFilePath);
+  Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource);
 
   /** @return whether end time is empty (Long.MIN_VALUE) */
   boolean endTimeEmpty();

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
@@ -27,7 +28,6 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -59,7 +59,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
       String virtualStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
-      TsFileResourceList tsFileResources,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
     super(
@@ -67,7 +66,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         virtualStorageGroupName,
         timePartition,
         tsFileManager,
-        tsFileResources,
         sequence,
         taskFactory);
   }
@@ -81,17 +79,9 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
-  public boolean selectAndSubmit() {
-    LOGGER.debug(
-        "{} [Compaction] SizeTiredCompactionSelector start to select, target file size is {}, "
-            + "target file num is {}, current task num is {}, total task num is {}, "
-            + "max task num is {}",
-        logicalStorageGroupName + "-" + virtualStorageGroupName,
-        IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize(),
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum(),
-        CompactionTaskManager.currentTaskNum.get(),
-        CompactionTaskManager.getInstance().getExecutingTaskCount(),
-        IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
+  public void selectAndSubmit() {
+    final CompactionPriority priority =
+        IoTDBDescriptor.getInstance().getConfig().getCompactionPriority();
     tsFileResources.readLock();
     PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
@@ -110,7 +100,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     } finally {
       tsFileResources.readUnlock();
     }
-    return true;
   }
 
   /**
@@ -138,7 +127,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     for (TsFileResource currentFile : tsFileResources) {
       TsFileNameGenerator.TsFileName currentName =
           TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
-      if (currentName.getInnerCompactionCnt() != level) {
+      if (currentName.getInnerCompactionCnt() != level || currentFile.isCompactionCandidate()) {
         selectedFileList.clear();
         selectedFileSize = 0L;
         continue;
@@ -180,7 +169,9 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     return maxLevel;
   }
 
-  private boolean createAndSubmitTask(List<TsFileResource> selectedFileList) {
+  private boolean createAndSubmitTask(List<TsFileResource> selectedFileList)
+      throws InterruptedException {
+    selectedFileList.forEach(x -> x.setCompactionCandidate(true));
     AbstractCompactionTask compactionTask =
         taskFactory.createTask(
             logicalStorageGroupName,

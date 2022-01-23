@@ -36,18 +36,21 @@ public abstract class AbstractInnerSpaceCompactionSelector extends AbstractCompa
       String virtualStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
-      TsFileResourceList tsFileResources,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.virtualStorageGroupName = virtualStorageGroupName;
     this.timePartition = timePartition;
-    this.tsFileResources = tsFileResources;
     this.tsFileManager = tsFileManager;
     this.sequence = sequence;
     this.taskFactory = taskFactory;
+    if (sequence) {
+      tsFileResources = tsFileManager.getSequenceListByTimePartition(timePartition);
+    } else {
+      tsFileResources = tsFileManager.getUnsequenceListByTimePartition(timePartition);
+    }
   }
 
   @Override
-  public abstract boolean selectAndSubmit();
+  public abstract void selectAndSubmit();
 }
