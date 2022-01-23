@@ -28,7 +28,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-kubernetes</artifactId>
-    <name>helm</name>
+    <name>kubernetes</name>
     <description>Helm Charts for IoTDB</description>
     <build>
         <plugins>
