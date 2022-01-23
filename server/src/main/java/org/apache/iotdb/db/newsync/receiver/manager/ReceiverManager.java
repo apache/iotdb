@@ -43,7 +43,6 @@ public class ReceiverManager {
       log = new ReceiverLog();
     } catch (IOException e) {
       logger.error(e.getMessage());
-      e.printStackTrace();
       throw new StartupException(
           ServiceType.RECEIVER_SERVICE.getName(), "cannot create receiver log");
     }

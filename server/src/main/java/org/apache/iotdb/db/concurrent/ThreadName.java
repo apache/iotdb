@@ -57,6 +57,7 @@ public enum ThreadName {
   TIMED_CLOSE_TSFILE("Timed-Close-TsFile"),
   SETTLE_SERVICE("Settle"),
   PIPE_SERVICE("Pipe"),
+  SYNC_RECEIVER_COLLECTOR("Sync-Collector"),
   CONTINUOUS_QUERY_SERVICE("ContinuousQueryTaskPoolManager"),
   CLUSTER_INFO_SERVICE("ClusterInfoClient"),
   CLUSTER_RPC_SERVICE("ClusterRPC"),

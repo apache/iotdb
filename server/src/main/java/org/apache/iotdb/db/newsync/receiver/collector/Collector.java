@@ -19,13 +19,32 @@
  */
 package org.apache.iotdb.db.newsync.receiver.collector;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipeData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.util.concurrent.ExecutorService;
 
+/**
+ * scan sync receiver folder and load pipeData into IoTDB
+ */
 public class Collector {
+
+    private static final Logger logger = LoggerFactory.getLogger(Collector.class);
+    // TODO: multi thread for multi pipe
+    private ExecutorService executorService;
+
+    public Collector(){
+        this.executorService =
+                IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.SYNC_RECEIVER_COLLECTOR.getName());
+    }
+
     public static void main(String[] args) throws IOException, IllegalPathException {
         File f1 = new File("testtt");
         File f2 = new File("testtt");
