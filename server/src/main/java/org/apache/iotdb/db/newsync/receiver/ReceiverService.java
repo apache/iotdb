@@ -24,6 +24,7 @@ import org.apache.iotdb.db.newsync.receiver.collector.Collector;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.ReceiverManager;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -38,7 +39,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.List;
 
@@ -46,7 +46,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 
 public class ReceiverService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(ReceiverService.class);
-  private final SimpleDateFormat dateformat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
   private static final ReceiverManager receiverManager = ReceiverManager.getInstance();
   private Collector collector;
 
@@ -129,7 +128,8 @@ public class ReceiverService implements IService {
     pipeNameField.setBinaryV(new Binary(pipeInfo.getPipeName()));
     pipeRemoteIp.setBinaryV(new Binary(pipeInfo.getRemoteIp()));
     pipeStatusField.setBinaryV(new Binary(pipeInfo.getStatus().name()));
-    pipeCreateTimeField.setBinaryV(new Binary(dateformat.format(pipeInfo.getCreateTime())));
+    pipeCreateTimeField.setBinaryV(
+        new Binary(DatetimeUtils.convertLongToDate(pipeInfo.getCreateTime())));
     rowRecord.addField(pipeNameField);
     rowRecord.addField(pipeRemoteIp);
     rowRecord.addField(pipeStatusField);
