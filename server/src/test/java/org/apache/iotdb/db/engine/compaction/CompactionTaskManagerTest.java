@@ -46,6 +46,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     if (tempSGDir.exists()) {
       FileUtils.deleteDirectory(tempSGDir);
     }
+    CompactionTaskManager.getInstance().restart();
     Assert.assertTrue(tempSGDir.mkdirs());
     super.setUp();
   }
@@ -173,6 +174,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         new SizeTieredCompactionTask(
             "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
+    manager.restart();
     seqResources.get(0).readLock();
     try {
       manager.addTaskToWaitingQueue(task1);

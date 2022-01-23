@@ -123,13 +123,7 @@ public class CompactionSchedulerTest {
     IoTDB.metaManager.clear();
     CompactionClearUtils.clearAllCompactionFiles();
     EnvironmentUtils.cleanAllDir();
-    try {
-      Thread.sleep(10_000);
-    } catch (InterruptedException e) {
-
-    } finally {
-      CompactionClearUtils.deleteEmptyDir(new File("target"));
-    }
+    CompactionClearUtils.deleteEmptyDir(new File("target"));
     CompactionTaskManager.getInstance().stop();
   }
 
@@ -138,7 +132,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=100
    */
   @Test
-  public void test1() throws IOException, IllegalPathException {
+  public void test1() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test1");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -259,7 +253,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=100
    */
   @Test
-  public void test2() throws IOException, IllegalPathException {
+  public void test2() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test2");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -368,7 +362,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=100
    */
   @Test
-  public void test3() throws IOException, IllegalPathException {
+  public void test3() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test3");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -462,7 +456,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=100
    */
   @Test
-  public void test4() throws IOException, IllegalPathException {
+  public void test4() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test4");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -544,7 +538,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
    */
   @Test
-  public void test5() throws IOException, IllegalPathException {
+  public void test5() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test5");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -657,7 +651,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
    */
   @Test
-  public void test6() throws IOException, IllegalPathException {
+  public void test6() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test6");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -758,7 +752,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
    */
   @Test
-  public void test7() throws IOException, IllegalPathException {
+  public void test7() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test7");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -857,7 +851,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
    */
   @Test
-  public void test8() throws IOException, IllegalPathException {
+  public void test8() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test8");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -1036,7 +1030,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
    */
   @Test
-  public void test10() throws IOException, IllegalPathException {
+  public void test10() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test10");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -1142,7 +1136,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
    */
   @Test
-  public void test11() throws IOException, IllegalPathException {
+  public void test11() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test11");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -1243,7 +1237,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
    */
   @Test
-  public void test12() throws IOException, IllegalPathException {
+  public void test12() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test12");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -1346,7 +1340,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=2
    */
   @Test
-  public void test14() throws IOException, IllegalPathException {
+  public void test14() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test14");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -1446,7 +1440,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=2
    */
   @Test
-  public void test15() throws IOException, IllegalPathException {
+  public void test15() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test15");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -1547,7 +1541,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=2
    */
   @Test
-  public void test16() throws IOException, IllegalPathException {
+  public void test16() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test16");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -1646,8 +1640,7 @@ public class CompactionSchedulerTest {
 
   public void stopCompactionTaskManager() {
     CompactionTaskManager.getInstance().clearCandidateQueue();
-    CompactionTaskManager.getInstance().stop();
-    while (CompactionTaskManager.currentTaskNum.get() > 0) {
+    while (CompactionTaskManager.getInstance().getRunningCompactionTaskList().size() > 0) {
       try {
         Thread.sleep(10);
       } catch (Exception e) {
