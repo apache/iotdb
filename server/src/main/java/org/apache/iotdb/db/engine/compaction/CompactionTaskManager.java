@@ -375,8 +375,10 @@ public class CompactionTaskManager implements IService {
   @TestOnly
   public void restart() throws InterruptedException {
     if (IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread() > 0) {
-      this.taskExecutionPool.shutdownNow();
-      this.taskExecutionPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+      if (taskExecutionPool != null) {
+        this.taskExecutionPool.shutdownNow();
+        this.taskExecutionPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+      }
       this.taskExecutionPool =
           (WrappedScheduledExecutorService)
               IoTDBThreadPoolFactory.newScheduledThreadPool(

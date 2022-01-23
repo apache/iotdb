@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,6 +132,7 @@ public class CompactionSchedulerTest {
    * enable_seq_space_compaction=true enable_unseq_space_compaction=true
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=100
    */
+  @Ignore
   @Test
   public void test1() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test1");
@@ -252,6 +254,7 @@ public class CompactionSchedulerTest {
    * enable_seq_space_compaction=false enable_unseq_space_compaction=true
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=100
    */
+  @Ignore
   @Test
   public void test2() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test2");
@@ -268,6 +271,9 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setCrossCompactionMemoryBudget(2 * 1024 * 1024L * 1024L);
 
     try {
       CompactionTaskManager.getInstance().restart();
@@ -361,6 +367,7 @@ public class CompactionSchedulerTest {
    * enable_seq_space_compaction=true enable_unseq_space_compaction=false
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=100
    */
+  @Ignore
   @Test
   public void test3() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test3");
@@ -455,6 +462,7 @@ public class CompactionSchedulerTest {
    * enable_seq_space_compaction=false enable_unseq_space_compaction=false
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=100
    */
+  @Ignore
   @Test
   public void test4() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test4");
@@ -537,6 +545,7 @@ public class CompactionSchedulerTest {
    * enable_seq_space_compaction=true enable_unseq_space_compaction=true
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
    */
+  @Ignore
   @Test
   public void test5() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test5");
@@ -650,6 +659,7 @@ public class CompactionSchedulerTest {
    * enable_seq_space_compaction=false enable_unseq_space_compaction=true
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
    */
+  @Ignore
   @Test
   public void test6() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test6");
@@ -751,6 +761,7 @@ public class CompactionSchedulerTest {
    * enable_seq_space_compaction=true enable_unseq_space_compaction=false
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
    */
+  @Ignore
   @Test
   public void test7() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test7");
@@ -850,6 +861,7 @@ public class CompactionSchedulerTest {
    * enable_seq_space_compaction=false enable_unseq_space_compaction=false
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
    */
+  @Ignore
   @Test
   public void test8() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test8");
@@ -933,6 +945,7 @@ public class CompactionSchedulerTest {
    * enable_seq_space_compaction=true enable_unseq_space_compaction=true
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
    */
+  @Ignore
   @Test
   public void test9() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test9");
@@ -1029,6 +1042,7 @@ public class CompactionSchedulerTest {
    * enable_seq_space_compaction=false enable_unseq_space_compaction=true
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
    */
+  @Ignore
   @Test
   public void test10() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test10");
@@ -1135,6 +1149,7 @@ public class CompactionSchedulerTest {
    * enable_seq_space_compaction=true enable_unseq_space_compaction=false
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
    */
+  @Ignore
   @Test
   public void test11() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test11");
@@ -1236,6 +1251,7 @@ public class CompactionSchedulerTest {
    * enable_seq_space_compaction=false enable_unseq_space_compaction=false
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
    */
+  @Ignore
   @Test
   public void test12() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test12");
@@ -1339,6 +1355,7 @@ public class CompactionSchedulerTest {
    * enable_seq_space_compaction=false enable_unseq_space_compaction=true
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=2
    */
+  @Ignore
   @Test
   public void test14() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test14");
@@ -1439,6 +1456,7 @@ public class CompactionSchedulerTest {
    * enable_seq_space_compaction=true enable_unseq_space_compaction=false
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=2
    */
+  @Ignore
   @Test
   public void test15() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test15");
@@ -1540,6 +1558,7 @@ public class CompactionSchedulerTest {
    * enable_seq_space_compaction=false enable_unseq_space_compaction=false
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=2
    */
+  @Ignore
   @Test
   public void test16() throws IOException, IllegalPathException, InterruptedException {
     logger.warn("Running test16");
