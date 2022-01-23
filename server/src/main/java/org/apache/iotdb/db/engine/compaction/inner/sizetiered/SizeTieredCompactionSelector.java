@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
@@ -80,9 +79,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
    */
   @Override
   public void selectAndSubmit() {
-    final CompactionPriority priority =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionPriority();
-    tsFileResources.readLock();
     PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
     try {
@@ -97,8 +93,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
       }
     } catch (Exception e) {
       LOGGER.error("Exception occurs while selecting files", e);
-    } finally {
-      tsFileResources.readUnlock();
     }
   }
 
@@ -178,7 +172,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
             virtualStorageGroupName,
             timePartition,
             tsFileManager,
-            tsFileResources,
             selectedFileList,
             sequence);
     return CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);

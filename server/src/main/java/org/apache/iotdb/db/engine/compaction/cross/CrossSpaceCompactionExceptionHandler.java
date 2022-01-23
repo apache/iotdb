@@ -50,8 +50,7 @@ public class CrossSpaceCompactionExceptionHandler {
       List<TsFileResource> targetResourceList,
       List<TsFileResource> seqResourceList,
       List<TsFileResource> unseqResourceList,
-      TsFileManager tsFileManager,
-      long timePartiionId) {
+      TsFileManager tsFileManager) {
     try {
       if (logFile == null || !logFile.exists()) {
         // the log file is null or the log file does not exists

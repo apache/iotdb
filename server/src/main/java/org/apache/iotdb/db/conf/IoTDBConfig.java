@@ -1417,7 +1417,7 @@ public class IoTDBConfig {
     return crossCompactionMemoryBudget;
   }
 
-  void setCrossCompactionMemoryBudget(long crossCompactionMemoryBudget) {
+  public void setCrossCompactionMemoryBudget(long crossCompactionMemoryBudget) {
     this.crossCompactionMemoryBudget = crossCompactionMemoryBudget;
   }
 
