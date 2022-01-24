@@ -418,7 +418,7 @@ void deleteData(List<String> paths, long endTime)
 SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
 ```
 
-* 查詢最後一條時間戳大於等於某個時間點的數據
+* 查询最后一条时间戳大于等于某个时间点的数据
 
 ```java
 SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
