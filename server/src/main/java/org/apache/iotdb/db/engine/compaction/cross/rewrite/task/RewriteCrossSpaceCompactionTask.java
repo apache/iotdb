@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionExceptionHandler;
@@ -29,7 +28,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
@@ -54,28 +52,19 @@ import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.Rewrit
 public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactionTask {
 
   private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
-  protected String storageGroupDir;
   protected List<TsFileResource> selectedSeqTsFileResourceList;
   protected List<TsFileResource> selectedUnSeqTsFileResourceList;
-  protected String logicalStorageGroupName;
-  protected String virtualStorageGroupName;
   protected TsFileManager tsFileManager;
   private File logFile;
 
   private List<TsFileResource> targetTsfileResourceList;
   private List<TsFileResource> holdReadLockList = new ArrayList<>();
   private List<TsFileResource> holdWriteLockList = new ArrayList<>();
-  private boolean getWriteLockOfManager = false;
-  private final long ACQUIRE_WRITE_LOCK_TIMEOUT =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionAcquireWriteLockTimeout();
-
-  String storageGroupName;
 
   public RewriteCrossSpaceCompactionTask(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartitionId,
-      String storageGroupDir,
       TsFileManager tsFileManager,
       List<TsFileResource> selectedSeqTsFileResourceList,
       List<TsFileResource> selectedUnSeqTsFileResourceList,
@@ -86,9 +75,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         currentTaskNum,
         selectedSeqTsFileResourceList,
         selectedUnSeqTsFileResourceList);
-    this.logicalStorageGroupName = logicalStorageGroupName;
-    this.virtualStorageGroupName = virtualStorageGroupName;
-    this.storageGroupDir = storageGroupDir;
     this.selectedSeqTsFileResourceList = selectedSeqTsFileResourceList;
     this.selectedUnSeqTsFileResourceList = selectedUnSeqTsFileResourceList;
     this.tsFileManager = tsFileManager;
@@ -101,19 +87,15 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     } catch (Throwable throwable) {
       // catch throwable instead of exception to handle OOM errors
       CrossSpaceCompactionExceptionHandler.handleException(
-          storageGroupName,
+          fullStorageGroupName,
           logFile,
           targetTsfileResourceList,
           selectedSeqTsFileResourceList,
           selectedUnSeqTsFileResourceList,
-          tsFileManager,
-          timePartition);
+          tsFileManager);
       throw throwable;
     } finally {
       releaseAllLock();
-      if (getWriteLockOfManager) {
-        tsFileManager.writeUnlock();
-      }
     }
   }
 
@@ -128,13 +110,14 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         || selectedSeqTsFileResourceList.isEmpty()
         || selectedUnSeqTsFileResourceList.isEmpty()) {
       logger.info(
-          "{} [Compaction] Cross space compaction file list is empty, end it", storageGroupName);
+          "{} [Compaction] Cross space compaction file list is empty, end it",
+          fullStorageGroupName);
       return;
     }
 
     logger.info(
         "{} [Compaction] CrossSpaceCompactionTask start. Sequence files : {}, unsequence files : {}",
-        storageGroupName,
+        fullStorageGroupName,
         selectedSeqTsFileResourceList,
         selectedUnSeqTsFileResourceList);
     logFile =
@@ -154,7 +137,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       CompactionUtils.compact(
           selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
 
-      CompactionUtils.moveTargetFile(targetTsfileResourceList, false, storageGroupName);
+      CompactionUtils.moveTargetFile(targetTsfileResourceList, false, fullStorageGroupName);
 
       // indicates that the cross compaction is complete and the result can be reused during a
       // restart recovery
@@ -166,22 +149,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
 
       CompactionUtils.combineModsInCompaction(
           selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
-      try {
-        tsFileManager.writeLockWithTimeout(
-            "rewrite-cross-space compaction", ACQUIRE_WRITE_LOCK_TIMEOUT);
-        getWriteLockOfManager = true;
-      } catch (WriteLockFailedException e) {
-        // if current compaction thread couldn't get write lock
-        // a WriteLockFailException will be thrown, then terminate the thread itself
-        logger.error(
-            "{} [Compaction] CrossSpaceCompactionTask failed to get write lock, abort the task.",
-            fullStorageGroupName,
-            e);
-        throw new InterruptedException(
-            String.format(
-                "%s [Compaction] compaction abort because cannot acquire write lock",
-                fullStorageGroupName));
-      }
 
       deleteOldFiles(selectedSeqTsFileResourceList);
       deleteOldFiles(selectedUnSeqTsFileResourceList);
@@ -193,7 +160,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       }
       logger.info(
           "{} [Compaction] CrossSpaceCompactionTask Costs {} s",
-          storageGroupName,
+          fullStorageGroupName,
           (System.currentTimeMillis() - startTime) / 1000);
     }
   }
@@ -266,7 +233,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   }
 
   public String getStorageGroupName() {
-    return storageGroupName;
+    return fullStorageGroupName;
   }
 
   private void removeCompactionModification() {
