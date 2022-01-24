@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.storagegroup.timeindex;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
@@ -42,6 +43,8 @@ import java.util.Set;
 public class FileTimeIndex implements ITimeIndex {
 
   private static final Logger logger = LoggerFactory.getLogger(FileTimeIndex.class);
+
+  private static final FileReaderManager FILE_READER_MANAGER = FileReaderManager.getInstance();
 
   /** start time */
   protected long startTime;
@@ -83,7 +86,9 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource) {
-    try (TsFileSequenceReader fileReader = new TsFileSequenceReader(tsFilePath)) {
+    FILE_READER_MANAGER.increaseFileReaderReference(tsFileResource, tsFileResource.isClosed());
+    try {
+      TsFileSequenceReader fileReader = FileReaderManager.getInstance().get(tsFilePath, true);
       return new HashSet<>(fileReader.getAllDevices());
     } catch (NoSuchFileException e) {
       // deleted by ttl
@@ -96,6 +101,8 @@ public class FileTimeIndex implements ITimeIndex {
     } catch (Exception e) {
       logger.error("Failed to get devices from tsfile: {}", tsFilePath, e);
       throw new RuntimeException("Failed to get devices from tsfile:: " + tsFilePath);
+    } finally {
+      FILE_READER_MANAGER.decreaseFileReaderReference(tsFileResource, tsFileResource.isClosed());
     }
   }
 
@@ -211,5 +218,10 @@ public class FileTimeIndex implements ITimeIndex {
       logger.error("Wrong timeIndex type {}", timeIndex.getClass().getName());
       throw new RuntimeException("Wrong timeIndex type " + timeIndex.getClass().getName());
     }
+  }
+
+  @Override
+  public boolean mayContainsDevice(String device) {
+    return true;
   }
 }
