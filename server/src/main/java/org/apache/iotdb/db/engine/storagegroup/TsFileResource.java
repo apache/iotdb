@@ -439,7 +439,7 @@ public class TsFileResource {
   }
 
   public boolean containsDevice(String device) {
-    return timeIndex.containsDevice(device);
+    return timeIndex.mayContainsDevice(device);
   }
 
   public boolean isClosed() {

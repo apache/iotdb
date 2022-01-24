@@ -349,7 +349,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public boolean containsDevice(String device) {
+  public boolean mayContainsDevice(String device) {
     return deviceToIndex.containsKey(device);
   }
 }

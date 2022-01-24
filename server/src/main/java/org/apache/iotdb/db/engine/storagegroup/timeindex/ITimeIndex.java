@@ -182,9 +182,8 @@ public interface ITimeIndex {
   int compareDegradePriority(ITimeIndex timeIndex);
 
   /**
-   * Whether this TsFile contains this device
-   *
-   * @return true, if it contains, otherwise false
+   * Whether this TsFile contains this device, if false, it must not contain this device, if true,
+   * it may or may not contain this device
    */
-  boolean containsDevice(String device);
+  boolean mayContainsDevice(String device);
 }
