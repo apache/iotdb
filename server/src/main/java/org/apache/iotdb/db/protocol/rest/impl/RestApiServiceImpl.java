@@ -33,8 +33,9 @@ import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -95,7 +96,10 @@ public class RestApiServiceImpl extends RestApiService {
 
       PhysicalPlan physicalPlan =
           planner.parseSQLToRestQueryPlan(sql.getSql(), ZoneId.systemDefault());
-      if (!(physicalPlan instanceof QueryPlan)) {
+      physicalPlan.setLoginUserName(securityContext.getUserPrincipal().getName());
+      if (!(physicalPlan instanceof QueryPlan)
+          && !(physicalPlan instanceof ShowPlan)
+          && !(physicalPlan instanceof AuthorPlan)) {
         return Response.ok()
             .entity(
                 new ExecutionStatus()
@@ -103,14 +107,13 @@ public class RestApiServiceImpl extends RestApiService {
                     .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
             .build();
       }
-      QueryPlan queryPlan = (QueryPlan) physicalPlan;
 
-      Response response = authorizationHandler.checkAuthority(securityContext, queryPlan);
+      Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
         return response;
       }
 
-      final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
+      final long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
       try {
         QueryContext queryContext =
             serviceProvider.genQueryContext(
@@ -122,10 +125,11 @@ public class RestApiServiceImpl extends RestApiService {
         QueryDataSet queryDataSet =
             serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-        return QueryDataSetHandler.fillDateSet(
+        // set max row limit to avoid OOM
+        return QueryDataSetHandler.fillQueryDataSet(
             queryDataSet,
-            queryPlan,
-            sql.getRowLimit() != null ? sql.getRowLimit() : defaultQueryRowLimit);
+            physicalPlan,
+            sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit());
       } finally {
         ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }

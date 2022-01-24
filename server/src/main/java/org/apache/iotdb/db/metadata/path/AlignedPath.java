@@ -62,6 +62,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -122,6 +123,10 @@ public class AlignedPath extends PartialPath {
     super(vectorPath);
     measurementList = new ArrayList<>();
     schemaList = new ArrayList<>();
+  }
+
+  public PartialPath getDevicePath() {
+    return new PartialPath(Arrays.copyOf(nodes, nodes.length));
   }
 
   @Override
@@ -409,7 +414,7 @@ public class AlignedPath extends PartialPath {
     }
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList alignedTvListCopy = alignedMemChunk.getSortedTvListForQuery(schemaList);
-    int curSize = alignedTvListCopy.size();
+    int curSize = alignedTvListCopy.rowCount();
     List<List<TimeRange>> deletionList = null;
     if (modsToMemtable != null) {
       deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);

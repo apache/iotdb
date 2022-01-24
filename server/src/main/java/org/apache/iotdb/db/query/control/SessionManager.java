@@ -55,7 +55,7 @@ public class SessionManager {
   // (queryId -> QueryDataSet)
   private final Map<Long, QueryDataSet> queryIdToDataSet = new ConcurrentHashMap<>();
 
-  // (queryId -> client version number)
+  // (sessionId -> client version number)
   private final Map<Long, IoTDBConstant.ClientVersion> sessionIdToClientVersion =
       new ConcurrentHashMap<>();
 
@@ -209,6 +209,10 @@ public class SessionManager {
     if (statementIdToQueryId.containsKey(statementId)) {
       statementIdToQueryId.get(statementId).remove(queryId);
     }
+  }
+
+  public IoTDBConstant.ClientVersion getClientVersion(Long sessionId) {
+    return sessionIdToClientVersion.get(sessionId);
   }
 
   public static SessionManager getInstance() {

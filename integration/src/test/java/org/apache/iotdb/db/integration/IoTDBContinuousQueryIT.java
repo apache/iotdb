@@ -261,6 +261,8 @@ public class IoTDBContinuousQueryIT {
               + "GROUP BY time(1s) END");
     } catch (Exception e) {
       assertTrue(e.getMessage().contains("duplicated"));
+    } finally {
+      stopDataGenerator();
     }
   }
 
@@ -404,7 +406,7 @@ public class IoTDBContinuousQueryIT {
     }
 
     long waitMillSeconds = 0;
-    List<Pair<Long, String>> actualResult;
+    List<Pair<Long, Double>> actualResult;
     do {
       Thread.sleep(waitMillSeconds);
       waitMillSeconds += 100;
@@ -419,18 +421,25 @@ public class IoTDBContinuousQueryIT {
         String.format(
             "select avg(temperature) from root.ln.wf01.*.* GROUP BY ([%d, %d), %dms), level=1,2 without null all",
             actualWindowBegin, actualWindowEnd + groupByInterval, groupByInterval));
-    List<Pair<Long, String>> expectedResult = collectQueryResult();
+    List<Pair<Long, Double>> expectedResult = collectQueryResult();
 
-    assertEquals(expectedResult, actualResult);
+    assertEquals(expectedResult.size(), actualResult.size());
+    final int size = expectedResult.size();
+    for (int i = 0; i < size; ++i) {
+      Pair<Long, Double> expected = expectedResult.get(i);
+      Pair<Long, Double> actual = actualResult.get(i);
+      assertEquals(expected.left, actual.left);
+      assertEquals(expected.right, actual.right, 10e-6);
+    }
   }
 
-  private List<Pair<Long, String>> collectQueryResult() {
-    List<Pair<Long, String>> result = new ArrayList<>();
+  private List<Pair<Long, Double>> collectQueryResult() {
+    List<Pair<Long, Double>> result = new ArrayList<>();
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
         String timestamp = resultSet.getString(1);
         String value = resultSet.getString(2);
-        result.add(new Pair<>(Long.parseLong(timestamp), value));
+        result.add(new Pair<>(Long.parseLong(timestamp), Double.parseDouble(value)));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());

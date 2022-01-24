@@ -29,6 +29,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
+import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -2299,10 +2300,46 @@ public class Session {
     return resp.getMeasurements();
   }
 
+  /** @return All template names. */
+  public List<String> showAllTemplates()
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSQueryTemplateReq req = new TSQueryTemplateReq();
+    req.setName("");
+    req.setQueryType(TemplateQueryType.SHOW_TEMPLATES.ordinal());
+    TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
+    return resp.getMeasurements();
+  }
+
+  /** @return All paths have been set to designated template. */
+  public List<String> showPathsTemplateSetOn(String templateName)
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSQueryTemplateReq req = new TSQueryTemplateReq();
+    req.setName(templateName);
+    req.setQueryType(TemplateQueryType.SHOW_SET_TEMPLATES.ordinal());
+    TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
+    return resp.getMeasurements();
+  }
+
+  /** @return All paths are using designated template. */
+  public List<String> showPathsTemplateUsingOn(String templateName)
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSQueryTemplateReq req = new TSQueryTemplateReq();
+    req.setName(templateName);
+    req.setQueryType(TemplateQueryType.SHOW_USING_TEMPLATES.ordinal());
+    TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
+    return resp.getMeasurements();
+  }
+
   public void unsetSchemaTemplate(String prefixPath, String templateName)
       throws IoTDBConnectionException, StatementExecutionException {
     TSUnsetSchemaTemplateReq request = getTSUnsetSchemaTemplateReq(prefixPath, templateName);
     defaultSessionConnection.unsetSchemaTemplate(request);
+  }
+
+  public void dropSchemaTemplate(String templateName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSDropSchemaTemplateReq request = getTSDropSchemaTemplateReq(templateName);
+    defaultSessionConnection.dropSchemaTemplate(request);
   }
 
   private TSSetSchemaTemplateReq getTSSetSchemaTemplateReq(String templateName, String prefixPath) {
@@ -2316,6 +2353,12 @@ public class Session {
       String prefixPath, String templateName) {
     TSUnsetSchemaTemplateReq request = new TSUnsetSchemaTemplateReq();
     request.setPrefixPath(prefixPath);
+    request.setTemplateName(templateName);
+    return request;
+  }
+
+  private TSDropSchemaTemplateReq getTSDropSchemaTemplateReq(String templateName) {
+    TSDropSchemaTemplateReq request = new TSDropSchemaTemplateReq();
     request.setTemplateName(templateName);
     return request;
   }

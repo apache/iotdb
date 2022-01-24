@@ -76,7 +76,7 @@ public class MetricConfigDescriptor {
         metricConfig = (MetricConfig) yaml.load(inputStream);
         return;
       } catch (IOException e) {
-        logger.warn("Fail to find config file : {}, use default", url, e);
+        logger.warn("Fail to find config file : {}, use default config.", url, e);
       }
     } else {
       logger.warn("Fail to find config file, use default");

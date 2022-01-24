@@ -143,7 +143,7 @@ public class GroupByLevelDataSetTest {
     queryPlan =
         (QueryPlan)
             processor.parseSQLToPhysicalPlan(
-                "select count(\"s3+xy\") from root.test.* group by level=2");
+                "select count(`\"s3+xy\"`) from root.test.* group by level=2");
     dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());

@@ -45,6 +45,16 @@ In root directory:
 </dependencies>
 ```
 
+## Syntax Description
+
+- **IoTDB-SQL interface:** The input SQL parameter needs to conform to the [syntax conventions](../Reference/Syntax-Conventions.md) and be escaped for JAVA strings. For example, you need to add a backslash before the double-quotes. (That is: after JAVA escaping, it is consistent with the SQL statement executed on the command line.)
+- **Other interfaces:**
+  - The node names in path or path prefix as parameter:
+    - The node names which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
+    - The node names enclosed in single or double quotes still need to be enclosed in single or double quotes and must be escaped for JAVA strings.
+    - For the `checkTimeseriesExists` interface, since the IoTDB-SQL interface is called internally, the time-series pathname must be consistent with the SQL syntax conventions and be escaped for JAVA strings.
+  - Identifiers (such as template names) as parameters: The identifiers which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
+
 ## Native APIs
 
 Here we show the commonly used interfaces and their parameters in the Native API:
@@ -79,8 +89,11 @@ session =
         .thriftDefaultBufferSize(int thriftDefaultBufferSize)
         .thriftMaxFrameSize(int thriftMaxFrameSize)
         .enableCacheLeader(boolean enableCacheLeader)
+        .version(Version version)
         .build();
 ```
+
+Version represents the SQL semantic version used by the client, which is used to be compatible with the SQL semantics of 0.12 when upgrading 0.13. The possible values are: `V_0_12`, `V_0_13`.
 
 * Open a Session
 
@@ -266,7 +279,7 @@ public void addUnalignedMeasurementsIntemplate(String templateName,
 public void deleteNodeInTemplate(String templateName, String path);
 ```
 
-You can query measurement templates with these APIS:
+You can query measurement inside templates with these APIS:
 
 ```java
 // Return the amount of measurements inside a template
@@ -285,7 +298,7 @@ public List<String> showMeasurementsInTemplate(String templateName);
 public List<String> showMeasurementsInTemplate(String templateName, String pattern);
 ```
 
-Set the measurement template named 'templateName' at path 'prefixPath'.
+To implement schema template, you can  set the measurement template named 'templateName' at path 'prefixPath'.
 
 ``` java
 void setSchemaTemplate(String templateName, String prefixPath)
@@ -296,11 +309,28 @@ Before setting template, you should firstly create the template using
 ```java
 void createSchemaTemplate(Template template)
 ```
+
+After setting template to a certain path, you can query for info about template using belowed interface in session:
+
 ```java
-void unsetSchemaTemplate(String prefixPath, String templateName)
+/** @return All template names. */
+public List<String> showAllTemplates();
+
+/** @return All paths have been set to designated template. */
+public List<String> showPathsTemplateSetOn(String templateName);
+
+/** @return All paths are using designated template. */
+public List<String> showPathsTemplateUsingOn(String templateName)
 ```
 
-Unset the measurement template named 'templateName' from path 'prefixPath'. You should ensure that there is a template named 'templateName' set at the path 'prefixPath'.
+If you are ready to get rid of schema template, you can drop it with belowed interface. Make sure the template to drop has been unset from MTree.
+
+```java
+void unsetSchemaTemplate(String prefixPath, String templateName);
+public void dropSchemaTemplate(String templateName);
+```
+
+Unset the measurement template named 'templateName' from path 'prefixPath'. When you issue this interface, you should assure that there is a template named 'templateName' set at the path 'prefixPath'.
 
 Attention: Unsetting the template named 'templateName' from node at path 'prefixPath' or descendant nodes which have already inserted records using template is **not supported**.
 

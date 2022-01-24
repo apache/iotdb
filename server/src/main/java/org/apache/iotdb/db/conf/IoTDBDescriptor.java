@@ -128,15 +128,6 @@ public class IoTDBDescriptor {
       logger.info("Start to read config file {}", url);
       Properties properties = new Properties();
       properties.load(inputStream);
-      conf.setEnableStatMonitor(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_stat_monitor", Boolean.toString(conf.isEnableStatMonitor()))));
-
-      conf.setEnableMonitorSeriesWrite(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_monitor_series_write", Boolean.toString(conf.isEnableStatMonitor()))));
 
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
       replaceHostnameWithIP();
@@ -317,28 +308,17 @@ public class IoTDBDescriptor {
                   "io_task_queue_size_for_flushing",
                   Integer.toString(conf.getIoTaskQueueSizeForFlushing()))));
 
-      conf.setMergeChunkPointNumberThreshold(
-          Integer.parseInt(
-              properties.getProperty(
-                  "merge_chunk_point_number",
-                  Integer.toString(conf.getMergeChunkPointNumberThreshold()))));
-
-      conf.setMergePagePointNumberThreshold(
-          Integer.parseInt(
-              properties.getProperty(
-                  "merge_page_point_number",
-                  Integer.toString(conf.getMergePagePointNumberThreshold()))));
-      conf.setCompactionScheduleInterval(
+      conf.setCompactionScheduleIntervalInMs(
           Long.parseLong(
               properties.getProperty(
-                  "compaction_schedule_interval",
-                  Long.toString(conf.getCompactionScheduleInterval()))));
+                  "compaction_schedule_interval_in_ms",
+                  Long.toString(conf.getCompactionScheduleIntervalInMs()))));
 
-      conf.setCompactionSubmissionInterval(
+      conf.setCompactionSubmissionIntervalInMs(
           Long.parseLong(
               properties.getProperty(
-                  "compaction_submission_interval",
-                  Long.toString(conf.getCompactionSubmissionInterval()))));
+                  "compaction_submission_interval_in_ms",
+                  Long.toString(conf.getCompactionSubmissionIntervalInMs()))));
 
       conf.setEnableCrossSpaceCompaction(
           Boolean.parseBoolean(
@@ -499,33 +479,20 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "upgrade_thread_num", Integer.toString(conf.getUpgradeThreadNum()))));
-      conf.setMergeMemoryBudget(
+      conf.setCrossCompactionMemoryBudget(
           Long.parseLong(
               properties.getProperty(
-                  "merge_memory_budget", Long.toString(conf.getMergeMemoryBudget()))));
-      conf.setMergeChunkSubThreadNum(
-          Integer.parseInt(
-              properties.getProperty(
-                  "merge_chunk_subthread_num",
-                  Integer.toString(conf.getMergeChunkSubThreadNum()))));
-      conf.setContinueMergeAfterReboot(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "continue_merge_after_reboot",
-                  Boolean.toString(conf.isContinueMergeAfterReboot()))));
-      conf.setMergeFileSelectionTimeBudget(
+                  "cross_compaction_memory_budget",
+                  Long.toString(conf.getCrossCompactionMemoryBudget()))));
+      conf.setCrossCompactionFileSelectionTimeBudget(
           Long.parseLong(
               properties.getProperty(
-                  "merge_fileSelection_time_budget",
-                  Long.toString(conf.getMergeFileSelectionTimeBudget()))));
+                  "cross_compaction_file_selection_time_budget",
+                  Long.toString(conf.getCrossCompactionFileSelectionTimeBudget()))));
       conf.setMergeIntervalSec(
           Long.parseLong(
               properties.getProperty(
                   "merge_interval_sec", Long.toString(conf.getMergeIntervalSec()))));
-      conf.setForceFullMerge(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "force_full_merge", Boolean.toString(conf.isForceFullMerge()))));
       conf.setConcurrentCompactionThread(
           Integer.parseInt(
               properties.getProperty(
@@ -560,11 +527,11 @@ public class IoTDBDescriptor {
                   "max_compaction_candidate_file_num",
                   Integer.toString(conf.getMaxCompactionCandidateFileNum()))));
 
-      conf.setMergeWriteThroughputMbPerSec(
+      conf.setCompactionWriteThroughputMbPerSec(
           Integer.parseInt(
               properties.getProperty(
-                  "merge_write_throughput_mb_per_sec",
-                  Integer.toString(conf.getMergeWriteThroughputMbPerSec()))));
+                  "compaction_write_throughput_mb_per_sec",
+                  Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
       conf.setEnablePartialInsert(
           Boolean.parseBoolean(
@@ -652,9 +619,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "concurrent_writing_time_partition",
                   String.valueOf(conf.getConcurrentWritingTimePartition()))));
-
-      conf.setTimeIndexLevel(
-          properties.getProperty("time_index_level", String.valueOf(conf.getTimeIndexLevel())));
 
       // the default fill interval in LinearFill and PreviousFill
       conf.setDefaultFillInterval(
@@ -1247,11 +1211,11 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
       // update merge_write_throughput_mb_per_sec
-      conf.setMergeWriteThroughputMbPerSec(
+      conf.setCompactionWriteThroughputMbPerSec(
           Integer.parseInt(
               properties.getProperty(
                   "merge_write_throughput_mb_per_sec",
-                  Integer.toString(conf.getMergeWriteThroughputMbPerSec()))));
+                  Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
       // update insert-tablet-plan's row limit for select-into
       conf.setSelectIntoInsertTabletPlanRowLimit(

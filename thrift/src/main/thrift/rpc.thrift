@@ -411,6 +411,11 @@ struct TSUnsetSchemaTemplateReq {
   3: required string templateName
 }
 
+struct TSDropSchemaTemplateReq {
+  1: required i64 sessionId
+  2: required string templateName
+}
+
 service TSIService {
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -499,4 +504,6 @@ service TSIService {
   TSStatus setSchemaTemplate(1:TSSetSchemaTemplateReq req);
 
   TSStatus unsetSchemaTemplate(1:TSUnsetSchemaTemplateReq req);
+
+  TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
 }

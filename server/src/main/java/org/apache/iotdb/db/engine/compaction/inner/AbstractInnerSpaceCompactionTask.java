@@ -101,13 +101,13 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
   @Override
   public boolean checkValidAndSetMerging() {
     for (TsFileResource resource : selectedTsFileResourceList) {
-      if (resource.isMerging() | !resource.isClosed() || !resource.getTsFile().exists()) {
+      if (resource.isCompacting() | !resource.isClosed() || !resource.getTsFile().exists()) {
         return false;
       }
     }
 
     for (TsFileResource resource : selectedTsFileResourceList) {
-      resource.setMerging(true);
+      resource.setCompacting(true);
     }
     return true;
   }
@@ -125,5 +125,10 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
         .append(", total compaction count is ")
         .append(sumOfCompactionCount)
         .toString();
+  }
+
+  @Override
+  public void resetCompactionCandidateStatusForAllSourceFiles() {
+    selectedTsFileResourceList.forEach(x -> x.setCompactionCandidate(false));
   }
 }

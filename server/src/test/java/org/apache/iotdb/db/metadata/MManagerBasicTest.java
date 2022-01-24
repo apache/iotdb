@@ -479,7 +479,7 @@ public class MManagerBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          manager.getMatchedDevices(new PartialPath("root.**")).stream()
+          manager.getMatchedDevices(new PartialPath("root.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
@@ -492,7 +492,7 @@ public class MManagerBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          manager.getMatchedDevices(new PartialPath("root.**")).stream()
+          manager.getMatchedDevices(new PartialPath("root.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
@@ -506,7 +506,7 @@ public class MManagerBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          recoverManager.getMatchedDevices(new PartialPath("root.**")).stream()
+          recoverManager.getMatchedDevices(new PartialPath("root.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
@@ -745,7 +745,7 @@ public class MManagerBasicTest {
       // usual condition
       assertEquals(
           devices,
-          manager.getMatchedDevices(new PartialPath("root.laptop.**")).stream()
+          manager.getMatchedDevices(new PartialPath("root.laptop.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
       manager.setStorageGroup(new PartialPath("root.vehicle"));
@@ -759,7 +759,7 @@ public class MManagerBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          manager.getMatchedDevices(new PartialPath("root.**")).stream()
+          manager.getMatchedDevices(new PartialPath("root.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
     } catch (MetadataException e) {
@@ -894,13 +894,14 @@ public class MManagerBasicTest {
 
     Set<String> allSchema = new HashSet<>();
     for (IMeasurementSchema schema : node.getSchemaTemplate().getSchemaMap().values()) {
-      allSchema.add("root.sg1.d1" + TsFileConstant.PATH_SEPARATOR + schema.getMeasurementId());
+      allSchema.add(
+          "root.sg1.d1.vector" + TsFileConstant.PATH_SEPARATOR + schema.getMeasurementId());
     }
     for (MeasurementPath measurementPath :
-        manager.getMeasurementPaths(new PartialPath("root.sg1.d1.**"))) {
+        manager.getMeasurementPaths(new PartialPath("root.sg1.**"))) {
       allSchema.remove(measurementPath.toString());
     }
-
+    allSchema.remove("root.sg1.d1.vector.s11");
     assertTrue(allSchema.isEmpty());
 
     IMeasurementMNode mNode = manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s11"));

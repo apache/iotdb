@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
@@ -65,9 +64,8 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
     } finally {
-      if (!(this instanceof InplaceCompactionRecoverTask)
+      if (!(this instanceof RewriteCrossCompactionRecoverTask)
           && !(this instanceof SizeTieredCompactionRecoverTask)) {
-        CompactionScheduler.decPartitionCompaction(fullStorageGroupName, timePartition);
         CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
       }
       this.currentTaskNum.decrementAndGet();
@@ -112,4 +110,6 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     }
     return false;
   }
+
+  public abstract void resetCompactionCandidateStatusForAllSourceFiles();
 }

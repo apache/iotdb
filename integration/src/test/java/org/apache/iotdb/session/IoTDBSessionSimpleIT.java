@@ -82,7 +82,6 @@ public class IoTDBSessionSimpleIT {
   @Before
   public void setUp() {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
 
@@ -538,7 +537,7 @@ public class IoTDBSessionSimpleIT {
     try {
       session.deleteTimeseries(Arrays.asList("root.sg1.d1.t6", "root.sg1.d1.t2", "root.sg1.d1.t3"));
     } catch (BatchExecutionException e) {
-      assertEquals("Path [root.sg1.d1.t6] does not exist;", e.getMessage());
+      assertTrue(e.getMessage().contains("Path [root.sg1.d1.t6] does not exist;"));
     }
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.t1"));
     assertFalse(session.checkTimeseriesExists("root.sg1.d1.t2"));
@@ -1299,8 +1298,9 @@ public class IoTDBSessionSimpleIT {
       session.deleteTimeseries("root.sg.loc1.sector.x");
       fail();
     } catch (StatementExecutionException e) {
-      assertEquals(
-          "Cannot delete a timeseries inside a template: root.sg.loc1.sector.x;", e.getMessage());
+      assertTrue(
+          e.getMessage()
+              .contains("Cannot delete a timeseries inside a template: root.sg.loc1.sector.x;"));
     }
 
     session.close();

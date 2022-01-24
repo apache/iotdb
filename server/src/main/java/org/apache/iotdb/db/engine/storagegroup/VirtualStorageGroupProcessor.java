@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -123,7 +122,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.COMPACTION_LOG_NAME;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
@@ -263,7 +261,7 @@ public class VirtualStorageGroupProcessor {
   // DEFAULT_POOL_TRIM_INTERVAL_MILLIS
   private long timeWhenPoolNotEmpty = Long.MAX_VALUE;
 
-  private LastFlushTimeManager lastFlushTimeManager = new LastFlushTimeManager();
+  private ILastFlushTimeManager lastFlushTimeManager;
 
   /**
    * record the insertWriteLock in SG is being hold by which method, it will be empty string if on
@@ -400,13 +398,16 @@ public class VirtualStorageGroupProcessor {
       logger.error("create Storage Group system Directory {} failed", storageGroupSysDir.getPath());
     }
 
-    // use id table
+    // if use id table, we use id table flush time manager
     if (config.isEnableIDTable()) {
       try {
         idTable = IDTableManager.getInstance().getIDTable(new PartialPath(logicalStorageGroupName));
+        lastFlushTimeManager = new IDTableFlushTimeManager(idTable);
       } catch (IllegalPathException e) {
         logger.error("failed to create id table");
       }
+    } else {
+      lastFlushTimeManager = new LastFlushTimeManager();
     }
     // recover tsfiles
     recover();
@@ -468,6 +469,7 @@ public class VirtualStorageGroupProcessor {
     try {
       recoverInnerSpaceCompaction(true);
       recoverInnerSpaceCompaction(false);
+      recoverCrossSpaceCompaction();
     } catch (Exception e) {
       throw new StorageGroupProcessorException(e);
     }
@@ -530,9 +532,9 @@ public class VirtualStorageGroupProcessor {
         long endTime = resource.getEndTime(deviceId);
         endTimeMap.put(deviceId, endTime);
       }
-      lastFlushTimeManager.setLastTimeAll(timePartitionId, endTimeMap);
-      lastFlushTimeManager.setFlushedTimeAll(timePartitionId, endTimeMap);
-      lastFlushTimeManager.setGlobalFlushedTimeAll(endTimeMap);
+      lastFlushTimeManager.setMultiDeviceLastTime(timePartitionId, endTimeMap);
+      lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
+      lastFlushTimeManager.setMultiDeviceGlobalFlushedTime(endTimeMap);
     }
 
     // recover and start timed compaction thread
@@ -552,16 +554,18 @@ public class VirtualStorageGroupProcessor {
                 + logicalStorageGroupName
                 + "-"
                 + virtualStorageGroupId);
+    timedCompactionScheduleTask.scheduleWithFixedDelay(
+        this::executeCompaction,
+        COMPACTION_TASK_SUBMIT_DELAY,
+        IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
+        TimeUnit.MILLISECONDS);
+  }
 
-    CompactionTaskManager.getInstance()
-        .submitTask(
-            logicalStorageGroupName + "-" + virtualStorageGroupId,
-            0,
-            new CompactionRecoverTask(
-                this::submitTimedCompactionTask,
-                tsFileManager,
-                logicalStorageGroupName,
-                virtualStorageGroupId));
+  /** recover crossSpaceCompaction */
+  private void recoverCrossSpaceCompaction() throws Exception {
+    CompactionRecoverTask compactionRecoverTask =
+        new CompactionRecoverTask(tsFileManager, logicalStorageGroupName, virtualStorageGroupId);
+    compactionRecoverTask.recoverCrossSpaceCompaction();
   }
 
   private void recoverInnerSpaceCompaction(boolean isSequence) throws Exception {
@@ -607,7 +611,8 @@ public class VirtualStorageGroupProcessor {
                           .substring(timePartitionDir.getPath().lastIndexOf(File.separator) + 1)),
                   compactionLog,
                   timePartitionDir.getPath(),
-                  isSequence)
+                  isSequence,
+                  tsFileManager)
               .call();
         }
       }
@@ -629,17 +634,10 @@ public class VirtualStorageGroupProcessor {
               -1,
               logFile,
               logFile.getParent(),
-              isSequence)
+              isSequence,
+              tsFileManager)
           .call();
     }
-  }
-
-  private void submitTimedCompactionTask() {
-    timedCompactionScheduleTask.scheduleWithFixedDelay(
-        this::executeCompaction,
-        COMPACTION_TASK_SUBMIT_DELAY,
-        COMPACTION_TASK_SUBMIT_DELAY,
-        TimeUnit.MILLISECONDS);
   }
 
   private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
@@ -663,13 +661,13 @@ public class VirtualStorageGroupProcessor {
       for (String deviceId : resource.getDevices()) {
         long endTime = resource.getEndTime(deviceId);
         long endTimePartitionId = StorageEngine.getTimePartition(endTime);
-        lastFlushTimeManager.setLastTime(endTimePartitionId, deviceId, endTime);
-        lastFlushTimeManager.setGlobalFlushedTime(deviceId, endTime);
+        lastFlushTimeManager.setOneDeviceLastTime(endTimePartitionId, deviceId, endTime);
+        lastFlushTimeManager.setOneDeviceGlobalFlushedTime(deviceId, endTime);
 
         // set all the covered partition's LatestFlushedTime
         long partitionId = StorageEngine.getTimePartition(resource.getStartTime(deviceId));
         while (partitionId <= endTimePartitionId) {
-          lastFlushTimeManager.setFlushedTime(partitionId, deviceId, endTime);
+          lastFlushTimeManager.setOneDeviceFlushedTime(partitionId, deviceId, endTime);
           if (!timePartitionIdVersionControllerMap.containsKey(partitionId)) {
             File directory =
                 SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, String.valueOf(partitionId));
@@ -710,10 +708,6 @@ public class VirtualStorageGroupProcessor {
       // resources
       continueFailedRenames(fileFolder, TEMP_SUFFIX);
 
-      // some TsFiles were going to be replaced by the merged files when the system crashed and
-      // the process was interrupted before the merged files could be named
-      continueFailedRenames(fileFolder, MERGE_SUFFIX);
-
       File[] subFiles = fileFolder.listFiles();
       if (subFiles != null) {
         for (File partitionFolder : subFiles) {
@@ -724,11 +718,6 @@ public class VirtualStorageGroupProcessor {
             // such
             // resources
             continueFailedRenames(partitionFolder, TEMP_SUFFIX);
-
-            // some TsFiles were going to be replaced by the merged files when the system crashed
-            // and
-            // the process was interrupted before the merged files could be named
-            continueFailedRenames(partitionFolder, MERGE_SUFFIX);
 
             Collections.addAll(
                 tsFiles,
@@ -2013,14 +2002,17 @@ public class VirtualStorageGroupProcessor {
         continue;
       }
 
-      if (tsFileResource.isMerging) {
+      if (tsFileResource.isCompacting) {
         // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
         // change after compaction
         deletion.setFileOffset(Long.MAX_VALUE);
-        // write deletion into modification file
+        // write deletion into compaction modification file
         tsFileResource.getCompactionModFile().write(deletion);
+        // write deletion into modification file to enable query during compaction
+        tsFileResource.getModFile().write(deletion);
         // remember to close mod file
         tsFileResource.getCompactionModFile().close();
+        tsFileResource.getModFile().close();
       } else {
         deletion.setFileOffset(tsFileResource.getTsFileSize());
         // write deletion into modification file
@@ -2276,12 +2268,8 @@ public class VirtualStorageGroupProcessor {
     resources.clear();
   }
 
-  /**
-   * merge file under this storage group processor
-   *
-   * @param isFullMerge whether this merge is a full merge or not
-   */
-  public void merge(boolean isFullMerge) {
+  /** merge file under this storage group processor */
+  public void compact() {
     writeLock("merge");
     try {
       executeCompaction();
@@ -3029,7 +3017,6 @@ public class VirtualStorageGroupProcessor {
     try {
       // abort ongoing comapctions and merges
       CompactionTaskManager.getInstance().abortCompaction(logicalStorageGroupName);
-      MergeManager.getINSTANCE().abortMerge(logicalStorageGroupName);
       // close all working files that should be removed
       removePartitions(filter, workSequenceTsFileProcessors.entrySet(), true);
       removePartitions(filter, workUnsequenceTsFileProcessors.entrySet(), false);
@@ -3249,5 +3236,10 @@ public class VirtualStorageGroupProcessor {
 
   public IDTable getIdTable() {
     return idTable;
+  }
+
+  @TestOnly
+  public ILastFlushTimeManager getLastFlushTimeManager() {
+    return lastFlushTimeManager;
   }
 }
