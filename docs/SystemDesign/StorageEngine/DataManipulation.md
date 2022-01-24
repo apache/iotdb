@@ -47,7 +47,7 @@ The following describes four common data manipulation operations, which are inse
 	* Session‘s insertTablet
 
 * Main entrance: ```public void insertTablet(InsertTabletPlan insertTabletPlan)```  StorageEngine.java
-    * Find the corresponding StorageGroupProcessor
+    * Find the corresponding  VirtualStorageGroupProcessor 
 	* According to the time of this batch of data and the last timestamp of the current device order, this batch of data is divided into small batches, which correspond to a TsFileProcessor
 	* Write each small batch to the corresponding memtable of TsFileProcessor
 	    * If the file is out of order, update the endTimeMap in tsfileResource
@@ -70,15 +70,15 @@ Old data is automatically deleted by merging, see:
 * Corresponding interface
   * JDBC's execute interface, using delete SQL statements
 
-Each StorageGroupProcessor maintains a ascending version for each partition, which is managed by SimpleFileVersionController.
+Each  VirtualStorageGroupProcessor maintains a ascending version for each partition, which is managed by SimpleFileVersionController.
 Each memtable will apply a version when submitted to flush. After flushing to TsFile, a current position-version will added to TsFileMetadata. 
 This information will be used to set version to ChunkMetadata when query.
 
 Main entrance in StorageEngine.java: 
- 
+
 ```public void delete(String deviceId, String measurementId, long startTime, long endTime)```
 
-  * Find the corresponding StorageGroupProcessor
+  * Find the corresponding  VirtualStorageGroupProcessor 
   * Find all impacted working TsFileProcessors to write WAL
   * Find all impacted TsFileResources to record a Modification in its mods file, the Modification format is: path，version, startTime, endTime
   * If the TsFile is not closed，get its TsFileProcessor
@@ -94,8 +94,8 @@ For the following mods file, data of d1.s1 falls in range [100, 200], [180, 300]
 	* JDBC's execute interface, using the SET TTL statement
 
 * Main entrance: ```public void setTTL(String storageGroup, long dataTTL) ```StorageEngine.java
-    * Find the corresponding StorageGroupProcessor
-    * Set new data ttl in StorageGroupProcessor
+    * Find the corresponding  VirtualStorageGroupProcessor 
+    * Set new data ttl in  VirtualStorageGroupProcessor 
     * TTL check on all TsfileResource
     * If a file expires under the current TTL, delete the file
 

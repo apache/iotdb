@@ -27,63 +27,83 @@ The main logic of the aggregation query is in AggregateExecutor
 
 ## Aggregation query without value filter
 
-For aggregate queries without value filters, the results are obtained by the `executeWithoutValueFilter()` method and a dataSet is constructed. First use the `mergeSameSeries()` method to merge aggregate queries for the same time series. For example: if you need to calculate count(s1), sum(s2), count(s3), sum(s1), you need to calculate two aggregation values of s1, then the pathToAggrIndexesMap result will be: s1-> 0, 3; s2-> 1; s3-> 2.
+For aggregate queries without value filters, the results are obtained by the `executeWithoutValueFilter()` method and a dataSet is constructed. First use the `groupAggregationsBySeries` method to merge aggregate queries for the same time series. For example: if you need to calculate count(s1), sum(s2), count(s3), sum(s1), you need to calculate two aggregation values of s1, then the pathToAggrIndexesMap result will be: s1-> 0, 3; s2-> 1; s3-> 2.
 
-Then you will get `pathToAggrIndexesMap`, where each entry is an aggregate query of series, so you can calculate its aggregate value `aggregateResults` by calling the `groupAggregationsBySeries()` method.  Before you finally create the result set, you need to restore its order to the order of the user query.  Finally use the `constructDataSet()` method to create a result set and return it.
+Then you will get `pathToAggrIndexesMap`, where each entry is an aggregate query of series, so you can calculate its aggregate value `aggregateResult` by calling the `aggregateOneSeries` method.  Before you finally create the result set, you need to restore its order to the order of the user query.  Finally use the `constructDataSet()` method to create a result set and return it.
 
-The `groupAggregationsBySeries ()` method is explained in detail below.  First create an `IAggregateReader`:
+The `aggregateOneSeries()` method is explained in detail below.  First create an `IAggregateReader`:
 ```
-IAggregateReader seriesReader = new SeriesAggregateReader(
-        pathToAggrIndexes.getKey(), tsDataType, context, QueryResourceManager.getInstance()
-        .getQueryDataSource(seriesPath, context, timeFilter), timeFilter, null);
+if (ascAggregateResultList != null && !ascAggregateResultList.isEmpty()) {
+    IAggregateReader seriesReader = new SeriesAggregateReader(
+        seriesPath, measurements, tsDataType, context, queryDataSource, timeFilter,
+        null, null, true);
+    aggregateFromReader(seriesReader, ascAggregateResultList);
+}
+if (descAggregateResultList != null && !descAggregateResultList.isEmpty()) {
+    IAggregateReader seriesReader = new SeriesAggregateReader(
+        seriesPath, measurements, tsDataType, context, queryDataSource, timeFilter,
+        null, null, false);
+    aggregateFromReader(seriesReader, descAggregateResultList);
+}
 ```
 
-For each entry (that is, series), first create an aggregate result `AggregateResult` for each aggregate query. Maintain a boolean list `isCalculatedList`, corresponding to whether each `AggregateResult` has been calculated. Record the remaining number of functions to be calculated in `remainingToCalculate`.  The list of boolean values and this count value will make some aggregate functions (such as `FIRST_VALUE`) not need to continue the entire loop process after obtaining the result.
+For each entry (that is, series), first create an aggregate result `AggregateResult` for each aggregate query. Maintain a boolean array `isCalculatedArray`, corresponding to whether each `AggregateResult` has been calculated. Record the remaining number of functions to be calculated in `remainingToCalculate`.  The array of boolean values and this count value will make some aggregate functions (such as `FIRST_VALUE`) not need to continue the entire loop process after obtaining the result.
 
 Next, update `AggregateResult` according to the usage method of `aggregateReader` introduced in Section 5.2:
 
 ```
-while (aggregateReader.hasNextChunk()) {
-  if (aggregateReader.canUseCurrentChunkStatistics()) {
-    Statistics chunkStatistics = aggregateReader.currentChunkStatistics();
-    
-    // do some aggregate calculation using chunk statistics
-    ...
-    
-    aggregateReader.skipCurrentChunk();
-    continue;
-  }
-	  
-  while (aggregateReader.hasNextPage()) {
-	 if (aggregateReader.canUseCurrentPageStatistics()) {
-	   Statistics pageStatistic = aggregateReader.currentPageStatistics();
-	   
-	   // do some aggregate calculation using page statistics
-      ...
-	   
-	   aggregateReader.skipCurrentPage();
-	   continue;
-	 } else {
-	 	BatchData batchData = aggregateReader.nextPage();
-	 	// do some aggregate calculation using batch data
-      ...
-	 }	 
-  }
+while (seriesReader.hasNextFile()) {
+    // cal by file statistics
+    if (seriesReader.canUseCurrentFileStatistics()) {
+        Statistics fileStatistics = seriesReader.currentFileStatistics();
+        remainingToCalculate =
+            aggregateStatistics(
+            aggregateResultList, isCalculatedArray, remainingToCalculate, fileStatistics);
+        if (remainingToCalculate == 0) {
+            return;
+        }
+        seriesReader.skipCurrentFile();
+        continue;
+    }
+
+    while (seriesReader.hasNextChunk()) {
+        // cal by chunk statistics
+        if (seriesReader.canUseCurrentChunkStatistics()) {
+            Statistics chunkStatistics = seriesReader.currentChunkStatistics();
+            remainingToCalculate =
+                aggregateStatistics(
+                aggregateResultList, isCalculatedArray, remainingToCalculate, chunkStatistics);
+            if (remainingToCalculate == 0) {
+                return;
+            }
+            seriesReader.skipCurrentChunk();
+            continue;
+        }
+
+        remainingToCalculate =
+            aggregatePages(
+            seriesReader, aggregateResultList, isCalculatedArray, remainingToCalculate);
+        if (remainingToCalculate == 0) {
+            return;
+        }
+    }
 }
 ```
 
-It should be noted that before updating each result, you need to first determine whether it has been calculated (using the isCalculatedList list); after each update, call the isCalculatedAggregationResult () method to update the boolean values in the list  .  If all values in the list are true, that is, the value of `remainingToCalculate` is 0, it proves that all aggregate function results have been calculated and can be returned.
+It should be noted that before updating each result, you need to first determine whether it has been calculated (using the `isCalculatedArray` array); after each update, call the `hasFinalResult()` method to update the boolean values in the array  .  If all values in the list are true, that is, the value of `remainingToCalculate` is 0, it proves that all aggregate function results have been calculated and can be returned.
 ```
-if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
-  AggregateResult aggregateResult = aggregateResultList.get(i);
-  ... // update
-  if (aggregateResult.isCalculatedAggregationResult()) {
-    isCalculatedList.set(i, true);
-    remainingToCalculate--;
-    if (remainingToCalculate == 0) {
-      return aggregateResultList;
+for (int i = 0; i < aggregateResultList.size(); i++) {
+    if (!isCalculatedArray[i]) {
+        AggregateResult aggregateResult = aggregateResultList.get(i);
+        aggregateResult.updateResultFromStatistics(statistics);
+        if (aggregateResult.hasFinalResult()) {
+            isCalculatedArray[i] = true;
+            newRemainingToCalculate--;
+            if (newRemainingToCalculate == 0) {
+                return newRemainingToCalculate;
+            }
+        }
     }
-  }
 }
 ```
 
@@ -122,8 +142,9 @@ each node at the given level in current Metadata Tree.
 The logic is in the `AggregationExecutor` class.
 
 1. In the beginning, get the final paths group by level and the origin path index to final path.
-    > For example, we could get final path `root.sg1` by `root.sg1.d1.s0,root.sg1.d2.s1` and `level=1`.
-
+    
+> For example, we could get final path `root.sg1` by `root.sg1.d1.s0,root.sg1.d2.s1` and `level=1`.
+    
 2. Then, get the aggregated query result: RowRecord.
 
 3. Finally, merge each RowRecord to NewRecord, which has fields like <final path, count>.

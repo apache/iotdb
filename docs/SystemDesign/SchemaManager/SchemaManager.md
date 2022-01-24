@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -30,7 +30,7 @@ Metadata of IoTDB is managed by MManger, including:
 
 ## MManager
 
-* Maintain an inverted index for tag: `Map<String, Map<String, Set<LeafMNode>>> tagIndex`
+* Maintain an inverted index for tag: `Map<String, Map<String, Set<IMeasurementMNode>>> tagIndex`
 
 	> tag key -> tag value -> timeseries LeafMNode
 
@@ -63,7 +63,6 @@ In the process of initializing, MManager will replay the mlog to load the metada
 		* persist log into mlog
 		* currently, we won't delete the tag/attribute info of that timeseries in tlog
 	
-
 * Set Storage Group
     * add StorageGroupMNode in MTree
 	* If dynamic parameters are turned on, check the memory is satisfied or not
@@ -91,7 +90,7 @@ In the process of initializing, MManager will replay the mlog to load the metada
 
 
 In addition to these seven operation that are needed to be logged, there are another six alter operation to tag/attribute info of timeseries.
- 
+
 Same as above, at the beginning of each operation, it will try to obtain the write lock of MManager, and release it after operation.
 
 * Rename Tag/Attribute
@@ -145,13 +144,13 @@ Same as above, at the beginning of each operation, it will try to obtain the wri
 
 * org.apache.iotdb.db.metadata.mtree.MTree
 
-There three types of nodes in MTree: StorageGroupMNode、InternalMNode(Non-leaf node)、LeafMNode(leaf node), they all extend to MNode.
+There three types of nodes in MTree: StorageGroupMNode、 IMeasurementMNode (Non-leaf node)、LeafMNode(leaf node), they all extend to MNode.
 
-Each InternalMNode has a read-write lock. When querying metadata information, you need to obtain a read lock for each InternalMNode on the path. When modifying metadata information, if you modify the LeafMNode, you need to obtain the write lock of its parent node. If you modify a non-leaf node, only need to obtain its own write lock. If the InternalMNode is located in the device layer, it also contains a `Map <String, MNode> aliasChildren`, which is used to store alias information.
+Each InternalMNode has a read-write lock. When querying metadata information, you need to obtain a read lock for each InternalMNode on the path. When modifying metadata information, if you modify the  IMeasurementMNode , you need to obtain the write lock of its parent node. If you modify a non-leaf node, only need to obtain its own write lock. If the InternalMNode is located in the device layer, it also contains a `Map <String, MNode> aliasChildren`, which is used to store alias information.
 
 StorageGroupMNode extends to InternalMNode, containing metadata information for storage groups, such as TTL.
 
-LeafMNode contains the schema information of the corresponding time series, its alias(if it doesn't have, it is null) and the offset of the time series tag/attribute information in the tlog file(if there is no tag/attribute, it is -1)
+ IMeasurementMNode contains the schema information of the corresponding time series, its alias(if it doesn't have, it is null) and the offset of the time series tag/attribute information in the tlog file(if there is no tag/attribute, it is -1)
 
 example：
 
@@ -249,7 +248,7 @@ Schema operation examples and the corresponding parsed mlog record:
 * set ttl to root.turbine 10
 	
 	> mlog: 10,root.turbine,10
-		
+	
 	> format: 10,path,ttl
 
 * alter timeseries root.turbine.d1.s1 add tags(tag1=v1)
@@ -260,36 +259,36 @@ Schema operation examples and the corresponding parsed mlog record:
    > format: 10,path,[change offset]
 
 * alter timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias
-   
+  
    > mlog: 13,root.turbine.d1.s1,newAlias
    
    > format: 13,path,[new alias]
-                                                                                                               
+   
 * create schema template temp1(
   s1 INT32 with encoding=Gorilla and compression SNAPPY,
   s2 FLOAT with encoding=RLE and compression=SNAPPY
 )
-   
+  
    > mlog:5,temp1,0,s1,1,8,1
-   
+  
    > mlog:5,temp1,0,s2,3,2,1
-   
+  
    > format: 5,template name,is Aligned Timeseries,measurementId,TSDataType,TSEncoding,CompressionType
 
 * set schema template temp1 to root.turbine
- 
+
     > mlog: 6,temp1,root.turbine
    
     > format: 6,template name,path
 
 * Auto create device root.turbine.d1 (after set a template to a prefix path,  create a device path in mtree automatically when insert data to the device)
- 
+
     > mlog: 4,root.turbine.d1
    
     > format: 4,path
 
 * set root.turbine.d1 is using template (after set a template to a device path, this log shows the device is using template)
- 
+
     > mlog: 61,root.turbine.d1
    
     > format: 61,path                                                                                                              

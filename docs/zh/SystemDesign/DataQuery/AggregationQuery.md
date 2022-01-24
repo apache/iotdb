@@ -47,7 +47,7 @@ if (descAggregateResultList != null && !descAggregateResultList.isEmpty()) {
 }
 ```
 
-对于每一个 entry（即 series），首先为其每一种聚合查询创建一个聚合结果 `AggregateResult`，同时维护一个布尔值列表 `isCalculatedList`，对应每一个 `AggregateResult`是否已经计算完成，并记录需要剩余计算的聚合函数数目 `remainingToCalculate`。布尔值列表和这个计数值将会使得某些聚合函数（如 `FIRST_VALUE`）在获得结果后，不需要再继续进行整个循环过程。
+对于每一个 entry（即 series），首先为其每一种聚合查询创建一个聚合结果 `AggregateResult`，同时维护一个布尔值数组 `isCalculatedArray`，对应每一个 `AggregateResult`是否已经计算完成，并记录需要剩余计算的聚合函数数目 `remainingToCalculate`。布尔值列表和这个计数值将会使得某些聚合函数（如 `FIRST_VALUE`）在获得结果后，不需要再继续进行整个循环过程。
 
 接下来，按照 5.2 节所介绍的 `aggregateReader` 使用方法，更新 `AggregateResult`：
 
@@ -90,10 +90,32 @@ while (seriesReader.hasNextFile()) {
 }
 ```
 
+需要注意的是，在对于每一个 result 进行更新之前，需要首先判断其是否已经被计算完（利用 `isCalculatedArray` 数组）；每一次更新后，调用 `hasFinalResult` 方法同时更新数组中的布尔值。如果列表中所有值均为 true，即 `remainingToCalculate` 值为 0，证明所有聚合函数结果均已计算完，可以返回。 
+
+```
+for (int i = 0; i < aggregateResultList.size(); i++) {
+    if (!isCalculatedArray[i]) {
+        AggregateResult aggregateResult = aggregateResultList.get(i);
+        aggregateResult.updateResultFromStatistics(statistics);
+        if (aggregateResult.hasFinalResult()) {
+            isCalculatedArray[i] = true;
+            newRemainingToCalculate--;
+            if (newRemainingToCalculate == 0) {
+                return newRemainingToCalculate;
+            }
+        }
+    }
+}
+```
+
+ 在使用 `overlapedPageData` 进行更新时，由于获得每一个聚合函数结果都会遍历这个 batchData，因此需要调用 `resetBatchData()` 方法将指针指向其开始位置，使得下一个函数可以遍历。 
+
 ## 带值过滤条件的聚合查询
+
 对于带值过滤条件的聚合查询，通过 `executeWithoutValueFilter()` 方法获得结果并构建 dataSet。首先根据表达式创建 `timestampGenerator`，然后为每一个时间序列创建一个 `SeriesReaderByTimestamp`，放到 `readersOfSelectedSeries`列表中；为每一个查询创建一个聚合结果 `AggregateResult`，放到 `aggregateResults`列表中。
 
 初始化完成后，调用 `aggregateWithValueFilter()` 方法更新结果：
+
 ```
 while (timestampGenerator.hasNext()) {
   // 生成 timestamps
@@ -121,15 +143,16 @@ while (timestampGenerator.hasNext()) {
 这个逻辑在 `AggregationExecutor`类里。
 
 1. 首先，把所有涉及到的时序按 level 来进行汇集，最后的路径。
-    
-> 例如把 root.sg1.d1.s0,root.sg1.d2.s1 按 level=1 汇集成 root.sg1。
-    
+
+   > 例如把 root.sg1.d1.s0,root.sg1.d2.s1 按 level=1 汇集成 root.sg1。
+
 2. 然后调用上述的聚合逻辑求出所有时序的总点数信息，这个会返回 RowRecord 数据结构。
 
 3. 最后，把聚合查询返回的 RowRecord 按上述的 final paths，进行累加，组合成新的 RowRecord。
 
-    > 例如，把《root.sg1.d1.s0,3》，《root.sg1.d2.s1，4》聚合成《root.sg1，7》
+   > 例如，把《root.sg1.d1.s0,3》，《root.sg1.d2.s1，4》聚合成《root.sg1，7》
 
 > 注意：
+>
 > 1. 这里只支持 count 操作
 > 2. root 的层级 level=0

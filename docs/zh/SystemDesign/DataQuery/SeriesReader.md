@@ -163,13 +163,10 @@ Object[] values = readerByTimestamp.getValueInTimestamp(timestamps, length);
 ```
 
 /*
-* 文件索引
+* 文件层
 */
-protected int curSeqFileIndex;
-	当前文件的顺序文件的Index
-
-protected int curUnseqFileIndex;
-	当前文件的乱序文件的Index
+protected final QueryDataSource dataSource;
+	QueryDataSource在一个查询中包含一个timeseries的所有seq和unseq TsFileResources
 	
 /*
 * chunk 层
