@@ -46,7 +46,9 @@ TsFile 各级结构在前面的 [TsFile](../TsFile/TsFile.md) 文档中已有介
 
 ## 顺序和乱序文件的数据特点
 
-对于顺序和乱序文件的数据，其数据在文件中的分部特征有所不同。 顺序文件的 TimeseriesMetadata 中所包含的 ChunkMetadata 也是有序的，也就是说如果按照  chunkMetadata1, chunkMetadata2 的顺序存储，那么将会保证 chunkMetadata1.endtime <= chunkMetadata2.startTime。
+对于顺序和乱序文件的数据，其数据在文件中的分部特征有所不同。 
+
+顺序文件的 TimeseriesMetadata 中所包含的 ChunkMetadata 也是有序的，也就是说如果按照  chunkMetadata1, chunkMetadata2 的顺序存储，那么将会保证 chunkMetadata1.endtime <= chunkMetadata2.startTime。
 
 乱序文件的 TimeseriesMetadata 中所包含的 ChunkMetadata 是无序的，乱序文件中多个 Chunk 所覆盖的数据可能存在重叠，同时也可能与顺序文件中的 Chunk 数据存在重叠。
 
