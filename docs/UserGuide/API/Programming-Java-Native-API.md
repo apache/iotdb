@@ -441,6 +441,12 @@ void deleteData(List<String> paths, long time)
 SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
 ```
 
+* Query the last data, whose timestamp is greater than or equal LastTime
+
+```java
+SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
+```
+
 ### IoTDB-SQL Interface
 
 * Execute query statement
