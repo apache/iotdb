@@ -630,7 +630,7 @@ public class TsFileResource {
       return isSatisfied(timeFilter, isSeq, ttl, debug);
     }
 
-    if (containsDevice(deviceId)) {
+    if (!containsDevice(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);
