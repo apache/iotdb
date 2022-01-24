@@ -388,10 +388,14 @@ public class ImportCsv extends AbstractCsvTool {
               measurementsList.add(measurements);
             }
           }
-          if (isFail) failedRecords.add(record.stream().collect(Collectors.toList()));
+          if (isFail) {
+            failedRecords.add(record.stream().collect(Collectors.toList()));
+          }
         });
-    if (!deviceIds.isEmpty())
+    if (!deviceIds.isEmpty()) {
       writeAndEmptyDataSet(deviceIds, times, typesList, valuesList, measurementsList, 3);
+    }
+
     if (!failedRecords.isEmpty()) {
       writeCsvFile(headerNames, failedRecords, failedFilePath);
     }
@@ -495,7 +499,9 @@ public class ImportCsv extends AbstractCsvTool {
               }
             }
           }
-          if (isFail.get()) failedRecords.add(record.stream().collect(Collectors.toList()));
+          if (isFail.get()) {
+            failedRecords.add(record.stream().collect(Collectors.toList()));
+          }
           if (!measurements.isEmpty()) {
             if (timeFormatter.get() == null) {
               times.add(Long.valueOf(record.get(timeColumn)));
@@ -678,8 +684,9 @@ public class ImportCsv extends AbstractCsvTool {
     }
     List<String> columnNames = sessionDataSet.getColumnNames();
     List<String> columnTypes = sessionDataSet.getColumnTypes();
-    if (columnNames.size() == 1) return false;
-    else {
+    if (columnNames.size() == 1) {
+      return false;
+    } else {
       for (int i = 1; i < columnNames.size(); i++) {
         if (alignedType == "Time") {
           headerTypeMap.put(columnNames.get(i), getType(columnTypes.get(i)));
@@ -752,10 +759,13 @@ public class ImportCsv extends AbstractCsvTool {
    * @return
    */
   private static TSDataType typeInfer(String value) {
-    if (value.contains("\"")) return TEXT;
-    else if (value.equals("true") || value.equals("false")) return BOOLEAN;
-    else if (value.equals("NaN")) return DOUBLE;
-    else if (!value.contains(".")) {
+    if (value.contains("\"")) {
+      return TEXT;
+    } else if (value.equals("true") || value.equals("false")) {
+      return BOOLEAN;
+    } else if (value.equals("NaN")) {
+      return DOUBLE;
+    } else if (!value.contains(".")) {
       try {
         Integer.valueOf(value);
         return INT32;
@@ -781,8 +791,10 @@ public class ImportCsv extends AbstractCsvTool {
     try {
       switch (type) {
         case TEXT:
-          if ("NaN".equals(value)) return value;
-          else return value.substring(1, value.length() - 1);
+          if (value.startsWith("\"") && value.endsWith("\"")) {
+            return value.substring(1, value.length() - 1);
+          }
+          return null;
         case BOOLEAN:
           if (!"true".equals(value) && !"false".equals(value)) {
             return null;
