@@ -89,9 +89,9 @@ public class DeviceIDFactory {
             .getConfig()
             .getDeviceIDTransformationMethod()
             .equals("SHA256")) {
-      getDeviceIDFunction = partialPath -> new SHA256DeviceID(partialPath.toString());
+      getDeviceIDFunction = SHA256DeviceID::new;
     } else {
-      getDeviceIDFunction = partialPath -> new PlainDeviceID(partialPath.toString());
+      getDeviceIDFunction = PlainDeviceID::new;
     }
   }
 }

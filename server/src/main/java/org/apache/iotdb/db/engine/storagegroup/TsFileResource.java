@@ -507,6 +507,10 @@ public class TsFileResource {
     return tsFileLock.tryWriteLock();
   }
 
+  public boolean tryReadLock() {
+    return tsFileLock.tryReadLock();
+  }
+
   void doUpgrade() {
     UpgradeSevice.getINSTANCE().submitUpgradeTask(new UpgradeTask(this));
   }

@@ -282,11 +282,14 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void getAllDevices(
-      RaftNode header, List<String> paths, AsyncMethodCallback<Set<String>> resultHandler) {
+      RaftNode header,
+      List<String> paths,
+      boolean isPrefixMatch,
+      AsyncMethodCallback<Set<String>> resultHandler) {
     DataAsyncService service =
         DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "Get all devices");
     if (service != null) {
-      service.getAllDevices(header, paths, resultHandler);
+      service.getAllDevices(header, paths, isPrefixMatch, resultHandler);
     }
   }
 
@@ -519,8 +522,11 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public Set<String> getAllDevices(RaftNode header, List<String> path) throws TException {
-    return DataGroupEngine.getInstance().getDataSyncService(header).getAllDevices(header, path);
+  public Set<String> getAllDevices(RaftNode header, List<String> path, boolean isPrefixMatch)
+      throws TException {
+    return DataGroupEngine.getInstance()
+        .getDataSyncService(header)
+        .getAllDevices(header, path, isPrefixMatch);
   }
 
   @Override
