@@ -50,8 +50,7 @@ public class CrossSpaceCompactionExceptionHandler {
       List<TsFileResource> targetResourceList,
       List<TsFileResource> seqResourceList,
       List<TsFileResource> unseqResourceList,
-      TsFileManager tsFileManager,
-      long timePartiionId) {
+      TsFileManager tsFileManager) {
     try {
       if (logFile == null || !logFile.exists()) {
         // the log file is null or the log file does not exists
@@ -159,10 +158,7 @@ public class CrossSpaceCompactionExceptionHandler {
     }
 
     boolean removeAllTargetFile = true;
-    TsFileResourceList list =
-        tsFileManager.getSequenceListByTimePartition(targetTsFiles.get(0).getTimePartition());
     for (TsFileResource targetTsFile : targetTsFiles) {
-      list.remove(targetTsFile);
       if (!targetTsFile.remove()) {
         LOGGER.error(
             "{} [Compaction][Exception] failed to delete target tsfile {} when handling exception",

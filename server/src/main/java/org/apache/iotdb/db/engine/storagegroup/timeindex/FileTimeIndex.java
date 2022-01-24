@@ -93,9 +93,9 @@ public class FileTimeIndex implements ITimeIndex {
         logger.error("Can't read file {} from disk ", tsFilePath, e);
         throw new RuntimeException("Can't read file " + tsFilePath + " from disk");
       }
-    } catch (IOException e) {
-      logger.error("Can't read file {} from disk ", tsFilePath, e);
-      throw new RuntimeException("Can't read file " + tsFilePath + " from disk");
+    } catch (Exception e) {
+      logger.error("Failed to get devices from tsfile: {}", tsFilePath, e);
+      throw new RuntimeException("Failed to get devices from tsfile:: " + tsFilePath);
     }
   }
 

@@ -66,7 +66,7 @@ IoTDB> SET SYSTEM TO WRITABLE
 
 ## SCHEMA SNAPSHOT
 
-To speed up restarting of IoTDB, users can create snapshot of schema and avoid recovering schema from mlog file.
+To speed up restarting of IoTDB, users can create snapshot of schema and avoid recovering schema from mlog file. This feature doesn't support scenarios involving Schema Template, Tag/Attribute, or Aligned Timeseries. 
 
 ```sql
 IoTDB> CREATE SNAPSHOT FOR SCHEMA

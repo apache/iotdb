@@ -72,7 +72,6 @@ public class CompactionRecoverTask {
                   logicalStorageGroupName,
                   virtualStorageGroupId,
                   timePartition,
-                  storageGroupDir,
                   compactionLog,
                   tsFileManager)
               .call();
