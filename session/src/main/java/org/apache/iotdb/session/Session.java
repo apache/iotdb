@@ -707,10 +707,10 @@ public class Session {
   }
 
   /**
-   * only: select last status from root.ln.d1.s1 where time >= 1621326244168;
+   * query e.g. select last data from paths where time >= lastTime
    *
    * @param paths timeSeries eg. root.ln.d1.s1,root.ln.d1.s2
-   * @param LastTime get the last data, whose timestamp greater than or equal LastTime eg.
+   * @param LastTime get the last data, whose timestamp is greater than or equal LastTime e.g.
    *     1621326244168
    */
   public SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
