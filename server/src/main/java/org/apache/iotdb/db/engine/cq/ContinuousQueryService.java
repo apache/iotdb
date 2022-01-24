@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.cq;
+package org.apache.iotdb.db.engine.cq;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
