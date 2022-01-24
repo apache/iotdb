@@ -320,27 +320,12 @@ public class TsFileResource {
     }
   }
 
-  /** read version number, used for checking compatibility of TsFileResource in the future */
-  private byte readVersionNumber(InputStream inputStream) throws IOException {
-    return ReadWriteIOUtils.readBytes(inputStream, 1)[0];
-  }
-
   public void updateStartTime(String device, long time) {
     timeIndex.updateStartTime(device, time);
   }
 
-  // used in merge, refresh all start time
-  public void putStartTime(String device, long time) {
-    timeIndex.putStartTime(device, time);
-  }
-
   public void updateEndTime(String device, long time) {
     timeIndex.updateEndTime(device, time);
-  }
-
-  // used in merge, refresh all end time
-  public void putEndTime(String device, long time) {
-    timeIndex.putEndTime(device, time);
   }
 
   public boolean resourceFileExists() {
@@ -438,7 +423,11 @@ public class TsFileResource {
     return timeIndex.getDevices(file.getPath(), this);
   }
 
-  public boolean containsDevice(String device) {
+  /**
+   * Whether this TsFileResource contains this device, if false, it must not contain this device, if
+   * true, it may or may not contain this device
+   */
+  public boolean mayContainsDevice(String device) {
     return timeIndex.mayContainsDevice(device);
   }
 
@@ -630,7 +619,7 @@ public class TsFileResource {
       return isSatisfied(timeFilter, isSeq, ttl, debug);
     }
 
-    if (!containsDevice(deviceId)) {
+    if (!mayContainsDevice(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);
@@ -692,7 +681,7 @@ public class TsFileResource {
       return false;
     }
 
-    if (!containsDevice(deviceId)) {
+    if (!mayContainsDevice(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);
