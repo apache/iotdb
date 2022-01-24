@@ -330,15 +330,15 @@ public class ImportCsv extends AbstractCsvTool {
 
           boolean isFail = false;
 
-          ArrayList<TSDataType> types = new ArrayList<>();
-          ArrayList<Object> values = new ArrayList<>();
-          ArrayList<String> measurements = new ArrayList<>();
-
           for (String deviceId : deviceAndMeasurementNames.keySet()) {
+            ArrayList<TSDataType> types = new ArrayList<>();
+            ArrayList<Object> values = new ArrayList<>();
+            ArrayList<String> measurements = new ArrayList<>();
+
             List<String> measurementNames = deviceAndMeasurementNames.get(deviceId);
             for (String measurement : measurementNames) {
               String header = deviceId + "." + measurement;
-              String value = record.get(headerNameMap.get(header));
+              String value = record.get(header);
               if (!"".equals(value)) {
                 TSDataType type;
                 if (!headerTypeMap.containsKey(headerNameMap.get(header))) {
@@ -399,7 +399,11 @@ public class ImportCsv extends AbstractCsvTool {
     if (!failedRecords.isEmpty()) {
       writeCsvFile(headerNames, failedRecords, failedFilePath);
     }
-    System.out.println("Import completely!");
+    if (hasStarted.get()) {
+      System.out.println("Import completely!");
+    } else {
+      System.out.println("No records!");
+    }
   }
 
   /**
