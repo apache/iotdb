@@ -34,6 +34,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
@@ -1232,6 +1233,55 @@ public class Session {
   }
 
   /**
+   * Insert multiple rows with String format data, which can reduce the overhead of network. This
+   * method is just like jdbc executeBatch, we pack some insert request in batch and send them to
+   * server. If you want improve your performance, please see insertTablet method
+   *
+   * <p>Each row could have same deviceId but different time, number of measurements, number of
+   * values as String
+   *
+   * @param haveSorted deprecated, whether the times have been sorted
+   */
+  public void insertStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    int len = times.size();
+    if (len != measurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+          "times, measurementsList and valuesList's size should be equal");
+    }
+    TSInsertStringRecordsOfOneDeviceReq req =
+        genTSInsertStringRecordsOfOneDeviceReq(
+            deviceId, times, measurementsList, valuesList, haveSorted, false);
+    try {
+      getSessionConnection(deviceId).insertStringRecordsOfOneDevice(req);
+    } catch (RedirectException e) {
+      handleRedirection(deviceId, e.getEndPoint());
+    }
+  }
+
+  /**
+   * Insert multiple rows with String format data, which can reduce the overhead of network. This
+   * method is just like jdbc executeBatch, we pack some insert request in batch and send them to
+   * server. If you want improve your performance, please see insertTablet method
+   *
+   * <p>Each row could have same deviceId but different time, number of measurements, number of
+   * values as String
+   */
+  public void insertStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    insertStringRecordsOfOneDevice(deviceId, times, measurementsList, valuesList, false);
+  }
+
+  /**
    * Insert aligned multiple rows, which can reduce the overhead of network. This method is just
    * like jdbc executeBatch, we pack some insert request in batch and send them to server. If you
    * want improve your performance, please see insertTablet method
@@ -1284,6 +1334,57 @@ public class Session {
     }
   }
 
+  /**
+   * Insert multiple rows with String format data, which can reduce the overhead of network. This
+   * method is just like jdbc executeBatch, we pack some insert request in batch and send them to
+   * server. If you want improve your performance, please see insertTablet method
+   *
+   * <p>Each row could have same deviceId but different time, number of measurements, number of
+   * values as String
+   *
+   * @param haveSorted deprecated, whether the times have been sorted
+   */
+  public void insertAlignedStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    int len = times.size();
+    if (len != measurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+          "times, measurementsList and valuesList's size should be equal");
+    }
+    TSInsertStringRecordsOfOneDeviceReq req =
+        genTSInsertStringRecordsOfOneDeviceReq(
+            deviceId, times, measurementsList, valuesList, haveSorted, true);
+    try {
+      getSessionConnection(deviceId).insertStringRecordsOfOneDevice(req);
+    } catch (RedirectException e) {
+      handleRedirection(deviceId, e.getEndPoint());
+    }
+  }
+
+  /**
+   * Insert aligned multiple rows with String format data, which can reduce the overhead of network.
+   * This method is just like jdbc executeBatch, we pack some insert request in batch and send them
+   * to server. If you want improve your performance, please see insertTablet method
+   *
+   * <p>Each row could have same prefixPath but different time, number of measurements, number of
+   * values as String
+   *
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertAlignedStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    insertAlignedStringRecordsOfOneDevice(deviceId, times, measurementsList, valuesList, false);
+  }
+
   private TSInsertRecordsOfOneDeviceReq genTSInsertRecordsOfOneDeviceReq(
       String prefixPath,
       List<Long> times,
@@ -1324,6 +1425,42 @@ public class Session {
     request.setValuesList(buffersList);
     request.setIsAligned(isAligned);
     return request;
+  }
+
+  private TSInsertStringRecordsOfOneDeviceReq genTSInsertStringRecordsOfOneDeviceReq(
+      String prefixPath,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      boolean haveSorted,
+      boolean isAligned) {
+    // check params size
+    int len = times.size();
+    if (len != measurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+          "times, measurementsList and valuesList's size should be equal");
+    }
+
+    if (!checkSorted(times)) {
+      Integer[] index = new Integer[times.size()];
+      for (int i = 0; i < index.length; i++) {
+        index[i] = i;
+      }
+      Arrays.sort(index, Comparator.comparingLong(times::get));
+      times.sort(Long::compareTo);
+      // sort measurementsList
+      measurementsList = sortList(measurementsList, index);
+      // sort valuesList
+      valuesList = sortList(valuesList, index);
+    }
+
+    TSInsertStringRecordsOfOneDeviceReq req = new TSInsertStringRecordsOfOneDeviceReq();
+    req.setPrefixPath(prefixPath);
+    req.setTimestamps(times);
+    req.setMeasurementsList(measurementsList);
+    req.setValuesList(valuesList);
+    req.setIsAligned(isAligned);
+    return req;
   }
 
   /**
