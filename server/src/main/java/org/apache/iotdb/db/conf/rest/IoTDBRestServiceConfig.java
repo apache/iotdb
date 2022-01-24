@@ -55,6 +55,17 @@ public class IoTDBRestServiceConfig {
 
   private int restQueryDefaultRowSizeLimit = 10000;
 
+  /** Is client authentication required */
+  private boolean clientAuth = false;
+
+  public boolean isClientAuth() {
+    return clientAuth;
+  }
+
+  public void setClientAuth(boolean clientAuth) {
+    this.clientAuth = clientAuth;
+  }
+
   public String getTrustStorePwd() {
     return trustStorePwd;
   }
