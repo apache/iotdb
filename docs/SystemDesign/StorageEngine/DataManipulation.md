@@ -31,7 +31,7 @@ The following describes four common data manipulation operations, which are inse
   * JDBC's execute and executeBatch interfaces
   * Session's insertRecord and insertRecords
 * Main entrance: ```public void insert(InsertRowPlan insertRowPlan)```   StorageEngine.java
-  * Find the corresponding StorageGroupProcessor
+  * Find the corresponding VirtualStorageGroupProcessor 
   * Find the corresponding TsFileProcessor according to the time of writing the data and the last time stamp of the current device order
   * Write to the corresponding memtable of TsFileProcessor
       * If the file is out of order, update the endTimeMap in tsfileResource
