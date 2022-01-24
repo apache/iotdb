@@ -438,8 +438,8 @@ public class TsFileResource {
     return timeIndex.getDevices(file.getPath(), this);
   }
 
-  public boolean endTimeEmpty() {
-    return timeIndex.endTimeEmpty();
+  public boolean containsDevice(String device) {
+    return timeIndex.containsDevice(device);
   }
 
   public boolean isClosed() {
@@ -630,7 +630,7 @@ public class TsFileResource {
       return isSatisfied(timeFilter, isSeq, ttl, debug);
     }
 
-    if (!getDevices().contains(deviceId)) {
+    if (containsDevice(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);
@@ -692,7 +692,7 @@ public class TsFileResource {
       return false;
     }
 
-    if (!getDevices().contains(deviceId)) {
+    if (!containsDevice(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);

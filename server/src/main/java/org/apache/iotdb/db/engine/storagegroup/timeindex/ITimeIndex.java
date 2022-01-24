@@ -180,4 +180,11 @@ public interface ITimeIndex {
    *     larger than 0 if the priority of this timeIndex is less than the argument
    */
   int compareDegradePriority(ITimeIndex timeIndex);
+
+  /**
+   * Whether this TsFile contains this device
+   *
+   * @return true, if it contains, otherwise false
+   */
+  boolean containsDevice(String device);
 }

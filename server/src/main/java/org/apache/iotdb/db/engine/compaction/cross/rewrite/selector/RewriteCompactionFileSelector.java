@@ -251,7 +251,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
       boolean noMoreOverlap = false;
       for (int i = 0; i < resource.getSeqFiles().size() && !noMoreOverlap; i++) {
         TsFileResource seqFile = resource.getSeqFiles().get(i);
-        if (seqSelected[i] || !seqFile.getDevices().contains(deviceId)) {
+        if (seqSelected[i] || !seqFile.containsDevice(deviceId)) {
           continue;
         }
         // the open file's endTime is Long.MIN_VALUE, this will make the file be filtered below
