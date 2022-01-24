@@ -100,7 +100,6 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
             COMPACTION_LOG_NAME,
             "0",
             0,
-            SEQ_DIRS.getPath(),
             compactionLogFile,
             CompactionTaskManager.currentTaskNum,
             tsFileManager)
@@ -171,7 +170,6 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
             COMPACTION_LOG_NAME,
             "0",
             0,
-            SEQ_DIRS.getPath(),
             compactionLogFile,
             CompactionTaskManager.currentTaskNum,
             tsFileManager)
@@ -243,7 +241,6 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
             COMPACTION_LOG_NAME,
             "0",
             0,
-            SEQ_DIRS.getPath(),
             compactionLogFile,
             CompactionTaskManager.currentTaskNum,
             tsFileManager)
@@ -334,7 +331,6 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
             COMPACTION_LOG_NAME,
             "0",
             0,
-            SEQ_DIRS.getPath(),
             compactionLogFile,
             CompactionTaskManager.currentTaskNum,
             tsFileManager)
@@ -438,7 +434,6 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
             COMPACTION_LOG_NAME,
             "0",
             0,
-            SEQ_DIRS.getPath(),
             compactionLogFile,
             CompactionTaskManager.currentTaskNum,
             tsFileManager)
