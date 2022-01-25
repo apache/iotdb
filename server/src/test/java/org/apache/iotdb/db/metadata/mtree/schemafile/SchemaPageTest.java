@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.metadata.schemafile;
+package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.db.exception.metadata.RecordDuplicatedException;
 import org.apache.iotdb.db.exception.metadata.SchemaPageOverflowException;
