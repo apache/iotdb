@@ -73,7 +73,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class MManagerBasicTest {
+public abstract class MManagerBasicTestCase {
 
   private CompressionType compressionType;
 
