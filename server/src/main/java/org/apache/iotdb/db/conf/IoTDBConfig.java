@@ -469,6 +469,9 @@ public class IoTDBConfig {
   /** If this IoTDB instance is a receiver of sync, set the server port. */
   private int syncServerPort = 5555;
 
+  /** If this IoTDB instance is a receiver of sync, set the server port. */
+  private int pipeServerPort = 5555;
+
   /**
    * Set the language version when loading file including error information, default value is "EN"
    */
@@ -1281,6 +1284,14 @@ public class IoTDBConfig {
 
   void setSyncServerPort(int syncServerPort) {
     this.syncServerPort = syncServerPort;
+  }
+
+  public int getPipeServerPort() {
+    return pipeServerPort;
+  }
+
+  public void setPipeServerPort(int pipeServerPort) {
+    this.pipeServerPort = pipeServerPort;
   }
 
   String getLanguageVersion() {

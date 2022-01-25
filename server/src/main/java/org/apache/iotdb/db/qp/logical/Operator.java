@@ -204,6 +204,8 @@ public abstract class Operator {
     SHOW_PIPE,
     STOP_PIPE,
     START_PIPE,
-    DROP_PIPE
+    DROP_PIPE,
+    START_PIPE_SERVER,
+    STOP_PIPE_SERVER,
   }
 }

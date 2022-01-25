@@ -61,6 +61,10 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
 import org.apache.iotdb.db.newsync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.newsync.sender.service.SenderService;
+import org.apache.iotdb.db.newsync.receiver.ReceiverService;
+import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
+import org.apache.iotdb.db.newsync.sender.pipe.PipeSink;
+import org.apache.iotdb.db.newsync.sender.service.SenderService;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -123,6 +127,9 @@ import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowLockInfoPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
@@ -419,6 +426,10 @@ public class PlanExecutor implements IPlanExecutor {
       case DROP_PIPESINK:
         dropPipeSink((DropPipeSinkPlan) plan);
         return true;
+      case START_PIPE_SERVER:
+        return operateStartPipeServer();
+      case STOP_PIPE_SERVER:
+        return operateStopPipeServer();
       case CREATE_PIPE:
         createPipe((CreatePipePlan) plan);
         return true;
@@ -431,6 +442,14 @@ public class PlanExecutor implements IPlanExecutor {
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
     }
+  }
+
+  private boolean operateStopPipeServer() {
+    return ReceiverService.getInstance().stopPipeServer();
+  }
+
+  private boolean operateStartPipeServer() {
+    return ReceiverService.getInstance().startPipeServer();
   }
 
   private boolean createTemplate(CreateTemplatePlan createTemplatePlan)
@@ -718,11 +737,17 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowPipeSink((ShowPipeSinkPlan) showPlan);
       case PIPESINKTYPE:
         return processShowPipeSinkType();
+      case PIPESERVER:
+        return processShowPipeServer((ShowPipeServerPlan) showPlan);
       case PIPE:
         return processShowPipes((ShowPipePlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
+  }
+
+  private QueryDataSet processShowPipeServer(ShowPipeServerPlan plan) {
+    return ReceiverService.getInstance().showPipe(plan);
   }
 
   private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {
