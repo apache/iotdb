@@ -165,6 +165,12 @@ public class V012FileTimeIndex implements ITimeIndex {
   @Override
   public int compareDegradePriority(ITimeIndex timeIndex) {
     throw new UnsupportedOperationException(
-        "V012FileTimeIndex should be rewritten while upgrading.");
+        "V012FileTimeIndex should be rewritten while upgrading and compareDegradePriority() method should not be called any more.");
+  }
+
+  @Override
+  public boolean mayContainsDevice(String device) {
+    throw new UnsupportedOperationException(
+        "V012FileTimeIndex should be rewritten while upgrading and containsDevice() method should not be called any more.");
   }
 }

@@ -349,7 +349,7 @@ public class Tablet {
 void insertTablets(Map<String, Tablet> tablets)
 ```
 
-* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据
+* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。这里的 value 是 Object 类型，相当于提供了一个公用接口，后面可以通过 TSDataType 将 value 强转为原类型
 
 ```java
 void insertRecord(String prefixPath, long time, List<String> measurements,
@@ -376,7 +376,7 @@ void insertRecordsOfOneDevice(String deviceId, List<Long> times,
 
 #### 带有类型推断的写入
 
-服务器需要做类型推断，可能会有额外耗时，速度较无需类型推断的写入慢
+当数据均是 String 类型时，我们可以使用如下接口，根据 value 的值进行类型推断。例如：value 为 "true" ，就可以自动推断为布尔类型。value 为 "3.2" ，就可以自动推断为数值类型。服务器需要做类型推断，可能会有额外耗时，速度较无需类型推断的写入慢
 
 * 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据
 
@@ -391,6 +391,13 @@ void insertRecords(List<String> deviceIds, List<Long> times,
    List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
 
+* 插入同属于一个 device 的多个 Record
+
+```java
+void insertStringRecordsOfOneDevice(String deviceId, List<Long> times,
+    List<List<String>> measurementsList, List<List<String>> valuesList)
+```
+
 #### 对齐时间序列的写入
 
 对齐时间序列的写入使用 insertAlignedXXX 接口，其余与上述接口类似：
@@ -398,6 +405,7 @@ void insertRecords(List<String> deviceIds, List<Long> times,
 * insertAlignedRecord
 * insertAlignedRecords
 * insertAlignedRecordsOfOneDevice
+* insertAlignedStringRecordsOfOneDevice
 * insertAlignedTablet
 * insertAlignedTablets
 
@@ -416,6 +424,12 @@ void deleteData(List<String> paths, long endTime)
 
 ```java
 SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+```
+
+* 查询最后一条时间戳大于等于某个时间点的数据
+
+```java
+SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
 ```
 
 ### IoTDB-SQL 接口

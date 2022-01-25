@@ -374,7 +374,7 @@ public class Tablet {
 void insertTablets(Map<String, Tablet> tablet)
 ```
 
-* Insert a Record, which contains multiple measurement value of a device at a timestamp
+* Insert a Record, which contains multiple measurement value of a device at a timestamp. This method is equivalent to providing a common interface for multiple data types of values. Later, the value can be cast to the original type through TSDataType.
 
 ```java
 void insertRecord(String deviceId, long time, List<String> measurements,
@@ -399,7 +399,7 @@ void insertRecordsOfOneDevice(String deviceId, List<Long> times,
 
 #### Insert with type inference
 
-Without type information, server has to do type inference, which may cost some time.
+When the data is of String type, we can use the following interface to perform type inference based on the value of the value itself. For example, if value is "true" , it can be automatically inferred to be a boolean type. If value is "3.2" , it can be automatically inferred as a flout type. Without type information, server has to do type inference, which may cost some time.
 
 * Insert a Record, which contains multiple measurement value of a device at a timestamp
 
@@ -414,6 +414,13 @@ void insertRecords(List<String> deviceIds, List<Long> times,
    List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
 
+* Insert multiple Records that belong to the same device.
+
+```java
+void insertStringRecordsOfOneDevice(String deviceId, List<Long> times,
+        List<List<String>> measurementsList, List<List<String>> valuesList)
+```
+
 #### Insert of Aligned Timeseries
 
 The Insert of aligned timeseries uses interfaces like insertAlignedXXX, and others are similar to the above interfaces:
@@ -421,6 +428,7 @@ The Insert of aligned timeseries uses interfaces like insertAlignedXXX, and othe
 * insertAlignedRecord
 * insertAlignedRecords
 * insertAlignedRecordsOfOneDevice
+* insertAlignedStringRecordsOfOneDevice
 * insertAlignedTablet
 * insertAlignedTablets
 
@@ -439,6 +447,12 @@ void deleteData(List<String> paths, long time)
 
 ```java
 SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+```
+
+* Query the last data, whose timestamp is greater than or equal LastTime
+
+```java
+SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
 ```
 
 ### IoTDB-SQL Interface
