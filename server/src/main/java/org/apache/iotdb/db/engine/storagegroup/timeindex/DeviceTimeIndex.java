@@ -347,4 +347,9 @@ public class DeviceTimeIndex implements ITimeIndex {
       throw new RuntimeException("Wrong timeIndex type " + timeIndex.getClass().getName());
     }
   }
+
+  @Override
+  public boolean mayContainsDevice(String device) {
+    return deviceToIndex.containsKey(device);
+  }
 }
