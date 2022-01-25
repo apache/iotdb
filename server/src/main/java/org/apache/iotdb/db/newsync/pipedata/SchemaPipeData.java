@@ -78,9 +78,6 @@ public class SchemaPipeData extends PipeData {
 
   @Override
   public String toString() {
-    return "SchemaPipeData{" +
-            "serialNumber=" + serialNumber +
-            ", plan=" + plan +
-            '}';
+    return "SchemaPipeData{" + "serialNumber=" + serialNumber + ", plan=" + plan + '}';
   }
 }

@@ -19,18 +19,11 @@
  */
 package org.apache.iotdb.db.newsync.pipedata;
 
-import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 public abstract class PipeData {
 

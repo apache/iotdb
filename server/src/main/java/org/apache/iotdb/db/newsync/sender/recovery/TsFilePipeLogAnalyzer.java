@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.newsync.sender.recovery;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.newsync.pipedata.PipeData;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

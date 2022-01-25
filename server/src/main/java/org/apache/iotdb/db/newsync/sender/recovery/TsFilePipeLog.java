@@ -22,10 +22,10 @@ package org.apache.iotdb.db.newsync.sender.recovery;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.utils.FileUtils;
 
 import org.slf4j.Logger;

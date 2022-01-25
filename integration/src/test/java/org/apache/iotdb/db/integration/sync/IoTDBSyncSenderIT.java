@@ -21,6 +21,7 @@ package org.apache.iotdb.db.integration.sync;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+
 import org.junit.Before;
 import org.junit.experimental.categories.Category;
 

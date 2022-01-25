@@ -21,6 +21,7 @@ package org.apache.iotdb.db.newsync.pipedata;
 
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,9 +77,6 @@ public class DeletionPipeData extends PipeData {
 
   @Override
   public String toString() {
-    return "DeletionData{" +
-            "deletion=" + deletion +
-            ", serialNumber=" + serialNumber +
-            '}';
+    return "DeletionData{" + "deletion=" + deletion + ", serialNumber=" + serialNumber + '}';
   }
 }
