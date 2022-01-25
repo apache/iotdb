@@ -141,7 +141,7 @@ public class InternalMNode extends MNode {
    * @param newChildNode new child node
    */
   @Override
-  public void replaceChild(String oldChildName, IMNode newChildNode) {
+  public synchronized void replaceChild(String oldChildName, IMNode newChildNode) {
     IMNode oldChildNode = this.getChild(oldChildName);
     if (oldChildNode == null) {
       return;
@@ -170,8 +170,7 @@ public class InternalMNode extends MNode {
 
     newChildNode.setParent(this);
 
-    this.deleteChild(oldChildName);
-    this.addChild(newChildNode.getName(), newChildNode);
+    children.replace(oldChildName, newChildNode);
   }
 
   @Override
