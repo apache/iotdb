@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.List;
-import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * CompactionRecoverTask execute the recover process for all compaction task sequentially, including
@@ -54,15 +54,30 @@ public class CompactionRecoverTask {
   }
 
   private void recoverCrossCompaction() throws Exception {
-    Set<Long> timePartitions = tsFileManager.getTimePartitions();
     List<String> sequenceDirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
     for (String dir : sequenceDirs) {
-      String storageGroupDir =
-          dir + File.separator + logicalStorageGroupName + File.separator + virtualStorageGroupId;
-      for (Long timePartition : timePartitions) {
-        String timePartitionDir = storageGroupDir + File.separator + timePartition;
+      File storageGroupDir =
+          new File(
+              dir
+                  + File.separator
+                  + logicalStorageGroupName
+                  + File.separator
+                  + virtualStorageGroupId);
+      if (!storageGroupDir.exists()) {
+        return;
+      }
+      File[] timePartitionDirs = storageGroupDir.listFiles();
+      if (timePartitionDirs == null) {
+        return;
+      }
+      for (File timePartitionDir : timePartitionDirs) {
+        if (!timePartitionDir.isDirectory()
+            || !Pattern.compile("[0-9]*").matcher(timePartitionDir.getName()).matches()) {
+          continue;
+        }
         File[] compactionLogs =
-            RewriteCrossSpaceCompactionLogger.findCrossSpaceCompactionLogs(timePartitionDir);
+            RewriteCrossSpaceCompactionLogger.findCrossSpaceCompactionLogs(
+                timePartitionDir.getPath());
         for (File compactionLog : compactionLogs) {
           logger.info("calling cross compaction task");
           IoTDBDescriptor.getInstance()
@@ -71,7 +86,10 @@ public class CompactionRecoverTask {
               .getCompactionRecoverTask(
                   logicalStorageGroupName,
                   virtualStorageGroupId,
-                  timePartition,
+                  Long.parseLong(
+                      timePartitionDir
+                          .getPath()
+                          .substring(timePartitionDir.getPath().lastIndexOf(File.separator) + 1)),
                   compactionLog,
                   tsFileManager)
               .call();

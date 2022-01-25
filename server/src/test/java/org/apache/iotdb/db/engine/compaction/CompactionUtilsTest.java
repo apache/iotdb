@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -61,7 +62,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
-    // IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
 
@@ -3357,7 +3358,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
 
   @Test
   public void testCrossSpaceCompactionWithNewDeviceInUnseqFile() {
-    // TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     try {
       registerTimeseriesInMManger(6, 6, false);
       createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
@@ -3369,6 +3370,67 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
           CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
       CompactionUtils.compact(seqResources, unseqResources, targetResources);
       CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    } catch (MetadataException
+        | IOException
+        | WriteProcessException
+        | StorageEngineException
+        | InterruptedException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
+  }
+
+  @Test
+  public void testCrossSpaceCompactionWithDeviceMaxTimeLaterInUnseqFile() {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    try {
+      registerTimeseriesInMManger(6, 6, false);
+      createFiles(2, 2, 3, 200, 0, 0, 0, 0, false, true);
+      createFiles(3, 4, 4, 300, 20, 10020, 0, 0, false, false);
+
+      List<TsFileResource> targetResources =
+          CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+      CompactionUtils.compact(seqResources, unseqResources, targetResources);
+      CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+
+      for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+          PartialPath path =
+              new MeasurementPath(
+                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                  "s" + j,
+                  new MeasurementSchema("s" + j, TSDataType.INT64));
+          IBatchReader tsFilesReader =
+              new SeriesRawDataBatchReader(
+                  path,
+                  TSDataType.INT64,
+                  EnvironmentUtils.TEST_QUERY_CONTEXT,
+                  targetResources,
+                  new ArrayList<>(),
+                  null,
+                  null,
+                  true);
+          int count = 0;
+          while (tsFilesReader.hasNextBatch()) {
+            BatchData batchData = tsFilesReader.nextBatch();
+            while (batchData.hasCurrent()) {
+              if (batchData.currentTime() < 20) {
+                assertEquals(batchData.currentTime(), batchData.currentValue());
+              } else {
+                assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
+              }
+              count++;
+              batchData.next();
+            }
+          }
+          tsFilesReader.close();
+          if (i < 2 && j < 3) {
+            assertEquals(920, count);
+          } else {
+            assertEquals(900, count);
+          }
+        }
+      }
     } catch (MetadataException
         | IOException
         | WriteProcessException
