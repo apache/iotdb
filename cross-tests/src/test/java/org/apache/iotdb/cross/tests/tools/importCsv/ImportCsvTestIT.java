@@ -61,6 +61,7 @@ public class ImportCsvTestIT extends AbstractScript {
     "````````````````````````````````````````````````",
     "Starting IoTDB Client Import Script",
     "````````````````````````````````````````````````",
+    "Start to import data from: test.csv",
     "No records!"
   };
 
@@ -167,7 +168,6 @@ public class ImportCsvTestIT extends AbstractScript {
    */
   @Test
   public void test() throws IOException, ClassNotFoundException {
-    createSchema();
     assertTrue(generateTestCSV(false, false, false, false, false));
     String[] params = {"-f", CSV_FILE};
     testMethod(params, null);

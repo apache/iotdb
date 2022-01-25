@@ -81,6 +81,8 @@ public class ImportCsv extends AbstractCsvTool {
   private static String timeColumn = "Time";
   private static String deviceColumn = "Device";
 
+  private static final int BATCH_SIZE = 10000;
+
   /**
    * create the commandline options.
    *
@@ -317,8 +319,6 @@ public class ImportCsv extends AbstractCsvTool {
 
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
 
-    final int BATCH_SIZE = 10000;
-
     records.forEach(
         record -> {
           if (!hasStarted.get()) {
@@ -432,7 +432,6 @@ public class ImportCsv extends AbstractCsvTool {
 
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
 
-    final int BATCH_SIZE = 10000;
     records.forEach(
         record -> {
           // only run in first record
