@@ -84,7 +84,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   @Override
   public void endChunkGroup() throws IOException {
     for (int i = 0; i < seqTsFileResources.size(); i++) {
-      if (isCurrentDeviceExist[i]) {
+      if (isCurrentDeviceExist[i] || i == seqTsFileResources.size() - 1) {
         fileWriterList.get(i).endChunkGroup();
       }
     }
@@ -137,8 +137,10 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   private void checkTimeAndMayFlushChunkToCurrentFile(long timestamp) throws IOException {
     // if timestamp is later than the current source seq tsfile, than flush chunk writer
     while (timestamp > currentDeviceEndTime[seqFileIndex]) {
-      writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
-      chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex));
+      if (currentDeviceEndTime[seqFileIndex] != Long.MIN_VALUE) {
+        writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
+        chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex));
+      }
 
       // If the seq file is deleted for various reasons, the following two situations may occur when
       // selecting the source files: (1) unseq files may have some devices or measurements which are

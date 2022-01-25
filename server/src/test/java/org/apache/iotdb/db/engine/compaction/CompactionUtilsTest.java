@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -42,6 +41,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -61,7 +61,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
+    // IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
 
@@ -3352,6 +3352,30 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
           assertEquals(600, count);
         }
       }
+    }
+  }
+
+  @Test
+  public void testCrossSpaceCompactionWithNewDeviceInUnseqFile() {
+    // TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    try {
+      registerTimeseriesInMManger(6, 6, false);
+      createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
+      createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
+      createFiles(3, 6, 6, 200, 20, 10020, 30, 30, false, false);
+      createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
+
+      List<TsFileResource> targetResources =
+          CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+      CompactionUtils.compact(seqResources, unseqResources, targetResources);
+      CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    } catch (MetadataException
+        | IOException
+        | WriteProcessException
+        | StorageEngineException
+        | InterruptedException e) {
+      e.printStackTrace();
+      Assert.fail();
     }
   }
 
