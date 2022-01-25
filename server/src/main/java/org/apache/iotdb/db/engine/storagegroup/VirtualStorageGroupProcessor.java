@@ -417,10 +417,10 @@ public class VirtualStorageGroupProcessor {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.MEM.toString(),
-              storageGroupInfo.getMemCost(),
-              Long::longValue,
+              storageGroupInfo,
+              StorageGroupInfo::getMemCost,
               Tag.NAME.toString(),
-              "storageGroup");
+              "storageGroup_" + getLogicalStorageGroupName());
     }
 
     // start trim task at last
