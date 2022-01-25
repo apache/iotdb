@@ -32,7 +32,6 @@ public class FakedCrossSpaceCompactionTask extends RewriteCrossSpaceCompactionTa
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartitionId,
-      String storageGroupDir,
       TsFileManager tsFileManager,
       List<TsFileResource> selectedSeqTsFileResourceList,
       List<TsFileResource> selectedUnSeqTsFileResourceList) {
@@ -40,7 +39,6 @@ public class FakedCrossSpaceCompactionTask extends RewriteCrossSpaceCompactionTa
         logicalStorageGroupName,
         virtualStorageGroupName,
         timePartitionId,
-        storageGroupDir,
         tsFileManager,
         selectedSeqTsFileResourceList,
         selectedUnSeqTsFileResourceList,
@@ -58,7 +56,7 @@ public class FakedCrossSpaceCompactionTask extends RewriteCrossSpaceCompactionTa
       ((FakedTsFileResource) resource)
           .setTsFileSize(resource.getTsFileSize() + avgSizeAddToSeqFile);
     }
+    selectedSeqTsFileResourceList.clear();
     selectedUnSeqTsFileResourceList.clear();
-    //    unSeqTsFileResourceList.clear();
   }
 }

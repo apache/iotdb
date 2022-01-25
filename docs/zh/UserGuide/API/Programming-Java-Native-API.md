@@ -48,6 +48,16 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
 </dependencies>
 ```
 
+## 语法说明
+
+ - 对于 IoTDB-SQL 接口：传入的 SQL 参数需要符合 [语法规范](../Reference/Syntax-Conventions.md) ，并且针对 JAVA 字符串进行反转义，如双引号前需要加反斜杠。（即：经 JAVA 转义之后与命令行执行的 SQL 语句一致。） 
+ - 对于其他接口： 
+   - 经参数传入的路径或路径前缀中的节点： 
+     - 在 SQL 语句中需要使用反引号（`）进行转义的，此处均不需要进行转义。 
+     - 使用单引号或双引号括起的节点，仍需要使用单引号或双引号括起，并且要针对 JAVA 字符串进行反转义。 
+     - 对于 `checkTimeseriesExists` 接口，由于内部调用了 IoTDB-SQL 接口，因此需要和 SQL 语法规范保持一致，并且针对 JAVA 字符串进行反转义。
+   - 经参数传入的标识符（如模板名）：在 SQL 语句中需要使用反引号（`）进行转义的，此处均不需要进行转义。
+
 ## 基本接口说明
 
 下面将给出 Session 对应的接口的简要介绍和对应参数：
@@ -339,7 +349,7 @@ public class Tablet {
 void insertTablets(Map<String, Tablet> tablets)
 ```
 
-* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据
+* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。这里的 value 是 Object 类型，相当于提供了一个公用接口，后面可以通过 TSDataType 将 value 强转为原类型
 
 ```java
 void insertRecord(String prefixPath, long time, List<String> measurements,
@@ -366,7 +376,7 @@ void insertRecordsOfOneDevice(String deviceId, List<Long> times,
 
 #### 带有类型推断的写入
 
-服务器需要做类型推断，可能会有额外耗时，速度较无需类型推断的写入慢
+当数据均是 String 类型时，我们可以使用如下接口，根据 value 的值进行类型推断。例如：value 为 "true" ，就可以自动推断为布尔类型。value 为 "3.2" ，就可以自动推断为数值类型。服务器需要做类型推断，可能会有额外耗时，速度较无需类型推断的写入慢
 
 * 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据
 
@@ -381,6 +391,13 @@ void insertRecords(List<String> deviceIds, List<Long> times,
    List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
 
+* 插入同属于一个 device 的多个 Record
+
+```java
+void insertStringRecordsOfOneDevice(String deviceId, List<Long> times,
+    List<List<String>> measurementsList, List<List<String>> valuesList)
+```
+
 #### 对齐时间序列的写入
 
 对齐时间序列的写入使用 insertAlignedXXX 接口，其余与上述接口类似：
@@ -388,6 +405,7 @@ void insertRecords(List<String> deviceIds, List<Long> times,
 * insertAlignedRecord
 * insertAlignedRecords
 * insertAlignedRecordsOfOneDevice
+* insertAlignedStringRecordsOfOneDevice
 * insertAlignedTablet
 * insertAlignedTablets
 
@@ -406,6 +424,12 @@ void deleteData(List<String> paths, long endTime)
 
 ```java
 SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+```
+
+* 查询最后一条时间戳大于等于某个时间点的数据
+
+```java
+SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
 ```
 
 ### IoTDB-SQL 接口

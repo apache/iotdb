@@ -23,10 +23,11 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.MaxFileMergeFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionTimeseriesType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -118,6 +119,7 @@ public class CrossSpaceCompactionTest {
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
     Thread.currentThread().setName(oldThreadName);
+    new CompactionConfigRestorer().restoreCompactionConfig();
   }
 
   // test one seq file overlaps with six unseq files with six type of relation(Contains, In,
@@ -416,7 +418,7 @@ public class CrossSpaceCompactionTest {
               new CrossSpaceMergeResource(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
           ICrossSpaceMergeFileSelector fileSelector =
-              new MaxFileMergeFileSelector(mergeResource, Long.MAX_VALUE);
+              new RewriteCompactionFileSelector(mergeResource, Long.MAX_VALUE);
           List[] mergeFiles = fileSelector.select();
           mergeResource.clear();
           index++;
@@ -427,13 +429,10 @@ public class CrossSpaceCompactionTest {
                     COMPACTION_TEST_SG,
                     "0",
                     0,
-                    "target",
                     new TsFileManager(
                         "root.compactionTest",
                         "0",
                         "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
-                    seqTsFileResourceList,
-                    unseqTsFileResourceList,
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles());
             compactionTask.call();
@@ -723,7 +722,7 @@ public class CrossSpaceCompactionTest {
               new CrossSpaceMergeResource(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
           ICrossSpaceMergeFileSelector fileSelector =
-              new MaxFileMergeFileSelector(mergeResource, Long.MAX_VALUE);
+              new RewriteCompactionFileSelector(mergeResource, Long.MAX_VALUE);
           List[] mergeFiles = fileSelector.select();
           mergeResource.clear();
           if (mergeFiles.length > 0) {
@@ -733,13 +732,10 @@ public class CrossSpaceCompactionTest {
                     COMPACTION_TEST_SG,
                     "0",
                     0,
-                    "target",
                     new TsFileManager(
                         "root.compactionTest",
                         "0",
                         "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
-                    seqTsFileResourceList,
-                    unseqTsFileResourceList,
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles());
             compactionTask.call();
@@ -1028,7 +1024,7 @@ public class CrossSpaceCompactionTest {
               new CrossSpaceMergeResource(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
           ICrossSpaceMergeFileSelector fileSelector =
-              new MaxFileMergeFileSelector(mergeResource, Long.MAX_VALUE);
+              new RewriteCompactionFileSelector(mergeResource, Long.MAX_VALUE);
           List[] mergeFiles = fileSelector.select();
           mergeResource.clear();
           if (mergeFiles.length > 0) {
@@ -1038,13 +1034,10 @@ public class CrossSpaceCompactionTest {
                     COMPACTION_TEST_SG,
                     "0",
                     0,
-                    "target",
                     new TsFileManager(
                         "root.compactionTest",
                         "0",
                         "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
-                    seqTsFileResourceList,
-                    unseqTsFileResourceList,
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles());
             compactionTask.call();

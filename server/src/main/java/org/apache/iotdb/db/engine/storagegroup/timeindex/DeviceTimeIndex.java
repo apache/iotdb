@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.rescon.CachedStringPool;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -160,7 +161,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<String> getDevices(String tsFilePath) {
+  public Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource) {
     return deviceToIndex.keySet();
   }
 
@@ -345,5 +346,10 @@ public class DeviceTimeIndex implements ITimeIndex {
       logger.error("Wrong timeIndex type {}", timeIndex.getClass().getName());
       throw new RuntimeException("Wrong timeIndex type " + timeIndex.getClass().getName());
     }
+  }
+
+  @Override
+  public boolean mayContainsDevice(String device) {
+    return deviceToIndex.containsKey(device);
   }
 }

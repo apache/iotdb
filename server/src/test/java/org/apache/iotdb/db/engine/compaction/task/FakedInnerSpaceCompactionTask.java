@@ -88,7 +88,7 @@ public class FakedInnerSpaceCompactionTask extends SizeTieredCompactionTask {
   @Override
   public boolean checkValidAndSetMerging() {
     for (TsFileResource resource : selectedTsFileResourceList) {
-      if (resource.isMerging() || !resource.isClosed()) {
+      if (resource.isCompacting() || !resource.isClosed()) {
         return false;
       }
     }

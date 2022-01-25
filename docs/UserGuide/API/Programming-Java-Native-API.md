@@ -45,6 +45,16 @@ In root directory:
 </dependencies>
 ```
 
+## Syntax Description
+
+- **IoTDB-SQL interface:** The input SQL parameter needs to conform to the [syntax conventions](../Reference/Syntax-Conventions.md) and be escaped for JAVA strings. For example, you need to add a backslash before the double-quotes. (That is: after JAVA escaping, it is consistent with the SQL statement executed on the command line.)
+- **Other interfaces:**
+  - The node names in path or path prefix as parameter:
+    - The node names which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
+    - The node names enclosed in single or double quotes still need to be enclosed in single or double quotes and must be escaped for JAVA strings.
+    - For the `checkTimeseriesExists` interface, since the IoTDB-SQL interface is called internally, the time-series pathname must be consistent with the SQL syntax conventions and be escaped for JAVA strings.
+  - Identifiers (such as template names) as parameters: The identifiers which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
+
 ## Native APIs
 
 Here we show the commonly used interfaces and their parameters in the Native API:
@@ -364,7 +374,7 @@ public class Tablet {
 void insertTablets(Map<String, Tablet> tablet)
 ```
 
-* Insert a Record, which contains multiple measurement value of a device at a timestamp
+* Insert a Record, which contains multiple measurement value of a device at a timestamp. This method is equivalent to providing a common interface for multiple data types of values. Later, the value can be cast to the original type through TSDataType.
 
 ```java
 void insertRecord(String deviceId, long time, List<String> measurements,
@@ -389,7 +399,7 @@ void insertRecordsOfOneDevice(String deviceId, List<Long> times,
 
 #### Insert with type inference
 
-Without type information, server has to do type inference, which may cost some time.
+When the data is of String type, we can use the following interface to perform type inference based on the value of the value itself. For example, if value is "true" , it can be automatically inferred to be a boolean type. If value is "3.2" , it can be automatically inferred as a flout type. Without type information, server has to do type inference, which may cost some time.
 
 * Insert a Record, which contains multiple measurement value of a device at a timestamp
 
@@ -404,6 +414,13 @@ void insertRecords(List<String> deviceIds, List<Long> times,
    List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
 
+* Insert multiple Records that belong to the same device.
+
+```java
+void insertStringRecordsOfOneDevice(String deviceId, List<Long> times,
+        List<List<String>> measurementsList, List<List<String>> valuesList)
+```
+
 #### Insert of Aligned Timeseries
 
 The Insert of aligned timeseries uses interfaces like insertAlignedXXX, and others are similar to the above interfaces:
@@ -411,6 +428,7 @@ The Insert of aligned timeseries uses interfaces like insertAlignedXXX, and othe
 * insertAlignedRecord
 * insertAlignedRecords
 * insertAlignedRecordsOfOneDevice
+* insertAlignedStringRecordsOfOneDevice
 * insertAlignedTablet
 * insertAlignedTablets
 
@@ -429,6 +447,12 @@ void deleteData(List<String> paths, long time)
 
 ```java
 SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+```
+
+* Query the last data, whose timestamp is greater than or equal LastTime
+
+```java
+SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
 ```
 
 ### IoTDB-SQL Interface

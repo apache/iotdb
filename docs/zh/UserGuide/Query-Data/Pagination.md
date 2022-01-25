@@ -30,7 +30,7 @@
 
 通过使用 `LIMIT` 和 `OFFSET` 子句，用户可以以与行相关的方式控制查询结果。 我们将通过以下示例演示如何使用 `LIMIT` 和 `OFFSET` 子句。
 
-- **示例 1：**基本的 `LIMIT` 子句
+- **示例 1：** 基本的 `LIMIT` 子句
 
 SQL 语句：
 
@@ -63,7 +63,7 @@ Total line number = 10
 It costs 0.000s
 ```
 
-- **示例 2：**带 `OFFSET` 的 `LIMIT` 子句
+- **示例 2：** 带 `OFFSET` 的 `LIMIT` 子句
 
 SQL 语句：
 
@@ -91,7 +91,7 @@ Total line number = 5
 It costs 0.342s
 ```
 
-- **示例 3：**`LIMIT` 子句与 `WHERE` 子句结合
+- **示例 3：** `LIMIT` 子句与 `WHERE` 子句结合
 
 SQL 语句：
 
@@ -119,7 +119,7 @@ Total line number = 5
 It costs 0.000s
 ```
 
-- **示例 4：**`LIMIT` 子句与 `GROUP BY` 子句组合
+- **示例 4：** `LIMIT` 子句与 `GROUP BY` 子句组合
 
 SQL 语句：
 
@@ -162,7 +162,7 @@ Msg: 401: Error occured while parsing SQL to physical plan: line 1:101 mismatche
 
 通过使用 `SLIMIT` 和 `SOFFSET` 子句，用户可以与列相关的方式控制查询结果。 我们将通过以下示例演示如何使用 `SLIMIT` 和 `SOFFSET` 子句。
 
-- **示例 1：**基本的 `SLIMIT` 子句
+- **示例 1：** 基本的 `SLIMIT` 子句
 
 SQL 语句：
 
@@ -191,7 +191,7 @@ Total line number = 6
 It costs 0.000s
 ```
 
-- **示例 2：**带 `SOFFSET` 的 `SLIMIT` 子句
+- **示例 2：** 带 `SOFFSET` 的 `SLIMIT` 子句
 
 SQL 语句：
 
@@ -220,7 +220,7 @@ Total line number = 6
 It costs 0.003s
 ```
 
-- **示例 3：**`SLIMIT` 子句与 `GROUP BY` 子句结合
+- **示例 3：** `SLIMIT` 子句与 `GROUP BY` 子句结合
 
 SQL 语句：
 
@@ -246,7 +246,7 @@ Total line number = 7
 It costs 0.000s
 ```
 
-- **示例 4：**`SLIMIT` 子句与 `FILL` 子句结合
+- **示例 4：** `SLIMIT` 子句与 `FILL` 子句结合
 
 SQL 语句：
 

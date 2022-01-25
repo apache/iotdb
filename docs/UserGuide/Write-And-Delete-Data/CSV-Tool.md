@@ -79,7 +79,7 @@ More, if you don't use one of `-s` and `-q`, you need to enter some queries afte
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt
 ```
 
-#### Sample SQL file
+### Sample SQL file
 
 ```sql
 select * from root;

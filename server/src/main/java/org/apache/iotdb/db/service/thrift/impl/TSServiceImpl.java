@@ -101,6 +101,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
@@ -955,8 +956,11 @@ public class TSServiceImpl implements TSIService.Iface {
               selectIntoPlan.getIntoPaths(),
               selectIntoPlan.isIntoPathsAligned());
       while (insertTabletPlansIterator.hasNext()) {
-        TSStatus executionStatus =
-            insertTabletsInternally(insertTabletPlansIterator.next(), sessionId);
+        List<InsertTabletPlan> insertTabletPlans = insertTabletPlansIterator.next();
+        if (insertTabletPlans.isEmpty()) {
+          continue;
+        }
+        TSStatus executionStatus = insertTabletsInternally(insertTabletPlans, sessionId);
         if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && executionStatus.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
           return RpcUtils.getTSExecuteStatementResp(executionStatus).setQueryId(queryId);
@@ -1295,6 +1299,64 @@ public class TSServiceImpl implements TSIService.Iface {
     resp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
     return resp;
+  }
+
+  @Override
+  public TSStatus insertStringRecordsOfOneDevice(TSInsertStringRecordsOfOneDeviceReq req) {
+    if (!serviceProvider.checkLogin(req.getSessionId())) {
+      return getNotLoggedInStatus();
+    }
+
+    if (AUDIT_LOGGER.isDebugEnabled()) {
+      AUDIT_LOGGER.debug(
+          "Session {} insertRecords, device {}, first time {}",
+          SESSION_MANAGER.getCurrSessionId(),
+          req.prefixPath,
+          req.getTimestamps().get(0));
+    }
+
+    boolean allCheckSuccess = true;
+    InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
+    for (int i = 0; i < req.timestamps.size(); i++) {
+      InsertRowPlan plan = new InsertRowPlan();
+      try {
+        plan.setDevicePath(new PartialPath(req.getPrefixPath()));
+        plan.setTime(req.getTimestamps().get(i));
+        addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
+        plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
+        plan.setNeedInferType(true);
+        plan.setAligned(req.isAligned);
+        TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+
+        if (status != null) {
+          insertRowsPlan.getResults().put(i, status);
+          allCheckSuccess = false;
+        }
+        insertRowsPlan.addOneInsertRowPlan(plan, i);
+      } catch (IoTDBException e) {
+        insertRowsPlan
+            .getResults()
+            .put(
+                i,
+                onIoTDBException(
+                    e, OperationType.INSERT_STRING_RECORDS_OF_ONE_DEVICE, e.getErrorCode()));
+        allCheckSuccess = false;
+      } catch (Exception e) {
+        insertRowsPlan
+            .getResults()
+            .put(
+                i,
+                onNPEOrUnexpectedException(
+                    e,
+                    OperationType.INSERT_STRING_RECORDS_OF_ONE_DEVICE,
+                    TSStatusCode.INTERNAL_SERVER_ERROR));
+        allCheckSuccess = false;
+      }
+    }
+    TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
+
+    return judgeFinalTsStatus(
+        allCheckSuccess, tsStatus, insertRowsPlan.getResults(), req.timestamps.size());
   }
 
   @Override

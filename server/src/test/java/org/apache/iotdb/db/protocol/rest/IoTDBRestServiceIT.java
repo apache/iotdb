@@ -73,8 +73,6 @@ public class IoTDBRestServiceIT {
     HttpGet httpGet = new HttpGet("http://127.0.0.1:18080/ping");
     CloseableHttpResponse response = null;
     try {
-      String authorization = getAuthorization("root", "root");
-      httpGet.setHeader("Authorization", authorization);
       response = httpClient.execute(httpGet);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
@@ -168,6 +166,7 @@ public class IoTDBRestServiceIT {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     rightInsertTablet(httpClient);
     query(httpClient);
+    queryGroupByLevel(httpClient);
     queryRowLimit(httpClient);
     queryShowChildPaths(httpClient);
     queryShowNodes(httpClient);
@@ -190,6 +189,68 @@ public class IoTDBRestServiceIT {
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void queryWithUnsetAuthorization() {
+    CloseableHttpResponse response = null;
+    try {
+      CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+      HttpPost httpPost = new HttpPost("http://127.0.0.1:18080/rest/v1/query");
+      httpPost.addHeader("Content-type", "application/json; charset=utf-8");
+      httpPost.setHeader("Accept", "application/json");
+      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      Assert.assertEquals(401, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(603, Integer.parseInt(result.get("code").toString()));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void queryWithWrongAuthorization() {
+    CloseableHttpResponse response = null;
+    try {
+      CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+      HttpPost httpPost = new HttpPost("http://127.0.0.1:18080/rest/v1/query");
+      httpPost.addHeader("Content-type", "application/json; charset=utf-8");
+      httpPost.setHeader("Accept", "application/json");
+      String authorization = getAuthorization("abc", "def");
+      httpPost.setHeader("Authorization", authorization);
+      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      Assert.assertEquals(401, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(600, Integer.parseInt(result.get("code").toString()));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
     }
   }
 
@@ -280,6 +341,40 @@ public class IoTDBRestServiceIT {
       Assert.assertEquals(values4, valuesResult.get(3));
       Assert.assertEquals(values5, valuesResult.get(4));
       Assert.assertEquals(values6, valuesResult.get(5));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void queryGroupByLevel(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/query");
+      String sql =
+          "{\"sql\":\"select count(s4) from root.sg25 group by([1635232143960,1635232153960),1s),level=1\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      Assert.assertTrue(timestampsResult.size() == 10);
+      Assert.assertTrue(valuesResult.size() == 1);
+      Assert.assertTrue("count(root.sg25.s4)".equals(expressionsResult.get(0)));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());

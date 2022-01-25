@@ -29,11 +29,11 @@ import java.io.File;
 import java.util.List;
 
 public enum CrossCompactionStrategy {
-  INPLACE_COMPACTION;
+  REWRITE_COMPACTION;
 
   public static CrossCompactionStrategy getCrossCompactionStrategy(String name) {
-    if ("INPLACE_COMPACTION".equalsIgnoreCase(name)) {
-      return INPLACE_COMPACTION;
+    if ("REWRITE_COMPACTION".equalsIgnoreCase(name)) {
+      return REWRITE_COMPACTION;
     }
     throw new RuntimeException("Illegal Cross Compaction Strategy " + name);
   }
@@ -42,18 +42,16 @@ public enum CrossCompactionStrategy {
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartitionId,
-      String storageGroupDir,
       TsFileManager tsFileManager,
       List<TsFileResource> selectedSeqTsFileResourceList,
       List<TsFileResource> selectedUnSeqTsFileResourceList) {
     switch (this) {
-      case INPLACE_COMPACTION:
+      case REWRITE_COMPACTION:
       default:
         return new RewriteCrossSpaceCompactionTask(
             logicalStorageGroupName,
             virtualStorageGroupName,
             timePartitionId,
-            storageGroupDir,
             tsFileManager,
             selectedSeqTsFileResourceList,
             selectedUnSeqTsFileResourceList,
@@ -65,17 +63,15 @@ public enum CrossCompactionStrategy {
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartitionId,
-      String storageGroupDir,
       File logFile,
       TsFileManager tsFileManager) {
     switch (this) {
-      case INPLACE_COMPACTION:
+      case REWRITE_COMPACTION:
       default:
         return new RewriteCrossCompactionRecoverTask(
             logicalStorageGroupName,
             virtualStorageGroupName,
             timePartitionId,
-            storageGroupDir,
             logFile,
             CompactionTaskManager.currentTaskNum,
             tsFileManager);
@@ -90,7 +86,7 @@ public enum CrossCompactionStrategy {
       TsFileManager tsFileManager,
       CrossSpaceCompactionTaskFactory taskFactory) {
     switch (this) {
-      case INPLACE_COMPACTION:
+      case REWRITE_COMPACTION:
       default:
         return new RewriteCrossSpaceCompactionSelector(
             logicalStorageGroupName,
