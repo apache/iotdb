@@ -177,16 +177,16 @@ public class SenderService implements IService {
     }
 
     // get TsFilePipe
-    PipeSink.Type pipeSinkType = pipeSink.getType();
-    if (!pipeSinkType.equals(PipeSink.Type.IoTDB)) {
-      throw new PipeException(
-          String.format(
-              "Wrong pipeSink type %s for create TsFilePipe.", pipeSinkType)); // internal error
-    }
+//    PipeSink.Type pipeSinkType = pipeSink.getType();
+//    if (!pipeSinkType.equals(PipeSink.Type.IoTDB)) {
+//      throw new PipeException(
+//          String.format(
+//              "Wrong pipeSink type %s for create TsFilePipe.", pipeSinkType)); // internal error
+//    }
     return new TsFilePipe(
         pipeCreateTime,
         plan.getPipeName(),
-        (IoTDBPipeSink) pipeSink,
+        pipeSink,
         plan.getDataStartTimestamp(),
         syncDelOp);
   }

@@ -59,7 +59,7 @@ public class TsFilePipe implements Pipe {
 
   private final long createTime;
   private final String name;
-  private final IoTDBPipeSink pipeSink;
+  private final PipeSink pipeSink;
   private final long dataStartTime;
   private final boolean syncDelOp;
 
@@ -74,7 +74,7 @@ public class TsFilePipe implements Pipe {
   private boolean isCollectingRealTimeData;
 
   public TsFilePipe(
-      long createTime, String name, IoTDBPipeSink pipeSink, long dataStartTime, boolean syncDelOp) {
+      long createTime, String name, PipeSink pipeSink, long dataStartTime, boolean syncDelOp) {
     this.createTime = createTime;
     this.name = name;
     this.pipeSink = pipeSink;
@@ -124,6 +124,7 @@ public class TsFilePipe implements Pipe {
       }
 
       singleExecutorService.submit(this::transport);
+      //
       status = PipeStatus.RUNNING;
     } catch (IOException e) {
       logger.error(
