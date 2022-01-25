@@ -40,7 +40,8 @@ public interface PipeSink {
       if (Type.IoTDB.name().toLowerCase().equals(type)) {
         return new IoTDBPipeSink(name);
       }
-      throw new UnsupportedOperationException("Not support for " + type + " pipeSink");
+      throw new UnsupportedOperationException(
+          String.format("Do not support pipeSink type %s", type));
     }
   }
 }

@@ -362,8 +362,16 @@ PIPE
     : P I P E
     ;
 
+PIPES
+    : P I P E S
+    ;
+
 PIPESINK
     : P I P E S I N K
+    ;
+
+PIPESINKS
+    : P I P E S I N K S
     ;
 
 PIPESINKTYPE

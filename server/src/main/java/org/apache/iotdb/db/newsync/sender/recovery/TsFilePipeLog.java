@@ -22,9 +22,10 @@ package org.apache.iotdb.db.newsync.sender.recovery;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipeData;
+import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.utils.FileUtils;
 
 import org.slf4j.Logger;
@@ -143,7 +144,7 @@ public class TsFilePipeLog {
   }
 
   /** add pipe log data */
-  public void addHistoryPipeData(TsFilePipeData pipeData) throws IOException {
+  public void addHistoryPipeData(PipeData pipeData) throws IOException {
     getHistoryOutputStream();
     pipeData.serialize(historyOutputStream);
   }
@@ -161,7 +162,7 @@ public class TsFilePipeLog {
     historyOutputStream = new DataOutputStream(new FileOutputStream(historyPipeLog, true));
   }
 
-  public synchronized void addRealTimePipeData(TsFilePipeData pipeData) throws IOException {
+  public synchronized void addRealTimePipeData(PipeData pipeData) throws IOException {
     getRealTimeOutputStream(pipeData.getSerialNumber());
     currentPipeLogSize += pipeData.serialize(realTimeOutputStream);
   }
@@ -260,11 +261,11 @@ public class TsFilePipeLog {
 
   private void removeTsFile(File realTimePipeLog) {
     try {
-      List<TsFilePipeData> pipeData = TsFilePipeLogAnalyzer.parseFile(realTimePipeLog);
+      List<PipeData> pipeData = TsFilePipeLogAnalyzer.parseFile(realTimePipeLog);
       List<File> tsFiles;
-      for (TsFilePipeData data : pipeData)
-        if (data.isTsFile()) {
-          tsFiles = data.getTsFiles();
+      for (PipeData data : pipeData)
+        if (PipeData.Type.TSFILE.equals(data.getType())) {
+          tsFiles = ((TsFilePipeData) data).getTsFiles();
           for (File file : tsFiles) {
             Files.deleteIfExists(file.toPath());
           }

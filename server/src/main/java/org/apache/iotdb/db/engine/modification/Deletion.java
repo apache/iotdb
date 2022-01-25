@@ -23,6 +23,9 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -75,33 +78,22 @@ public class Deletion extends Modification {
     this.endTime = timestamp;
   }
 
-  public void serializeWithoutFileOffset(ByteBuffer byteBuffer) {
-    byteBuffer.mark();
-    try {
-      byteBuffer.putLong(startTime);
-      byteBuffer.putLong(endTime);
-      ReadWriteIOUtils.write(getPathString(), byteBuffer);
-    } catch (Exception e) {
-      byteBuffer.reset();
-      throw e;
-    }
+  public long serializeWithoutFileOffset(DataOutputStream stream) throws IOException {
+    long serializeSize = 0;
+    stream.writeLong(startTime);
+    serializeSize += Long.BYTES;
+    stream.writeLong(endTime);
+    serializeSize += Long.BYTES;
+    serializeSize += ReadWriteIOUtils.write(getPathString(), stream);
+    return serializeSize;
   }
 
-  public static Deletion deserializeWithoutFileOffset(ByteBuffer byteBuffer)
-      throws IllegalPathException {
-    byteBuffer.mark();
-    Deletion deletion;
-    try {
-      long startTime = byteBuffer.getLong();
-      long endTime = byteBuffer.getLong();
-      deletion =
-          new Deletion(
-              new PartialPath(ReadWriteIOUtils.readString(byteBuffer)), 0, startTime, endTime);
-    } catch (Exception e) {
-      byteBuffer.reset();
-      throw e;
-    }
-    return deletion;
+  public static Deletion deserializeWithoutFileOffset(DataInputStream stream)
+      throws IOException, IllegalPathException {
+    long startTime = stream.readLong();
+    long endTime = stream.readLong();
+    return new Deletion(
+        new PartialPath(ReadWriteIOUtils.readString(stream)), 0, startTime, endTime);
   }
 
   @Override

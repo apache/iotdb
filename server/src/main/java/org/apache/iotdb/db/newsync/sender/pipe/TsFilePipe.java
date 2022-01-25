@@ -27,6 +27,10 @@ import org.apache.iotdb.db.engine.storagegroup.virtualSg.StorageGroupManager;
 import org.apache.iotdb.db.exception.PipeException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.newsync.pipedata.DeletionPipeData;
+import org.apache.iotdb.db.newsync.pipedata.PipeData;
+import org.apache.iotdb.db.newsync.pipedata.SchemaPipeData;
+import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLog;
 import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLogAnalyzer;
@@ -59,11 +63,11 @@ public class TsFilePipe implements Pipe {
   private final long dataStartTime;
   private final boolean syncDelOp;
 
-  private ExecutorService singleExecutorService;
-  private TsFilePipeLog pipeLog;
+  private final ExecutorService singleExecutorService;
+  private final TsFilePipeLog pipeLog;
   private final ReentrantLock collectRealTimeDataLock;
 
-  private BlockingDeque<TsFilePipeData> pipeData;
+  private BlockingDeque<PipeData> pipeDataDeque;
   private long maxSerialNumber;
 
   private PipeStatus status;
@@ -91,10 +95,10 @@ public class TsFilePipe implements Pipe {
   }
 
   private void recover() {
-    this.pipeData = new TsFilePipeLogAnalyzer(this).recover();
+    this.pipeDataDeque = new TsFilePipeLogAnalyzer(this).recover();
     this.maxSerialNumber = 0L;
-    if (pipeData.size() != 0) {
-      this.maxSerialNumber = Math.max(maxSerialNumber, pipeData.getLast().getSerialNumber());
+    if (pipeDataDeque.size() != 0) {
+      this.maxSerialNumber = Math.max(maxSerialNumber, pipeDataDeque.getLast().getSerialNumber());
     }
   }
 
@@ -138,10 +142,10 @@ public class TsFilePipe implements Pipe {
     // get all history data
     int historyMetadataSize = historyMetadata.size();
     int historyTsFilesSize = historyTsFiles.size();
-    List<TsFilePipeData> historyData = new ArrayList<>();
+    List<PipeData> historyData = new ArrayList<>();
     for (int i = 0; i < historyMetadataSize; i++) {
-      long serialNumber = 1 - historyTsFilesSize - historyMetadataSize  + i;
-      historyData.add(new TsFilePipeData(historyMetadata.get(i), serialNumber));
+      long serialNumber = 1 - historyTsFilesSize - historyMetadataSize + i;
+      historyData.add(new SchemaPipeData(historyMetadata.get(i), serialNumber));
     }
     for (int i = 0; i < historyTsFilesSize; i++) {
       long serialNumber = 1 - historyTsFilesSize + i;
@@ -160,11 +164,11 @@ public class TsFilePipe implements Pipe {
     // add history data into blocking deque
     int historyDataSize = historyData.size();
     for (int i = 0; i < historyDataSize; i++) {
-      pipeData.addFirst(historyData.get(historyDataSize - 1 - i));
+      pipeDataDeque.addFirst(historyData.get(historyDataSize - 1 - i));
     }
     // record history data
     for (int i = 0; i < historyDataSize; i++) {
-      TsFilePipeData data = historyData.get(i);
+      PipeData data = historyData.get(i);
       try {
         pipeLog.addHistoryPipeData(data);
       } catch (IOException e) {
@@ -206,7 +210,7 @@ public class TsFilePipe implements Pipe {
     collectRealTimeDataLock.lock();
     try {
       maxSerialNumber += 1L;
-      TsFilePipeData metaData = new TsFilePipeData(plan, maxSerialNumber);
+      PipeData metaData = new SchemaPipeData(plan, maxSerialNumber);
       collectRealTimePipeData(metaData); // ensure can be transport
       pipeLog.addRealTimePipeData(metaData);
     } catch (IOException e) {
@@ -264,7 +268,7 @@ public class TsFilePipe implements Pipe {
                 deletion.getStartTime(),
                 deletion.getEndTime());
         maxSerialNumber += 1L;
-        TsFilePipeData deletionData = new TsFilePipeData(splitDeletion, maxSerialNumber);
+        PipeData deletionData = new DeletionPipeData(splitDeletion, maxSerialNumber);
         pipeLog.addRealTimePipeData(deletionData);
         collectRealTimePipeData(deletionData);
       }
@@ -284,7 +288,7 @@ public class TsFilePipe implements Pipe {
     collectRealTimeDataLock.lock();
     try {
       maxSerialNumber += 1L;
-      TsFilePipeData tsFileData =
+      PipeData tsFileData =
           new TsFilePipeData(pipeLog.addRealTimeTsFile(tsFile).getPath(), maxSerialNumber);
       pipeLog.addRealTimePipeData(tsFileData);
       collectRealTimePipeData(tsFileData);
@@ -308,10 +312,10 @@ public class TsFilePipe implements Pipe {
     }
   }
 
-  private void collectRealTimePipeData(TsFilePipeData data) {
-    pipeData.offer(data);
-    synchronized (pipeData) {
-      pipeData.notifyAll();
+  private void collectRealTimePipeData(PipeData data) {
+    pipeDataDeque.offer(data);
+    synchronized (pipeDataDeque) {
+      pipeDataDeque.notifyAll();
     }
   }
 
@@ -325,14 +329,14 @@ public class TsFilePipe implements Pipe {
           break;
         }
 
-        TsFilePipeData data;
+        PipeData data;
         try {
-          synchronized (pipeData) {
-            if (pipeData.isEmpty()) {
-              pipeData.wait();
-              pipeData.notifyAll();
+          synchronized (pipeDataDeque) {
+            if (pipeDataDeque.isEmpty()) {
+              pipeDataDeque.wait();
+              pipeDataDeque.notifyAll();
             }
-            data = pipeData.poll();
+            data = pipeDataDeque.poll();
           }
         } catch (InterruptedException e) {
           logger.warn(String.format("TsFile pipe %s has been interrupted.", name));
@@ -342,38 +346,51 @@ public class TsFilePipe implements Pipe {
         if (data == null) {
           continue;
         }
-        if (data.isTsFile()) {
-          if (waitForTsFileClose(data)) {
-            // senderTransport(data.getTsFiles, data.getLoaderType());
-          }
-        } else {
-          // senderTransport(data.getBytes, data.getLoaderType());
-        }
-        // pipeLog.removePipeData(data.getSerialNumber);
+        //        data.sendToTransport();
+        //         pipeLog.removePipeData(data.getSerialNumber);
+        //        data.sendToTransport();
+        //        Thread.sleep(1000);
+        //        pipeLog.removePipeData(data.getSerialNumber());
       }
     } catch (Exception e) {
       logger.error(String.format("TsFile pipe %s stops transportng data, because %s.", name, e));
     }
   }
 
-  private boolean waitForTsFileClose(TsFilePipeData data) {
-    for (int i = 0; i < SenderConf.defaultWaitingForTsFileRetryNumber; i++) {
-      if (data.isTsFileClosed()) {
-        return true;
+  public List<PipeData> pull(long serialNumber) {
+    if (pipeDataDeque.isEmpty()) {
+      return null;
+    }
+    List<PipeData> pullPipeData = new ArrayList<>();
+    PipeData data = pipeDataDeque.poll();
+    while (data.getSerialNumber() <= serialNumber) {
+      pullPipeData.add(data);
+      if (pipeDataDeque.isEmpty()) {
+        break;
+      } else {
+        data = pipeDataDeque.poll();
       }
+    }
+
+    int pullPipeDataSize = pullPipeData.size();
+    for (int i = 0; i < pullPipeDataSize; i++) {
+      pipeDataDeque.addFirst(pullPipeData.get(pullPipeDataSize - i - 1));
+    }
+    return pullPipeData;
+  }
+
+  public void commit(long serialNumber) {
+    while (!pipeDataDeque.isEmpty() && pipeDataDeque.peek().getSerialNumber() <= serialNumber) {
+      PipeData data = pipeDataDeque.poll();
       try {
-        Thread.sleep(SenderConf.defaultWaitingForTsFileCloseMilliseconds);
-      } catch (InterruptedException e) {
+        pipeLog.removePipeData(pipeDataDeque.poll().getSerialNumber());
+      } catch (IOException e) {
         logger.warn(
             String.format(
-                "Be Interrupted when waiting for tsfile %s closed", data.getTsFilePath()));
+                "Commit pipe data %s error, serial number is %s, because %s",
+                data, data.getSerialNumber(), e));
       }
-      logger.info(
-          String.format(
-              "Waiting for tsfile %s close, retry %d / %d.",
-              data.getTsFilePath(), (i + 1), SenderConf.defaultWaitingForTsFileRetryNumber));
     }
-    return false;
   }
 
   @Override
@@ -389,8 +406,8 @@ public class TsFilePipe implements Pipe {
       isCollectingRealTimeData = true;
     }
     status = PipeStatus.STOP;
-    synchronized (pipeData) {
-      pipeData.notifyAll();
+    synchronized (pipeDataDeque) {
+      pipeDataDeque.notifyAll();
     }
   }
 
@@ -401,8 +418,8 @@ public class TsFilePipe implements Pipe {
     }
 
     status = PipeStatus.DROP;
-    synchronized (pipeData) {
-      pipeData.notifyAll();
+    synchronized (pipeDataDeque) {
+      pipeDataDeque.notifyAll();
     }
     clear();
   }
@@ -427,7 +444,7 @@ public class TsFilePipe implements Pipe {
       logger.warn(String.format("Clear pipe %s %d error, because %s.", name, createTime, e));
     }
 
-    pipeData = null;
+    pipeDataDeque = null;
     isCollectingRealTimeData = false;
   }
 
