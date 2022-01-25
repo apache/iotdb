@@ -96,9 +96,7 @@ createSchemaTemplate
     ;
 
 templateMeasurementClause
-    : nodeNameWithoutWildcard attributeClauses #singleTemplateMeasurement
-    | deviceId=nodeNameWithoutWildcard ALIGNED LR_BRACKET nodeNameWithoutWildcard attributeClauses
-    (COMMA nodeNameWithoutWildcard attributeClauses)* RR_BRACKET  #multiTemplateMeasurement
+    : nodeNameWithoutWildcard attributeClauses
     ;
 
 // Create Timeseries Of Schema Template
