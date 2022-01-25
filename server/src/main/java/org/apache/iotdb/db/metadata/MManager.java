@@ -166,8 +166,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
-public class MManager {
-
+public class MManager implements IMetaManager {
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
 
   public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
@@ -274,6 +273,7 @@ public class MManager {
   }
 
   // Because the writer will be used later and should not be closed here.
+  @Override
   @SuppressWarnings("squid:S2093")
   public synchronized void init() {
     if (initialized) {
@@ -423,6 +423,7 @@ public class MManager {
     }
   }
 
+  @Override
   public void createMTreeSnapshot() {
     try {
       mtree.createSnapshot();
@@ -433,6 +434,7 @@ public class MManager {
   }
 
   /** function for clearing MTree */
+  @Override
   public synchronized void clear() {
     try {
       if (this.mtree != null) {
@@ -462,6 +464,7 @@ public class MManager {
     }
   }
 
+  @Override
   public void operation(PhysicalPlan plan) throws IOException, MetadataException {
     switch (plan.getOperatorType()) {
       case CREATE_TIMESERIES:
@@ -545,6 +548,7 @@ public class MManager {
   // endregion
 
   // region Interfaces for CQ
+  @Override
   public void createContinuousQuery(CreateContinuousQueryPlan plan) throws MetadataException {
     try {
       ContinuousQueryService.getInstance().register(plan, false);
@@ -553,6 +557,7 @@ public class MManager {
     }
   }
 
+  @Override
   public void dropContinuousQuery(DropContinuousQueryPlan plan) throws MetadataException {
     try {
       ContinuousQueryService.getInstance().deregister(plan, false);
@@ -561,10 +566,12 @@ public class MManager {
     }
   }
 
+  @Override
   public void writeCreateContinuousQueryLog(CreateContinuousQueryPlan plan) throws IOException {
     logWriter.createContinuousQuery(plan);
   }
 
+  @Override
   public void writeDropContinuousQueryLog(DropContinuousQueryPlan plan) throws IOException {
     logWriter.dropContinuousQuery(plan);
   }
@@ -573,10 +580,12 @@ public class MManager {
   // region Interfaces and Implementation for Timeseries operation
   // including create and delete
 
+  @Override
   public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
     createTimeseries(plan, -1);
   }
 
+  @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     if (!allowToCreateNewSeries) {
@@ -653,6 +662,7 @@ public class MManager {
    * @param encoding the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
    */
+  @Override
   public void createTimeseries(
       PartialPath path,
       TSDataType dataType,
@@ -673,6 +683,7 @@ public class MManager {
     }
   }
 
+  @Override
   public void createAlignedTimeSeries(
       PartialPath prefixPath,
       List<String> measurements,
@@ -690,6 +701,7 @@ public class MManager {
    *
    * @param plan CreateAlignedTimeSeriesPlan
    */
+  @Override
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
     if (!allowToCreateNewSeries) {
       throw new MetadataException(
@@ -768,6 +780,7 @@ public class MManager {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return deletion failed Timeseries
    */
+  @Override
   public String deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     try {
@@ -795,6 +808,7 @@ public class MManager {
    * @param pathPattern path to be deleted
    * @return deletion failed Timeseries
    */
+  @Override
   public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
     return deleteTimeseries(pathPattern, false);
   }
@@ -863,6 +877,7 @@ public class MManager {
    *
    * @param storageGroup root.node.(node)*
    */
+  @Override
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
     try {
       mtree.setStorageGroup(storageGroup);
@@ -882,6 +897,7 @@ public class MManager {
    *
    * @param storageGroups list of paths to be deleted. Format: root.node
    */
+  @Override
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     try {
       for (PartialPath storageGroup : storageGroups) {
@@ -918,6 +934,7 @@ public class MManager {
     }
   }
 
+  @Override
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
     getStorageGroupNodeByStorageGroupPath(storageGroup).setDataTTL(dataTTL);
     if (!isRecovering) {
@@ -1002,17 +1019,20 @@ public class MManager {
    *
    * @param path a full path or a prefix path
    */
+  @Override
   public boolean isPathExist(PartialPath path) {
     return mtree.isPathExist(path);
   }
 
   /** Get metadata in string */
+  @Override
   public String getMetadataInString() {
     return TIME_SERIES_TREE_HEADER + mtree;
   }
 
   // region Interfaces for metadata count
 
+  @Override
   public long getTotalSeriesNumber() {
     return totalSeriesNumber.get();
   }
@@ -1022,6 +1042,7 @@ public class MManager {
    * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
    * path. All timeseries start with the matched prefix path will be counted.
    */
+  @Override
   public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
@@ -1031,6 +1052,7 @@ public class MManager {
    * To calculate the count of timeseries matching given path. The path could be a pattern of a full
    * path, may contain wildcard.
    */
+  @Override
   public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
     return getAllTimeseriesCount(pathPattern, false);
   }
@@ -1040,12 +1062,14 @@ public class MManager {
    * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
    * counted.
    */
+  @Override
   public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getDevicesNum(pathPattern, isPrefixMatch);
   }
 
   /** To calculate the count of devices for given path pattern. */
+  @Override
   public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
     return getDevicesNum(pathPattern, false);
   }
@@ -1055,6 +1079,7 @@ public class MManager {
    * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
    * counted.
    */
+  @Override
   public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getStorageGroupNum(pathPattern, isPrefixMatch);
@@ -1069,6 +1094,7 @@ public class MManager {
    * @param level the level should match the level of the path
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
+  @Override
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
@@ -1080,11 +1106,13 @@ public class MManager {
    * @param pathPattern a path pattern or a full path
    * @param level the level should match the level of the path
    */
+  @Override
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
       throws MetadataException {
     return getNodesCountInGivenLevel(pathPattern, level, false);
   }
 
+  @Override
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
@@ -1103,11 +1131,13 @@ public class MManager {
    * @param nodeLevel the level should match the level of the path
    * @return A List instance which stores all node at given level
    */
+  @Override
   public List<PartialPath> getNodesListInGivenLevel(PartialPath pathPattern, int nodeLevel)
       throws MetadataException {
     return getNodesListInGivenLevel(pathPattern, nodeLevel, null);
   }
 
+  @Override
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
     return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);
@@ -1124,6 +1154,7 @@ public class MManager {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
+  @Override
   public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
     return mtree.getChildNodePathInNextLevel(pathPattern);
   }
@@ -1138,6 +1169,7 @@ public class MManager {
    *
    * @return All child nodes of given seriesPath.
    */
+  @Override
   public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
     return mtree.getChildNodeNameInNextLevel(pathPattern);
   }
@@ -1150,11 +1182,13 @@ public class MManager {
    * @param path Format: root.node.(node)*
    * @apiNote :for cluster
    */
+  @Override
   public boolean isStorageGroup(PartialPath path) {
     return mtree.isStorageGroup(path);
   }
 
   /** Check whether the given path contains a storage group */
+  @Override
   public boolean checkStorageGroupByPath(PartialPath path) {
     return mtree.checkStorageGroupByPath(path);
   }
@@ -1167,6 +1201,7 @@ public class MManager {
    * @param path only full path, cannot be path pattern
    * @return storage group in the given path
    */
+  @Override
   public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
     return mtree.getBelongedStorageGroup(path);
   }
@@ -1181,6 +1216,7 @@ public class MManager {
    * @param pathPattern a path pattern or a full path
    * @return a list contains all storage groups related to given path pattern
    */
+  @Override
   public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
       throws MetadataException {
     return mtree.getBelongedStorageGroups(pathPattern);
@@ -1194,12 +1230,14 @@ public class MManager {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return A ArrayList instance which stores storage group paths matching given path pattern.
    */
+  @Override
   public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getMatchedStorageGroups(pathPattern, isPrefixMatch);
   }
 
   /** Get all storage group paths */
+  @Override
   public List<PartialPath> getAllStorageGroupPaths() {
     return mtree.getAllStorageGroupPaths();
   }
@@ -1209,6 +1247,7 @@ public class MManager {
    *
    * @return key-> storageGroupPath, value->ttl
    */
+  @Override
   public Map<PartialPath, Long> getStorageGroupsTTL() {
     Map<PartialPath, Long> storageGroupsTTL = new HashMap<>();
     try {
@@ -1234,6 +1273,7 @@ public class MManager {
    * @param timeseries a path pattern of the target timeseries
    * @return A HashSet instance which stores devices paths.
    */
+  @Override
   public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
     return mtree.getDevicesByTimeseries(timeseries);
   }
@@ -1246,6 +1286,7 @@ public class MManager {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path.
    * @return A HashSet instance which stores devices paths matching the given path pattern.
    */
+  @Override
   public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getDevices(pathPattern, isPrefixMatch);
@@ -1257,6 +1298,7 @@ public class MManager {
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
    * @return ShowDevicesResult.
    */
+  @Override
   public List<ShowDevicesResult> getMatchedDevices(ShowDevicesPlan plan) throws MetadataException {
     return mtree.getDevices(plan);
   }
@@ -1273,6 +1315,7 @@ public class MManager {
    * @param pathPattern can be a pattern or a full path of timeseries.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
+  @Override
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch).left;
@@ -1285,6 +1328,7 @@ public class MManager {
    *
    * @param pathPattern can be a pattern or a full path of timeseries.
    */
+  @Override
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
       throws MetadataException {
     return getMeasurementPaths(pathPattern, false);
@@ -1297,12 +1341,14 @@ public class MManager {
    *
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
+  @Override
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset, isPrefixMatch);
   }
 
+  @Override
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
     // show timeseries with index
@@ -1411,6 +1457,7 @@ public class MManager {
    *
    * @param fullPath full path
    */
+  @Override
   public TSDataType getSeriesType(PartialPath fullPath) throws MetadataException {
     if (fullPath.equals(SQLConstant.TIME_PATH)) {
       return TSDataType.INT64;
@@ -1424,11 +1471,13 @@ public class MManager {
    * @param fullPath (may be ParitialPath or AlignedPath)
    * @return MeasurementSchema
    */
+  @Override
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     return getMeasurementMNode(fullPath).getSchema();
   }
 
   // attention: this path must be a device node
+  @Override
   public List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
       throws PathNotExistException {
     List<MeasurementPath> res = new LinkedList<>();
@@ -1463,6 +1512,7 @@ public class MManager {
     return new ArrayList<>(res);
   }
 
+  @Override
   public Map<PartialPath, IMeasurementSchema> getAllMeasurementSchemaByPrefix(
       PartialPath prefixPath) throws MetadataException {
     return mtree.getAllMeasurementSchemaByPrefix(prefixPath);
@@ -1476,22 +1526,26 @@ public class MManager {
    * device], return the MNode of root.sg Get storage group node by path. If storage group is not
    * set, StorageGroupNotSetException will be thrown
    */
+  @Override
   public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
       throws MetadataException {
     return mtree.getStorageGroupNodeByStorageGroupPath(path);
   }
 
   /** Get storage group node by path. the give path don't need to be storage group path. */
+  @Override
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
     ensureStorageGroup(path);
     return mtree.getStorageGroupNodeByPath(path);
   }
 
   /** Get all storage group MNodes */
+  @Override
   public List<IStorageGroupMNode> getAllStorageGroupNodes() {
     return mtree.getAllStorageGroupNodes();
   }
 
+  @Override
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     IMNode node;
     try {
@@ -1505,6 +1559,7 @@ public class MManager {
     }
   }
 
+  @Override
   public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
     IMeasurementMNode[] mNodes = new IMeasurementMNode[measurements.length];
@@ -1521,6 +1576,7 @@ public class MManager {
     return mNodes;
   }
 
+  @Override
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     return mtree.getMeasurementMNode(fullPath);
   }
@@ -1554,10 +1610,12 @@ public class MManager {
    * @param path timeseries
    * @param offset offset in the tag file
    */
+  @Override
   public void changeOffset(PartialPath path, long offset) throws MetadataException {
     mtree.getMeasurementMNode(path).setOffset(offset);
   }
 
+  @Override
   public void changeAlias(PartialPath path, String alias) throws MetadataException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(path);
     if (leafMNode.getAlias() != null) {
@@ -1576,6 +1634,7 @@ public class MManager {
    * @param attributesMap newly added attributes map
    * @param fullPath timeseries
    */
+  @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void upsertTagsAndAttributes(
       String alias,
@@ -1627,6 +1686,7 @@ public class MManager {
    * @param attributesMap newly added attributes map
    * @param fullPath timeseries
    */
+  @Override
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
       throws MetadataException, IOException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
@@ -1647,6 +1707,7 @@ public class MManager {
    * @param tagsMap newly added tags map
    * @param fullPath timeseries
    */
+  @Override
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
@@ -1669,6 +1730,7 @@ public class MManager {
    * @param keySet tags key or attributes key
    * @param fullPath timeseries path
    */
+  @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
       throws MetadataException, IOException {
@@ -1686,6 +1748,7 @@ public class MManager {
    * @param alterMap the new tags or attributes key-value
    * @param fullPath timeseries
    */
+  @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException {
@@ -1706,6 +1769,7 @@ public class MManager {
    * @param newKey new key of tag or attribute
    * @param fullPath timeseries
    */
+  @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException {
@@ -1733,6 +1797,7 @@ public class MManager {
    *
    * @apiNote :for cluster
    */
+  @Override
   public void collectMeasurementSchema(
       PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
     try {
@@ -1747,6 +1812,7 @@ public class MManager {
    *
    * @apiNote :for cluster
    */
+  @Override
   public void collectTimeseriesSchema(
       PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
     try {
@@ -1782,6 +1848,7 @@ public class MManager {
    * @return StorageGroupName-FullPath pairs
    * @apiNote :for cluster
    */
+  @Override
   public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
       throws MetadataException {
     Map<String, List<PartialPath>> sgPathMap = mtree.groupPathByStorageGroup(path);
@@ -1795,6 +1862,7 @@ public class MManager {
    * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
    * cache the path to mRemoteSchemaCache
    */
+  @Override
   public void cacheMeta(
       PartialPath path, IMeasurementMNode measurementMNode, boolean needSetFullPath) {
     // do nothing
@@ -1826,6 +1894,7 @@ public class MManager {
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
    */
+  @Override
   public void updateLastCache(
       PartialPath seriesPath,
       TimeValuePair timeValuePair,
@@ -1853,6 +1922,7 @@ public class MManager {
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
    */
+  @Override
   public void updateLastCache(
       IMeasurementMNode node,
       TimeValuePair timeValuePair,
@@ -1870,6 +1940,7 @@ public class MManager {
    * @param seriesPath the PartialPath of full path from root to Measurement
    * @return the last cache value
    */
+  @Override
   public TimeValuePair getLastCache(PartialPath seriesPath) {
     IMeasurementMNode node;
     try {
@@ -1890,6 +1961,7 @@ public class MManager {
    * @param node the measurementMNode holding the lastCache
    * @return the last cache value
    */
+  @Override
   public TimeValuePair getLastCache(IMeasurementMNode node) {
     return LastCacheManager.getLastCache(node);
   }
@@ -1900,6 +1972,7 @@ public class MManager {
    *
    * @param seriesPath the PartialPath of full path from root to Measurement
    */
+  @Override
   public void resetLastCache(PartialPath seriesPath) {
     IMeasurementMNode node;
     try {
@@ -1919,6 +1992,7 @@ public class MManager {
    *
    * @param deviceId path of device
    */
+  @Override
   public void deleteLastCacheByDevice(PartialPath deviceId) throws MetadataException {
     IMNode node = getDeviceNode(deviceId);
     if (node.isEntity()) {
@@ -1937,6 +2011,7 @@ public class MManager {
    * @param startTime startTime
    * @param endTime endTime
    */
+  @Override
   public void deleteLastCacheByDevice(
       PartialPath deviceId, PartialPath originalPath, long startTime, long endTime)
       throws MetadataException {
@@ -1950,6 +2025,7 @@ public class MManager {
 
   // region Interfaces and Implementation for InsertPlan process
   /** get schema for device. Attention!!! Only support insertPlan */
+  @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
@@ -2172,6 +2248,7 @@ public class MManager {
   // endregion
 
   // region Interfaces and Implementation for Template operations
+  @Override
   public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
     try {
 
@@ -2193,6 +2270,7 @@ public class MManager {
     }
   }
 
+  @Override
   public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
     try {
 
@@ -2212,6 +2290,7 @@ public class MManager {
     }
   }
 
+  @Override
   public void pruneSchemaTemplate(PruneTemplatePlan plan) throws MetadataException {
     try {
       templateManager.pruneSchemaTemplate(plan);
@@ -2224,6 +2303,7 @@ public class MManager {
     }
   }
 
+  @Override
   public int countMeasurementsInTemplate(String templateName) throws MetadataException {
     try {
       return templateManager.getTemplate(templateName).getMeasurementsCount();
@@ -2238,20 +2318,24 @@ public class MManager {
    * @return if path correspond to a measurement in template
    * @throws MetadataException
    */
+  @Override
   public boolean isMeasurementInTemplate(String templateName, String path)
       throws MetadataException {
     return templateManager.getTemplate(templateName).isPathMeasurement(path);
   }
 
+  @Override
   public boolean isPathExistsInTemplate(String templateName, String path) throws MetadataException {
     return templateManager.getTemplate(templateName).isPathExistInTemplate(path);
   }
 
+  @Override
   public List<String> getMeasurementsInTemplate(String templateName, String path)
       throws MetadataException {
     return templateManager.getTemplate(templateName).getMeasurementsUnderPath(path);
   }
 
+  @Override
   public List<Pair<String, IMeasurementSchema>> getSchemasInTemplate(
       String templateName, String path) throws MetadataException {
     Set<Map.Entry<String, IMeasurementSchema>> rawSchemas =
@@ -2264,6 +2348,7 @@ public class MManager {
             ArrayList::addAll);
   }
 
+  @Override
   public Set<String> getAllTemplates() {
     return templateManager.getAllTemplateName();
   }
@@ -2274,14 +2359,17 @@ public class MManager {
    * @param templateName designated template name, blank string for any template exists
    * @return paths set
    */
+  @Override
   public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
     return new HashSet<>(mtree.getPathsSetOnTemplate(templateName));
   }
 
+  @Override
   public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
     return new HashSet<>(mtree.getPathsUsingTemplate(templateName));
   }
 
+  @Override
   public void dropSchemaTemplate(DropTemplatePlan plan) throws MetadataException {
     try {
       String templateName = plan.getName();
@@ -2305,6 +2393,7 @@ public class MManager {
     }
   }
 
+  @Override
   public synchronized void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
     // get mnode and update template should be atomic
     Template template = templateManager.getTemplate(plan.getTemplateName());
@@ -2329,6 +2418,7 @@ public class MManager {
     }
   }
 
+  @Override
   public synchronized void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
     // get mnode should be atomic
     try {
@@ -2352,6 +2442,7 @@ public class MManager {
     }
   }
 
+  @Override
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
     // check whether any template has been set on designated path
     if (mtree.getTemplateOnPath(plan.getPrefixPath()) == null) {
