@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -167,9 +168,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   private int[] checkColumnsInInsertPlan(List<IMeasurementSchema> schemaListInInsertPlan) {
-    List<String> measurementIdsInInsertPlan = new ArrayList<>();
+    Map<String, Integer> measurementIdsInInsertPlan = new HashMap<>();
     for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
-      measurementIdsInInsertPlan.add(schemaListInInsertPlan.get(i).getMeasurementId());
+      measurementIdsInInsertPlan.put(schemaListInInsertPlan.get(i).getMeasurementId(), i);
       if (!containsMeasurement(schemaListInInsertPlan.get(i).getMeasurementId())) {
         this.measurementIndexMap.put(
             schemaListInInsertPlan.get(i).getMeasurementId(), measurementIndexMap.size());
@@ -180,7 +181,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     int[] columnIndexArray = new int[measurementIndexMap.size()];
     measurementIndexMap.forEach(
         (measurementId, i) -> {
-          columnIndexArray[i] = measurementIdsInInsertPlan.indexOf(measurementId);
+          columnIndexArray[i] = measurementIdsInInsertPlan.getOrDefault(measurementId, -1);
         });
     return columnIndexArray;
   }
