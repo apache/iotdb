@@ -33,7 +33,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * This class is used for recording statistic information of each measurement in a delta file. While
@@ -145,10 +144,10 @@ public abstract class Statistics<T> {
   public abstract T getMaxValue();
 
   /** @author Yuyuan Kang */
-  public abstract Set<Long> getBottomTimestamps();
+  public abstract long getBottomTimestamp();
 
   /** @author Yuyuan Kang */
-  public abstract Set<Long> getTopTimestamps();
+  public abstract long getTopTimestamp();
 
   public abstract T getFirstValue();
 
@@ -358,13 +357,7 @@ public abstract class Statistics<T> {
   public abstract void updateMinInfo(T val, long timestamp);
 
   /** @author Yuyuan Kang */
-  public abstract void updateMinInfo(T val, Set<Long> timestamps);
-
-  /** @author Yuyuan Kang */
   public abstract void updateMaxInfo(T val, long timestamp);
-
-  /** @author Yuyuan Kang */
-  public abstract void updateMaxInfo(T val, Set<Long> timestamps);
 
   void updateStats(boolean value) {
     throw new UnsupportedOperationException();

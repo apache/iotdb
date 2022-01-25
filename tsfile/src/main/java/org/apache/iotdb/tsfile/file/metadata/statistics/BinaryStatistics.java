@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.Set;
 
 /** Statistics for string type. */
 public class BinaryStatistics extends Statistics<Binary> {
@@ -104,14 +103,14 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   /** @author Yuyuan Kang */
   @Override
-  public Set<Long> getBottomTimestamps() {
+  public long getBottomTimestamp() {
     throw new StatisticsClassException(
         String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "min"));
   }
 
   /** @author Yuyuan Kang */
   @Override
-  public Set<Long> getTopTimestamps() {
+  public long getTopTimestamp() {
     throw new StatisticsClassException(
         String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "max"));
   }
@@ -164,21 +163,7 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   /** @author Yuyuan Kang */
   @Override
-  public void updateMinInfo(Binary val, Set<Long> timestamps) {
-    throw new StatisticsClassException(
-        String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "min"));
-  }
-
-  /** @author Yuyuan Kang */
-  @Override
   public void updateMaxInfo(Binary val, long timestamp) {
-    throw new StatisticsClassException(
-        String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "max"));
-  }
-
-  /** @author Yuyuan Kang */
-  @Override
-  public void updateMaxInfo(Binary val, Set<Long> timestamps) {
     throw new StatisticsClassException(
         String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "max"));
   }

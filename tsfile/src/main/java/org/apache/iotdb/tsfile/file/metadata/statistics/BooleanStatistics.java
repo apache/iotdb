@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.Set;
 
 public class BooleanStatistics extends Statistics<Boolean> {
 
@@ -131,14 +130,14 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   /** @author Yuyuan Kang */
   @Override
-  public Set<Long> getBottomTimestamps() {
+  public long getBottomTimestamp() {
     throw new StatisticsClassException(
         String.format(OPERATION_NOT_SUPPORT_FORMAT, "Boolean", "min"));
   }
 
   /** @author Yuyuan Kang */
   @Override
-  public Set<Long> getTopTimestamps() {
+  public long getTopTimestamp() {
     throw new StatisticsClassException(
         String.format(OPERATION_NOT_SUPPORT_FORMAT, "Boolean", "max"));
   }
@@ -165,31 +164,6 @@ public class BooleanStatistics extends Statistics<Boolean> {
     return sumValue;
   }
 
-  //  @Override
-  //  public ByteBuffer getMinValueBuffer() {
-  //    throw new StatisticsClassException("Boolean statistics do not support: min");
-  //  }
-
-  //  @Override
-  //  public ByteBuffer getMaxValueBuffer() {
-  //    throw new StatisticsClassException("Boolean statistics do not support: max");
-  //  }
-  //
-  //  @Override
-  //  public ByteBuffer getFirstValueBuffer() {
-  //    return ReadWriteIOUtils.getByteBuffer(firstValue);
-  //  }
-  //
-  //  @Override
-  //  public ByteBuffer getLastValueBuffer() {
-  //    return ReadWriteIOUtils.getByteBuffer(lastValue);
-  //  }
-  //
-  //  @Override
-  //  public ByteBuffer getSumValueBuffer() {
-  //    return ReadWriteIOUtils.getByteBuffer(sumValue);
-  //  }
-
   @Override
   protected void mergeStatisticsValue(Statistics stats) {
     BooleanStatistics boolStats = (BooleanStatistics) stats;
@@ -215,49 +189,10 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   /** @author Yuyuan Kang */
   @Override
-  public void updateMinInfo(Boolean val, Set<Long> timestamps) {
-    throw new StatisticsClassException(
-        String.format(OPERATION_NOT_SUPPORT_FORMAT, "Boolean", "min"));
-  }
-
-  /** @author Yuyuan Kang */
-  @Override
   public void updateMaxInfo(Boolean val, long timestamp) {
     throw new StatisticsClassException(
         String.format(OPERATION_NOT_SUPPORT_FORMAT, "Boolean", "max"));
   }
-
-  /** @author Yuyuan Kang */
-  @Override
-  public void updateMaxInfo(Boolean val, Set<Long> timestamps) {
-    throw new StatisticsClassException(
-        String.format(OPERATION_NOT_SUPPORT_FORMAT, "Boolean", "max"));
-  }
-
-  //  @Override
-  //  public byte[] getMinInfoBytes() {
-  //    throw new StatisticsClassException("Boolean statistics does not support: min");
-  //  }
-  //
-  //  @Override
-  //  public byte[] getMaxInfoBytes() {
-  //    throw new StatisticsClassException("Boolean statistics does not support: max");
-  //  }
-  //
-  //  @Override
-  //  public byte[] getFirstValueBytes() {
-  //    return BytesUtils.boolToBytes(firstValue);
-  //  }
-  //
-  //  @Override
-  //  public byte[] getLastValueBytes() {
-  //    return BytesUtils.boolToBytes(lastValue);
-  //  }
-  //
-  //  @Override
-  //  public byte[] getSumValueBytes() {
-  //    return BytesUtils.longToBytes(sumValue);
-  //  }
 
   @Override
   public int serializeStats(OutputStream outputStream) throws IOException {

@@ -30,8 +30,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
-import java.util.Set;
 
 public class MaxValueAggrResult extends AggregateResult {
 
@@ -60,20 +58,17 @@ public class MaxValueAggrResult extends AggregateResult {
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
     Comparable<Object> maxVal = null;
-    Set<Long> topTimestamps = new HashSet<>();
+    long topTimestamp = -1;
     while (dataInThisPage.hasCurrent()
         && dataInThisPage.currentTime() < maxBound
         && dataInThisPage.currentTime() >= minBound) {
       if (maxVal == null || maxVal.compareTo(dataInThisPage.currentValue()) < 0) {
         maxVal = (Comparable<Object>) dataInThisPage.currentValue();
-        topTimestamps.clear();
-        topTimestamps.add(dataInThisPage.currentTime());
-      } else if (maxVal.compareTo(dataInThisPage.currentValue()) == 0) {
-        topTimestamps.add(dataInThisPage.currentTime());
+        topTimestamp = dataInThisPage.currentTime();
       }
       dataInThisPage.next();
     }
-    updateResult(new MinMaxInfo<>(maxVal, topTimestamps));
+    updateResult(new MinMaxInfo<>(maxVal, topTimestamp));
   }
 
   /** @author Yuyuan Kang */
@@ -81,32 +76,26 @@ public class MaxValueAggrResult extends AggregateResult {
   public void updateResultUsingTimestamps(
       long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
     Comparable<Object> maxVal = null;
-    Set<Long> topTimestamps = new HashSet<>();
+    long topTimestamp = -1;
     Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = 0; i < length; i++) {
       if (values[i] != null && (maxVal == null || maxVal.compareTo(values[i]) < 0)) {
         maxVal = (Comparable<Object>) values[i];
-        topTimestamps.clear();
-        topTimestamps.add(timestamps[i]);
-      } else if (values[i] != null && maxVal.compareTo(values[i]) == 0) {
-        topTimestamps.add(timestamps[i]);
+        topTimestamp = timestamps[i];
       }
     }
-    updateResult(new MinMaxInfo<>(maxVal, topTimestamps));
+    updateResult(new MinMaxInfo<>(maxVal, topTimestamp));
   }
 
   /** @author Yuyuan Kang */
   @Override
   public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
     Comparable<Object> maxVal = null;
-    Set<Long> topTimestamps = new HashSet<>();
+    long topTimestamps = -1;
     for (int i = 0; i < length; i++) {
       if (values[i] != null && (maxVal == null || maxVal.compareTo(values[i]) < 0)) {
         maxVal = (Comparable<Object>) values[i];
-        topTimestamps.clear();
-        topTimestamps.add(timestamps[i]);
-      } else if (values[i] != null && maxVal.compareTo(values[i]) == 0) {
-        topTimestamps.add(timestamps[i]);
+        topTimestamps = timestamps[i];
       }
     }
     updateResult(new MinMaxInfo(maxVal, topTimestamps));

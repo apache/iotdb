@@ -20,10 +20,6 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.junit.Test;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -71,9 +67,9 @@ public class FloatStatisticsTest {
     floatStatistics.setEndTime(2783647123649L);
     assertFalse(floatStatistics.isEmpty());
     assertEquals(7607.41005f, floatStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(2783647123649L), floatStatistics.getMaxInfo().timestamps);
+    assertEquals(2783647123649L, (long) floatStatistics.getMaxInfo().timestamp);
     assertEquals(7607.41005f, floatStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(2783647123649L), floatStatistics.getMinInfo().timestamps);
+    assertEquals(2783647123649L, (long) floatStatistics.getMinInfo().timestamp);
     //    assertEquals(2783647123649L, floatStatistics.getStartTime());
     //    assertEquals(2783647123649L, floatStatistics.getEndTime());
     assertEquals(7607.41005f, floatStatistics.getFirstValue(), maxError);
@@ -83,9 +79,9 @@ public class FloatStatisticsTest {
     floatStatistics.setEndTime(2783647123650L);
     assertFalse(floatStatistics.isEmpty());
     assertEquals(7607.41005f, floatStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(2783647123649L), floatStatistics.getMaxInfo().timestamps);
+    assertEquals(2783647123649L, (long) floatStatistics.getMaxInfo().timestamp);
     assertEquals(4027.54405f, floatStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(2783647123650L), floatStatistics.getMinInfo().timestamps);
+    assertEquals(2783647123650L, (long) floatStatistics.getMinInfo().timestamp);
     //    assertEquals(2783647123649L, floatStatistics.getStartTime());
     //    assertEquals(2783647123650L, floatStatistics.getEndTime());
     assertEquals(7607.41005f, floatStatistics.getFirstValue(), maxError);
@@ -100,9 +96,9 @@ public class FloatStatisticsTest {
     floatStatistics.setEndTime(2783647123656L);
 
     assertEquals(8193.24925f, floatStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(2783647123651L), floatStatistics.getMaxInfo().timestamps);
+    assertEquals(2783647123651L, (long) floatStatistics.getMaxInfo().timestamp);
     assertEquals(351.58025f, floatStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(2783647123656L), floatStatistics.getMinInfo().timestamps);
+    assertEquals(2783647123656L, (long) floatStatistics.getMinInfo().timestamp);
     //    assertEquals(2783647123649L, floatStatistics.getStartTime());
     //    assertEquals(2783647123656L, floatStatistics.getEndTime());
     assertEquals(7607.41005f, floatStatistics.getFirstValue(), maxError);
@@ -154,9 +150,9 @@ public class FloatStatisticsTest {
     floatStatistics.setEndTime(times[0]);
     assertFalse(floatStatistics.isEmpty());
     assertEquals(vals[0], floatStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[0]), floatStatistics.getMaxInfo().timestamps);
+    assertEquals(times[0], (long) floatStatistics.getMaxInfo().timestamp);
     assertEquals(vals[0], floatStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[0]), floatStatistics.getMinInfo().timestamps);
+    assertEquals(times[0], (long) floatStatistics.getMinInfo().timestamp);
     //    assertEquals(times[0], floatStatistics.getStartTime());
     //    assertEquals(times[0], floatStatistics.getEndTime());
     assertEquals(vals[0], floatStatistics.getFirstValue(), maxError);
@@ -166,12 +162,10 @@ public class FloatStatisticsTest {
     floatStatistics.setEndTime(times[1]);
     assertFalse(floatStatistics.isEmpty());
     assertEquals(7607.41005f, floatStatistics.getMaxInfo().val, maxError);
-    Set<Long> expectedTimestamps = new HashSet<>();
-    expectedTimestamps.add(times[0]);
-    expectedTimestamps.add(times[1]);
-    assertEquals(expectedTimestamps, floatStatistics.getMaxInfo().timestamps);
+    long expectedTimestamp = times[0];
+    assertEquals(expectedTimestamp, (long) floatStatistics.getMaxInfo().timestamp);
     assertEquals(7607.41005f, floatStatistics.getMinInfo().val, maxError);
-    assertEquals(expectedTimestamps, floatStatistics.getMinInfo().timestamps);
+    assertEquals(expectedTimestamp, (long) floatStatistics.getMinInfo().timestamp);
     //    assertEquals(2783647123649L, floatStatistics.getStartTime());
     //    assertEquals(2783647123650L, floatStatistics.getEndTime());
     assertEquals(7607.41005f, floatStatistics.getFirstValue(), maxError);
@@ -181,10 +175,9 @@ public class FloatStatisticsTest {
     floatStatistics.updateStats(vals[3], times[3]);
     floatStatistics.setEndTime(times[3]);
     assertEquals(7607.41005f, floatStatistics.getMaxInfo().val, maxError);
-    expectedTimestamps.add(times[2]);
-    assertEquals(expectedTimestamps, floatStatistics.getMaxInfo().timestamps);
+    assertEquals(expectedTimestamp, (long) floatStatistics.getMaxInfo().timestamp);
     assertEquals(1380.64375f, floatStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[3]), floatStatistics.getMinInfo().timestamps);
+    assertEquals(times[3], (long) floatStatistics.getMinInfo().timestamp);
     //    assertEquals(times[0], floatStatistics.getStartTime());
     //    assertEquals(times[3], floatStatistics.getEndTime());
     assertEquals(vals[0], floatStatistics.getFirstValue(), maxError);
@@ -197,13 +190,12 @@ public class FloatStatisticsTest {
     floatStatistics.setEndTime(times[7]);
 
     assertEquals(7813.17305f, floatStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(2783647123653L), floatStatistics.getMaxInfo().timestamps);
+    assertEquals(2783647123653L, (long) floatStatistics.getMaxInfo().timestamp);
 
-    expectedTimestamps = new HashSet<>();
-    expectedTimestamps.add(times[6]);
-    expectedTimestamps.add(times[7]);
+    expectedTimestamp = times[6];
+
     assertEquals(351.58025f, floatStatistics.getMinInfo().val, maxError);
-    assertEquals(expectedTimestamps, floatStatistics.getMinInfo().timestamps);
+    assertEquals(expectedTimestamp, (long) floatStatistics.getMinInfo().timestamp);
 
     //    assertEquals(times[0], floatStatistics.getStartTime());
     //    assertEquals(times[7], floatStatistics.getEndTime());
@@ -256,9 +248,9 @@ public class FloatStatisticsTest {
     floatStatistics.setEndTime(times[0]);
     assertFalse(floatStatistics.isEmpty());
     assertEquals(vals[0], floatStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[0]), floatStatistics.getMaxInfo().timestamps);
+    assertEquals(times[0], (long) floatStatistics.getMaxInfo().timestamp);
     assertEquals(vals[0], floatStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[0]), floatStatistics.getMinInfo().timestamps);
+    assertEquals(times[0], (long) floatStatistics.getMinInfo().timestamp);
     //    assertEquals(times[0], floatStatistics.getStartTime());
     //    assertEquals(times[0], floatStatistics.getEndTime());
     assertEquals(vals[0], floatStatistics.getFirstValue(), maxError);
@@ -269,9 +261,9 @@ public class FloatStatisticsTest {
     floatStatistics.setEndTime(MaxMinUtils.maxLong(times, 0, 2));
     assertFalse(floatStatistics.isEmpty());
     assertEquals(vals[1], floatStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[1]), floatStatistics.getMinInfo().timestamps);
+    assertEquals(times[1], (long) floatStatistics.getMinInfo().timestamp);
     assertEquals(vals[0], floatStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[0]), floatStatistics.getMaxInfo().timestamps);
+    assertEquals(times[0], (long) floatStatistics.getMaxInfo().timestamp);
     //    assertEquals(times[0], floatStatistics.getStartTime());
     //    assertEquals(times[1], floatStatistics.getEndTime());
     assertEquals(vals[0], floatStatistics.getFirstValue(), maxError);
@@ -282,9 +274,9 @@ public class FloatStatisticsTest {
     floatStatistics.setEndTime(MaxMinUtils.maxLong(times, 0, 3));
     assertFalse(floatStatistics.isEmpty());
     assertEquals(vals[1], floatStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[1]), floatStatistics.getMinInfo().timestamps);
+    assertEquals(times[1], (long) floatStatistics.getMinInfo().timestamp);
     assertEquals(vals[2], floatStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[2]), floatStatistics.getMaxInfo().timestamps);
+    assertEquals(times[2], (long) floatStatistics.getMaxInfo().timestamp);
     //    assertEquals(times[0], floatStatistics.getStartTime());
     //    assertEquals(times[2], floatStatistics.getEndTime());
     assertEquals(vals[0], floatStatistics.getFirstValue(), maxError);
@@ -295,9 +287,9 @@ public class FloatStatisticsTest {
     floatStatistics.setEndTime(MaxMinUtils.maxLong(times, 0, 4));
     assertFalse(floatStatistics.isEmpty());
     assertEquals(vals[3], floatStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[3]), floatStatistics.getMinInfo().timestamps);
+    assertEquals(times[3], (long) floatStatistics.getMinInfo().timestamp);
     assertEquals(vals[2], floatStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[2]), floatStatistics.getMaxInfo().timestamps);
+    assertEquals(times[2], (long) floatStatistics.getMaxInfo().timestamp);
     //    assertEquals(times[0], floatStatistics.getStartTime());
     //    assertEquals(times[3], floatStatistics.getEndTime());
     assertEquals(vals[0], floatStatistics.getFirstValue(), maxError);
@@ -308,9 +300,9 @@ public class FloatStatisticsTest {
     floatStatistics.setEndTime(MaxMinUtils.maxLong(times, 0, 5));
     assertFalse(floatStatistics.isEmpty());
     assertEquals(vals[3], floatStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[3]), floatStatistics.getMinInfo().timestamps);
+    assertEquals(times[3], (long) floatStatistics.getMinInfo().timestamp);
     assertEquals(vals[2], floatStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[2]), floatStatistics.getMaxInfo().timestamps);
+    assertEquals(times[2], (long) floatStatistics.getMaxInfo().timestamp);
     //    assertEquals(times[0], floatStatistics.getStartTime());
     //    assertEquals(times[4], floatStatistics.getEndTime());
     assertEquals(vals[0], floatStatistics.getFirstValue(), maxError);
@@ -321,9 +313,9 @@ public class FloatStatisticsTest {
     floatStatistics.setEndTime(MaxMinUtils.maxLong(times, 0, 6));
     assertFalse(floatStatistics.isEmpty());
     assertEquals(vals[3], floatStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[3]), floatStatistics.getMinInfo().timestamps);
+    assertEquals(times[3], (long) floatStatistics.getMinInfo().timestamp);
     assertEquals(vals[2], floatStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[2]), floatStatistics.getMaxInfo().timestamps);
+    assertEquals(times[2], (long) floatStatistics.getMaxInfo().timestamp);
     //    assertEquals(times[0], floatStatistics.getStartTime());
     //    assertEquals(times[5], floatStatistics.getEndTime());
     assertEquals(vals[0], floatStatistics.getFirstValue(), maxError);
@@ -334,9 +326,9 @@ public class FloatStatisticsTest {
     floatStatistics.setEndTime(MaxMinUtils.maxLong(times, 0, 7));
     assertFalse(floatStatistics.isEmpty());
     assertEquals(vals[3], floatStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[3]), floatStatistics.getMinInfo().timestamps);
+    assertEquals(times[3], (long) floatStatistics.getMinInfo().timestamp);
     assertEquals(vals[2], floatStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[2]), floatStatistics.getMaxInfo().timestamps);
+    assertEquals(times[2], (long) floatStatistics.getMaxInfo().timestamp);
     //    assertEquals(times[0], floatStatistics.getStartTime());
     //    assertEquals(times[6], floatStatistics.getEndTime());
     assertEquals(vals[0], floatStatistics.getFirstValue(), maxError);
@@ -347,9 +339,9 @@ public class FloatStatisticsTest {
     floatStatistics.setEndTime(MaxMinUtils.maxLong(times, 0, 8));
     assertFalse(floatStatistics.isEmpty());
     assertEquals(vals[7], floatStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[7]), floatStatistics.getMinInfo().timestamps);
+    assertEquals(times[7], (long) floatStatistics.getMinInfo().timestamp);
     assertEquals(vals[2], floatStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[2]), floatStatistics.getMaxInfo().timestamps);
+    assertEquals(times[2], (long) floatStatistics.getMaxInfo().timestamp);
     //    assertEquals(times[0], floatStatistics.getStartTime());
     //    assertEquals(times[7], floatStatistics.getEndTime());
     assertEquals(vals[0], floatStatistics.getFirstValue(), maxError);
@@ -380,9 +372,9 @@ public class FloatStatisticsTest {
     floatStatistics1.mergeStatistics(floatStatistics2);
     assertFalse(floatStatistics1.isEmpty());
     assertEquals(100.5f, floatStatistics1.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(1000L), floatStatistics1.getMinInfo().timestamps);
+    assertEquals(1000L, (long) floatStatistics1.getMinInfo().timestamp);
     assertEquals(10000.5f, floatStatistics1.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(5000L), floatStatistics1.getMaxInfo().timestamps);
+    assertEquals(5000L, (long) floatStatistics1.getMaxInfo().timestamp);
     //    assertEquals(1000L, floatStatistics1.getStartTime());
     //    assertEquals(7000L, floatStatistics1.getEndTime());
     assertEquals(100.5f, floatStatistics1.getFirstValue(), maxError);
@@ -401,9 +393,9 @@ public class FloatStatisticsTest {
     floatStatistics1.mergeStatistics(floatStatistics2);
     assertFalse(floatStatistics1.isEmpty());
     assertEquals(100.5f, floatStatistics1.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(1000L), floatStatistics1.getMinInfo().timestamps);
+    assertEquals(1000L, (long) floatStatistics1.getMinInfo().timestamp);
     assertEquals(80000.5f, floatStatistics1.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(7000L), floatStatistics1.getMaxInfo().timestamps);
+    assertEquals(7000L, (long) floatStatistics1.getMaxInfo().timestamp);
     //    assertEquals(1000L, floatStatistics1.getStartTime());
     //    assertEquals(7000L, floatStatistics1.getEndTime());
     assertEquals(100.5f, floatStatistics1.getFirstValue(), maxError);
@@ -422,9 +414,9 @@ public class FloatStatisticsTest {
     floatStatistics1.mergeStatistics(floatStatistics2);
     assertFalse(floatStatistics1.isEmpty());
     assertEquals(10.5f, floatStatistics1.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(6000L), floatStatistics1.getMinInfo().timestamps);
+    assertEquals(6000L, (long) floatStatistics1.getMinInfo().timestamp);
     assertEquals(10000.5f, floatStatistics1.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(5000L), floatStatistics1.getMaxInfo().timestamps);
+    assertEquals(5000L, (long) floatStatistics1.getMaxInfo().timestamp);
     //    assertEquals(1000L, floatStatistics1.getStartTime());
     //    assertEquals(7000L, floatStatistics1.getEndTime());
     assertEquals(100.5f, floatStatistics1.getFirstValue(), maxError);

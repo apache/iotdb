@@ -281,9 +281,7 @@ public abstract class AggregateResult {
       case MIN_MAX_FLOAT:
       case MIN_MAX_INT32:
       case MIN_MAX_INT64:
-        if (minMaxInfo != null && minMaxInfo.val.equals(((MinMaxInfo) v).val)) {
-          minMaxInfo.timestamps.addAll(((MinMaxInfo) v).timestamps);
-        } else {
+        if (minMaxInfo == null || !minMaxInfo.val.equals(((MinMaxInfo) v).val)) {
           minMaxInfo = (MinMaxInfo) v;
         }
         break;

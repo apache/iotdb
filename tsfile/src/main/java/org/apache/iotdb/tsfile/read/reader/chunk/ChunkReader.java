@@ -157,6 +157,7 @@ public class ChunkReader implements IChunkReader {
       unCompressor.uncompress(
           compressedPageBody, 0, compressedPageBodyLength, uncompressedPageData, 0);
     } catch (Exception e) {
+      System.out.println("???");
       throw new IOException(
           "Uncompress error! uncompress size: "
               + pageHeader.getUncompressedSize()

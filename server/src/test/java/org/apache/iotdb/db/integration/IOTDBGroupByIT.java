@@ -619,8 +619,8 @@ public class IOTDBGroupByIT {
   @Test
   public void largeIntervalTest() {
     System.out.println("largeIntervalTest");
-    String[] retArray1 = new String[] {"0,4.4[4],12,300,4", "340,100.1[500, 580],10,620,500"};
-    String[] retArray2 = new String[] {"0,3.3[3],13,300,3", "340,100.1[500, 580],10,620,500"};
+    String[] retArray1 = new String[] {"0,4.4[4],12,300,4", "340,100.1[500],10,620,500"};
+    String[] retArray2 = new String[] {"0,3.3[3],13,300,3", "340,100.1[500],10,620,500"};
 
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -678,8 +678,8 @@ public class IOTDBGroupByIT {
         Assert.assertEquals(retArray2.length, cnt);
       }
 
-      retArray1 = new String[] {"0,4.4[4],12,300,4", "340,100.1[580, 500],10,620,500"};
-      retArray2 = new String[] {"0,3.3[3],13,300,3", "340,100.1[580, 500],10,620,500"};
+      retArray1 = new String[] {"0,4.4[4],12,300,4", "340,100.1[580],10,620,500"};
+      retArray2 = new String[] {"0,3.3[3],13,300,3", "340,100.1[580],10,620,500"};
       // order by time desc
       hasResultSet =
           statement.execute(

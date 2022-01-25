@@ -20,10 +20,6 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.junit.Test;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -71,9 +67,9 @@ public class DoubleStatisticsTest {
     doubleStatistics.setEndTime(2783647123649L);
     assertFalse(doubleStatistics.isEmpty());
     assertEquals(7607.41005d, doubleStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(2783647123649L), doubleStatistics.getMaxInfo().timestamps);
+    assertEquals(2783647123649L, (long) doubleStatistics.getMaxInfo().timestamp);
     assertEquals(7607.41005d, doubleStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(2783647123649L), doubleStatistics.getMinInfo().timestamps);
+    assertEquals(2783647123649L, (long) doubleStatistics.getMinInfo().timestamp);
     //    assertEquals(2783647123649L, doubleStatistics.getStartTime());
     //    assertEquals(2783647123649L, doubleStatistics.getEndTime());
     assertEquals(7607.41005d, doubleStatistics.getFirstValue(), maxError);
@@ -83,9 +79,9 @@ public class DoubleStatisticsTest {
     doubleStatistics.setEndTime(2783647123650L);
     assertFalse(doubleStatistics.isEmpty());
     assertEquals(7607.41005d, doubleStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(2783647123649L), doubleStatistics.getMaxInfo().timestamps);
+    assertEquals(2783647123649L, (long) doubleStatistics.getMaxInfo().timestamp);
     assertEquals(4027.54405d, doubleStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(2783647123650L), doubleStatistics.getMinInfo().timestamps);
+    assertEquals(2783647123650L, (long) doubleStatistics.getMinInfo().timestamp);
     //    assertEquals(2783647123649L, doubleStatistics.getStartTime());
     //    assertEquals(2783647123650L, doubleStatistics.getEndTime());
     assertEquals(7607.41005d, doubleStatistics.getFirstValue(), maxError);
@@ -100,9 +96,9 @@ public class DoubleStatisticsTest {
     doubleStatistics.setEndTime(2783647123656L);
 
     assertEquals(8193.24925d, doubleStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(2783647123651L), doubleStatistics.getMaxInfo().timestamps);
+    assertEquals(2783647123651L, (long) doubleStatistics.getMaxInfo().timestamp);
     assertEquals(351.58025d, doubleStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(2783647123656L), doubleStatistics.getMinInfo().timestamps);
+    assertEquals(2783647123656L, (long) doubleStatistics.getMinInfo().timestamp);
     //    assertEquals(2783647123649L, doubleStatistics.getStartTime());
     //    assertEquals(2783647123656L, doubleStatistics.getEndTime());
     assertEquals(7607.41005d, doubleStatistics.getFirstValue(), maxError);
@@ -154,9 +150,9 @@ public class DoubleStatisticsTest {
     doubleStatistics.setEndTime(times[0]);
     assertFalse(doubleStatistics.isEmpty());
     assertEquals(vals[0], doubleStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[0]), doubleStatistics.getMaxInfo().timestamps);
+    assertEquals(times[0], (long) doubleStatistics.getMaxInfo().timestamp);
     assertEquals(vals[0], doubleStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[0]), doubleStatistics.getMinInfo().timestamps);
+    assertEquals(times[0], (long) doubleStatistics.getMinInfo().timestamp);
     //    assertEquals(times[0], doubleStatistics.getStartTime());
     //    assertEquals(times[0], doubleStatistics.getEndTime());
     assertEquals(vals[0], doubleStatistics.getFirstValue(), maxError);
@@ -166,12 +162,10 @@ public class DoubleStatisticsTest {
     doubleStatistics.setEndTime(times[1]);
     assertFalse(doubleStatistics.isEmpty());
     assertEquals(7607.41005d, doubleStatistics.getMaxInfo().val, maxError);
-    Set<Long> expectedTimestamps = new HashSet<>();
-    expectedTimestamps.add(times[0]);
-    expectedTimestamps.add(times[1]);
-    assertEquals(expectedTimestamps, doubleStatistics.getMaxInfo().timestamps);
+    long expectedTimestamp = times[0];
+    assertEquals(expectedTimestamp, (long) doubleStatistics.getMaxInfo().timestamp);
     assertEquals(7607.41005d, doubleStatistics.getMinInfo().val, maxError);
-    assertEquals(expectedTimestamps, doubleStatistics.getMinInfo().timestamps);
+    assertEquals(expectedTimestamp, (long) doubleStatistics.getMinInfo().timestamp);
     //    assertEquals(2783647123649L, doubleStatistics.getStartTime());
     //    assertEquals(2783647123650L, doubleStatistics.getEndTime());
     assertEquals(7607.41005d, doubleStatistics.getFirstValue(), maxError);
@@ -181,10 +175,9 @@ public class DoubleStatisticsTest {
     doubleStatistics.updateStats(vals[3], times[3]);
     doubleStatistics.setEndTime(times[3]);
     assertEquals(7607.41005d, doubleStatistics.getMaxInfo().val, maxError);
-    expectedTimestamps.add(times[2]);
-    assertEquals(expectedTimestamps, doubleStatistics.getMaxInfo().timestamps);
+    assertEquals(expectedTimestamp, (long) doubleStatistics.getMaxInfo().timestamp);
     assertEquals(1380.64375d, doubleStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[3]), doubleStatistics.getMinInfo().timestamps);
+    assertEquals(times[3], (long) doubleStatistics.getMinInfo().timestamp);
     //    assertEquals(times[0], doubleStatistics.getStartTime());
     //    assertEquals(times[3], doubleStatistics.getEndTime());
     assertEquals(vals[0], doubleStatistics.getFirstValue(), maxError);
@@ -197,13 +190,10 @@ public class DoubleStatisticsTest {
     doubleStatistics.setEndTime(times[7]);
 
     assertEquals(7813.17305d, doubleStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(2783647123653L), doubleStatistics.getMaxInfo().timestamps);
-
-    expectedTimestamps = new HashSet<>();
-    expectedTimestamps.add(times[6]);
-    expectedTimestamps.add(times[7]);
+    assertEquals(2783647123653L, (long) doubleStatistics.getMaxInfo().timestamp);
+    expectedTimestamp = times[6];
     assertEquals(351.58025d, doubleStatistics.getMinInfo().val, maxError);
-    assertEquals(expectedTimestamps, doubleStatistics.getMinInfo().timestamps);
+    assertEquals(expectedTimestamp, (long) doubleStatistics.getMinInfo().timestamp);
 
     //    assertEquals(times[0], doubleStatistics.getStartTime());
     //    assertEquals(times[7], doubleStatistics.getEndTime());
@@ -256,9 +246,9 @@ public class DoubleStatisticsTest {
     doubleStatistics.setEndTime(times[0]);
     assertFalse(doubleStatistics.isEmpty());
     assertEquals(vals[0], doubleStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[0]), doubleStatistics.getMaxInfo().timestamps);
+    assertEquals(times[0], (long) doubleStatistics.getMaxInfo().timestamp);
     assertEquals(vals[0], doubleStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[0]), doubleStatistics.getMinInfo().timestamps);
+    assertEquals(times[0], (long) doubleStatistics.getMinInfo().timestamp);
     //    assertEquals(times[0], doubleStatistics.getStartTime());
     //    assertEquals(times[0], doubleStatistics.getEndTime());
     assertEquals(vals[0], doubleStatistics.getFirstValue(), maxError);
@@ -269,9 +259,9 @@ public class DoubleStatisticsTest {
     doubleStatistics.setEndTime(MaxMinUtils.maxLong(times, 0, 2));
     assertFalse(doubleStatistics.isEmpty());
     assertEquals(vals[1], doubleStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[1]), doubleStatistics.getMinInfo().timestamps);
+    assertEquals(times[1], (long) doubleStatistics.getMinInfo().timestamp);
     assertEquals(vals[0], doubleStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[0]), doubleStatistics.getMaxInfo().timestamps);
+    assertEquals(times[0], (long) doubleStatistics.getMaxInfo().timestamp);
     //    assertEquals(times[0], doubleStatistics.getStartTime());
     //    assertEquals(times[1], doubleStatistics.getEndTime());
     assertEquals(vals[0], doubleStatistics.getFirstValue(), maxError);
@@ -282,9 +272,9 @@ public class DoubleStatisticsTest {
     doubleStatistics.setEndTime(MaxMinUtils.maxLong(times, 0, 3));
     assertFalse(doubleStatistics.isEmpty());
     assertEquals(vals[1], doubleStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[1]), doubleStatistics.getMinInfo().timestamps);
+    assertEquals(times[1], (long) doubleStatistics.getMinInfo().timestamp);
     assertEquals(vals[2], doubleStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[2]), doubleStatistics.getMaxInfo().timestamps);
+    assertEquals(times[2], (long) doubleStatistics.getMaxInfo().timestamp);
     //    assertEquals(times[0], doubleStatistics.getStartTime());
     //    assertEquals(times[2], doubleStatistics.getEndTime());
     assertEquals(vals[0], doubleStatistics.getFirstValue(), maxError);
@@ -295,9 +285,9 @@ public class DoubleStatisticsTest {
     doubleStatistics.setEndTime(MaxMinUtils.maxLong(times, 0, 4));
     assertFalse(doubleStatistics.isEmpty());
     assertEquals(vals[3], doubleStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[3]), doubleStatistics.getMinInfo().timestamps);
+    assertEquals(times[3], (long) doubleStatistics.getMinInfo().timestamp);
     assertEquals(vals[2], doubleStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[2]), doubleStatistics.getMaxInfo().timestamps);
+    assertEquals(times[2], (long) doubleStatistics.getMaxInfo().timestamp);
     //    assertEquals(times[0], doubleStatistics.getStartTime());
     //    assertEquals(times[3], doubleStatistics.getEndTime());
     assertEquals(vals[0], doubleStatistics.getFirstValue(), maxError);
@@ -308,9 +298,9 @@ public class DoubleStatisticsTest {
     doubleStatistics.setEndTime(MaxMinUtils.maxLong(times, 0, 5));
     assertFalse(doubleStatistics.isEmpty());
     assertEquals(vals[3], doubleStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[3]), doubleStatistics.getMinInfo().timestamps);
+    assertEquals(times[3], (long) doubleStatistics.getMinInfo().timestamp);
     assertEquals(vals[2], doubleStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[2]), doubleStatistics.getMaxInfo().timestamps);
+    assertEquals(times[2], (long) doubleStatistics.getMaxInfo().timestamp);
     //    assertEquals(times[0], doubleStatistics.getStartTime());
     //    assertEquals(times[4], doubleStatistics.getEndTime());
     assertEquals(vals[0], doubleStatistics.getFirstValue(), maxError);
@@ -321,9 +311,9 @@ public class DoubleStatisticsTest {
     doubleStatistics.setEndTime(MaxMinUtils.maxLong(times, 0, 6));
     assertFalse(doubleStatistics.isEmpty());
     assertEquals(vals[3], doubleStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[3]), doubleStatistics.getMinInfo().timestamps);
+    assertEquals(times[3], (long) doubleStatistics.getMinInfo().timestamp);
     assertEquals(vals[2], doubleStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[2]), doubleStatistics.getMaxInfo().timestamps);
+    assertEquals(times[2], (long) doubleStatistics.getMaxInfo().timestamp);
     //    assertEquals(times[0], doubleStatistics.getStartTime());
     //    assertEquals(times[5], doubleStatistics.getEndTime());
     assertEquals(vals[0], doubleStatistics.getFirstValue(), maxError);
@@ -334,9 +324,9 @@ public class DoubleStatisticsTest {
     doubleStatistics.setEndTime(MaxMinUtils.maxLong(times, 0, 7));
     assertFalse(doubleStatistics.isEmpty());
     assertEquals(vals[3], doubleStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[3]), doubleStatistics.getMinInfo().timestamps);
+    assertEquals(times[3], (long) doubleStatistics.getMinInfo().timestamp);
     assertEquals(vals[2], doubleStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[2]), doubleStatistics.getMaxInfo().timestamps);
+    assertEquals(times[2], (long) doubleStatistics.getMaxInfo().timestamp);
     //    assertEquals(times[0], doubleStatistics.getStartTime());
     //    assertEquals(times[6], doubleStatistics.getEndTime());
     assertEquals(vals[0], doubleStatistics.getFirstValue(), maxError);
@@ -347,9 +337,9 @@ public class DoubleStatisticsTest {
     doubleStatistics.setEndTime(MaxMinUtils.maxLong(times, 0, 8));
     assertFalse(doubleStatistics.isEmpty());
     assertEquals(vals[7], doubleStatistics.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(times[7]), doubleStatistics.getMinInfo().timestamps);
+    assertEquals(times[7], (long) doubleStatistics.getMinInfo().timestamp);
     assertEquals(vals[2], doubleStatistics.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(times[2]), doubleStatistics.getMaxInfo().timestamps);
+    assertEquals(times[2], (long) doubleStatistics.getMaxInfo().timestamp);
     //    assertEquals(times[0], doubleStatistics.getStartTime());
     //    assertEquals(times[7], doubleStatistics.getEndTime());
     assertEquals(vals[0], doubleStatistics.getFirstValue(), maxError);
@@ -380,9 +370,9 @@ public class DoubleStatisticsTest {
     doubleStatistics1.mergeStatistics(doubleStatistics2);
     assertFalse(doubleStatistics1.isEmpty());
     assertEquals(100.5d, doubleStatistics1.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(1000L), doubleStatistics1.getMinInfo().timestamps);
+    assertEquals(1000L, (long) doubleStatistics1.getMinInfo().timestamp);
     assertEquals(10000.5d, doubleStatistics1.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(5000L), doubleStatistics1.getMaxInfo().timestamps);
+    assertEquals(5000L, (long) doubleStatistics1.getMaxInfo().timestamp);
     //    assertEquals(1000L, doubleStatistics1.getStartTime());
     //    assertEquals(7000L, doubleStatistics1.getEndTime());
     assertEquals(100.5d, doubleStatistics1.getFirstValue(), maxError);
@@ -401,9 +391,9 @@ public class DoubleStatisticsTest {
     doubleStatistics1.mergeStatistics(doubleStatistics2);
     assertFalse(doubleStatistics1.isEmpty());
     assertEquals(100.5d, doubleStatistics1.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(1000L), doubleStatistics1.getMinInfo().timestamps);
+    assertEquals(1000L, (long) doubleStatistics1.getMinInfo().timestamp);
     assertEquals(80000.5d, doubleStatistics1.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(7000L), doubleStatistics1.getMaxInfo().timestamps);
+    assertEquals(7000L, (long) doubleStatistics1.getMaxInfo().timestamp);
     //    assertEquals(1000L, doubleStatistics1.getStartTime());
     //    assertEquals(7000L, doubleStatistics1.getEndTime());
     assertEquals(100.5d, doubleStatistics1.getFirstValue(), maxError);
@@ -422,9 +412,9 @@ public class DoubleStatisticsTest {
     doubleStatistics1.mergeStatistics(doubleStatistics2);
     assertFalse(doubleStatistics1.isEmpty());
     assertEquals(10.5d, doubleStatistics1.getMinInfo().val, maxError);
-    assertEquals(Collections.singleton(6000L), doubleStatistics1.getMinInfo().timestamps);
+    assertEquals(6000L, (long) doubleStatistics1.getMinInfo().timestamp);
     assertEquals(10000.5d, doubleStatistics1.getMaxInfo().val, maxError);
-    assertEquals(Collections.singleton(5000L), doubleStatistics1.getMaxInfo().timestamps);
+    assertEquals(5000L, (long) doubleStatistics1.getMaxInfo().timestamp);
     //    assertEquals(1000L, doubleStatistics1.getStartTime());
     //    assertEquals(7000L, doubleStatistics1.getEndTime());
     assertEquals(100.5d, doubleStatistics1.getFirstValue(), maxError);

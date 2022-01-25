@@ -36,11 +36,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BINARY;
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BOOLEAN;
@@ -374,10 +372,7 @@ public class ReadWriteIOUtils {
     }
     len += bytes.length;
     outputStream.write(bytes);
-    len += write(minMaxInfo.timestamps.size(), outputStream);
-    for (Object timestamp : minMaxInfo.timestamps) {
-      len += write((long) timestamp, outputStream);
-    }
+    len += write(minMaxInfo.timestamp, outputStream);
     return len;
   }
 
@@ -621,12 +616,8 @@ public class ReadWriteIOUtils {
         throw new IllegalArgumentException(
             String.format(KNOWN_MINMAX_DATA_TYPE_ERROR, minMaxDataType.toString()));
     }
-    int len = readInt(inputStream);
-    Set<Long> timestamps = new HashSet<>();
-    for (int i = 0; i < len; i++) {
-      timestamps.add(readLong(inputStream));
-    }
-    return new MinMaxInfo(val, timestamps);
+    long timestamp = readLong(inputStream);
+    return new MinMaxInfo(val, timestamp);
   }
 
   /** string length's type is varInt */
@@ -676,12 +667,8 @@ public class ReadWriteIOUtils {
         throw new IllegalArgumentException(
             String.format(KNOWN_MINMAX_DATA_TYPE_ERROR, minMaxDataType.toString()));
     }
-    int len = byteBuffer.getInt();
-    Set<Long> timestamps = new HashSet<>();
-    for (int i = 0; i < len; i++) {
-      timestamps.add(byteBuffer.getLong());
-    }
-    return new MinMaxInfo(val, timestamps);
+    long timestamp = byteBuffer.getLong();
+    return new MinMaxInfo(val, timestamp);
   }
 
   /** string length's type is varInt */

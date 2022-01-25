@@ -18,15 +18,11 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-
 /** @author Yuyuan Kang */
 public class MinMaxInfo<K> implements Comparable {
 
   public K val;
-  public Set<Long> timestamps;
+  public Long timestamp;
 
   //  public MinMaxInfo(T val, Set<Long> timestamps) {
   //    this.val = val;
@@ -37,45 +33,29 @@ public class MinMaxInfo<K> implements Comparable {
 
   public MinMaxInfo(K val, long timestamp) {
     this.val = val;
-    this.timestamps = new HashSet<>();
-    this.timestamps.add(timestamp);
+    this.timestamp = timestamp;
   }
 
   public MinMaxInfo(MinMaxInfo<K> minMaxInfo) {
     this.val = minMaxInfo.val;
-    this.timestamps = new HashSet<>();
-    timestamps.addAll(minMaxInfo.timestamps);
-  }
-
-  public MinMaxInfo(K val, Set<Long> timestamps) {
-    this.val = val;
-    this.timestamps = timestamps;
+    this.timestamp = minMaxInfo.timestamp;
   }
 
   public void reset(K val, long timestamp) {
     this.val = val;
-    this.timestamps.clear();
-    this.timestamps.add(timestamp);
-  }
-
-  public void reset(K val, Set<Long> timestamps) {
-    this.val = val;
-    this.timestamps.clear();
-    this.timestamps.addAll(timestamps);
+    this.timestamp = timestamp;
   }
 
   @Override
   public String toString() {
-    String ret = val.toString();
-    ret += Arrays.toString(timestamps.toArray());
-    return ret;
+    return val.toString() + "[" + timestamp + "]";
   }
 
   @Override
   public boolean equals(Object minMaxInfo) {
     if (minMaxInfo.getClass() == this.getClass()) {
       return this.val.equals(((MinMaxInfo<K>) minMaxInfo).val)
-          && this.timestamps.equals(((MinMaxInfo<K>) minMaxInfo).timestamps);
+          && this.timestamp.equals(((MinMaxInfo<K>) minMaxInfo).timestamp);
     } else {
       return false;
     }

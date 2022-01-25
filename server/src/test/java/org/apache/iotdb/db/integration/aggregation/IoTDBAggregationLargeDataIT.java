@@ -33,10 +33,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 import static org.apache.iotdb.db.constant.TestConstant.avg;
 import static org.apache.iotdb.db.constant.TestConstant.count;
@@ -510,60 +506,50 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  /** @author Yuyuan Kang */
-  private boolean compareArrayString(String s1, String s2) {
-    List<Integer> indexOfLeft = new ArrayList<>();
-    List<Integer> indexOfRight = new ArrayList<>();
-    boolean compare = true;
-    for (int i = 0; i < s1.length(); i++) {
-
-      if (s1.charAt(i) == '[') {
-        indexOfLeft.add(i);
-        compare = false;
-        continue;
-      } else if (s1.charAt(i) == ']') {
-        indexOfRight.add(i);
-        compare = true;
-        continue;
-      }
-      if (compare && s1.charAt(i) != s2.charAt(i)) {
-        return false;
-      }
-    }
-    Assert.assertEquals(indexOfLeft.size(), indexOfRight.size());
-    for (int i = 0; i < indexOfLeft.size(); i++) {
-      String sub1 = s1.substring(indexOfLeft.get(i) + 1, indexOfRight.get(i));
-      String[] vals1 = sub1.split(", ");
-      Set<Integer> set1 = new HashSet<>();
-      for (String s : vals1) {
-        set1.add(Integer.valueOf(s));
-      }
-      String sub2 = s2.substring(indexOfLeft.get(i) + 1, indexOfRight.get(i));
-      String[] vals2 = sub2.split(", ");
-      Set<Integer> set2 = new HashSet<>();
-      for (String s : vals2) {
-        set2.add(Integer.valueOf(s));
-      }
-      if (!set1.equals(set2)) {
-        return false;
-      }
-    }
-    return true;
-  }
+  //  /** @author Yuyuan Kang */
+  //  private boolean compareArrayString(String s1, String s2) {
+  //    List<Integer> indexOfLeft = new ArrayList<>();
+  //    List<Integer> indexOfRight = new ArrayList<>();
+  //    boolean compare = true;
+  //    for (int i = 0; i < s1.length(); i++) {
+  //
+  //      if (s1.charAt(i) == '[') {
+  //        indexOfLeft.add(i);
+  //        compare = false;
+  //        continue;
+  //      } else if (s1.charAt(i) == ']') {
+  //        indexOfRight.add(i);
+  //        compare = true;
+  //        continue;
+  //      }
+  //      if (compare && s1.charAt(i) != s2.charAt(i)) {
+  //        return false;
+  //      }
+  //    }
+  //    Assert.assertEquals(indexOfLeft.size(), indexOfRight.size());
+  //    for (int i = 0; i < indexOfLeft.size(); i++) {
+  //      String sub1 = s1.substring(indexOfLeft.get(i) + 1, indexOfRight.get(i));
+  //      String[] vals1 = sub1.split(", ");
+  //      Set<Integer> set1 = new HashSet<>();
+  //      for (String s : vals1) {
+  //        set1.add(Integer.valueOf(s));
+  //      }
+  //      String sub2 = s2.substring(indexOfLeft.get(i) + 1, indexOfRight.get(i));
+  //      String[] vals2 = sub2.split(", ");
+  //      Set<Integer> set2 = new HashSet<>();
+  //      for (String s : vals2) {
+  //        set2.add(Integer.valueOf(s));
+  //      }
+  //      if (!set1.equals(set2)) {
+  //        return false;
+  //      }
+  //    }
+  //    return true;
+  //  }
 
   /** @author Yuyuan Kang */
   private void minValueAggreWithSingleFilterTest() {
-    String[] retArray =
-        new String[] {
-          "0,"
-              + "0[3920, 3850, 3710],"
-              + "0[3264, 3009, 3587, 3332, 3077, 3468, 3213, 3536, 3920, 3281, 3026, 3349, 3094, "
-              + "3800, 3417, 3162, 3553, 3298, 3043, 3366, 3111, 3880, 3434, 3179, 3502, 3247, 3760,"
-              + " 3383, 3128, 3451, 3196, 3519],"
-              + "0.0[3168, 3234, 3586, 3813, 3014, 3366, 3432, 3146, "
-              + "3498, 3212, 3564, 3278, 3344, 3058, 3124, 3476, 3542, 3256, 3322, 3036, 3388, 3102,"
-              + " 3454]"
-        };
+    String[] retArray = new String[] {"0,0[3710],0[3009],0.0[3014]"};
 
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -586,12 +572,15 @@ public class IoTDBAggregationLargeDataIT {
                     + resultSet.getString(min_value(d0s1))
                     + ","
                     + resultSet.getString(min_value(d0s2));
-            Assert.assertEquals(ans, retArray[cnt]);
+            System.out.println(ans);
+            Assert.assertEquals(retArray[cnt], ans);
             cnt++;
           }
           Assert.assertEquals(1, cnt);
         }
       }
+
+      retArray = new String[] {"0,0[3920],0[3920],0.0[3813]"};
 
       hasResultSet =
           statement.execute(
@@ -611,7 +600,7 @@ public class IoTDBAggregationLargeDataIT {
                     + resultSet.getString(min_value(d0s1))
                     + ","
                     + resultSet.getString(min_value(d0s2));
-            Assert.assertTrue(compareArrayString(ans, retArray[cnt]));
+            Assert.assertEquals(retArray[cnt], ans);
             //            Assert.assertEquals(ans, retArray[cnt]);
             cnt++;
           }
@@ -626,8 +615,7 @@ public class IoTDBAggregationLargeDataIT {
 
   /** @author Yuyuan Kang */
   private void maxValueAggreWithSingleFilterTest() {
-    String[] retArray =
-        new String[] {"0,99[3299, 3399, 105, 3099, 3499, 3199, 3599],40000[2],122.0[3812, 3935]"};
+    String[] retArray = new String[] {"0,99[105],40000[2],122.0[3812]"};
 
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -651,12 +639,14 @@ public class IoTDBAggregationLargeDataIT {
                     + resultSet.getString(max_value(d0s1))
                     + ","
                     + resultSet.getString(max_value(d0s2));
-            Assert.assertEquals(ans, retArray[cnt]);
+            Assert.assertEquals(retArray[cnt], ans);
             cnt++;
           }
           Assert.assertEquals(1, cnt);
         }
       }
+
+      retArray = new String[] {"0,99[3599],40000[2],122.0[3935]"};
 
       hasResultSet =
           statement.execute(
@@ -676,7 +666,7 @@ public class IoTDBAggregationLargeDataIT {
                     + resultSet.getString(max_value(d0s1))
                     + ","
                     + resultSet.getString(max_value(d0s2));
-            Assert.assertTrue(compareArrayString(ans, retArray[cnt]));
+            Assert.assertEquals(retArray[cnt], ans);
             cnt++;
           }
           Assert.assertEquals(1, cnt);
