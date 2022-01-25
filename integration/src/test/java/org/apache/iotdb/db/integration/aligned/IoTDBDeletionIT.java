@@ -189,7 +189,6 @@ public class IoTDBDeletionIT {
   }
 
   @Test
-  @Ignore // TODO
   public void testMerge() throws SQLException {
     prepareMerge();
 
