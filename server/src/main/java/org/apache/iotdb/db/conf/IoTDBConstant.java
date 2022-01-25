@@ -131,6 +131,8 @@ public class IoTDBConstant {
   public static final String COLUMN_PIPE2PIPESINK_NAME = "pipeSink";
   public static final String COLUMN_PIPE_STATUS = "status";
 
+  // sync receiver
+  public static final String COLUMN_PIPE_REMOTE_IP = "remote ip";
   public static final String ONE_LEVEL_PATH_WILDCARD = "*";
   public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
   public static final String TIME = "time";

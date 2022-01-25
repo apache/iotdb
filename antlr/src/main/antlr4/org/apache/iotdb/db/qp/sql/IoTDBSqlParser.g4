@@ -63,7 +63,8 @@ utilityStatement
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
 syncStatement
-    : createPipeSink | showPipeSinkType | showPipeSink | dropPipeSink
+    : startPipeServer | stopPipeServer | showPipeServer
+    | createPipeSink | showPipeSinkType | showPipeSink | dropPipeSink
     | createPipe | showPipe | stopPipe | startPipe | dropPipe;
 
 /**
@@ -704,6 +705,19 @@ dropPipe
 // attribute clauses
 syncAttributeClauses
     : propertyClause (COMMA propertyClause)*
+    ;
+
+// sync receiver
+startPipeServer
+    : START PIPESERVER
+    ;
+
+stopPipeServer
+    : STOP PIPESERVER
+    ;
+
+showPipeServer
+    : SHOW PIPESERVER (pipeName=ID)?
     ;
 
 /**

@@ -379,6 +379,11 @@ public class IoTDBDescriptor {
               properties
                   .getProperty("sync_server_port", Integer.toString(conf.getSyncServerPort()))
                   .trim()));
+      conf.setSyncServerPort(
+          Integer.parseInt(
+              properties
+                  .getProperty("local_pipe_server_port", Integer.toString(conf.getSyncServerPort()))
+                  .trim()));
 
       conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 

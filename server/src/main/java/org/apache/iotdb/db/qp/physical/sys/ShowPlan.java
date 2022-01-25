@@ -120,6 +120,7 @@ public class ShowPlan extends PhysicalPlan {
     QUERY_RESOURCE,
     PIPESINK,
     PIPESINKTYPE,
-    PIPE
+    PIPE,
+    PIPESERVER
   }
 }
