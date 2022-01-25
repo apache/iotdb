@@ -1960,26 +1960,32 @@ public class TSServiceImpl implements TSIService.Iface {
   private TSStatus tryCatchQueryException(Exception e) {
     if (e instanceof QueryTimeoutRuntimeException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(e.getMessage(), e);
-      return RpcUtils.getStatus(TSStatusCode.TIME_OUT, getRootCause(e));
+      return RpcUtils.getStatus(TSStatusCode.TIME_OUT, getRootCause(e).getMessage());
     } else if (e instanceof ParseCancellationException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_PARSING_SQL_ERROR, e);
       return RpcUtils.getStatus(
-          TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + getRootCause(e));
+          TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + getRootCause(e).getMessage());
     } else if (e instanceof SQLParserException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_CHECK_METADATA_ERROR, e);
       return RpcUtils.getStatus(
-          TSStatusCode.METADATA_ERROR, INFO_CHECK_METADATA_ERROR + getRootCause(e));
+          TSStatusCode.METADATA_ERROR, INFO_CHECK_METADATA_ERROR + getRootCause(e).getMessage());
     } else if (e instanceof QueryProcessException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
       return RpcUtils.getStatus(
-          TSStatusCode.QUERY_PROCESS_ERROR, INFO_QUERY_PROCESS_ERROR + getRootCause(e));
+          TSStatusCode.QUERY_PROCESS_ERROR,
+          INFO_QUERY_PROCESS_ERROR + getRootCause(e).getMessage());
     } else if (e instanceof QueryInBatchStatementException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_NOT_ALLOWED_IN_BATCH_ERROR, e);
       return RpcUtils.getStatus(
-          TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + getRootCause(e));
-    } else if (e instanceof IoTDBException && !(e instanceof StorageGroupNotReadyException)) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
-      return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), getRootCause(e));
+          TSStatusCode.QUERY_NOT_ALLOWED,
+          INFO_NOT_ALLOWED_IN_BATCH_ERROR + getRootCause(e).getMessage());
+    } else if (e instanceof IoTDBException) {
+      Throwable rootCause = getRootCause(e);
+      // ignore logging sg not ready exception
+      if (!(rootCause instanceof StorageGroupNotReadyException)) {
+        DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
+      }
+      return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), rootCause.getMessage());
     }
     return null;
   }
@@ -1996,13 +2002,17 @@ public class TSServiceImpl implements TSIService.Iface {
     if (e instanceof BatchProcessException) {
       LOGGER.warn(message, e);
       return RpcUtils.getStatus(Arrays.asList(((BatchProcessException) e).getFailingStatus()));
-    } else if (e instanceof IoTDBException && !(e instanceof StorageGroupNotReadyException)) {
-      if (((IoTDBException) e).isUserException()) {
-        LOGGER.warn(message + e.getMessage());
-      } else {
-        LOGGER.warn(message, e);
+    } else if (e instanceof IoTDBException) {
+      Throwable rootCause = getRootCause(e);
+      // ignore logging sg not ready exception
+      if (!(rootCause instanceof StorageGroupNotReadyException)) {
+        if (((IoTDBException) e).isUserException()) {
+          LOGGER.warn(message + e.getMessage());
+        } else {
+          LOGGER.warn(message, e);
+        }
       }
-      return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), getRootCause(e));
+      return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), rootCause.getMessage());
     }
     return null;
   }
@@ -2021,10 +2031,10 @@ public class TSServiceImpl implements TSIService.Iface {
     return RpcUtils.getStatus(statusCode, message + e.getMessage());
   }
 
-  private String getRootCause(Throwable e) {
+  private Throwable getRootCause(Throwable e) {
     while (e.getCause() != null) {
       e = e.getCause();
     }
-    return e.getMessage();
+    return e;
   }
 }
