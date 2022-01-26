@@ -52,7 +52,6 @@ public enum ThreadName {
   INSERTION_SERVICE("MultithreadingInsertionPool"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   TTL_CHECK_SERVICE("TTL-CHECK"),
-  VSG_RECOVERY("VSG-Recovery"),
   TIMED_FlUSH_SEQ_MEMTABLE("Timed-Flush-Seq-Memtable"),
   TIMED_FlUSH_UNSEQ_MEMTABLE("Timed-Flush-Unseq-Memtable"),
   TIMED_CLOSE_TSFILE("Timed-Close-TsFile"),
