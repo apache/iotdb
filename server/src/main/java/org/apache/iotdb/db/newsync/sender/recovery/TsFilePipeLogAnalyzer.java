@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.newsync.sender.recovery;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipeData;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +47,7 @@ public class TsFilePipeLogAnalyzer {
   private final String pipeDir;
   private final String pipeLogDir;
 
-  private BlockingDeque<TsFilePipeData> pipeData;
+  private BlockingDeque<PipeData> pipeDataDeque;
   private long removeSerialNumber;
 
   public TsFilePipeLogAnalyzer(TsFilePipe pipe) {
@@ -55,19 +55,19 @@ public class TsFilePipeLogAnalyzer {
     pipeLogDir = new File(pipeDir, SenderConf.pipeLogDirName).getPath();
   }
 
-  public BlockingDeque<TsFilePipeData> recover() {
-    pipeData = new LinkedBlockingDeque<>();
+  public BlockingDeque<PipeData> recover() {
+    pipeDataDeque = new LinkedBlockingDeque<>();
     removeSerialNumber = Long.MIN_VALUE;
 
     if (!new File(pipeDir).exists()) {
-      return pipeData;
+      return pipeDataDeque;
     }
 
     deserializeRemoveSerialNumber();
     recoverHistoryData();
     recoverRealTimeData();
 
-    return pipeData;
+    return pipeDataDeque;
   }
 
   private void deserializeRemoveSerialNumber() {
@@ -105,15 +105,15 @@ public class TsFilePipeLogAnalyzer {
 
     if (removeSerialNumber < 0) {
       try {
-        List<TsFilePipeData> historyPipeData = parseFile(historyPipeLog);
-        for (TsFilePipeData data : historyPipeData)
+        List<PipeData> historyPipeData = parseFile(historyPipeLog);
+        for (PipeData data : historyPipeData)
           if (data.getSerialNumber() > removeSerialNumber) {
-            pipeData.offer(data);
+            pipeDataDeque.offer(data);
           }
       } catch (IOException e) {
         logger.error(
             String.format(
-                "Can not parse history pipe log %s, because %s", historyPipeLog.getPath()));
+                "Can not parse history pipe log %s, because %s", historyPipeLog.getPath(), e));
       }
     } else {
       try {
@@ -143,10 +143,10 @@ public class TsFilePipeLogAnalyzer {
         File realTimePipeLog =
             new File(this.pipeLogDir, SenderConf.getRealTimePipeLogName(startNumber));
         try {
-          List<TsFilePipeData> realTimeData = parseFile(realTimePipeLog);
-          for (TsFilePipeData data : realTimeData)
+          List<PipeData> realTimeData = parseFile(realTimePipeLog);
+          for (PipeData data : realTimeData)
             if (data.getSerialNumber() > removeSerialNumber) {
-              pipeData.offer(data);
+              pipeDataDeque.offer(data);
             }
         } catch (IOException e) {
           logger.error(
@@ -161,12 +161,12 @@ public class TsFilePipeLogAnalyzer {
     return new File(pipeDir, SenderConf.pipeCollectFinishLockName).exists();
   }
 
-  public static List<TsFilePipeData> parseFile(File file) throws IOException {
-    List<TsFilePipeData> pipeData = new ArrayList<>();
+  public static List<PipeData> parseFile(File file) throws IOException {
+    List<PipeData> pipeData = new ArrayList<>();
     DataInputStream inputStream = new DataInputStream(new FileInputStream(file));
     try {
       while (true) {
-        pipeData.add(TsFilePipeData.deserialize(inputStream));
+        pipeData.add(PipeData.deserialize(inputStream));
       }
     } catch (EOFException e) {
       logger.info(String.format("Finish parsing pipeLog %s.", file.getPath()));

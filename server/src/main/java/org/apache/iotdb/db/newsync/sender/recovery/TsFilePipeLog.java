@@ -22,9 +22,10 @@ package org.apache.iotdb.db.newsync.sender.recovery;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.newsync.pipedata.PipeData;
+import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipeData;
 import org.apache.iotdb.db.utils.FileUtils;
 
 import org.slf4j.Logger;
@@ -143,7 +144,7 @@ public class TsFilePipeLog {
   }
 
   /** add pipe log data */
-  public void addHistoryPipeData(TsFilePipeData pipeData) throws IOException {
+  public void addHistoryPipeData(PipeData pipeData) throws IOException {
     getHistoryOutputStream();
     pipeData.serialize(historyOutputStream);
   }
@@ -158,10 +159,10 @@ public class TsFilePipeLog {
     logDir.mkdirs();
     File historyPipeLog = new File(pipeLogDir, SenderConf.historyPipeLogName);
     createFile(historyPipeLog);
-    historyOutputStream = new DataOutputStream(new FileOutputStream(historyPipeLog));
+    historyOutputStream = new DataOutputStream(new FileOutputStream(historyPipeLog, true));
   }
 
-  public synchronized void addRealTimePipeData(TsFilePipeData pipeData) throws IOException {
+  public synchronized void addRealTimePipeData(PipeData pipeData) throws IOException {
     getRealTimeOutputStream(pipeData.getSerialNumber());
     currentPipeLogSize += pipeData.serialize(realTimeOutputStream);
   }
@@ -169,25 +170,15 @@ public class TsFilePipeLog {
   private void getRealTimeOutputStream(long serialNumber) throws IOException {
     if (realTimeOutputStream == null) {
       // recover real time pipe log
-      realTimePipeLogStartNumber = new LinkedBlockingDeque<>();
-      File logDir = new File(pipeLogDir);
-      List<Long> startNumbers = new ArrayList<>();
-
-      logDir.mkdirs();
-      for (File file : logDir.listFiles())
-        if (file.getName().endsWith(SenderConf.realTimePipeLogNameSuffix)) {
-          startNumbers.add(SenderConf.getSerialNumberFromPipeLogName(file.getName()));
-        }
-      if (startNumbers.size() != 0) {
-        Collections.sort(startNumbers);
-        for (Long startTime : startNumbers) {
-          realTimePipeLogStartNumber.offer(startTime);
-        }
+      if (realTimePipeLogStartNumber == null) {
+        recoverRealTimePipeLogStartNumber();
+      }
+      if (!realTimePipeLogStartNumber.isEmpty()) {
         File writingPipeLog =
             new File(
                 pipeLogDir,
-                SenderConf.getRealTimePipeLogName(startNumbers.get(startNumbers.size() - 1)));
-        realTimeOutputStream = new DataOutputStream(new FileOutputStream(writingPipeLog));
+                SenderConf.getRealTimePipeLogName(realTimePipeLogStartNumber.peekLast()));
+        realTimeOutputStream = new DataOutputStream(new FileOutputStream(writingPipeLog, true));
         currentPipeLogSize = writingPipeLog.length();
       } else {
         moveToNextPipeLog(serialNumber);
@@ -196,6 +187,24 @@ public class TsFilePipeLog {
 
     if (currentPipeLogSize > SenderConf.defaultPipeLogSizeInByte) {
       moveToNextPipeLog(serialNumber);
+    }
+  }
+
+  private void recoverRealTimePipeLogStartNumber() {
+    realTimePipeLogStartNumber = new LinkedBlockingDeque<>();
+    File logDir = new File(pipeLogDir);
+    List<Long> startNumbers = new ArrayList<>();
+
+    logDir.mkdirs();
+    for (File file : logDir.listFiles())
+      if (file.getName().endsWith(SenderConf.realTimePipeLogNameSuffix)) {
+        startNumbers.add(SenderConf.getSerialNumberFromPipeLogName(file.getName()));
+      }
+    if (startNumbers.size() != 0) {
+      Collections.sort(startNumbers);
+      for (Long startTime : startNumbers) {
+        realTimePipeLogStartNumber.offer(startTime);
+      }
     }
   }
 
@@ -219,7 +228,10 @@ public class TsFilePipeLog {
       if (historyOutputStream != null) {
         removeHistoryPipeLog();
       }
-      if (realTimePipeLogStartNumber.size() < 2) {
+      if (realTimePipeLogStartNumber == null) {
+        recoverRealTimePipeLogStartNumber();
+      }
+      if (realTimePipeLogStartNumber.size() >= 2) {
         long pipeLogStartNumber;
         while (true) {
           pipeLogStartNumber = realTimePipeLogStartNumber.poll();
@@ -260,11 +272,11 @@ public class TsFilePipeLog {
 
   private void removeTsFile(File realTimePipeLog) {
     try {
-      List<TsFilePipeData> pipeData = TsFilePipeLogAnalyzer.parseFile(realTimePipeLog);
+      List<PipeData> pipeData = TsFilePipeLogAnalyzer.parseFile(realTimePipeLog);
       List<File> tsFiles;
-      for (TsFilePipeData data : pipeData)
-        if (data.isTsFile()) {
-          tsFiles = data.getTsFiles();
+      for (PipeData data : pipeData)
+        if (PipeData.Type.TSFILE.equals(data.getType())) {
+          tsFiles = ((TsFilePipeData) data).getTsFiles();
           for (File file : tsFiles) {
             Files.deleteIfExists(file.toPath());
           }

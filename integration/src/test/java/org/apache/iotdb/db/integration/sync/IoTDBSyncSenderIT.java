@@ -15,33 +15,23 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.newsync.sender.pipe;
+package org.apache.iotdb.db.integration.sync;
 
-import org.apache.iotdb.db.exception.PipeSinkException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 
-public interface PipeSink {
-  void setAttribute(String attr, String value) throws PipeSinkException;
+import org.junit.Before;
+import org.junit.experimental.categories.Category;
 
-  String getName();
+import java.io.IOException;
 
-  Type getType();
-
-  String showAllAttributes();
-
-  enum Type {
-    IoTDB;
-  }
-
-  class PipeSinkFactory {
-    public static PipeSink createPipeSink(String type, String name) {
-      type = type.toLowerCase();
-      if (Type.IoTDB.name().toLowerCase().equals(type)) {
-        return new IoTDBPipeSink(name);
-      }
-      throw new UnsupportedOperationException(
-          String.format("Do not support pipeSink type %s", type));
-    }
+@Category({LocalStandaloneTest.class})
+public class IoTDBSyncSenderIT {
+  @Before
+  public void setUp() throws StorageEngineException, IOException {
+    EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.envSetUp();
   }
 }

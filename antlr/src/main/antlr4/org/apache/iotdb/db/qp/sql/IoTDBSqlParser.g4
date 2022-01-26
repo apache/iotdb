@@ -666,7 +666,7 @@ unloadFile
 
 // pipesink statement
 createPipeSink
-    : CREATE PIPESINK pipeSinkType=ID (LR_BRACKET syncAttributeClauses RR_BRACKET)? AS pipeSinkName=ID
+    : CREATE PIPESINK pipeSinkName=ID AS pipeSinkType=ID (LR_BRACKET syncAttributeClauses RR_BRACKET)?
     ;
 
 showPipeSinkType
@@ -674,7 +674,7 @@ showPipeSinkType
     ;
 
 showPipeSink
-    : SHOW PIPESINK (pipeSinkName=ID)?
+    : SHOW ((PIPESINK (pipeSinkName=ID)?) | PIPESINKS)
     ;
 
 dropPipeSink
@@ -687,7 +687,7 @@ createPipe
     ;
 
 showPipe
-    : SHOW PIPE (pipeName=ID)?
+    : SHOW ((PIPE (pipeName=ID)?) | PIPES)
     ;
 
 stopPipe
