@@ -915,6 +915,17 @@ public class SeriesReader {
       return;
     }
 
+    long currentPageEndpointTime;
+
+    if (!unSeqPageReaders.isEmpty()) {
+      currentPageEndpointTime =
+          orderUtils.getOverlapCheckTime(unSeqPageReaders.peek().getStatistics());
+      // unpack all overlapped data for first unseq page
+      unpackAllOverlappedTsFilesToTimeSeriesMetadata(currentPageEndpointTime);
+      unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(currentPageEndpointTime, false);
+      unpackAllOverlappedChunkMetadataToPageReaders(currentPageEndpointTime, false);
+    }
+
     /*
      * init firstPageReader
      */
@@ -922,7 +933,6 @@ public class SeriesReader {
       initFirstPageReader();
     }
 
-    long currentPageEndpointTime;
     if (mergeReader.hasNextTimeValuePair()) {
       currentPageEndpointTime = mergeReader.getCurrentReadStopTime();
     } else {
