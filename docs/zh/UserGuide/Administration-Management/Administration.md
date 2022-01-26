@@ -113,6 +113,27 @@ IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, tr
 Msg: The statement is executed successfully.
 ```
 
+### 撤销用户权限
+
+授予用户权限后，我们可以使用 `REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>` 来撤销已授予的用户权限。 例如：
+
+```
+REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
+REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
+INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
+```
+
+执行状态如下所示：
+
+```
+REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
+Msg: The statement is executed successfully.
+REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
+Msg: The statement is executed successfully.
+INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
+Msg: 602: No permissions for this operation INSERT
+```
+
 ### SQL 语句
 
 与权限相关的语句包括：
