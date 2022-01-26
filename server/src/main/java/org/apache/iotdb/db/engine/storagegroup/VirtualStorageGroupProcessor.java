@@ -100,20 +100,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -275,6 +263,12 @@ public class VirtualStorageGroupProcessor {
 
   private IDTable idTable;
 
+  /** recovery progress of this vsg, only updated in recover method */
+  private double recoveryProgress = 0;
+
+  /** scheduled service to log recovery progress */
+  private ScheduledExecutorService recoveryProgressService = null;
+
   /**
    * get the direct byte buffer from pool, each fetch contains two ByteBuffer, return null if fetch
    * fails
@@ -410,7 +404,11 @@ public class VirtualStorageGroupProcessor {
       lastFlushTimeManager = new LastFlushTimeManager();
     }
     // recover tsfiles
-    recover();
+    try {
+      recover();
+    } finally {
+      recoveryProgressService.shutdown();
+    }
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricsService.getInstance()
@@ -461,10 +459,17 @@ public class VirtualStorageGroupProcessor {
 
   /** recover from file */
   private void recover() throws StorageGroupProcessorException {
-    logger.info(
-        String.format(
-            "start recovering virtual storage group %s[%s]",
-            logicalStorageGroupName, virtualStorageGroupId));
+    // start recovery progress logger task at first
+    recoveryProgressService =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.VSG_RECOVERY.getName()
+                + "-"
+                + logicalStorageGroupName
+                + "-"
+                + virtualStorageGroupId);
+    recoveryProgressService.scheduleWithFixedDelay(
+        this::logRecoveryProgress, 0, 5_000, TimeUnit.MILLISECONDS);
+    Random random = new Random();
 
     try {
       recoverInnerSpaceCompaction(true);
@@ -473,6 +478,7 @@ public class VirtualStorageGroupProcessor {
     } catch (Exception e) {
       throw new StorageGroupProcessorException(e);
     }
+    recoveryProgress = 50 + (random.nextDouble() - 0.5);
 
     try {
       // collect candidate TsFiles from sequential and unsequential data directory
@@ -486,6 +492,7 @@ public class VirtualStorageGroupProcessor {
       List<TsFileResource> tmpUnseqTsFiles = unseqTsFilesPair.left;
       List<TsFileResource> oldUnseqTsFiles = unseqTsFilesPair.right;
       upgradeUnseqFileList.addAll(oldUnseqTsFiles);
+      recoveryProgress = 60 + (random.nextDouble() - 0.5);
 
       if (upgradeSeqFileList.size() + upgradeUnseqFileList.size() != 0) {
         upgradeFileCount.set(upgradeSeqFileList.size() + upgradeUnseqFileList.size());
@@ -500,9 +507,11 @@ public class VirtualStorageGroupProcessor {
       for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
         recoverTsFiles(value, true);
       }
+      recoveryProgress = 90 + (random.nextDouble() - 0.5);
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
         recoverTsFiles(value, false);
       }
+      recoveryProgress = 97 + (random.nextDouble() - 0.5);
       for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
         long partitionNum = resource.getTimePartition();
         updatePartitionFileVersion(partitionNum, resource.getVersion());
@@ -523,6 +532,7 @@ public class VirtualStorageGroupProcessor {
     } catch (IOException e) {
       throw new StorageGroupProcessorException(e);
     }
+    recoveryProgress = 98 + (random.nextDouble() - 0.5);
 
     List<TsFileResource> seqTsFileResources = tsFileManager.getTsFileList(true);
     for (TsFileResource resource : seqTsFileResources) {
@@ -536,14 +546,21 @@ public class VirtualStorageGroupProcessor {
       lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
       lastFlushTimeManager.setMultiDeviceGlobalFlushedTime(endTimeMap);
     }
+    recoveryProgress = 99 + (random.nextDouble() - 0.5);
 
     // recover and start timed compaction thread
     initCompaction();
 
     logger.info(
-        String.format(
-            "the virtual storage group %s[%s] is recovered successfully",
-            logicalStorageGroupName, virtualStorageGroupId));
+        "The virtual storage group {}[{}] is recovered successfully",
+        logicalStorageGroupName,
+        virtualStorageGroupId);
+  }
+
+  private void logRecoveryProgress() {
+    logger.info(
+        "The virtual storage group {}[{}] is recovering {}%, please wait a moment.",
+        logicalStorageGroupName, virtualStorageGroupId, recoveryProgress);
   }
 
   private void initCompaction() {
