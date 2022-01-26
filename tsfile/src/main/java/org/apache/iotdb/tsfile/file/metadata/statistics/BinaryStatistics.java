@@ -44,7 +44,8 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   /**
-   * The output of this method should be identical to the method "serializeStats(OutputStream outputStream)"
+   * The output of this method should be identical to the method "serializeStats(OutputStream
+   * outputStream)"
    */
   @Override
   public int getStatsSize() {
@@ -80,12 +81,12 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public Binary getMinValue() {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG,BINARY, "min"));
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, BINARY, "min"));
   }
 
   @Override
   public Binary getMaxValue() {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG,BINARY, "max"));
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, BINARY, "max"));
   }
 
   @Override
@@ -100,12 +101,12 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public double getSumDoubleValue() {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG,BINARY, "double sum"));
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, BINARY, "double sum"));
   }
 
   @Override
   public long getSumLongValue() {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG,BINARY, "long sum"));
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, BINARY, "long sum"));
   }
 
   @Override

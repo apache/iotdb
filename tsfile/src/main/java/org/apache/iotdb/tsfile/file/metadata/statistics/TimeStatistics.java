@@ -37,7 +37,8 @@ public class TimeStatistics extends Statistics<Long> {
   }
 
   /**
-   * The output of this method should be identical to the method "serializeStats(OutputStream outputStream)"
+   * The output of this method should be identical to the method "serializeStats(OutputStream
+   * outputStream)"
    */
   @Override
   public int getStatsSize() {
@@ -96,7 +97,6 @@ public class TimeStatistics extends Statistics<Long> {
 
   @Override
   protected void mergeStatisticsValue(Statistics<Long> stats) {}
-
 
   @Override
   public int serializeStats(OutputStream outputStream) {

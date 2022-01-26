@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -44,7 +43,8 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   /**
-   * The output of this method should be identical to the method "serializeStats(OutputStream outputStream)"
+   * The output of this method should be identical to the method "serializeStats(OutputStream
+   * outputStream)"
    */
   @Override
   public int getStatsSize() {
@@ -133,7 +133,6 @@ public class BooleanStatistics extends Statistics<Boolean> {
   public long getSumLongValue() {
     return sumValue;
   }
-
 
   @Override
   protected void mergeStatisticsValue(Statistics<Boolean> stats) {
