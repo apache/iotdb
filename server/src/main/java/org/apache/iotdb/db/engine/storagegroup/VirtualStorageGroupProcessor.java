@@ -476,7 +476,7 @@ public class VirtualStorageGroupProcessor {
         // log only when log interval exceeds recovery log interval
         if (lastLogTime + config.getRecoveryLogIntervalInMs() < System.currentTimeMillis()) {
           logger.info(
-              "The virtual storage group {}[{}] is recovering {}%, please wait a moment.",
+              "The virtual storage group {}[{}] has recovered {}%, please wait a moment.",
               logicalStorageGroupName,
               virtualStorageGroupId,
               recoveredFilesNum * 1.0 / filesToRecoverNum);
