@@ -267,7 +267,7 @@ public class VirtualStorageGroupProcessor {
   private long recoveredFileNum = 0;
 
   /** number of files to be recovered */
-  private long totalFileNum = 0;
+  private long filesToRecoverNum = 0;
 
   /** scheduled service to log recovery progress */
   private ScheduledExecutorService recoveryProgressService = null;
@@ -504,7 +504,7 @@ public class VirtualStorageGroupProcessor {
 
       // split by partition so that we can find the last file of each partition and decide to
       // close it or not
-      totalFileNum = tmpSeqTsFiles.size() + tmpUnseqTsFiles.size();
+      filesToRecoverNum = tmpSeqTsFiles.size() + tmpUnseqTsFiles.size();
       Map<Long, List<TsFileResource>> partitionTmpSeqTsFiles =
           splitResourcesByPartition(tmpSeqTsFiles);
       Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles =
@@ -561,7 +561,7 @@ public class VirtualStorageGroupProcessor {
   private void logRecoveryProgress() {
     logger.info(
         "The virtual storage group {}[{}] is recovering {}%, please wait a moment.",
-        logicalStorageGroupName, virtualStorageGroupId, recoveredFileNum / totalFileNum);
+        logicalStorageGroupName, virtualStorageGroupId, recoveredFileNum / filesToRecoverNum);
   }
 
   private void initCompaction() {
