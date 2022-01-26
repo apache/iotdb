@@ -93,10 +93,10 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   @Override
   public void write(long timestamp, Object value) throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(timestamp);
-    updateDeviceStartAndEndTime(targetTsFileResources.get(seqFileIndex), timestamp);
-    checkChunkSizeAndMayOpenANewChunk(fileWriterList.get(seqFileIndex));
     checkAndMayStartChunkGroup();
     writeDataPoint(timestamp, value);
+    updateDeviceStartAndEndTime(targetTsFileResources.get(seqFileIndex), timestamp);
+    checkChunkSizeAndMayOpenANewChunk(fileWriterList.get(seqFileIndex));
     isEmptyFile[seqFileIndex] = false;
   }
 
