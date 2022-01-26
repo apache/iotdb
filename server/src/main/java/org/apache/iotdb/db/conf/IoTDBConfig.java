@@ -784,7 +784,7 @@ public class IoTDBConfig {
   private int virtualStorageGroupNum = 1;
 
   /** the interval to log recover progress of each vsg when starting iotdb */
-  private long recoveryLogIntervalInMs = 60_000L;
+  private long recoveryLogIntervalInMs = 5_000L;
 
   private String adminName = "root";
 
