@@ -138,8 +138,6 @@ public class VirtualStorageGroupProcessor {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
-  /** the interval to log recovery progress */
-  public static final long RECOVERY_LOG_INTERVAL_IN_MS = 60_000L;
 
   /**
    * All newly generated chunks after merge have version number 0, so we set merged Modification
@@ -474,8 +472,8 @@ public class VirtualStorageGroupProcessor {
                 + virtualStorageGroupId);
     recoveryProgressService.scheduleWithFixedDelay(
         this::logRecoveryProgress,
-        RECOVERY_LOG_INTERVAL_IN_MS,
-        RECOVERY_LOG_INTERVAL_IN_MS,
+        config.getRecoveryLogIntervalInMs(),
+        config.getRecoveryLogIntervalInMs(),
         TimeUnit.MILLISECONDS);
     Random random = new Random();
 
