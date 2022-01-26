@@ -23,7 +23,6 @@ import org.apache.iotdb.db.exception.PipeException;
 import org.apache.iotdb.db.exception.PipeSinkException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
-import org.apache.iotdb.db.newsync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
 import org.apache.iotdb.db.newsync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
@@ -177,18 +176,15 @@ public class SenderService implements IService {
     }
 
     // get TsFilePipe
-    PipeSink.Type pipeSinkType = pipeSink.getType();
-    if (!pipeSinkType.equals(PipeSink.Type.IoTDB)) {
-      throw new PipeException(
-          String.format(
-              "Wrong pipeSink type %s for create TsFilePipe.", pipeSinkType)); // internal error
-    }
+    //    PipeSink.Type pipeSinkType = pipeSink.getType();
+    //    if (!pipeSinkType.equals(PipeSink.Type.IoTDB)) {
+    //      throw new PipeException(
+    //          String.format(
+    //              "Wrong pipeSink type %s for create TsFilePipe.", pipeSinkType)); // internal
+    // error
+    //    }
     return new TsFilePipe(
-        pipeCreateTime,
-        plan.getPipeName(),
-        (IoTDBPipeSink) pipeSink,
-        plan.getDataStartTimestamp(),
-        syncDelOp);
+        pipeCreateTime, plan.getPipeName(), pipeSink, plan.getDataStartTimestamp(), syncDelOp);
   }
 
   public void stopPipe(String pipeName) throws PipeException {

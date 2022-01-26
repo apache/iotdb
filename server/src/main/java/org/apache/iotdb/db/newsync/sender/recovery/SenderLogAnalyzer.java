@@ -113,8 +113,7 @@ public class SenderLogAnalyzer {
       }
     } catch (Exception e) {
       throw new IOException(
-          String.format(
-              "Recover error in line %d : %s, because %s", lineNumber, readLine, e.getMessage()));
+          String.format("Recover error in line %d : %s, because %s", lineNumber, readLine, e));
     }
 
     if (pipes.size() > 0) {

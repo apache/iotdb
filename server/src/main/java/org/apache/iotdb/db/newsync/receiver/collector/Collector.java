@@ -22,7 +22,6 @@ package org.apache.iotdb.db.newsync.receiver.collector;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipeData;
 import org.apache.iotdb.db.newsync.utils.SyncPathUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,22 +67,22 @@ public class Collector {
         task.removeScanDir(SyncPathUtil.getReceiverPipeLogDir(pipeName,remoteIp,createTime));
     }
 
-    public static void main(String[] args) throws IOException, IllegalPathException {
-        File f1 = new File("testtt");
-        File f2 = new File("testtt");
-        TsFilePipeData pipeData1 = new TsFilePipeData("1",1);
-        TsFilePipeData pipeData2 = new TsFilePipeData("2",2);
-        DataOutputStream outputStream = new DataOutputStream(new FileOutputStream(f2));
-        pipeData1.serialize(outputStream);
-        outputStream.flush();
-        DataInputStream inputStream = new DataInputStream(new FileInputStream(f1));
-        System.out.println(TsFilePipeData.deserialize(inputStream).toString());
-        pipeData2.serialize(outputStream);
-        outputStream.flush();
-        System.out.println(TsFilePipeData.deserialize(inputStream).toString());
-        Files.deleteIfExists(f1.toPath());
-        inputStream.close();
-    }
+//    public static void main(String[] args) throws IOException, IllegalPathException {
+//        File f1 = new File("testtt");
+//        File f2 = new File("testtt");
+//        TsFilePipeData pipeData1 = new TsFilePipeData("1",1);
+//        TsFilePipeData pipeData2 = new TsFilePipeData("2",2);
+//        DataOutputStream outputStream = new DataOutputStream(new FileOutputStream(f2));
+//        pipeData1.serialize(outputStream);
+//        outputStream.flush();
+//        DataInputStream inputStream = new DataInputStream(new FileInputStream(f1));
+//        System.out.println(TsFilePipeData.deserialize(inputStream).toString());
+//        pipeData2.serialize(outputStream);
+//        outputStream.flush();
+//        System.out.println(TsFilePipeData.deserialize(inputStream).toString());
+//        Files.deleteIfExists(f1.toPath());
+//        inputStream.close();
+//    }
 
     private class ScanTask implements Runnable{
         private Set<String> scanPathSet;
