@@ -496,12 +496,14 @@ public class DatetimeUtils {
       return convertDatetimeStrToLong(str.substring(0, str.indexOf('Z')) + "+00:00", offset, depth);
     } else if (str.length() == 10) {
       return convertDatetimeStrToLong(str + "T00:00:00", offset, depth);
-    } else if (str.length() - str.lastIndexOf('+') < 5 && str.length() - str.lastIndexOf('-') < 5) {
-      return convertDatetimeStrToLong(str + offset, offset, depth + 1);
-    } else if (str.length() - str.lastIndexOf('+') == 5
-        || str.length() - str.lastIndexOf('-') == 5) {
-      StringBuilder sb = new StringBuilder(str);
-      str = sb.insert(str.length() - 2, ":").toString();
+    } else if (str.length() - str.lastIndexOf('+') != 6
+        && str.length() - str.lastIndexOf('-') != 6) {
+      if (str.length() - str.lastIndexOf('+') == 5 || str.length() - str.lastIndexOf('-') == 5) {
+        StringBuilder sb = new StringBuilder(str);
+        str = sb.insert(str.length() - 2, ":").toString();
+      } else {
+        return convertDatetimeStrToLong(str + offset, offset, depth + 1);
+      }
     } else if (str.contains("[") || str.contains("]")) {
       throw new DateTimeException(
           String.format(
