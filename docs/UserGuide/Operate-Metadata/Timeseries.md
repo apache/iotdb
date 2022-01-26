@@ -19,9 +19,9 @@
 
 -->
 
-## Timeseries Management
+# Timeseries Management
 
-### Create Timeseries
+## Create Timeseries
 
 According to the storage model selected before, we can create corresponding timeseries in the two storage groups respectively. The SQL statements for creating timeseries are as follows:
 
@@ -54,7 +54,7 @@ error: encoding TS_2DIFF does not support BOOLEAN
 
 Please refer to [Encoding](../Data-Concept/Encoding.md) for correspondence between data type and encoding.
 
-### Create Aligned Timeseries (From v0.13)
+## Create Aligned Timeseries
 
 The SQL statement for creating a group of timeseries are as follows:
 
@@ -66,7 +66,7 @@ You can set different datatype, encoding, and compression for the timeseries in 
 
 It is not currently supported to set an alias, tag, and attribute for aligned timeseries.
 
-### Delete Timeseries
+## Delete Timeseries
 
 To delete the timeseries we created before, we are able to use `DELETE TimeSeries <PathPattern>` statement.
 
@@ -78,7 +78,7 @@ IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardwa
 IoTDB> delete timeseries root.ln.wf02.*
 ```
 
-### Show Timeseries
+## Show Timeseries
 
 * SHOW LATEST? TIMESERIES pathPattern? whereClause? limitClause?
 
@@ -178,7 +178,7 @@ show timeseries root.ln.** limit 10 offset 10
 It is worth noting that when the queried path does not exist, the system will return no timeseries.  
 
 
-### Count Timeseries
+## Count Timeseries
 
 IoTDB is able to use `COUNT TIMESERIES <Path>` to count the number of timeseries matching the path. SQL statements are as follows:
 
@@ -254,7 +254,7 @@ It costs 0.002s
 
 > Note: The path of timeseries is just a filter condition, which has no relationship with the definition of level.
 
-### Tag and Attribute Management
+## Tag and Attribute Management
 
 We can also add an alias, extra tag and attribute information while creating one timeseries.
 The SQL statements for creating timeseries with extra tag and attribute information are extended as follows:

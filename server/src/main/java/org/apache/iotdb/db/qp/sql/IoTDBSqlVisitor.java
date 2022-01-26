@@ -311,9 +311,29 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     CreateTemplateOperator createTemplateOperator =
         new CreateTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_CREATE);
     createTemplateOperator.setName(ctx.templateName.getText());
-    for (IoTDBSqlParser.TemplateMeasurementClauseContext templateClauseContext :
-        ctx.templateMeasurementClause()) {
-      parseTemplateMeasurementClause(templateClauseContext, createTemplateOperator);
+    if (ctx.ALIGNED() != null) {
+      // aligned
+      List<String> measurements = new ArrayList<>();
+      List<TSDataType> dataTypes = new ArrayList<>();
+      List<TSEncoding> encodings = new ArrayList<>();
+      List<CompressionType> compressors = new ArrayList<>();
+      for (IoTDBSqlParser.TemplateMeasurementClauseContext templateClauseContext :
+          ctx.templateMeasurementClause()) {
+        measurements.add(
+            parseNodeNameWithoutWildcard(templateClauseContext.nodeNameWithoutWildcard()));
+        parseAttributeClause(
+            templateClauseContext.attributeClauses(), dataTypes, encodings, compressors);
+      }
+      createTemplateOperator.addMeasurements(measurements);
+      createTemplateOperator.addDataTypes(dataTypes);
+      createTemplateOperator.addEncodings(encodings);
+      createTemplateOperator.addCompressor(compressors);
+    } else {
+      // non-aligned
+      for (IoTDBSqlParser.TemplateMeasurementClauseContext templateClauseContext :
+          ctx.templateMeasurementClause()) {
+        parseTemplateMeasurementClause(templateClauseContext, createTemplateOperator);
+      }
     }
     return createTemplateOperator;
   }
@@ -325,31 +345,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     List<TSDataType> dataTypes = new ArrayList<>();
     List<TSEncoding> encodings = new ArrayList<>();
     List<CompressionType> compressors = new ArrayList<>();
-    if (ctx instanceof IoTDBSqlParser.AlignedTemplateMeasurementContext) {
-      // aligned measurement
-      String alignedSuffixPath =
-          ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).suffixPath().getText();
-      List<IoTDBSqlParser.NodeNameWithoutWildcardContext> measurementList =
-          ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).nodeNameWithoutWildcard();
-      List<IoTDBSqlParser.AttributeClausesContext> attributeList =
-          ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).attributeClauses();
-      for (int i = 0; i < attributeList.size(); i++) {
-        measurements.add(
-            alignedSuffixPath.concat(
-                TsFileConstant.PATH_SEPARATOR
-                    + parseNodeNameWithoutWildcard(measurementList.get(i))));
-        parseAttributeClause(attributeList.get(i), dataTypes, encodings, compressors);
-      }
-    } else {
-      // non-aligned template measurement
-      measurements.add(
-          ((IoTDBSqlParser.NonAlignedTemplateMeasurementContext) ctx).suffixPath().getText());
-      parseAttributeClause(
-          ((IoTDBSqlParser.NonAlignedTemplateMeasurementContext) ctx).attributeClauses(),
-          dataTypes,
-          encodings,
-          compressors);
-    }
+    // single template measurement
+    measurements.add(parseNodeNameWithoutWildcard(ctx.nodeNameWithoutWildcard()));
+    parseAttributeClause(ctx.attributeClauses(), dataTypes, encodings, compressors);
     createTemplateOperator.addMeasurements(measurements);
     createTemplateOperator.addDataTypes(dataTypes);
     createTemplateOperator.addEncodings(encodings);
@@ -727,6 +725,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return dropContinuousQueryOperator;
   }
 
+  // Drop Schema Template
+
+  @Override
+  public Operator visitDropSchemaTemplate(IoTDBSqlParser.DropSchemaTemplateContext ctx) {
+    DropTemplateOperator dropTemplateOperator =
+        new DropTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_DROP);
+    dropTemplateOperator.setTemplateName(parseStringWithQuotes((ctx.templateName.getText())));
+    return dropTemplateOperator;
+  }
+
   // Set TTL
 
   @Override
@@ -927,6 +935,40 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitShowAllTTL(IoTDBSqlParser.ShowAllTTLContext ctx) {
     List<PartialPath> storageGroups = new ArrayList<>();
     return new ShowTTLOperator(storageGroups);
+  }
+
+  // Show Schema Template
+
+  @Override
+  public Operator visitShowSchemaTemplates(IoTDBSqlParser.ShowSchemaTemplatesContext ctx) {
+    return new ShowTemplatesOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_SHOW);
+  }
+
+  // Show Measurements In Schema Template
+
+  public Operator visitShowNodesInSchemaTemplate(
+      IoTDBSqlParser.ShowNodesInSchemaTemplateContext ctx) {
+    String templateName = parseStringWithQuotes(ctx.templateName.getText());
+    return new ShowNodesInTemplateOperator(
+        SQLConstant.TOK_SCHEMA_TEMPLATE_SHOW_NODES, templateName);
+  }
+
+  // Show Paths Set Schema Template
+
+  public Operator visitShowPathsSetSchemaTemplate(
+      IoTDBSqlParser.ShowPathsSetSchemaTemplateContext ctx) {
+    String templateName = parseStringWithQuotes(ctx.templateName.getText());
+    return new ShowPathsSetTemplateOperator(
+        SQLConstant.TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET, templateName);
+  }
+
+  // Show Paths Using Schema Template
+
+  public Operator visitShowPathsUsingSchemaTemplate(
+      IoTDBSqlParser.ShowPathsUsingSchemaTemplateContext ctx) {
+    String templateName = parseStringWithQuotes(ctx.templateName.getText());
+    return new ShowPathsUsingTemplateOperator(
+        SQLConstant.TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING, templateName);
   }
 
   // countStorageGroup

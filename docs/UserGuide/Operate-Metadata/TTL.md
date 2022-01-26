@@ -19,11 +19,11 @@
 
 -->
 
-## TTL
+# TTL
 
 IoTDB supports storage-level TTL settings, which means it is able to delete old data automatically and periodically. The benefit of using TTL is that hopefully you can control the total disk space usage and prevent the machine from running out of disks. Moreover, the query performance may downgrade as the total number of files goes up and the memory usage also increase as there are more files. Timely removing such files helps to keep at a high query performance level and reduce memory usage.
 
-### Set TTL
+## Set TTL
 
 The SQL Statement for setting TTL is as follow:
 
@@ -33,7 +33,7 @@ IoTDB> set ttl to root.ln 3600000
 
 This example means that for data in `root.ln`, only that of the latest 1 hour will remain, the older one is removed or made invisible.
 
-### Unset TTL
+## Unset TTL
 
 To unset TTL, we can use follwing SQL statement:
 
@@ -43,7 +43,7 @@ IoTDB> unset ttl to root.ln
 
 After unset TTL, all data will be accepted in `root.ln`
 
-### Show TTL
+## Show TTL
 
 To Show TTL, we can use following SQL statement:
 

@@ -679,7 +679,7 @@ var config = {
 					},
 					{
 						title: 'Syntax Conventions',
-						sidebarDepth: 1,
+						sidebarDepth: 2,
 						children: [
 							['Reference/Syntax-Conventions','Syntax Conventions'],
 						]
@@ -704,6 +704,7 @@ var config = {
 							['Operate-Metadata/Storage-Group','Storage Group'],
 							['Operate-Metadata/Node','Node'],
 							['Operate-Metadata/Timeseries','Timeseries'],
+							['Operate-Metadata/Template','Schema Template'],
 							['Operate-Metadata/TTL','TTL'],
 							['Operate-Metadata/Auto-Create-MetaData','Auto Create Metadata']
 						]
@@ -863,6 +864,7 @@ var config = {
 							['Operate-Metadata/Storage-Group','Storage Group'],
 							['Operate-Metadata/Node','Node'],
 							['Operate-Metadata/Timeseries','Timeseries'],
+							['Operate-Metadata/Template','Schema Template'],
 							['Operate-Metadata/TTL','TTL'],
 							['Operate-Metadata/Auto-Create-MetaData','Auto Create Metadata']
 						]
@@ -1670,6 +1672,7 @@ var config = {
 							['Operate-Metadata/Storage-Group','存储组操作'],
 							['Operate-Metadata/Node','节点操作'],
 							['Operate-Metadata/Timeseries','时间序列操作'],
+							['Operate-Metadata/Template','元数据模板'],
 							['Operate-Metadata/TTL','TTL'],
 							['Operate-Metadata/Auto-Create-MetaData','自动创建元数据']
 						]
@@ -1831,6 +1834,7 @@ var config = {
 							['Operate-Metadata/Storage-Group','存储组操作'],
 							['Operate-Metadata/Node','节点操作'],
 							['Operate-Metadata/Timeseries','时间序列操作'],
+							['Operate-Metadata/Template','元数据模板'],
 							['Operate-Metadata/TTL','TTL'],
 							['Operate-Metadata/Auto-Create-MetaData','自动创建元数据']
 						]

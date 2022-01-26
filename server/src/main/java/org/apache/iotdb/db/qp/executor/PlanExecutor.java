@@ -79,6 +79,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
@@ -184,37 +185,7 @@ import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_NODES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COLUMN;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_BOUNDARY;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_NAME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_QUERY_SQL;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_TARGET_PATH;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COUNT;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_TYPE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_LOCK_INFO;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDAF;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDTF;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDAF;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDTF;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.conf.IoTDBConstant.QUERY_ID;
-import static org.apache.iotdb.db.conf.IoTDBConstant.STATEMENT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 import static org.apache.iotdb.rpc.TSStatusCode.INTERNAL_SERVER_ERROR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -680,6 +651,14 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowTriggers();
       case CONTINUOUS_QUERY:
         return processShowContinuousQueries();
+      case SCHEMA_TEMPLATE:
+        return processShowSchemaTemplates();
+      case NODES_IN_SCHEMA_TEMPLATE:
+        return processShowNodesInSchemaTemplate((ShowNodesInTemplatePlan) showPlan);
+      case PATHS_SET_SCHEMA_TEMPLATE:
+        return processShowPathsSetSchemaTemplate((ShowPathsSetTemplatePlan) showPlan);
+      case PATHS_USING_SCHEMA_TEMPLATE:
+        return processShowPathsUsingSchemaTemplate((ShowPathsUsingTemplatePlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
@@ -1069,6 +1048,89 @@ public class PlanExecutor implements IPlanExecutor {
       listDataSet.putRecord(record);
     }
 
+    return listDataSet;
+  }
+
+  private QueryDataSet processShowSchemaTemplates() {
+    ListDataSet listDataSet =
+        new ListDataSet(
+            Collections.singletonList(new PartialPath(COLUMN_SCHEMA_TEMPLATE, false)),
+            Collections.singletonList(TSDataType.TEXT));
+    Set<String> allTemplates = IoTDB.metaManager.getAllTemplates();
+    for (String templateName : allTemplates) {
+      RowRecord rowRecord = new RowRecord(0); // ignore timestamp
+      rowRecord.addField(Binary.valueOf(templateName), TSDataType.TEXT);
+      listDataSet.putRecord(rowRecord);
+    }
+    return listDataSet;
+  }
+
+  private QueryDataSet processShowNodesInSchemaTemplate(ShowNodesInTemplatePlan showPlan)
+      throws QueryProcessException {
+    ListDataSet listDataSet =
+        new ListDataSet(
+            Arrays.asList(
+                new PartialPath(COLUMN_CHILD_NODES, false),
+                new PartialPath(COLUMN_TIMESERIES_DATATYPE, false),
+                new PartialPath(COLUMN_TIMESERIES_ENCODING, false),
+                new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false)),
+            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
+    try {
+      List<Pair<String, IMeasurementSchema>> measurements =
+          IoTDB.metaManager.getSchemasInTemplate(showPlan.getTemplateName(), "");
+      for (Pair<String, IMeasurementSchema> measurement : measurements) {
+        RowRecord rowRecord = new RowRecord(0); // ignore timestamp
+        rowRecord.addField(Binary.valueOf(measurement.left), TSDataType.TEXT);
+
+        IMeasurementSchema measurementSchema = measurement.right;
+        rowRecord.addField(Binary.valueOf(measurementSchema.getType().toString()), TSDataType.TEXT);
+        rowRecord.addField(
+            Binary.valueOf(measurementSchema.getEncodingType().toString()), TSDataType.TEXT);
+        rowRecord.addField(
+            Binary.valueOf(measurementSchema.getCompressor().toString()), TSDataType.TEXT);
+        listDataSet.putRecord(rowRecord);
+      }
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    return listDataSet;
+  }
+
+  private QueryDataSet processShowPathsUsingSchemaTemplate(ShowPathsUsingTemplatePlan showPlan)
+      throws QueryProcessException {
+    ListDataSet listDataSet =
+        new ListDataSet(
+            Collections.singletonList(new PartialPath(COLUMN_CHILD_PATHS, false)),
+            Collections.singletonList(TSDataType.TEXT));
+    try {
+      Set<String> paths = IoTDB.metaManager.getPathsUsingTemplate(showPlan.getTemplateName());
+      for (String path : paths) {
+        RowRecord rowRecord = new RowRecord(0); // ignore timestamp
+        rowRecord.addField(Binary.valueOf(path), TSDataType.TEXT);
+        listDataSet.putRecord(rowRecord);
+      }
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    return listDataSet;
+  }
+
+  private QueryDataSet processShowPathsSetSchemaTemplate(ShowPathsSetTemplatePlan showPlan)
+      throws QueryProcessException {
+    ListDataSet listDataSet =
+        new ListDataSet(
+            Collections.singletonList(new PartialPath(COLUMN_CHILD_PATHS, false)),
+            Collections.singletonList(TSDataType.TEXT));
+    try {
+      Set<String> paths = IoTDB.metaManager.getPathsSetTemplate(showPlan.getTemplateName());
+      for (String path : paths) {
+        RowRecord rowRecord = new RowRecord(0); // ignore timestamp
+        rowRecord.addField(Binary.valueOf(path), TSDataType.TEXT);
+        listDataSet.putRecord(rowRecord);
+      }
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
     return listDataSet;
   }
 
