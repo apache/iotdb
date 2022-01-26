@@ -158,6 +158,11 @@ CREATE TIMESERIES root.a.b."s1.s2".c WITH DATATYPE=INT32, ENCODING=RLE
 // root.a.b."s1.s2".c 将被解析为 Path[root, a, b, "s1.s2", c]
 ```
 
+```sql
+CREATE TIMESERIES root.a.b."s1\".\"s2".c WITH DATATYPE=INT32, ENCODING=RLE
+// 解析失败！与 root.a.b."s1"."s2".c 产生歧义
+```
+
 # 关键字和保留字
 
 关键字是在 SQL 具有特定含义的词，不能直接用于标识符或路径节点名，需要使用反引号进行转义。保留字是关键字的一个子集，保留字不能用于标识符或路径节点名（即使进行了转义）。

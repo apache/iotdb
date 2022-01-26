@@ -158,6 +158,11 @@ CREATE TIMESERIES root.a.b."s1.s2".c WITH DATATYPE=INT32, ENCODING=RLE
 // root.a.b."s1.s2".c will be parsed as Path[root, a, b, "s1.s2", c]
 ```
 
+```sql
+CREATE TIMESERIES root.a.b."s1\".\"s2".c WITH DATATYPE=INT32, ENCODING=RLE
+// invalid! ambiguity with root.a.b."s1"."s2".c
+```
+
 # Keywords and Reserved Words
 
 Keywords are words that have significance in SQL require special treatment for use as identifiers and node names, and need to be escaped with backticks.
