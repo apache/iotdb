@@ -178,6 +178,9 @@ public class RecoverMergeTask extends MergeTask {
           MergeUtils.findTotalAndLargestSeriesChunkNum(seqFile, resource.getFileReader(seqFile));
       long totalChunkNum = chunkNums[0];
       long maxChunkNum = chunkNums[1];
+      if (totalChunkNum == 0) {
+        continue;
+      }
       long fileMetaSize = MergeUtils.getFileMetaSize(seqFile, resource.getFileReader(seqFile));
       long newSingleSeriesSeqReadCost = fileMetaSize * maxChunkNum / totalChunkNum;
       singleSeriesSeqReadCost = Math.max(newSingleSeriesSeqReadCost, singleSeriesSeqReadCost);
