@@ -149,10 +149,10 @@ Shell >./standalone.sh
 Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u {my-access-token} -pw ""
 ```
 
-其中，需要将{my-access-token} （注意，包括{}）替换成你的 token。
+其中，需要将{my-access-token} （注意，包括{}）替换成你的 token即access_token对应的值。
 
 如何获取 token 取决于你的 OIDC 设置。 最简单的一种情况是使用`password-grant`。例如，假设你在用 keycloack 作为你的 OIDC 服务，
-并且你在 keycloack 中有一个被定义成 publich 的`iotdb`客户的 realm，那么你可以使用如下`curl`命令获得 token。
+并且你在 keycloack 中有一个被定义成 public 的`iotdb`客户的 realm，那么你可以使用如下`curl`命令获得 token。
 （注意例子中的{}和里面的内容需要替换成具体的服务器地址和 realm 名字）：
 ```shell
 curl -X POST "http://{your-keycloack-server}/auth/realms/{your-realm}/protocol/openid-connect/token" \ -H "Content-Type: application/x-www-form-urlencoded" \
