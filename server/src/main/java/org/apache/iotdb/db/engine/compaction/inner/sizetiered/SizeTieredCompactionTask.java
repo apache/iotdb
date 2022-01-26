@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionExceptionHandler;
@@ -48,7 +49,8 @@ import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompac
  * SizeTieredCompactionSelector} into one file.
  */
 public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   protected TsFileResourceList tsFileResourceList;
   protected TsFileManager tsFileManager;
   protected boolean[] isHoldingReadLock;

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.writer;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -37,7 +38,8 @@ import java.io.IOException;
 import java.util.List;
 
 public abstract class AbstractCompactionWriter implements AutoCloseable {
-  private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   protected IChunkWriter chunkWriter;
 

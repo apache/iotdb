@@ -44,7 +44,8 @@ import java.util.List;
  * serious circumstances(such as data lost), the system will be set to read-only.
  */
 public class InnerSpaceCompactionExceptionHandler {
-  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   public static void handleException(
       String fullStorageGroupName,

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionExceptionHandler;
@@ -51,7 +52,8 @@ import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.Rewrit
 
 public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactionTask {
 
-  private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   protected List<TsFileResource> selectedSeqTsFileResourceList;
   protected List<TsFileResource> selectedUnSeqTsFileResourceList;
   protected TsFileManager tsFileManager;

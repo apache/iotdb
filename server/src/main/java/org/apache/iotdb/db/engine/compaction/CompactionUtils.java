@@ -70,7 +70,8 @@ import java.util.Set;
  * an inner space compaction.
  */
 public class CompactionUtils {
-  private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   public static void compact(
       List<TsFileResource> seqFileResources,

@@ -42,7 +42,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompactionTask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private File compactionLogFile;
 
   public RewriteCrossCompactionRecoverTask(

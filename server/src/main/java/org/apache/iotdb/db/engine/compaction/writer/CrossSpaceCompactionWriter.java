@@ -24,16 +24,12 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
-  private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
   // target fileIOWriters
   private List<TsFileIOWriter> fileWriterList = new ArrayList<>();
 
