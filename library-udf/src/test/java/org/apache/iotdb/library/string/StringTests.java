@@ -155,9 +155,20 @@ public class StringTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength, 5);
+      String result1 = resultSet.getString(1);
+      resultSet.next();
+      String result2 = resultSet.getString(1);
+      resultSet.next();
+      String result3 = resultSet.getString(1);
+      resultSet.next();
+      String result4 = resultSet.getString(1);
+      resultSet.next();
+      String result5 = resultSet.getString(1);
+      Assert.assertEquals("192.168.0.1", result1);
+      Assert.assertEquals("192.168.0.24", result2);
+      Assert.assertEquals("192.168.0.2", result3);
+      Assert.assertEquals("192.168.0.5", result4);
+      Assert.assertEquals("192.168.0.124", result5);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -166,13 +177,24 @@ public class StringTests {
   @Test
   public void testRegexReplace1() {
     String sqlStr =
-        "select regexreplace(d2.s1,\"regex\"=\"192\\.168\\.0\\.(\\d+)\", \"replace\"=\"cluster-$1\") from root.vehicle";
+        "select regexreplace(d1.s1,\"regex\"=\"192\\.168\\.0\\.(\\d+)\", \"replace\"=\"cluster-$1\") from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength, 5);
+      String result1 = resultSet.getString(1);
+      resultSet.next();
+      String result2 = resultSet.getString(1);
+      resultSet.next();
+      String result3 = resultSet.getString(1);
+      resultSet.next();
+      String result4 = resultSet.getString(1);
+      resultSet.next();
+      String result5 = resultSet.getString(1);
+      Assert.assertEquals("[cluster-1] [SUCCESS]", result1);
+      Assert.assertEquals("[cluster-24] [SUCCESS]", result2);
+      Assert.assertEquals("[cluster-2] [FAIL]", result3);
+      Assert.assertEquals("[cluster-5] [SUCCESS]", result4);
+      Assert.assertEquals("[cluster-124] [SUCCESS]", result5);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -180,13 +202,24 @@ public class StringTests {
 
   @Test
   public void testRegexSplit1() {
-    String sqlStr = "select regexsplit(d2.s1, \"regex\"=\",\") from root.vehicle";
+    String sqlStr = "select regexsplit(d2.s1, \"regex\"=\",\", \"index\"=\"-1\") from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength, 5);
+      int result1 = resultSet.getInt(1);
+      resultSet.next();
+      int result2 = resultSet.getInt(1);
+      resultSet.next();
+      int result3 = resultSet.getInt(1);
+      resultSet.next();
+      int result4 = resultSet.getInt(1);
+      resultSet.next();
+      int result5 = resultSet.getInt(1);
+      Assert.assertEquals(4, result1);
+      Assert.assertEquals(4, result2);
+      Assert.assertEquals(3, result3);
+      Assert.assertEquals(4, result4);
+      Assert.assertEquals(4, result5);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -195,13 +228,24 @@ public class StringTests {
   @Test
   public void testStrReplace1() {
     String sqlStr =
-        "select strreplace(d2.s1,\"target\"=\",\", \"replace\"=\"_\") from root.vehicle";
+        "select strreplace(d2.s1,\"target\"=\",\", \"replace\"=\"/\", \"limit\"=\"2\") from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength, 5);
+      String result1 = resultSet.getString(1);
+      resultSet.next();
+      String result2 = resultSet.getString(1);
+      resultSet.next();
+      String result3 = resultSet.getString(1);
+      resultSet.next();
+      String result4 = resultSet.getString(1);
+      resultSet.next();
+      String result5 = resultSet.getString(1);
+      Assert.assertEquals("A/B/A+,B-", result1);
+      Assert.assertEquals("A/A+/A,B+", result2);
+      Assert.assertEquals("B+/B/B", result3);
+      Assert.assertEquals("A+/A/A+,A", result4);
+      Assert.assertEquals("A/B-/B,B", result5);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
