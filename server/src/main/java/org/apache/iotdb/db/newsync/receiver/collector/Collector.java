@@ -22,13 +22,14 @@ package org.apache.iotdb.db.newsync.receiver.collector;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipeData;
+import org.apache.iotdb.db.newsync.utils.SyncPathUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -39,10 +40,32 @@ public class Collector {
     private static final Logger logger = LoggerFactory.getLogger(Collector.class);
     // TODO: multi thread for multi pipe
     private ExecutorService executorService;
+    private ScanTask task;
 
     public Collector(){
         this.executorService =
                 IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.SYNC_RECEIVER_COLLECTOR.getName());
+        this.task = new ScanTask();
+    }
+
+    public void startCollect(){
+        task.start();
+        executorService =
+                IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.SYNC_RECEIVER_COLLECTOR.getName());
+        executorService.submit(task);
+    }
+
+    public void stopCollect(){
+        task.stop();
+        executorService.shutdown();
+    }
+
+    public void startPipe(String pipeName, String remoteIp, long createTime){
+        task.addScanDir(SyncPathUtil.getReceiverPipeLogDir(pipeName,remoteIp,createTime));
+    }
+
+    public void stopPipe(String pipeName, String remoteIp,long createTime){
+        task.removeScanDir(SyncPathUtil.getReceiverPipeLogDir(pipeName,remoteIp,createTime));
     }
 
     public static void main(String[] args) throws IOException, IllegalPathException {
@@ -59,5 +82,42 @@ public class Collector {
         outputStream.flush();
         System.out.println(TsFilePipeData.deserialize(inputStream).toString());
         Files.deleteIfExists(f1.toPath());
+        inputStream.close();
+    }
+
+    private class ScanTask implements Runnable{
+        private Set<String> scanPathSet;
+        private volatile boolean stopped;
+
+        private ScanTask(){
+            scanPathSet = new HashSet<>();
+            stopped = false;
+        }
+
+        private void addScanDir(String dirPath){
+            scanPathSet.add(dirPath);
+        }
+
+        private void removeScanDir(String dirPath){
+            scanPathSet.remove(dirPath);
+        }
+
+        private void start(){
+            this.stopped = false;
+        }
+
+        private void stop(){
+            this.stopped = true;
+        }
+
+        @Override
+        public void run() {
+            try {
+                while (!stopped) {
+
+                }
+            } catch (Exception e) {
+            }
+        }
     }
 }

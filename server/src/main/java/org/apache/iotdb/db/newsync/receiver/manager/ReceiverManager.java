@@ -65,16 +65,16 @@ public class ReceiverManager {
     pipeServerEnable = false;
   }
 
-  public void createPipe(String pipeName, String remoteIp, long startTime) throws IOException {
+  public void createPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     if (log != null) {
-      log.createPipe(pipeName, remoteIp, startTime);
+      log.createPipe(pipeName, remoteIp, createTime);
     }
     if (!pipeInfoMap.containsKey(pipeName)) {
       pipeInfoMap.put(pipeName, new HashMap<>());
     }
     pipeInfoMap
         .get(pipeName)
-        .put(remoteIp, new PipeInfo(pipeName, remoteIp, PipeStatus.RUNNING, startTime));
+        .put(remoteIp, new PipeInfo(pipeName, remoteIp, PipeStatus.RUNNING, createTime));
   }
 
   public void startPipe(String pipeName, String remoteIp) throws IOException {

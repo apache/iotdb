@@ -16,14 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.newsync.conf;
+package org.apache.iotdb.db.newsync.utils;
 
+import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 
 import java.io.File;
 
-public class SyncConstant {
-  public static final String RECEIVER_LOG_NAME = "receiverService.log";
-  public static final String RECEIVER_DIR = SenderConf.syncDir+ File.separator + "receiver";
-  public static final String PIPELOG_DIR_NAME = "pipe-log";
+/**
+ * Util for path generation in sync module
+ */
+public class SyncPathUtil {
+    public static String getReceiverPipeLogDir(String pipeName,String remoteIp,long createTime){
+        return SyncConstant.RECEIVER_DIR + File.separator + String.format("%s-%d-%s",pipeName,createTime,remoteIp)+ File.separator + SyncConstant.PIPELOG_DIR_NAME;
+    }
 }

@@ -53,6 +53,7 @@ public class ReceiverService implements IService {
   public boolean startPipeServer() {
     try {
       receiverManager.startServer();
+      collector.startCollect();
       // TODO: start socket and collector
     } catch (IOException e) {
       logger.error(e.getMessage());
@@ -65,6 +66,7 @@ public class ReceiverService implements IService {
   public boolean stopPipeServer() {
     try {
       receiverManager.stopServer();
+      collector.stopCollect();
       // TODO: stop socket and collector
     } catch (IOException e) {
       logger.error(e.getMessage());
@@ -74,23 +76,27 @@ public class ReceiverService implements IService {
   }
 
   /** create and start a new pipe named pipeName */
-  public void createPipe(String pipeName, String remoteIp, long startTime) throws IOException {
-    receiverManager.createPipe(pipeName, remoteIp, startTime);
+  public void createPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+    receiverManager.createPipe(pipeName, remoteIp, createTime);
+    collector.startPipe(pipeName,remoteIp,createTime);
   }
 
   /** start an existed pipe named pipeName */
-  public void startPipe(String pipeName, String remoteIp) throws IOException {
+  public void startPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverManager.startPipe(pipeName, remoteIp);
+    collector.startPipe(pipeName,remoteIp,createTime);
   }
 
   /** stop an existed pipe named pipeName */
-  public void stopPipe(String pipeName, String remoteIp) throws IOException {
+  public void stopPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverManager.stopPipe(pipeName, remoteIp);
+    collector.stopPipe(pipeName,remoteIp,createTime);
   }
 
   /** drop an existed pipe named pipeName */
-  public void dropPipe(String pipeName, String remoteIp) throws IOException {
+  public void dropPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverManager.dropPipe(pipeName, remoteIp);
+    collector.stopPipe(pipeName,remoteIp,createTime);
   }
 
   /**
