@@ -68,11 +68,11 @@ public class ErrorHandlingUtils {
     return onNPEOrUnexpectedException(e, operation.getName(), statusCode);
   }
 
-  public static String getRootCause(Throwable e) {
+  public static Throwable getRootCause(Throwable e) {
     while (e.getCause() != null) {
       e = e.getCause();
     }
-    return e.getMessage();
+    return e;
   }
 
   public static TSStatus onQueryException(Exception e, String operation) {
@@ -90,29 +90,35 @@ public class ErrorHandlingUtils {
     Throwable t = e instanceof ExecutionException ? e.getCause() : e;
     if (t instanceof QueryTimeoutRuntimeException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(t.getMessage(), t);
-      return RpcUtils.getStatus(TSStatusCode.TIME_OUT, getRootCause(t));
+      return RpcUtils.getStatus(TSStatusCode.TIME_OUT, getRootCause(t).getMessage());
     } else if (t instanceof ParseCancellationException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_PARSING_SQL_ERROR, t);
       return RpcUtils.getStatus(
-          TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + getRootCause(t));
+          TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + getRootCause(t).getMessage());
     } else if (t instanceof SQLParserException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_CHECK_METADATA_ERROR, t);
       return RpcUtils.getStatus(
-          TSStatusCode.METADATA_ERROR, INFO_CHECK_METADATA_ERROR + getRootCause(t));
+          TSStatusCode.METADATA_ERROR, INFO_CHECK_METADATA_ERROR + getRootCause(t).getMessage());
     } else if (t instanceof QueryProcessException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, t);
       return RpcUtils.getStatus(
-          TSStatusCode.QUERY_PROCESS_ERROR, INFO_QUERY_PROCESS_ERROR + getRootCause(t));
+          TSStatusCode.QUERY_PROCESS_ERROR,
+          INFO_QUERY_PROCESS_ERROR + getRootCause(t).getMessage());
     } else if (t instanceof QueryInBatchStatementException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_NOT_ALLOWED_IN_BATCH_ERROR, t);
       return RpcUtils.getStatus(
-          TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + getRootCause(t));
-    } else if (t instanceof IoTDBException && !(t instanceof StorageGroupNotReadyException)) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, t);
-      return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), getRootCause(t));
+          TSStatusCode.QUERY_NOT_ALLOWED,
+          INFO_NOT_ALLOWED_IN_BATCH_ERROR + getRootCause(t).getMessage());
+    } else if (t instanceof IoTDBException) {
+      Throwable rootCause = getRootCause(t);
+      // ignore logging sg not ready exception
+      if (!(rootCause instanceof StorageGroupNotReadyException)) {
+        DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, t);
+      }
+      return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), rootCause.getMessage());
     } else if (t instanceof TsFileRuntimeException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, t);
-      return RpcUtils.getStatus(TSStatusCode.TSFILE_PROCESSOR_ERROR, getRootCause(t));
+      return RpcUtils.getStatus(TSStatusCode.TSFILE_PROCESSOR_ERROR, getRootCause(t).getMessage());
     }
     return null;
   }
@@ -133,13 +139,17 @@ public class ErrorHandlingUtils {
     if (e instanceof BatchProcessException) {
       LOGGER.warn(message, e);
       return RpcUtils.getStatus(Arrays.asList(((BatchProcessException) e).getFailingStatus()));
-    } else if (e instanceof IoTDBException && !(e instanceof StorageGroupNotReadyException)) {
-      if (((IoTDBException) e).isUserException()) {
-        LOGGER.warn(message + e.getMessage());
-      } else {
-        LOGGER.warn(message, e);
+    } else if (e instanceof IoTDBException) {
+      Throwable rootCause = getRootCause(e);
+      // ignore logging sg not ready exception
+      if (!(rootCause instanceof StorageGroupNotReadyException)) {
+        if (((IoTDBException) e).isUserException()) {
+          LOGGER.warn(message + e.getMessage());
+        } else {
+          LOGGER.warn(message, e);
+        }
       }
-      return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), getRootCause(e));
+      return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), rootCause.getMessage());
     }
     return null;
   }

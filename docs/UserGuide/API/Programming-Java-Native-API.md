@@ -172,7 +172,7 @@ boolean checkTimeseriesExists(String path)
 #### Schema Template
 
 
-Create a schema template for massive identical subtree will help to improve memory performance. You can use the API above to create a template at server side, and use Template, InternalNode and MeasurementNode to depict the structure of the template, and use belowed interface to create it inside session.
+Create a schema template for massive identical devices will help to improve memory performance. You can use Template, InternalNode and MeasurementNode to depict the structure of the template, and use belowed interface to create it inside session.
 
 ```java
 public void createSchemaTemplate(Template template);
@@ -194,13 +194,6 @@ Abstract Class Node {
     public void deleteChild(Node node);
 }
 
-Class InternalNode extends Node {
-    boolean shareTime;
-    Map<String, Node> children;
-    public void setShareTime(boolean shareTime);
-    public InternalNode(String name, boolean isShareTime);
-}
-
 Class MeasurementNode extends Node {
     TSDataType dataType;
     TSEncoding encoding;
@@ -212,6 +205,8 @@ Class MeasurementNode extends Node {
 }
 ```
 
+We strongly suggest you implement templates only with flat-measurement (like object 'flatTemplate' in belowed snippet), since tree-structured template may not be a long-term supported feature in further version of IoTDB.
+
 A snippet of using above Method and Class：
 
 ```java
@@ -219,20 +214,13 @@ MeasurementNode nodeX = new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RL
 MeasurementNode nodeY = new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 MeasurementNode nodeSpeed = new MeasurementNode("speed", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
 
-InternalNode internalGPS = new InternalNode("GPS", true);
-InternalNode internalVehicle = new InternalNode("vehicle", false);
-
-internalGPS.addChild(nodeX);
-internalGPS.addChild(nodeY);
-internalVehicle.addChild(GPS);
-internalVehicle.addChild(nodeSpeed);
-
-Template template = new Template("treeTemplateExample");
-template.addToTemplate(internalGPS);
-template.addToTemplate(internalVehicle);
+// This is the template we suggest to implement
+Template flatTemplate = new Template("flatTemplate");
+template.addToTemplate(nodeX);
+template.addToTemplate(nodeY);
 template.addToTemplate(nodeSpeed);
 
-createSchemaTemplate(template);
+createSchemaTemplate(flatTemplate);
 ```
 
 After measurement template created, you can edit the template with belowed APIs.
@@ -275,7 +263,7 @@ public void addUnalignedMeasurementsIntemplate(String templateName,
                                 TSEncoding[] encodings,
                                 CompressionType[] compressors);
 
-// Delete a node in template and its children
+// Delete a node in template
 public void deleteNodeInTemplate(String templateName, String path);
 ```
 
