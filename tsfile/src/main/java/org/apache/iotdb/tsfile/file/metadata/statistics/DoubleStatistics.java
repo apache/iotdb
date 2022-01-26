@@ -37,7 +37,7 @@ public class DoubleStatistics extends Statistics<Double> {
   private double sumValue;
 
   static final int DOUBLE_STATISTICS_FIXED_RAM_SIZE = 80;
-  private final String DOUBLE = "Double";
+  private static final String DOUBLE = "Double";
 
   @Override
   public TSDataType getType() {

@@ -38,7 +38,7 @@ public class FloatStatistics extends Statistics<Float> {
   private double sumValue;
 
   static final int FLOAT_STATISTICS_FIXED_RAM_SIZE = 64;
-  private final String FLOAT = "Float";
+  private static final String FLOAT = "Float";
 
   @Override
   public TSDataType getType() {
