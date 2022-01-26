@@ -39,12 +39,16 @@ public class IntegerStatistics extends Statistics<Integer> {
   private long sumValue;
 
   static final int INTEGER_STATISTICS_FIXED_RAM_SIZE = 64;
+  private static final String INTEGER = "Integer";
 
   @Override
   public TSDataType getType() {
     return TSDataType.INT32;
   }
 
+  /**
+   * The output of this method should be identical to the method "serializeStats(OutputStream outputStream)"
+   */
   @Override
   public int getStatsSize() {
     return 24;
@@ -96,12 +100,6 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
-  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    minValue = BytesUtils.bytesToInt(minBytes);
-    maxValue = BytesUtils.bytesToInt(maxBytes);
-  }
-
-  @Override
   void updateStats(int value) {
     if (isEmpty) {
       initializeStats(value, value, value, value, value);
@@ -145,7 +143,7 @@ public class IntegerStatistics extends Statistics<Integer> {
 
   @Override
   public double getSumDoubleValue() {
-    throw new StatisticsClassException("Integer statistics does not support: double sum");
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, INTEGER, "double sum"));
   }
 
   @Override
@@ -174,56 +172,6 @@ public class IntegerStatistics extends Statistics<Integer> {
           stats.getStartTime(),
           stats.getEndTime());
     }
-  }
-
-  @Override
-  public ByteBuffer getMinValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(minValue);
-  }
-
-  @Override
-  public ByteBuffer getMaxValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(maxValue);
-  }
-
-  @Override
-  public ByteBuffer getFirstValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(firstValue);
-  }
-
-  @Override
-  public ByteBuffer getLastValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(lastValue);
-  }
-
-  @Override
-  public ByteBuffer getSumValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(sumValue);
-  }
-
-  @Override
-  public byte[] getMinValueBytes() {
-    return BytesUtils.intToBytes(minValue);
-  }
-
-  @Override
-  public byte[] getMaxValueBytes() {
-    return BytesUtils.intToBytes(maxValue);
-  }
-
-  @Override
-  public byte[] getFirstValueBytes() {
-    return BytesUtils.intToBytes(firstValue);
-  }
-
-  @Override
-  public byte[] getLastValueBytes() {
-    return BytesUtils.intToBytes(lastValue);
-  }
-
-  @Override
-  public byte[] getSumValueBytes() {
-    return BytesUtils.longToBytes(sumValue);
   }
 
   @Override

@@ -38,12 +38,16 @@ public class LongStatistics extends Statistics<Long> {
   private double sumValue;
 
   static final int LONG_STATISTICS_FIXED_RAM_SIZE = 80;
+  private static final String LONG = "Long";
 
   @Override
   public TSDataType getType() {
     return TSDataType.INT64;
   }
 
+  /**
+   * The output of this method should be identical to the method "serializeStats(OutputStream outputStream)"
+   */
   @Override
   public int getStatsSize() {
     return 40;
@@ -95,12 +99,6 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    minValue = BytesUtils.bytesToLong(minBytes);
-    maxValue = BytesUtils.bytesToLong(maxBytes);
-  }
-
-  @Override
   public Long getMinValue() {
     return minValue;
   }
@@ -127,7 +125,7 @@ public class LongStatistics extends Statistics<Long> {
 
   @Override
   public long getSumLongValue() {
-    throw new StatisticsClassException("Long statistics does not support: long sum");
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, LONG, "long sum"));
   }
 
   @Override
@@ -183,56 +181,6 @@ public class LongStatistics extends Statistics<Long> {
           stats.getStartTime(),
           stats.getEndTime());
     }
-  }
-
-  @Override
-  public byte[] getMinValueBytes() {
-    return BytesUtils.longToBytes(minValue);
-  }
-
-  @Override
-  public byte[] getMaxValueBytes() {
-    return BytesUtils.longToBytes(maxValue);
-  }
-
-  @Override
-  public byte[] getFirstValueBytes() {
-    return BytesUtils.longToBytes(firstValue);
-  }
-
-  @Override
-  public byte[] getLastValueBytes() {
-    return BytesUtils.longToBytes(lastValue);
-  }
-
-  @Override
-  public byte[] getSumValueBytes() {
-    return BytesUtils.doubleToBytes(sumValue);
-  }
-
-  @Override
-  public ByteBuffer getMinValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(minValue);
-  }
-
-  @Override
-  public ByteBuffer getMaxValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(maxValue);
-  }
-
-  @Override
-  public ByteBuffer getFirstValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(firstValue);
-  }
-
-  @Override
-  public ByteBuffer getLastValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(lastValue);
-  }
-
-  @Override
-  public ByteBuffer getSumValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(sumValue);
   }
 
   @Override
