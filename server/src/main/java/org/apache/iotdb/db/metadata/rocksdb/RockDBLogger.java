@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.metadata.rocksdb;
 
+import org.rocksdb.DBOptions;
 import org.rocksdb.InfoLogLevel;
 import org.rocksdb.Logger;
 import org.rocksdb.Options;
@@ -8,6 +9,11 @@ public class RockDBLogger extends Logger {
   private final org.slf4j.Logger logger;
 
   public RockDBLogger(Options options, org.slf4j.Logger logger) {
+    super(options);
+    this.logger = logger;
+  }
+
+  public RockDBLogger(DBOptions options, org.slf4j.Logger logger) {
     super(options);
     this.logger = logger;
   }
