@@ -140,6 +140,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
       if (seqFileIndex != seqTsFileResources.size() - 1) {
         writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
         chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex));
+        seqFileIndex++;
       } else {
         // If the seq file is deleted for various reasons, the following two situations may occur
         // when selecting the source files: (1) unseq files may have some devices or measurements
@@ -151,7 +152,6 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
         }
         return;
       }
-      seqFileIndex++;
     }
   }
 

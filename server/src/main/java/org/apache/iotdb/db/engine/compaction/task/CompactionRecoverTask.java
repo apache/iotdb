@@ -86,10 +86,7 @@ public class CompactionRecoverTask {
               .getCompactionRecoverTask(
                   logicalStorageGroupName,
                   virtualStorageGroupId,
-                  Long.parseLong(
-                      timePartitionDir
-                          .getPath()
-                          .substring(timePartitionDir.getPath().lastIndexOf(File.separator) + 1)),
+                  Long.parseLong(timePartitionDir.getName()),
                   compactionLog,
                   tsFileManager)
               .call();

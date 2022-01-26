@@ -100,6 +100,7 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
       List[] mergeFiles = fileSelector.select();
       if (mergeFiles.length == 0) {
         if (mergeResource.getUnseqFiles().size() > 0) {
+          // still have unseq files but cannot be selected
           LOGGER.warn(
               "{} cannot select merge candidates under the budget {}",
               logicalStorageGroupName,

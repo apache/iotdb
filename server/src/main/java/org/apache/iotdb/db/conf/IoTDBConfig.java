@@ -357,7 +357,7 @@ public class IoTDBConfig {
   private boolean enableSeqSpaceCompaction = true;
 
   /** Only compact the unsequence files */
-  private boolean enableUnseqSpaceCompaction = true;
+  private boolean enableUnseqSpaceCompaction = false;
 
   /** Compact the unsequence files into the overlapped sequence files */
   private boolean enableCrossSpaceCompaction = true;
