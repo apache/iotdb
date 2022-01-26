@@ -127,7 +127,7 @@ public class MinValueAggrResult extends AggregateResult {
     if (minInfo == null || minInfo.val == null) {
       return;
     }
-    if (!hasCandidateResult() || minInfo.compareTo(getValue()) <= 0) {
+    if (!hasCandidateResult() || minInfo.compareTo(getValue()) < 0) {
       setValue(minInfo);
     }
   }

@@ -123,7 +123,7 @@ public class MaxValueAggrResult extends AggregateResult {
     if (maxInfo == null || maxInfo.val == null) {
       return;
     }
-    if (!hasCandidateResult() || maxInfo.compareTo(getValue()) >= 0) {
+    if (!hasCandidateResult() || maxInfo.compareTo(getValue()) > 0) {
       setValue(maxInfo);
     }
   }
