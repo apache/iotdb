@@ -58,6 +58,11 @@ public class CrossSpaceCompactionExceptionHandler {
         // we don't need to handle it
         return;
       }
+      LOGGER.info(
+          "[Compaction][ExceptionHandler] Cross space compaction start handling exception, source seqFiles is "
+              + seqResourceList
+              + ", source unseqFiles is "
+              + unseqResourceList);
 
       boolean handleSuccess = true;
 

@@ -30,10 +30,14 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.List;
 
 public abstract class AbstractCompactionWriter implements AutoCloseable {
+  private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
 
   protected IChunkWriter chunkWriter;
 
@@ -132,6 +136,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter) throws IOException {
     if (measurementPointCount % 10 == 0 && checkChunkSize()) {
+      logger.info(
+          "[Compaction] AbstractCompactionWriter check chunk size and flush chunk before opening a new chunk.");
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriter);
     }

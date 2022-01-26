@@ -86,6 +86,8 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       executeCompaction();
     } catch (Throwable throwable) {
       // catch throwable instead of exception to handle OOM errors
+      throwable.printStackTrace();
+      logger.error("Meet errors in cross space compaction");
       CrossSpaceCompactionExceptionHandler.handleException(
           fullStorageGroupName,
           logFile,
@@ -102,6 +104,9 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   private void executeCompaction()
       throws IOException, StorageEngineException, MetadataException, InterruptedException,
           WriteProcessException {
+    if (!tsFileManager.isAllowCompaction()) {
+      return;
+    }
     long startTime = System.currentTimeMillis();
     targetTsfileResourceList =
         TsFileNameGenerator.getCrossCompactionTargetFileResources(selectedSeqTsFileResourceList);

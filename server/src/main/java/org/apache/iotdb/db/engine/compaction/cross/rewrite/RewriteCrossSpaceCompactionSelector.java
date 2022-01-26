@@ -105,6 +105,9 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
             budget);
         return;
       }
+      if (!checkIsSourceFilesValid(mergeFiles)) {
+        return;
+      }
       LOGGER.info(
           "select files for cross compaction, sequence files: {}, unsequence files {}",
           mergeFiles[0],
@@ -137,5 +140,19 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
     } catch (MergeException | IOException | InterruptedException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }
+  }
+
+  private boolean checkIsSourceFilesValid(List<TsFileResource>[] mergeFiles) {
+    for (TsFileResource resource : mergeFiles[0]) {
+      if (resource.isCompacting()) {
+        return false;
+      }
+    }
+    for (TsFileResource resource : mergeFiles[1]) {
+      if (resource.isCompacting()) {
+        return false;
+      }
+    }
+    return true;
   }
 }

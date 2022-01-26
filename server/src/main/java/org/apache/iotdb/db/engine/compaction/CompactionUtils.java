@@ -70,7 +70,7 @@ import java.util.Set;
  * an inner space compaction.
  */
 public class CompactionUtils {
-  private static final Logger logger = LoggerFactory.getLogger("CompactionUtils");
+  private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
 
   public static void compact(
       List<TsFileResource> seqFileResources,
