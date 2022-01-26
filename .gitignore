@@ -113,3 +113,7 @@ node3/
 antlr/gen/
 antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/gen/
 antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.tokens
+
+# Kubernetes
+kubernetes/helm/standalone/conf/
+kubernetes/helm/cluster/conf/
