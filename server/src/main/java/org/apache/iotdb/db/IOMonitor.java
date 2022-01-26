@@ -25,35 +25,55 @@ import java.util.List;
 public class IOMonitor {
 
   public static long metaIOTime;
+  public static int metaIONum;
   public static long dataIOTime;
+  public static int dataIONum;
   public static long totalTime;
   public static String sql;
 
   public static List<Long> metaIOTimes = new ArrayList<>();
   public static List<Long> dataIOTimes = new ArrayList<>();
+  public static List<Integer> metaIONums = new ArrayList<>();
+  public static List<Integer> dataIONums = new ArrayList<>();
+
   public static List<String> sqls = new ArrayList<>();
   public static List<Long> totalTimes = new ArrayList<>();
 
+  public static boolean isSet = false;
+
   public static void incMeta(long v) {
     metaIOTime += v;
+    metaIONum++;
   }
 
   private static void resetMeta() {
     metaIOTimes.add(metaIOTime);
+    metaIONums.add(metaIONum);
     metaIOTime = 0;
+    metaIONum = 0;
   }
 
   public static void incDataIOTime(long v) {
     dataIOTime += v;
+    dataIONum++;
   }
 
   private static void resetDataIOTime() {
     dataIOTimes.add(dataIOTime);
+    dataIONums.add(dataIONum);
     dataIOTime = 0;
+    dataIONum = 0;
   }
 
   public static void setSQL(String v) {
-    sql = v;
+    if (!isSet) {
+      clear();
+      isSet = true;
+      sql = v;
+    } else {
+      reset();
+      sql = v;
+    }
   }
 
   public static void reset() {
@@ -72,24 +92,54 @@ public class IOMonitor {
   }
 
   public static void clear() {
+    isSet = false;
     metaIOTime = 0L;
     dataIOTime = 0L;
     totalTime = 0L;
+    dataIONum = 0;
+    metaIONum = 0;
     sql = null;
 
     metaIOTimes.clear();
+    metaIONums.clear();
+    dataIONums.clear();
     dataIOTimes.clear();
     sqls.clear();
     totalTimes.clear();
   }
 
-  @Override
-  public String toString() {
-    return "meta IO: "
-        + getAvg(metaIOTimes)
-        + ", data IO: "
-        + getAvg(dataIOTimes)
-        + ", total time: "
-        + getAvg(totalTimes);
+  public static void finish() {
+    clear();
+    isSet = false;
+  }
+
+  public static String print() {
+    reset();
+    String ret = "";
+    for (int i = 0; i < sqls.size(); i++) {
+      ret +=
+          sqls.get(i)
+              + "\t meta IO: "
+              + metaIOTimes.get(i)
+              + "\t meta num: "
+              + metaIONums.get(i)
+              + "\t data IO: "
+              + dataIOTimes.get(i)
+              + "\t data num: "
+              + dataIONums.get(i)
+              + "\t total: "
+              + totalTimes.get(i)
+              + "\n";
+    }
+    ret +=
+        "avg meta IO: "
+            + getAvg(metaIOTimes)
+            + ", avg data IO: "
+            + getAvg(dataIOTimes)
+            + ", avg total time: "
+            + getAvg(totalTimes)
+            + ", isSet: "
+            + isSet;
+    return ret;
   }
 }

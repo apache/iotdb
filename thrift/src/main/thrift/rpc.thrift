@@ -63,6 +63,12 @@ struct TSExecuteStatementResp {
   9: optional map<string, i32> columnNameIndexMap
 }
 
+struct TSExecuteFinishResp{
+  1: required TSStatus status
+  2: optional i64 queryId
+  3: required string executionInfo
+}
+
 enum TSProtocolVersion {
   IOTDB_SERVICE_PROTOCOL_V1,
   IOTDB_SERVICE_PROTOCOL_V2,//V2 is the first version that we can check version compatibility
@@ -325,6 +331,8 @@ service TSIService {
   TSStatus executeBatchStatement(1:TSExecuteBatchStatementReq req);
 
   TSExecuteStatementResp executeQueryStatement(1:TSExecuteStatementReq req);
+
+  TSExecuteFinishResp executeFinish();
 
   TSExecuteStatementResp executeUpdateStatement(1:TSExecuteStatementReq req);
 

@@ -31,6 +31,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteFinishResp;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
@@ -338,6 +339,12 @@ public class SessionConnection {
         dataSet.closeOperationHandle();
       }
     }
+  }
+
+  protected SessionDataSet executeFinish() throws TException, StatementExecutionException {
+    TSExecuteFinishResp ret = client.executeFinish();
+    RpcUtils.verifySuccess(ret.getStatus());
+    return new SessionDataSet(ret.executionInfo);
   }
 
   protected SessionDataSet executeQueryStatement(String sql, long timeout)

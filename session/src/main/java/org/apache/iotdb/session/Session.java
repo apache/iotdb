@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -629,6 +630,10 @@ public class Session {
       throw new StatementExecutionException("Timeout must be >= 0, please check and try again.");
     }
     return executeStatementMayRedirect(sql, timeoutInMs);
+  }
+
+  public SessionDataSet executeFinish() throws TException, StatementExecutionException {
+    return defaultSessionConnection.executeFinish();
   }
 
   /**

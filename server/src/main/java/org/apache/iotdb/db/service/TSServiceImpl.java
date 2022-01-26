@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.db.IOMonitor;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
@@ -93,6 +94,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteFinishResp;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
@@ -655,6 +657,15 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   @Override
+  public TSExecuteFinishResp executeFinish() throws TException {
+    TSExecuteFinishResp ret = new TSExecuteFinishResp();
+    ret.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    ret.setExecutionInfo(IOMonitor.print());
+    IOMonitor.finish();
+    return ret;
+  }
+
+  @Override
   public TSExecuteStatementResp executeRawDataQuery(TSRawDataQueryReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
@@ -701,6 +712,10 @@ public class TSServiceImpl implements TSIService.Iface {
       throws QueryProcessException, SQLException, StorageEngineException,
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           TException, AuthException {
+
+    // start record execution time
+    IOMonitor.setSQL(statement);
+    long start = System.nanoTime();
     queryCount.incrementAndGet();
     AUDIT_LOGGER.debug(
         "Session {} execute Query: {}", sessionManager.getCurrSessionId(), statement);
@@ -810,6 +825,10 @@ public class TSServiceImpl implements TSIService.Iface {
       if (!(plan instanceof ShowQueryProcesslistPlan)) {
         queryTimeManager.unRegisterQuery(queryId);
       }
+
+      // finish recording execution time
+      long duration = System.nanoTime() - start;
+      IOMonitor.totalTimes.add(duration);
       return resp;
     } catch (Exception e) {
       releaseQueryResourceNoExceptions(queryId);

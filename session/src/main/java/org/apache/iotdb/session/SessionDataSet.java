@@ -42,6 +42,7 @@ import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
 public class SessionDataSet {
 
   private final IoTDBRpcDataSet ioTDBRpcDataSet;
+  private String finishResult;
 
   public SessionDataSet(
       String sql,
@@ -66,6 +67,24 @@ public class SessionDataSet {
             client,
             sessionId,
             queryDataSet,
+            Config.DEFAULT_FETCH_SIZE,
+            0);
+  }
+
+  public SessionDataSet(String finishResult) {
+    this.finishResult = finishResult;
+    this.ioTDBRpcDataSet =
+        new IoTDBRpcDataSet(
+            null,
+            new ArrayList<>(),
+            new ArrayList<>(),
+            null,
+            true,
+            -1,
+            -1,
+            null,
+            -1,
+            null,
             Config.DEFAULT_FETCH_SIZE,
             0);
   }
@@ -116,6 +135,10 @@ public class SessionDataSet {
 
   public boolean hasNext() throws StatementExecutionException, IoTDBConnectionException {
     return ioTDBRpcDataSet.next();
+  }
+
+  public String getFinishResult() {
+    return finishResult;
   }
 
   /** @author Yuyuan Kang */
