@@ -2802,18 +2802,39 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private String parseStringWithQuotesInNodeName(String src) {
     if (2 <= src.length()) {
-      if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
-        String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-        return unescapeString.length() == 0
-            ? "\"\""
-            : "\"" + unescapeString.replace("\"\"", "\"") + "\"";
+      if (src.charAt(0) == '"' && src.charAt(src.length() - 1) == '"') {
+        return parseStringWithQuotesInNodeName(src, '"');
       }
       if (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'') {
-        String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-        return unescapeString.length() == 0 ? "''" : "'" + unescapeString.replace("''", "'") + "'";
+        return parseStringWithQuotesInNodeName(src, '\'');
       }
     }
     return src;
+  }
+
+  private String parseStringWithQuotesInNodeName(String src, char quote) {
+    StringBuilder res = new StringBuilder();
+    res.append(quote);
+    String unescapeSrc = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+    if (unescapeSrc.length() != 0) {
+      res.append(unescapeSrc.replace(String.valueOf(quote) + quote, String.valueOf(quote)));
+    }
+    res.append(quote);
+    if (!checkNodeName(res.toString(), quote)) {
+      throw new SQLParserException(String.format("%s is not a legal node name", res));
+    }
+    return res.toString();
+  }
+
+  boolean checkNodeName(String src, char quote) {
+    int dotIndex = src.indexOf('.');
+    while (dotIndex != -1) {
+      if (src.charAt(dotIndex - 1) == quote || src.charAt(dotIndex + 1) == quote) {
+        return false;
+      }
+      dotIndex = src.indexOf('.', dotIndex + 1);
+    }
+    return true;
   }
 
   private String parseStringLiteralInInsertValue(String src) {

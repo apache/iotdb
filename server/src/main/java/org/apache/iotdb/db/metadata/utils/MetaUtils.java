@@ -62,7 +62,8 @@ public class MetaUtils {
       } else if (path.charAt(i) == '"') {
         int endIndex = path.indexOf('"', i + 1);
         // if a double quotes with escape character
-        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
+        while (endIndex != -1
+            && !(endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
           endIndex = path.indexOf('"', endIndex + 1);
         }
         if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
@@ -79,7 +80,8 @@ public class MetaUtils {
       } else if (path.charAt(i) == '\'') {
         int endIndex = path.indexOf('\'', i + 1);
         // if a double quotes with escape character
-        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
+        while (endIndex != -1
+            && !(endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
           endIndex = path.indexOf('\'', endIndex + 1);
         }
         if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {

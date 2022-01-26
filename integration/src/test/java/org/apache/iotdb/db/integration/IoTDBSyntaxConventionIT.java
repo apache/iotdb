@@ -314,4 +314,26 @@ public class IoTDBSyntaxConventionIT {
     } catch (SQLException ignored) {
     }
   }
+
+  @Test
+  public void testIllegalNodeName2() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg1.d1.\"a\"\".\"\"b\" TEXT");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertTrue(e.getMessage().contains("\"a\".\"b\" is not a legal node name"));
+    }
+  }
+
+  @Test
+  public void testIllegalNodeName3() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg1.d1.'a\\'.\\'b' TEXT");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertTrue(e.getMessage().contains("'a'.'b' is not a legal node name"));
+    }
+  }
 }
