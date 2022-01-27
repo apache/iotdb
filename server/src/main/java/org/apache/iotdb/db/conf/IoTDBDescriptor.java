@@ -672,6 +672,12 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "virtual_storage_group_num", String.valueOf(conf.getVirtualStorageGroupNum()))));
 
+      conf.setRecoveryLogIntervalInMs(
+          Long.parseLong(
+              properties.getProperty(
+                  "recovery_log_interval_in_ms",
+                  String.valueOf(conf.getRecoveryLogIntervalInMs()))));
+
       conf.setConcurrentWindowEvaluationThread(
           Integer.parseInt(
               properties.getProperty(
