@@ -159,6 +159,8 @@ So as username you use the token and the password has to be empty, e.g.
 Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u {my-access-token} -pw ""
 ```
 
+Among them, you need to replace {my access token} (note, including {}) with your token, that is, the value corresponding to access_token.
+
 How to get the token is dependent on your OpenID Connect setup and not covered here.
 In the simplest case you can get this via the command line with the `passwort-grant`.
 For example, if you use keycloack as OIDC and you have a realm with a client `iotdb` defined as public you could use
