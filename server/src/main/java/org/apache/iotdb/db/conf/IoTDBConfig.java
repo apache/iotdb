@@ -354,7 +354,7 @@ public class IoTDBConfig {
   private int avgSeriesPointNumberThreshold = 10000;
 
   /** Only compact the sequence files */
-  private boolean enableSeqSpaceCompaction = true;
+  private boolean enableSeqSpaceCompaction = false;
 
   /** Only compact the unsequence files */
   private boolean enableUnseqSpaceCompaction = false;

@@ -198,7 +198,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     long ttlLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
     CrossSpaceMergeResource mergeResource =
         new CrossSpaceMergeResource(seqResources, newUnseqResources, ttlLowerBound);
-    assertEquals(5, mergeResource.getSeqFiles().size());
+    assertEquals(4, mergeResource.getSeqFiles().size());
     assertEquals(1, mergeResource.getUnseqFiles().size());
     mergeResource.clear();
   }
