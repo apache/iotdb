@@ -311,6 +311,11 @@ public class MRocksDBWriter {
       byte[] value;
       if (start == nodes.length) {
         WriteBatch batch = new WriteBatch();
+        value = buildMeasurementNodeValue(alias, schema);
+        byte[] pathKey = key.getBytes();
+        batch.put(pathKey, value);
+        batch.put(getCFHByName(TABLE_NAME_MEASUREMENT), pathKey, EMPTY_NODE_VALUE);
+
         if (StringUtils.isNotEmpty(alias)) {
           String[] aliasNodes = Arrays.copyOf(nodes, nodes.length);
           aliasNodes[nodes.length - 1] = alias;
@@ -319,16 +324,14 @@ public class MRocksDBWriter {
             batch.put(
                 aliasKey.getBytes(),
                 Bytes.concat(new byte[] {DATA_VERSION, NODE_TYPE_ALIAS}, key.getBytes()));
+            batchCreateNode(key, aliasKey, batch);
           } else {
             throw new AliasAlreadyExistException(key, alias);
           }
+        } else {
+          batchCreateNode(key, batch);
         }
 
-        value = buildMeasurementNodeValue(alias, schema);
-        byte[] pathKey = key.getBytes();
-        batch.put(pathKey, value);
-        batch.put(getCFHByName(TABLE_NAME_MEASUREMENT), pathKey, EMPTY_NODE_VALUE);
-        batchCreateNode(pathKey, batch);
       } else if (start == nodes.length - 1) {
         value = new byte[] {NODE_TYPE_ENTITY};
         createNodeTypeByTableName(TABLE_NAME_DEVICE, key, value);
