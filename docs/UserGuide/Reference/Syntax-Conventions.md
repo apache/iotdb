@@ -160,10 +160,20 @@ CREATE TIMESERIES root.a.b."s1.s2".c WITH DATATYPE=INT32, ENCODING=RLE
 // root.a.b."s1.s2".c will be parsed as Path[root, a, b, "s1.s2", c]
 ```
 
-## Keywords and Reserved Words
+Note: When escaping the path separator (`.`) with single and double quotes, to avoid ambiguity, you must follow the following rules:
+
+- Within a path node name enclosed in backticks, it cannot start or end with single and double quotes.
+- Within a path node name enclosed in single quotation marks, single quotes cannot be used before and after the path separator. Similarly, in the path node name enclosed in double quotation marks, double quotes cannot be used before and after the path separator.
+
 ```sql
-CREATE TIMESERIES root.a.b."s1\".\"s2".c WITH DATATYPE=INT32, ENCODING=RLE
-// invalid! ambiguity with root.a.b."s1"."s2".c
+CREATE TIMESERIES root.sg."s1\".\"s2" WITH DATATYPE=INT32, ENCODING=RLE
+// invalid! ambiguity with root.sg."s1"."s2"
+
+CREATE TIMESERIES root.sg."a." WITH DATATYPE=INT32, ENCODING=RLE
+// invalid! ambiguity with root.sg.`"a`.`"`
+
+CREATE TIMESERIES root.sg.`"ab`.`cd"` WITH DATATYPE=INT32, ENCODING=RLE
+// invalid! ambiguity with root.sg."ab.cd"
 ```
 
 # Keywords and Reserved Words
