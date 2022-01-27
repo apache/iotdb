@@ -2211,7 +2211,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   /** function for parsing node name. */
   public String parseNodeName(IoTDBSqlParser.NodeNameContext ctx) {
     if (ctx.QUTOED_ID_WITHOUT_DOT() != null) {
-      return parseStringWithQuotes(ctx.QUTOED_ID_WITHOUT_DOT().getText());
+      return parseStringWithQuotesInNodeName(ctx.QUTOED_ID_WITHOUT_DOT().getText());
     } else if (ctx.STRING_LITERAL() != null) {
       return parseStringWithQuotesInNodeName(ctx.STRING_LITERAL().getText());
     } else {
@@ -2233,7 +2233,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   /** function for parsing node name without wildcard. */
   public String parseNodeNameWithoutWildcard(IoTDBSqlParser.NodeNameWithoutWildcardContext ctx) {
     if (ctx.QUTOED_ID_WITHOUT_DOT() != null) {
-      return parseStringWithQuotes(ctx.QUTOED_ID_WITHOUT_DOT().getText());
+      return parseStringWithQuotesInNodeName(ctx.QUTOED_ID_WITHOUT_DOT().getText());
     } else if (ctx.STRING_LITERAL() != null) {
       return parseStringWithQuotesInNodeName(ctx.STRING_LITERAL().getText());
     } else {
@@ -2844,6 +2844,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private String parseStringWithQuotesInNodeName(String src) {
     if (2 <= src.length()) {
+      if (src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
+        String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+        if (unescapeString.charAt(0) == '"'
+            || unescapeString.charAt(unescapeString.length() - 1) == '"'
+            || unescapeString.charAt(0) == '\''
+            || unescapeString.charAt(unescapeString.length() - 1) == '\'') {
+          throw new SQLParserException(
+              String.format(
+                  "%s is not a legal node name, because it is not allowed to start or end with a single or double quote",
+                  unescapeString));
+        }
+        return unescapeString.replace("``", "`");
+      }
       if (src.charAt(0) == '"' && src.charAt(src.length() - 1) == '"') {
         return parseStringWithQuotesInNodeName(src, '"');
       }
@@ -2863,7 +2876,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
     res.append(quote);
     if (!checkNodeName(res.toString(), quote)) {
-      throw new SQLParserException(String.format("%s is not a legal node name", res));
+      throw new SQLParserException(
+          String.format(
+              "%s is not a legal node name, because quote cannot be used around the path separator",
+              res));
     }
     return res.toString();
   }

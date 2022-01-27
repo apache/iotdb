@@ -223,7 +223,7 @@ public class IoTDBSyntaxConventionIT {
   public void testIllegalExpression4() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.`'a'` INT64");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.'a' INT64");
       try {
         statement.execute("SELECT 'a' FROM root.sg1.d1");
         fail();
@@ -239,7 +239,15 @@ public class IoTDBSyntaxConventionIT {
   @Test
   public void testNodeName() {
     String[] createNodeNames = {
-      "`select`", "'select'", "\"select\"", "`a+b`", "'a+b'", "\"a+b\"", "'a.b'", "\"a.b\""
+      "`select`",
+      "'select'",
+      "\"select\"",
+      "`a+b`",
+      "'a+b'",
+      "\"a+b\"",
+      "'a.b'",
+      "\"a.b\"",
+      "\"a'.'b\""
     };
     String[] selectNodeNames = {
       "`select`",
@@ -249,10 +257,11 @@ public class IoTDBSyntaxConventionIT {
       "`'a+b'`",
       "`\"a+b\"`",
       "`'a.b'`",
-      "`\"a.b\"`"
+      "`\"a.b\"`",
+      "`\"a'.'b\"`"
     };
     String[] resultNodeNames = {
-      "select", "'select'", "\"select\"", "a+b", "'a+b'", "\"a+b\"", "'a.b'", "\"a.b\""
+      "select", "'select'", "\"select\"", "a+b", "'a+b'", "\"a+b\"", "'a.b'", "\"a.b\"", "\"a'.'b\""
     };
     String[] resultTimeseries = {
       "root.sg1.d1.select",
@@ -262,7 +271,8 @@ public class IoTDBSyntaxConventionIT {
       "root.sg1.d1.'a+b'",
       "root.sg1.d1.\"a+b\"",
       "root.sg1.d1.'a.b'",
-      "root.sg1.d1.\"a.b\""
+      "root.sg1.d1.\"a.b\"",
+      "root.sg1.d1.\"a'.'b\""
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

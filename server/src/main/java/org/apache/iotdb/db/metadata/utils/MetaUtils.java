@@ -60,6 +60,9 @@ public class MetaUtils {
           throw new IllegalPathException(path);
         }
       } else if (path.charAt(i) == '"') {
+        if (i > 0 && path.charAt(i - 1) != '.') {
+          continue;
+        }
         int endIndex = path.indexOf('"', i + 1);
         // if a double quotes with escape character
         while (endIndex != -1
@@ -78,6 +81,9 @@ public class MetaUtils {
           throw new IllegalPathException(path);
         }
       } else if (path.charAt(i) == '\'') {
+        if (i > 0 && path.charAt(i - 1) != '.') {
+          continue;
+        }
         int endIndex = path.indexOf('\'', i + 1);
         // if a double quotes with escape character
         while (endIndex != -1
