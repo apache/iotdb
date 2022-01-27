@@ -122,9 +122,6 @@ public class CompactionSchedulerTest {
 
       }
     }
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
   }
 
   @After
