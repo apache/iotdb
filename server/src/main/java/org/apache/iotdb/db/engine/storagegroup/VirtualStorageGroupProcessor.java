@@ -100,20 +100,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -459,13 +447,47 @@ public class VirtualStorageGroupProcessor {
     return ret;
   }
 
+  /** this class is used to store recovering context */
+  private class RecoveryContext {
+    /** number of files to be recovered */
+    private final long filesToRecoverNum;
+    /** when the change of recoveredFilesNum exceeds this, log check will be triggered */
+    private final long filesNumLogCheckTrigger;
+    /** number of already recovered files */
+    private long recoveredFilesNum;
+    /** last recovery log time */
+    private long lastLogTime;
+    /** last recovery log files num */
+    private long lastLogCheckFilesNum;
+
+    public RecoveryContext(long filesToRecoverNum, long recoveredFilesNum) {
+      this.filesToRecoverNum = filesToRecoverNum;
+      this.recoveredFilesNum = recoveredFilesNum;
+      this.filesNumLogCheckTrigger = this.filesToRecoverNum / 100;
+      this.lastLogTime = System.currentTimeMillis();
+      this.lastLogCheckFilesNum = 0;
+    }
+
+    public void incrementRecoveredFilesNum() {
+      recoveredFilesNum++;
+      // check log only when 1% more files have been recovered
+      if (lastLogCheckFilesNum + filesNumLogCheckTrigger < recoveredFilesNum) {
+        lastLogCheckFilesNum = recoveredFilesNum;
+        // log only when log interval exceeds recovery log interval
+        if (lastLogTime + config.getRecoveryLogIntervalInMs() < System.currentTimeMillis()) {
+          logger.info(
+              "The virtual storage group {}[{}] has recovered {}%, please wait a moment.",
+              logicalStorageGroupName,
+              virtualStorageGroupId,
+              recoveredFilesNum * 1.0 / filesToRecoverNum);
+          lastLogTime = System.currentTimeMillis();
+        }
+      }
+    }
+  }
+
   /** recover from file */
   private void recover() throws StorageGroupProcessorException {
-    logger.info(
-        String.format(
-            "start recovering virtual storage group %s[%s]",
-            logicalStorageGroupName, virtualStorageGroupId));
-
     try {
       recoverInnerSpaceCompaction(true);
       recoverInnerSpaceCompaction(false);
@@ -493,15 +515,17 @@ public class VirtualStorageGroupProcessor {
 
       // split by partition so that we can find the last file of each partition and decide to
       // close it or not
+      RecoveryContext recoveryContext =
+          new RecoveryContext(tmpSeqTsFiles.size() + tmpUnseqTsFiles.size(), 0);
       Map<Long, List<TsFileResource>> partitionTmpSeqTsFiles =
           splitResourcesByPartition(tmpSeqTsFiles);
       Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles =
           splitResourcesByPartition(tmpUnseqTsFiles);
       for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
-        recoverTsFiles(value, true);
+        recoverTsFiles(value, recoveryContext, true);
       }
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
-        recoverTsFiles(value, false);
+        recoverTsFiles(value, recoveryContext, false);
       }
       for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
         long partitionNum = resource.getTimePartition();
@@ -541,9 +565,9 @@ public class VirtualStorageGroupProcessor {
     initCompaction();
 
     logger.info(
-        String.format(
-            "the virtual storage group %s[%s] is recovered successfully",
-            logicalStorageGroupName, virtualStorageGroupId));
+        "The virtual storage group {}[{}] is recovered successfully",
+        logicalStorageGroupName,
+        virtualStorageGroupId);
   }
 
   private void initCompaction() {
@@ -786,8 +810,12 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) throws IOException {
+  private void recoverTsFiles(List<TsFileResource> tsFiles, RecoveryContext context, boolean isSeq)
+      throws IOException {
     for (int i = 0; i < tsFiles.size(); i++) {
+      // update recovery context
+      context.incrementRecoveredFilesNum();
+
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
 
