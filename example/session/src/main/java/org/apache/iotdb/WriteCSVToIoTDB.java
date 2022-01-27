@@ -13,15 +13,15 @@ import java.util.Collections;
 
 public class WriteCSVToIoTDB {
 
-  public static final String fullPath = "root.kobelco.trans.03.1090001603.2401604.KOB_0002_00_67";
-  public static final String path = "/home/kyy/Documents/kdd/data/" + fullPath + ".csv";
+  public static final String timeseries = "root.kobelco.trans.03.1090001603.2401604.KOB_0002_00_67";
+  public static final String path = "/home/kyy/Documents/kdd/data/" + timeseries + ".csv";
 
   public static void main(String[] args)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
 
-    String[] nodes = fullPath.split("\\.");
+    String[] nodes = timeseries.split("\\.");
     String measurements = nodes[nodes.length - 1];
-    String device = fullPath.replace("." + measurements, "");
+    String device = timeseries.replace("." + measurements, "");
 
     Session session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
