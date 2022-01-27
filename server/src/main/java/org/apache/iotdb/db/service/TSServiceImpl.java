@@ -1952,9 +1952,12 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private TSStatus onQueryException(Exception e, String operation) {
     TSStatus status = tryCatchQueryException(e);
-    return status != null
-        ? status
-        : onNPEOrUnexpectedException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR);
+    if (status != null) {
+      LOGGER.error("Status code: {}, Query Statement: {} failed", status.getCode(), operation, e);
+      return status;
+    } else {
+      return onNPEOrUnexpectedException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR);
+    }
   }
 
   private TSStatus tryCatchQueryException(Exception e) {
