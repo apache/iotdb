@@ -128,18 +128,18 @@ public class IOMonitor {
               + "\t data num: "
               + dataIONums.get(i)
               + "\t total: "
-              + totalTimes.get(i)
-              + "\n";
+              + totalTimes.get(i);
+      //              + "\n";
     }
-    ret +=
-        "avg meta IO: "
-            + getAvg(metaIOTimes)
-            + ", avg data IO: "
-            + getAvg(dataIOTimes)
-            + ", avg total time: "
-            + getAvg(totalTimes)
-            + ", isSet: "
-            + isSet;
+    //    ret +=
+    //        "avg meta IO: "
+    //            + getAvg(metaIOTimes)
+    //            + ", avg data IO: "
+    //            + getAvg(dataIOTimes)
+    //            + ", avg total time: "
+    //            + getAvg(totalTimes)
+    //            + ", isSet: "
+    //            + isSet;
     return ret;
   }
 }

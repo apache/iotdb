@@ -21,8 +21,8 @@ public class QueryExperiment {
           + "group by ([%d, %d), %dms)";
   private static final long totalIntervalLengthMS = 1 * 60 * 60 * 1000L;
   private static final int totalIntervalNumber = 1000;
-  private static Random random = new Random();
-  private static final int sqlNum = 100;
+  private static Random random = new Random(System.currentTimeMillis());
+  private static final int sqlNum = 1;
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, TException {
@@ -34,18 +34,25 @@ public class QueryExperiment {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
 
-    SessionDataSet dataSet =
-        session.executeQueryStatement(
-            "select min_time(" + measurement + "), max_time(" + measurement + ") from " + device);
-    long minTime = -1;
-    long maxTime = -1;
-    while (dataSet.hasNext()) {
-      RowRecord r = dataSet.next();
-      minTime = r.getFields().get(0).getLongV();
-      maxTime = r.getFields().get(1).getLongV();
-    }
-    assert minTime != -1;
-    assert maxTime != -1;
+    SessionDataSet dataSet;
+
+    //    dataSet =
+    //        session.executeQueryStatement(
+    //            "select min_time(" + measurement + "), max_time(" + measurement + ") from " +
+    // device);
+    //    long minTime = -1;
+    //    long maxTime = -1;
+    //    while (dataSet.hasNext()) {
+    //      RowRecord r = dataSet.next();
+    //      minTime = r.getFields().get(0).getLongV();
+    //      maxTime = r.getFields().get(1).getLongV();
+    //      System.out.println(minTime + ", " + maxTime);
+    //    }
+    //    assert minTime != -1;
+    //    assert maxTime != -1;
+
+    long minTime = 1616805035973L;
+    long maxTime = 1627380839563L;
 
     for (int i = 0; i < sqlNum; i++) {
       long startTime = nextLong(minTime, maxTime - totalIntervalLengthMS);
