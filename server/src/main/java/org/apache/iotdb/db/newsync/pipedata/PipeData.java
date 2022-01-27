@@ -20,12 +20,17 @@
 package org.apache.iotdb.db.newsync.pipedata;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.newsync.receiver.load.ILoader;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
 public abstract class PipeData {
+  private static final Logger logger = LoggerFactory.getLogger(PipeData.class);
 
   protected final long serialNumber;
 
@@ -53,39 +58,30 @@ public abstract class PipeData {
 
   public long serialize(DataOutputStream stream) throws IOException {
     long serializeSize = 0;
-    stream.writeLong(serialNumber);
-    serializeSize += Long.BYTES;
     stream.writeByte((byte) getType().ordinal());
     serializeSize += Byte.BYTES;
-    serializeSize += serializeImpl(stream);
+    stream.writeLong(serialNumber);
+    serializeSize += Long.BYTES;
     return serializeSize;
   }
 
-  public abstract long serializeImpl(DataOutputStream stream) throws IOException;
-
   public static PipeData deserialize(DataInputStream stream)
       throws IOException, IllegalPathException {
-    long serialNumber = stream.readLong();
     Type type = Type.values()[stream.readByte()];
-
-    PipeData pipeData = null;
     switch (type) {
       case TSFILE:
-        pipeData = new TsFilePipeData(serialNumber);
-        break;
+        return TsFilePipeData.deserialize(stream);
       case DELETION:
-        pipeData = new DeletionPipeData(serialNumber);
-        break;
+        return DeletionPipeData.deserialize(stream);
       case PHYSICALPLAN:
-        pipeData = new SchemaPipeData(serialNumber);
-        break;
+        return SchemaPipeData.deserialize(stream);
+      default:
+        logger.error("Deserialize PipeData error because Unknown type {}.", type);
+        return null;
     }
-    pipeData.deserializeImpl(stream);
-    return pipeData;
   }
 
-  public abstract void deserializeImpl(DataInputStream stream)
-      throws IOException, IllegalPathException;
+  public abstract ILoader createLoader();
 
   public abstract void sendToTransport();
 

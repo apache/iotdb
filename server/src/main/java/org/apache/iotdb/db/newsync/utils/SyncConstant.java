@@ -16,14 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.newsync.conf;
-
-import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
-
-import java.io.File;
+package org.apache.iotdb.db.newsync.utils;
 
 public class SyncConstant {
+  public static final String SYNC_SYS_DIR = "sys";
+  public static final String RECEIVER_DIR = "receiver";
   public static final String RECEIVER_LOG_NAME = "receiverService.log";
-  public static final String RECEIVER_DIR = SenderConf.syncDir+ File.separator + "receiver";
   public static final String PIPELOG_DIR_NAME = "pipe-log";
+  public static final String FILEDATA_DIR_NAME = "file-data";
+  public static final String COLLECTOR_SUFFIX = ".collector";
 }

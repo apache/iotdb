@@ -19,12 +19,20 @@
 package org.apache.iotdb.db.integration.sync;
 
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
+import org.apache.commons.io.FileUtils;
+import org.junit.Assert;
 
-public class WriteUtil {
+import java.io.File;
+import java.io.IOException;
+import java.sql.*;
+import java.util.*;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+public class SyncTestUtil {
 
   private static final String[] sqls =
       new String[] {
@@ -96,7 +104,94 @@ public class WriteUtil {
     }
   }
 
-  public static void main(String[] args) throws ClassNotFoundException {
-    insertData();
+  /**
+   * scan parentDir and return all TsFile sorted by load sequence
+   *
+   * @param parentDir folder to scan
+   */
+  public static List<File> getTsFilePaths(File parentDir) {
+    List<File> res = new ArrayList<>();
+    if (!parentDir.exists()) {
+      Assert.fail();
+      return res;
+    }
+    scanDir(res, parentDir);
+    Collections.sort(
+        res,
+        new Comparator<File>() {
+          @Override
+          public int compare(File f1, File f2) {
+            int diffSg =
+                f1.getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getName()
+                    .compareTo(f2.getParentFile().getParentFile().getParentFile().getName());
+            if (diffSg != 0) {
+              return diffSg;
+            } else {
+              return (int)
+                  (FilePathUtils.splitAndGetTsFileVersion(f1.getName())
+                      - FilePathUtils.splitAndGetTsFileVersion(f2.getName()));
+            }
+          }
+        });
+    return res;
+  }
+
+  private static void scanDir(List<File> tsFiles, File parentDir) {
+    if (!parentDir.exists()) {
+      Assert.fail();
+      return;
+    }
+    File fa[] = parentDir.listFiles();
+    for (int i = 0; i < fa.length; i++) {
+      File fs = fa[i];
+      if (fs.isDirectory()) {
+        scanDir(tsFiles, fs);
+      } else if (fs.getName().endsWith(".resource")) {
+        // only add tsfile that has been flushed
+        tsFiles.add(new File(fs.getAbsolutePath().substring(0, fs.getAbsolutePath().length() - 9)));
+        try {
+          FileUtils.delete(fs);
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+    }
+  }
+
+  public static void checkResult(String sql, String[] columnNames, String[] retArray)
+      throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(sql);
+      Assert.assertTrue(hasResultSet);
+      ResultSet resultSet = statement.getResultSet();
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      Map<String, Integer> map = new HashMap<>();
+      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+        map.put(resultSetMetaData.getColumnName(i), i);
+      }
+      assertEquals(columnNames.length + 1, resultSetMetaData.getColumnCount());
+      int cnt = 0;
+      while (resultSet.next()) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(resultSet.getString(1));
+        for (String columnName : columnNames) {
+          int index = map.get(columnName);
+          builder.append(",").append(resultSet.getString(index));
+        }
+        assertEquals(retArray[cnt], builder.toString());
+        cnt++;
+      }
+      assertEquals(retArray.length, cnt);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }

@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.newsync.receiver.recovery;
 
-import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
-import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
+import org.apache.iotdb.db.newsync.utils.SyncConstant;
+import org.apache.iotdb.db.newsync.utils.SyncPathUtil;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -31,7 +31,7 @@ public class ReceiverLog {
   private BufferedWriter bw;
 
   public ReceiverLog() throws IOException {
-    File logFile = new File(SenderConf.sysDir, SyncConstant.RECEIVER_LOG_NAME);
+    File logFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_LOG_NAME);
     if (!logFile.getParentFile().exists()) {
       logFile.getParentFile().mkdirs();
     }

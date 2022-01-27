@@ -18,16 +18,39 @@
  */
 package org.apache.iotdb.db.newsync.utils;
 
-import org.apache.iotdb.db.newsync.conf.SyncConstant;
-import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import java.io.File;
 
-/**
- * Util for path generation in sync module
- */
+/** Util for path generation in sync module */
 public class SyncPathUtil {
-    public static String getReceiverPipeLogDir(String pipeName,String remoteIp,long createTime){
-        return SyncConstant.RECEIVER_DIR + File.separator + String.format("%s-%d-%s",pipeName,createTime,remoteIp)+ File.separator + SyncConstant.PIPELOG_DIR_NAME;
-    }
+  public static String getReceiverPipeLogDir(String pipeName, String remoteIp, long createTime) {
+    return getReceiverPipeDir(pipeName, remoteIp, createTime)
+        + File.separator
+        + SyncConstant.PIPELOG_DIR_NAME;
+  }
+
+  public static String getReceiverFileDataDir(String pipeName, String remoteIp, long createTime) {
+    return getReceiverPipeDir(pipeName, remoteIp, createTime)
+        + File.separator
+        + SyncConstant.FILEDATA_DIR_NAME;
+  }
+
+  public static String getReceiverPipeDir(String pipeName, String remoteIp, long createTime) {
+    return getReceiverDir()
+        + File.separator
+        + String.format("%s-%d-%s", pipeName, createTime, remoteIp);
+  }
+
+  public static String getReceiverDir() {
+    return IoTDBDescriptor.getInstance().getConfig().getNewSyncDir()
+        + File.separator
+        + SyncConstant.RECEIVER_DIR;
+  }
+
+  public static String getSysDir() {
+    return IoTDBDescriptor.getInstance().getConfig().getNewSyncDir()
+        + File.separator
+        + SyncConstant.SYNC_SYS_DIR;
+  }
 }

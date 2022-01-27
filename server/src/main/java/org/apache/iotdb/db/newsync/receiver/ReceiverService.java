@@ -23,6 +23,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.newsync.receiver.collector.Collector;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.ReceiverManager;
+import org.apache.iotdb.db.newsync.utils.SyncPathUtil;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -38,6 +39,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -77,26 +79,38 @@ public class ReceiverService implements IService {
 
   /** create and start a new pipe named pipeName */
   public void createPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+    createDir(pipeName, remoteIp, createTime);
     receiverManager.createPipe(pipeName, remoteIp, createTime);
-    collector.startPipe(pipeName,remoteIp,createTime);
+    collector.startPipe(pipeName, remoteIp, createTime);
   }
 
   /** start an existed pipe named pipeName */
   public void startPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverManager.startPipe(pipeName, remoteIp);
-    collector.startPipe(pipeName,remoteIp,createTime);
+    collector.startPipe(pipeName, remoteIp, createTime);
   }
 
   /** stop an existed pipe named pipeName */
   public void stopPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverManager.stopPipe(pipeName, remoteIp);
-    collector.stopPipe(pipeName,remoteIp,createTime);
+    collector.stopPipe(pipeName, remoteIp, createTime);
   }
 
   /** drop an existed pipe named pipeName */
   public void dropPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverManager.dropPipe(pipeName, remoteIp);
-    collector.stopPipe(pipeName,remoteIp,createTime);
+    collector.stopPipe(pipeName, remoteIp, createTime);
+  }
+
+  private void createDir(String pipeName, String remoteIp, long createTime) {
+    File f = new File(SyncPathUtil.getReceiverFileDataDir(pipeName, remoteIp, createTime));
+    if (!f.exists()) {
+      f.mkdirs();
+    }
+    f = new File(SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime));
+    if (!f.exists()) {
+      f.mkdirs();
+    }
   }
 
   /**

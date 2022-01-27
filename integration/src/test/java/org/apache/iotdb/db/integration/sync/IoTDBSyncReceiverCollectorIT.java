@@ -21,10 +21,13 @@ package org.apache.iotdb.db.integration.sync;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.newsync.receiver.load.DeletionLoader;
-import org.apache.iotdb.db.newsync.receiver.load.ILoader;
-import org.apache.iotdb.db.newsync.receiver.load.SchemaLoader;
-import org.apache.iotdb.db.newsync.receiver.load.TsFileLoader;
+import org.apache.iotdb.db.newsync.pipedata.DeletionPipeData;
+import org.apache.iotdb.db.newsync.pipedata.PipeData;
+import org.apache.iotdb.db.newsync.pipedata.SchemaPipeData;
+import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
+import org.apache.iotdb.db.newsync.receiver.collector.Collector;
+import org.apache.iotdb.db.newsync.utils.SyncConstant;
+import org.apache.iotdb.db.newsync.utils.SyncPathUtil;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -38,25 +41,36 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.File;
-import java.sql.*;
-import java.util.*;
+import java.io.FileOutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 @Category({LocalStandaloneTest.class})
-public class IoTDBSyncReceiverLoaderIT {
+public class IoTDBSyncReceiverCollectorIT {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncReceiverLoaderIT.class);
   protected static boolean enableSeqSpaceCompaction;
   protected static boolean enableUnseqSpaceCompaction;
   protected static boolean enableCrossSpaceCompaction;
   /** create tsfile and move to tmpDir for sync test */
-  File tmpDir = new File("target/synctest");
+  File tmpDir = new File("target/synctest/files");
+
+  String pipeName = "pipe1";
+  String remoteIp = "192.168.0.66";
+  long createdTime = System.currentTimeMillis();
+  File pipeLogDir = new File(SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createdTime));
 
   @Before
   public void setUp() throws Exception {
@@ -85,7 +99,9 @@ public class IoTDBSyncReceiverLoaderIT {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    System.out.println(pipeLogDir.getAbsolutePath());
     FileUtils.deleteDirectory(tmpDir);
+    FileUtils.deleteDirectory(pipeLogDir);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -95,7 +111,22 @@ public class IoTDBSyncReceiverLoaderIT {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.envSetUp();
 
-    // 2. test for SchemaLoader
+    // 2. prepare pipelog and .collector to test fail recovery
+    if (!pipeLogDir.exists()) {
+      pipeLogDir.mkdirs();
+    }
+    File pipeLog1 = new File(pipeLogDir.getPath(), String.valueOf(System.currentTimeMillis()));
+    File collectFile1 = new File(pipeLog1.getPath() + SyncConstant.COLLECTOR_SUFFIX);
+    DataOutputStream pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog1, false));
+    DataOutputStream collectOutput =
+        new DataOutputStream(new FileOutputStream(collectFile1, false));
+    int serialNum = 0;
+    for (int i = 0; i < 5; i++) {
+      // skip first 5 pipeData
+      PipeData pipeData = new TsFilePipeData("", serialNum++);
+      pipeData.serialize(pipeLogOutput);
+      collectOutput.writeInt(i);
+    }
     List<PhysicalPlan> planList = new ArrayList<>();
     planList.add(new SetStorageGroupPlan(new PartialPath("root.vehicle")));
     planList.add(
@@ -139,39 +170,49 @@ public class IoTDBSyncReceiverLoaderIT {
                 CompressionType.SNAPPY),
             null));
     for (PhysicalPlan plan : planList) {
-      ILoader planLoader = new SchemaLoader(plan);
-      try {
-        planLoader.load();
-      } catch (Exception e) {
-        e.printStackTrace();
-        Assert.fail();
-      }
+      PipeData pipeData = new SchemaPipeData(plan, serialNum++);
+      pipeData.serialize(pipeLogOutput);
     }
-
-    // 3. test for TsFileLoader
+    pipeLogOutput.close();
+    collectOutput.close();
+    File pipeLog2 = new File(pipeLogDir.getPath(), String.valueOf(System.currentTimeMillis()));
+    pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog2, false));
     List<File> tsFiles = SyncTestUtil.getTsFilePaths(tmpDir);
-    for (File tsfile : tsFiles) {
-      ILoader tsFileLoader = new TsFileLoader(tsfile);
-      try {
-        tsFileLoader.load();
-      } catch (Exception e) {
-        e.printStackTrace();
-        Assert.fail();
-      }
+    for (File f : tsFiles) {
+      PipeData pipeData = new TsFilePipeData(f.getPath(), serialNum++);
+      pipeData.serialize(pipeLogOutput);
     }
-
-    // 4. test for DeletionPlanLoader
     Deletion deletion = new Deletion(new PartialPath("root.vehicle.**"), 0, 33, 38);
-    ILoader deletionLoader = new DeletionLoader(deletion);
-    try {
-      deletionLoader.load();
-    } catch (Exception e) {
-      e.printStackTrace();
-      Assert.fail();
-    }
+    PipeData pipeData = new DeletionPipeData(deletion, serialNum++);
+    pipeData.serialize(pipeLogOutput);
+    pipeLogOutput.close();
 
-    // 5. check result after loading
-    // 5.1 check normal timeseries
+    // 3. create and start collector
+    Collector collector = new Collector();
+    collector.startCollect();
+
+    // 4. start collect pipe
+    collector.startPipe(pipeName, remoteIp, createdTime);
+
+    // 5. if all pipeData has been loaded into IoTDB, check result
+    CountDownLatch latch = new CountDownLatch(1);
+    ExecutorService es1 = Executors.newSingleThreadExecutor();
+    es1.execute(
+        () -> {
+          while (true) {
+            File[] files = pipeLogDir.listFiles();
+            if (files.length == 0) {
+              break;
+            }
+          }
+          latch.countDown();
+        });
+    es1.shutdown();
+    try {
+      latch.await(30, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
     String sql1 = "select * from root.vehicle.*";
     String[] retArray1 =
         new String[] {
