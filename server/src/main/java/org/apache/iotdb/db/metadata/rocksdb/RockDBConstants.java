@@ -8,8 +8,7 @@ public class RockDBConstants {
   protected static final String PATH_SEPARATOR = ".";
   protected static final String ESCAPE_PATH_SEPARATOR = "[.]";
 
-  protected static final byte DATA_VERSION = 0x00;
-
+  // V0 Node type
   protected static final byte NODE_TYPE_ROOT = 0x00;
   protected static final byte NODE_TYPE_INNER = 0x01;
   protected static final byte NODE_TYPE_SG = 0x02;
@@ -18,12 +17,16 @@ public class RockDBConstants {
   protected static final byte NODE_TYPE_ENTITY_SG = 0x05;
   protected static final byte NODE_TYPE_ALIAS = 0x06;
 
+  protected static final byte DATA_VERSION = NODE_TYPE_ROOT >> 4;
+
   protected static final byte DEFAULT_FLAG = 0x00;
   protected static final byte FLAG_USING_TEMPLATE = 0x01;
   protected static final byte FLAG_SAVING_TEMPLATE = 0x01 << 1;
   protected static final byte FLAG_IS_ALIGNED = 0x01 << 2;
   protected static final byte FLAG_SET_TTL = 0x01 << 3;
   protected static final byte FLAG_HAS_ALIAS = 0x01 << 4;
+  protected static final byte FLAG_HAS_ATTRIBUTES = 0x01 << 5;
+  protected static final byte FLAG_HAS_TAGS = 0x01 << 6;
 
   protected static final byte DATA_BLOCK_TYPE_TTL = 0x00;
   protected static final byte DATA_BLOCK_TYPE_SCHEMA = 0x01;
@@ -31,6 +34,9 @@ public class RockDBConstants {
   protected static final byte DATA_BLOCK_TYPE_ALIAS = 0x03;
 
   protected static final byte[] EMPTY_NODE_VALUE = new byte[] {0x00};
-  protected static final byte[] DEFAULT_SG_NODE_VALUE =
-      new byte[] {DATA_VERSION, NODE_TYPE_SG, DEFAULT_FLAG};
+  protected static final byte[] DEFAULT_SG_NODE_VALUE = new byte[] {NODE_TYPE_SG, DEFAULT_FLAG};
+  protected static final byte[] DEFAULT_INTERNAL_NODE_VALUE =
+      new byte[] {NODE_TYPE_INNER, DEFAULT_FLAG};
+  protected static final byte[] DEFAULT_ENTITY_NODE_VALUE =
+      new byte[] {NODE_TYPE_ENTITY, DEFAULT_FLAG};
 }
