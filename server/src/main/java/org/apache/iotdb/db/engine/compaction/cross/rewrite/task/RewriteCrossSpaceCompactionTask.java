@@ -88,8 +88,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       executeCompaction();
     } catch (Throwable throwable) {
       // catch throwable instead of exception to handle OOM errors
-      throwable.printStackTrace();
-      logger.error("Meet errors in cross space compaction");
+      logger.error("Meet errors in cross space compaction, {}", throwable.getMessage());
       CrossSpaceCompactionExceptionHandler.handleException(
           fullStorageGroupName,
           logFile,
