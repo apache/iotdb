@@ -10,6 +10,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -51,6 +52,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
@@ -63,6 +65,8 @@ public class MRocksDBWriter {
   private static final Logger logger = LoggerFactory.getLogger(MRocksDBManager.class);
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final long MAX_LOCK_WAIT_TIME = 300;
 
   private static final String ROCKSDB_FOLDER = "rocksdb-schema";
   private static final String TABLE_NAME_STORAGE_GROUP = "storageGroupNodes".toLowerCase();
@@ -86,7 +90,7 @@ public class MRocksDBWriter {
   List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>();
 
   // TODO: check how Stripped Lock consume memory
-  Striped<Lock> locks = Striped.lazyWeakLock(10000);
+  private Striped<Lock> locks = Striped.lazyWeakLock(10000);
 
   static {
     RocksDB.loadLibrary();
@@ -119,7 +123,10 @@ public class MRocksDBWriter {
     }
   }
 
-  public void init() throws MetadataException {}
+  public void init() throws MetadataException {
+    // TODO: scan to init tag manager
+    // TODO: warn up cache if needed
+  }
 
   private void initColumnFamilyDescriptors(Options options) throws RocksDBException {
     List<byte[]> cfs = RocksDB.listColumnFamilies(options, ROCKSDB_PATH);
@@ -184,47 +191,64 @@ public class MRocksDBWriter {
     }
   }
 
-  private void createNode(String key, byte[] value) throws RocksDBException {
+  private void createNode(String key, byte[] value)
+      throws RocksDBException, InterruptedException, MetadataException {
     Lock lock = locks.get(key);
-    try {
-      lock.lock();
-      if (!keyExist(key)) {
-        rocksDB.put(key.getBytes(), value);
+    if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+      try {
+        if (!keyExist(key)) {
+          rocksDB.put(key.getBytes(), value);
+        }
+      } finally {
+        lock.unlock();
       }
-    } finally {
-      lock.unlock();
+    } else {
+      throw new MetadataException("acquire lock timeout: " + key);
     }
   }
 
-  private void batchCreateNode(String lockKey, WriteBatch batch) throws RocksDBException {
+  private void batchCreateNode(String lockKey, WriteBatch batch)
+      throws RocksDBException, InterruptedException, MetadataException {
     Lock lock = locks.get(lockKey);
-    try {
-      lock.lock();
-      if (!keyExist(lockKey)) {
-        rocksDB.write(new WriteOptions(), batch);
+    if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+      try {
+        if (!keyExist(lockKey)) {
+          rocksDB.write(new WriteOptions(), batch);
+        }
+      } finally {
+        lock.unlock();
       }
-    } finally {
-      lock.unlock();
+    } else {
+      throw new MetadataException("acquire lock timeout: " + lockKey);
     }
   }
 
   private void batchCreateNode(String primaryKey, String aliasKey, WriteBatch batch)
-      throws RocksDBException, MetadataException {
+      throws RocksDBException, MetadataException, InterruptedException {
     Lock primaryLock = locks.get(primaryKey);
     Lock aliasLock = locks.get(aliasKey);
-    try {
-      primaryLock.lock();
-      aliasLock.lock();
-      if (keyExist(primaryKey)) {
-        throw new PathAlreadyExistException(primaryKey);
+    if (primaryLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+      try {
+        if (keyExist(primaryKey)) {
+          throw new PathAlreadyExistException(primaryKey);
+        }
+        if (aliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+          try {
+            if (keyExist(aliasKey)) {
+              throw new AliasAlreadyExistException(aliasKey, aliasKey);
+            }
+            rocksDB.write(new WriteOptions(), batch);
+          } finally {
+            aliasLock.unlock();
+          }
+        } else {
+          throw new MetadataException("acquire lock timeout: " + aliasKey);
+        }
+      } finally {
+        primaryLock.unlock();
       }
-      if (keyExist(aliasKey)) {
-        throw new AliasAlreadyExistException(aliasKey, aliasKey);
-      }
-      rocksDB.write(new WriteOptions(), batch);
-    } finally {
-      aliasLock.unlock();
-      primaryLock.unlock();
+    } else {
+      throw new MetadataException("acquire lock timeout: " + primaryKey);
     }
   }
 
@@ -259,13 +283,13 @@ public class MRocksDBWriter {
           sgExisted = value.length > 0 && holder.getValue()[0] == NODE_TYPE_SG;
         }
       }
-    } catch (RocksDBException e) {
+    } catch (RocksDBException | InterruptedException e) {
       throw new MetadataException(e);
     }
   }
 
   /**
-   * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
+   * Add one timeseries to metadata, if the timeseries already exists, throw exception
    *
    * @param path the timeseries path
    * @param dataType the dateType {@code DataType} of the timeseries
@@ -282,25 +306,37 @@ public class MRocksDBWriter {
       throws MetadataException {
     String[] nodes = path.getNodes();
     try {
-      MeasurementSchema schema = new MeasurementSchema(null, dataType, encoding, compressor, props);
       if (!checkStorageGroupByPath(path)) {
-        throw new StorageGroupNotSetException(path.getFullPath());
+        if (!config.isAutoCreateSchemaEnabled()) {
+          throw new StorageGroupNotSetException(path.getFullPath());
+        }
+        PartialPath storageGroupPath =
+            MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
+        setStorageGroup(storageGroupPath);
       }
+      MeasurementSchema schema =
+          new MeasurementSchema(nodes[nodes.length - 1], dataType, encoding, compressor, props);
       createTimeSeriesRecursive(nodes, nodes.length, alias, schema);
-    } catch (RocksDBException | IOException e) {
+    } catch (RocksDBException | IOException | InterruptedException e) {
       throw new MetadataException(e);
     }
   }
 
   public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
-    createTimeseries(plan, -1);
-  }
+    createTimeseries(
+        plan.getPath(),
+        plan.getDataType(),
+        plan.getEncoding(),
+        plan.getCompressor(),
+        plan.getProps(),
+        plan.getAlias());
 
-  public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {}
+    // TODO: persist tags and update tag index
+  }
 
   private void createTimeSeriesRecursive(
       String nodes[], int start, String alias, MeasurementSchema schema)
-      throws RocksDBException, IOException, MetadataException {
+      throws RocksDBException, IOException, MetadataException, InterruptedException {
     if (start < 1) {
       // "root" must exist
       return;
@@ -331,7 +367,6 @@ public class MRocksDBWriter {
         } else {
           batchCreateNode(key, batch);
         }
-
       } else if (start == nodes.length - 1) {
         value = new byte[] {NODE_TYPE_ENTITY};
         createNodeTypeByTableName(TABLE_NAME_DEVICE, key, value);
