@@ -147,14 +147,15 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
     }
   }
 
+  /**
+   * To avoid unseq data exist in target files, cross space compaction should select all the seq
+   * files which have overlap with unseq files whether they are compacting or not. Therefore, before
+   * adding task into the queue, cross space compaction task should be check whether source seq
+   * files are being compacted or not to speed up compaction.
+   */
   private boolean checkIsSourceFilesValid(List<TsFileResource>[] mergeFiles) {
     for (TsFileResource resource : mergeFiles[0]) {
-      if (resource.isCompacting()) {
-        return false;
-      }
-    }
-    for (TsFileResource resource : mergeFiles[1]) {
-      if (resource.isCompacting()) {
+      if (resource.isCompacting() || resource.isCompactionCandidate()) {
         return false;
       }
     }

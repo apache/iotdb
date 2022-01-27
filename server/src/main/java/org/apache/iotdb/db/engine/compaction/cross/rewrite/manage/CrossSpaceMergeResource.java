@@ -64,22 +64,33 @@ public class CrossSpaceMergeResource {
   private boolean cacheDeviceMeta = false;
 
   public CrossSpaceMergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    this.seqFiles = seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
-    this.unseqFiles = unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
+    this.seqFiles = seqFiles.stream().filter(this::filterSeqResource).collect(Collectors.toList());
+    this.unseqFiles =
+        unseqFiles.stream().filter(this::filterUnseqResource).collect(Collectors.toList());
   }
 
   /** If returns true, it means to participate in the merge */
-  private boolean filterResource(TsFileResource res) {
+  private boolean filterSeqResource(TsFileResource res) {
     return res.getTsFile().exists()
         && !res.isDeleted()
         && (!res.isClosed() || res.stillLives(ttlLowerBound));
   }
 
+  /** If returns true, it means to participate in the merge */
+  private boolean filterUnseqResource(TsFileResource res) {
+    return res.getTsFile().exists()
+        && !res.isDeleted()
+        && (!res.isClosed() || res.stillLives(ttlLowerBound))
+        && !res.isCompacting()
+        && !res.isCompactionCandidate();
+  }
+
   public CrossSpaceMergeResource(
       Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long ttlLowerBound) {
     this.ttlLowerBound = ttlLowerBound;
-    this.seqFiles = seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
-    this.unseqFiles = unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
+    this.seqFiles = seqFiles.stream().filter(this::filterSeqResource).collect(Collectors.toList());
+    this.unseqFiles =
+        unseqFiles.stream().filter(this::filterUnseqResource).collect(Collectors.toList());
   }
 
   public void clear() throws IOException {
