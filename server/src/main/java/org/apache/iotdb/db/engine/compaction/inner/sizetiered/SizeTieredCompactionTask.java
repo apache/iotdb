@@ -231,7 +231,8 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       TsFileResource resource = selectedTsFileResourceList.get(i);
 
-      if (resource.isCompacting() | !resource.isClosed()
+      if (resource.isCompacting()
+          || !resource.isClosed()
           || !resource.getTsFile().exists()
           || resource.isDeleted()) {
         // this source file cannot be compacted

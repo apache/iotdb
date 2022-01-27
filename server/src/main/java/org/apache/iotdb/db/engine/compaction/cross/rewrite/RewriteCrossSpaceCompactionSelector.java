@@ -88,9 +88,6 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
     if (seqFileList.isEmpty() || unSeqFileList.isEmpty()) {
       return;
     }
-    if (unSeqFileList.size() > config.getMaxCompactionCandidateFileNum()) {
-      unSeqFileList = unSeqFileList.subList(0, config.getMaxCompactionCandidateFileNum());
-    }
     long budget = config.getCrossCompactionMemoryBudget();
     long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
     CrossSpaceMergeResource mergeResource =
@@ -108,9 +105,6 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
               logicalStorageGroupName,
               budget);
         }
-        return;
-      }
-      if (!checkIsSourceFilesValid(mergeFiles)) {
         return;
       }
       LOGGER.info(
@@ -145,20 +139,5 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
     } catch (MergeException | IOException | InterruptedException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }
-  }
-
-  /**
-   * To avoid unseq data exist in target files, cross space compaction should select all the seq
-   * files which have overlap with unseq files whether they are compacting or not. Therefore, before
-   * adding task into the queue, cross space compaction task should be check whether source seq
-   * files are being compacted or not to speed up compaction.
-   */
-  private boolean checkIsSourceFilesValid(List<TsFileResource>[] mergeFiles) {
-    for (TsFileResource resource : mergeFiles[0]) {
-      if (resource.isCompacting() || resource.isCompactionCandidate()) {
-        return false;
-      }
-    }
-    return true;
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.manage;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -50,7 +51,7 @@ import java.util.stream.Collectors;
 public class CrossSpaceMergeResource {
 
   private List<TsFileResource> seqFiles;
-  private List<TsFileResource> unseqFiles;
+  private List<TsFileResource> unseqFiles = new ArrayList<>();
 
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
@@ -65,8 +66,7 @@ public class CrossSpaceMergeResource {
 
   public CrossSpaceMergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = seqFiles.stream().filter(this::filterSeqResource).collect(Collectors.toList());
-    this.unseqFiles =
-        unseqFiles.stream().filter(this::filterUnseqResource).collect(Collectors.toList());
+    filterUnseqResource(unseqFiles);
   }
 
   /** If returns true, it means to participate in the merge */
@@ -76,21 +76,30 @@ public class CrossSpaceMergeResource {
         && (!res.isClosed() || res.stillLives(ttlLowerBound));
   }
 
-  /** If returns true, it means to participate in the merge */
-  private boolean filterUnseqResource(TsFileResource res) {
-    return res.getTsFile().exists()
-        && !res.isDeleted()
-        && (!res.isClosed() || res.stillLives(ttlLowerBound))
-        && !res.isCompacting()
-        && !res.isCompactionCandidate();
+  /** Filter the unseq files into the compaction */
+  private void filterUnseqResource(List<TsFileResource> unseqResources) {
+    for (TsFileResource resource : unseqResources) {
+      if (resource.isCompacting()
+          || resource.isCompactionCandidate()
+          || !resource.isClosed()
+          || unseqFiles.size()
+              >= IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum()) {
+        if (unseqFiles.size() > 0) {
+          return;
+        }
+      } else if (resource.getTsFile().exists()
+          && !resource.isDeleted()
+          && resource.stillLives(ttlLowerBound)) {
+        this.unseqFiles.add(resource);
+      }
+    }
   }
 
   public CrossSpaceMergeResource(
       Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long ttlLowerBound) {
     this.ttlLowerBound = ttlLowerBound;
     this.seqFiles = seqFiles.stream().filter(this::filterSeqResource).collect(Collectors.toList());
-    this.unseqFiles =
-        unseqFiles.stream().filter(this::filterUnseqResource).collect(Collectors.toList());
+    filterUnseqResource(unseqFiles);
   }
 
   public void clear() throws IOException {

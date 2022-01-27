@@ -167,8 +167,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
       if (seqSelectedNum != resource.getSeqFiles().size()) {
         selectOverlappedSeqFiles(unseqFile);
       }
-      boolean isClosed = checkClosedAndNotMerging(unseqFile);
-      if (!isClosed) {
+      boolean isSeqFilesValid = checkIsSeqFilesValid();
+      if (!isSeqFilesValid) {
         tmpSelectedSeqFiles.clear();
         unseqIndex++;
         timeConsumption = System.currentTimeMillis() - startTime;
@@ -218,19 +218,20 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     return false;
   }
 
-  private boolean checkClosedAndNotMerging(TsFileResource unseqFile) {
-    boolean isClosedAndNotMerging = unseqFile.isClosed() && !unseqFile.isCompacting();
-    if (!isClosedAndNotMerging) {
-      return false;
-    }
+  /**
+   * To avoid redundant data in seq files, cross space compaction should select all the seq files
+   * which have overlap with unseq files whether they are compacting or not. Therefore, before
+   * adding task into the queue, cross space compaction task should be check whether source seq
+   * files are being compacted or not to speed up compaction.
+   */
+  private boolean checkIsSeqFilesValid() {
     for (Integer seqIdx : tmpSelectedSeqFiles) {
-      if (!resource.getSeqFiles().get(seqIdx).isClosed()
+      if (resource.getSeqFiles().get(seqIdx).isCompactionCandidate()
           || resource.getSeqFiles().get(seqIdx).isCompacting()) {
-        isClosedAndNotMerging = false;
-        break;
+        return false;
       }
     }
-    return isClosedAndNotMerging;
+    return true;
   }
 
   /**
