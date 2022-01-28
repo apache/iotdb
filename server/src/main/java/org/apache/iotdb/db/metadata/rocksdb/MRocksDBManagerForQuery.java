@@ -721,10 +721,10 @@ public class MRocksDBManagerForQuery {
 //    return mtree.getChildNodeNameInNextLevel(pathPattern);
 //  }
   public boolean isStorageGroup(PartialPath path) {
-    String innerPathName = constructKey(path.getNodes(), path.getNodeLength());
-    return rocksDB
-        .keyMayExist(columnFamilyHandleMap.get(TABLE_NAME_STORAGE_GROUP), innerPathName.getBytes(),
-            new Holder<>());
+    int level = MRocksDBQueryUtils.getLevelByPartialPath(path.getFullPath());
+    String innerPathName = MRocksDBQueryUtils
+        .convertPartialPathToInner(path.getFullPath(), level, RockDBConstants.NODE_TYPE_SG);
+    return rocksDB.keyMayExist(innerPathName.getBytes(), new Holder<>());
   }
 
   /**
@@ -737,21 +737,14 @@ public class MRocksDBManagerForQuery {
    */
   public PartialPath getBelongedStorageGroup(PartialPath path)
       throws StorageGroupNotSetException, IllegalPathException {
-    String[] nodes = path.getNodes();
-    String innerPathName = null;
-    int level;
-    for (level = nodes.length; level > 0; level--) {
-      String[] copy = Arrays.copyOf(nodes, level);
-      innerPathName = constructKey(copy, copy.length);
-      boolean isStorageGroup = rocksDB
-          .keyMayExist(columnFamilyHandleMap.get(TABLE_NAME_STORAGE_GROUP),
-              innerPathName.getBytes(),
-              new Holder<>());
-      if (isStorageGroup) {
-        break;
-      }
+    String innerPathName = MRocksDBQueryUtils
+        .findBelongToSpecifiedNodeType(path.getNodes(), rocksDB, RockDBConstants.NODE_TYPE_SG);
+    if (innerPathName == null) {
+      throw new StorageGroupNotSetException(
+          String.format("Cannot find [%s] belong to which storage group.", path.getFullPath()));
     }
-    return getPartialPathFromInnerPath(innerPathName, level);
+    return new PartialPath(MRocksDBQueryUtils.convertPartialPathToInner(innerPathName,
+        MRocksDBQueryUtils.getLevelByPartialPath(innerPathName), RockDBConstants.NODE_TYPE_SG));
   }
 
   /**
