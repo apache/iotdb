@@ -18,45 +18,20 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.primitives.Bytes;
-import com.google.common.util.concurrent.Striped;
 import org.apache.commons.lang3.StringUtils;
-import org.rocksdb.ColumnFamilyDescriptor;
-import org.rocksdb.ColumnFamilyHandle;
-import org.rocksdb.ColumnFamilyOptions;
-import org.rocksdb.DBOptions;
-import org.rocksdb.Holder;
-import org.rocksdb.InfoLogLevel;
-import org.rocksdb.LRUCache;
-import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
-import org.rocksdb.RocksIterator;
 import org.rocksdb.WriteBatch;
-import org.rocksdb.WriteOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Lock;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
@@ -66,59 +41,17 @@ public class MRocksDBWriter {
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private static final long MAX_LOCK_WAIT_TIME = 300;
-
-  private static final String ROCKSDB_FOLDER = "rocksdb-schema";
-  private static final String TABLE_NAME_STORAGE_GROUP = "storageGroupNodes".toLowerCase();
-  private static final String TABLE_NAME_MEASUREMENT = "timeSeriesNodes".toLowerCase();
-  private static final String TABLE_NAME_DEVICE = "deviceNodes".toLowerCase();
-  private static final String[] INNER_TABLES =
-      new String[] {
-        new String(RocksDB.DEFAULT_COLUMN_FAMILY),
-        TABLE_NAME_STORAGE_GROUP,
-        TABLE_NAME_MEASUREMENT,
-        TABLE_NAME_DEVICE
-      };
-
-  private static final String ROCKSDB_PATH =
-      config.getSystemDir() + File.separator + ROCKSDB_FOLDER;
-
-  private RocksDB rocksDB;
-
-  ConcurrentMap<String, ColumnFamilyHandle> columnFamilyHandleMap = new ConcurrentHashMap<>();
-  List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>();
-  List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>();
-
-  // TODO: check how Stripped Lock consume memory
-  private Striped<Lock> locks = Striped.lazyWeakLock(10000);
+  private RocksDBReadWriteHandler readWriteHandler;
 
   static {
     RocksDB.loadLibrary();
   }
 
   public MRocksDBWriter() throws MetadataException {
-    Options options = new Options();
-    options.setCreateIfMissing(true);
-    options.setAllowMmapReads(true);
-    options.setRowCache(new LRUCache(900000));
-    options.setDbWriteBufferSize(16 * 1024 * 1024);
-
-    org.rocksdb.Logger rocksDBLogger = new RockDBLogger(options, logger);
-    rocksDBLogger.setInfoLogLevel(InfoLogLevel.ERROR_LEVEL);
-    options.setLogger(rocksDBLogger);
-
-    DBOptions dbOptions = new DBOptions(options);
-
     try {
-      initColumnFamilyDescriptors(options);
-
-      rocksDB = RocksDB.open(dbOptions, ROCKSDB_PATH, columnFamilyDescriptors, columnFamilyHandles);
-
-      initInnerColumnFamilies();
-
-      initRootKey();
+      readWriteHandler = new RocksDBReadWriteHandler();
     } catch (RocksDBException e) {
-      logger.error("init rocksdb fail", e);
+      logger.error("create RocksDBReadWriteHandler fail", e);
       throw new MetadataException(e);
     }
   }
@@ -126,130 +59,6 @@ public class MRocksDBWriter {
   public void init() throws MetadataException {
     // TODO: scan to init tag manager
     // TODO: warn up cache if needed
-  }
-
-  private void initColumnFamilyDescriptors(Options options) throws RocksDBException {
-    List<byte[]> cfs = RocksDB.listColumnFamilies(options, ROCKSDB_PATH);
-    for (byte[] tableBytes : cfs) {
-      columnFamilyDescriptors.add(
-          new ColumnFamilyDescriptor(tableBytes, new ColumnFamilyOptions()));
-    }
-  }
-
-  private void initInnerColumnFamilies() throws RocksDBException {
-    for (String tableNames : INNER_TABLES) {
-      boolean tableCreated = false;
-      for (ColumnFamilyHandle cfh : columnFamilyHandles) {
-        if (tableNames.equals(new String(cfh.getName()))) {
-          tableCreated = true;
-          break;
-        }
-      }
-      if (!tableCreated) {
-        createTable(tableNames);
-      }
-    }
-    for (ColumnFamilyHandle handle : columnFamilyHandles) {
-      columnFamilyHandleMap.put(new String(handle.getName()), handle);
-    }
-  }
-
-  private void initRootKey() throws RocksDBException {
-    if (!keyExist(ROOT)) {
-      rocksDB.put(ROOT.getBytes(), new byte[] {0x00});
-    }
-  }
-
-  private void createTable(String tableName) throws RocksDBException {
-    ColumnFamilyHandle columnFamilyHandle =
-        rocksDB.createColumnFamily(
-            new ColumnFamilyDescriptor(tableName.getBytes(), new ColumnFamilyOptions()));
-    columnFamilyDescriptors.add(
-        new ColumnFamilyDescriptor(tableName.getBytes(), new ColumnFamilyOptions()));
-    columnFamilyHandles.add(columnFamilyHandle);
-  }
-
-  private ColumnFamilyHandle getCFHByName(String columnFamilyName) {
-    return columnFamilyHandleMap.get(columnFamilyName);
-  }
-
-  private void createNodeTypeByTableName(String tableName, String key, byte[] value) {
-    Lock lock = locks.get(key);
-    try {
-      lock.lock();
-      tableName = tableName.toLowerCase();
-      if (columnFamilyHandleMap.containsKey(tableName)) {
-        ColumnFamilyHandle columnFamilyHandle = columnFamilyHandleMap.get(tableName);
-        rocksDB.put(columnFamilyHandle, key.getBytes(), new byte[] {});
-      } else {
-        System.out.println(tableName + "表不存在,无法写入：" + key);
-      }
-    } catch (RocksDBException e) {
-      System.out.println("添加rocksDB:key值数据异常" + e.getMessage());
-    } finally {
-      lock.unlock();
-    }
-  }
-
-  private void createNode(String key, byte[] value)
-      throws RocksDBException, InterruptedException, MetadataException {
-    Lock lock = locks.get(key);
-    if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-      try {
-        if (!keyExist(key)) {
-          rocksDB.put(key.getBytes(), value);
-        }
-      } finally {
-        lock.unlock();
-      }
-    } else {
-      throw new MetadataException("acquire lock timeout: " + key);
-    }
-  }
-
-  private void batchCreateNode(String lockKey, WriteBatch batch)
-      throws RocksDBException, InterruptedException, MetadataException {
-    Lock lock = locks.get(lockKey);
-    if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-      try {
-        if (!keyExist(lockKey)) {
-          rocksDB.write(new WriteOptions(), batch);
-        }
-      } finally {
-        lock.unlock();
-      }
-    } else {
-      throw new MetadataException("acquire lock timeout: " + lockKey);
-    }
-  }
-
-  private void batchCreateNode(String primaryKey, String aliasKey, WriteBatch batch)
-      throws RocksDBException, MetadataException, InterruptedException {
-    Lock primaryLock = locks.get(primaryKey);
-    Lock aliasLock = locks.get(aliasKey);
-    if (primaryLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-      try {
-        if (keyExist(primaryKey)) {
-          throw new PathAlreadyExistException(primaryKey);
-        }
-        if (aliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-          try {
-            if (keyExist(aliasKey)) {
-              throw new AliasAlreadyExistException(aliasKey, aliasKey);
-            }
-            rocksDB.write(new WriteOptions(), batch);
-          } finally {
-            aliasLock.unlock();
-          }
-        } else {
-          throw new MetadataException("acquire lock timeout: " + aliasKey);
-        }
-      } finally {
-        primaryLock.unlock();
-      }
-    } else {
-      throw new MetadataException("acquire lock timeout: " + primaryKey);
-    }
   }
 
   /**
@@ -260,27 +69,22 @@ public class MRocksDBWriter {
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
     String[] nodes = storageGroup.getNodes();
     try {
-      boolean sgExisted = false;
+      int len = nodes.length;
       for (int i = 0; i < nodes.length; i++) {
-        String pathKey = constructKey(nodes, i);
-        Holder<byte[]> holder = new Holder();
-        if (!keyExist(pathKey, holder)) {
-          if (!sgExisted) {
-            if (i < nodes.length - 1) {
-              createNode(pathKey, new byte[] {NODE_TYPE_INNER});
-            } else {
-              WriteBatch batch = new WriteBatch();
-              byte[] key = pathKey.getBytes();
-              batch.put(key, DEFAULT_SG_NODE_VALUE);
-              batch.put(getCFHByName(TABLE_NAME_STORAGE_GROUP), key, EMPTY_NODE_VALUE);
-              batchCreateNode(pathKey, batch);
-            }
+        String levelKey = RocksDBUtils.toLevelKey(nodes, i);
+        CheckKeyResult keyCheckResult =
+            readWriteHandler.keyExist(
+                levelKey, RocksDBMNodeType.INTERNAL, RocksDBMNodeType.STORAGE_GROUP);
+        if (!keyCheckResult.existAnyKey()) {
+          if (i < len - 1) {
+            readWriteHandler.createNode(
+                levelKey, RocksDBMNodeType.INTERNAL, DEFAULT_INTERNAL_NODE_VALUE);
           } else {
-            throw new StorageGroupAlreadySetException(storageGroup.getFullPath());
+            readWriteHandler.createNode(
+                levelKey, RocksDBMNodeType.STORAGE_GROUP, DEFAULT_SG_NODE_VALUE);
           }
-        } else {
-          byte[] value = holder.getValue();
-          sgExisted = value.length > 0 && holder.getValue()[0] == NODE_TYPE_SG;
+        } else if (keyCheckResult.getResult(RocksDBMNodeType.STORAGE_GROUP)) {
+          throw new StorageGroupAlreadySetException(storageGroup.toString());
         }
       }
     } catch (RocksDBException | InterruptedException e) {
@@ -303,21 +107,41 @@ public class MRocksDBWriter {
       CompressionType compressor,
       Map<String, String> props,
       String alias)
+      throws MetadataException {}
+
+  private void createTimeSeries(
+      PartialPath path,
+      MeasurementSchema schema,
+      String alias,
+      Map<String, String> tags,
+      Map<String, String> attributes)
       throws MetadataException {
     String[] nodes = path.getNodes();
     try {
-      if (!checkStorageGroupByPath(path)) {
+      int sgIndex = indexSgNode(nodes);
+      if (sgIndex < 0) {
         if (!config.isAutoCreateSchemaEnabled()) {
           throw new StorageGroupNotSetException(path.getFullPath());
         }
         PartialPath storageGroupPath =
             MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
+        if (storageGroupPath.getNodeLength() > path.getNodeLength() - 2) {
+          throw new MetadataException("Storage Group Node and Entity Node could not be same");
+        }
         setStorageGroup(storageGroupPath);
+        sgIndex = storageGroupPath.getNodeLength() - 1;
       }
-      MeasurementSchema schema =
-          new MeasurementSchema(nodes[nodes.length - 1], dataType, encoding, compressor, props);
-      createTimeSeriesRecursive(nodes, nodes.length, alias, schema);
-    } catch (RocksDBException | IOException | InterruptedException e) {
+
+      // make sure sg node and entity node are different
+      if (sgIndex > nodes.length - 3) {
+        throw new MetadataException("Storage Group Node and Entity Node could not be same");
+      }
+
+      // LOCK
+      createTimeSeriesRecursively(
+          nodes, nodes.length, sgIndex + 1, schema, alias, tags, attributes);
+      // UNLOCK
+    } catch (RocksDBException | InterruptedException | IOException e) {
       throw new MetadataException(e);
     }
   }
@@ -334,71 +158,86 @@ public class MRocksDBWriter {
     // TODO: persist tags and update tag index
   }
 
-  private void createTimeSeriesRecursive(
-      String nodes[], int start, String alias, MeasurementSchema schema)
-      throws RocksDBException, IOException, MetadataException, InterruptedException {
-    if (start < 1) {
-      // "root" must exist
+  private void createTimeSeriesRecursively(
+      String nodes[],
+      int start,
+      int end,
+      MeasurementSchema schema,
+      String alias,
+      Map<String, String> tags,
+      Map<String, String> attributes)
+      throws InterruptedException, MetadataException, RocksDBException, IOException {
+    if (start <= end) {
+      // nodes before "end" must exist
       return;
     }
-    String key = constructKey(nodes, start - 1);
-    if (!keyExist(key)) {
-      createTimeSeriesRecursive(nodes, start - 1, alias, schema);
-      byte[] value;
+    String levelPath = RocksDBUtils.constructKey(nodes, start - 1);
+    CheckKeyResult checkResult =
+        readWriteHandler.keyExist(
+            levelPath,
+            RocksDBMNodeType.INTERNAL,
+            RocksDBMNodeType.ENTITY,
+            RocksDBMNodeType.MEASUREMENT);
+    if (!checkResult.existAnyKey()) {
+      createTimeSeriesRecursively(nodes, start - 1, end, schema, alias, tags, attributes);
       if (start == nodes.length) {
-        WriteBatch batch = new WriteBatch();
-        value = buildMeasurementNodeValue(alias, schema);
-        byte[] pathKey = key.getBytes();
-        batch.put(pathKey, value);
-        batch.put(getCFHByName(TABLE_NAME_MEASUREMENT), pathKey, EMPTY_NODE_VALUE);
-
-        if (StringUtils.isNotEmpty(alias)) {
-          String[] aliasNodes = Arrays.copyOf(nodes, nodes.length);
-          aliasNodes[nodes.length - 1] = alias;
-          String aliasKey = constructKey(aliasNodes, aliasNodes.length - 1);
-          if (!keyExist(aliasKey)) {
-            batch.put(
-                aliasKey.getBytes(),
-                Bytes.concat(new byte[] {DATA_VERSION, NODE_TYPE_ALIAS}, key.getBytes()));
-            batchCreateNode(key, aliasKey, batch);
-          } else {
-            throw new AliasAlreadyExistException(key, alias);
-          }
-        } else {
-          batchCreateNode(key, batch);
-        }
+        // TODO: create timeseries Node
       } else if (start == nodes.length - 1) {
-        value = new byte[] {NODE_TYPE_ENTITY};
-        createNodeTypeByTableName(TABLE_NAME_DEVICE, key, value);
+        // create entity node
+        readWriteHandler.createNode(levelPath, RocksDBMNodeType.ENTITY, DEFAULT_ENTITY_NODE_VALUE);
       } else {
-        value = new byte[] {NODE_TYPE_INNER};
+        // create internal node
+        readWriteHandler.createNode(
+            levelPath, RocksDBMNodeType.ENTITY, DEFAULT_INTERNAL_NODE_VALUE);
       }
-      createNode(key, value);
+    } else if (start == nodes.length) {
+      throw new PathAlreadyExistException("");
+    } else if (checkResult.getResult(RocksDBMNodeType.MEASUREMENT)
+        || checkResult.getResult(RocksDBMNodeType.ALISA)) {
+      throw new PathAlreadyExistException("Measurement node exists in the path");
+    } else if (start == nodes.length - 1 && !checkResult.getResult(RocksDBMNodeType.ENTITY)) {
+      // TODO: convert the parent node to entity if it exist and is internal node
+      WriteBatch writeBatch = new WriteBatch();
+      //      writeBatch.delete();
+      //      writeBatch.put();
     }
   }
 
-  private byte[] buildMeasurementNodeValue(String alias, MeasurementSchema schema)
-      throws IOException {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    outputStream.write(DATA_VERSION);
-    outputStream.write(NODE_TYPE_MEASUREMENT);
+  private void createTimeSeriesInRockDB(
+      String[] nodes,
+      String key,
+      MeasurementSchema schema,
+      String alias,
+      Map<String, String> tags,
+      Map<String, String> attributes)
+      throws IOException, RocksDBException, MetadataException, InterruptedException {
+    // create timeseries node
+    WriteBatch batch = new WriteBatch();
+    byte[] value = readWriteHandler.buildMeasurementNodeValue(schema, alias, tags, attributes);
+    byte[] pathKey = key.getBytes();
+    batch.put(pathKey, value);
+    batch.put(readWriteHandler.getCFHByName(TABLE_NAME_MEASUREMENT), pathKey, EMPTY_NODE_VALUE);
 
     if (StringUtils.isNotEmpty(alias)) {
-      outputStream.write(FLAG_HAS_ALIAS);
-      byte[] data = RocksDBUtils.constructDataBlock(DATA_BLOCK_TYPE_ALIAS, alias);
-      outputStream.write(data, 0, data.length);
+      String[] aliasNodes = Arrays.copyOf(nodes, nodes.length);
+      aliasNodes[nodes.length - 1] = alias;
+      String aliasKey = RocksDBUtils.constructKey(aliasNodes, aliasNodes.length - 1);
+      if (!readWriteHandler.keyExist(aliasKey)) {
+        batch.put(
+            aliasKey.getBytes(),
+            Bytes.concat(new byte[] {DATA_VERSION, NODE_TYPE_ALIAS}, key.getBytes()));
+        readWriteHandler.batchCreateNode(key, aliasKey, batch);
+      } else {
+        throw new AliasAlreadyExistException(key, alias);
+      }
     } else {
-      outputStream.write(DEFAULT_FLAG);
+      readWriteHandler.batchCreateNode(key, batch);
     }
-
-    schema.serializeTo(outputStream);
-
-    return outputStream.toByteArray();
   }
 
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     String[] nodes = fullPath.getNodes();
-    String key = constructKey(nodes, nodes.length - 1);
+    String key = RocksDBUtils.constructKey(nodes, nodes.length - 1);
     try {
       byte[] value = rocksDB.get(key.getBytes());
       if (value == null) {
@@ -412,74 +251,30 @@ public class MRocksDBWriter {
     }
   }
 
-  public long countStorageGroupNodes() {
-    return countNodesNum(TABLE_NAME_STORAGE_GROUP);
-  }
-
-  public long countMeasurementNodes() {
-    return countNodesNum(TABLE_NAME_MEASUREMENT);
-  }
-
-  public long countDeviceNodes() {
-    return countNodesNum(TABLE_NAME_DEVICE);
-  }
-
-  private long countNodesNum(String tableName) {
-    ColumnFamilyHandle columnFamilyHandle = columnFamilyHandleMap.get(tableName);
-    RocksIterator iter = rocksDB.newIterator(columnFamilyHandle);
-    long count = 0;
-    for (iter.seekToFirst(); iter.isValid(); iter.next()) {
-      count++;
-    }
-    return count;
-  }
-
-  private boolean keyExist(String key, Holder<byte[]> holder) throws RocksDBException {
-    boolean exist = false;
-    if (!rocksDB.keyMayExist(key.getBytes(), holder)) {
-      exist = false;
-    } else {
-      byte[] value = rocksDB.get(key.getBytes());
-      if (value != null) {
-        exist = true;
-        holder.setValue(value);
-      }
-    }
-    return exist;
-  }
-
-  private boolean keyExist(String key) throws RocksDBException {
-    return keyExist(key, new Holder<>());
-  }
-
-  private String constructKey(String[] nodes, int end) {
-    return constructKey(nodes, end, end);
-  }
-
-  private String constructKey(String[] nodes, int end, int level) {
-    StringBuilder builder = new StringBuilder();
-    builder.append(ROOT);
-    char depth = (char) (ZERO + level);
-    for (int i = 1; i <= end; i++) {
-      builder.append(PATH_SEPARATOR).append(depth).append(nodes[i]);
-    }
-    return builder.toString();
-  }
   /** Check whether the given path contains a storage group */
   public boolean checkStorageGroupByPath(PartialPath path) throws RocksDBException {
     String[] nodes = path.getNodes();
     // ignore the first element: "root"
     for (int i = 1; i < nodes.length; i++) {
-      String key = constructKey(nodes, i);
-      Holder<byte[]> holder = new Holder();
-      if (keyExist(key, holder)) {
-        byte[] value = holder.getValue();
-        return value.length > 0 && value[0] == NODE_TYPE_SG;
-      } else {
-        return false;
+      String levelPath = RocksDBUtils.constructKey(nodes, i);
+      if (readWriteHandler.typeKyeExist(levelPath, RocksDBMNodeType.STORAGE_GROUP)) {
+        return true;
       }
     }
     return false;
+  }
+
+  private int indexSgNode(String[] nodes) throws RocksDBException {
+    int result = -1;
+    // ignore the first element: "root"
+    for (int i = 1; i < nodes.length; i++) {
+      String levelPath = RocksDBUtils.constructKey(nodes, i);
+      if (readWriteHandler.typeKyeExist(levelPath, RocksDBMNodeType.STORAGE_GROUP)) {
+        result = i;
+        break;
+      }
+    }
+    return result;
   }
   /**
    * Get child node path in the next level of the given path pattern.
@@ -495,10 +290,10 @@ public class MRocksDBWriter {
   public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) {
     String[] nodes = pathPattern.getNodes();
     String startKey =
-        constructKey(nodes, nodes.length - 1, nodes.length)
+        RocksDBUtils.constructKey(nodes, nodes.length - 1, nodes.length)
             + PATH_SEPARATOR
             + (char) (ZERO + nodes.length);
-    return getAllByPrefix(startKey);
+    return readWriteHandler.getAllByPrefix(startKey);
   }
   /**
    * Get all nodes matching the given path pattern in the given level. The level of the path should
@@ -524,174 +319,22 @@ public class MRocksDBWriter {
     if (nodeLevel <= 5) {
       char level = (char) (ZERO + nodeLevel);
       String prefix = builder.append(ROOT).append(PATH_SEPARATOR).append(level).toString();
-      paths = getAllByPrefix(prefix);
+      paths = readWriteHandler.getAllByPrefix(prefix);
     } else {
       paths = ConcurrentHashMap.newKeySet();
       char upperLevel = (char) (ZERO + nodeLevel - 1);
       String prefix = builder.append(ROOT).append(PATH_SEPARATOR).append(upperLevel).toString();
-      Set<String> parentPaths = getAllByPrefix(prefix);
+      Set<String> parentPaths = readWriteHandler.getAllByPrefix(prefix);
       parentPaths
           .parallelStream()
           .forEach(
               x -> {
-                String targetPrefix = getNextLevelOfPath(x, upperLevel);
-                paths.addAll(getAllByPrefix(targetPrefix));
+                String targetPrefix = RocksDBUtils.getNextLevelOfPath(x, upperLevel);
+                paths.addAll(readWriteHandler.getAllByPrefix(targetPrefix));
               });
     }
-    return convertToPartialPath(paths, nodeLevel);
-  }
-  /**
-   * To calculate the count of timeseries matching given path. The path could be a pattern of a full
-   * path, may contain wildcard.
-   */
-  public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
-    AtomicInteger counter = new AtomicInteger(0);
-    Set<String> seeds = new HashSet<>();
-    seeds.add(ROOT + PATH_SEPARATOR + ZERO);
-    scanAllKeysRecursively(
-        seeds,
-        0,
-        s -> {
-          try {
-            byte[] value = rocksDB.get(s.getBytes());
-            if (value != null && value.length > 0 && value[0] == NODE_TYPE_MEASUREMENT) {
-              counter.incrementAndGet();
-              return false;
-            }
-          } catch (RocksDBException e) {
-            return false;
-          }
-          return true;
-        });
-    return counter.get();
-  }
-  /** To calculate the count of devices for given path pattern. */
-  public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
-    AtomicInteger counter = new AtomicInteger(0);
-    Set<String> seeds = new HashSet<>();
-    seeds.add(ROOT + PATH_SEPARATOR + ZERO);
-    scanAllKeysRecursively(
-        seeds,
-        0,
-        s -> {
-          try {
-            byte[] value = rocksDB.get(s.getBytes());
-            if (value != null && value.length > 0 && value[0] == NODE_TYPE_ENTITY) {
-              counter.incrementAndGet();
-              return false;
-            }
-          } catch (RocksDBException e) {
-            return false;
-          }
-          return true;
-        });
-    return counter.get();
+    return RocksDBUtils.convertToPartialPath(paths, nodeLevel);
   }
 
-  private BlockingQueue<String> blockingQueue = new LinkedBlockingQueue();
-
-  private void scanAllKeysRecursively(Set<String> seeds, int level, Function<String, Boolean> op) {
-    if (seeds == null || seeds.isEmpty()) {
-      return;
-    }
-    Set<String> children = ConcurrentHashMap.newKeySet();
-    seeds
-        .parallelStream()
-        .forEach(
-            x -> {
-              if (op.apply(x)) {
-                // x is not leaf node
-                String childrenPrefix = getNextLevelOfPath(x, level);
-                children.addAll(getAllByPrefix(childrenPrefix));
-              }
-            });
-    if (!children.isEmpty()) {
-      scanAllKeysRecursively(children, level + 1, op);
-    }
-  }
-
-  private String getNextLevelOfPath(String innerPath, int currentLevel) {
-    char levelChar = (char) (ZERO + currentLevel);
-    String old = PATH_SEPARATOR + levelChar;
-    String target = PATH_SEPARATOR + (char) (levelChar + 1);
-    return innerPath.replace(old, target);
-  }
-
-  private String getNextLevelOfPath(String innerPath, char currentLevel) {
-    String old = PATH_SEPARATOR + currentLevel;
-    String target = PATH_SEPARATOR + (char) (currentLevel + 1);
-    return innerPath.replace(old, target);
-  }
-
-  private PartialPath getPartialPathFromInnerPath(String path, int level) {
-    char charLevel = (char) (ZERO + level);
-    return getPartialPathFromInnerPath(path, charLevel);
-  }
-
-  private PartialPath getPartialPathFromInnerPath(String path, char level) {
-    String pathWithoutLevel = path.replace(PATH_SEPARATOR + level, PATH_SEPARATOR);
-    String[] nodes = pathWithoutLevel.split(ESCAPE_PATH_SEPARATOR);
-    nodes[0] = PATH_ROOT;
-    return new PartialPath(nodes);
-  }
-
-  private List<PartialPath> convertToPartialPath(Collection<String> paths, int level) {
-    return paths
-        .parallelStream()
-        .map(x -> getPartialPathFromInnerPath(x, level))
-        .collect(Collectors.toList());
-  }
-
-  private Set<String> getAllByPrefix(String prefix) {
-    Set<String> result = new HashSet<>();
-    byte[] prefixKey = prefix.getBytes();
-    RocksIterator iterator = rocksDB.newIterator();
-    for (iterator.seek(prefixKey); iterator.isValid(); iterator.next()) {
-      String key = new String(iterator.key());
-      if (!key.startsWith(prefix)) {
-        break;
-      }
-      result.add(key);
-    }
-    //    System.out.println(prefix + " " + result.size());
-    return result;
-  }
-
-  public static void main(String[] args) throws RocksDBException, MetadataException, IOException {
-    MRocksDBWriter rocksDBWriter = new MRocksDBWriter();
-    long start = System.currentTimeMillis();
-    int count1 = rocksDBWriter.getAllTimeseriesCount(null);
-    System.out.println(
-        "timeseries count: " + count1 + ", cost: " + (System.currentTimeMillis() - start));
-    start = System.currentTimeMillis();
-    int count2 = rocksDBWriter.getDevicesNum(null);
-    System.out.println(
-        "devices count: " + count2 + ", cost: " + (System.currentTimeMillis() - start));
-    List<PartialPath> path = rocksDBWriter.getNodesListInGivenLevel(null, 4);
-    //    System.out.println("----------- nodes in level 2 --------");
-    //    path.forEach(
-    //        p -> {
-    //          System.out.println(p.getFullPath());
-    //        });
-  }
-
-  public void scanAllKeys() throws IOException {
-    RocksIterator iterator = rocksDB.newIterator();
-    System.out.println("\n-----------------scan rocksdb start----------------------");
-    iterator.seekToFirst();
-    File outputFile = new File(config.getSystemDir() + "/" + "rocksdb.key");
-    if (!outputFile.exists()) {
-      outputFile.createNewFile();
-    }
-    BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(outputFile));
-    while (iterator.isValid()) {
-      outputStream.write(iterator.key());
-      outputStream.write(" -> ".getBytes());
-      outputStream.write(iterator.value());
-      outputStream.write("\n".getBytes());
-      iterator.next();
-    }
-    outputStream.close();
-    System.out.println("\n-----------------scan rocksdb end----------------------");
-  }
+  public static void main(String[] args) throws RocksDBException, MetadataException, IOException {}
 }

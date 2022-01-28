@@ -39,14 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BINARY;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BOOLEAN;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.DOUBLE;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.FLOAT;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.INTEGER;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.LONG;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.NULL;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.STRING;
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.*;
 
 /**
  * ConverterUtils is a utility class. It provides conversion between normal datatype and byte array.
@@ -111,14 +104,13 @@ public class ReadWriteIOUtils {
     return readBool(buffer);
   }
 
-  public static int write(Map<String, String> map, DataOutputStream stream) throws IOException {
+  public static int write(Map<String, String> map, OutputStream stream) throws IOException {
     if (map == null) {
       return write(-1, stream);
     }
 
     int length = 0;
-    stream.writeInt(map.size());
-    length += 4;
+    length += write(map.size(), stream);
     for (Entry<String, String> entry : map.entrySet()) {
       length += write(entry.getKey(), stream);
       length += write(entry.getValue(), stream);
@@ -126,8 +118,7 @@ public class ReadWriteIOUtils {
     return length;
   }
 
-  public static void write(List<Map<String, String>> maps, DataOutputStream stream)
-      throws IOException {
+  public static void write(List<Map<String, String>> maps, OutputStream stream) throws IOException {
     for (Map<String, String> map : maps) {
       write(map, stream);
     }
