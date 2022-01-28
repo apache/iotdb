@@ -72,8 +72,7 @@ public class CrossSpaceMergeResource {
   private boolean filterSeqResource(TsFileResource res) {
     return res.getTsFile().exists()
         && !res.isDeleted()
-        && res.isClosed()
-        && res.stillLives(ttlLowerBound);
+        && (!res.isClosed() || res.stillLives(ttlLowerBound));
   }
 
   /** Filter the unseq files into the compaction */

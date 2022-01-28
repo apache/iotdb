@@ -201,7 +201,9 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
 
       for (Integer seqIdx : tmpSelectedSeqFiles) {
         seqSelected[seqIdx] = true;
-        seqSelectedNum++;
+        if (!seqSelected[seqIdx]) {
+          seqSelectedNum++;
+        }
       }
       totalCost += newCost;
       logger.debug(

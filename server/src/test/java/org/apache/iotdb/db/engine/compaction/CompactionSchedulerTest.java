@@ -1521,7 +1521,7 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(false).size());
+      assertEquals(0, tsFileManager.getTsFileList(false).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
       CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
       totalWaitingTime = 0;
