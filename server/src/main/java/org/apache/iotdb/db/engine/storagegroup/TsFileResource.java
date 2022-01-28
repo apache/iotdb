@@ -975,4 +975,9 @@ public class TsFileResource {
               pathToReadOnlyMemChunkMap.get(path), pathToChunkMetadataListMap.get(path)));
     }
   }
+
+  /** @return is this tsfile resource in a TsFileResourceList */
+  public boolean isFileInList() {
+    return prev != null || next != null;
+  }
 }

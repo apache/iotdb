@@ -129,6 +129,11 @@ public class CrossSpaceCompactionExceptionHandler {
       List<TsFileResource> unseqFileList,
       TsFileManager tsFileManager)
       throws IOException {
+    TsFileResourceList seqResourceList =
+        tsFileManager.getSequenceListByTimePartition(seqFileList.get(0).getTimePartition());
+    TsFileResourceList unseqResourceList =
+        tsFileManager.getUnsequenceListByTimePartition(unseqFileList.get(0).getTimePartition());
+
     for (TsFileResource seqFile : seqFileList) {
       ModificationFile compactionModFile = ModificationFile.getCompactionMods(seqFile);
       if (compactionModFile.exists()) {
@@ -140,6 +145,9 @@ public class CrossSpaceCompactionExceptionHandler {
         normalModification.close();
         compactionModFile.close();
         FileUtils.delete(new File(compactionModFile.getFilePath()));
+      }
+      if (!seqFile.isFileInList()) {
+        seqResourceList.keepOrderInsert(seqFile);
       }
     }
 
@@ -155,10 +163,16 @@ public class CrossSpaceCompactionExceptionHandler {
         compactionModFile.close();
         FileUtils.delete(new File(compactionModFile.getFilePath()));
       }
+      if (!unseqFile.isFileInList()) {
+        unseqResourceList.keepOrderInsert(unseqFile);
+      }
     }
 
     boolean removeAllTargetFile = true;
     for (TsFileResource targetTsFile : targetTsFiles) {
+      if (targetTsFile.isFileInList()) {
+        seqResourceList.remove(targetTsFile);
+      }
       if (!targetTsFile.remove()) {
         LOGGER.error(
             "{} [Compaction][Exception] failed to delete target tsfile {} when handling exception",
