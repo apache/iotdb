@@ -188,6 +188,8 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
 
   private boolean addReadLock(List<TsFileResource> tsFileResourceList) {
     for (TsFileResource tsFileResource : tsFileResourceList) {
+      tsFileResource.readLock();
+      holdReadLockList.add(tsFileResource);
       if (tsFileResource.isCompacting()
           || !tsFileResource.isClosed()
           || !tsFileResource.getTsFile().exists()
@@ -195,8 +197,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         releaseAllLock();
         return false;
       }
-      tsFileResource.readLock();
-      holdReadLockList.add(tsFileResource);
       tsFileResource.setCompacting(true);
     }
     return true;

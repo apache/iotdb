@@ -230,7 +230,8 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
   public boolean checkValidAndSetMerging() {
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       TsFileResource resource = selectedTsFileResourceList.get(i);
-
+      resource.readLock();
+      isHoldingReadLock[i] = true;
       if (resource.isCompacting()
           || !resource.isClosed()
           || !resource.getTsFile().exists()
@@ -240,8 +241,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         releaseFileLocksAndResetMergingStatus(false);
         return false;
       }
-      resource.readLock();
-      isHoldingReadLock[i] = true;
     }
 
     for (TsFileResource resource : selectedTsFileResourceList) {

@@ -170,9 +170,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
       boolean isSeqFilesValid = checkIsSeqFilesValid();
       if (!isSeqFilesValid) {
         tmpSelectedSeqFiles.clear();
-        unseqIndex++;
-        timeConsumption = System.currentTimeMillis() - startTime;
-        continue;
+        break;
       }
 
       tempMaxSeqFileCost = maxSeqFileCost;
