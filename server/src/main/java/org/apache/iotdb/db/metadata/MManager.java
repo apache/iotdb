@@ -574,7 +574,7 @@ public class MManager {
       TSDataType type = plan.getDataType();
       // create time series in MTree
       IMeasurementMNode leafMNode =
-          mtree.createTimeseries(
+          mtree.createTimeseriesWithPinnedReturn(
               path,
               type,
               plan.getEncoding(),
@@ -582,37 +582,42 @@ public class MManager {
               plan.getProps(),
               plan.getAlias());
 
-      // the cached mNode may be replaced by new entityMNode in mtree
-      mNodeCache.invalidate(path.getDevicePath());
+      try {
+        // the cached mNode may be replaced by new entityMNode in mtree
+        mNodeCache.invalidate(path.getDevicePath());
 
-      // update tag index
-
-      if (offset != -1) {
-        // offset != -1 means the timeseries has already been created and now system is recovering
-        tagManager.recoverIndex(offset, leafMNode);
-      } else if (plan.getTags() != null) {
-        // tag key, tag value
-        tagManager.addIndex(plan.getTags(), leafMNode);
-      }
-
-      // update statistics and schemaDataTypeNumMap
-      totalSeriesNumber.addAndGet(1);
-      if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
-        logger.warn("Current series number {} is too large...", totalSeriesNumber);
-        allowToCreateNewSeries = false;
-      }
-
-      // write log
-      if (!isRecovering) {
-        // either tags or attributes is not empty
-        if ((plan.getTags() != null && !plan.getTags().isEmpty())
-            || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
-          offset = tagManager.writeTagFile(plan.getTags(), plan.getAttributes());
+        // update tag index
+        if (offset != -1) {
+          // offset != -1 means the timeseries has already been created and now system is recovering
+          tagManager.recoverIndex(offset, leafMNode);
+        } else if (plan.getTags() != null) {
+          // tag key, tag value
+          tagManager.addIndex(plan.getTags(), leafMNode);
         }
-        plan.setTagOffset(offset);
-        logWriter.createTimeseries(plan);
+
+        // update statistics and schemaDataTypeNumMap
+        totalSeriesNumber.addAndGet(1);
+        if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
+          logger.warn("Current series number {} is too large...", totalSeriesNumber);
+          allowToCreateNewSeries = false;
+        }
+
+        // write log
+        if (!isRecovering) {
+          // either tags or attributes is not empty
+          if ((plan.getTags() != null && !plan.getTags().isEmpty())
+              || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
+            offset = tagManager.writeTagFile(plan.getTags(), plan.getAttributes());
+          }
+          plan.setTagOffset(offset);
+          logWriter.createTimeseries(plan);
+        }
+        leafMNode.setOffset(offset);
+        mtree.updateMNode(leafMNode);
+
+      } finally {
+        mtree.unPinMNode(leafMNode);
       }
-      leafMNode.setOffset(offset);
 
     } catch (IOException e) {
       throw new MetadataException(e);

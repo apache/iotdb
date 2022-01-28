@@ -52,8 +52,8 @@ import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MNodeLevelCo
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MeasurementGroupByLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.StorageGroupCounter;
+import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -134,7 +134,7 @@ public class MTreeService implements Serializable {
   public MTreeService() {}
 
   public void init() throws IOException {
-    store = new MemMTreeStore();
+    store = new CachedMTreeStore();
     store.init();
     this.root = store.getRoot();
   }
@@ -155,6 +155,19 @@ public class MTreeService implements Serializable {
   // endregion
 
   // region Timeseries operation, including create and delete
+
+  public void createTimeseries(
+      PartialPath path,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressor,
+      Map<String, String> props,
+      String alias)
+      throws MetadataException {
+    unPinMNode(
+        createTimeseriesWithPinnedReturn(path, dataType, encoding, compressor, props, alias));
+  }
+
   /**
    * Create a timeseries with a full path from root to leaf node. Before creating a timeseries, the
    * storage group should be set first, throw exception otherwise
@@ -166,7 +179,7 @@ public class MTreeService implements Serializable {
    * @param props props
    * @param alias alias of measurement
    */
-  public IMeasurementMNode createTimeseries(
+  public IMeasurementMNode createTimeseriesWithPinnedReturn(
       PartialPath path,
       TSDataType dataType,
       TSEncoding encoding,
@@ -233,7 +246,7 @@ public class MTreeService implements Serializable {
       if (alias != null) {
         store.addAlias(entityMNode, alias, measurementMNode);
       }
-      unPinPath(measurementMNode);
+      unPinPath(entityMNode);
       return measurementMNode;
     }
   }
@@ -1752,6 +1765,10 @@ public class MTreeService implements Serializable {
 
   public void unPinMNode(IMNode node) {
     store.unPin(node);
+  }
+
+  public void updateMNode(IMNode node) {
+    store.updateMNode(node);
   }
 
   // endregion

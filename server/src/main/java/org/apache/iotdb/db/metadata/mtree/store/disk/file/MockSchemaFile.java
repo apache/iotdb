@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer.getCachedMNodeContainer;
 
@@ -78,14 +79,7 @@ public class MockSchemaFile implements ISchemaFile {
     if (segment == null) {
       return Collections.emptyIterator();
     }
-    Map<String, IMNode> map = new HashMap<>();
-    IMNode cloned;
-    for (IMNode node : getSegment(parent).values()) {
-      cloned = cloneMNode(node);
-      cloned.setParent(parent);
-      map.put(node.getName(), cloned);
-    }
-    return new MockSchemaFileIterator(map.values().iterator());
+    return new MockSchemaFileIterator(getSegment(parent).values().iterator());
   }
 
   @Override
@@ -149,7 +143,7 @@ public class MockSchemaFile implements ISchemaFile {
 
   private long allocateSegment() {
     long address = fileTail++;
-    mockFile.put(address, new HashMap<>());
+    mockFile.put(address, new ConcurrentHashMap<>());
     return address;
   }
 
