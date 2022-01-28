@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.manage;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -80,11 +79,7 @@ public class CrossSpaceMergeResource {
   /** Filter the unseq files into the compaction */
   private void filterUnseqResource(List<TsFileResource> unseqResources) {
     for (TsFileResource resource : unseqResources) {
-      if (resource.isCompacting()
-          || resource.isCompactionCandidate()
-          || !resource.isClosed()
-          || unseqFiles.size()
-              >= IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum()) {
+      if (resource.isCompacting() || resource.isCompactionCandidate() || !resource.isClosed()) {
         if (unseqFiles.size() > 0) {
           return;
         }
