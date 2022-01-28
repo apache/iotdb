@@ -1,18 +1,25 @@
 package org.apache.iotdb.db.metadata.rocksdb;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.rocksdb.Holder;
+import org.rocksdb.RocksDB;
+import org.rocksdb.RocksIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MRocksDBQueryUtils {
 
-  private static final int MAX_LEVEL = 10;
   private static final char START_FLAG = '\u0019';
   private static final char SPLIT_FLAG = '.';
   private static final byte[] ALL_NODE_TYPE = new byte[]{RockDBConstants.NODE_TYPE_INNER,
@@ -106,11 +113,31 @@ public class MRocksDBQueryUtils {
     }
     List<Set<String>> allPath = new ArrayList<>();
     for (byte nodeType : ALL_NODE_TYPE) {
-      Set<String> allPathGroupByCurrType = new HashSet<>();
-      for (int i = startLevel; i <= endLevel; i++) {
-        allPathGroupByCurrType.add(convertPartialPathToInner(partialPath, i, nodeType));
-      }
-      allPath.add(allPathGroupByCurrType);
+      allPath.add(getSpecifiedPossiblePath(partialPath, startLevel, endLevel, nodeType));
+    }
+    return allPath;
+  }
+
+  /**
+   * get specified possible inner paths within the specified level range. e.g. return
+   * ["sroot.2x.2x","sroot.3x.3x"] if input is ("x.x" ,2,3,s)
+   *
+   * @param partialPath path to be processed
+   * @param startLevel  min level
+   * @param endLevel    max level
+   * @return all inner name
+   */
+  public static Set<String> getSpecifiedPossiblePath(String partialPath, int startLevel,
+      int endLevel, byte nodeType) {
+    if (startLevel > endLevel || partialPath == null) {
+      logger
+          .error("Can not get path by these params,partialPath: [{}],startLevel:[{}],endLevel:[{}]",
+              partialPath, startLevel, endLevel);
+      return Collections.emptySet();
+    }
+    Set<String> allPath = new HashSet<>();
+    for (int i = startLevel; i <= endLevel; i++) {
+      allPath.add(convertPartialPathToInner(partialPath, i, nodeType));
     }
     return allPath;
   }
@@ -139,4 +166,55 @@ public class MRocksDBQueryUtils {
     }
     return stringBuilder.toString();
   }
+
+  public static String convertPartialPathToInnerByNodes(String[] nodes, int level, byte nodeType) {
+    StringBuilder stringBuilder = new StringBuilder();
+    stringBuilder.append(nodeType).append(PATH_ROOT);
+    for (String str : nodes) {
+      stringBuilder.append(SPLIT_FLAG).append(level).append(str);
+    }
+    return stringBuilder.toString();
+  }
+
+
+  public static Set<String> getKeyByPrefix(RocksDB rocksDB, String innerName) {
+    RocksIterator iterator = rocksDB.newIterator();
+    Set<String> result = new HashSet<>();
+    for (iterator.seek(innerName.getBytes()); iterator.isValid(); iterator.next()) {
+      String keyStr = new String(iterator.key());
+      if (!keyStr.startsWith(innerName)) {
+        break;
+      }
+      result.add(keyStr);
+    }
+    return result;
+  }
+
+  public static int getLevelByPartialPath(String partialPath) {
+    int levelCount = 0;
+    for (char c : partialPath.toCharArray()) {
+      if (SPLIT_FLAG == c) {
+        levelCount++;
+      }
+    }
+    return levelCount;
+  }
+
+  public static String findBelongToSpecifiedNodeType(String[] nodes, RocksDB rocksDB,
+      byte nodeType) {
+    String innerPathName;
+    for (int level = nodes.length; level > 0; level--) {
+      String[] copy = Arrays.copyOf(nodes, level);
+      innerPathName = convertPartialPathToInnerByNodes(copy, level, nodeType);
+      boolean isBelongToType = rocksDB
+          .keyMayExist(
+              innerPathName.getBytes(),
+              new Holder<>());
+      if (isBelongToType) {
+        return innerPathName;
+      }
+    }
+    return null;
+  }
+
 }
