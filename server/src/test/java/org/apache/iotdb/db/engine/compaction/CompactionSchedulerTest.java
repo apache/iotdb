@@ -1539,7 +1539,7 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(false).size());
+      assertEquals(0, tsFileManager.getTsFileList(false).size());
       tsFileManager.setAllowCompaction(false);
       stopCompactionTaskManager();
     } finally {
