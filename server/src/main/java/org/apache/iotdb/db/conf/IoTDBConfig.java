@@ -783,6 +783,9 @@ public class IoTDBConfig {
   /** the number of virtual storage groups per user-defined storage group */
   private int virtualStorageGroupNum = 1;
 
+  /** the interval to log recover progress of each vsg when starting iotdb */
+  private long recoveryLogIntervalInMs = 5_000L;
+
   private String adminName = "root";
 
   private String adminPassword = "root";
@@ -2285,6 +2288,14 @@ public class IoTDBConfig {
 
   public void setVirtualStorageGroupNum(int virtualStorageGroupNum) {
     this.virtualStorageGroupNum = virtualStorageGroupNum;
+  }
+
+  public long getRecoveryLogIntervalInMs() {
+    return recoveryLogIntervalInMs;
+  }
+
+  public void setRecoveryLogIntervalInMs(long recoveryLogIntervalInMs) {
+    this.recoveryLogIntervalInMs = recoveryLogIntervalInMs;
   }
 
   public boolean isRpcAdvancedCompressionEnable() {
