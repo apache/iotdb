@@ -109,6 +109,9 @@ public class MockSchemaFile implements ISchemaFile {
   @Override
   public void deleteMNode(IMNode targetNode) {
     IMNode removedNode = getSegment(targetNode.getParent()).remove(targetNode.getName());
+    if (removedNode == null || removedNode.isMeasurement()) {
+      return;
+    }
     deleteMNodeRecursively(removedNode);
   }
 
