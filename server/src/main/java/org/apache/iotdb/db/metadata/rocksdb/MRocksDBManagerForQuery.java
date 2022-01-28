@@ -38,6 +38,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
+import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -719,7 +720,6 @@ public class MRocksDBManagerForQuery {
 //  public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
 //    return mtree.getChildNodeNameInNextLevel(pathPattern);
 //  }
-
   public boolean isStorageGroup(PartialPath path) {
     String innerPathName = constructKey(path.getNodes(), path.getNodeLength());
     return rocksDB
@@ -1006,6 +1006,37 @@ public class MRocksDBManagerForQuery {
    */
   public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
       throws MetadataException, RocksDBException {
+    String innerPath = constructKey(path.getNodes(), path.getNodeLength());
+    byte[] value = rocksDB.get(innerPath.getBytes());
+    if (value == null) {
+      throw new StorageGroupNotSetException(
+          String.format("Can not find storage group by path : %s", path.getFullPath()));
+    }
+    if ((value[0] & RockDBConstants.NODE_TYPE_ENTITY_SG) != 0) {
+      Object ttl = getValueByParse(ByteBuffer.wrap(value), RockDBConstants.FLAG_SET_TTL, true);
+      if (ttl == null) {
+        ttl = 0L;
+      }
+      return new StorageGroupEntityMNode(null,
+          convertInnerPathToPartialPath(innerPath).getFullPath(), (Long) ttl);
+    } else if ((value[0] & RockDBConstants.NODE_TYPE_SG) != 0) {
+      Object ttl = getValueByParse(ByteBuffer.wrap(value), RockDBConstants.FLAG_SET_TTL, true);
+      if (ttl == null) {
+        ttl = 0L;
+      }
+      return new StorageGroupMNode(null, convertInnerPathToPartialPath(innerPath).getFullPath(),
+          (Long) ttl);
+    } else {
+      throw new StorageGroupNotSetException(
+          String.format("Cannot find the storage group by %s.", path.getFullPath()));
+    }
+  }
+
+  /**
+   * Get storage group node by path. the give path don't need to be storage group path.
+   */
+  public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path)
+      throws MetadataException, RocksDBException {
     String[] nodes = path.getNodes();
     String innerPathName = "";
     int i;
@@ -1043,32 +1074,48 @@ public class MRocksDBManagerForQuery {
   }
 
   /**
-   * Get storage group node by path. the give path don't need to be storage group path.
-   */
-//  public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
-//    ensureStorageGroup(path);
-//    return mtree.getStorageGroupNodeByPath(path);
-//  }
-
-  /**
    * Get all storage group MNodes
    */
-//  public List<IStorageGroupMNode> getAllStorageGroupNodes() {
-//    return mtree.getAllStorageGroupNodes();
-//  }
+  public List<IStorageGroupMNode> getAllStorageGroupNodes()
+      throws MetadataException, RocksDBException {
+    List<String> allStorageGroupPath = new ArrayList<>();
+    RocksIterator iterator = rocksDB
+        .newIterator(columnFamilyHandleMap.get(TABLE_NAME_STORAGE_GROUP));
+    // get all storage group path
+    for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
+      allStorageGroupPath.add(new String(iterator.key()));
+    }
+    List<IStorageGroupMNode> result = new ArrayList<>();
+    for (String path : allStorageGroupPath) {
+      result.add(getStorageGroupNodeByPath(convertInnerPathToPartialPath(path)));
+    }
+    return result;
+  }
 
-//  public IMNode getDeviceNode(PartialPath path) throws MetadataException {
-//    IMNode node;
-//    try {
-//      node = mNodeCache.get(path);
-//      return node;
-//    } catch (Exception e) {
-//      if (e.getCause() instanceof MetadataException) {
-//        throw new PathNotExistException(path.getFullPath());
-//      }
-//      throw e;
-//    }
-//  }
+  public IMNode getDeviceNode(PartialPath path) throws MetadataException, RocksDBException {
+    String[] nodes = path.getNodes();
+    String innerPathName = "";
+    int i;
+    for (i = nodes.length; i > 0; i--) {
+      String[] copy = Arrays.copyOf(nodes, i);
+      innerPathName = constructKey(copy, copy.length);
+      boolean isDevice = rocksDB
+          .keyMayExist(columnFamilyHandleMap.get(TABLE_NAME_DEVICE),
+              innerPathName.getBytes(),
+              new Holder<>());
+      if (isDevice) {
+        break;
+      }
+    }
+    byte[] value = rocksDB.get(innerPathName.getBytes());
+    if ((value[0] & RockDBConstants.NODE_TYPE_ENTITY) != 0) {
+      return new EntityMNode(null,
+          convertInnerPathToPartialPath(innerPathName).getFullPath());
+    } else {
+      throw new StorageGroupNotSetException(
+          String.format("Cannot find the storage group by %s.", path.getFullPath()));
+    }
+  }
 
   public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
