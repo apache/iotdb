@@ -780,12 +780,13 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
+    String statement = req.getStatement();
+
     try {
       if (!checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
       }
 
-      String statement = req.getStatement();
       PhysicalPlan physicalPlan =
           processor.parseSQLToPhysicalPlan(
               statement, sessionManager.getZoneId(req.sessionId), req.fetchSize);
@@ -811,10 +812,10 @@ public class TSServiceImpl implements TSIService.Iface {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
       return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e, "executing executeQueryStatement"));
+          onQueryException(e, "executing executeQueryStatement\"" + statement + "\""));
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e, "executing executeQueryStatement"));
+          onQueryException(e, "executing executeQueryStatement\"" + statement + "\""));
     }
   }
 
