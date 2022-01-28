@@ -65,7 +65,7 @@ public class IoTDBSyncReceiverCollectorIT {
   protected static boolean enableUnseqSpaceCompaction;
   protected static boolean enableCrossSpaceCompaction;
   /** create tsfile and move to tmpDir for sync test */
-  File tmpDir = new File("target/synctest/files");
+  File tmpDir = new File("target/synctest");
 
   String pipeName = "pipe1";
   String remoteIp = "192.168.0.66";
