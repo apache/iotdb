@@ -146,8 +146,7 @@ public class VirtualStorageGroupProcessor {
   private static final int MERGE_MOD_START_VERSION_NUM = 1;
 
   private static final Logger logger = LoggerFactory.getLogger(VirtualStorageGroupProcessor.class);
-  /** indicating the file to be loaded already exists locally. */
-  private static final int POS_ALREADY_EXIST = -2;
+
   /** indicating the file to be loaded overlap with some files. */
   private static final int POS_OVERLAP = -3;
 
@@ -554,7 +553,7 @@ public class VirtualStorageGroupProcessor {
       Map<String, Long> endTimeMap = new HashMap<>();
       for (String deviceId : resource.getDevices()) {
         long endTime = resource.getEndTime(deviceId);
-        endTimeMap.put(deviceId, endTime);
+        endTimeMap.put(deviceId.intern(), endTime);
       }
       lastFlushTimeManager.setMultiDeviceLastTime(timePartitionId, endTimeMap);
       lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
