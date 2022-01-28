@@ -236,6 +236,11 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
+  public Iterator<IMNode> getChildrenBufferIterator() {
+    return new BufferIterator();
+  }
+
+  @Override
   public Iterator<IMNode> getNewChildBufferIterator() {
     return getNewChildBuffer().values().iterator();
   }
@@ -357,6 +362,46 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
         default:
           return false;
       }
+    }
+  }
+
+  private class BufferIterator implements Iterator<IMNode> {
+    Iterator<IMNode> iterator;
+    Iterator<IMNode> newBufferIterator;
+    Iterator<IMNode> updateBufferIterator;
+    byte status = 0;
+
+    BufferIterator() {
+      newBufferIterator = getNewChildBuffer().values().iterator();
+      updateBufferIterator = getUpdatedChildBuffer().values().iterator();
+      iterator = newBufferIterator;
+    }
+
+    @Override
+    public boolean hasNext() {
+      if (iterator.hasNext()) {
+        return true;
+      }
+      while (!iterator.hasNext()) {
+        if (!changeStatus()) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    @Override
+    public IMNode next() {
+      return iterator.next();
+    }
+
+    private boolean changeStatus() {
+      if (status == 0) {
+        iterator = updateBufferIterator;
+        status = 1;
+        return true;
+      }
+      return false;
     }
   }
 }

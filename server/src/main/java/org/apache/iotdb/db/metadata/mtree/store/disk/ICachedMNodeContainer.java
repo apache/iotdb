@@ -41,6 +41,8 @@ public interface ICachedMNodeContainer extends IMNodeContainer {
 
   Iterator<IMNode> getChildrenIterator();
 
+  Iterator<IMNode> getChildrenBufferIterator();
+
   Iterator<IMNode> getNewChildBufferIterator();
 
   Map<String, IMNode> getChildCache();

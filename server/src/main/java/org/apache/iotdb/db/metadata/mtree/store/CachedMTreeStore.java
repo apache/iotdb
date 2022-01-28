@@ -264,16 +264,19 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
+  // todo implement RWLock rather than copy on read
   private class CachedMNodeIterator implements Iterator<IMNode> {
 
     IMNode parent;
     Iterator<IMNode> iterator;
+    Iterator<IMNode> bufferIterator;
     boolean isIteratingDisk = true;
     boolean loadedFromDisk = true;
     IMNode nextNode;
 
     CachedMNodeIterator(IMNode parent) {
       this.parent = parent;
+      bufferIterator = getCachedMNodeContainer(parent).getChildrenBufferIterator();
       this.iterator = file.getChildren(parent);
       readNext();
     }
@@ -336,7 +339,7 @@ public class CachedMTreeStore implements IMTreeStore {
     }
 
     private void startIteratingBuffer() {
-      iterator = getCachedMNodeContainer(parent).getNewChildBufferIterator();
+      iterator = bufferIterator;
       isIteratingDisk = false;
       loadedFromDisk = false;
     }
