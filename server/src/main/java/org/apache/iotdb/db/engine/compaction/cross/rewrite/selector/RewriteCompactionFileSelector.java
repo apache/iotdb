@@ -250,11 +250,11 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
       boolean noMoreOverlap = false;
       for (int i = 0; i < resource.getSeqFiles().size() && !noMoreOverlap; i++) {
         TsFileResource seqFile = resource.getSeqFiles().get(i);
-        if (seqSelected[i] || !seqFile.mayContainsDevice(deviceId)) {
+        if (!seqFile.mayContainsDevice(deviceId)) {
           continue;
         }
         // the open file's endTime is Long.MIN_VALUE, this will make the file be filtered below
-        long seqEndTime = seqFile.isClosed() ? seqFile.getEndTime(deviceId) : Long.MAX_VALUE;
+        long seqEndTime = seqFile.getEndTime(deviceId);
         if (unseqEndTime <= seqEndTime) {
           // the unseqFile overlaps current seqFile
           tmpSelectedSeqFiles.add(i);
