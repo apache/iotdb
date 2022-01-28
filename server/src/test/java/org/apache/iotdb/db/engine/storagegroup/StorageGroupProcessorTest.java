@@ -687,7 +687,7 @@ public class StorageGroupProcessorTest {
             context,
             null,
             null);
-    Assert.assertEquals(10, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(1, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
