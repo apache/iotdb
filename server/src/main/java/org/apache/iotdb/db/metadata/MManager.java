@@ -843,18 +843,21 @@ public class MManager {
           // init QueryDataSource Cache
           QueryResourceManager.getInstance()
               .initQueryDataSourceCache(processorToSeriesMap, context, null);
-
-          allMatchedNodes =
-              allMatchedNodes.stream()
-                  .sorted(
-                      Comparator.comparingLong(
-                              (MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
-                          .reversed()
-                          .thenComparing(MNode::getFullPath))
-                  .collect(toList());
+        } catch (Exception e) {
+          logger.error("Meet error when init QueryDataSource ", e);
+          throw new QueryProcessException("Meet error when init QueryDataSource.", e);
         } finally {
           StorageEngine.getInstance().mergeUnLock(list);
         }
+
+        allMatchedNodes =
+            allMatchedNodes.stream()
+                .sorted(
+                    Comparator.comparingLong(
+                            (MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
+                        .reversed()
+                        .thenComparing(MNode::getFullPath))
+                .collect(toList());
       } catch (StorageEngineException | QueryProcessException e) {
         throw new MetadataException(e);
       }
