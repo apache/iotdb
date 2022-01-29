@@ -843,18 +843,18 @@ public class MManager {
           // init QueryDataSource Cache
           QueryResourceManager.getInstance()
               .initQueryDataSourceCache(processorToSeriesMap, context, null);
-
-          allMatchedNodes =
-              allMatchedNodes.stream()
-                  .sorted(
-                      Comparator.comparingLong(
-                              (MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
-                          .reversed()
-                          .thenComparing(MNode::getFullPath))
-                  .collect(toList());
         } finally {
           StorageEngine.getInstance().mergeUnLock(list);
         }
+
+        allMatchedNodes =
+            allMatchedNodes.stream()
+                .sorted(
+                    Comparator.comparingLong(
+                            (MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
+                        .reversed()
+                        .thenComparing(MNode::getFullPath))
+                .collect(toList());
       } catch (StorageEngineException | QueryProcessException e) {
         throw new MetadataException(e);
       }

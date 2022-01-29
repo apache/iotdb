@@ -102,31 +102,32 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-      // init resultIndexes, group result indexes by path
-      for (int i = 0; i < paths.size(); i++) {
-        PartialPath path = (PartialPath) paths.get(i);
-        if (!pathExecutors.containsKey(path)) {
-          // init GroupByExecutor
-          pathExecutors.put(
-              path,
-              getGroupByExecutor(
-                  path,
-                  groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()),
-                  dataTypes.get(i),
-                  context,
-                  timeFilter.copy(),
-                  null,
-                  groupByTimePlan.isAscending()));
-          resultIndexes.put(path, new ArrayList<>());
-        }
-        resultIndexes.get(path).add(i);
-        AggregateResult aggrResult =
-            AggregateResultFactory.getAggrResultByName(
-                groupByTimePlan.getDeduplicatedAggregations().get(i), dataTypes.get(i), ascending);
-        pathExecutors.get(path).addAggregateResult(aggrResult);
-      }
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    // init resultIndexes, group result indexes by path
+    for (int i = 0; i < paths.size(); i++) {
+      PartialPath path = (PartialPath) paths.get(i);
+      if (!pathExecutors.containsKey(path)) {
+        // init GroupByExecutor
+        pathExecutors.put(
+            path,
+            getGroupByExecutor(
+                path,
+                groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()),
+                dataTypes.get(i),
+                context,
+                timeFilter.copy(),
+                null,
+                groupByTimePlan.isAscending()));
+        resultIndexes.put(path, new ArrayList<>());
+      }
+      resultIndexes.get(path).add(i);
+      AggregateResult aggrResult =
+          AggregateResultFactory.getAggrResultByName(
+              groupByTimePlan.getDeduplicatedAggregations().get(i), dataTypes.get(i), ascending);
+      pathExecutors.get(path).addAggregateResult(aggrResult);
     }
   }
 

@@ -105,13 +105,14 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-      for (int i = 0; i < paths.size(); i++) {
-        PartialPath path = (PartialPath) paths.get(i);
-        allDataReaderList.add(
-            getReaderByTime(path, groupByTimePlan, dataTypes.get(i), context, null));
-      }
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    for (int i = 0; i < paths.size(); i++) {
+      PartialPath path = (PartialPath) paths.get(i);
+      allDataReaderList.add(
+          getReaderByTime(path, groupByTimePlan, dataTypes.get(i), context, null));
     }
   }
 

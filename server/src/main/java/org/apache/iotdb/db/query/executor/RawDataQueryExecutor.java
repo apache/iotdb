@@ -112,29 +112,30 @@ public class RawDataQueryExecutor {
       // init QueryDataSource cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-      for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
-        PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
-        TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
-
-        QueryDataSource queryDataSource =
-            QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
-        timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
-
-        ManagedSeriesReader reader =
-            new SeriesRawDataBatchReader(
-                path,
-                queryPlan.getAllMeasurementsInDevice(path.getDevice()),
-                dataType,
-                context,
-                queryDataSource,
-                timeFilter,
-                null,
-                null,
-                queryPlan.isAscending());
-        readersOfSelectedSeries.add(reader);
-      }
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
+      PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
+      TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
+
+      QueryDataSource queryDataSource =
+          QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
+      timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
+
+      ManagedSeriesReader reader =
+          new SeriesRawDataBatchReader(
+              path,
+              queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+              dataType,
+              context,
+              queryDataSource,
+              timeFilter,
+              null,
+              null,
+              queryPlan.isAscending());
+      readersOfSelectedSeries.add(reader);
     }
     return readersOfSelectedSeries;
   }
@@ -185,22 +186,23 @@ public class RawDataQueryExecutor {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-      for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
-        if (cached.get(i)) {
-          readersOfSelectedSeries.add(null);
-          continue;
-        }
-        PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
-        IReaderByTimestamp seriesReaderByTimestamp =
-            getReaderByTimestamp(
-                path,
-                queryPlan.getAllMeasurementsInDevice(path.getDevice()),
-                queryPlan.getDeduplicatedDataTypes().get(i),
-                context);
-        readersOfSelectedSeries.add(seriesReaderByTimestamp);
-      }
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
+      if (cached.get(i)) {
+        readersOfSelectedSeries.add(null);
+        continue;
+      }
+      PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
+      IReaderByTimestamp seriesReaderByTimestamp =
+          getReaderByTimestamp(
+              path,
+              queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+              queryPlan.getDeduplicatedDataTypes().get(i),
+              context);
+      readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
     return readersOfSelectedSeries;
   }

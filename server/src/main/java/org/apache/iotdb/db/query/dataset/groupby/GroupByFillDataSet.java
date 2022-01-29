@@ -137,19 +137,20 @@ public class GroupByFillDataSet extends QueryDataSet {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-      for (int i = 0; i < paths.size(); i++) {
-        PreviousFill fill = previousFillExecutors[i];
-        firstNotNullTV[i] = fill.getFillResult();
-        TimeValuePair timeValuePair = firstNotNullTV[i];
-        previousValue[i] = null;
-        previousTime[i] = Long.MAX_VALUE;
-        if (ascending && timeValuePair != null && timeValuePair.getValue() != null) {
-          previousValue[i] = timeValuePair.getValue().getValue();
-          previousTime[i] = timeValuePair.getTimestamp();
-        }
-      }
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    for (int i = 0; i < paths.size(); i++) {
+      PreviousFill fill = previousFillExecutors[i];
+      firstNotNullTV[i] = fill.getFillResult();
+      TimeValuePair timeValuePair = firstNotNullTV[i];
+      previousValue[i] = null;
+      previousTime[i] = Long.MAX_VALUE;
+      if (ascending && timeValuePair != null && timeValuePair.getValue() != null) {
+        previousValue[i] = timeValuePair.getValue().getValue();
+        previousTime[i] = timeValuePair.getTimestamp();
+      }
     }
   }
 

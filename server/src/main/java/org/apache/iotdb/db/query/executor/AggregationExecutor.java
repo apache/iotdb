@@ -115,17 +115,17 @@ public class AggregationExecutor {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-
-      for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
-        aggregateOneSeries(
-            entry,
-            aggregateResultList,
-            aggregationPlan.getAllMeasurementsInDevice(entry.getKey().getDevice()),
-            timeFilter,
-            context);
-      }
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
+      aggregateOneSeries(
+          entry,
+          aggregateResultList,
+          aggregationPlan.getAllMeasurementsInDevice(entry.getKey().getDevice()),
+          timeFilter,
+          context);
     }
 
     return constructDataSet(Arrays.asList(aggregateResultList), aggregationPlan);
@@ -367,18 +367,18 @@ public class AggregationExecutor {
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(
               processorToSeriesMap, context, timestampGenerator.getTimeFilter());
-
-      for (int i = 0; i < selectedSeries.size(); i++) {
-        PartialPath path = selectedSeries.get(i);
-        List<Integer> indexes = pathToAggrIndexesMap.remove(path);
-        if (indexes != null) {
-          IReaderByTimestamp seriesReaderByTimestamp =
-              getReaderByTime(path, queryPlan, dataTypes.get(i), context);
-          readerToAggrIndexesMap.put(seriesReaderByTimestamp, indexes);
-        }
-      }
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    for (int i = 0; i < selectedSeries.size(); i++) {
+      PartialPath path = selectedSeries.get(i);
+      List<Integer> indexes = pathToAggrIndexesMap.remove(path);
+      if (indexes != null) {
+        IReaderByTimestamp seriesReaderByTimestamp =
+            getReaderByTime(path, queryPlan, dataTypes.get(i), context);
+        readerToAggrIndexesMap.put(seriesReaderByTimestamp, indexes);
+      }
     }
 
     List<AggregateResult> aggregateResults = new ArrayList<>();

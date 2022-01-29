@@ -90,11 +90,10 @@ public class ServerTimeGenerator extends TimeGenerator {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-
-      operatorNode = construct(expression);
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
     }
+    operatorNode = construct(expression);
   }
 
   private Filter getPathListAndConstructTimeFilterFromExpression(
