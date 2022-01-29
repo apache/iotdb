@@ -3,11 +3,13 @@ package org.apache.iotdb.db.metadata.rocksdb;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -20,6 +22,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.primitives.Bytes;
 import org.apache.commons.lang3.StringUtils;
+import org.rocksdb.Holder;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.WriteBatch;
@@ -69,6 +72,7 @@ public class MRocksDBWriter {
    * @param storageGroup root.node.(node)*
    */
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
+    MetaFormatUtils.checkStorageGroup(storageGroup.getFullPath());
     String[] nodes = storageGroup.getNodes();
     try {
       int len = nodes.length;
@@ -140,26 +144,9 @@ public class MRocksDBWriter {
       Map<String, String> attributes)
       throws MetadataException {
     String[] nodes = path.getNodes();
+    int sgIndex = ensureStorageGroup(path, path.getNodeLength() - 2);
+    MetaFormatUtils.checkTimeseries(path);
     try {
-      int sgIndex = indexOfSgNode(nodes);
-      if (sgIndex < 0) {
-        if (!config.isAutoCreateSchemaEnabled()) {
-          throw new StorageGroupNotSetException(path.getFullPath());
-        }
-        PartialPath storageGroupPath =
-            MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
-        if (storageGroupPath.getNodeLength() > path.getNodeLength() - 2) {
-          throw new MetadataException("Storage Group Node and Entity Node could not be same");
-        }
-        setStorageGroup(storageGroupPath);
-        sgIndex = storageGroupPath.getNodeLength() - 1;
-      }
-
-      // make sure sg node and entity node are different
-      if (sgIndex > nodes.length - 3) {
-        throw new MetadataException("Storage Group Node and Entity Node could not be same");
-      }
-
       createTimeSeriesRecursively(
           nodes, nodes.length, sgIndex + 1, schema, alias, tags, attributes);
     } catch (RocksDBException | InterruptedException | IOException e) {
@@ -181,9 +168,11 @@ public class MRocksDBWriter {
       return;
     }
     String levelPath = RocksDBUtils.constructKey(nodes, start - 1);
+    Holder<byte[]> holder = new Holder<>();
     CheckKeyResult checkResult =
         readWriteHandler.keyExist(
             levelPath,
+            holder,
             RocksDBMNodeType.INTERNAL,
             RocksDBMNodeType.ENTITY,
             RocksDBMNodeType.MEASUREMENT);
@@ -199,19 +188,36 @@ public class MRocksDBWriter {
         readWriteHandler.createNode(
             levelPath, RocksDBMNodeType.ENTITY, DEFAULT_INTERNAL_NODE_VALUE);
       }
-    } else if (start == nodes.length) {
-      throw new PathAlreadyExistException("Measurement node already exists");
-    } else if (checkResult.getResult(RocksDBMNodeType.MEASUREMENT)
-        || checkResult.getResult(RocksDBMNodeType.ALISA)) {
-      throw new PathAlreadyExistException("Path contains measurement node");
-    } else if (start == nodes.length - 1 && !checkResult.getResult(RocksDBMNodeType.ENTITY)) {
-      // convert the parent node to entity if it is internal node
-      WriteBatch batch = new WriteBatch();
-      byte[] internalKey = RocksDBUtils.toInternalNodeKey(levelPath);
-      byte[] entityKey = RocksDBUtils.toEntityNodeKey(levelPath);
-      batch.delete(internalKey);
-      batch.put(entityKey, DEFAULT_ENTITY_NODE_VALUE);
-      readWriteHandler.convertToEntityNode(levelPath, entityKey, batch);
+    } else {
+      if (start == nodes.length) {
+        throw new PathAlreadyExistException("Measurement node already exists");
+      }
+
+      if (checkResult.getResult(RocksDBMNodeType.MEASUREMENT)
+          || checkResult.getResult(RocksDBMNodeType.ALISA)) {
+        throw new PathAlreadyExistException("Path contains measurement node");
+      }
+
+      if (start == nodes.length - 1) {
+        if (checkResult.getResult(RocksDBMNodeType.INTERNAL)) {
+          // convert the parent node to entity if it is internal node
+          WriteBatch batch = new WriteBatch();
+          byte[] internalKey = RocksDBUtils.toInternalNodeKey(levelPath);
+          byte[] entityKey = RocksDBUtils.toEntityNodeKey(levelPath);
+          batch.delete(internalKey);
+          batch.put(entityKey, DEFAULT_ENTITY_NODE_VALUE);
+          readWriteHandler.convertToEntityNode(levelPath, entityKey, batch);
+        } else if (checkResult.getResult(RocksDBMNodeType.ENTITY)) {
+          if ((holder.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
+            throw new AlignedTimeseriesException(
+                "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
+                levelPath);
+          }
+        } else {
+          throw new MetadataException(
+              "parent of measurement could only be entity or internal node");
+        }
+      }
     }
   }
 
@@ -258,6 +264,35 @@ public class MRocksDBWriter {
     }
   }
 
+  private int ensureStorageGroup(PartialPath path, int entityIndex) throws MetadataException {
+    int sgIndex = -1;
+    String[] nodes = path.getNodes();
+    try {
+      sgIndex = indexOfSgNode(nodes);
+      if (sgIndex < 0) {
+        if (!config.isAutoCreateSchemaEnabled()) {
+          throw new StorageGroupNotSetException(path.getFullPath());
+        }
+        PartialPath sgPath =
+            MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
+        if ((entityIndex - sgPath.getNodeLength()) < 1) {
+          throw new MetadataException("Storage Group Node and Entity Node could not be same!");
+        }
+        setStorageGroup(sgPath);
+        sgIndex = sgPath.getNodeLength() - 1;
+      }
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
+    }
+
+    // make sure sg node and entity node are different
+    if ((entityIndex - sgIndex) < 1) {
+      throw new MetadataException("Storage Group Node and Entity Node could not be same!");
+    }
+
+    return sgIndex;
+  }
+
   public void createAlignedTimeSeries(
       PartialPath prefixPath,
       List<String> measurements,
@@ -276,7 +311,6 @@ public class MRocksDBWriter {
    * @param plan CreateAlignedTimeSeriesPlan
    */
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
-    //    try {
     PartialPath prefixPath = plan.getPrefixPath();
     List<String> measurements = plan.getMeasurements();
     List<TSDataType> dataTypes = plan.getDataTypes();
@@ -284,6 +318,16 @@ public class MRocksDBWriter {
 
     for (int i = 0; i < measurements.size(); i++) {
       SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
+    }
+
+    int sgIndex = ensureStorageGroup(prefixPath, prefixPath.getNodeLength() - 1);
+
+    try {
+      // 1. create parent internal nodes recursively, the last one is device, take care of that
+      // 2. create all measurement nodes
+
+    } catch (Exception e) {
+      throw new MetadataException(e);
     }
 
     //      ensureStorageGroup(prefixPath);
@@ -319,6 +363,47 @@ public class MRocksDBWriter {
     //      idTable.createAlignedTimeseries(plan);
     //    }
   }
+
+  /**
+   * The method assume Storage Group Node has been created
+   *
+   * @param nodes
+   * @param start
+   * @param end
+   * @param aligned
+   */
+  private void createEntityRecursively(String[] nodes, int start, int end, boolean aligned)
+      throws RocksDBException, MetadataException, InterruptedException {
+    if (start <= end) {
+      // nodes before "end" must exist
+      return;
+    }
+    String levelPath = RocksDBUtils.constructKey(nodes, start - 1);
+    CheckKeyResult checkResult =
+        readWriteHandler.keyExist(
+            levelPath,
+            RocksDBMNodeType.INTERNAL,
+            RocksDBMNodeType.ENTITY,
+            RocksDBMNodeType.MEASUREMENT);
+    if (!checkResult.existAnyKey()) {
+      createEntityRecursively(nodes, start - 1, end, aligned);
+      if (start == nodes.length) {
+        byte[] nodeKey = RocksDBUtils.toEntityNodeKey(levelPath);
+        byte[] value = aligned ? new byte[] {FLAG_IS_ALIGNED} : new byte[] {DEFAULT_FLAG};
+        readWriteHandler.createNode(levelPath, nodeKey, value);
+      } else {
+        readWriteHandler.createNode(
+            levelPath, RocksDBMNodeType.INTERNAL, DEFAULT_ENTITY_NODE_VALUE);
+      }
+    } else if (start == nodes.length) {
+      throw new PathAlreadyExistException("Node already exists");
+    } else if (checkResult.getResult(RocksDBMNodeType.MEASUREMENT)
+        || checkResult.getResult(RocksDBMNodeType.ALISA)) {
+      throw new PathAlreadyExistException("Path contains measurement node");
+    }
+  }
+
+  private void createEntity() {}
 
   //  public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
   //    String[] nodes = fullPath.getNodes();

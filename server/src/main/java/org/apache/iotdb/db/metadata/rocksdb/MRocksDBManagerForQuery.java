@@ -1,16 +1,47 @@
 package org.apache.iotdb.db.metadata.rocksdb;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.mnode.EntityMNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.util.concurrent.Striped;
+import org.rocksdb.ColumnFamilyDescriptor;
+import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.ColumnFamilyOptions;
+import org.rocksdb.DBOptions;
+import org.rocksdb.Holder;
+import org.rocksdb.InfoLogLevel;
+import org.rocksdb.LRUCache;
+import org.rocksdb.Options;
+import org.rocksdb.RocksDB;
+import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -28,49 +59,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
-import org.apache.iotdb.db.metadata.mnode.EntityMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.rocksdb.ColumnFamilyDescriptor;
-import org.rocksdb.ColumnFamilyHandle;
-import org.rocksdb.ColumnFamilyOptions;
-import org.rocksdb.DBOptions;
-import org.rocksdb.Holder;
-import org.rocksdb.InfoLogLevel;
-import org.rocksdb.LRUCache;
-import org.rocksdb.Options;
-import org.rocksdb.RocksDB;
-import org.rocksdb.RocksDBException;
-import org.rocksdb.RocksIterator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class MRocksDBManagerForQuery {
 
@@ -156,7 +148,7 @@ public class MRocksDBManagerForQuery {
       tableName = tableName.toLowerCase();
       if (columnFamilyHandleMap.containsKey(tableName)) {
         ColumnFamilyHandle columnFamilyHandle = columnFamilyHandleMap.get(tableName);
-        rocksDB.put(columnFamilyHandle, key.getBytes(), new byte[]{});
+        rocksDB.put(columnFamilyHandle, key.getBytes(), new byte[] {});
       } else {
         System.out.println(tableName + "表不存在,无法写入：" + key);
       }
@@ -178,11 +170,11 @@ public class MRocksDBManagerForQuery {
         if (!keyExist(normalKey, holder, session)) {
           if (!sgExisted) {
             if (i < nodes.length - 1) {
-              createKey(normalKey, new byte[]{INNER_NODE_FLAG}, session);
+              createKey(normalKey, new byte[] {INNER_NODE_FLAG}, session);
             } else {
-              createKey(normalKey, new byte[]{SG_NODE_FLAG}, session);
+              createKey(normalKey, new byte[] {SG_NODE_FLAG}, session);
               createNodeTypeByTableName(
-                  TABLE_NAME_STORAGE_GROUP, normalKey, new byte[]{SG_NODE_FLAG});
+                  TABLE_NAME_STORAGE_GROUP, normalKey, new byte[] {SG_NODE_FLAG});
             }
           } else {
             throw new StorageGroupAlreadySetException(storageGroup.getFullPath());
@@ -264,13 +256,13 @@ public class MRocksDBManagerForQuery {
       createTimeSeriesRecursive(nodes, start - 1);
       byte[] value;
       if (start == nodes.length) {
-        value = new byte[]{MEASUREMENT_NODE_FLAG};
+        value = new byte[] {MEASUREMENT_NODE_FLAG};
         createNodeTypeByTableName(TABLE_NAME_MEASUREMENT, key, value);
       } else if (start == nodes.length - 1) {
-        value = new byte[]{DEVICE_NODE_FLAG};
+        value = new byte[] {DEVICE_NODE_FLAG};
         createNodeTypeByTableName(TABLE_NAME_DEVICE, key, value);
       } else {
-        value = new byte[]{INNER_NODE_FLAG};
+        value = new byte[] {INNER_NODE_FLAG};
       }
       createKey(key, value, -1);
     }
@@ -361,9 +353,7 @@ public class MRocksDBManagerForQuery {
     return builder.toString();
   }
 
-  /**
-   * Check whether the given path contains a storage group
-   */
+  /** Check whether the given path contains a storage group */
   public boolean checkStorageGroupByPath(PartialPath path) throws RocksDBException {
     String[] nodes = path.getNodes();
     // ignore the first element: "root"
@@ -407,7 +397,7 @@ public class MRocksDBManagerForQuery {
    * e.g. give path root.** and the level could be 2 or 3.
    *
    * @param pathPattern can be a pattern of a full path.
-   * @param nodeLevel   the level should match the level of the path
+   * @param nodeLevel the level should match the level of the path
    * @return A List instance which stores all node at given level
    */
   public List<PartialPath> getNodesListInGivenLevel(PartialPath pathPattern, int nodeLevel)
@@ -467,9 +457,7 @@ public class MRocksDBManagerForQuery {
     return counter.get();
   }
 
-  /**
-   * To calculate the count of devices for given path pattern.
-   */
+  /** To calculate the count of devices for given path pattern. */
   public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
     AtomicInteger counter = new AtomicInteger(0);
     Set<String> seeds = new HashSet<>();
@@ -597,9 +585,7 @@ public class MRocksDBManagerForQuery {
     return rocksDB.keyMayExist(innerPathName.getBytes(), new Holder<>());
   }
 
-  /**
-   * Get metadata in string
-   */
+  /** Get metadata in string */
   public String getMetadataInString() {
     throw new UnsupportedOperationException("This operation is not supported.");
   }
@@ -677,35 +663,37 @@ public class MRocksDBManagerForQuery {
    * match, the path pattern is used to match prefix path. All timeseries start with the matched
    * prefix path will be counted.
    *
-   * @param pathPattern   a path pattern or a full path
-   * @param level         the level should match the level of the path
+   * @param pathPattern a path pattern or a full path
+   * @param level the level should match the level of the path
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-//  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
-//      throws MetadataException {
-//    return mtree.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
-//  }
+  //  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean
+  // isPrefixMatch)
+  //      throws MetadataException {
+  //    return mtree.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
+  //  }
 
   /**
    * To calculate the count of nodes in the given level for given path pattern.
    *
    * @param pathPattern a path pattern or a full path
-   * @param level       the level should match the level of the path
+   * @param level the level should match the level of the path
    */
-//  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
-//      throws MetadataException {
-//    return getNodesCountInGivenLevel(pathPattern, level, false);
-//  }
+  //  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
+  //      throws MetadataException {
+  //    return getNodesCountInGivenLevel(pathPattern, level, false);
+  //  }
 
-//  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
-//      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-//    return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
-//  }
-//
-//  public List<PartialPath> getNodesListInGivenLevel(
-//      PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
-//    return getNodesListInGivenLevel(pathPattern, nodeLevel);
-//  }
+  //  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  //      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
+  //    return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
+  //  }
+  //
+  //  public List<PartialPath> getNodesListInGivenLevel(
+  //      PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws
+  // MetadataException {
+  //    return getNodesListInGivenLevel(pathPattern, nodeLevel);
+  //  }
 
   /**
    * Get child node in the next level of the given path pattern.
@@ -717,13 +705,15 @@ public class MRocksDBManagerForQuery {
    *
    * @return All child nodes of given seriesPath.
    */
-//  public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
-//    return mtree.getChildNodeNameInNextLevel(pathPattern);
-//  }
+  //  public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws
+  // MetadataException {
+  //    return mtree.getChildNodeNameInNextLevel(pathPattern);
+  //  }
   public boolean isStorageGroup(PartialPath path) {
     int level = MRocksDBQueryUtils.getLevelByPartialPath(path.getFullPath());
-    String innerPathName = MRocksDBQueryUtils
-        .convertPartialPathToInner(path.getFullPath(), level, RockDBConstants.NODE_TYPE_SG);
+    String innerPathName =
+        MRocksDBQueryUtils.convertPartialPathToInner(
+            path.getFullPath(), level, RockDBConstants.NODE_TYPE_SG);
     return rocksDB.keyMayExist(innerPathName.getBytes(), new Holder<>());
   }
 
@@ -737,14 +727,18 @@ public class MRocksDBManagerForQuery {
    */
   public PartialPath getBelongedStorageGroup(PartialPath path)
       throws StorageGroupNotSetException, IllegalPathException {
-    String innerPathName = MRocksDBQueryUtils
-        .findBelongToSpecifiedNodeType(path.getNodes(), rocksDB, RockDBConstants.NODE_TYPE_SG);
+    String innerPathName =
+        MRocksDBQueryUtils.findBelongToSpecifiedNodeType(
+            path.getNodes(), rocksDB, RockDBConstants.NODE_TYPE_SG);
     if (innerPathName == null) {
       throw new StorageGroupNotSetException(
           String.format("Cannot find [%s] belong to which storage group.", path.getFullPath()));
     }
-    return new PartialPath(MRocksDBQueryUtils.convertPartialPathToInner(innerPathName,
-        MRocksDBQueryUtils.getLevelByPartialPath(innerPathName), RockDBConstants.NODE_TYPE_SG));
+    return new PartialPath(
+        MRocksDBQueryUtils.convertPartialPathToInner(
+            innerPathName,
+            MRocksDBQueryUtils.getLevelByPartialPath(innerPathName),
+            RockDBConstants.NODE_TYPE_SG));
   }
 
   /**
@@ -757,32 +751,30 @@ public class MRocksDBManagerForQuery {
    * @param pathPattern a path pattern or a full path
    * @return a list contains all storage groups related to given path pattern
    */
-//  public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
-//      throws MetadataException {
-//    return mtree.getBelongedStorageGroups(pathPattern);
-//  }
+  //  public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
+  //      throws MetadataException {
+  //    return mtree.getBelongedStorageGroups(pathPattern);
+  //  }
 
   /**
    * Get all storage group matching given path pattern. If using prefix match, the path pattern is
-   * used to match prefix path. All timeseries start with the matched prefix path will be
-   * collected.
+   * used to match prefix path. All timeseries start with the matched prefix path will be collected.
    *
-   * @param pathPattern   a pattern of a full path
+   * @param pathPattern a pattern of a full path
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return A ArrayList instance which stores storage group paths matching given path pattern.
    */
-//  public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
-//      throws MetadataException {
-//    return mtree.getMatchedStorageGroups(pathPattern, isPrefixMatch);
-//  }
+  //  public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean
+  // isPrefixMatch)
+  //      throws MetadataException {
+  //    return mtree.getMatchedStorageGroups(pathPattern, isPrefixMatch);
+  //  }
 
-  /**
-   * Get all storage group paths
-   */
+  /** Get all storage group paths */
   public List<PartialPath> getAllStorageGroupPaths() throws IllegalPathException {
     List<PartialPath> allStorageGroupPath = new ArrayList<>();
-    RocksIterator iterator = rocksDB
-        .newIterator(columnFamilyHandleMap.get(TABLE_NAME_STORAGE_GROUP));
+    RocksIterator iterator =
+        rocksDB.newIterator(columnFamilyHandleMap.get(TABLE_NAME_STORAGE_GROUP));
     for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
       allStorageGroupPath.add(convertInnerPathToPartialPath(new String(iterator.key())));
     }
@@ -811,8 +803,8 @@ public class MRocksDBManagerForQuery {
   public Map<PartialPath, Long> getStorageGroupsTTL()
       throws RocksDBException, IllegalPathException {
     List<String> allStorageGroupPath = new ArrayList<>();
-    RocksIterator iterator = rocksDB
-        .newIterator(columnFamilyHandleMap.get(TABLE_NAME_STORAGE_GROUP));
+    RocksIterator iterator =
+        rocksDB.newIterator(columnFamilyHandleMap.get(TABLE_NAME_STORAGE_GROUP));
     // get all storage group path
     for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
       allStorageGroupPath.add(new String(iterator.key()));
@@ -836,7 +828,7 @@ public class MRocksDBManagerForQuery {
    * parse value and return a specified type
    *
    * @param byteBuffer value written in default table
-   * @param type       the type of value to obtain
+   * @param type the type of value to obtain
    */
   private Object getValueByParse(ByteBuffer byteBuffer, byte type, boolean needSkipFlag) {
     if (needSkipFlag) {
@@ -880,22 +872,22 @@ public class MRocksDBManagerForQuery {
    * @param timeseries a path pattern of the target timeseries
    * @return A HashSet instance which stores devices paths.
    */
-//  public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
-//    return mtree.getDevicesByTimeseries(timeseries);
-//  }
+  //  public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
+  //    return mtree.getDevicesByTimeseries(timeseries);
+  //  }
 
   /**
    * Get all device paths matching the path pattern. If using prefix match, the path pattern is used
    * to match prefix path. All timeseries start with the matched prefix path will be collected.
    *
-   * @param pathPattern   the pattern of the target devices.
+   * @param pathPattern the pattern of the target devices.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path.
    * @return A HashSet instance which stores devices paths matching the given path pattern.
    */
-//  public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
-//      throws MetadataException {
-//    return mtree.getDevices(pathPattern, isPrefixMatch);
-//  }
+  //  public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
+  //      throws MetadataException {
+  //    return mtree.getDevices(pathPattern, isPrefixMatch);
+  //  }
 
   /**
    * Get all device paths and according storage group paths as ShowDevicesResult.
@@ -903,9 +895,10 @@ public class MRocksDBManagerForQuery {
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
    * @return ShowDevicesResult.
    */
-//  public List<ShowDevicesResult> getMatchedDevices(ShowDevicesPlan plan) throws MetadataException {
-//    return mtree.getDevices(plan);
-//  }
+  //  public List<ShowDevicesResult> getMatchedDevices(ShowDevicesPlan plan) throws
+  // MetadataException {
+  //    return mtree.getDevices(plan);
+  //  }
 
   /**
    * Return all measurement paths for given path if the path is abstract. Or return the path itself.
@@ -913,13 +906,14 @@ public class MRocksDBManagerForQuery {
    * '*'. If using prefix match, the path pattern is used to match prefix path. All timeseries start
    * with the matched prefix path will be collected.
    *
-   * @param pathPattern   can be a pattern or a full path of timeseries.
+   * @param pathPattern can be a pattern or a full path of timeseries.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-//  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
-//      throws MetadataException {
-//    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch).left;
-//  }
+  //  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean
+  // isPrefixMatch)
+  //      throws MetadataException {
+  //    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch).left;
+  //  }
 
   /**
    * Return all measurement paths for given path if the path is abstract. Or return the path itself.
@@ -928,10 +922,10 @@ public class MRocksDBManagerForQuery {
    *
    * @param pathPattern can be a pattern or a full path of timeseries.
    */
-//  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
-//      throws MetadataException {
-//    return getMeasurementPaths(pathPattern, false);
-//  }
+  //  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
+  //      throws MetadataException {
+  //    return getMeasurementPaths(pathPattern, false);
+  //  }
 
   /**
    * Similar to method getMeasurementPaths(), but return Path with alias and filter the result by
@@ -940,57 +934,58 @@ public class MRocksDBManagerForQuery {
    *
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-//  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-//      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
-//      throws MetadataException {
-//    return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset, isPrefixMatch);
-//  }
-//
-//  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
-//      throws MetadataException {
-//    // show timeseries with index
-//    if (plan.getKey() != null && plan.getValue() != null) {
-//      return showTimeseriesWithIndex(plan, context);
-//    } else {
-//      return showTimeseriesWithoutIndex(plan, context);
-//    }
-//  }
+  //  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
+  //      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+  //      throws MetadataException {
+  //    return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset, isPrefixMatch);
+  //  }
+  //
+  //  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext
+  // context)
+  //      throws MetadataException {
+  //    // show timeseries with index
+  //    if (plan.getKey() != null && plan.getValue() != null) {
+  //      return showTimeseriesWithIndex(plan, context);
+  //    } else {
+  //      return showTimeseriesWithoutIndex(plan, context);
+  //    }
+  //  }
 
   /**
    * Get series type for given seriesPath.
    *
    * @param fullPath full path
    */
-//  public TSDataType getSeriesType(PartialPath fullPath) throws MetadataException {
-//    if (fullPath.equals(SQLConstant.TIME_PATH)) {
-//      return TSDataType.INT64;
-//    }
-//    return getSeriesSchema(fullPath).getType();
-//  }
+  //  public TSDataType getSeriesType(PartialPath fullPath) throws MetadataException {
+  //    if (fullPath.equals(SQLConstant.TIME_PATH)) {
+  //      return TSDataType.INT64;
+  //    }
+  //    return getSeriesSchema(fullPath).getType();
+  //  }
 
   /**
    * Get series type for given seriesPath.
    *
    * @param fullPath full path
    */
-//  public TSDataType getSeriesType(PartialPath fullPath) throws MetadataException {
-//    if (fullPath.equals(SQLConstant.TIME_PATH)) {
-//      return TSDataType.INT64;
-//    }
-//    return getSeriesSchema(fullPath).getType();
-//  }
+  //  public TSDataType getSeriesType(PartialPath fullPath) throws MetadataException {
+  //    if (fullPath.equals(SQLConstant.TIME_PATH)) {
+  //      return TSDataType.INT64;
+  //    }
+  //    return getSeriesSchema(fullPath).getType();
+  //  }
 
   /**
    * Get series type for given seriesPath.
    *
    * @param fullPath full path
    */
-//  public TSDataType getSeriesType(PartialPath fullPath) throws MetadataException {
-//    if (fullPath.equals(SQLConstant.TIME_PATH)) {
-//      return TSDataType.INT64;
-//    }
-//    return getSeriesSchema(fullPath).getType();
-//  }
+  //  public TSDataType getSeriesType(PartialPath fullPath) throws MetadataException {
+  //    if (fullPath.equals(SQLConstant.TIME_PATH)) {
+  //      return TSDataType.INT64;
+  //    }
+  //    return getSeriesSchema(fullPath).getType();
+  //  }
 
   /**
    * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
@@ -1010,24 +1005,22 @@ public class MRocksDBManagerForQuery {
       if (ttl == null) {
         ttl = 0L;
       }
-      return new StorageGroupEntityMNode(null,
-          convertInnerPathToPartialPath(innerPath).getFullPath(), (Long) ttl);
+      return new StorageGroupEntityMNode(
+          null, convertInnerPathToPartialPath(innerPath).getFullPath(), (Long) ttl);
     } else if ((value[0] & RockDBConstants.NODE_TYPE_SG) != 0) {
       Object ttl = getValueByParse(ByteBuffer.wrap(value), RockDBConstants.FLAG_SET_TTL, true);
       if (ttl == null) {
         ttl = 0L;
       }
-      return new StorageGroupMNode(null, convertInnerPathToPartialPath(innerPath).getFullPath(),
-          (Long) ttl);
+      return new StorageGroupMNode(
+          null, convertInnerPathToPartialPath(innerPath).getFullPath(), (Long) ttl);
     } else {
       throw new StorageGroupNotSetException(
           String.format("Cannot find the storage group by %s.", path.getFullPath()));
     }
   }
 
-  /**
-   * Get storage group node by path. the give path don't need to be storage group path.
-   */
+  /** Get storage group node by path. the give path don't need to be storage group path. */
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path)
       throws MetadataException, RocksDBException {
     String[] nodes = path.getNodes();
@@ -1036,8 +1029,9 @@ public class MRocksDBManagerForQuery {
     for (i = nodes.length; i > 0; i--) {
       String[] copy = Arrays.copyOf(nodes, i);
       innerPathName = constructKey(copy, copy.length);
-      boolean isStorageGroup = rocksDB
-          .keyMayExist(columnFamilyHandleMap.get(TABLE_NAME_STORAGE_GROUP),
+      boolean isStorageGroup =
+          rocksDB.keyMayExist(
+              columnFamilyHandleMap.get(TABLE_NAME_STORAGE_GROUP),
               innerPathName.getBytes(),
               new Holder<>());
       if (isStorageGroup) {
@@ -1051,29 +1045,27 @@ public class MRocksDBManagerForQuery {
       if (ttl == null) {
         ttl = 0L;
       }
-      return new StorageGroupEntityMNode(null,
-          convertInnerPathToPartialPath(innerPathName).getFullPath(), (Long) ttl);
+      return new StorageGroupEntityMNode(
+          null, convertInnerPathToPartialPath(innerPathName).getFullPath(), (Long) ttl);
     } else if ((value[0] & RockDBConstants.NODE_TYPE_SG) != 0) {
       Object ttl = getValueByParse(ByteBuffer.wrap(value), RockDBConstants.FLAG_SET_TTL, true);
       if (ttl == null) {
         ttl = 0L;
       }
-      return new StorageGroupMNode(null, convertInnerPathToPartialPath(innerPathName).getFullPath(),
-          (Long) ttl);
+      return new StorageGroupMNode(
+          null, convertInnerPathToPartialPath(innerPathName).getFullPath(), (Long) ttl);
     } else {
       throw new StorageGroupNotSetException(
           String.format("Cannot find the storage group by %s.", path.getFullPath()));
     }
   }
 
-  /**
-   * Get all storage group MNodes
-   */
+  /** Get all storage group MNodes */
   public List<IStorageGroupMNode> getAllStorageGroupNodes()
       throws MetadataException, RocksDBException {
     List<String> allStorageGroupPath = new ArrayList<>();
-    RocksIterator iterator = rocksDB
-        .newIterator(columnFamilyHandleMap.get(TABLE_NAME_STORAGE_GROUP));
+    RocksIterator iterator =
+        rocksDB.newIterator(columnFamilyHandleMap.get(TABLE_NAME_STORAGE_GROUP));
     // get all storage group path
     for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
       allStorageGroupPath.add(new String(iterator.key()));
@@ -1092,8 +1084,9 @@ public class MRocksDBManagerForQuery {
     for (i = nodes.length; i > 0; i--) {
       String[] copy = Arrays.copyOf(nodes, i);
       innerPathName = constructKey(copy, copy.length);
-      boolean isDevice = rocksDB
-          .keyMayExist(columnFamilyHandleMap.get(TABLE_NAME_DEVICE),
+      boolean isDevice =
+          rocksDB.keyMayExist(
+              columnFamilyHandleMap.get(TABLE_NAME_DEVICE),
               innerPathName.getBytes(),
               new Holder<>());
       if (isDevice) {
@@ -1102,8 +1095,7 @@ public class MRocksDBManagerForQuery {
     }
     byte[] value = rocksDB.get(innerPathName.getBytes());
     if ((value[0] & RockDBConstants.NODE_TYPE_ENTITY) != 0) {
-      return new EntityMNode(null,
-          convertInnerPathToPartialPath(innerPathName).getFullPath());
+      return new EntityMNode(null, convertInnerPathToPartialPath(innerPathName).getFullPath());
     } else {
       throw new StorageGroupNotSetException(
           String.format("Cannot find the storage group by %s.", path.getFullPath()));
@@ -1125,7 +1117,6 @@ public class MRocksDBManagerForQuery {
     }
     return mNodes;
   }
-
 
   /**
    * Invoked during insertPlan process. Get target MeasurementMNode from given EntityMNode. If the
