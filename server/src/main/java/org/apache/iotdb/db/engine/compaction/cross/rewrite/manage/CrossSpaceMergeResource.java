@@ -70,7 +70,7 @@ public class CrossSpaceMergeResource {
 
   /** Fitler the seq files into the compaction. Seq files should be not deleted or over ttl. */
   private boolean filterSeqResource(TsFileResource res) {
-    return !res.isDeleted() && res.stillLives(ttlLowerBound);
+    return !res.isDeleted() && (!res.isClosed() || res.stillLives(ttlLowerBound));
   }
 
   /**
@@ -83,7 +83,8 @@ public class CrossSpaceMergeResource {
     for (TsFileResource resource : unseqResources) {
       if (resource.isCompacting() || resource.isCompactionCandidate() || !resource.isClosed()) {
         return;
-      } else if (!resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
+      } else if (!resource.isDeleted()
+          && (!resource.isClosed() || resource.stillLives(ttlLowerBound))) {
         this.unseqFiles.add(resource);
       }
     }
