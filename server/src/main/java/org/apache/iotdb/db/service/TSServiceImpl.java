@@ -1954,7 +1954,10 @@ public class TSServiceImpl implements TSIService.Iface {
   private TSStatus onQueryException(Exception e, String operation) {
     TSStatus status = tryCatchQueryException(e);
     if (status != null) {
-      LOGGER.error("Status code: {}, Query Statement: {} failed", status.getCode(), operation, e);
+      // ignore logging sg not ready exception
+      if (status.getCode() != TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode()) {
+        LOGGER.error("Status code: {}, Query Statement: {} failed", status.getCode(), operation, e);
+      }
       return status;
     } else {
       return onNPEOrUnexpectedException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR);
@@ -1962,33 +1965,33 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   private TSStatus tryCatchQueryException(Exception e) {
+    Throwable rootCause = getRootCause(e);
+    // ignore logging sg not ready exception
+    if (rootCause instanceof StorageGroupNotReadyException) {
+      return RpcUtils.getStatus(TSStatusCode.STORAGE_GROUP_NOT_READY, rootCause.getMessage());
+    }
+
     if (e instanceof QueryTimeoutRuntimeException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(e.getMessage(), e);
-      return RpcUtils.getStatus(TSStatusCode.TIME_OUT, getRootCause(e).getMessage());
+      return RpcUtils.getStatus(TSStatusCode.TIME_OUT, rootCause.getMessage());
     } else if (e instanceof ParseCancellationException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_PARSING_SQL_ERROR, e);
       return RpcUtils.getStatus(
-          TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + getRootCause(e).getMessage());
+          TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + rootCause.getMessage());
     } else if (e instanceof SQLParserException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_CHECK_METADATA_ERROR, e);
       return RpcUtils.getStatus(
-          TSStatusCode.METADATA_ERROR, INFO_CHECK_METADATA_ERROR + getRootCause(e).getMessage());
+          TSStatusCode.METADATA_ERROR, INFO_CHECK_METADATA_ERROR + rootCause.getMessage());
     } else if (e instanceof QueryProcessException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
       return RpcUtils.getStatus(
-          TSStatusCode.QUERY_PROCESS_ERROR,
-          INFO_QUERY_PROCESS_ERROR + getRootCause(e).getMessage());
+          TSStatusCode.QUERY_PROCESS_ERROR, INFO_QUERY_PROCESS_ERROR + rootCause.getMessage());
     } else if (e instanceof QueryInBatchStatementException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_NOT_ALLOWED_IN_BATCH_ERROR, e);
       return RpcUtils.getStatus(
-          TSStatusCode.QUERY_NOT_ALLOWED,
-          INFO_NOT_ALLOWED_IN_BATCH_ERROR + getRootCause(e).getMessage());
+          TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + rootCause.getMessage());
     } else if (e instanceof IoTDBException) {
-      Throwable rootCause = getRootCause(e);
-      // ignore logging sg not ready exception
-      if (!(rootCause instanceof StorageGroupNotReadyException)) {
-        DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
-      }
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
       return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), rootCause.getMessage());
     }
     return null;
@@ -2004,8 +2007,15 @@ public class TSServiceImpl implements TSIService.Iface {
   private TSStatus tryCatchNonQueryException(Exception e) {
     String message = "Exception occurred while processing non-query. ";
     if (e instanceof BatchProcessException) {
+      BatchProcessException batchException = (BatchProcessException) e;
+      // ignore logging sg not ready exception
+      for (TSStatus status : batchException.getFailingStatus()) {
+        if (status.getCode() == TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode()) {
+          return RpcUtils.getStatus(Arrays.asList(batchException.getFailingStatus()));
+        }
+      }
       LOGGER.warn(message, e);
-      return RpcUtils.getStatus(Arrays.asList(((BatchProcessException) e).getFailingStatus()));
+      return RpcUtils.getStatus(Arrays.asList(batchException.getFailingStatus()));
     } else if (e instanceof IoTDBException) {
       Throwable rootCause = getRootCause(e);
       // ignore logging sg not ready exception
