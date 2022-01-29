@@ -188,26 +188,29 @@ public class LastQueryExecutor {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, filter);
-
-      for (int i = 0; i < nonCachedPaths.size(); i++) {
-        QueryDataSource dataSource =
-            QueryResourceManager.getInstance()
-                .getQueryDataSource(nonCachedPaths.get(i), context, filter, ascending);
-        LastPointReader lastReader =
-            nonCachedPaths
-                .get(i)
-                .createLastPointReader(
-                    nonCachedDataTypes.get(i),
-                    deviceMeasurementsMap.getOrDefault(
-                        nonCachedPaths.get(i).getDevice(), new HashSet<>()),
-                    context,
-                    dataSource,
-                    Long.MAX_VALUE,
-                    filter);
-        readerList.add(lastReader);
-      }
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    for (int i = 0; i < nonCachedPaths.size(); i++) {
+      QueryDataSource dataSource =
+          QueryResourceManager.getInstance()
+              .getQueryDataSource(nonCachedPaths.get(i), context, filter, ascending);
+      LastPointReader lastReader =
+          nonCachedPaths
+              .get(i)
+              .createLastPointReader(
+                  nonCachedDataTypes.get(i),
+                  deviceMeasurementsMap.getOrDefault(
+                      nonCachedPaths.get(i).getDevice(), new HashSet<>()),
+                  context,
+                  dataSource,
+                  Long.MAX_VALUE,
+                  filter);
+      readerList.add(lastReader);
     }
 
     // Compute Last result for the rest series paths by scanning Tsfiles
