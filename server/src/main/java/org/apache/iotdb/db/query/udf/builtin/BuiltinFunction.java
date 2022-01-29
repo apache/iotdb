@@ -47,6 +47,7 @@ public enum BuiltinFunction {
   NON_NEGATIVE_DERIVATIVE("NON_NEGATIVE_DERIVATIVE", UDTFNonNegativeDerivative.class),
   TOP_K("TOP_K", UDTFTopK.class),
   BOTTOM_K("BOTTOM_K", UDTFBottomK.class),
+  M4("M4", UDTFM4MAC.class),
   ;
 
   private final String functionName;
