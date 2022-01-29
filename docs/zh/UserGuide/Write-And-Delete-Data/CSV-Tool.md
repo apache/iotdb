@@ -210,5 +210,4 @@ Time,Device,str(TEXT),int(INT32)
 
 1. `,` :如果text类型的字段中包含`,`那么需要用`\`来进行转义。
 2. 你可以导入像`yyyy-MM-dd'T'HH:mm:ss`， `yyy-MM-dd HH:mm:ss`， 或者 `yyyy-MM-dd'T'HH:mm:ss.SSSZ`格式的时间。
-3. 单个CSV或者txt文件最好不要超过2GB。如果超过2GB可以将文件分割成小文件，然后用`-f`参数来指定存放小文件的文件夹的方式进行批量导入。
-4. `Time`这一列应该放在第一列。
+3. `Time`这一列应该放在第一列。
