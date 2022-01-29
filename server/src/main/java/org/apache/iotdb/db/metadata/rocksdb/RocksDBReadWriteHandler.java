@@ -13,7 +13,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.primitives.Bytes;
 import com.google.common.util.concurrent.Striped;
-import org.apache.commons.lang3.StringUtils;
 import org.rocksdb.ColumnFamilyDescriptor;
 import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.ColumnFamilyOptions;
@@ -58,16 +57,9 @@ public class RocksDBReadWriteHandler {
   private static final long MAX_LOCK_WAIT_TIME = 300;
 
   private static final String ROCKSDB_FOLDER = "rocksdb-schema";
-  private static final String TABLE_NAME_STORAGE_GROUP = "storageGroupNodes".toLowerCase();
-  private static final String TABLE_NAME_MEASUREMENT = "timeSeriesNodes".toLowerCase();
-  private static final String TABLE_NAME_DEVICE = "deviceNodes".toLowerCase();
+
   private static final String[] INNER_TABLES =
-      new String[] {
-        new String(RocksDB.DEFAULT_COLUMN_FAMILY),
-        TABLE_NAME_STORAGE_GROUP,
-        TABLE_NAME_MEASUREMENT,
-        TABLE_NAME_DEVICE
-      };
+      new String[] {new String(RocksDB.DEFAULT_COLUMN_FAMILY), TABLE_NAME_TAGS};
 
   private static final String ROCKSDB_PATH =
       config.getSystemDir() + File.separator + ROCKSDB_FOLDER;
@@ -171,10 +163,11 @@ public class RocksDBReadWriteHandler {
     Lock lock = locks.get(key);
     if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
       try {
-        if (!keyExist(key)) {
-          byte[] finalKey = RocksDBUtils.toRocksDBKey(key, type.value);
-          rocksDB.put(finalKey, value);
+        byte[] nodeKey = RocksDBUtils.toRocksDBKey(key, type.value);
+        if (keyExist(nodeKey)) {
+          throw new PathAlreadyExistException(key);
         }
+        rocksDB.put(nodeKey, value);
       } finally {
         lock.unlock();
       }
@@ -183,14 +176,15 @@ public class RocksDBReadWriteHandler {
     }
   }
 
-  public void createNode(String key, byte[] value)
+  public void createNode(String key, byte[] nodeKey, byte[] value)
       throws RocksDBException, InterruptedException, MetadataException {
     Lock lock = locks.get(key);
     if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
       try {
-        if (!keyExist(key)) {
-          rocksDB.put(key.getBytes(), value);
+        if (keyExist(nodeKey)) {
+          throw new PathAlreadyExistException(key);
         }
+        rocksDB.put(nodeKey, value);
       } finally {
         lock.unlock();
       }
@@ -199,14 +193,18 @@ public class RocksDBReadWriteHandler {
     }
   }
 
-  public void batchCreateNode(String lockKey, WriteBatch batch)
-      throws RocksDBException, InterruptedException, MetadataException {
+  public void convertToEntityNode(String lockKey, byte[] entityNodeKey, WriteBatch batch)
+      throws InterruptedException, MetadataException {
     Lock lock = locks.get(lockKey);
     if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
       try {
-        if (!keyExist(lockKey)) {
-          rocksDB.write(new WriteOptions(), batch);
+        if (keyExist(entityNodeKey)) {
+          throw new PathAlreadyExistException(lockKey);
         }
+        // check exist of some key to make sure execute could success
+        rocksDB.write(new WriteOptions(), batch);
+      } catch (RocksDBException e) {
+        e.printStackTrace();
       } finally {
         lock.unlock();
       }
@@ -215,18 +213,23 @@ public class RocksDBReadWriteHandler {
     }
   }
 
-  public void batchCreateNode(String primaryKey, String aliasKey, WriteBatch batch)
+  public void batchCreateTwoKeys(
+      String primaryKey,
+      String aliasKey,
+      byte[] primaryNodeKey,
+      byte[] aliasNodeKey,
+      WriteBatch batch)
       throws RocksDBException, MetadataException, InterruptedException {
     Lock primaryLock = locks.get(primaryKey);
     Lock aliasLock = locks.get(aliasKey);
     if (primaryLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
       try {
-        if (keyExist(primaryKey)) {
+        if (keyExist(primaryNodeKey)) {
           throw new PathAlreadyExistException(primaryKey);
         }
         if (aliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
           try {
-            if (keyExist(aliasKey)) {
+            if (keyExist(aliasNodeKey)) {
               throw new AliasAlreadyExistException(aliasKey, aliasKey);
             }
             rocksDB.write(new WriteOptions(), batch);
@@ -244,35 +247,20 @@ public class RocksDBReadWriteHandler {
     }
   }
 
-  public void createTimeSeriesInRockDB(
-      String[] nodes,
-      String key,
-      MeasurementSchema schema,
-      String alias,
-      Map<String, String> tags,
-      Map<String, String> attributes)
-      throws IOException, RocksDBException, MetadataException, InterruptedException {
-    // create timeseries node
-    WriteBatch batch = new WriteBatch();
-    byte[] value = buildMeasurementNodeValue(schema, alias, tags, attributes);
-    byte[] pathKey = key.getBytes();
-    batch.put(pathKey, value);
-    batch.put(getCFHByName(TABLE_NAME_MEASUREMENT), pathKey, EMPTY_NODE_VALUE);
-
-    if (StringUtils.isNotEmpty(alias)) {
-      String[] aliasNodes = Arrays.copyOf(nodes, nodes.length);
-      aliasNodes[nodes.length - 1] = alias;
-      String aliasKey = RocksDBUtils.constructKey(aliasNodes, aliasNodes.length - 1);
-      if (!keyExist(aliasKey)) {
-        batch.put(
-            aliasKey.getBytes(),
-            Bytes.concat(new byte[] {DATA_VERSION, NODE_TYPE_ALIAS}, key.getBytes()));
-        batchCreateNode(key, aliasKey, batch);
-      } else {
-        throw new AliasAlreadyExistException(key, alias);
+  public void batchCreateOneKey(String key, byte[] nodeKey, WriteBatch batch)
+      throws RocksDBException, MetadataException, InterruptedException {
+    Lock lock = locks.get(key);
+    if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+      try {
+        if (keyExist(nodeKey)) {
+          throw new PathAlreadyExistException(key);
+        }
+        rocksDB.write(new WriteOptions(), batch);
+      } finally {
+        lock.unlock();
       }
     } else {
-      batchCreateNode(key, batch);
+      throw new MetadataException("acquire lock timeout: " + key);
     }
   }
 
@@ -283,7 +271,7 @@ public class RocksDBReadWriteHandler {
       Map<String, String> attributes)
       throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    ReadWriteIOUtils.write(NODE_TYPE_MEASUREMENT, outputStream);
+    ReadWriteIOUtils.write(DATA_VERSION, outputStream);
 
     byte flag = DEFAULT_FLAG;
     if (alias != null) {
@@ -332,18 +320,6 @@ public class RocksDBReadWriteHandler {
     } catch (RocksDBException e) {
       throw new MetadataException(e);
     }
-  }
-
-  public long countStorageGroupNodes() {
-    return countNodesNum(TABLE_NAME_STORAGE_GROUP);
-  }
-
-  public long countMeasurementNodes() {
-    return countNodesNum(TABLE_NAME_MEASUREMENT);
-  }
-
-  public long countDeviceNodes() {
-    return countNodesNum(TABLE_NAME_DEVICE);
   }
 
   public long countNodesNum(String tableName) {
@@ -408,6 +384,10 @@ public class RocksDBReadWriteHandler {
       }
     }
     return exist;
+  }
+
+  public boolean keyExist(byte[] key) throws RocksDBException {
+    return keyExist(key, new Holder<>());
   }
 
   public boolean keyExist(String key, Holder<byte[]> holder) throws RocksDBException {

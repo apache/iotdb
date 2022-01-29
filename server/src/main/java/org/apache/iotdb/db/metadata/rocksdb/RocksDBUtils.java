@@ -31,28 +31,28 @@ public class RocksDBUtils {
     return Bytes.concat(new byte[] {type}, BytesUtils.intToBytes(size), dataInBytes);
   }
 
-  protected static byte[] toInternalNodeKey(String rawKey) {
-    return toRocksDBKey(rawKey, NODE_TYPE_INTERNAL);
+  protected static byte[] toInternalNodeKey(String levelPath) {
+    return toRocksDBKey(levelPath, NODE_TYPE_INTERNAL);
   }
 
-  protected static byte[] toStorageNodeKey(String rawKey) {
-    return toRocksDBKey(rawKey, NODE_TYPE_SG);
+  protected static byte[] toStorageNodeKey(String levelPath) {
+    return toRocksDBKey(levelPath, NODE_TYPE_SG);
   }
 
-  protected static byte[] toEntityNodeKey(String rawKey) {
-    return toRocksDBKey(rawKey, NODE_TYPE_ENTITY);
+  protected static byte[] toEntityNodeKey(String levelPath) {
+    return toRocksDBKey(levelPath, NODE_TYPE_ENTITY);
   }
 
-  protected static byte[] toMeasurementNodeKey(String rawKey) {
-    return toRocksDBKey(rawKey, NODE_TYPE_MEASUREMENT);
+  protected static byte[] toMeasurementNodeKey(String levelPath) {
+    return toRocksDBKey(levelPath, NODE_TYPE_MEASUREMENT);
   }
 
-  protected static byte[] toAliasNodeKey(String rawKey) {
-    return toRocksDBKey(rawKey, NODE_TYPE_ALIAS);
+  protected static byte[] toAliasNodeKey(String levelPath) {
+    return toRocksDBKey(levelPath, NODE_TYPE_ALIAS);
   }
 
-  protected static byte[] toRocksDBKey(String rawKey, byte type) {
-    return Bytes.concat(new byte[] {type}, rawKey.getBytes());
+  protected static byte[] toRocksDBKey(String levelPath, byte type) {
+    return Bytes.concat(new byte[] {type}, levelPath.getBytes());
   }
 
   public static String constructKey(String[] nodes, int end) {
