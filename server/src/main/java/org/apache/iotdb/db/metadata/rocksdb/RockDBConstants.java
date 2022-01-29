@@ -8,6 +8,8 @@ public class RockDBConstants {
   protected static final String PATH_SEPARATOR = ".";
   protected static final String ESCAPE_PATH_SEPARATOR = "[.]";
 
+  protected static final String TABLE_NAME_TAGS = "tags";
+
   // Node type
   protected static final byte NODE_TYPE_ROOT = 0x00;
   protected static final byte NODE_TYPE_INTERNAL = 0x01;

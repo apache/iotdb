@@ -7,14 +7,15 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.primitives.Bytes;
@@ -25,6 +26,7 @@ import org.rocksdb.WriteBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -107,7 +109,28 @@ public class MRocksDBWriter {
       CompressionType compressor,
       Map<String, String> props,
       String alias)
-      throws MetadataException {}
+      throws MetadataException {
+    createTimeSeries(
+        path,
+        new MeasurementSchema(path.getMeasurement(), dataType, encoding, compressor, props),
+        alias,
+        null,
+        null);
+  }
+
+  public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
+    createTimeSeries(
+        plan.getPath(),
+        new MeasurementSchema(
+            plan.getPath().getMeasurement(),
+            plan.getDataType(),
+            plan.getEncoding(),
+            plan.getCompressor(),
+            plan.getProps()),
+        plan.getAlias(),
+        plan.getTags(),
+        plan.getAttributes());
+  }
 
   private void createTimeSeries(
       PartialPath path,
@@ -118,7 +141,7 @@ public class MRocksDBWriter {
       throws MetadataException {
     String[] nodes = path.getNodes();
     try {
-      int sgIndex = indexSgNode(nodes);
+      int sgIndex = indexOfSgNode(nodes);
       if (sgIndex < 0) {
         if (!config.isAutoCreateSchemaEnabled()) {
           throw new StorageGroupNotSetException(path.getFullPath());
@@ -137,25 +160,11 @@ public class MRocksDBWriter {
         throw new MetadataException("Storage Group Node and Entity Node could not be same");
       }
 
-      // LOCK
       createTimeSeriesRecursively(
           nodes, nodes.length, sgIndex + 1, schema, alias, tags, attributes);
-      // UNLOCK
     } catch (RocksDBException | InterruptedException | IOException e) {
       throw new MetadataException(e);
     }
-  }
-
-  public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
-    createTimeseries(
-        plan.getPath(),
-        plan.getDataType(),
-        plan.getEncoding(),
-        plan.getCompressor(),
-        plan.getProps(),
-        plan.getAlias());
-
-    // TODO: persist tags and update tag index
   }
 
   private void createTimeSeriesRecursively(
@@ -181,7 +190,7 @@ public class MRocksDBWriter {
     if (!checkResult.existAnyKey()) {
       createTimeSeriesRecursively(nodes, start - 1, end, schema, alias, tags, attributes);
       if (start == nodes.length) {
-        // TODO: create timeseries Node
+        createTimeSeriesNode(nodes, levelPath, schema, alias, tags, attributes);
       } else if (start == nodes.length - 1) {
         // create entity node
         readWriteHandler.createNode(levelPath, RocksDBMNodeType.ENTITY, DEFAULT_ENTITY_NODE_VALUE);
@@ -191,65 +200,141 @@ public class MRocksDBWriter {
             levelPath, RocksDBMNodeType.ENTITY, DEFAULT_INTERNAL_NODE_VALUE);
       }
     } else if (start == nodes.length) {
-      throw new PathAlreadyExistException("");
+      throw new PathAlreadyExistException("Measurement node already exists");
     } else if (checkResult.getResult(RocksDBMNodeType.MEASUREMENT)
         || checkResult.getResult(RocksDBMNodeType.ALISA)) {
-      throw new PathAlreadyExistException("Measurement node exists in the path");
+      throw new PathAlreadyExistException("Path contains measurement node");
     } else if (start == nodes.length - 1 && !checkResult.getResult(RocksDBMNodeType.ENTITY)) {
-      // TODO: convert the parent node to entity if it exist and is internal node
-      WriteBatch writeBatch = new WriteBatch();
-      //      writeBatch.delete();
-      //      writeBatch.put();
+      // convert the parent node to entity if it is internal node
+      WriteBatch batch = new WriteBatch();
+      byte[] internalKey = RocksDBUtils.toInternalNodeKey(levelPath);
+      byte[] entityKey = RocksDBUtils.toEntityNodeKey(levelPath);
+      batch.delete(internalKey);
+      batch.put(entityKey, DEFAULT_ENTITY_NODE_VALUE);
+      readWriteHandler.convertToEntityNode(levelPath, entityKey, batch);
     }
   }
 
-  private void createTimeSeriesInRockDB(
+  private void createTimeSeriesNode(
       String[] nodes,
-      String key,
+      String levelPath,
       MeasurementSchema schema,
       String alias,
       Map<String, String> tags,
       Map<String, String> attributes)
       throws IOException, RocksDBException, MetadataException, InterruptedException {
-    // create timeseries node
+    // create time-series node
     WriteBatch batch = new WriteBatch();
     byte[] value = readWriteHandler.buildMeasurementNodeValue(schema, alias, tags, attributes);
-    byte[] pathKey = key.getBytes();
-    batch.put(pathKey, value);
-    batch.put(readWriteHandler.getCFHByName(TABLE_NAME_MEASUREMENT), pathKey, EMPTY_NODE_VALUE);
+    byte[] measurementKey = RocksDBUtils.toMeasurementNodeKey(levelPath);
+    batch.put(measurementKey, value);
+
+    // measurement with tags will save in a separate table at the same time
+    if (tags != null && !tags.isEmpty()) {
+      ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+      ReadWriteIOUtils.write(tags, outputStream);
+      batch.put(
+          readWriteHandler.getCFHByName(TABLE_NAME_TAGS),
+          measurementKey,
+          outputStream.toByteArray());
+    }
 
     if (StringUtils.isNotEmpty(alias)) {
       String[] aliasNodes = Arrays.copyOf(nodes, nodes.length);
       aliasNodes[nodes.length - 1] = alias;
-      String aliasKey = RocksDBUtils.constructKey(aliasNodes, aliasNodes.length - 1);
-      if (!readWriteHandler.keyExist(aliasKey)) {
+      String aliasLevelPath = RocksDBUtils.constructKey(aliasNodes, aliasNodes.length - 1);
+      byte[] aliasNodeKey = RocksDBUtils.toAliasNodeKey(aliasLevelPath);
+      if (!readWriteHandler.keyExist(aliasNodeKey)) {
         batch.put(
-            aliasKey.getBytes(),
-            Bytes.concat(new byte[] {DATA_VERSION, NODE_TYPE_ALIAS}, key.getBytes()));
-        readWriteHandler.batchCreateNode(key, aliasKey, batch);
+            aliasLevelPath.getBytes(),
+            Bytes.concat(new byte[] {DATA_VERSION, NODE_TYPE_ALIAS}, levelPath.getBytes()));
+        readWriteHandler.batchCreateTwoKeys(
+            levelPath, aliasLevelPath, measurementKey, aliasNodeKey, batch);
       } else {
-        throw new AliasAlreadyExistException(key, alias);
+        throw new AliasAlreadyExistException(levelPath, alias);
       }
     } else {
-      readWriteHandler.batchCreateNode(key, batch);
+      readWriteHandler.batchCreateOneKey(levelPath, measurementKey, batch);
     }
   }
 
-  public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
-    String[] nodes = fullPath.getNodes();
-    String key = RocksDBUtils.constructKey(nodes, nodes.length - 1);
-    try {
-      byte[] value = rocksDB.get(key.getBytes());
-      if (value == null) {
-        logger.warn("path not exist: {}", key);
-        throw new MetadataException("key not exist");
-      }
-      IMeasurementMNode node = new MeasurementMNode(null, fullPath.getFullPath(), null, null);
-      return node;
-    } catch (RocksDBException e) {
-      throw new MetadataException(e);
-    }
+  public void createAlignedTimeSeries(
+      PartialPath prefixPath,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors)
+      throws MetadataException {
+    createAlignedTimeSeries(
+        new CreateAlignedTimeSeriesPlan(
+            prefixPath, measurements, dataTypes, encodings, compressors, null));
   }
+
+  /**
+   * create aligned timeseries
+   *
+   * @param plan CreateAlignedTimeSeriesPlan
+   */
+  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
+    //    try {
+    PartialPath prefixPath = plan.getPrefixPath();
+    List<String> measurements = plan.getMeasurements();
+    List<TSDataType> dataTypes = plan.getDataTypes();
+    List<TSEncoding> encodings = plan.getEncodings();
+
+    for (int i = 0; i < measurements.size(); i++) {
+      SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
+    }
+
+    //      ensureStorageGroup(prefixPath);
+    //
+    //      // create time series in MTree
+    //      mtree.createAlignedTimeseries(
+    //          prefixPath,
+    //          measurements,
+    //          plan.getDataTypes(),
+    //          plan.getEncodings(),
+    //          plan.getCompressors());
+    //
+    //      // the cached mNode may be replaced by new entityMNode in mtree
+    //      mNodeCache.invalidate(prefixPath);
+    //
+    //      // update statistics and schemaDataTypeNumMap
+    //      totalSeriesNumber.addAndGet(measurements.size());
+    //      if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
+    //        logger.warn("Current series number {} is too large...", totalSeriesNumber);
+    //        allowToCreateNewSeries = false;
+    //      }
+    //      // write log
+    //      if (!isRecovering) {
+    //        logWriter.createAlignedTimeseries(plan);
+    //      }
+    //    } catch (IOException e) {
+    //      throw new MetadataException(e);
+    //    }
+    //
+    //    // update id table if not in recovering or disable id table log file
+    //    if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
+    //      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
+    //      idTable.createAlignedTimeseries(plan);
+    //    }
+  }
+
+  //  public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
+  //    String[] nodes = fullPath.getNodes();
+  //    String key = RocksDBUtils.constructKey(nodes, nodes.length - 1);
+  //    try {
+  //      byte[] value = rocksDB.get(key.getBytes());
+  //      if (value == null) {
+  //        logger.warn("path not exist: {}", key);
+  //        throw new MetadataException("key not exist");
+  //      }
+  //      IMeasurementMNode node = new MeasurementMNode(null, fullPath.getFullPath(), null, null);
+  //      return node;
+  //    } catch (RocksDBException e) {
+  //      throw new MetadataException(e);
+  //    }
+  //  }
 
   /** Check whether the given path contains a storage group */
   public boolean checkStorageGroupByPath(PartialPath path) throws RocksDBException {
@@ -264,7 +349,7 @@ public class MRocksDBWriter {
     return false;
   }
 
-  private int indexSgNode(String[] nodes) throws RocksDBException {
+  private int indexOfSgNode(String[] nodes) throws RocksDBException {
     int result = -1;
     // ignore the first element: "root"
     for (int i = 1; i < nodes.length; i++) {
