@@ -114,11 +114,17 @@ public class RawDataQueryExecutor {
         lockListAndProcessorToSeriesMapPair.right;
 
     try {
-
       // init QueryDataSource cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(lockList);
+    }
 
+    try {
       List<PartialPath> paths = queryPlan.getDeduplicatedPaths();
       for (PartialPath path : paths) {
         TSDataType dataType = path.getSeriesType();
@@ -142,11 +148,10 @@ public class RawDataQueryExecutor {
         readersOfSelectedSeries.add(reader);
       }
     } catch (Exception e) {
-      logger.error("Meet error when init series reader ", e);
-      throw new QueryProcessException("Meet error when init series reader.", e);
-    } finally {
-      StorageEngine.getInstance().mergeUnLock(lockList);
+      logger.error("Meet error when init series reader  ", e);
+      throw new QueryProcessException("Meet error when init series reader .", e);
     }
+
     return readersOfSelectedSeries;
   }
 
@@ -255,23 +260,25 @@ public class RawDataQueryExecutor {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-
-      for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
-        if (cached.get(i)) {
-          readersOfSelectedSeries.add(null);
-          continue;
-        }
-        PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
-        IReaderByTimestamp seriesReaderByTimestamp =
-            getReaderByTimestamp(
-                path,
-                queryPlan.getAllMeasurementsInDevice(path.getDevice()),
-                queryPlan.getDeduplicatedDataTypes().get(i),
-                context);
-        readersOfSelectedSeries.add(seriesReaderByTimestamp);
-      }
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+    for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
+      if (cached.get(i)) {
+        readersOfSelectedSeries.add(null);
+        continue;
+      }
+      PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
+      IReaderByTimestamp seriesReaderByTimestamp =
+          getReaderByTimestamp(
+              path,
+              queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+              queryPlan.getDeduplicatedDataTypes().get(i),
+              context);
+      readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
     return new Pair<>(readersOfSelectedSeries, readerToIndexList);
   }
