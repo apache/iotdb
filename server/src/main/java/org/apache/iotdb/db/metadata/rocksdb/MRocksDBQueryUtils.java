@@ -1,7 +1,12 @@
 package org.apache.iotdb.db.metadata.rocksdb;
 
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.rocksdb.Holder;
+import org.rocksdb.RocksDB;
+import org.rocksdb.RocksIterator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -10,21 +15,21 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.rocksdb.Holder;
-import org.rocksdb.RocksDB;
-import org.rocksdb.RocksIterator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 
 public class MRocksDBQueryUtils {
 
   private static final char START_FLAG = '\u0019';
   private static final char SPLIT_FLAG = '.';
-  private static final byte[] ALL_NODE_TYPE = new byte[]{RockDBConstants.NODE_TYPE_INNER,
-      RockDBConstants.NODE_TYPE_ENTITY, RockDBConstants.NODE_TYPE_SG,
-      RockDBConstants.NODE_TYPE_MEASUREMENT};
+  private static final byte[] ALL_NODE_TYPE =
+      new byte[] {
+        RockDBConstants.NODE_TYPE_INTERNAL,
+        RockDBConstants.NODE_TYPE_ENTITY,
+        RockDBConstants.NODE_TYPE_SG,
+        RockDBConstants.NODE_TYPE_MEASUREMENT,
+        RockDBConstants.NODE_TYPE_ALIAS
+      };
 
   private static final Logger logger = LoggerFactory.getLogger(MRocksDBQueryUtils.class);
 
@@ -32,7 +37,7 @@ public class MRocksDBQueryUtils {
    * parse value and return a specified type. if no data is required, null is returned.
    *
    * @param value value written in default table
-   * @param type  the type of value to obtain
+   * @param type the type of value to obtain
    */
   public static Object getValueByParse(byte[] value, byte type) {
     ByteBuffer byteBuffer = ByteBuffer.wrap(value);
@@ -72,15 +77,17 @@ public class MRocksDBQueryUtils {
    * get all possible inner paths within the specified level range
    *
    * @param partialPath path to be processed
-   * @param startLevel  min level
-   * @param endLevel    max level
+   * @param startLevel min level
+   * @param endLevel max level
    * @return all inner name
    */
   public static Set<String> getAllPossiblePath(String partialPath, int startLevel, int endLevel) {
     if (startLevel > endLevel || partialPath == null) {
-      logger
-          .error("Can not get path by these params,partialPath: [{}],startLevel:[{}],endLevel:[{}]",
-              partialPath, startLevel, endLevel);
+      logger.error(
+          "Can not get path by these params,partialPath: [{}],startLevel:[{}],endLevel:[{}]",
+          partialPath,
+          startLevel,
+          endLevel);
       return Collections.emptySet();
     }
     Set<String> allPath = new HashSet<>();
@@ -99,16 +106,18 @@ public class MRocksDBQueryUtils {
    * ("x.x" ,2,3)
    *
    * @param partialPath path to be processed
-   * @param startLevel  min level
-   * @param endLevel    max level
+   * @param startLevel min level
+   * @param endLevel max level
    * @return all inner name
    */
-  public static List<Set<String>> getAllPossiblePathGroupByType(String partialPath, int startLevel,
-      int endLevel) {
+  public static List<Set<String>> getAllPossiblePathGroupByType(
+      String partialPath, int startLevel, int endLevel) {
     if (startLevel > endLevel || partialPath == null) {
-      logger
-          .error("Can not get path by these params,partialPath: [{}],startLevel:[{}],endLevel:[{}]",
-              partialPath, startLevel, endLevel);
+      logger.error(
+          "Can not get path by these params,partialPath: [{}],startLevel:[{}],endLevel:[{}]",
+          partialPath,
+          startLevel,
+          endLevel);
       return Collections.emptyList();
     }
     List<Set<String>> allPath = new ArrayList<>();
@@ -123,16 +132,18 @@ public class MRocksDBQueryUtils {
    * ["sroot.2x.2x","sroot.3x.3x"] if input is ("x.x" ,2,3,s)
    *
    * @param partialPath path to be processed
-   * @param startLevel  min level
-   * @param endLevel    max level
+   * @param startLevel min level
+   * @param endLevel max level
    * @return all inner name
    */
-  public static Set<String> getSpecifiedPossiblePath(String partialPath, int startLevel,
-      int endLevel, byte nodeType) {
+  public static Set<String> getSpecifiedPossiblePath(
+      String partialPath, int startLevel, int endLevel, byte nodeType) {
     if (startLevel > endLevel || partialPath == null) {
-      logger
-          .error("Can not get path by these params,partialPath: [{}],startLevel:[{}],endLevel:[{}]",
-              partialPath, startLevel, endLevel);
+      logger.error(
+          "Can not get path by these params,partialPath: [{}],startLevel:[{}],endLevel:[{}]",
+          partialPath,
+          startLevel,
+          endLevel);
       return Collections.emptySet();
     }
     Set<String> allPath = new HashSet<>();
@@ -142,13 +153,12 @@ public class MRocksDBQueryUtils {
     return allPath;
   }
 
-
   /**
    * get inner name by converting partial path.
    *
    * @param partialPath the path needed to be converted.
-   * @param level       the level needed to be added.
-   * @param nodeType    specified type
+   * @param level the level needed to be added.
+   * @param nodeType specified type
    * @return inner name
    */
   public static String convertPartialPathToInner(String partialPath, int level, byte nodeType) {
@@ -176,7 +186,6 @@ public class MRocksDBQueryUtils {
     return stringBuilder.toString();
   }
 
-
   public static Set<String> getKeyByPrefix(RocksDB rocksDB, String innerName) {
     RocksIterator iterator = rocksDB.newIterator();
     Set<String> result = new HashSet<>();
@@ -200,21 +209,17 @@ public class MRocksDBQueryUtils {
     return levelCount;
   }
 
-  public static String findBelongToSpecifiedNodeType(String[] nodes, RocksDB rocksDB,
-      byte nodeType) {
+  public static String findBelongToSpecifiedNodeType(
+      String[] nodes, RocksDB rocksDB, byte nodeType) {
     String innerPathName;
     for (int level = nodes.length; level > 0; level--) {
       String[] copy = Arrays.copyOf(nodes, level);
       innerPathName = convertPartialPathToInnerByNodes(copy, level, nodeType);
-      boolean isBelongToType = rocksDB
-          .keyMayExist(
-              innerPathName.getBytes(),
-              new Holder<>());
+      boolean isBelongToType = rocksDB.keyMayExist(innerPathName.getBytes(), new Holder<>());
       if (isBelongToType) {
         return innerPathName;
       }
     }
     return null;
   }
-
 }
