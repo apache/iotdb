@@ -143,7 +143,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       // restart recovery
       compactionLogger.logStringInfo(MAGIC_STRING);
       compactionLogger.close();
-      updateTsFileResource();
 
       releaseReadAndLockWrite(selectedSeqTsFileResourceList);
       releaseReadAndLockWrite(selectedUnSeqTsFileResourceList);
@@ -155,6 +154,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       deleteOldFiles(selectedUnSeqTsFileResourceList);
       removeCompactionModification();
 
+      updateTsFileResource();
       if (logFile.exists()) {
         FileUtils.delete(logFile);
       }

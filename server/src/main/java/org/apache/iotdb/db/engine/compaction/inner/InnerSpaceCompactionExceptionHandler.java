@@ -175,8 +175,12 @@ public class InnerSpaceCompactionExceptionHandler {
             tmpTargetTsFile);
         return false;
       }
-      if (targetTsFile.isFileInList()) {
-        tsFileResourceList.remove(targetTsFile);
+      tsFileResourceList.writeLock();
+      try {
+        if (targetTsFile.isFileInList()) {
+          // target tsfile is in the list, remove it
+          tsFileResourceList.remove(targetTsFile);
+        }
         for (TsFileResource tsFileResource : selectedTsFileResourceList) {
           // if the source file is not in tsfileResourceList
           // insert it into the list
@@ -184,6 +188,8 @@ public class InnerSpaceCompactionExceptionHandler {
             tsFileResourceList.keepOrderInsert(tsFileResource);
           }
         }
+      } finally {
+        tsFileResourceList.writeUnlock();
       }
       if (!targetTsFile.remove()) {
         // failed to remove target tsfile
