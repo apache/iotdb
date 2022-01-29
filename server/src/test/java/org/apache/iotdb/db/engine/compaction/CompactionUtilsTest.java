@@ -1834,8 +1834,13 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
+    Map<String, Long> measurementMaxTime = new HashMap<>();
+
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
+        measurementMaxTime.putIfAbsent(
+            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+            Long.MIN_VALUE);
         PartialPath path =
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -1855,6 +1860,14 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         while (tsFilesReader.hasNextBatch()) {
           BatchData batchData = tsFilesReader.nextBatch();
           while (batchData.hasCurrent()) {
+            if (measurementMaxTime.get(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
+                >= batchData.currentTime()) {
+              Assert.fail();
+            }
+            measurementMaxTime.put(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+                batchData.currentTime());
             if (i == 0
                 && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
                     || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
@@ -1987,8 +2000,12 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
+    Map<String, Long> measurementMaxTime = new HashMap<>();
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
+        measurementMaxTime.putIfAbsent(
+            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+            Long.MIN_VALUE);
         PartialPath path =
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -2008,6 +2025,14 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         while (tsFilesReader.hasNextBatch()) {
           BatchData batchData = tsFilesReader.nextBatch();
           while (batchData.hasCurrent()) {
+            if (measurementMaxTime.get(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
+                >= batchData.currentTime()) {
+              Assert.fail();
+            }
+            measurementMaxTime.put(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+                batchData.currentTime());
             if (i == 0
                 && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
                     || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
@@ -2138,8 +2163,12 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
+    Map<String, Long> measurementMaxTime = new HashMap<>();
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
+        measurementMaxTime.putIfAbsent(
+            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+            Long.MIN_VALUE);
         PartialPath path =
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -2159,6 +2188,14 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         while (tsFilesReader.hasNextBatch()) {
           BatchData batchData = tsFilesReader.nextBatch();
           while (batchData.hasCurrent()) {
+            if (measurementMaxTime.get(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
+                >= batchData.currentTime()) {
+              Assert.fail();
+            }
+            measurementMaxTime.put(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+                batchData.currentTime());
             if (i == 0
                 && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
                     || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
@@ -2281,8 +2318,12 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
+    Map<String, Long> measurementMaxTime = new HashMap<>();
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
+        measurementMaxTime.putIfAbsent(
+            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+            Long.MIN_VALUE);
         PartialPath path =
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -2302,6 +2343,14 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         while (tsFilesReader.hasNextBatch()) {
           BatchData batchData = tsFilesReader.nextBatch();
           while (batchData.hasCurrent()) {
+            if (measurementMaxTime.get(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
+                >= batchData.currentTime()) {
+              Assert.fail();
+            }
+            measurementMaxTime.put(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+                batchData.currentTime());
             if (i == 0
                 && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
                     || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
@@ -2426,8 +2475,12 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
+    Map<String, Long> measurementMaxTime = new HashMap<>();
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
+        measurementMaxTime.putIfAbsent(
+            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+            Long.MIN_VALUE);
         PartialPath path =
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -2447,6 +2500,14 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         while (tsFilesReader.hasNextBatch()) {
           BatchData batchData = tsFilesReader.nextBatch();
           while (batchData.hasCurrent()) {
+            if (measurementMaxTime.get(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
+                >= batchData.currentTime()) {
+              Assert.fail();
+            }
+            measurementMaxTime.put(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+                batchData.currentTime());
             if (i == 0
                 && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
                     || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {

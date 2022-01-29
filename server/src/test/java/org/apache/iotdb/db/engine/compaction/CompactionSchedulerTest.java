@@ -111,6 +111,9 @@ public class CompactionSchedulerTest {
     if (!basicOutputDir.exists()) {
       assertTrue(basicOutputDir.mkdirs());
     }
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
     CompactionTaskManager.getInstance().start();
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
@@ -119,9 +122,6 @@ public class CompactionSchedulerTest {
 
       }
     }
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
   }
 
   @After
@@ -441,7 +441,7 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(false).size());
+      assertEquals(0, tsFileManager.getTsFileList(false).size());
       totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 0) {
         try {
@@ -1521,7 +1521,7 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(false).size());
+      assertEquals(0, tsFileManager.getTsFileList(false).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
       CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
       totalWaitingTime = 0;
@@ -1539,7 +1539,7 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(false).size());
+      assertEquals(0, tsFileManager.getTsFileList(false).size());
       tsFileManager.setAllowCompaction(false);
       stopCompactionTaskManager();
     } finally {

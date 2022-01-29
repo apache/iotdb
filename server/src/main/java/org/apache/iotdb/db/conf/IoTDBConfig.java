@@ -353,10 +353,10 @@ public class IoTDBConfig {
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
 
-  /** Only compact the sequence files */
+  /** Enable inner space copaction for sequence files */
   private boolean enableSeqSpaceCompaction = true;
 
-  /** Only compact the unsequence files */
+  /** Enable inner space copaction for unsequence files */
   private boolean enableUnseqSpaceCompaction = false;
 
   /** Compact the unsequence files into the overlapped sequence files */
@@ -419,13 +419,6 @@ public class IoTDBConfig {
 
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
   private long compactionSubmissionIntervalInMs = 60_000L;
-
-  /**
-   * The max open file num in each unseq compaction task. We use the unseq file num as the open file
-   * num # This parameters have to be much smaller than the permitted max open file num of each
-   * process controlled by operator system(65535 in most system).
-   */
-  private int maxOpenFileNumInCrossSpaceCompaction = 100;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
@@ -1688,14 +1681,6 @@ public class IoTDBConfig {
 
   public void setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
     this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
-  }
-
-  public int getMaxOpenFileNumInCrossSpaceCompaction() {
-    return maxOpenFileNumInCrossSpaceCompaction;
-  }
-
-  public void setMaxOpenFileNumInCrossSpaceCompaction(int maxOpenFileNumInCrossSpaceCompaction) {
-    this.maxOpenFileNumInCrossSpaceCompaction = maxOpenFileNumInCrossSpaceCompaction;
   }
 
   public long getCrossCompactionFileSelectionTimeBudget() {

@@ -38,7 +38,6 @@ public class CompactionConfigRestorer {
   private long chunkSizeLowerBoundInCompaction = 128L;
   private long chunkPointNumLowerBoundInCompaction = 100L;
   private int maxCompactionCandidateFileNum = 30;
-  private int maxOpenFileNumInCrossSpaceCompaction = 100;
   private int concurrentCompactionThread = 10;
   private long compactionScheduleIntervalInMs = 60000L;
   private long compactionSubmissionIntervalInMs = 60000L;
@@ -60,7 +59,6 @@ public class CompactionConfigRestorer {
     config.setChunkSizeLowerBoundInCompaction(chunkSizeLowerBoundInCompaction);
     config.setChunkPointNumLowerBoundInCompaction(chunkPointNumLowerBoundInCompaction);
     config.setMaxCompactionCandidateFileNum(maxCompactionCandidateFileNum);
-    config.setMaxOpenFileNumInCrossSpaceCompaction(maxOpenFileNumInCrossSpaceCompaction);
     config.setConcurrentCompactionThread(concurrentCompactionThread);
     config.setCompactionScheduleIntervalInMs(compactionScheduleIntervalInMs);
     config.setCompactionSubmissionIntervalInMs(compactionSubmissionIntervalInMs);
