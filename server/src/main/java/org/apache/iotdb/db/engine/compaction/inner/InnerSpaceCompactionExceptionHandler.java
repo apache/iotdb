@@ -70,7 +70,11 @@ public class InnerSpaceCompactionExceptionHandler {
     if (allSourceFileExist) {
       handleSuccess =
           handleWhenAllSourceFilesExist(
-              fullStorageGroupName, targetTsFile, selectedTsFileResourceList, tsFileResourceList);
+              fullStorageGroupName,
+              targetTsFile,
+              selectedTsFileResourceList,
+              tsFileResourceList,
+              false);
     } else {
       // some source file does not exists
       // it means we start to delete source file
@@ -137,7 +141,8 @@ public class InnerSpaceCompactionExceptionHandler {
       String fullStorageGroupName,
       TsFileResource targetTsFile,
       List<TsFileResource> selectedTsFileResourceList,
-      TsFileResourceList tsFileResourceList) {
+      TsFileResourceList tsFileResourceList,
+      boolean isRecover) {
     try {
       // all source file exists, delete the target file
       LOGGER.info(
@@ -175,21 +180,23 @@ public class InnerSpaceCompactionExceptionHandler {
             tmpTargetTsFile);
         return false;
       }
-      tsFileResourceList.writeLock();
-      try {
-        if (targetTsFile.isFileInList()) {
-          // target tsfile is in the list, remove it
-          tsFileResourceList.remove(targetTsFile);
-        }
-        for (TsFileResource tsFileResource : selectedTsFileResourceList) {
-          // if the source file is not in tsfileResourceList
-          // insert it into the list
-          if (!tsFileResource.isFileInList()) {
-            tsFileResourceList.keepOrderInsert(tsFileResource);
+      if (!isRecover) {
+        tsFileResourceList.writeLock();
+        try {
+          if (targetTsFile.isFileInList()) {
+            // target tsfile is in the list, remove it
+            tsFileResourceList.remove(targetTsFile);
           }
+          for (TsFileResource tsFileResource : selectedTsFileResourceList) {
+            // if the source file is not in tsfileResourceList
+            // insert it into the list
+            if (!tsFileResource.isFileInList()) {
+              tsFileResourceList.keepOrderInsert(tsFileResource);
+            }
+          }
+        } finally {
+          tsFileResourceList.writeUnlock();
         }
-      } finally {
-        tsFileResourceList.writeUnlock();
       }
       if (!targetTsFile.remove()) {
         // failed to remove target tsfile
