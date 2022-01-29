@@ -241,14 +241,14 @@ public abstract class Traverser {
     boolean multiLevelWildcard = nodes[idx].equals(MULTI_LEVEL_PATH_WILDCARD);
     String targetName = nodes[idx + 1];
     IMNode next = store.getChild(node, targetName);
-    try {
-      if (next != null) {
+    if (next != null) {
+      try {
         traverseContext.push(node);
         traverse(next, idx + 1, level + 1);
         traverseContext.pop();
+      } finally {
+        store.unPin(next);
       }
-    } finally {
-      store.unPin(next);
     }
 
     if (multiLevelWildcard) {

@@ -127,9 +127,6 @@ public class CacheStrategy implements ICacheStrategy {
 
   @Override
   public List<IMNode> remove(IMNode node) {
-    if (isPinned(node)) {
-      unPinMNode(node.getParent());
-    }
     List<IMNode> removedMNodes = new LinkedList<>();
     removeRecursively(node, removedMNodes);
     return removedMNodes;

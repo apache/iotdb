@@ -52,8 +52,8 @@ import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MNodeLevelCo
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MeasurementGroupByLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.StorageGroupCounter;
+import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -134,7 +134,7 @@ public class MTreeService implements Serializable {
   public MTreeService() {}
 
   public void init() throws IOException {
-    store = new MemMTreeStore();
+    store = new CachedMTreeStore();
     store.init();
     this.root = store.getRoot();
   }
@@ -422,7 +422,7 @@ public class MTreeService implements Serializable {
       store.deleteChild(curNode.getParent(), curNode.getName());
       curNode = curNode.getParent();
     }
-    unPinPath(curNode);
+    unPinMNode(curNode);
     return new Pair<>(null, deletedNode);
   }
   // endregion
@@ -547,7 +547,7 @@ public class MTreeService implements Serializable {
   public List<IMeasurementMNode> deleteStorageGroup(PartialPath path) throws MetadataException {
     IMNode cur = getNodeByPath(path);
     if (!(cur.isStorageGroup())) {
-      unPinPath(cur);
+      unPinMNode(cur);
       throw new StorageGroupNotSetException(path.getFullPath());
     }
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
@@ -560,7 +560,7 @@ public class MTreeService implements Serializable {
       store.deleteChild(cur.getParent(), cur.getName());
       cur = cur.getParent();
     }
-    unPinPath(cur);
+    unPinMNode(cur);
     return leafMNodes;
   }
 

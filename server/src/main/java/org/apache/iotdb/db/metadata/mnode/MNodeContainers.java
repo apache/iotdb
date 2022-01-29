@@ -90,5 +90,10 @@ public class MNodeContainers {
     public Set<Map.Entry<String, IMNode>> entrySet() {
       return emptySet();
     }
+
+    @Override
+    public boolean equals(Object o) {
+      return o == this;
+    }
   }
 }

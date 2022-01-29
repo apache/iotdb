@@ -125,7 +125,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public List<IMeasurementMNode> deleteChild(IMNode parent, String childName) {
-    IMNode deletedMNode = parent.getChild(childName);
+    IMNode deletedMNode = getChild(parent, childName);
     // collect all the LeafMNode in this storage group
     List<IMeasurementMNode> leafMNodes = new LinkedList<>();
     Queue<IMNode> queue = new LinkedList<>();
