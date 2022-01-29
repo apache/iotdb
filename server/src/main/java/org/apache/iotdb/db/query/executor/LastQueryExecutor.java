@@ -62,6 +62,8 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 public class LastQueryExecutor {
 
+  private static final Logger logger = LoggerFactory.getLogger(LastQueryExecutor.class);
+
   private List<PartialPath> selectedSeries;
   private List<TSDataType> dataTypes;
   protected IExpression expression;
@@ -183,6 +185,9 @@ public class LastQueryExecutor {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, filter);
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
     }

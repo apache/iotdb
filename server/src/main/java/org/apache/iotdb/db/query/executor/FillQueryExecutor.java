@@ -46,6 +46,9 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.activation.UnsupportedDataTypeException;
 
 import java.io.IOException;
@@ -55,6 +58,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class FillQueryExecutor {
+
+  private static final Logger logger = LoggerFactory.getLogger(FillQueryExecutor.class);
 
   protected FillQueryPlan plan;
   protected List<PartialPath> selectedSeries;
@@ -89,6 +94,9 @@ public class FillQueryExecutor {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, contructTimeFilter());
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
     }
