@@ -64,7 +64,13 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public boolean hasChild(IMNode parent, String name) {
-    return getChild(parent, name) != null;
+    IMNode child = getChild(parent, name);
+    if (child == null) {
+      return false;
+    } else {
+      unPin(child);
+      return true;
+    }
   }
 
   @Override
@@ -245,7 +251,6 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
-  // todo implement RWLock rather than copy on read
   private class CachedMNodeIterator implements Iterator<IMNode> {
 
     IMNode parent;
@@ -278,16 +283,11 @@ public class CachedMTreeStore implements IMTreeStore {
       if (nextNode == null) {
         throw new NoSuchElementException();
       }
-      if (!loadedFromDisk) {
-        if (cacheStrategy.isCached(nextNode) || cacheMNodeInMemory(nextNode)) {
-          cacheStrategy.updateCacheStatusAfterRead(nextNode);
-        }
-      } else {
+      if (loadedFromDisk) {
         nextNode.setParent(parent);
-        if (cacheMNodeInMemory(nextNode)) {
-          cacheStrategy.updateCacheStatusAfterRead(nextNode);
-        }
       }
+      pinMNodeInMemory(nextNode);
+      cacheStrategy.updateCacheStatusAfterRead(nextNode);
       IMNode result = nextNode;
       nextNode = null;
       return result;

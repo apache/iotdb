@@ -399,6 +399,7 @@ public class MTreeService implements Serializable {
       Iterator<IMNode> iterator = store.getChildrenIterator(parent);
       while (iterator.hasNext()) {
         child = iterator.next();
+        unPinMNode(child);
         if (child.isMeasurement()) {
           hasMeasurement = true;
           break;
@@ -1496,6 +1497,7 @@ public class MTreeService implements Serializable {
         Iterator<IMNode> iterator = store.getChildrenIterator(mountedNode);
         while (iterator.hasNext()) {
           child = iterator.next();
+          unPinMNode(child);
           if (child.isMeasurement()) {
             if (template.isDirectAligned() != mountedNode.getAsEntityMNode().isAligned()) {
               throw new MetadataException(
@@ -1522,13 +1524,17 @@ public class MTreeService implements Serializable {
     Iterator<IMNode> iterator = store.getChildrenIterator(node);
     while (iterator.hasNext()) {
       child = iterator.next();
-      if (child.isMeasurement()) {
-        continue;
+      try {
+        if (child.isMeasurement()) {
+          continue;
+        }
+        if (child.getSchemaTemplate() != null) {
+          throw new MetadataException("Template already exists on " + child.getFullPath());
+        }
+        checkTemplateOnSubtree(child);
+      } finally {
+        unPinMNode(child);
       }
-      if (child.getSchemaTemplate() != null) {
-        throw new MetadataException("Template already exists on " + child.getFullPath());
-      }
-      checkTemplateOnSubtree(child);
     }
   }
 
@@ -1540,13 +1546,17 @@ public class MTreeService implements Serializable {
     Iterator<IMNode> iterator = store.getChildrenIterator(node);
     while (iterator.hasNext()) {
       child = iterator.next();
-      if (child.isMeasurement()) {
-        continue;
+      try {
+        if (child.isMeasurement()) {
+          continue;
+        }
+        if (child.isUseTemplate()) {
+          throw new TemplateIsInUseException(child.getFullPath());
+        }
+        checkTemplateInUseOnLowerNode(child);
+      } finally {
+        unPinMNode(child);
       }
-      if (child.isUseTemplate()) {
-        throw new TemplateIsInUseException(child.getFullPath());
-      }
-      checkTemplateInUseOnLowerNode(child);
     }
   }
 

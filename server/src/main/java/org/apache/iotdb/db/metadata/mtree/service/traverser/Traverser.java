@@ -151,7 +151,11 @@ public abstract class Traverser {
     Iterator<IMNode> iterator = store.getChildrenIterator(node);
     while (iterator.hasNext()) {
       child = iterator.next();
-      traverse(child, idx + 1, level + 1);
+      try {
+        traverse(child, idx + 1, level + 1);
+      } finally {
+        store.unPin(child);
+      }
     }
     traverseContext.pop();
 
@@ -175,18 +179,22 @@ public abstract class Traverser {
     Iterator<IMNode> iterator = store.getChildrenIterator(node);
     while (iterator.hasNext()) {
       child = iterator.next();
-      if (child.isMeasurement()) {
-        String alias = child.getAsMeasurementMNode().getAlias();
-        if (!Pattern.matches(targetNameRegex, child.getName())
-            && !(alias != null && Pattern.matches(targetNameRegex, alias))) {
-          continue;
+      try {
+        if (child.isMeasurement()) {
+          String alias = child.getAsMeasurementMNode().getAlias();
+          if (!Pattern.matches(targetNameRegex, child.getName())
+              && !(alias != null && Pattern.matches(targetNameRegex, alias))) {
+            continue;
+          }
+        } else {
+          if (!Pattern.matches(targetNameRegex, child.getName())) {
+            continue;
+          }
         }
-      } else {
-        if (!Pattern.matches(targetNameRegex, child.getName())) {
-          continue;
-        }
+        traverse(child, idx + 1, level + 1);
+      } finally {
+        store.unPin(child);
       }
-      traverse(child, idx + 1, level + 1);
     }
     traverseContext.pop();
 
@@ -195,7 +203,11 @@ public abstract class Traverser {
       iterator = store.getChildrenIterator(node);
       while (iterator.hasNext()) {
         child = iterator.next();
-        traverse(child, idx, level + 1);
+        try {
+          traverse(child, idx, level + 1);
+        } finally {
+          store.unPin(child);
+        }
       }
       traverseContext.pop();
     }
@@ -229,18 +241,27 @@ public abstract class Traverser {
     boolean multiLevelWildcard = nodes[idx].equals(MULTI_LEVEL_PATH_WILDCARD);
     String targetName = nodes[idx + 1];
     IMNode next = store.getChild(node, targetName);
-    if (next != null) {
-      traverseContext.push(node);
-      traverse(next, idx + 1, level + 1);
-      traverseContext.pop();
+    try {
+      if (next != null) {
+        traverseContext.push(node);
+        traverse(next, idx + 1, level + 1);
+        traverseContext.pop();
+      }
+    } finally {
+      store.unPin(next);
     }
+
     if (multiLevelWildcard) {
       traverseContext.push(node);
       IMNode child;
       Iterator<IMNode> iterator = store.getChildrenIterator(node);
       while (iterator.hasNext()) {
         child = iterator.next();
-        traverse(child, idx, level + 1);
+        try {
+          traverse(child, idx, level + 1);
+        } finally {
+          store.unPin(child);
+        }
       }
       traverseContext.pop();
     }
