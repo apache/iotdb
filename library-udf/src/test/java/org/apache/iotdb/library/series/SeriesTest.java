@@ -25,7 +25,6 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.integration.env.ConfigFactory;
 import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -36,7 +35,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -100,9 +98,7 @@ public class SeriesTest {
   }
 
   private static void generateData() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // d1
       statement.execute(
@@ -200,9 +196,7 @@ public class SeriesTest {
     String sqlStr = "select ConsecutiveSequences(d1.s1,d1.s2) from root.vehicle";
     long timeStamp = 0;
     int value = 0;
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
@@ -236,9 +230,7 @@ public class SeriesTest {
     String sqlStr = "select ConsecutiveSequences(d2.s1,d2.s2) from root.vehicle";
     long timeStamp = 0;
     int value = 0;
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
@@ -272,9 +264,7 @@ public class SeriesTest {
     String sqlStr = "select ConsecutiveSequences(d1.s1,d1.s2,'gap'='5m') from root.vehicle";
     long timeStamp = 0;
     int value = 0;
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
@@ -308,9 +298,7 @@ public class SeriesTest {
     String sqlStr = "select ConsecutiveSequences(d2.s1,d2.s2,'gap'='5m') from root.vehicle";
     long timeStamp = 0;
     int value = 0;
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
@@ -344,9 +332,7 @@ public class SeriesTest {
     String sqlStr = "select ConsecutiveWindows(d1.s1,d1.s2,'length'='10m') from root.vehicle";
     long timeStamp = 0;
     int value = 0;
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
@@ -380,9 +366,7 @@ public class SeriesTest {
     String sqlStr = "select ConsecutiveWindows(d2.s1,d2.s2,'length'='10m') from root.vehicle";
     long timeStamp = 0;
     int value = 0;
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
@@ -417,9 +401,7 @@ public class SeriesTest {
         "select ConsecutiveWindows(d1.s1,d1.s2,'length'='10m','gap'='5m') from root.vehicle";
     long timeStamp = 0;
     int value = 0;
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
@@ -454,9 +436,7 @@ public class SeriesTest {
         "select ConsecutiveWindows(d2.s1,d2.s2,'length'='10m','gap'='5m') from root.vehicle";
     long timeStamp = 0;
     int value = 0;
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
