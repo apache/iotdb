@@ -100,8 +100,20 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.file.Files;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -3042,6 +3054,7 @@ public class VirtualStorageGroupProcessor {
     // this requires blocking all other activities
     writeLock("removePartitions");
     try {
+      tsFileManager.setAllowCompaction(false);
       // abort ongoing comapctions and merges
       CompactionTaskManager.getInstance()
           .abortCompaction(logicalStorageGroupName + "-" + virtualStorageGroupId);

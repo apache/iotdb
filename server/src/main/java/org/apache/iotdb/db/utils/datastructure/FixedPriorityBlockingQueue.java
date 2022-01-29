@@ -182,4 +182,9 @@ public class FixedPriorityBlockingQueue<T> {
   public interface PollLastHook<T> {
     void apply(T x);
   }
+
+  @Override
+  public String toString() {
+    return queue.toString();
+  }
 }
