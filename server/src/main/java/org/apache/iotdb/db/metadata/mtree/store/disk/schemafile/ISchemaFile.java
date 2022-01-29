@@ -47,6 +47,10 @@ public interface ISchemaFile {
 
   void close() throws IOException;
 
+  void clear() throws IOException, MetadataException;
+
+  void sync() throws IOException;
+
   IMNode getChildNode(IMNode parent, String childName) throws MetadataException, IOException;
 
   Iterator<IMNode> getChildren(IMNode parent) throws MetadataException, IOException;

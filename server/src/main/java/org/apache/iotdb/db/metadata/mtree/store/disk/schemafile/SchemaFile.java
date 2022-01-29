@@ -80,8 +80,8 @@ public class SchemaFile implements ISchemaFile {
   Map<Integer, ISchemaPage> pageInstCache;
   ISchemaPage rootPage;
 
-  // attributes inside current page
-
+  // attributes for file
+  File pmtFile;
   FileChannel channel;
 
   public SchemaFile(String sgName) throws IOException, MetadataException {
@@ -94,7 +94,7 @@ public class SchemaFile implements ISchemaFile {
 
     pageInstCache = new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true);
 
-    File pmtFile = new File(filePath);
+    pmtFile = new File(filePath);
 
     if (pmtFile.exists() && override) {
       Files.delete(Paths.get(pmtFile.toURI()));
@@ -366,10 +366,35 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public void close() throws IOException {
     updateHeader();
+    flushPageToFile(rootPage);
     for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
       flushPageToFile(entry.getValue());
     }
     channel.close();
+  }
+
+  @Override
+  public void sync() throws IOException {
+    updateHeader();
+    flushPageToFile(rootPage);
+    for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
+      flushPageToFile(entry.getValue());
+    }
+  }
+
+  @Override
+  public void clear() throws IOException, MetadataException {
+    pageInstCache.clear();
+    channel.close();
+    rootPage = null;
+    if (pmtFile.exists()) {
+      Files.delete(Paths.get(pmtFile.toURI()));
+    }
+    pmtFile.createNewFile();
+
+    channel = new RandomAccessFile(pmtFile, "rw").getChannel();
+    headerContent = ByteBuffer.allocate(SchemaFile.FILE_HEADER_SIZE);
+    initFileHeader();
   }
 
   public String inspect() throws MetadataException, IOException {
