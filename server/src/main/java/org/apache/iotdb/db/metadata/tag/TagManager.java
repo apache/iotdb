@@ -172,23 +172,26 @@ public class TagManager {
         Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
             lockListAndProcessorToSeriesMapPair.right;
 
-        // init QueryDataSource cache
-        QueryResourceManager.getInstance()
-            .initQueryDataSourceCache(processorToSeriesMap, context, null);
-
         try {
-          allMatchedNodes =
-              allMatchedNodes.stream()
-                  .sorted(
-                      Comparator.comparingLong(
-                              (IMeasurementMNode mNode) ->
-                                  LastCacheManager.getLastTimeStamp(mNode, context))
-                          .reversed()
-                          .thenComparing(IMNode::getFullPath))
-                  .collect(toList());
+          // init QueryDataSource cache
+          QueryResourceManager.getInstance()
+              .initQueryDataSourceCache(processorToSeriesMap, context, null);
+        } catch (Exception e) {
+          logger.error("Meet error when init QueryDataSource ", e);
+          throw new QueryProcessException("Meet error when init QueryDataSource.", e);
         } finally {
           StorageEngine.getInstance().mergeUnLock(list);
         }
+
+        allMatchedNodes =
+            allMatchedNodes.stream()
+                .sorted(
+                    Comparator.comparingLong(
+                            (IMeasurementMNode mNode) ->
+                                LastCacheManager.getLastTimeStamp(mNode, context))
+                        .reversed()
+                        .thenComparing(IMNode::getFullPath))
+                .collect(toList());
       } catch (StorageEngineException | QueryProcessException e) {
         throw new MetadataException(e);
       }

@@ -15,28 +15,13 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.db.rescon;
+package org.apache.iotdb.db.qp.logical.sys;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+public class ShowTemplatesOperator extends ShowOperator {
 
-public class CachedStringPool {
-
-  private Map<String, String> cachedPool = new ConcurrentHashMap<>();
-
-  public Map<String, String> getCachedPool() {
-    return cachedPool;
-  }
-
-  public static CachedStringPool getInstance() {
-    return CachedStringPool.InstanceHolder.INSTANCE;
-  }
-
-  private static class InstanceHolder {
-
-    private static final CachedStringPool INSTANCE = new CachedStringPool();
-
-    private InstanceHolder() {}
+  public ShowTemplatesOperator(int tokeIntType) {
+    super(tokeIntType);
   }
 }

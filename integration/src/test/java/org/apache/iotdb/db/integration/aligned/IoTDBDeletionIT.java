@@ -27,7 +27,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -189,7 +188,6 @@ public class IoTDBDeletionIT {
   }
 
   @Test
-  @Ignore // TODO
   public void testMerge() throws SQLException {
     prepareMerge();
 

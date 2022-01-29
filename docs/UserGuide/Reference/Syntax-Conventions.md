@@ -19,11 +19,13 @@
 
 -->
 
-# Literal Values
+# Syntax Conventions
+
+## Literal Values
 
 This section describes how to write literal values in IoTDB. These include strings, numbers, timestamp values, boolean values, and NULL.
 
-## String Literals
+### String Literals
 
 A string is a sequence of characters, enclosed within either single quote (`'`) or double quote (`"`) characters. Examples:
 ```js
@@ -60,7 +62,7 @@ The following examples demonstrate how quoting and escaping work:
 "\"string"  // "string
 ```
 
-## Numeric Literals
+### Numeric Literals
 
 Number literals include integer (exact-value) literals and floating-point (approximate-value) literals.
 
@@ -74,22 +76,22 @@ The `FLOAT` and `DOUBLE` data types are floating-point types and calculations ar
 
 An integer may be used in floating-point context; it is interpreted as the equivalent floating-point number.
 
-## Timestamp Literals
+### Timestamp Literals
 
 The timestamp is the time point at which data is produced. It includes absolute timestamps and relative timestamps in IoTDB. For information about timestamp support in IoTDB, see [Data Type Doc](../Data-Concept/Data-Type.md).
 
 Specially, `NOW()` represents a constant timestamp that indicates the system time at which the statement began to execute.
 
-## Boolean Literals
+### Boolean Literals
 
 The constants `TRUE` and `FALSE` evaluate to 1 and 0, respectively. The constant names can be written in any lettercase.
 
-## NULL Values
+### NULL Values
 
 The `NULL` value means “no data.” `NULL` can be written in any lettercase.
 
 
-# Identifiers
+## Identifiers
 
 Certain objects within IoTDB, including `TRIGGER`, `FUNCTION`(UDF), `CONTINUOUS QUERY`, `SCHEMA TEMPLATE`, `USER`, `ROLE` and other object names are known as identifiers.
 
@@ -122,7 +124,7 @@ Identifier quote characters can be included within an identifier if you quote th
 `a\`b`  // parsed as a`b
 ```
 
-# Node Names in Path
+## Node Names in Path
 
 We call the part of a path divided by `.` as a `node`. 
 
@@ -158,14 +160,14 @@ CREATE TIMESERIES root.a.b."s1.s2".c WITH DATATYPE=INT32, ENCODING=RLE
 // root.a.b."s1.s2".c will be parsed as Path[root, a, b, "s1.s2", c]
 ```
 
-# Keywords and Reserved Words
+## Keywords and Reserved Words
 
 Keywords are words that have significance in SQL require special treatment for use as identifiers and node names, and need to be escaped with backticks.
 Certain keywords, such as TIME and ROOT, are reserved and cannot use as identifiers and node names (even after escaping).
 
 [Keywords and Reserved Words](Keywords.md) shows the keywords and reserved words in IoTDB 0.13.
 
-# Expressions
+## Expressions
 
 IoTDB supports the execution of arbitrary nested expressions consisting of numbers, time series, arithmetic expressions, and time series generating functions (including user-defined functions) in the `select` clause.
 
@@ -180,7 +182,7 @@ select `0` + 0 from root.sg.d -- valid expression, add number 0 to each point of
 select myudf(`'a'`, 'x') from root.sg.d -- valid expression, call function myudf with timeseries root.sg.d.'a' as the 1st parameter, and a string constant 'x' as the 2nd parameter
 ```
 
-# Learn More
+## Learn More
 
 Please read the lexical and grammar description files in our code repository:
 

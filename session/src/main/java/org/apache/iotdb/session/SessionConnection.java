@@ -40,6 +40,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
@@ -553,6 +554,25 @@ public class SessionConnection {
         try {
           request.setSessionId(sessionId);
           RpcUtils.verifySuccess(client.insertRecordsOfOneDevice(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
+  protected void insertStringRecordsOfOneDevice(TSInsertStringRecordsOfOneDeviceReq request)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccessWithRedirection(client.insertStringRecordsOfOneDevice(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.insertStringRecordsOfOneDevice(request));
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }

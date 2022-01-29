@@ -120,54 +120,58 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-      // init GroupByExecutor for non-aligned series
-      for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
-        MeasurementPath path = (MeasurementPath) entry.getKey();
-        List<Integer> indexes = entry.getValue();
-        if (!pathExecutors.containsKey(path)) {
-          pathExecutors.put(
-              path,
-              getGroupByExecutor(
-                  path,
-                  groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()),
-                  context,
-                  timeFilter.copy(),
-                  null,
-                  ascending));
-        }
-        for (int index : indexes) {
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    // init GroupByExecutor for non-aligned series
+    for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
+      MeasurementPath path = (MeasurementPath) entry.getKey();
+      List<Integer> indexes = entry.getValue();
+      if (!pathExecutors.containsKey(path)) {
+        pathExecutors.put(
+            path,
+            getGroupByExecutor(
+                path,
+                groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()),
+                context,
+                timeFilter.copy(),
+                null,
+                ascending));
+      }
+      for (int index : indexes) {
+        AggregateResult aggrResult =
+            AggregateResultFactory.getAggrResultByName(
+                groupByTimePlan.getDeduplicatedAggregations().get(index),
+                path.getSeriesType(),
+                ascending);
+        pathExecutors.get(path).addAggregateResult(aggrResult);
+      }
+    }
+    // init GroupByExecutor for aligned series
+    for (Map.Entry<AlignedPath, List<List<Integer>>> entry :
+        alignedPathToAggrIndexesMap.entrySet()) {
+      AlignedPath path = entry.getKey();
+      List<List<Integer>> indexesList = entry.getValue();
+      if (!alignedPathExecutors.containsKey(path)) {
+        alignedPathExecutors.put(
+            path, getAlignedGroupByExecutor(path, context, timeFilter.copy(), null, ascending));
+      }
+      for (int i = 0; i < path.getMeasurementList().size(); i++) {
+        List<AggregateResult> aggrResultList = new ArrayList<>();
+        for (int index : indexesList.get(i)) {
           AggregateResult aggrResult =
               AggregateResultFactory.getAggrResultByName(
                   groupByTimePlan.getDeduplicatedAggregations().get(index),
-                  path.getSeriesType(),
+                  path.getSchemaList().get(i).getType(),
                   ascending);
-          pathExecutors.get(path).addAggregateResult(aggrResult);
+          aggrResultList.add(aggrResult);
         }
+        alignedPathExecutors.get(path).addAggregateResult(aggrResultList);
       }
-      // init GroupByExecutor for aligned series
-      for (Map.Entry<AlignedPath, List<List<Integer>>> entry :
-          alignedPathToAggrIndexesMap.entrySet()) {
-        AlignedPath path = entry.getKey();
-        List<List<Integer>> indexesList = entry.getValue();
-        if (!alignedPathExecutors.containsKey(path)) {
-          alignedPathExecutors.put(
-              path, getAlignedGroupByExecutor(path, context, timeFilter.copy(), null, ascending));
-        }
-        for (int i = 0; i < path.getMeasurementList().size(); i++) {
-          List<AggregateResult> aggrResultList = new ArrayList<>();
-          for (int index : indexesList.get(i)) {
-            AggregateResult aggrResult =
-                AggregateResultFactory.getAggrResultByName(
-                    groupByTimePlan.getDeduplicatedAggregations().get(index),
-                    path.getSchemaList().get(i).getType(),
-                    ascending);
-            aggrResultList.add(aggrResult);
-          }
-          alignedPathExecutors.get(path).addAggregateResult(aggrResultList);
-        }
-      }
-    } finally {
-      StorageEngine.getInstance().mergeUnLock(lockList);
     }
   }
 
