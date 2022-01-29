@@ -681,7 +681,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.close();
     InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     tsFileManager.add(targetTsFileResource, true);
-    List<TsFileResource> resources = tsFileManager.getTsFileList(true);
     new SizeTieredCompactionRecoverTask(
             COMPACTION_LOG_NAME,
             "0",
@@ -709,7 +708,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             null,
             null,
             true);
-    resources = tsFileManager.getTsFileList(true);
     count = 0;
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
