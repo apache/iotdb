@@ -259,20 +259,22 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
         long seqEndTime = seqFile.getEndTime(deviceId);
         long seqStartTime = seqFile.getStartTime(deviceId);
         if (unseqEndTime < seqStartTime) {
+          // if time range in unseq file is 10-20, seq file is 30-40, then skip this seq file and
+          // there is no more overlap later.
           noMoreOverlap = true;
         } else if (!seqFile.isClosed()) {
           // we cannot make sure whether unclosed file has overlap or not, so we just add it.
           tmpSelectedSeqFiles.add(i);
           tmpSelectedNum++;
         } else if (unseqEndTime <= seqEndTime) {
-          // the unseqFile overlaps current seqFile
+          // if time range in unseq file is 10-20, seq file is 15-25, then select this seq file and
+          // there is no more overlap later.
           tmpSelectedSeqFiles.add(i);
           tmpSelectedNum++;
-          // the device of the unseqFile can not merge with later seqFiles
           noMoreOverlap = true;
         } else if (unseqStartTime <= seqEndTime) {
-          // the device of the unseqFile may merge with later seqFiles
-          // and the unseqFile overlaps current seqFile
+          // if time range in unseq file is 10-20, seq file is 0-15, then select this seq file and
+          // there may be overlap later.
           tmpSelectedSeqFiles.add(i);
           tmpSelectedNum++;
         }

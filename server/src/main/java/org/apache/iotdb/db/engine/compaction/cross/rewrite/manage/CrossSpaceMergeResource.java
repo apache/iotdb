@@ -68,23 +68,22 @@ public class CrossSpaceMergeResource {
     filterUnseqResource(unseqFiles);
   }
 
-  /** If returns true, it means to participate in the merge */
+  /** Fitler the seq files into the compaction. Seq files should be not deleted or over ttl. */
   private boolean filterSeqResource(TsFileResource res) {
-    return res.getTsFile().exists()
-        && !res.isDeleted()
-        && (!res.isClosed() || res.stillLives(ttlLowerBound));
+    return !res.isDeleted() && res.stillLives(ttlLowerBound);
   }
 
-  /** Filter the unseq files into the compaction */
+  /**
+   * Filter the unseq files into the compaction. Unseq files should be not deleted or over ttl. To
+   * ensure that the compaction is correct, return as soon as it encounters the file being compacted
+   * or compaction candidate. Therefore, a cross space compaction can only be performed serially
+   * under a time partition in a VSG.
+   */
   private void filterUnseqResource(List<TsFileResource> unseqResources) {
     for (TsFileResource resource : unseqResources) {
       if (resource.isCompacting() || resource.isCompactionCandidate() || !resource.isClosed()) {
-        if (unseqFiles.size() > 0) {
-          return;
-        }
-      } else if (resource.getTsFile().exists()
-          && !resource.isDeleted()
-          && resource.stillLives(ttlLowerBound)) {
+        return;
+      } else if (!resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
         this.unseqFiles.add(resource);
       }
     }

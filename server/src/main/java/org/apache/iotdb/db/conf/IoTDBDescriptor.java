@@ -353,12 +353,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "compaction_priority", conf.getCompactionPriority().toString())));
 
-      conf.setMaxOpenFileNumInCrossSpaceCompaction(
-          Integer.parseInt(
-              properties.getProperty(
-                  "max_open_file_num_in_cross_space_compaction",
-                  Integer.toString(conf.getMaxOpenFileNumInCrossSpaceCompaction()))));
-
       conf.setQueryTimeoutThreshold(
           Integer.parseInt(
               properties.getProperty(
