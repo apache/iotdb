@@ -41,8 +41,6 @@ public interface IMTreeStore {
 
   IMNode getChild(IMNode parent, String name);
 
-  IMNode getPinnedChild(IMNode parent, String name);
-
   Iterator<IMNode> getChildrenIterator(IMNode parent);
 
   void addChild(IMNode parent, String childName, IMNode child);

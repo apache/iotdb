@@ -110,11 +110,6 @@ public class MemMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public IMNode getPinnedChild(IMNode parent, String name) {
-    return parent.getChild(name);
-  }
-
-  @Override
   public Iterator<IMNode> getChildrenIterator(IMNode parent) {
     return parent.getChildren().values().iterator();
   }

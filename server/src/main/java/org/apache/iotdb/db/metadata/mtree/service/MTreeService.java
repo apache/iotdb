@@ -338,7 +338,7 @@ public class MTreeService implements Serializable {
     // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
     for (int i = 1; i < nodeNames.length; i++) {
       String childName = nodeNames[i];
-      child = store.getPinnedChild(cur, childName);
+      child = store.getChild(cur, childName);
       if (child == null) {
         if (!hasSetStorageGroup) {
           unPinPath(cur);
@@ -443,7 +443,7 @@ public class MTreeService implements Serializable {
     IMNode child;
     Template upperTemplate = cur.getSchemaTemplate();
     for (int i = 1; i < nodeNames.length; i++) {
-      child = store.getPinnedChild(cur, nodeNames[i]);
+      child = store.getChild(cur, nodeNames[i]);
       if (child == null) {
         if (cur.isUseTemplate() && upperTemplate.getDirectNode(nodeNames[i]) != null) {
           unPinPath(cur);
@@ -496,7 +496,7 @@ public class MTreeService implements Serializable {
     int i = 1;
     // e.g., path = root.a.b.sg, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
-      child = store.getPinnedChild(cur, nodeNames[i]);
+      child = store.getChild(cur, nodeNames[i]);
       if (child == null) {
         if (cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i])) {
           unPinPath(cur);

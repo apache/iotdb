@@ -75,15 +75,13 @@ public class CachedMTreeStore implements IMTreeStore {
         node = file.getChildNode(parent, name);
         if (node != null) {
           node.setParent(parent);
-          if (cacheMNodeInMemory(node)) {
-            cacheStrategy.updateCacheStatusAfterRead(node);
-          }
+          pinMNodeInMemory(node);
+          cacheStrategy.updateCacheStatusAfterRead(node);
         }
       }
     } else {
-      if (cacheStrategy.isCached(node) || cacheMNodeInMemory(node)) {
-        cacheStrategy.updateCacheStatusAfterRead(node);
-      }
+      pinMNodeInMemory(node);
+      cacheStrategy.updateCacheStatusAfterRead(node);
     }
 
     if (node != null && node.isMeasurement()) {
@@ -98,26 +96,6 @@ public class CachedMTreeStore implements IMTreeStore {
     if (alias != null) {
       parent.addAlias(alias, node);
     }
-  }
-
-  // must pin parent first
-  @Override
-  public IMNode getPinnedChild(IMNode parent, String name) {
-    IMNode node = parent.getChild(name);
-    if (node == null) {
-      if (!getCachedMNodeContainer(parent).isVolatile()) {
-        node = file.getChildNode(parent, name);
-        if (node != null) {
-          node.setParent(parent);
-          pinMNodeInMemory(node);
-          cacheStrategy.updateCacheStatusAfterRead(node);
-        }
-      }
-    } else {
-      pinMNodeInMemory(node);
-      cacheStrategy.updateCacheStatusAfterRead(node);
-    }
-    return node;
   }
 
   @Override
