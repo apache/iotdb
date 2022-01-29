@@ -13,7 +13,6 @@ public class InnerNameParser {
   private static final char START_FLAG = '\u0019';
   private static final char SPLIT_FLAG = '.';
 
-
   public InnerNameParser(byte[] key) {
     NODE_TYPE = key[0];
     char[] keyConvertToCharArray = new String(key).toCharArray();
@@ -29,7 +28,6 @@ public class InnerNameParser {
       lastChar = c;
     }
     pathName = stringBuilder.toString();
-
   }
 
   public String getPathName() {
@@ -46,5 +44,4 @@ public class InnerNameParser {
     }
     return partialPath;
   }
-
 }
