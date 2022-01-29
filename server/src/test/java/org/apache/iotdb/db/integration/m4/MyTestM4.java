@@ -78,8 +78,6 @@ public class MyTestM4 {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create function M4 as \"org.apache.iotdb.db.query.udf.builtin.UDTFM4MAC\"");
 
       long tqs = 0L;
       long tqe = 100L;
