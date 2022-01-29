@@ -347,6 +347,8 @@ public class CompactionTaskManager implements IService {
     logger.warn("Aborting compaction task for {}", fullStorageGroupName);
     Set<Future<Void>> subTasks =
         storageGroupTasks.getOrDefault(fullStorageGroupName, Collections.emptySet());
+    logger.warn("Compaction task queue is {}", candidateCompactionTaskQueue);
+    candidateCompactionTaskQueue.clear();
     logger.warn("the task map is {}", storageGroupTasks);
     logger.warn("the size of compaction task of {} is {}", fullStorageGroupName, subTasks.size());
     Iterator<Future<Void>> subIterator = subTasks.iterator();

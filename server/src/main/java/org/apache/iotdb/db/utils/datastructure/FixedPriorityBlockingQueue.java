@@ -137,7 +137,9 @@ public class FixedPriorityBlockingQueue<T> {
     final ReentrantLock lock = this.lock;
     lock.lock();
     try {
-      queue.clear();
+      while (queue.size() != 0) {
+        this.pollLast();
+      }
     } finally {
       lock.unlock();
     }
