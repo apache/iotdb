@@ -52,8 +52,8 @@ import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MNodeLevelCo
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MeasurementGroupByLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.StorageGroupCounter;
-import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -134,7 +134,7 @@ public class MTreeService implements Serializable {
   public MTreeService() {}
 
   public void init() throws IOException {
-    store = new CachedMTreeStore();
+    store = new MemMTreeStore();
     store.init();
     this.root = store.getRoot();
   }
@@ -385,7 +385,7 @@ public class MTreeService implements Serializable {
       throw new MetadataException("Cannot delete a timeseries inside a template: " + path);
     }
 
-    IMeasurementMNode deletedNode = getPinnedMeasurementMNode(path);
+    IMeasurementMNode deletedNode = getMeasurementMNode(path);
     IEntityMNode parent = deletedNode.getParent();
     // delete the last node of path
     store.deleteChild(parent, path.getMeasurement());
@@ -520,7 +520,7 @@ public class MTreeService implements Serializable {
     synchronized (this) {
       child = store.getChild(cur, nodeNames[i]);
       if (child != null) {
-        unPinPath(cur);
+        unPinPath(child);
         // node b has child sg
         if (child.isStorageGroup()) {
           throw new StorageGroupAlreadySetException(path.getFullPath());
@@ -544,7 +544,7 @@ public class MTreeService implements Serializable {
 
   /** Delete a storage group */
   public List<IMeasurementMNode> deleteStorageGroup(PartialPath path) throws MetadataException {
-    IMNode cur = getPinnedNodeByPath(path);
+    IMNode cur = getNodeByPath(path);
     if (!(cur.isStorageGroup())) {
       unPinPath(cur);
       throw new StorageGroupNotSetException(path.getFullPath());
@@ -587,26 +587,43 @@ public class MTreeService implements Serializable {
     }
     IMNode cur = root;
     IMNode child;
-    Template upperTemplate = cur.getSchemaTemplate();
+    Template upperTemplate = null;
     boolean isInTemplate = false;
     for (int i = 1; i < nodeNames.length; i++) {
       if (isInTemplate) {
         child = cur.getChild(nodeNames[i]);
-      } else {
-        child = store.getChild(cur, nodeNames[i]);
-      }
-      if (child == null) {
-        if (!cur.isUseTemplate() || upperTemplate.getDirectNode(nodeNames[i]) == null) {
+        if (child == null) {
           return false;
         }
-        child = upperTemplate.getDirectNode(nodeNames[i]);
-        isInTemplate = true;
+        if (child.isMeasurement()) {
+          return i == nodeNames.length - 1;
+        }
+      } else {
+        upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
+        child = store.getChild(cur, nodeNames[i]);
+        if (child == null) {
+          unPinPath(cur);
+          if (upperTemplate == null
+              || !cur.isUseTemplate()
+              || upperTemplate.getDirectNode(nodeNames[i]) == null) {
+            return false;
+          }
+          child = upperTemplate.getDirectNode(nodeNames[i]);
+          isInTemplate = true;
+          if (child.isMeasurement()) {
+            return i == nodeNames.length - 1;
+          }
+        } else {
+          if (child.isMeasurement()) {
+            unPinPath(cur);
+            return i == nodeNames.length - 1;
+          }
+        }
       }
       cur = child;
-      if (cur.isMeasurement()) {
-        return i == nodeNames.length - 1;
-      }
-      upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
+    }
+    if (!isInTemplate) {
+      unPinPath(cur);
     }
     return true;
   }
@@ -627,30 +644,47 @@ public class MTreeService implements Serializable {
       return false;
     }
     IMNode cur = root;
+    IMNode next = null;
     int i = 1;
     while (i < nodeNames.length - 1) {
-      cur = store.getChild(cur, nodeNames[i]);
-      if (cur == null || cur.isStorageGroup()) {
+      next = store.getChild(cur, nodeNames[i]);
+      if (next == null) {
+        unPinPath(cur);
+        return false;
+      } else if (next.isStorageGroup()) {
+        unPinPath(next);
         return false;
       }
       i++;
+      cur = next;
     }
-    cur = store.getChild(cur, nodeNames[i]);
-    return cur != null && cur.isStorageGroup();
+    next = store.getChild(cur, nodeNames[i]);
+    if (next == null) {
+      unPinPath(cur);
+      return false;
+    } else {
+      unPinPath(next);
+      return next.isStorageGroup();
+    }
   }
 
   /** Check whether the given path contains a storage group */
   public boolean checkStorageGroupByPath(PartialPath path) {
     String[] nodes = path.getNodes();
     IMNode cur = root;
+    IMNode next = null;
     for (int i = 1; i < nodes.length; i++) {
-      cur = store.getChild(cur, nodes[i]);
-      if (cur == null) {
+      next = store.getChild(cur, nodes[i]);
+      if (next == null) {
+        unPinPath(cur);
         return false;
-      } else if (cur.isStorageGroup()) {
+      } else if (next.isStorageGroup()) {
+        unPinPath(next);
         return true;
       }
+      cur = next;
     }
+    unPinPath(cur);
     return false;
   }
 
@@ -664,14 +698,19 @@ public class MTreeService implements Serializable {
   public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
     String[] nodes = path.getNodes();
     IMNode cur = root;
+    IMNode next = null;
     for (int i = 1; i < nodes.length; i++) {
-      cur = store.getChild(cur, nodes[i]);
-      if (cur == null) {
+      next = store.getChild(cur, nodes[i]);
+      if (next == null) {
+        unPinPath(cur);
         throw new StorageGroupNotSetException(path.getFullPath());
-      } else if (cur.isStorageGroup()) {
-        return cur.getPartialPath();
+      } else if (next.isStorageGroup()) {
+        unPinPath(next);
+        return next.getPartialPath();
       }
+      cur = next;
     }
+    unPinPath(cur);
     throw new StorageGroupNotSetException(path.getFullPath());
   }
 
@@ -949,24 +988,6 @@ public class MTreeService implements Serializable {
     return result;
   }
 
-  private PartialPath getBelongedStorageGroupPath(IMeasurementMNode node)
-      throws StorageGroupNotSetException {
-    if (node == null) {
-      return null;
-    }
-    IMNode temp = node;
-    while (temp != null) {
-      if (temp.isStorageGroup()) {
-        break;
-      }
-      temp = temp.getParent();
-    }
-    if (temp == null) {
-      throw new StorageGroupNotSetException(node.getFullPath());
-    }
-    return temp.getPartialPath();
-  }
-
   public Map<PartialPath, IMeasurementSchema> getAllMeasurementSchemaByPrefix(
       PartialPath prefixPath) throws MetadataException {
     Map<PartialPath, IMeasurementSchema> result = new HashMap<>();
@@ -1239,31 +1260,44 @@ public class MTreeService implements Serializable {
     Template upperTemplate = cur.getSchemaTemplate();
     boolean isInTemplate = false;
     for (int i = 1; i < nodes.length; i++) {
-      if (cur.isMeasurement()) {
-        if (i == nodes.length - 1) {
-          return cur;
-        } else {
-          throw new PathNotExistException(path.getFullPath(), true);
-        }
-      }
-      if (cur.getSchemaTemplate() != null) {
-        upperTemplate = cur.getSchemaTemplate();
-      }
       if (isInTemplate) {
         next = cur.getChild(nodes[i]);
-      } else {
-        next = store.getChild(cur, nodes[i]);
-      }
-      if (next == null) {
-        if (upperTemplate == null
-            || !cur.isUseTemplate()
-            || upperTemplate.getDirectNode(nodes[i]) == null) {
+        if (next == null) {
           throw new PathNotExistException(path.getFullPath(), true);
+        } else if (next.isMeasurement()) {
+          if (i == nodes.length - 1) {
+            return next;
+          } else {
+            throw new PathNotExistException(path.getFullPath(), true);
+          }
         }
-        next = upperTemplate.getDirectNode(nodes[i]);
-        isInTemplate = true;
+      } else {
+        if (cur.getSchemaTemplate() != null) {
+          upperTemplate = cur.getSchemaTemplate();
+        }
+        next = store.getChild(cur, nodes[i]);
+        if (next == null) {
+          unPinPath(cur);
+          if (upperTemplate == null
+              || !cur.isUseTemplate()
+              || upperTemplate.getDirectNode(nodes[i]) == null) {
+            throw new PathNotExistException(path.getFullPath(), true);
+          }
+          next = upperTemplate.getDirectNode(nodes[i]);
+          isInTemplate = true;
+        } else if (next.isMeasurement()) {
+          unPinPath(cur);
+          if (i == nodes.length - 1) {
+            return next;
+          } else {
+            throw new PathNotExistException(path.getFullPath(), true);
+          }
+        }
       }
       cur = next;
+    }
+    if (!isInTemplate) {
+      unPinPath(cur.getParent());
     }
     return cur;
   }
@@ -1284,41 +1318,43 @@ public class MTreeService implements Serializable {
     Template upperTemplate = null;
     boolean isInTemplate = false;
     for (int i = 1; i < nodes.length; i++) {
-      if (cur.getSchemaTemplate() != null) {
-        upperTemplate = cur.getSchemaTemplate();
-      }
-
       if (isInTemplate) {
         child = cur.getChild(nodes[i]);
-      } else {
-        child = store.getChild(cur, nodes[i]);
-      }
-
-      if (child == null) {
-        // seek child in template
-        if (!storageGroupChecked) {
-          throw new StorageGroupNotSetException(path.getFullPath());
-        }
-
-        if (upperTemplate == null
-            || !cur.isUseTemplate()
-            || upperTemplate.getDirectNode(nodes[i]) == null) {
+        if (child == null) {
           throw new PathNotExistException(path.getFullPath());
         }
+      } else {
+        if (cur.getSchemaTemplate() != null) {
+          upperTemplate = cur.getSchemaTemplate();
+        }
+        child = store.getChild(cur, nodes[i]);
+        if (child == null) {
+          unPinPath(cur);
+          // seek child in template
+          if (!storageGroupChecked) {
+            throw new StorageGroupNotSetException(path.getFullPath());
+          }
 
-        child = upperTemplate.getDirectNode(nodes[i]);
-        isInTemplate = true;
+          if (upperTemplate == null
+              || !cur.isUseTemplate()
+              || upperTemplate.getDirectNode(nodes[i]) == null) {
+            throw new PathNotExistException(path.getFullPath());
+          }
+
+          child = upperTemplate.getDirectNode(nodes[i]);
+          isInTemplate = true;
+        } else if (child.isStorageGroup()) {
+          storageGroupChecked = true;
+        }
       }
       cur = child;
-
-      if (cur.isStorageGroup()) {
-        storageGroupChecked = true;
-      }
     }
 
     if (!storageGroupChecked) {
+      unPinPath(cur);
       throw new StorageGroupNotSetException(path.getFullPath());
     }
+    unPinPath(cur.getParent());
     return cur;
   }
 
@@ -1349,15 +1385,20 @@ public class MTreeService implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
     IMNode cur = root;
+    IMNode next = null;
     for (int i = 1; i < nodes.length; i++) {
-      cur = store.getChild(cur, nodes[i]);
-      if (cur == null) {
-        break;
+      next = store.getChild(cur, nodes[i]);
+      if (next == null) {
+        unPinPath(cur);
+        throw new StorageGroupNotSetException(path.getFullPath());
       }
-      if (cur.isStorageGroup()) {
-        return cur.getAsStorageGroupMNode();
+      if (next.isStorageGroup()) {
+        unPinPath(next);
+        return next.getAsStorageGroupMNode();
       }
+      cur = next;
     }
+    unPinPath(cur);
     throw new StorageGroupNotSetException(path.getFullPath());
   }
 
@@ -1398,25 +1439,29 @@ public class MTreeService implements Serializable {
       return;
     }
     IMNode cur = root;
-    if (cur.getSchemaTemplate() != null) {
-      throw new MetadataException("Template already exists on " + cur.getFullPath());
-    }
     IMNode child;
     for (int i = 1; i < nodeNames.length; i++) {
-      if (cur.isMeasurement()) {
-        return;
-      }
       child = store.getChild(cur, nodeNames[i]);
       if (child == null) {
+        unPinPath(cur);
         return;
       }
       cur = child;
       if (cur.getSchemaTemplate() != null) {
+        unPinPath(cur);
         throw new MetadataException("Template already exists on " + cur.getFullPath());
+      }
+      if (cur.isMeasurement()) {
+        unPinPath(cur);
+        return;
       }
     }
 
-    checkTemplateOnSubtree(cur);
+    try {
+      checkTemplateOnSubtree(cur);
+    } finally {
+      unPinPath(cur);
+    }
   }
 
   /**
@@ -1523,23 +1568,24 @@ public class MTreeService implements Serializable {
       if (child != null) {
         cur = child;
         if (cur.isMeasurement()) {
+          unPinPath(cur);
           return false;
         }
         upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
-      } else if (upperTemplate != null) {
-        String suffixPath =
-            new PartialPath(Arrays.copyOfRange(pathNodes, i, pathNodes.length)).toString();
-        if (upperTemplate.hasSchema(suffixPath)) {
-          return true;
+      } else {
+        unPinPath(cur);
+        if (upperTemplate != null) {
+          String suffixPath =
+              new PartialPath(Arrays.copyOfRange(pathNodes, i, pathNodes.length)).toString();
+          // has template, whether match
+          return upperTemplate.hasSchema(suffixPath);
         } else {
-          // has template, but not match
+          // no child and no template
           return false;
         }
-      } else {
-        // no child and no template
-        return false;
       }
     }
+    unPinPath(cur);
     return false;
   }
 
@@ -1565,6 +1611,7 @@ public class MTreeService implements Serializable {
       upperTemplate = cur.getSchemaTemplate() != null ? cur.getSchemaTemplate() : upperTemplate;
       child = store.getChild(cur, fullPathNodes[index]);
       if (child == null) {
+        unPinPath(cur);
         if (upperTemplate != null) {
           // for this fullPath, cur is the last node on MTree
           // since upperTemplate exists, need to find the matched suffix path of fullPath and
@@ -1585,15 +1632,16 @@ public class MTreeService implements Serializable {
             throw new TemplateImcompatibeException(
                 measurementPath.getFullPath(), upperTemplate.getName(), fullPathNodes[index]);
           }
-        } else {
-          // no matched child, no template, need to create device node as logical device path
-          return fullPathNodes.length - 1;
         }
+
+        // no matched child, no template, need to create device node as logical device path
+        return fullPathNodes.length - 1;
       } else {
         // has child on MTree
         cur = child;
       }
     }
+    unPinPath(cur);
     // all nodes on path exist in MTree, device node should be the penultimate one
     return fullPathNodes.length - 1;
   }
@@ -1702,60 +1750,6 @@ public class MTreeService implements Serializable {
   // endregion
 
   // region Interfaces and Implementation for Pin/UnPin MNode or Path
-
-  public IMNode getPinnedNodeByPath(PartialPath path) throws MetadataException {
-    String[] nodes = path.getNodes();
-    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
-      throw new IllegalPathException(path.getFullPath());
-    }
-    IMNode cur = root;
-    IMNode next;
-    Template upperTemplate = cur.getSchemaTemplate();
-    boolean isInTemplate = false;
-    for (int i = 1; i < nodes.length; i++) {
-      if (cur.isMeasurement()) {
-        if (i == nodes.length - 1) {
-          return cur;
-        } else {
-          unPinPath(cur);
-          throw new PathNotExistException(path.getFullPath(), true);
-        }
-      }
-      if (cur.getSchemaTemplate() != null) {
-        upperTemplate = cur.getSchemaTemplate();
-      }
-
-      if (isInTemplate) {
-        next = cur.getChild(nodes[i]);
-      } else {
-        next = store.getPinnedChild(cur, nodes[i]);
-      }
-
-      if (next == null) {
-        if (upperTemplate == null
-            || !cur.isUseTemplate()
-            || upperTemplate.getDirectNode(nodes[i]) == null) {
-          unPinPath(cur);
-          throw new PathNotExistException(path.getFullPath(), true);
-        }
-        next = upperTemplate.getDirectNode(nodes[i]);
-        isInTemplate = true;
-      }
-      cur = next;
-    }
-    return cur;
-  }
-
-  public IMeasurementMNode getPinnedMeasurementMNode(PartialPath path) throws MetadataException {
-    IMNode node = getPinnedNodeByPath(path);
-    if (node.isMeasurement()) {
-      return node.getAsMeasurementMNode();
-    } else {
-      throw new MNodeTypeMismatchException(
-          path.getFullPath(), MetadataConstant.MEASUREMENT_MNODE_TYPE);
-    }
-  }
-
   public void unPinPath(IMNode node) {
     while (node.getParent() != null) {
       store.unPin(node);

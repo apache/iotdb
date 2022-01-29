@@ -190,6 +190,9 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public void unPin(IMNode node) {
+    if (!cacheStrategy.isPinned(node)) {
+      return;
+    }
     List<IMNode> releasedMNodes = cacheStrategy.unPinMNode(node);
     for (IMNode releasedMNode : releasedMNodes) {
       memManager.releasePinnedMemResource(releasedMNode);
