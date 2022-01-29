@@ -152,7 +152,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         for (TsFileResource resource : selectedTsFileResourceList) {
           tsFileResourceList.remove(resource);
         }
-        tsFileResourceList.insertBefore(selectedTsFileResourceList.get(0), targetTsFileResource);
+        tsFileResourceList.keepOrderInsert(targetTsFileResource);
       } finally {
         tsFileResourceList.writeUnlock();
       }
