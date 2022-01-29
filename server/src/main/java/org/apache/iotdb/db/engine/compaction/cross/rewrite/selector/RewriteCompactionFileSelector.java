@@ -200,9 +200,9 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
       maxSeqFileCost = tempMaxSeqFileCost;
 
       for (Integer seqIdx : tmpSelectedSeqFiles) {
-        seqSelected[seqIdx] = true;
         if (!seqSelected[seqIdx]) {
           seqSelectedNum++;
+          seqSelected[seqIdx] = true;
         }
       }
       totalCost += newCost;
