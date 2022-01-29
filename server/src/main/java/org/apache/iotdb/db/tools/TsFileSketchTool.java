@@ -245,7 +245,8 @@ public class TsFileSketchTool {
   }
 
   private static Pair<String, String> checkArgs(String[] args) {
-    String filename = "/home/kyy/Documents/kdd/iotdb-server-0.12.4/data/data/sequence/root.kobelco/0/0/1643270757735-1-0-0.tsfile";
+    String filename =
+        "/home/kyy/Documents/kdd/iotdb-server-0.12.4/data/data/sequence/root.kobelco/0/0/1643270757735-1-0-0.tsfile";
     String outFile = "TsFile_sketch_view.txt";
     if (args.length == 1) {
       filename = args[0];

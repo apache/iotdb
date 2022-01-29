@@ -715,8 +715,8 @@ public class TSServiceImpl implements TSIService.Iface {
 
     // start record execution time
     IOMonitor.setSQL(statement);
-    long start = System.nanoTime();
     queryCount.incrementAndGet();
+    long start = System.nanoTime();
     AUDIT_LOGGER.debug(
         "Session {} execute Query: {}", sessionManager.getCurrSessionId(), statement);
     long startTime = System.currentTimeMillis();
@@ -826,9 +826,8 @@ public class TSServiceImpl implements TSIService.Iface {
         queryTimeManager.unRegisterQuery(queryId);
       }
 
-      // finish recording execution time
-      long duration = System.nanoTime() - start;
-      IOMonitor.totalTimes.add(duration);
+      IOMonitor.incTotalTime(System.nanoTime() - start);
+      IOMonitor.reset();
       return resp;
     } catch (Exception e) {
       releaseQueryResourceNoExceptions(queryId);

@@ -28,18 +28,35 @@ public class IOMonitor {
   public static int metaIONum;
   public static long dataIOTime;
   public static int dataIONum;
+  public static long readMemChunkTime;
+  public static int readMemChunkNum;
+
   public static long totalTime;
   public static String sql;
 
   public static List<Long> metaIOTimes = new ArrayList<>();
   public static List<Long> dataIOTimes = new ArrayList<>();
+  public static List<Long> readMemChunkTimes = new ArrayList<>();
   public static List<Integer> metaIONums = new ArrayList<>();
   public static List<Integer> dataIONums = new ArrayList<>();
+  public static List<Integer> readMemChunkNums = new ArrayList<>();
 
   public static List<String> sqls = new ArrayList<>();
   public static List<Long> totalTimes = new ArrayList<>();
 
   public static boolean isSet = false;
+
+  public static void incReadMemChunkTime(long v) {
+    readMemChunkTime += v;
+    readMemChunkNum++;
+  }
+
+  public static void resetReadMemChunkTime() {
+    readMemChunkNums.add(readMemChunkNum);
+    readMemChunkTimes.add(readMemChunkTime);
+    readMemChunkTime = 0;
+    readMemChunkNum = 0;
+  }
 
   public static void incMeta(long v) {
     metaIOTime += v;
@@ -58,11 +75,20 @@ public class IOMonitor {
     dataIONum++;
   }
 
+  public static void incTotalTime(long val) {
+    totalTime += val;
+  }
+
   private static void resetDataIOTime() {
     dataIOTimes.add(dataIOTime);
     dataIONums.add(dataIONum);
     dataIOTime = 0;
     dataIONum = 0;
+  }
+
+  public static void resetTotalTime() {
+    totalTimes.add(totalTime);
+    totalTime = 0;
   }
 
   public static void setSQL(String v) {
@@ -79,16 +105,30 @@ public class IOMonitor {
   public static void reset() {
     resetMeta();
     resetDataIOTime();
+    resetTotalTime();
+    resetReadMemChunkTime();
     sqls.add(sql);
     sql = null;
   }
 
-  private static double getAvg(List<Long> vals) {
+  //  private static double getAvg(List<Long> vals) {
+  //    return (double) getSum(vals) / vals.size();
+  //  }
+
+  private static long getSumLong(List<Long> vals) {
     long sum = 0;
-    for (long v : vals) {
+    for (Object v : vals) {
+      sum += (long) v;
+    }
+    return sum;
+  }
+
+  private static long getSumInteger(List<Integer> vals) {
+    Integer sum = 0;
+    for (Integer v : vals) {
       sum += v;
     }
-    return (double) sum / vals.size();
+    return sum.longValue();
   }
 
   public static void clear() {
@@ -96,8 +136,10 @@ public class IOMonitor {
     metaIOTime = 0L;
     dataIOTime = 0L;
     totalTime = 0L;
+    readMemChunkTime = 0L;
     dataIONum = 0;
     metaIONum = 0;
+    readMemChunkNum = 0;
     sql = null;
 
     metaIOTimes.clear();
@@ -114,32 +156,46 @@ public class IOMonitor {
   }
 
   public static String print() {
-    reset();
+    if (sql != null) {
+      reset();
+    }
     String ret = "";
     for (int i = 0; i < sqls.size(); i++) {
       ret +=
           sqls.get(i)
-              + "\t meta IO: "
+              + "\t meta IO: \t"
               + metaIOTimes.get(i)
-              + "\t meta num: "
+              + "\t meta num: \t"
               + metaIONums.get(i)
-              + "\t data IO: "
+              + "\t data IO: \t"
               + dataIOTimes.get(i)
-              + "\t data num: "
+              + "\t data num: \t"
               + dataIONums.get(i)
-              + "\t total: "
-              + totalTimes.get(i);
-      //              + "\n";
+              + "\t readMemChunk IO: \t"
+              + readMemChunkTimes.get(i)
+              + "\t readMemChunk num: \t"
+              + readMemChunkNums.get(i)
+              + "\t total: \t"
+              + totalTimes.get(i)
+              + "\n";
     }
-    //    ret +=
-    //        "avg meta IO: "
-    //            + getAvg(metaIOTimes)
-    //            + ", avg data IO: "
-    //            + getAvg(dataIOTimes)
-    //            + ", avg total time: "
-    //            + getAvg(totalTimes)
-    //            + ", isSet: "
-    //            + isSet;
+    ret +=
+        "sum meta IO: \t"
+            + getSumLong(metaIOTimes)
+            + "\t sum meta nums: \t"
+            + getSumInteger(metaIONums)
+            + "\t sum data IO: \t"
+            + getSumLong(dataIOTimes)
+            + "\t sum data num: \t"
+            + getSumInteger(dataIONums)
+            + "\t sum readMemChunkTime: \t"
+            + getSumLong(readMemChunkTimes)
+            + "\t sum readMemChunkNum: \t"
+            + getSumInteger(readMemChunkNums)
+            + "\t avg total time: \t"
+            + getSumLong(totalTimes)
+            + "\t isSet: \t"
+            + isSet;
     return ret;
   }
 }

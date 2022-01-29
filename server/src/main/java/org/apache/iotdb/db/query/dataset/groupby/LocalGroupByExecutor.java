@@ -186,7 +186,6 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   @Override
   public List<AggregateResult> calcResult(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException {
-
     // clear result cache
     for (AggregateResult result : results) {
       result.reset();
@@ -226,7 +225,6 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         return results;
       }
     }
-
     return results;
   }
 
