@@ -129,16 +129,39 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       }
 
       InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, fullStorageGroupName);
-      LOGGER.info(
-          "{} [SizeTiredCompactionTask] compact finish, close the logger", fullStorageGroupName);
-      sizeTieredCompactionLogger.close();
+
+      LOGGER.info("{} [SizeTiredCompactionTask] start to rename mods file", fullStorageGroupName);
+      InnerSpaceCompactionUtils.combineModsInCompaction(
+          selectedTsFileResourceList, targetTsFileResource);
 
       LOGGER.info(
-          "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
+          "{} [SizeTiredCompactionTask] compact finish, close the logger, edit the tsFileResourceList",
+          fullStorageGroupName);
+      sizeTieredCompactionLogger.close();
+
       if (Thread.currentThread().isInterrupted()) {
         throw new InterruptedException(
             String.format("%s [Compaction] abort", fullStorageGroupName));
       }
+
+      // replace the old files with new file, the new is in same position as the old
+      for (TsFileResource resource : selectedTsFileResourceList) {
+        TsFileResourceManager.getInstance().removeTsFileResource(resource);
+      }
+      TsFileResourceManager.getInstance().registerSealedTsFileResource(targetTsFileResource);
+      tsFileResourceList.writeLock();
+      try {
+        for (TsFileResource resource : selectedTsFileResourceList) {
+          tsFileResourceList.remove(resource);
+        }
+        tsFileResourceList.keepOrderInsert(targetTsFileResource);
+      } finally {
+        tsFileResourceList.writeUnlock();
+      }
+
+      LOGGER.info(
+          "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
+
       LOGGER.info(
           "{} [Compaction] Compacted target files, try to get the write lock of source files",
           fullStorageGroupName);
@@ -150,12 +173,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         selectedTsFileResourceList.get(i).writeLock();
         isHoldingWriteLock[i] = true;
       }
-
-      LOGGER.info(
-          "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
-          fullStorageGroupName);
-      InnerSpaceCompactionUtils.combineModsInCompaction(
-          selectedTsFileResourceList, targetTsFileResource);
 
       if (targetTsFileResource.getTsFile().length()
           < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
@@ -171,16 +188,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           selectedTsFileResourceList, fullStorageGroupName);
       InnerSpaceCompactionUtils.deleteModificationForSourceFile(
           selectedTsFileResourceList, fullStorageGroupName);
-
-      // replace the old files with new file, the new is in same position as the old
-      for (TsFileResource resource : selectedTsFileResourceList) {
-        TsFileResourceManager.getInstance().removeTsFileResource(resource);
-      }
-      tsFileResourceList.insertBefore(selectedTsFileResourceList.get(0), targetTsFileResource);
-      TsFileResourceManager.getInstance().registerSealedTsFileResource(targetTsFileResource);
-      for (TsFileResource resource : selectedTsFileResourceList) {
-        tsFileResourceList.remove(resource);
-      }
 
       long costTime = System.currentTimeMillis() - startTime;
       LOGGER.info(
