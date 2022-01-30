@@ -95,6 +95,7 @@ public class CompactionSchedulerTest {
     if (!basicOutputDir.exists()) {
       assertTrue(basicOutputDir.mkdirs());
     }
+
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
