@@ -137,12 +137,15 @@ public class MeasurementPath extends PartialPath {
     isUnderAlignedEntity = underAlignedEntity;
   }
 
+  @Override
   public PartialPath copy() {
     MeasurementPath result = new MeasurementPath();
     result.nodes = nodes;
     result.fullPath = fullPath;
     result.device = device;
     result.measurementAlias = measurementAlias;
+    result.measurementSchema = measurementSchema;
+    result.isUnderAlignedEntity = isUnderAlignedEntity;
     return result;
   }
 
@@ -266,7 +269,7 @@ public class MeasurementPath extends PartialPath {
     IWritableMemChunk memChunk = memTableMap.get(deviceID).getMemChunkMap().get(getMeasurement());
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
-    int curSize = chunkCopy.size();
+    int curSize = chunkCopy.rowCount();
     List<TimeRange> deletionList = null;
     if (modsToMemtable != null) {
       deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);

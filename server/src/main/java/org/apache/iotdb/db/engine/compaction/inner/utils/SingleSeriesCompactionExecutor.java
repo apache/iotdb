@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -41,8 +41,6 @@ import com.google.common.util.concurrent.RateLimiter;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 
 /** This class is used to compact one series during inner space compaction. */
 public class SingleSeriesCompactionExecutor {
@@ -50,18 +48,17 @@ public class SingleSeriesCompactionExecutor {
   private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList;
   private TsFileIOWriter fileWriter;
   private TsFileResource targetResource;
-  private boolean sequence;
 
   private IMeasurementSchema schema;
   private ChunkWriterImpl chunkWriter;
   private Chunk cachedChunk;
   private ChunkMetadata cachedChunkMetadata;
-  private RateLimiter compactionRateLimiter = MergeManager.getINSTANCE().getMergeWriteRateLimiter();
+  private RateLimiter compactionRateLimiter =
+      CompactionTaskManager.getInstance().getMergeWriteRateLimiter();
   // record the min time and max time to update the target resource
   private long minStartTimestamp = Long.MAX_VALUE;
   private long maxEndTimestamp = Long.MIN_VALUE;
   private long pointCountInChunkWriter = 0;
-  private Map<Long, TimeValuePair> timeValuePairMapForUnseqMerge = new TreeMap<>();
 
   private final long targetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -77,8 +74,7 @@ public class SingleSeriesCompactionExecutor {
       String timeSeries,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
       TsFileIOWriter fileWriter,
-      TsFileResource targetResource,
-      boolean sequence)
+      TsFileResource targetResource)
       throws MetadataException {
     this.device = device;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
@@ -88,7 +84,6 @@ public class SingleSeriesCompactionExecutor {
     this.cachedChunk = null;
     this.cachedChunkMetadata = null;
     this.targetResource = targetResource;
-    this.sequence = sequence;
   }
 
   /**
@@ -103,12 +98,6 @@ public class SingleSeriesCompactionExecutor {
       List<ChunkMetadata> chunkMetadataList = readerListPair.right;
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         Chunk currentChunk = reader.readMemChunk(chunkMetadata);
-
-        if (!sequence) {
-          // if it is not sequence, deserialize it into point
-          flushChunkToMap(currentChunk);
-          continue;
-        }
 
         // if this chunk is modified, deserialize it into points
         if (chunkMetadata.getDeleteIntervalList() != null) {
@@ -136,8 +125,6 @@ public class SingleSeriesCompactionExecutor {
       cachedChunkMetadata = null;
     } else if (pointCountInChunkWriter != 0L) {
       flushChunkWriter();
-    } else if (timeValuePairMapForUnseqMerge.size() > 0) {
-      flushMapToFileWriter();
     }
     targetResource.updateStartTime(device, minStartTimestamp);
     targetResource.updateEndTime(device, maxEndTimestamp);
@@ -266,7 +253,7 @@ public class SingleSeriesCompactionExecutor {
   }
 
   private void flushChunkToFileWriter(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
-    MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, getChunkSize(chunk));
+    CompactionTaskManager.mergeRateLimiterAcquire(compactionRateLimiter, getChunkSize(chunk));
     if (chunkMetadata.getStartTime() < minStartTimestamp) {
       minStartTimestamp = chunkMetadata.getStartTime();
     }
@@ -279,7 +266,7 @@ public class SingleSeriesCompactionExecutor {
   private void flushChunkWriterIfLargeEnough() throws IOException {
     if (pointCountInChunkWriter >= targetChunkPointNum
         || chunkWriter.estimateMaxSeriesMemSize() >= targetChunkSize) {
-      MergeManager.mergeRateLimiterAcquire(
+      CompactionTaskManager.mergeRateLimiterAcquire(
           compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriter);
       pointCountInChunkWriter = 0L;
@@ -296,33 +283,9 @@ public class SingleSeriesCompactionExecutor {
   }
 
   private void flushChunkWriter() throws IOException {
-    MergeManager.mergeRateLimiterAcquire(
+    CompactionTaskManager.mergeRateLimiterAcquire(
         compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(fileWriter);
     pointCountInChunkWriter = 0L;
-  }
-
-  private void flushChunkToMap(Chunk chunk) throws IOException {
-    IChunkReader chunkReader = new ChunkReaderByTimestamp(chunk);
-    while (chunkReader.hasNextSatisfiedPage()) {
-      IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
-      while (batchIterator.hasNextTimeValuePair()) {
-        TimeValuePair timeValuePair = batchIterator.nextTimeValuePair();
-        timeValuePairMapForUnseqMerge.put(timeValuePair.getTimestamp(), timeValuePair);
-        if (timeValuePair.getTimestamp() > maxEndTimestamp) {
-          maxEndTimestamp = timeValuePair.getTimestamp();
-        }
-        if (timeValuePair.getTimestamp() < minStartTimestamp) {
-          minStartTimestamp = timeValuePair.getTimestamp();
-        }
-      }
-    }
-  }
-
-  private void flushMapToFileWriter() throws IOException {
-    for (TimeValuePair timeValuePair : timeValuePairMapForUnseqMerge.values()) {
-      writeTimeAndValueToChunkWriter(timeValuePair);
-    }
-    flushChunkWriter();
   }
 }

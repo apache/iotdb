@@ -614,7 +614,7 @@ public class SessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  public void insertOneDeviceRecords(
+  public void insertRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
       List<List<String>> measurementsList,
@@ -644,9 +644,109 @@ public class SessionPool {
    * network. This method is just like jdbc batch insert, we pack some insert request in batch and
    * send them to server If you want improve your performance, please see insertTablet method
    *
+   * @see Session#insertTablet(Tablet)
+   */
+  @Deprecated
+  public void insertOneDeviceRecords(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertRecordsOfOneDevice(
+            deviceId, times, measurementsList, typesList, valuesList, false);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertRecordsOfOneDevice failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * Insert String format data that belong to the same device in batch format, which can reduce the
+   * overhead of network. This method is just like jdbc batch insert, we pack some insert request in
+   * batch and send them to server If you want improve your performance, please see insertTablet
+   * method
+   *
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertStringRecordsOfOneDevice(
+            deviceId, times, measurementsList, valuesList, false);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertStringRecordsOfOneDevice failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * Insert data that belong to the same device in batch format, which can reduce the overhead of
+   * network. This method is just like jdbc batch insert, we pack some insert request in batch and
+   * send them to server If you want improve your performance, please see insertTablet method
+   *
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
+  public void insertRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertRecordsOfOneDevice(
+            deviceId, times, measurementsList, typesList, valuesList, haveSorted);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertRecordsOfOneDevice failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * Insert data that belong to the same device in batch format, which can reduce the overhead of
+   * network. This method is just like jdbc batch insert, we pack some insert request in batch and
+   * send them to server If you want improve your performance, please see insertTablet method
+   *
+   * @param haveSorted whether the times list has been ordered.
+   * @see Session#insertTablet(Tablet)
+   */
+  @Deprecated
   public void insertOneDeviceRecords(
       String deviceId,
       List<Long> times,
@@ -674,6 +774,40 @@ public class SessionPool {
   }
 
   /**
+   * Insert String format data that belong to the same device in batch format, which can reduce the
+   * overhead of network. This method is just like jdbc batch insert, we pack some insert request in
+   * batch and send them to server If you want improve your performance, please see insertTablet
+   * method
+   *
+   * @param haveSorted whether the times list has been ordered.
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertStringRecordsOfOneDevice(
+            deviceId, times, measurementsList, valuesList, haveSorted);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertStringRecordsOfOneDevice failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
    * Insert aligned data that belong to the same device in batch format, which can reduce the
    * overhead of network. This method is just like jdbc batch insert, we pack some insert request in
    * batch and send them to server If you want improve your performance, please see insertTablet
@@ -681,7 +815,7 @@ public class SessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  public void insertOneDeviceAlignedRecords(
+  public void insertAlignedRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
       List<List<String>> measurementsList,
@@ -707,6 +841,38 @@ public class SessionPool {
   }
 
   /**
+   * Insert aligned data as String format that belong to the same device in batch format, which can
+   * reduce the overhead of network. This method is just like jdbc batch insert, we pack some insert
+   * request in batch and send them to server If you want improve your performance, please see
+   * insertTablet method.
+   *
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertAlignedStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertAlignedStringRecordsOfOneDevice(
+            deviceId, times, measurementsList, valuesList);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertAlignedStringRecordsOfOneDevice failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
    * Insert aligned data that belong to the same device in batch format, which can reduce the
    * overhead of network. This method is just like jdbc batch insert, we pack some insert request in
    * batch and send them to server If you want improve your performance, please see insertTablet
@@ -715,7 +881,7 @@ public class SessionPool {
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
-  public void insertOneDeviceAlignedRecords(
+  public void insertAlignedRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
       List<List<String>> measurementsList,
@@ -733,6 +899,40 @@ public class SessionPool {
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("insertAlignedRecordsOfOneDevice failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * Insert aligned data as String format that belong to the same device in batch format, which can
+   * reduce the overhead of network. This method is just like jdbc batch insert, we pack some insert
+   * request in batch and send them to server If you want improve your performance, please see
+   * insertTablet method.
+   *
+   * @param haveSorted whether the times list has been ordered.
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertAlignedStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertAlignedStringRecordsOfOneDevice(
+            deviceId, times, measurementsList, valuesList, haveSorted);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertAlignedStringRecordsOfOneDevice failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
@@ -1380,6 +1580,88 @@ public class SessionPool {
     }
   }
 
+  /**
+   * Create a template with flat measurements, not tree structured. Need to specify datatype,
+   * encoding and compressor of each measurement, and alignment of these measurements at once.
+   *
+   * @oaram templateName name of template to create
+   * @param measurements flat measurements of the template, cannot contain character dot
+   * @param dataTypes datatype of each measurement in the template
+   * @param encodings encodings of each measurement in the template
+   * @param compressors compression type of each measurement in the template
+   * @param isAligned specify whether these flat measurements are aligned
+   */
+  public void createSchemaTemplate(
+      String templateName,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      boolean isAligned)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.createSchemaTemplate(
+            templateName, measurements, dataTypes, encodings, compressors, isAligned);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("createSchemaTemplate failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * Compatible for rel/0.12, this method will create an unaligned flat template as a result. Notice
+   * that there is no aligned concept in 0.12, so only the first measurement in each nested list
+   * matters.
+   *
+   * @param name name of the template
+   * @param schemaNames it works as a virtual layer inside template in 0.12, and makes no difference
+   *     after 0.13
+   * @param measurements the first measurement in each nested list will constitute the final flat
+   *     template
+   * @param dataTypes the data type of each measurement, only the first one in each nested list
+   *     matters as above
+   * @param encodings the encoding of each measurement, only the first one in each nested list
+   *     matters as above
+   * @param compressors the compressor of each measurement
+   * @throws IoTDBConnectionException
+   * @throws StatementExecutionException
+   */
+  @Deprecated
+  public void createSchemaTemplate(
+      String name,
+      List<String> schemaNames,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<CompressionType> compressors)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.createSchemaTemplate(
+            name, schemaNames, measurements, dataTypes, encodings, compressors);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("createSchemaTemplate failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
   public void addAlignedMeasurementsInTemplate(
       String templateName,
       List<String> measurementsPath,
@@ -1597,6 +1879,103 @@ public class SessionPool {
       }
     }
     return null;
+  }
+
+  public List<String> showAllTemplates()
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        List<String> resp = session.showAllTemplates();
+        putBack(session);
+        return resp;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("showAllTemplates failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    return null;
+  }
+
+  public List<String> showPathsTemplateSetOn(String templateName)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        List<String> resp = session.showPathsTemplateSetOn(templateName);
+        putBack(session);
+        return resp;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("showPathsTemplateSetOn failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    return null;
+  }
+
+  public List<String> showPathsTemplateUsingOn(String templateName)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        List<String> resp = session.showPathsTemplateUsingOn(templateName);
+        putBack(session);
+        return resp;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("showPathsTemplateUsingOn failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    return null;
+  }
+
+  public void unsetSchemaTemplate(String prefixPath, String templateName)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.unsetSchemaTemplate(prefixPath, templateName);
+        putBack(session);
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn(
+            String.format("unsetSchemaTemplate [%s] on [%s] failed", templateName, prefixPath), e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  public void dropSchemaTemplate(String templateName)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.dropSchemaTemplate(templateName);
+        putBack(session);
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn(String.format("dropSchemaTemplate [%s] failed", templateName), e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
   }
 
   /**

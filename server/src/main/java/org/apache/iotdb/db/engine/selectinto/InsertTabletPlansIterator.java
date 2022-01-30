@@ -25,8 +25,12 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -38,7 +42,9 @@ import java.util.regex.Pattern;
 
 public class InsertTabletPlansIterator {
 
-  private static final Pattern leveledPathNodePattern = Pattern.compile("\\$\\{\\w+}");
+  private static final Logger LOGGER = LoggerFactory.getLogger(InsertTabletPlansIterator.class);
+
+  private static final Pattern LEVELED_PATH_NODE_PATTERN = Pattern.compile("\\$\\{\\w+}");
 
   private final QueryPlan queryPlan;
   private final QueryDataSet queryDataSet;
@@ -80,7 +86,7 @@ public class InsertTabletPlansIterator {
   private PartialPath generateActualIntoPath(int index) throws IllegalPathException {
     String[] nodes = fromPath.getNodes();
     StringBuffer sb = new StringBuffer();
-    Matcher m = leveledPathNodePattern.matcher(intoPaths.get(index).getFullPath());
+    Matcher m = LEVELED_PATH_NODE_PATTERN.matcher(intoPaths.get(index).getFullPath());
     while (m.find()) {
       String param = m.group();
       String value = nodes[Integer.parseInt(param.substring(2, param.length() - 1).trim())];
@@ -92,7 +98,7 @@ public class InsertTabletPlansIterator {
 
   private void constructInsertTabletPlanGenerators() {
     final Map<String, Integer> sourcePathToQueryDataSetIndex = queryPlan.getPathToIndex();
-    final List<ResultColumn> resultColumns = queryPlan.getResultColumns();
+    final List<String> sourcePaths = findSourcePaths();
 
     Map<String, InsertTabletPlanGenerator> deviceToPlanGeneratorMap = new HashMap<>();
     for (int i = 0, intoPathsSize = intoPaths.size(); i < intoPathsSize; i++) {
@@ -105,11 +111,48 @@ public class InsertTabletPlansIterator {
           .get(device)
           .collectTargetPathInformation(
               intoPaths.get(i).getMeasurement(),
-              sourcePathToQueryDataSetIndex.get(resultColumns.get(i).getResultColumnName()));
+              sourcePathToQueryDataSetIndex.get(sourcePaths.get(i)));
     }
 
     insertTabletPlanGenerators =
         deviceToPlanGeneratorMap.values().toArray(new InsertTabletPlanGenerator[0]);
+  }
+
+  private List<String> findSourcePaths() {
+    // sourcePaths can be in queryPlanColumns or in queryDataSetPaths
+    final List<ResultColumn> queryPlanColumns = queryPlan.getResultColumns();
+    final List<Path> queryDataSetPaths = queryDataSet.getPaths();
+
+    final Map<String, Integer> sourcePathToQueryDataSetIndex = queryPlan.getPathToIndex();
+    final List<String> sourcePaths =
+        new ArrayList<>(Math.max(queryPlanColumns.size(), queryDataSetPaths.size()));
+
+    if (queryPlanColumns.size() == intoPaths.size()) {
+      for (ResultColumn resultColumn : queryPlanColumns) {
+        String path = resultColumn.getResultColumnName();
+        if (!sourcePathToQueryDataSetIndex.containsKey(path)) {
+          sourcePaths.clear();
+          break;
+        }
+        sourcePaths.add(path);
+      }
+    }
+
+    if (sourcePaths.isEmpty() && queryDataSetPaths.size() == intoPaths.size()) {
+      for (Path path : queryDataSetPaths) {
+        if (!sourcePathToQueryDataSetIndex.containsKey(path.getFullPath())) {
+          sourcePaths.clear();
+          break;
+        }
+        sourcePaths.add(path.getFullPath());
+      }
+    }
+
+    if (sourcePaths.isEmpty()) {
+      LOGGER.warn("select into: sourcePaths.isEmpty()");
+    }
+
+    return sourcePaths;
   }
 
   public boolean hasNext() throws IOException {
@@ -125,7 +168,11 @@ public class InsertTabletPlansIterator {
 
     List<InsertTabletPlan> insertTabletPlans = new ArrayList<>();
     for (InsertTabletPlanGenerator insertTabletPlanGenerator : insertTabletPlanGenerators) {
-      insertTabletPlans.add(insertTabletPlanGenerator.generateInsertTabletPlan());
+      // all values can be null in a batch of the query dataset
+      InsertTabletPlan insertTabletPlan = insertTabletPlanGenerator.generateInsertTabletPlan();
+      if (insertTabletPlan.getColumns().length != 0) {
+        insertTabletPlans.add(insertTabletPlan);
+      }
     }
     return insertTabletPlans;
   }

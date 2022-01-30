@@ -54,7 +54,6 @@ public class IoTDBSessionVectorInsertIT {
   @Before
   public void setUp() throws Exception {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvironmentUtils.closeStatMonitor();
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
     EnvironmentUtils.envSetUp();
     session = new Session("127.0.0.1", 6667, "root", "root");

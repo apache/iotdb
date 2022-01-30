@@ -35,7 +35,7 @@ Metadata of IoTDB is managed by MManger, including:
 	> tag key -> tag value -> timeseries LeafMNode
 
 In the process of initializing, MManager will replay the mlog to load the metadata into memory. There are seven types of operation log:
-> At the beginning of each operation, it will try to obatin the write lock of MManager, and release it after operation.
+> At the beginning of each operation, it will try to obtain the write lock of MManager, and release it after operation.
 
 * Create Timeseries
     * check if the storage group exists, if not and the auto create is enable, create it.
@@ -92,7 +92,7 @@ In the process of initializing, MManager will replay the mlog to load the metada
 
 In addition to these seven operation that are needed to be logged, there are another six alter operation to tag/attribute info of timeseries.
  
-Same as above, at the beginning of each operation, it will try to obatin the write lock of MManager, and release it after operation.
+Same as above, at the beginning of each operation, it will try to obtain the write lock of MManager, and release it after operation.
 
 * Rename Tag/Attribute
 	* obtain the LeafMNode of that timeseries
@@ -327,11 +327,11 @@ In this case, we need to pass the limit(if not exists, set fetch size as limit) 
 
 #### findPath
 
-It's a recursive function to get all the statisfied MNode in MTree from root until the number of timeseries list has reached limit or all the MTree has been traversed.
+It's a recursive function to get all the satisfied MNode in MTree from root until the number of timeseries list has reached limit or all the MTree has been traversed.
 
 ### show timeseries with index
 
-The filter condition here can only be tag attribute, or it will throw an exception.
+Currently, timeseries can only be filtered with tag. If the designated tag does not exist, an empty result set will be returned.
 
 We can fetch all the satisfied `MeasurementMNode` through the inverted tag index in MTree fast without traversing the whole tree.
 

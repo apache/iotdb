@@ -55,7 +55,6 @@ public class IoTDBRemovePartitionIT {
         (ch.qos.logback.classic.Logger)
             LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
     rootLogger.setLevel(Level.toLevel("trace"));
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     StorageEngine.setEnablePartition(true);
     StorageEngine.setTimePartitionInterval(partitionInterval);
@@ -67,11 +66,6 @@ public class IoTDBRemovePartitionIT {
     StorageEngine.setEnablePartition(false);
     StorageEngine.setTimePartitionInterval(-1);
     EnvironmentUtils.cleanEnv();
-
-    ch.qos.logback.classic.Logger rootLogger =
-        (ch.qos.logback.classic.Logger)
-            LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
-    rootLogger.setLevel(Level.toLevel("warn"));
   }
 
   @Test

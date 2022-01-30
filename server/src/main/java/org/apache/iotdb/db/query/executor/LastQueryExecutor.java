@@ -75,6 +75,7 @@ public class LastQueryExecutor {
   // for test to reload this parameter after restart, it can't be final
   private static boolean ID_TABLE_ENABLED =
       IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
+  private static boolean ascending;
 
   private static final Logger logger = LoggerFactory.getLogger(LastQueryExecutor.class);
 
@@ -82,6 +83,7 @@ public class LastQueryExecutor {
     this.selectedSeries = lastQueryPlan.getDeduplicatedPaths();
     this.dataTypes = lastQueryPlan.getDeduplicatedDataTypes();
     this.expression = lastQueryPlan.getExpression();
+    this.ascending = lastQueryPlan.isAscending();
   }
 
   public LastQueryExecutor(List<PartialPath> selectedSeries, List<TSDataType> dataTypes) {
@@ -186,26 +188,29 @@ public class LastQueryExecutor {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, filter);
-
-      for (int i = 0; i < nonCachedPaths.size(); i++) {
-        QueryDataSource dataSource =
-            QueryResourceManager.getInstance()
-                .getQueryDataSource(nonCachedPaths.get(i), context, filter);
-        LastPointReader lastReader =
-            nonCachedPaths
-                .get(i)
-                .createLastPointReader(
-                    nonCachedDataTypes.get(i),
-                    deviceMeasurementsMap.getOrDefault(
-                        nonCachedPaths.get(i).getDevice(), new HashSet<>()),
-                    context,
-                    dataSource,
-                    Long.MAX_VALUE,
-                    filter);
-        readerList.add(lastReader);
-      }
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    for (int i = 0; i < nonCachedPaths.size(); i++) {
+      QueryDataSource dataSource =
+          QueryResourceManager.getInstance()
+              .getQueryDataSource(nonCachedPaths.get(i), context, filter, ascending);
+      LastPointReader lastReader =
+          nonCachedPaths
+              .get(i)
+              .createLastPointReader(
+                  nonCachedDataTypes.get(i),
+                  deviceMeasurementsMap.getOrDefault(
+                      nonCachedPaths.get(i).getDevice(), new HashSet<>()),
+                  context,
+                  dataSource,
+                  Long.MAX_VALUE,
+                  filter);
+      readerList.add(lastReader);
     }
 
     // Compute Last result for the rest series paths by scanning Tsfiles

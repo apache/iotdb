@@ -40,7 +40,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.util.stream.Collectors.toList;
@@ -117,11 +124,11 @@ public class TagManager {
   public List<IMeasurementMNode> getMatchedTimeseriesInIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     if (!tagIndex.containsKey(plan.getKey())) {
-      throw new MetadataException("The key " + plan.getKey() + " is not a tag.", true);
+      return Collections.emptyList();
     }
     Map<String, Set<IMeasurementMNode>> value2Node = tagIndex.get(plan.getKey());
     if (value2Node.isEmpty()) {
-      throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
+      return Collections.emptyList();
     }
 
     List<IMeasurementMNode> allMatchedNodes = new ArrayList<>();
@@ -165,23 +172,26 @@ public class TagManager {
         Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
             lockListAndProcessorToSeriesMapPair.right;
 
-        // init QueryDataSource cache
-        QueryResourceManager.getInstance()
-            .initQueryDataSourceCache(processorToSeriesMap, context, null);
-
         try {
-          allMatchedNodes =
-              allMatchedNodes.stream()
-                  .sorted(
-                      Comparator.comparingLong(
-                              (IMeasurementMNode mNode) ->
-                                  LastCacheManager.getLastTimeStamp(mNode, context))
-                          .reversed()
-                          .thenComparing(IMNode::getFullPath))
-                  .collect(toList());
+          // init QueryDataSource cache
+          QueryResourceManager.getInstance()
+              .initQueryDataSourceCache(processorToSeriesMap, context, null);
+        } catch (Exception e) {
+          logger.error("Meet error when init QueryDataSource ", e);
+          throw new QueryProcessException("Meet error when init QueryDataSource.", e);
         } finally {
           StorageEngine.getInstance().mergeUnLock(list);
         }
+
+        allMatchedNodes =
+            allMatchedNodes.stream()
+                .sorted(
+                    Comparator.comparingLong(
+                            (IMeasurementMNode mNode) ->
+                                LastCacheManager.getLastTimeStamp(mNode, context))
+                        .reversed()
+                        .thenComparing(IMNode::getFullPath))
+                .collect(toList());
       } catch (StorageEngineException | QueryProcessException e) {
         throw new MetadataException(e);
       }

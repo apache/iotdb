@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class LongStatistics extends Statistics<Long> {
 
@@ -261,6 +262,24 @@ public class LongStatistics extends Statistics<Long> {
     this.firstValue = ReadWriteIOUtils.readLong(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readLong(byteBuffer);
     this.sumValue = ReadWriteIOUtils.readDouble(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    LongStatistics that = (LongStatistics) o;
+    return minValue == that.minValue
+        && maxValue == that.maxValue
+        && firstValue == that.firstValue
+        && lastValue == that.lastValue
+        && Double.compare(that.sumValue, sumValue) == 0;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), minValue, maxValue, firstValue, lastValue, sumValue);
   }
 
   @Override

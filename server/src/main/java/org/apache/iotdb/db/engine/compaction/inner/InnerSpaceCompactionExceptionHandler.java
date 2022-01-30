@@ -44,7 +44,8 @@ import java.util.List;
  * serious circumstances(such as data lost), the system will be set to read-only.
  */
 public class InnerSpaceCompactionExceptionHandler {
-  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   public static void handleException(
       String fullStorageGroupName,
@@ -70,7 +71,11 @@ public class InnerSpaceCompactionExceptionHandler {
     if (allSourceFileExist) {
       handleSuccess =
           handleWhenAllSourceFilesExist(
-              fullStorageGroupName, targetTsFile, selectedTsFileResourceList);
+              fullStorageGroupName,
+              targetTsFile,
+              selectedTsFileResourceList,
+              tsFileResourceList,
+              false);
     } else {
       // some source file does not exists
       // it means we start to delete source file
@@ -136,52 +141,74 @@ public class InnerSpaceCompactionExceptionHandler {
   public static boolean handleWhenAllSourceFilesExist(
       String fullStorageGroupName,
       TsFileResource targetTsFile,
-      List<TsFileResource> selectedTsFileResourceList) {
-    // all source file exists, delete the target file
-    LOGGER.info(
-        "{} [Compaction][ExceptionHandler] all source files {} exists, delete target file {}",
-        fullStorageGroupName,
-        selectedTsFileResourceList,
-        targetTsFile);
-    TsFileResource tmpTargetTsFile;
-    if (targetTsFile.getTsFilePath().endsWith(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)) {
-      tmpTargetTsFile = targetTsFile;
-      targetTsFile =
-          new TsFileResource(
-              new File(
-                  tmpTargetTsFile
-                      .getTsFilePath()
-                      .replace(
-                          IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
-    } else {
-      tmpTargetTsFile =
-          new TsFileResource(
-              new File(
-                  targetTsFile
-                      .getTsFilePath()
-                      .replace(
-                          TsFileConstant.TSFILE_SUFFIX, IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
-    }
-    if (!tmpTargetTsFile.remove()) {
-      // failed to remove tmp target tsfile
-      // system should not carry out the subsequent compaction in case of data redundant
-      LOGGER.warn(
-          "{} [Compaction][ExceptionHandler] failed to remove target file {}",
-          fullStorageGroupName,
-          tmpTargetTsFile);
-      return false;
-    }
-    if (!targetTsFile.remove()) {
-      // failed to remove target tsfile
-      // system should not carry out the subsequent compaction in case of data redundant
-      LOGGER.warn(
-          "{} [Compaction][ExceptionHandler] failed to remove target file {}",
-          fullStorageGroupName,
-          targetTsFile);
-      return false;
-    }
-    // deal with compaction modification
+      List<TsFileResource> selectedTsFileResourceList,
+      TsFileResourceList tsFileResourceList,
+      boolean isRecover) {
     try {
+      // all source file exists, delete the target file
+      LOGGER.info(
+          "{} [Compaction][ExceptionHandler] all source files {} exists, delete target file {}",
+          fullStorageGroupName,
+          selectedTsFileResourceList,
+          targetTsFile);
+      TsFileResource tmpTargetTsFile;
+      if (targetTsFile.getTsFilePath().endsWith(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)) {
+        tmpTargetTsFile = targetTsFile;
+        targetTsFile =
+            new TsFileResource(
+                new File(
+                    tmpTargetTsFile
+                        .getTsFilePath()
+                        .replace(
+                            IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+                            TsFileConstant.TSFILE_SUFFIX)));
+      } else {
+        tmpTargetTsFile =
+            new TsFileResource(
+                new File(
+                    targetTsFile
+                        .getTsFilePath()
+                        .replace(
+                            TsFileConstant.TSFILE_SUFFIX,
+                            IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
+      }
+      if (!tmpTargetTsFile.remove()) {
+        // failed to remove tmp target tsfile
+        // system should not carry out the subsequent compaction in case of data redundant
+        LOGGER.warn(
+            "{} [Compaction][ExceptionHandler] failed to remove target file {}",
+            fullStorageGroupName,
+            tmpTargetTsFile);
+        return false;
+      }
+      if (!isRecover) {
+        tsFileResourceList.writeLock();
+        try {
+          if (targetTsFile.isFileInList()) {
+            // target tsfile is in the list, remove it
+            tsFileResourceList.remove(targetTsFile);
+          }
+          for (TsFileResource tsFileResource : selectedTsFileResourceList) {
+            // if the source file is not in tsfileResourceList
+            // insert it into the list
+            if (!tsFileResource.isFileInList()) {
+              tsFileResourceList.keepOrderInsert(tsFileResource);
+            }
+          }
+        } finally {
+          tsFileResourceList.writeUnlock();
+        }
+      }
+      if (!targetTsFile.remove()) {
+        // failed to remove target tsfile
+        // system should not carry out the subsequent compaction in case of data redundant
+        LOGGER.error(
+            "{} [Compaction][ExceptionHandler] failed to remove target file {}",
+            fullStorageGroupName,
+            targetTsFile);
+        return false;
+      }
+      // deal with compaction modification
       InnerSpaceCompactionUtils.appendNewModificationsToOldModsFile(selectedTsFileResourceList);
     } catch (Throwable e) {
       LOGGER.error(
@@ -209,7 +236,7 @@ public class InnerSpaceCompactionExceptionHandler {
             targetTsFile);
         for (TsFileResource sourceFile : selectedTsFileResourceList) {
           if (!sourceFile.remove()) {
-            LOGGER.warn(
+            LOGGER.error(
                 "{} [Compaction][ExceptionHandler] failed to remove source file {}",
                 fullStorageGroupName,
                 sourceFile);
@@ -228,7 +255,7 @@ public class InnerSpaceCompactionExceptionHandler {
       } else {
         // target file is not complete, and some source file is lost
         // some data is lost
-        LOGGER.warn(
+        LOGGER.error(
             "{} [Compaction][ExceptionHandler] target file {} is not complete, and some source files {} is lost, do nothing. Set allowCompaction to false",
             fullStorageGroupName,
             targetTsFile,
