@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionSelector;
@@ -40,7 +41,8 @@ import java.util.Iterator;
 import java.util.List;
 
 public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompactionSelector {
-  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public RewriteCrossSpaceCompactionSelector(
@@ -85,9 +87,6 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
     }
     if (seqFileList.isEmpty() || unSeqFileList.isEmpty()) {
       return;
-    }
-    if (unSeqFileList.size() > config.getMaxCompactionCandidateFileNum()) {
-      unSeqFileList = unSeqFileList.subList(0, config.getMaxCompactionCandidateFileNum());
     }
     long budget = config.getCrossCompactionMemoryBudget();
     long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;

@@ -53,7 +53,8 @@ import java.util.List;
 
 public class InnerSpaceCompactionUtils {
 
-  private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   private InnerSpaceCompactionUtils() {
     throw new IllegalStateException("Utility class");

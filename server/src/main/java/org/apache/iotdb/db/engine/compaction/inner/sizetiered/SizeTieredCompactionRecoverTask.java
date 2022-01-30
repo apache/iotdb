@@ -41,7 +41,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   protected File compactionLogFile;
   protected String dataDir;
   protected String logicalStorageGroupName;
@@ -145,7 +146,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
           }
           handleSuccess =
               InnerSpaceCompactionExceptionHandler.handleWhenAllSourceFilesExist(
-                  fullStorageGroupName, targetResource, sourceResources);
+                  fullStorageGroupName, targetResource, sourceResources, tsFileResourceList, true);
         } else {
           handleSuccess = handleWithoutAllSourceFilesExist(sourceFileIdentifiers);
         }

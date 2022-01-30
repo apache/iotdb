@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
@@ -42,7 +43,8 @@ import java.util.Collection;
 import java.util.List;
 
 public class CrossSpaceCompactionExceptionHandler {
-  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   public static void handleException(
       String storageGroup,
@@ -58,6 +60,11 @@ public class CrossSpaceCompactionExceptionHandler {
         // we don't need to handle it
         return;
       }
+      LOGGER.info(
+          "[Compaction][ExceptionHandler] Cross space compaction start handling exception, source seqFiles is "
+              + seqResourceList
+              + ", source unseqFiles is "
+              + unseqResourceList);
 
       boolean handleSuccess = true;
 

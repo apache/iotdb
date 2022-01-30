@@ -603,9 +603,12 @@ public class TsFileResource {
     this.compactionCandidate = compactionCandidate;
   }
 
-  /** check if any of the device lives over the given time bound */
+  /**
+   * check if any of the device lives over the given time bound. If the file is not closed, then
+   * return true.
+   */
   public boolean stillLives(long timeLowerBound) {
-    return timeIndex.stillLives(timeLowerBound);
+    return !isClosed() || timeIndex.stillLives(timeLowerBound);
   }
 
   public boolean isDeviceIdExist(String deviceId) {
@@ -974,5 +977,10 @@ public class TsFileResource {
           path.generateTimeSeriesMetadata(
               pathToReadOnlyMemChunkMap.get(path), pathToChunkMetadataListMap.get(path)));
     }
+  }
+
+  /** @return is this tsfile resource in a TsFileResourceList */
+  public boolean isFileInList() {
+    return prev != null || next != null;
   }
 }
