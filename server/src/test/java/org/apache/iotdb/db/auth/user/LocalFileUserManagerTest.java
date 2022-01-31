@@ -96,7 +96,7 @@ public class LocalFileUserManagerTest {
     for (User user1 : users) {
       user = manager.getUser(user1.getName());
       assertEquals(user1.getName(), user.getName());
-      assertTrue(AuthUtils.validatePassword(user.getPassword(), user1.getPassword()));
+      assertTrue(AuthUtils.validatePassword(user1.getPassword(), user.getPassword()));
     }
 
     assertFalse(manager.createUser(users[0].getName(), users[0].getPassword()));
