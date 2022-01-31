@@ -18,7 +18,7 @@
 
 var config = {
     plugins: [
-        ['@vuepress/html-redirect', {
+        ['@vuepress/plugin-html-redirect', {
           countdown: 0,
         }],
       ],
@@ -594,8 +594,7 @@ var config = {
 							['System-Tools/MLogParser-Tool','MLogParser Tool'],
 							['System-Tools/NodeTool','Node Tool'],
 							['System-Tools/Query-History-Visualization-Tool','Query History Visualization Tool'],
-							['System-Tools/Watermark-Tool','Watermark Tool'],
-							['System-Tools/TsFile-Split-Tool','TsFile Split Tool']
+							['System-Tools/Watermark-Tool','Watermark Tool']
 						]
 					},
 					{
@@ -705,19 +704,16 @@ var config = {
 					},
 					{
 						title: 'Operate Metadata',
-						sidebarDepth: 1,
 						children: [
 							['Operate-Metadata/Storage-Group','Storage Group'],
 							['Operate-Metadata/Node','Node'],
 							['Operate-Metadata/Timeseries','Timeseries'],
-							['Operate-Metadata/Template','Schema Template'],
 							['Operate-Metadata/TTL','TTL'],
 							['Operate-Metadata/Auto-Create-MetaData','Auto Create Metadata']
 						]
 					},
 					{
 						title: 'Write and Delete Data',
-						sidebarDepth: 1,
 						children: [
 							['Write-And-Delete-Data/Write-Data','Write Data'],
 							['Write-And-Delete-Data/Load-External-Tsfile','Load External Tsfile'],
@@ -844,7 +840,7 @@ var config = {
 					},
 					{
 						title: 'Syntax Conventions',
-						sidebarDepth: 1,
+						sidebarDepth: 2,
 						children: [
 							['Reference/Syntax-Conventions','Syntax Conventions'],
 						]
@@ -858,26 +854,22 @@ var config = {
 							['API/Programming-Go-Native-API','Go Native API'],
 							['API/Programming-JDBC','JDBC (Not Recommend)'],
 							['API/Programming-MQTT','MQTT'],
-							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/Status-Codes','Status Codes']
 						]
 					},
 					{
 						title: 'Operate Metadata',
-						sidebarDepth: 1,
 						children: [
 							['Operate-Metadata/Storage-Group','Storage Group'],
 							['Operate-Metadata/Node','Node'],
 							['Operate-Metadata/Timeseries','Timeseries'],
-							['Operate-Metadata/Template','Schema Template'],
 							['Operate-Metadata/TTL','TTL'],
 							['Operate-Metadata/Auto-Create-MetaData','Auto Create Metadata']
 						]
 					},
 					{
 						title: 'Write and Delete Data',
-						sidebarDepth: 1,
 						children: [
 							['Write-And-Delete-Data/Write-Data','Write Data'],
 							['Write-And-Delete-Data/Load-External-Tsfile','Load External Tsfile'],
@@ -936,8 +928,7 @@ var config = {
 					{
 						title: 'Ecosystem Integration',
 						children: [
-							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
-							['Ecosystem Integration/Grafana Connector','Grafana Connector (Not Recommended)'],
+							['Ecosystem Integration/Grafana Connector','Grafana Connector'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
 							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
@@ -1073,7 +1064,6 @@ var config = {
 					text: '文档',
 					items: [
 						{ text: 'latest', link: '/zh/UserGuide/Master/QuickStart/QuickStart' },
-						{ text: 'v0.13.x', link: '/zh/UserGuide/V0.13.x/QuickStart/QuickStart' },
 						{ text: 'v0.12.x', link: '/zh/UserGuide/V0.12.x/QuickStart/QuickStart' },
 						{ text: 'v0.11.x', link: '/zh/UserGuide/V0.11.x/Get Started/QuickStart' },
 						{ text: 'v0.10.x', link: '/zh/UserGuide/V0.10.x/Get Started/QuickStart' },
@@ -1570,7 +1560,6 @@ var config = {
 							['System-Tools/NodeTool','节点工具'],
 							['System-Tools/Query-History-Visualization-Tool','查询历史可视化工具'],
 							['System-Tools/Watermark-Tool','水印工具'],
-							['System-Tools/TsFile-Split-Tool','TsFile 拆分工具']
 						]
 					},
 					{
@@ -1654,7 +1643,7 @@ var config = {
 					},
 					{
 						title: '语法约定',
-						sidebarDepth: 1,
+						sidebarDepth: 2,
 						children: [
 							['Reference/Syntax-Conventions', '语法约定'],
 						]
@@ -1668,18 +1657,19 @@ var config = {
 							['API/Programming-Go-Native-API','Go 原生接口'],
 							['API/Programming-JDBC','JDBC (不推荐)'],
 							['API/Programming-MQTT','MQTT'],
+							['API/RestService','REST'],
+							['API/RestService','HTTP API'],
 							['API/Programming-TsFile-API','TsFile API'],
+							['API/InfluxDB-Protocol','InfluxDB 协议适配器（开发中)'],
 							['API/Status-Codes','状态码']
 						]
 					},
 					{
 						title: '元数据操作',
-						sidebarDepth: 1,
 						children: [
 							['Operate-Metadata/Storage-Group','存储组操作'],
 							['Operate-Metadata/Node','节点操作'],
 							['Operate-Metadata/Timeseries','时间序列操作'],
-							['Operate-Metadata/Template','元数据模板'],
 							['Operate-Metadata/TTL','TTL'],
 							['Operate-Metadata/Auto-Create-MetaData','自动创建元数据']
 						]
@@ -1814,7 +1804,7 @@ var config = {
 					},
 					{
 						title: '语法约定',
-						sidebarDepth: 1,
+						sidebarDepth: 2,
 						children: [
 							['Reference/Syntax-Conventions', '语法约定'],
 						]
@@ -1828,7 +1818,8 @@ var config = {
 							['API/Programming-Go-Native-API','Go 原生接口'],
 							['API/Programming-JDBC','JDBC (不推荐)'],
 							['API/Programming-MQTT','MQTT'],
-							['API/RestService','REST API'],
+							['API/RestService','REST'],
+							['API/RestService','HTTP API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/InfluxDB-Protocol','InfluxDB 协议适配器（开发中)'],
 							['API/Status-Codes','状态码']
@@ -1836,12 +1827,10 @@ var config = {
 					},
 					{
 						title: '元数据操作',
-						sidebarDepth: 1,
 						children: [
 							['Operate-Metadata/Storage-Group','存储组操作'],
 							['Operate-Metadata/Node','节点操作'],
 							['Operate-Metadata/Timeseries','时间序列操作'],
-							['Operate-Metadata/Template','元数据模板'],
 							['Operate-Metadata/TTL','TTL'],
 							['Operate-Metadata/Auto-Create-MetaData','自动创建元数据']
 						]
