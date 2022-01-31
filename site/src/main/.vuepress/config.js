@@ -18,7 +18,7 @@
 
 var config = {
     plugins: [
-        ['@vuepress/html-redirect', {
+        ['@vuepress/plugin-html-redirect', {
           countdown: 0,
         }],
       ],
