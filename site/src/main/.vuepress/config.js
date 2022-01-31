@@ -17,6 +17,11 @@
  */
 
 var config = {
+    plugins: [
+        ['@vuepress/html-redirect', {
+          countdown: 0,
+        }],
+      ],
     head: [
 		['link', { rel: 'icon', href: '/favicon.ico' }],
 		["meta", {name: "Description", content: "Apache IoTDB: Time Series Database for IoT"}],
