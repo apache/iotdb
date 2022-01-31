@@ -318,6 +318,8 @@ IoTDB specifies that the character length of a username should not be less than 
 ### Password Restrictions
 
 IoTDB specifies that the character length of a password should have no less than 4 character length, and no spaces. The password is encrypted with MD5.
+Users can adapt different encryption algorithms according to their own scenarios. They need to implement the AsymmetricEncrypt interface and add it to the configuration item iotdb_ server_ encrypt_ decrypt_ In the provider.
+If this encryption algorithm requires parameters, this parameter needs to be added to iotdb_ server_ encrypt_ decrypt_ provider_ Parameter configuration item, and then initialize in this implementation class.
 ### Role Name Restrictions
 
 IoTDB specifies that the character length of a role name should have no less than 4 character length, and no spaces.
