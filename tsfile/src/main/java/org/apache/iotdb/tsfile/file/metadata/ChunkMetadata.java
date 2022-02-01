@@ -131,6 +131,10 @@ public class ChunkMetadata {
     return tsDataType;
   }
 
+  public void setStatistics(Statistics statistics) {
+    this.statistics = statistics;
+  }
+
   /**
    * serialize to outputStream.
    *

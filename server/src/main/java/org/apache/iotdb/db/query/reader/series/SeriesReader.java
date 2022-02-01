@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import java.util.ArrayList;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -40,6 +41,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
+import org.apache.iotdb.tsfile.read.common.ChunkSuit4CPV;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
@@ -213,6 +215,65 @@ public class SeriesReader {
 
   public boolean isEmpty() throws IOException {
     return !(hasNextPage() || hasNextChunk() || hasNextFile());
+  }
+
+  /**
+   * get TimeSeriesMetadata from queryResource, apply modifications on chunkMetadatas, i.e., assign
+   * deleteIntervals。 packed in ChunkSuit4CPV
+   */
+  public List<ChunkSuit4CPV> getAllChunkMetadatas4CPV() throws IOException {
+    List<ChunkSuit4CPV> chunkSuit4CPVList = new ArrayList<>();
+    while (orderUtils.hasNextUnseqResource()) {
+      TimeseriesMetadata timeseriesMetadata =
+          FileLoaderUtils.loadTimeSeriesMetadata(
+              orderUtils.getNextUnseqFileResource(true),
+              seriesPath,
+              context,
+              getAnyFilter(),
+              allSensors);
+      if (timeseriesMetadata != null) {
+        timeseriesMetadata.setModified(true);
+        timeseriesMetadata.setSeq(false);
+      }
+      unpackOneTimeSeriesMetadata4CPV(timeseriesMetadata, chunkSuit4CPVList);
+    }
+    while (orderUtils.hasNextSeqResource()) {
+      TimeseriesMetadata timeseriesMetadata =
+          FileLoaderUtils.loadTimeSeriesMetadata(
+              orderUtils.getNextSeqFileResource(true),
+              seriesPath,
+              context,
+              getAnyFilter(),
+              allSensors);
+      if (timeseriesMetadata != null) {
+        timeseriesMetadata.setSeq(true);
+      }
+      unpackOneTimeSeriesMetadata4CPV(timeseriesMetadata, chunkSuit4CPVList);
+    }
+    return chunkSuit4CPVList;
+  }
+
+  private void unpackOneTimeSeriesMetadata4CPV(TimeseriesMetadata timeSeriesMetadata,
+      List<ChunkSuit4CPV> chunkSuit4CPVList)
+      throws IOException {
+    List<ChunkMetadata> chunkMetadataList =
+        FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata);
+    chunkMetadataList.forEach(chunkMetadata -> chunkMetadata.setSeq(timeSeriesMetadata.isSeq()));
+
+    // try to calculate the total number of chunk and time-value points in chunk
+    if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
+      long totalChunkPointsNum =
+          chunkMetadataList.stream()
+              .mapToLong(chunkMetadata -> chunkMetadata.getStatistics().getCount())
+              .sum();
+      TracingManager.getInstance()
+          .getTracingInfo(context.getQueryId())
+          .addChunkInfo(chunkMetadataList.size(), totalChunkPointsNum);
+    }
+
+    for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+      chunkSuit4CPVList.add(new ChunkSuit4CPV(chunkMetadata));
+    }
   }
 
   boolean hasNextFile() throws IOException {

@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -119,6 +120,12 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
         curEndTime,
         results);
     return results;
+  }
+
+  @Override
+  public List<AggregateResult> calcResult4CPV(long curStartTime, long curEndTime, long startTime,
+      long endTime, long interval) throws IOException, QueryProcessException {
+    throw new IOException("no implemented");
   }
 
   @Override

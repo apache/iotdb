@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.PriorityQueue;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 /** This class implements {@link IPointReader} for data sources with different priorities. */
 @SuppressWarnings("ConstantConditions") // heap is ensured by hasNext non-empty
@@ -116,6 +117,33 @@ public class PriorityMergeReader implements IPointReader {
       heap.add(top);
     }
     return ret;
+  }
+
+  public void addReader(IPointReader reader, MergeReaderPriority priority) throws IOException {
+    if (reader.hasNextTimeValuePair()) {
+      heap.add(
+          new Element(reader, reader.nextTimeValuePair(), priority));
+    } else {
+      reader.close();
+    }
+  }
+
+  public Pair<TimeValuePair, MergeReaderPriority> nextElement() throws IOException {
+    Element top = heap.poll();
+    TimeValuePair ret = top.getTimeValuePair();
+    Pair res = new Pair(ret, top.priority);
+    TimeValuePair topNext = null;
+    if (top.hasNext()) {
+      top.next();
+      topNext = top.currPair();
+    }
+    long topNextTime = topNext == null ? Long.MAX_VALUE : topNext.getTimestamp();
+    updateHeap(ret.getTimestamp(), topNextTime);
+    if (topNext != null) {
+      top.timeValuePair = topNext;
+      heap.add(top);
+    }
+    return res;
   }
 
   @Override
