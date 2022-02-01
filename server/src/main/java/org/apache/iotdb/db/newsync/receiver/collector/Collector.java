@@ -21,7 +21,6 @@ package org.apache.iotdb.db.newsync.receiver.collector;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLogAnalyzer;
 import org.apache.iotdb.db.newsync.utils.SyncConstant;
@@ -72,30 +71,6 @@ public class Collector {
     task.removeScanDir(SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime));
   }
 
-  public static void main(String[] args) throws IOException, IllegalPathException {
-    //        File f1 = new File("testtt");
-    //        File f2 = new File("testtt");
-    //        PipeData pipeData1 = new TsFilePipeData("1",1);
-    //        Deletion deletion = new Deletion(new PartialPath("root.sg1.d1.s1"),0,1,5);
-    //        PipeData pipeData2 = new DeletionPipeData(deletion,3);
-    //        PhysicalPlan plan = new SetStorageGroupPlan(new PartialPath("root.sg1"));
-    //        PipeData pipeData3 = new SchemaPipeData(plan,2);
-    //        DataOutputStream outputStream = new DataOutputStream(new FileOutputStream(f2));
-    //        pipeData1.serialize(outputStream);
-    //        outputStream.flush();
-    //        DataInputStream inputStream = new DataInputStream(new FileInputStream(f1));
-    //        System.out.println(PipeData.deserialize(inputStream));
-    //        pipeData2.serialize(outputStream);
-    //        outputStream.flush();
-    //        System.out.println(PipeData.deserialize(inputStream));
-    //        pipeData3.serialize(outputStream);
-    //        outputStream.flush();
-    //        System.out.println(PipeData.deserialize(inputStream));
-    //        Files.deleteIfExists(f1.toPath());
-    //        inputStream.close();
-
-  }
-
   private class ScanTask implements Runnable {
     private final Set<String> scanPathSet;
     private volatile boolean stopped;
@@ -133,8 +108,7 @@ public class Collector {
               DataOutputStream outputStream = null;
               int startNumber = -1;
               if (files.length > 0) {
-                // TODO: Assuming that the file name is incremented by a number (e.g use system as
-                // file name)
+                // TODO: Assuming that the file name is incremented by number
                 Arrays.sort(files, Comparator.comparingLong(o -> Long.parseLong(o.getName())));
                 try {
                   pipeDataList = TsFilePipeLogAnalyzer.parseFile(files[0]);
@@ -155,33 +129,39 @@ public class Collector {
                 // TODO: get buffer from transport
                 // pipeDataList = transport.getBufferPipeDataList();
               }
+              boolean allLoaded = true;
               for (int i = startNumber + 1; i < pipeDataList.size(); i++) {
+                allLoaded = false;
                 PipeData pipeData = pipeDataList.get(i);
-                if (!stopped) {
-                  try {
-                    logger.info(
-                        "Start load pipeData with serialize number {} and type {}",
-                        pipeData.getSerialNumber(),
-                        pipeData.getType());
-                    pipeData.createLoader().load();
-                    if (outputStream != null) {
-                      outputStream.writeInt(i);
-                    }
-                  } catch (Exception e) {
-                    // TODO: how to response error message to sender?
-                    logger.error(
-                        "Cannot load pipeData with serialize number {} and type {}, because {}",
-                        pipeData.getSerialNumber(),
-                        pipeData.getType(),
-                        e.getMessage());
+                try {
+                  logger.info(
+                      "Start load pipeData with serialize number {} and type {}",
+                      pipeData.getSerialNumber(),
+                      pipeData.getType());
+                  pipeData.createLoader().load();
+                  if (outputStream != null) {
+                    outputStream.writeInt(i);
                   }
-                } else {
+                  if (i == pipeDataList.size() - 1) {
+                    allLoaded = true;
+                  }
+                } catch (Exception e) {
+                  // TODO: how to response error message to sender?
+                  // TODO: should drop this pipe?
+                  logger.error(
+                      "Cannot load pipeData with serialize number {} and type {}, because {}",
+                      pipeData.getSerialNumber(),
+                      pipeData.getType(),
+                      e.getMessage());
                   break;
                 }
               }
-              // if all success loaded, remove pipelog and record file
-              Files.deleteIfExists(files[0].toPath());
-              Files.deleteIfExists(Paths.get(files[0].getPath() + SyncConstant.COLLECTOR_SUFFIX));
+              if (allLoaded) {
+                // if all success loaded, remove pipelog and record file
+                outputStream.close();
+                Files.deleteIfExists(files[0].toPath());
+                Files.deleteIfExists(Paths.get(files[0].getPath() + SyncConstant.COLLECTOR_SUFFIX));
+              }
             }
           }
         }

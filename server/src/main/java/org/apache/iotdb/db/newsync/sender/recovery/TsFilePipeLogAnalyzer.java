@@ -173,6 +173,8 @@ public class TsFilePipeLogAnalyzer {
     } catch (IllegalPathException e) {
       logger.error(String.format("Parsing pipeLog %s error, because %s", file.getPath(), e));
       throw new IOException(e);
+    } finally {
+      inputStream.close();
     }
     return pipeData;
   }

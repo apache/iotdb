@@ -175,7 +175,7 @@ public class IoTDBSyncReceiverCollectorIT {
     }
     pipeLogOutput.close();
     collectOutput.close();
-    File pipeLog2 = new File(pipeLogDir.getPath(), String.valueOf(System.currentTimeMillis()));
+    File pipeLog2 = new File(pipeLogDir.getPath(), String.valueOf(System.currentTimeMillis() + 1));
     pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog2, false));
     List<File> tsFiles = SyncTestUtil.getTsFilePaths(tmpDir);
     for (File f : tsFiles) {
