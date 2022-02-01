@@ -309,7 +309,7 @@
             <dependency>
                 <groupId>me.tongfei</groupId>
                 <artifactId>progressbar</artifactId>
-                <version>0.7.3</version>
+                <version>0.7.4</version>
                 <exclusions>
                     <!-- This transitive dependency duplicates classes from jline:jline:jar:2.14.5:compile -->
                     <exclusion>
