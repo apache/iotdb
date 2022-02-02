@@ -46,12 +46,10 @@ public class QuerySyntheticData1 {
     long minTime = 0L;
     long maxTime = 10000000L; // unit:ms. Set in iotdb-engine.properties `timestamp_precision`.
     // 实验自变量1：w数量
-    //    int intervalNum = Integer.parseInt(args[0]);
-    int intervalNum = 50;
+    int intervalNum = Integer.parseInt(args[0]);
     // 实验自变量2：方法
     // 1: MAC, 2: MOC, 3: CPV
-    //    int approach = Integer.parseInt(args[1]);
-    int approach = 2;
+    int approach = Integer.parseInt(args[1]);
     if (approach != 1 && approach != 2 && approach != 3) {
       throw new TException("Wrong input parameter approach!");
     }
