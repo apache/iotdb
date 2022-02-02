@@ -23,12 +23,12 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.PriorityQueue;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 /** This class implements {@link IPointReader} for data sources with different priorities. */
 @SuppressWarnings("ConstantConditions") // heap is ensured by hasNext non-empty
@@ -121,8 +121,7 @@ public class PriorityMergeReader implements IPointReader {
 
   public void addReader(IPointReader reader, MergeReaderPriority priority) throws IOException {
     if (reader.hasNextTimeValuePair()) {
-      heap.add(
-          new Element(reader, reader.nextTimeValuePair(), priority));
+      heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
     } else {
       reader.close();
     }

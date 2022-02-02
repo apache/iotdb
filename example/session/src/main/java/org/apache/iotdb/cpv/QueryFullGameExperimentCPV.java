@@ -15,8 +15,9 @@ public class QueryFullGameExperimentCPV {
           + "from %s "
           + "group by ([%d, %d), %dns)";
   // * (1) min_time(%s), max_time(%s), first_value(%s), last_value(%s), min_value(%s), max_value(%s)
-  //       => Don't change the sequence of the above six aggregates
-  // * (2) group by ([tqs,tqe),IntervalLength) => Make sure (tqe-tqs) is divisible by IntervalLength.
+  //       => Don't change the sequence of the above six aggregates!
+  // * (2) group by ([tqs,tqe),IntervalLength) => Make sure (tqe-tqs) is divisible by
+  // IntervalLength!
 
   public static Session session;
 

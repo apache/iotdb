@@ -1,4 +1,4 @@
-//package org.apache.iotdb;/*
+// package org.apache.iotdb;/*
 // * Licensed to the Apache Software Foundation (ASF) under one
 // * or more contributor license agreements.  See the NOTICE file
 // * distributed with this work for additional information
@@ -17,20 +17,20 @@
 // * under the License.
 // */
 //
-//import java.sql.Connection;
-//import java.sql.DriverManager;
-//import java.sql.Statement;
-//import java.util.Locale;
-//import org.apache.iotdb.db.conf.IoTDBConfig;
-//import org.apache.iotdb.db.conf.IoTDBDescriptor;
-//import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
-//import org.apache.iotdb.db.utils.EnvironmentUtils;
-//import org.apache.iotdb.jdbc.Config;
-//import org.junit.AfterClass;
-//import org.junit.BeforeClass;
-//import org.junit.Test;
+// import java.sql.Connection;
+// import java.sql.DriverManager;
+// import java.sql.Statement;
+// import java.util.Locale;
+// import org.apache.iotdb.db.conf.IoTDBConfig;
+// import org.apache.iotdb.db.conf.IoTDBDescriptor;
+// import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+// import org.apache.iotdb.db.utils.EnvironmentUtils;
+// import org.apache.iotdb.jdbc.Config;
+// import org.junit.AfterClass;
+// import org.junit.BeforeClass;
+// import org.junit.Test;
 //
-//public class MyTest {
+// public class MyTest {
 //
 //  private static String[] creationSqls =
 //      new String[]{
@@ -106,4 +106,4 @@
 //      e.printStackTrace();
 //    }
 //  }
-//}
+// }

@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.reader.page;
 
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -42,7 +40,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class PageReader implements IPageReader {
 
@@ -108,10 +108,15 @@ public class PageReader implements IPageReader {
     valueBuffer.position(timeBufferLength);
   }
 
-  public void split4CPV(long startTime, long endTime, long interval,
-      long curStartTime, List<ChunkSuit4CPV> currentChunkList,
-      List<ChunkSuit4CPV> futureChunkList, ChunkMetadata chunkMetadata)
-      throws IOException {       // note: [startTime,endTime), [curStartTime,curEndTime]
+  public void split4CPV(
+      long startTime,
+      long endTime,
+      long interval,
+      long curStartTime,
+      List<ChunkSuit4CPV> currentChunkList,
+      List<ChunkSuit4CPV> futureChunkList,
+      ChunkMetadata chunkMetadata)
+      throws IOException { // note: [startTime,endTime), [curStartTime,curEndTime]
     Map<Integer, BatchData> splitBatchDataMap = new HashMap<>();
     Map<Integer, ChunkMetadata> splitChunkMetadataMap = new HashMap<>();
     while (timeDecoder.hasNext(timeBuffer)) {
@@ -146,8 +151,12 @@ public class PageReader implements IPageReader {
             break;
         }
         // create chunkMetaData
-        ChunkMetadata chunkMetadata1 = new ChunkMetadata(chunkMetadata.getMeasurementUid(),
-            chunkMetadata.getDataType(), chunkMetadata.getOffsetOfChunkHeader(), statistics);
+        ChunkMetadata chunkMetadata1 =
+            new ChunkMetadata(
+                chunkMetadata.getMeasurementUid(),
+                chunkMetadata.getDataType(),
+                chunkMetadata.getOffsetOfChunkHeader(),
+                statistics);
         chunkMetadata1.setVersion(chunkMetadata.getVersion()); // don't miss this
 
         // important, used later for candidate point verification
@@ -168,7 +177,7 @@ public class PageReader implements IPageReader {
             // update batchData1
             batchData1.putInt(timestamp, anInt);
             // update statistics of chunkMetadata1
-            chunkMetadata1.getStatistics().update(timestamp, anInt); //TODO skeptical bug ?
+            chunkMetadata1.getStatistics().update(timestamp, anInt); // TODO skeptical bug ?
           }
           break;
         case INT64:
@@ -177,7 +186,7 @@ public class PageReader implements IPageReader {
             // update batchData1
             batchData1.putLong(timestamp, aLong);
             // update statistics of chunkMetadata1
-            chunkMetadata1.getStatistics().update(timestamp, aLong); //TODO skeptical bug ?
+            chunkMetadata1.getStatistics().update(timestamp, aLong); // TODO skeptical bug ?
           }
           break;
         case FLOAT:
@@ -186,7 +195,7 @@ public class PageReader implements IPageReader {
             // update batchData1
             batchData1.putFloat(timestamp, aFloat);
             // update statistics of chunkMetadata1
-            chunkMetadata1.getStatistics().update(timestamp, aFloat); //TODO skeptical bug ?
+            chunkMetadata1.getStatistics().update(timestamp, aFloat); // TODO skeptical bug ?
           }
           break;
         case DOUBLE:
@@ -195,7 +204,7 @@ public class PageReader implements IPageReader {
             // update batchData1
             batchData1.putDouble(timestamp, aDouble);
             // update statistics of chunkMetadata1
-            chunkMetadata1.getStatistics().update(timestamp, aDouble); //TODO skeptical bug ?
+            chunkMetadata1.getStatistics().update(timestamp, aDouble); // TODO skeptical bug ?
           }
           break;
         default:
@@ -206,11 +215,11 @@ public class PageReader implements IPageReader {
     int num = (int) Math.floor((endTime - startTime) * 1.0 / interval);
     for (int i = 0; i < num; i++) {
       if (splitBatchDataMap.containsKey(i) && i == curIdx) {
-        currentChunkList
-            .add(new ChunkSuit4CPV(splitChunkMetadataMap.get(i), splitBatchDataMap.get(i).flip()));
+        currentChunkList.add(
+            new ChunkSuit4CPV(splitChunkMetadataMap.get(i), splitBatchDataMap.get(i).flip()));
       } else if (splitBatchDataMap.containsKey(i) && i != curIdx) {
-        futureChunkList
-            .add(new ChunkSuit4CPV(splitChunkMetadataMap.get(i), splitBatchDataMap.get(i).flip()));
+        futureChunkList.add(
+            new ChunkSuit4CPV(splitChunkMetadataMap.get(i), splitBatchDataMap.get(i).flip()));
       }
     }
   }

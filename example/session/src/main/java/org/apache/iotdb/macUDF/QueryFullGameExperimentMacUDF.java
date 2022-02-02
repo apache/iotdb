@@ -1,17 +1,18 @@
-//package org.apache.iotdb.macUDF;
+// package org.apache.iotdb.macUDF;
 //
-//import org.apache.iotdb.rpc.IoTDBConnectionException;
-//import org.apache.iotdb.rpc.StatementExecutionException;
-//import org.apache.iotdb.session.Session;
-//import org.apache.iotdb.session.SessionDataSet;
-//import org.apache.iotdb.tsfile.read.common.RowRecord;
+// import org.apache.iotdb.rpc.IoTDBConnectionException;
+// import org.apache.iotdb.rpc.StatementExecutionException;
+// import org.apache.iotdb.session.Session;
+// import org.apache.iotdb.session.SessionDataSet;
+// import org.apache.iotdb.tsfile.read.common.RowRecord;
 //
-//import org.apache.thrift.TException;
+// import org.apache.thrift.TException;
 //
-//public class QueryFullGameExperimentMacUDF {
+// public class QueryFullGameExperimentMacUDF {
 //
 //  private static final String queryFormat =
-//      "select M4(%1$s,'tqs'='%3$d','tqe'='%4$d','w'='%5$d') from %2$s where time>=%3$d and time<%4$d";
+//      "select M4(%1$s,'tqs'='%3$d','tqe'='%4$d','w'='%5$d') from %2$s where time>=%3$d and
+// time<%4$d";
 //
 //  public static Session session;
 //
@@ -39,4 +40,4 @@
 //    dataSet.closeOperationHandle();
 //    session.close();
 //  }
-//}
+// }

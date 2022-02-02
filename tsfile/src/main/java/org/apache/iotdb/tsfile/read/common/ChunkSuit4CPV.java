@@ -19,13 +19,16 @@
 
 package org.apache.iotdb.tsfile.read.common;
 
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
 public class ChunkSuit4CPV {
 
-  private ChunkMetadata chunkMetadata; //this.version = new MergeReaderPriority(chunkMetadata.getVersion(), chunkMetadata.getOffsetOfChunkHeader());
+  private ChunkMetadata
+      chunkMetadata; // this.version = new MergeReaderPriority(chunkMetadata.getVersion(),
+  // chunkMetadata.getOffsetOfChunkHeader());
   private BatchData batchData;
   private List<Long> mergeVersionList = new ArrayList<>();
   private List<Long> mergeOffsetList = new ArrayList<>();

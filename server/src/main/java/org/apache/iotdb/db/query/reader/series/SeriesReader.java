@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
-import java.util.ArrayList;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -48,6 +47,7 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
@@ -253,8 +253,8 @@ public class SeriesReader {
     return chunkSuit4CPVList;
   }
 
-  private void unpackOneTimeSeriesMetadata4CPV(TimeseriesMetadata timeSeriesMetadata,
-      List<ChunkSuit4CPV> chunkSuit4CPVList)
+  private void unpackOneTimeSeriesMetadata4CPV(
+      TimeseriesMetadata timeSeriesMetadata, List<ChunkSuit4CPV> chunkSuit4CPVList)
       throws IOException {
     List<ChunkMetadata> chunkMetadataList =
         FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata);

@@ -1,14 +1,14 @@
-//package org.apache.iotdb.mac;
+// package org.apache.iotdb.mac;
 //
-//import org.apache.iotdb.rpc.IoTDBConnectionException;
-//import org.apache.iotdb.rpc.StatementExecutionException;
-//import org.apache.iotdb.session.Session;
-//import org.apache.iotdb.session.SessionDataSet;
-//import org.apache.iotdb.tsfile.read.common.RowRecord;
+// import org.apache.iotdb.rpc.IoTDBConnectionException;
+// import org.apache.iotdb.rpc.StatementExecutionException;
+// import org.apache.iotdb.session.Session;
+// import org.apache.iotdb.session.SessionDataSet;
+// import org.apache.iotdb.tsfile.read.common.RowRecord;
 //
-//import org.apache.thrift.TException;
+// import org.apache.thrift.TException;
 //
-//public class QueryFullGameExperimentMAC {
+// public class QueryFullGameExperimentMAC {
 //
 //  private static final String queryFormat =
 //      "select %s " + "from %s " + "where time >= %d and time < %d";
@@ -44,4 +44,4 @@
 //    dataSet.closeOperationHandle();
 //    session.close();
 //  }
-//}
+// }

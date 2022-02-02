@@ -1,17 +1,18 @@
-//package org.apache.iotdb.moc;
+// package org.apache.iotdb.moc;
 //
-//import org.apache.iotdb.rpc.IoTDBConnectionException;
-//import org.apache.iotdb.rpc.StatementExecutionException;
-//import org.apache.iotdb.session.Session;
-//import org.apache.iotdb.session.SessionDataSet;
-//import org.apache.iotdb.tsfile.read.common.RowRecord;
+// import org.apache.iotdb.rpc.IoTDBConnectionException;
+// import org.apache.iotdb.rpc.StatementExecutionException;
+// import org.apache.iotdb.session.Session;
+// import org.apache.iotdb.session.SessionDataSet;
+// import org.apache.iotdb.tsfile.read.common.RowRecord;
 //
-//import org.apache.thrift.TException;
+// import org.apache.thrift.TException;
 //
-//public class QueryFullGameExperimentMOC {
+// public class QueryFullGameExperimentMOC {
 //
 //  private static final String queryFormat =
-//      "select min_time(%s), max_time(%s), first_value(%s), last_value(%s), min_value(%s), max_value(%s) "
+//      "select min_time(%s), max_time(%s), first_value(%s), last_value(%s), min_value(%s),
+// max_value(%s) "
 //          + "from %s "
 //          + "group by ([%d, %d), %dns)";
 //
@@ -53,4 +54,4 @@
 //    dataSet.closeOperationHandle();
 //    session.close();
 //  }
-//}
+// }

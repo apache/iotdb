@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -57,19 +49,26 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Set;
+
 /**
- * Sql format: SELECT min_time(s0), max_time(s0), first_value(s0), last_value(s0), min_value(s0), max_value(s0)
- * ROM root.xx group by ([tqs,tqe),IntervalLength).
- * Requirements:
- * (1) Don't change the sequence of the above six aggregates
- * (2) Make sure (tqe-tqs) is divisible by IntervalLength.
- * (3) Assume each chunk has only one page.
+ * Sql format: SELECT min_time(s0), max_time(s0), first_value(s0), last_value(s0), min_value(s0),
+ * max_value(s0) ROM root.xx group by ([tqs,tqe),IntervalLength). Requirements: (1) Don't change the
+ * sequence of the above six aggregates (2) Make sure (tqe-tqs) is divisible by IntervalLength. (3)
+ * Assume each chunk has only one page.
  */
 public class LocalGroupByExecutor4CPV implements GroupByExecutor {
 
   // Aggregate result buffer of this path
   private final List<AggregateResult> results = new ArrayList<>();
-//  private final TimeRange timeRange;
+  //  private final TimeRange timeRange;
 
   private List<ChunkSuit4CPV> currentChunkList;
   private final List<ChunkSuit4CPV> futureChunkList = new ArrayList<>();
@@ -101,9 +100,17 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     // update filter by TTL
     this.timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
-    SeriesReader seriesReader = new SeriesReader(path, allSensors, dataType, context,
-        queryDataSource,
-        timeFilter, null, fileFilter, ascending);
+    SeriesReader seriesReader =
+        new SeriesReader(
+            path,
+            allSensors,
+            dataType,
+            context,
+            queryDataSource,
+            timeFilter,
+            null,
+            fileFilter,
+            ascending);
 
     // unpackAllOverlappedFilesToTimeSeriesMetadata
     try {
@@ -120,14 +127,16 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
 
   /**
    * @param curStartTime closed
-   * @param curEndTime   open
-   * @param startTime    closed
-   * @param endTime      open
+   * @param curEndTime open
+   * @param startTime closed
+   * @param endTime open
    */
   @Override
-  public List<AggregateResult> calcResult4CPV(long curStartTime, long curEndTime, long startTime,
-      long endTime, long interval) throws IOException, QueryProcessException {
-    System.out.println("====DEBUG====: calcResult for [" + curStartTime + "," + curEndTime + ")");
+  public List<AggregateResult> calcResult4CPV(
+      long curStartTime, long curEndTime, long startTime, long endTime, long interval)
+      throws IOException, QueryProcessException {
+    // System.out.println("====DEBUG====: calcResult for [" + curStartTime + "," + curEndTime +
+    // ")");
 
     // clear result cache
     for (AggregateResult result : results) {
@@ -136,7 +145,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     // empty currentChunkList
     currentChunkList = new ArrayList<>();
 
-    System.out.println("====DEBUG====: deal with futureChunkList");
+    // System.out.println("====DEBUG====: deal with futureChunkList");
 
     ListIterator itr = futureChunkList.listIterator();
     List<ChunkSuit4CPV> tmpFutureChunkList = new ArrayList<>();
@@ -167,20 +176,27 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           // assume only one page in a chunk
           // assume all data on disk, no data in memory
           ((PageReader) pageReader)
-              .split4CPV(startTime, endTime, interval, curStartTime, currentChunkList,
-                  tmpFutureChunkList, chunkMetadata);
+              .split4CPV(
+                  startTime,
+                  endTime,
+                  interval,
+                  curStartTime,
+                  currentChunkList,
+                  tmpFutureChunkList,
+                  chunkMetadata);
         }
 
-        System.out.println(
-            "====DEBUG====: load the chunk because overlaps the M4 interval. Version="
-                + chunkMetadata.getVersion() + " " + chunkMetadata.getOffsetOfChunkHeader());
+        //        System.out.println(
+        //            "====DEBUG====: load the chunk because overlaps the M4 interval. Version="
+        //                + chunkMetadata.getVersion() + " " +
+        // chunkMetadata.getOffsetOfChunkHeader());
       }
     }
     futureChunkList.addAll(tmpFutureChunkList);
     tmpFutureChunkList = null;
     itr = null;
 
-    System.out.println("====DEBUG====: deal with currentChunkList");
+    // System.out.println("====DEBUG====: deal with currentChunkList");
 
     if (currentChunkList.size() == 0) {
       return results;
@@ -190,7 +206,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     do {
       long[] timestamps = new long[4]; // firstTime, lastTime, bottomTime, topTime
       Object[] values = new Object[4]; // firstValue, lastValue, bottomValue, topValue
-      PriorityMergeReader.MergeReaderPriority[] versions = new PriorityMergeReader.MergeReaderPriority[4];
+      PriorityMergeReader.MergeReaderPriority[] versions =
+          new PriorityMergeReader.MergeReaderPriority[4];
       int[] listIdx = new int[4];
       timestamps[0] = -1;
       timestamps[1] = -1;
@@ -198,18 +215,20 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       values[3] = null;
 
       // find candidate points
-      System.out.println("====DEBUG====: find candidate points");
+      // System.out.println("====DEBUG====: find candidate points");
 
       for (int j = 0; j < currentChunkList.size(); j++) {
         ChunkMetadata chunkMetadata = currentChunkList.get(j).getChunkMetadata();
         Statistics statistics = chunkMetadata.getStatistics();
-        MergeReaderPriority version = new MergeReaderPriority(chunkMetadata.getVersion(),
-            chunkMetadata.getOffsetOfChunkHeader());
+        MergeReaderPriority version =
+            new MergeReaderPriority(
+                chunkMetadata.getVersion(), chunkMetadata.getOffsetOfChunkHeader());
         // update firstPoint
         if (!isFinal[0]) {
-          if (timestamps[0] == -1 ||
-              (statistics.getStartTime() < timestamps[0]) ||
-              (statistics.getStartTime() == timestamps[0] && version.compareTo(versions[0]) > 0)) {
+          if (timestamps[0] == -1
+              || (statistics.getStartTime() < timestamps[0])
+              || (statistics.getStartTime() == timestamps[0]
+                  && version.compareTo(versions[0]) > 0)) {
             timestamps[0] = statistics.getStartTime();
             values[0] = statistics.getFirstValue();
             versions[0] = version;
@@ -218,9 +237,9 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         }
         // update lastPoint
         if (!isFinal[1]) {
-          if (timestamps[1] == -1 ||
-              (statistics.getEndTime() > timestamps[1]) ||
-              (statistics.getEndTime() == timestamps[1] && version.compareTo(versions[1]) > 0)) {
+          if (timestamps[1] == -1
+              || (statistics.getEndTime() > timestamps[1])
+              || (statistics.getEndTime() == timestamps[1] && version.compareTo(versions[1]) > 0)) {
             timestamps[1] = statistics.getEndTime();
             values[1] = statistics.getLastValue();
             versions[1] = version;
@@ -229,8 +248,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         }
         // update bottomPoint
         if (!isFinal[2]) {
-          if (values[2] == null || (((Comparable) (values[2])).compareTo(statistics.getMinValue())
-              > 0)) {
+          if (values[2] == null
+              || (((Comparable) (values[2])).compareTo(statistics.getMinValue()) > 0)) {
             timestamps[2] = statistics.getBottomTimestamp();
             values[2] = statistics.getMinValue();
             versions[2] = version;
@@ -239,8 +258,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         }
         // update topPoint
         if (!isFinal[3]) {
-          if (values[3] == null || (((Comparable) (values[3])).compareTo(statistics.getMaxValue())
-              < 0)) {
+          if (values[3] == null
+              || (((Comparable) (values[3])).compareTo(statistics.getMaxValue()) < 0)) {
             timestamps[3] = statistics.getTopTimestamp();
             values[3] = statistics.getMaxValue();
             versions[3] = version;
@@ -249,11 +268,12 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         }
       }
 
-      System.out.println("====DEBUG====: verify candidate points");
+      // System.out.println("====DEBUG====: verify candidate points");
 
       // verify candidate points.
       // firstPoint and lastPoint are valid for sure.
-      // default results sequence: min_time(%s), max_time(%s), first_value(%s), last_value(%s), min_value(%s), max_value(%s)
+      // default results sequence: min_time(%s), max_time(%s), first_value(%s), last_value(%s),
+      // min_value(%s), max_value(%s)
       if (!isFinal[0]) { // firstPoint
         long firstTimestamp = timestamps[0];
         ChunkMetadata firstChunkMetadata = currentChunkList.get(listIdx[0]).getChunkMetadata();
@@ -269,27 +289,42 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           }
         }
         if (isDeletedItself) {
-          System.out.println(
-              "====DEBUG====: load the chunk because candidate firstPoint is actually deleted. Version="
-                  + firstChunkMetadata.getVersion() + " " + firstChunkMetadata
-                  .getOffsetOfChunkHeader());
+          //          System.out.println(
+          //              "====DEBUG====: load the chunk because candidate firstPoint is actually
+          // deleted. Version="
+          //                  + firstChunkMetadata.getVersion() + " " + firstChunkMetadata
+          //                  .getOffsetOfChunkHeader());
 
           currentChunkList.remove(listIdx[0]);
-          List<IPageReader> pageReaderList = FileLoaderUtils
-              .loadPageReaderList(firstChunkMetadata, this.timeFilter);
+          List<IPageReader> pageReaderList =
+              FileLoaderUtils.loadPageReaderList(firstChunkMetadata, this.timeFilter);
           for (IPageReader pageReader : pageReaderList) { // assume only one page in a chunk
             ((PageReader) pageReader)
-                .split4CPV(startTime, endTime, interval, curStartTime, currentChunkList, null,
+                .split4CPV(
+                    startTime,
+                    endTime,
+                    interval,
+                    curStartTime,
+                    currentChunkList,
+                    null,
                     firstChunkMetadata);
           }
           continue; // next iteration to check currentChunkList
         } else {
-          results.get(0).updateResultUsingValues(Arrays.copyOfRange(timestamps, 0, 1), 1,
-              Arrays.copyOfRange(values, 0, 1)); // min_time
-          results.get(2).updateResultUsingValues(Arrays.copyOfRange(timestamps, 0, 1), 1,
-              Arrays.copyOfRange(values, 0, 1)); // first_value
+          results
+              .get(0)
+              .updateResultUsingValues(
+                  Arrays.copyOfRange(timestamps, 0, 1),
+                  1,
+                  Arrays.copyOfRange(values, 0, 1)); // min_time
+          results
+              .get(2)
+              .updateResultUsingValues(
+                  Arrays.copyOfRange(timestamps, 0, 1),
+                  1,
+                  Arrays.copyOfRange(values, 0, 1)); // first_value
           isFinal[0] = true;
-          System.out.println("====DEBUG====: find firstPoint");
+          // System.out.println("====DEBUG====: find firstPoint");
         }
       }
       if (!isFinal[1]) { // lastPoint
@@ -307,28 +342,43 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           }
         }
         if (isDeletedItself) {
-          System.out.println(
-              "====DEBUG====: load the chunk because candidate lastPoint is actually deleted. Version="
-                  + lastChunkMetadata.getVersion() + " " + lastChunkMetadata
-                  .getOffsetOfChunkHeader());
+          //          System.out.println(
+          //              "====DEBUG====: load the chunk because candidate lastPoint is actually
+          // deleted. Version="
+          //                  + lastChunkMetadata.getVersion() + " " + lastChunkMetadata
+          //                  .getOffsetOfChunkHeader());
 
           currentChunkList.remove(listIdx[0]);
-          List<IPageReader> pageReaderList = FileLoaderUtils
-              .loadPageReaderList(lastChunkMetadata, this.timeFilter);
+          List<IPageReader> pageReaderList =
+              FileLoaderUtils.loadPageReaderList(lastChunkMetadata, this.timeFilter);
           for (IPageReader pageReader : pageReaderList) { // assume only one page in a chunk
             ((PageReader) pageReader)
-                .split4CPV(startTime, endTime, interval, curStartTime, currentChunkList, null,
+                .split4CPV(
+                    startTime,
+                    endTime,
+                    interval,
+                    curStartTime,
+                    currentChunkList,
+                    null,
                     lastChunkMetadata);
           }
           continue; // next iteration to check currentChunkList
         } else {
-          results.get(1).updateResultUsingValues(Arrays.copyOfRange(timestamps, 1, 2), 1,
-              Arrays.copyOfRange(values, 1, 2)); // min_time
-          results.get(3).updateResultUsingValues(Arrays.copyOfRange(timestamps, 1, 2), 1,
-              Arrays.copyOfRange(values, 1, 2)); // first_value
+          results
+              .get(1)
+              .updateResultUsingValues(
+                  Arrays.copyOfRange(timestamps, 1, 2),
+                  1,
+                  Arrays.copyOfRange(values, 1, 2)); // min_time
+          results
+              .get(3)
+              .updateResultUsingValues(
+                  Arrays.copyOfRange(timestamps, 1, 2),
+                  1,
+                  Arrays.copyOfRange(values, 1, 2)); // first_value
           isFinal[1] = true;
 
-          System.out.println("====DEBUG====: find lastPoint");
+          // System.out.println("====DEBUG====: find lastPoint");
         }
       }
       // verify bottomPoint:
@@ -349,38 +399,47 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           }
         }
         if (isDeletedItself) {
-          System.out.println(
-              "====DEBUG====: load the chunk because candidate bottomPoint is actually deleted. Version="
-                  + bottomChunkMetadata.getVersion() + " " + bottomChunkMetadata
-                  .getOffsetOfChunkHeader());
+          //          System.out.println(
+          //              "====DEBUG====: load the chunk because candidate bottomPoint is actually
+          // deleted. Version="
+          //                  + bottomChunkMetadata.getVersion() + " " + bottomChunkMetadata
+          //                  .getOffsetOfChunkHeader());
 
           currentChunkList.remove(listIdx[2]);
-          List<IPageReader> pageReaderList = FileLoaderUtils
-              .loadPageReaderList(bottomChunkMetadata, this.timeFilter);
+          List<IPageReader> pageReaderList =
+              FileLoaderUtils.loadPageReaderList(bottomChunkMetadata, this.timeFilter);
           for (IPageReader pageReader : pageReaderList) { // assume only one page in a chunk
             ((PageReader) pageReader)
-                .split4CPV(startTime, endTime, interval, curStartTime, currentChunkList, null,
+                .split4CPV(
+                    startTime,
+                    endTime,
+                    interval,
+                    curStartTime,
+                    currentChunkList,
+                    null,
                     bottomChunkMetadata);
           }
           continue; // next iteration to check currentChunkList
-        } else { // verify if it is overlapped by other chunks with larger version number and not in the deleted time interval
+        } else { // verify if it is overlapped by other chunks with larger version number and not in
+          // the deleted time interval
           List<Integer> toMerge = new ArrayList<>();
           for (int i = 0; i < currentChunkList.size(); i++) {
             ChunkMetadata chunkMetadata = currentChunkList.get(i).getChunkMetadata();
-            MergeReaderPriority version = new MergeReaderPriority(chunkMetadata.getVersion(),
-                chunkMetadata.getOffsetOfChunkHeader());
+            MergeReaderPriority version =
+                new MergeReaderPriority(
+                    chunkMetadata.getVersion(), chunkMetadata.getOffsetOfChunkHeader());
             if (version.compareTo(versions[2]) <= 0) { // including bottomChunkMetadata
               continue;
             }
-            if (bottomTimestamp < chunkMetadata.getStartTime() || bottomTimestamp > chunkMetadata
-                .getEndTime()) {
+            if (bottomTimestamp < chunkMetadata.getStartTime()
+                || bottomTimestamp > chunkMetadata.getEndTime()) {
               continue;
             }
             boolean isMerged = false;
             for (int k = 0; k < mergedVersionList.size(); k++) {
               // these chunks are MARKED "merged" - not overlapped any more
-              if (mergedVersionList.get(i) == chunkMetadata.getVersion()
-                  && mergedOffsetList.get(i) == chunkMetadata.getOffsetOfChunkHeader()) {
+              if (mergedVersionList.get(k) == chunkMetadata.getVersion()
+                  && mergedOffsetList.get(k) == chunkMetadata.getOffsetOfChunkHeader()) {
                 isMerged = true;
                 break;
               }
@@ -391,10 +450,14 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             toMerge.add(i);
           }
           if (toMerge.isEmpty()) {
-            System.out.println("====DEBUG====: find bottomPoint");
+            // System.out.println("====DEBUG====: find bottomPoint");
 
-            results.get(4).updateResultUsingValues(Arrays.copyOfRange(timestamps, 2, 3), 1,
-                Arrays.copyOfRange(values, 2, 3)); // min_value
+            results
+                .get(4)
+                .updateResultUsingValues(
+                    Arrays.copyOfRange(timestamps, 2, 3),
+                    1,
+                    Arrays.copyOfRange(values, 2, 3)); // min_value
             isFinal[2] = true;
           } else {
             // deal with toMerge chunks: delete updated points
@@ -412,8 +475,9 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               // create empty batchData
               ChunkSuit4CPV chunkSuit4CPV = currentChunkList.get(toMerge.get(o));
               ChunkMetadata chunkMetadata = chunkSuit4CPV.getChunkMetadata();
-              MergeReaderPriority mergeReaderPriority = new MergeReaderPriority(
-                  chunkMetadata.getVersion(), chunkMetadata.getOffsetOfChunkHeader());
+              MergeReaderPriority mergeReaderPriority =
+                  new MergeReaderPriority(
+                      chunkMetadata.getVersion(), chunkMetadata.getOffsetOfChunkHeader());
               BatchData batch1 = BatchDataFactory.createBatchData(tsDataType, true, false);
               updateBatchDataMap.put(mergeReaderPriority, batch1);
               // create empty statistics
@@ -437,47 +501,62 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               statisticsMap.put(mergeReaderPriority, statistics);
               // prepare mergeReader
               if (chunkSuit4CPV.getBatchData() == null) {
-                List<IPageReader> pageReaderList = FileLoaderUtils
-                    .loadPageReaderList(chunkMetadata, this.timeFilter);
+                List<IPageReader> pageReaderList =
+                    FileLoaderUtils.loadPageReaderList(chunkMetadata, this.timeFilter);
                 List<ChunkSuit4CPV> tmpCurrentChunkList = new ArrayList<>();
                 for (IPageReader pageReader : pageReaderList) { // assume only one page in a chunk
                   ((PageReader) pageReader)
-                      .split4CPV(startTime, endTime, interval, curStartTime, tmpCurrentChunkList,
-                          null, chunkMetadata);
+                      .split4CPV(
+                          startTime,
+                          endTime,
+                          interval,
+                          curStartTime,
+                          tmpCurrentChunkList,
+                          null,
+                          chunkMetadata);
                 }
                 currentChunkList.set(toMerge.get(o), tmpCurrentChunkList.get(0));
                 chunkSuit4CPV = currentChunkList.get(toMerge.get(o));
 
-                System.out.println(
-                    "====DEBUG====: load chunk for update merge. Version=" + chunkMetadata
-                        .getVersion() + " " + chunkMetadata.getOffsetOfChunkHeader());
+                //                System.out.println(
+                //                    "====DEBUG====: load chunk for update merge. Version=" +
+                // chunkMetadata
+                //                        .getVersion() + " " +
+                // chunkMetadata.getOffsetOfChunkHeader());
               }
-              mergeReader.addReader(chunkSuit4CPV.getBatchData().getBatchDataIterator(),
+              mergeReader.addReader(
+                  chunkSuit4CPV.getBatchData().getBatchDataIterator(),
                   new MergeReaderPriority(chunkSuit4CPV.getVersion(), chunkSuit4CPV.getOffset()));
             }
             while (mergeReader.hasNextTimeValuePair()) {
               Pair<TimeValuePair, MergeReaderPriority> res = mergeReader.nextElement();
               TimeValuePair ret = res.left;
-              System.out.println(
-                  "====DEBUG====: merge for bottomPoint. (t,v)=" + ret.getTimestamp() + "," + ret
-                      .getValue().getValue());
-              updateBatchDataMap.get(res.right)
+              //              System.out.println(
+              //                  "====DEBUG====: merge for bottomPoint. (t,v)=" +
+              // ret.getTimestamp() + "," + ret
+              //                      .getValue().getValue());
+              updateBatchDataMap
+                  .get(res.right)
                   .putAnObject(ret.getTimestamp(), ret.getValue().getValue());
               switch (tsDataType) {
                 case INT32:
-                  statisticsMap.get(res.right)
+                  statisticsMap
+                      .get(res.right)
                       .update(ret.getTimestamp(), (int) ret.getValue().getValue());
                   break;
                 case INT64:
-                  statisticsMap.get(res.right)
+                  statisticsMap
+                      .get(res.right)
                       .update(ret.getTimestamp(), (long) ret.getValue().getValue());
                   break;
                 case FLOAT:
-                  statisticsMap.get(res.right)
+                  statisticsMap
+                      .get(res.right)
                       .update(ret.getTimestamp(), (float) ret.getValue().getValue());
                   break;
                 case DOUBLE:
-                  statisticsMap.get(res.right)
+                  statisticsMap
+                      .get(res.right)
                       .update(ret.getTimestamp(), (double) ret.getValue().getValue());
                   break;
                 default:
@@ -492,15 +571,17 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               chunkSuit4CPV.getMergeVersionList().addAll(newMergedVersionList);
               chunkSuit4CPV.getMergeOffsetList().addAll(newMergedOffsetList);
               // update BatchData
-              MergeReaderPriority mergeReaderPriority = new MergeReaderPriority(
-                  chunkSuit4CPV.getVersion(), chunkSuit4CPV.getOffset());
+              MergeReaderPriority mergeReaderPriority =
+                  new MergeReaderPriority(chunkSuit4CPV.getVersion(), chunkSuit4CPV.getOffset());
               chunkSuit4CPV.setBatchData(updateBatchDataMap.get(mergeReaderPriority));
-              chunkSuit4CPV.getChunkMetadata()
+              chunkSuit4CPV
+                  .getChunkMetadata()
                   .setStatistics(statisticsMap.get(mergeReaderPriority));
             }
-            System.out.println(
-                "====DEBUG====: merged chunks are : version=" + newMergedVersionList + " offsets="
-                    + newMergedOffsetList);
+            //            System.out.println(
+            //                "====DEBUG====: merged chunks are : version=" + newMergedVersionList +
+            // " offsets="
+            //                    + newMergedOffsetList);
             continue;
           }
         }
@@ -524,37 +605,46 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           }
         }
         if (isDeletedItself) {
-          System.out.println(
-              "====DEBUG====: load the chunk because candidate topPoint is actually deleted. Version="
-                  + topChunkMetadata.getVersion() + " " + topChunkMetadata
-                  .getOffsetOfChunkHeader());
+          //          System.out.println(
+          //              "====DEBUG====: load the chunk because candidate topPoint is actually
+          // deleted. Version="
+          //                  + topChunkMetadata.getVersion() + " " + topChunkMetadata
+          //                  .getOffsetOfChunkHeader());
 
           currentChunkList.remove(listIdx[3]);
-          List<IPageReader> pageReaderList = FileLoaderUtils
-              .loadPageReaderList(topChunkMetadata, this.timeFilter);
+          List<IPageReader> pageReaderList =
+              FileLoaderUtils.loadPageReaderList(topChunkMetadata, this.timeFilter);
           for (IPageReader pageReader : pageReaderList) { // assume only one page in a chunk
             ((PageReader) pageReader)
-                .split4CPV(startTime, endTime, interval, curStartTime, currentChunkList, null,
+                .split4CPV(
+                    startTime,
+                    endTime,
+                    interval,
+                    curStartTime,
+                    currentChunkList,
+                    null,
                     topChunkMetadata);
           }
           continue; // next iteration to check currentChunkList
-        } else { // verify if it is overlapped by other chunks with larger version number and not in the deleted time interval
+        } else { // verify if it is overlapped by other chunks with larger version number and not in
+          // the deleted time interval
           List<Integer> toMerge = new ArrayList<>();
           for (int i = 0; i < currentChunkList.size(); i++) {
             ChunkMetadata chunkMetadata = currentChunkList.get(i).getChunkMetadata();
-            MergeReaderPriority version = new MergeReaderPriority(chunkMetadata.getVersion(),
-                chunkMetadata.getOffsetOfChunkHeader());
+            MergeReaderPriority version =
+                new MergeReaderPriority(
+                    chunkMetadata.getVersion(), chunkMetadata.getOffsetOfChunkHeader());
             if (version.compareTo(versions[3]) <= 0) { // including topChunkMetadata
               continue;
             }
-            if (topTimestamp < chunkMetadata.getStartTime() || topTimestamp > chunkMetadata
-                .getEndTime()) {
+            if (topTimestamp < chunkMetadata.getStartTime()
+                || topTimestamp > chunkMetadata.getEndTime()) {
               continue;
             }
             boolean isMerged = false;
             for (int k = 0; k < mergedVersionList.size(); k++) {
-              if (mergedVersionList.get(i) == chunkMetadata.getVersion()
-                  && mergedOffsetList.get(i) == chunkMetadata.getOffsetOfChunkHeader()) {
+              if (mergedVersionList.get(k) == chunkMetadata.getVersion()
+                  && mergedOffsetList.get(k) == chunkMetadata.getOffsetOfChunkHeader()) {
                 isMerged = true;
                 break;
               }
@@ -565,10 +655,14 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             toMerge.add(i);
           }
           if (toMerge.isEmpty()) {
-            results.get(5).updateResultUsingValues(Arrays.copyOfRange(timestamps, 3, 4), 1,
-                Arrays.copyOfRange(values, 3, 4)); // max_value
+            results
+                .get(5)
+                .updateResultUsingValues(
+                    Arrays.copyOfRange(timestamps, 3, 4),
+                    1,
+                    Arrays.copyOfRange(values, 3, 4)); // max_value
             isFinal[3] = true;
-            System.out.println("====DEBUG====: find topPoint");
+            // System.out.println("====DEBUG====: find topPoint");
             return results;
           } else {
             // deal with toMerge chunks: delete updated points
@@ -586,8 +680,9 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               // create empty batchData
               ChunkSuit4CPV chunkSuit4CPV = currentChunkList.get(toMerge.get(o));
               ChunkMetadata chunkMetadata = chunkSuit4CPV.getChunkMetadata();
-              MergeReaderPriority mergeReaderPriority = new MergeReaderPriority(
-                  chunkMetadata.getVersion(), chunkMetadata.getOffsetOfChunkHeader());
+              MergeReaderPriority mergeReaderPriority =
+                  new MergeReaderPriority(
+                      chunkMetadata.getVersion(), chunkMetadata.getOffsetOfChunkHeader());
               BatchData batch1 = BatchDataFactory.createBatchData(tsDataType, true, false);
               updateBatchDataMap.put(mergeReaderPriority, batch1);
               // create empty statistics
@@ -611,47 +706,62 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               statisticsMap.put(mergeReaderPriority, statistics);
               // prepare mergeReader
               if (chunkSuit4CPV.getBatchData() == null) {
-                List<IPageReader> pageReaderList = FileLoaderUtils
-                    .loadPageReaderList(chunkMetadata, this.timeFilter);
+                List<IPageReader> pageReaderList =
+                    FileLoaderUtils.loadPageReaderList(chunkMetadata, this.timeFilter);
                 List<ChunkSuit4CPV> tmpCurrentChunkList = new ArrayList<>();
                 for (IPageReader pageReader : pageReaderList) { // assume only one page in a chunk
                   ((PageReader) pageReader)
-                      .split4CPV(startTime, endTime, interval, curStartTime, tmpCurrentChunkList,
-                          null, chunkMetadata);
+                      .split4CPV(
+                          startTime,
+                          endTime,
+                          interval,
+                          curStartTime,
+                          tmpCurrentChunkList,
+                          null,
+                          chunkMetadata);
                 }
                 currentChunkList.set(toMerge.get(o), tmpCurrentChunkList.get(0));
                 chunkSuit4CPV = currentChunkList.get(toMerge.get(o));
 
-                System.out.println(
-                    "====DEBUG====: load chunk for update merge. Version=" + chunkMetadata
-                        .getVersion() + " " + chunkMetadata.getOffsetOfChunkHeader());
+                //                System.out.println(
+                //                    "====DEBUG====: load chunk for update merge. Version=" +
+                // chunkMetadata
+                //                        .getVersion() + " " +
+                // chunkMetadata.getOffsetOfChunkHeader());
               }
-              mergeReader.addReader(chunkSuit4CPV.getBatchData().getBatchDataIterator(),
+              mergeReader.addReader(
+                  chunkSuit4CPV.getBatchData().getBatchDataIterator(),
                   new MergeReaderPriority(chunkSuit4CPV.getVersion(), chunkSuit4CPV.getOffset()));
             }
             while (mergeReader.hasNextTimeValuePair()) {
               Pair<TimeValuePair, MergeReaderPriority> res = mergeReader.nextElement();
               TimeValuePair ret = res.left;
-              System.out.println(
-                  "====DEBUG====: merge for topPoint. (t,v)=" + ret.getTimestamp() + "," + ret
-                      .getValue().getValue());
-              updateBatchDataMap.get(res.right)
+              //              System.out.println(
+              //                  "====DEBUG====: merge for topPoint. (t,v)=" + ret.getTimestamp() +
+              // "," + ret
+              //                      .getValue().getValue());
+              updateBatchDataMap
+                  .get(res.right)
                   .putAnObject(ret.getTimestamp(), ret.getValue().getValue());
               switch (tsDataType) {
                 case INT32:
-                  statisticsMap.get(res.right)
+                  statisticsMap
+                      .get(res.right)
                       .update(ret.getTimestamp(), (int) ret.getValue().getValue());
                   break;
                 case INT64:
-                  statisticsMap.get(res.right)
+                  statisticsMap
+                      .get(res.right)
                       .update(ret.getTimestamp(), (long) ret.getValue().getValue());
                   break;
                 case FLOAT:
-                  statisticsMap.get(res.right)
+                  statisticsMap
+                      .get(res.right)
                       .update(ret.getTimestamp(), (float) ret.getValue().getValue());
                   break;
                 case DOUBLE:
-                  statisticsMap.get(res.right)
+                  statisticsMap
+                      .get(res.right)
                       .update(ret.getTimestamp(), (double) ret.getValue().getValue());
                   break;
                 default:
@@ -666,10 +776,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               chunkSuit4CPV.getMergeVersionList().addAll(newMergedVersionList);
               chunkSuit4CPV.getMergeOffsetList().addAll(newMergedOffsetList);
               // update BatchData
-              MergeReaderPriority mergeReaderPriority = new MergeReaderPriority(
-                  chunkSuit4CPV.getVersion(), chunkSuit4CPV.getOffset());
+              MergeReaderPriority mergeReaderPriority =
+                  new MergeReaderPriority(chunkSuit4CPV.getVersion(), chunkSuit4CPV.getOffset());
               chunkSuit4CPV.setBatchData(updateBatchDataMap.get(mergeReaderPriority));
-              chunkSuit4CPV.getChunkMetadata()
+              chunkSuit4CPV
+                  .getChunkMetadata()
                   .setStatistics(statisticsMap.get(mergeReaderPriority));
             }
             continue;
@@ -678,7 +789,6 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       }
     } while (true);
   }
-
 
   @Override
   public Pair<Long, Object> peekNextNotNullValue(long nextStartTime, long nextEndTime)

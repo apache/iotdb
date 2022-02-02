@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -44,8 +36,18 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -65,12 +67,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    */
   private Map<PartialPath, List<Integer>> resultIndexes = new HashMap<>();
 
-  public GroupByWithoutValueFilterDataSet() {
-  }
+  public GroupByWithoutValueFilterDataSet() {}
 
-  /**
-   * constructor.
-   */
+  /** constructor. */
   public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByTimePlan groupByTimePlan)
       throws StorageEngineException, QueryProcessException {
     super(context, groupByTimePlan);
@@ -145,8 +144,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
         GroupByExecutor executor = pathToExecutorEntry.getValue();
         //        long start = System.nanoTime();
-        List<AggregateResult> aggregations = executor
-            .calcResult4CPV(curStartTime, curEndTime, startTime, endTime, interval);
+        List<AggregateResult> aggregations =
+            executor.calcResult4CPV(curStartTime, curEndTime, startTime, endTime, interval);
         //        IOMonitor.incTotalTime(System.nanoTime() - start);
         for (int i = 0; i < aggregations.size(); i++) {
           int resultIndex = resultIndexes.get(pathToExecutorEntry.getKey()).get(i);
