@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.reader.series.BaseManagedSeriesReader;
@@ -44,6 +45,13 @@ public class EmptyReader extends BaseManagedSeriesReader
         IReaderByTimestamp {
 
   private List<AggregateResult> aggregationResults = new ArrayList<>();
+
+  @Override
+  public List<AggregateResult> calcResult4CPV(
+      long curStartTime, long curEndTime, long startTime, long endTime, long interval)
+      throws IOException, QueryProcessException {
+    throw new IOException("no implemented");
+  }
 
   @Override
   public boolean hasNextBatch() {
