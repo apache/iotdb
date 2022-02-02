@@ -7,7 +7,7 @@ iotdb服务路径是/data3/ruilei/rl/iotdb-server-0.12.4/
 写出来的数据存放空间是/data3/ruilei/rl/dataSpace/synData1/
 
 ## 1. Data
-1.1 服务器参数
+**1.1 服务器参数**
 ```
 system_dir=/data3/ruilei/rl/dataSpace/synData1/system
 data_dirs=/data3/ruilei/rl/dataSpace/synData1/data
@@ -21,13 +21,13 @@ compaction_strategy=NO_COMPACTION                       # compaction between lev
 enable_unseq_compaction=false                           # unseq compaction is disabled
 ```
 
-1.2 写数据程序：WriteSyntheticData1.java
+**1.2 写数据程序：WriteSyntheticData1.java**
 
 时间点等间隔1ms、总时长10000s、值正态分布模拟、double类型的数据，使用默认压缩方法。
 无乱序，无删除。每个chunk默认参数是装10000个点，所以每个chunk就是10s的数据量。
 使用默认压缩方法，每个chunk大约70KB，所以一共是1000个10KB的chunks也就是总共70MB左右的一个顺序tsfile。
 
-1.3 写数据操作流程
+**1.3 写数据操作流程**
 
 (0) 把写有三种方法的打包好的iotdb服务器上传（也就是本unify分支程序打包之后的server文件夹），路径为/data3/ruilei/rl/iotdb-server-0.12.4。
 
@@ -67,7 +67,7 @@ total 70M
 ```
 
 ## 2. Query
-2.1 查询程序：QuerySyntheticData1.java
+**2.1 查询程序：QuerySyntheticData1.java**
 
 - 时间序列路径，同写数据设置： 
 ```
@@ -103,7 +103,7 @@ compaction_strategy=NO_COMPACTION                       # compaction between lev
 enable_unseq_compaction=false                           # unseq compaction is disabled
 ```
 
-2.2 自动化脚本
+**2.2 自动化脚本**
 
 moc方法的change_interval_experiments.sh为：
 ```
@@ -153,6 +153,14 @@ done
 
 ```
 
-2.3 查询操作流程
+**2.3 查询操作流程**
 
 对每个方法，分别执行相应的change_interval_experiments.sh，执行结束后把结果汇总，然后绘图分析。
+
+## 3. Plot Result
+![1](example/session/src/main/java/org/apache/iotdb/queryExp/SynData1Figures/synData1-0disorder-0delete-varyW-compare.png)
+![2](example/session/src/main/java/org/apache/iotdb/queryExp/SynData1Figures/synData1-0disorder-0delete-varyW-compare-loadDataOnly.png)
+![3](example/session/src/main/java/org/apache/iotdb/queryExp/SynData1Figures/synData1-0disorder-0delete-varyW-compare-totalOnly.png)
+![5](example/session/src/main/java/org/apache/iotdb/queryExp/SynData1Figures/synData1-0disorder-0delete-varyW-mac.png)
+![6](example/session/src/main/java/org/apache/iotdb/queryExp/SynData1Figures/synData1-0disorder-0delete-varyW-moc.png)
+![4](example/session/src/main/java/org/apache/iotdb/queryExp/SynData1Figures/synData1-0disorder-0delete-varyW-cpv.png)
