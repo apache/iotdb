@@ -1,392 +1,158 @@
-<!--
+# SynData1 Experiment
 
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+程序工作空间是/data3/ruilei/rl/synData1_testspace/
 
-        http://www.apache.org/licenses/LICENSE-2.0
+iotdb服务路径是/data3/ruilei/rl/iotdb-server-0.12.4/
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
+写出来的数据存放空间是/data3/ruilei/rl/dataSpace/synData1/
 
--->
-[English](./README.md) | [中文](./README_ZH.md)
-
-# IoTDB
-[![Build Status](https://www.travis-ci.org/apache/iotdb.svg?branch=master)](https://www.travis-ci.org/apache/iotdb)
-[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)
-[![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
-[![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
-![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
-![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
-![](https://img.shields.io/badge/platform-win10%20%7C%20macox%20%7C%20linux-yellow.svg)
-![](https://img.shields.io/badge/java--language-1.8-blue.svg)
-[![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
-[![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
-[![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
-[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/apache/iotdb) 
-
-# Overview
-
-IoTDB (Internet of Things Database) is a data management system for time series data, which can provide users specific services, such as, data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input, and complex data analysis in the industrial IoT field.
-
-# Main Features
-
-Main features of IoTDB are as follows:
-
-1. Flexible deployment strategy. IoTDB provides users a one-click installation tool on either the cloud platform or the terminal devices, and a data synchronization tool bridging the data on cloud platform and terminals.
-2. Low cost on hardware. IoTDB can reach a high compression ratio of disk storage.
-3. Efficient directory structure. IoTDB supports efficient organization for complex time series data structure from intelligent networking devices, organization for time series data from devices of the same type, fuzzy searching strategy for massive and complex directory of time series data.
-4. High-throughput read and write. IoTDB supports millions of low-power devices' strong connection data access, high-speed data read and write for intelligent networking devices and mixed devices mentioned above.
-5. Rich query semantics. IoTDB supports time alignment for time series data across devices and measurements, computation in time series field (frequency domain transformation) and rich aggregation function support in time dimension.
-6. Easy to get started. IoTDB supports SQL-Like language, JDBC standard API and import/export tools which is easy to use.
-7. Seamless integration with state-of-the-practice Open Source Ecosystem. IoTDB supports analysis ecosystems such as, Hadoop, Spark, and visualization tool, such as, Grafana.
-
-For the latest information about IoTDB, please visit [IoTDB official website](https://iotdb.apache.org/). If you encounter any problems or identify any bugs while using IoTDB, please report an issue in [jira](https://issues.apache.org/jira/projects/IOTDB/issues).
-
-<!-- TOC -->
-
-## Outline
-
-- [IoTDB](#iotdb)
-- [Overview](#overview)
-- [Main Features](#main-features)
-  - [Outline](#outline)
-- [Quick Start](#quick-start)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-    - [Build from source](#build-from-source)
-    - [Configurations](#configurations)
-  - [Start](#start)
-    - [Start IoTDB](#start-iotdb)
-    - [Use IoTDB](#use-iotdb)
-      - [Use Cli](#use-cli)
-      - [Basic commands for IoTDB](#basic-commands-for-iotdb)
-    - [Stop IoTDB](#stop-iotdb)
-  - [Only build server](#only-build-server)
-  - [Only build cli](#only-build-cli)
-  - [Usage of CSV Import and Export Tool](#usage-of-csv-import-and-export-tool)
-
-<!-- /TOC -->
-
-# Quick Start
-
-This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/UserGuide/Master/Get%20Started/QuickStart.html).
-
-## Prerequisites
-
-To use IoTDB, you need to have:
-
-1. Java >= 1.8 (1.8, 11, and 13 are verified. Please make sure the environment path has been set accordingly).
-2. Maven >= 3.6 (If you want to compile and install IoTDB from source code).
-3. Set the max open files num as 65535 to avoid "too many open files" error.
-4. (Optional) Set the somaxconn as 65535 to avoid "connection reset" error when the system is under high load.
-    ```
-    # Linux
-    > sudo sysctl -w net.core.somaxconn=65535
-   
-    # FreeBSD or Darwin
-    > sudo sysctl -w kern.ipc.somaxconn=65535
-    ```
-
-## Installation
-
-IoTDB provides three installation methods, you can refer to the following suggestions, choose the one fits you best:
-
-* Installation from source code. If you need to modify the code yourself, you can use this method.
-* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.
-* Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/tree/master/docker/src/main
-
-
-Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to Chapter 3 of the User Guide.
-
-## Build from source
-
-### Prepare Thrift compiler
-
-Skip this chapter if you are using Windows. 
-
-As we use Thrift for our RPC module (communication and
-protocol definition), we involve Thrift during the compilation, so Thrift compiler 0.13.0 (or
-higher) is required to generate Thrift Java code. Thrift officially provides binary compiler for
-Windows, but unfortunately, they do not provide that for Unix OSs. 
-
-If you have permission to install new softwares, use `apt install` or `yum install` or `brew install`
-to install the Thrift compiler (If you already have installed the thrift compiler, skip this step).
-Then, you may add the following parameter
-when running Maven: `-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<YOUR LOCAL THRIFT BINARY FILE>`.
-
-If not, then you have to compile the thrift compiler, and it requires you install a boost library first.
-Therefore, we compiled a Unix  compiler ourselves and put it onto GitHub, and with the help of a
-maven plugin, it will be  downloaded automatically during compilation. 
-This compiler works fine with gcc8 or later, Ubuntu  MacOS, and CentOS, but previous versions 
-and other OSs are not guaranteed.
-
-If you can not download the thrift compiler automatically because of network problem, you can download 
-it yourself, and then either:
-rename your thrift file to `{project_root}\thrift\target\tools\thrift_0.12.0_0.13.0_linux.exe`;
-or, add Maven commands:
-`-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<YOUR LOCAL THRIFT BINARY FILE>`.
-
-### Compile IoTDB
-
-You can download the source code from:
-
+## 1. Data
+1.1 服务器参数
 ```
-git clone https://github.com/apache/iotdb.git
+system_dir=/data3/ruilei/rl/dataSpace/synData1/system
+data_dirs=/data3/ruilei/rl/dataSpace/synData1/data
+wal_dir=/data3/ruilei/rl/dataSpace/synData1/wal
+timestamp_precision=ms
+--------------------
+unseq_tsfile_size=1073741824                            # maximum size of unseq TsFile is 1024^3 Bytes
+seq_tsfile_size=1073741824                              # maximum size of seq TsFile is 1024^3 Bytes
+avg_series_point_number_threshold=10000                 # each chunk contains 10000 data points
+compaction_strategy=NO_COMPACTION                       # compaction between levels is disabled
+enable_unseq_compaction=false                           # unseq compaction is disabled
 ```
 
-The default master branch is the dev branch, If you want to use a released version x.x.x:
+1.2 写数据程序：WriteSyntheticData1.java
 
+时间点等间隔1ms、总时长10000s、值正态分布模拟、double类型的数据，使用默认压缩方法。
+无乱序，无删除。每个chunk默认参数是装10000个点，所以每个chunk就是10s的数据量。
+使用默认压缩方法，每个chunk大约70KB，所以一共是1000个10KB的chunks也就是总共70MB左右的一个顺序tsfile。
+
+1.3 写数据操作流程
+
+(0) 把写有三种方法的打包好的iotdb服务器上传，路径为/data3/ruilei/rl/iotdb-server-0.12.4。
+
+(1) 准备好服务器参数文件：
+- /data3/ruilei/rl/synData1_testspace/iotdb-engine-enableCPVtrue.properties:
+enable_CPV=true, 其余参数同1.1
+- /data3/ruilei/rl/synData1_testspace/iotdb-engine-enableCPVfalse.properties:
+  enable_CPV=false, 其余参数同1.1
+  
+(2) 把WriteSyntheticData1.java打成jar包。
+
+(3) 创建write_data.sh内容为：
 ```
-git checkout release/x.x.x
-```
-
-From v0.11.3 on, the tag name format is change to: vx.x.x:
-
-```
-git checkout vx.x.x
-```
-
-Under the root path of iotdb:
-
-```
-> mvn clean package -DskipTests
-```
-
-Using `-P compile-cpp` for compiling cpp client (For more details, read client-cpp's Readme file.)
-
-Then the binary version (including both server and cli) can be found at **distribution/target/apache-iotdb-{project.version}-all-bin.zip**
-
-NOTE: Directories `thrift/target/generated-sources/thrift`,  `thrift-sync/target/generated-sources/thrift`,
-`thrift-cluster/target/generated-sources/thrift`
-and `antlr/target/generated-sources/antlr4` need to be added to sources roots to avoid compilation errors in the IDE.
-In IDEAJ, you just need to right click on the root project name and choose "Maven->Reload Project" after 
-you run `mvn package` successfully.
-
-### Configurations
-
-configuration files are under "conf" folder
-
-  * environment config module (`iotdb-env.bat`, `iotdb-env.sh`),
-  * system config module (`iotdb-engine.properties`)
-  * log config module (`logback.xml`).
-
-For more information, please see [Chapter3: Server](http://iotdb.apache.org/UserGuide/Master/Server/Config%20Manual.html).
-
-## Start
-
-You can go through the following steps to test the installation, if there is no error returned after execution, the installation is completed.
-
-### Start IoTDB
-
-Users can start IoTDB by the start-server script under the sbin folder.
-
-```
-# Unix/OS X
-> nohup sbin/start-server.sh >/dev/null 2>&1 &
-or
-> nohup sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port> >/dev/null 2>&1 &
-
-# Windows
-> sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>
+#!/bin/bash
+cp iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
+cd /data3/ruilei/rl/iotdb-server-0.12.4/sbin
+./start-server.sh &
+sleep 3s
+java -jar /data3/ruilei/rl/synData1_testspace/WriteSyntheticData1-0.12.4.jar
+sleep 3s
+./stop-server.sh
+sleep 3s
+echo 3 | sudo tee /proc/sys/vm/drop_caches
 ```
 
-- "-c" and "-rpc_port" are optional.
-- option "-c" specifies the system configuration file directory.
-- option "-rpc_port" specifies the rpc port.
-- if both option specified, the *rpc_port* will overrides the rpc_port in *conf_path*.
+chmod +x write_data.sh
 
+(4) 运行write_data.sh，脚本会自动替换服务器的参数文件达到设置参数的效果，然后执行jar包完成写数据。
 
-### Use IoTDB
-
-#### Use Cli
-
-IoTDB offers different ways to interact with server, here we introduce the basic steps of using Cli tool to insert and query data.
-
-After installing IoTDB, there is a default user 'root', its default password is also 'root'. Users can use this
-default user to login Cli to use IoTDB. The startup script of Cli is the start-cli script in the folder sbin. When executing the script, user should assign
-IP, PORT, USER_NAME and PASSWORD. The default parameters are "-h 127.0.0.1 -p 6667 -u root -pw -root".
-
-Here is the command for starting the Cli:
+写出来的数据文件：
+```
+ruilei@fit07:~/rl/dataSpace/synData1/data/sequence/root.vehicle/0/0$ ls -lh
+total 70M
+-rw-rw-r-- 1 ruilei ruilei 70M Feb  2 12:41 1643805456842-1-0-0.tsfile
+-rw-rw-r-- 1 ruilei ruilei  61 Feb  2 12:41 1643805456842-1-0-0.tsfile.resource
 
 ```
-# Unix/OS X
-> sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 
-# Windows
-> sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
+## 2. Query
+2.1 查询程序：QuerySyntheticData1.java
+
+- 时间序列路径，同写数据设置： 
+```
+String measurement = "s0"; 
+String device = "root.vehicle.d0";
+```
+- 固定查询总时间范围为[0,10000000)
+
+- 两套查询模板：(1) MOC和CPV共用的queryFormat，(2) MAC单独用的queryFormat_UDF。
+注意queryFormat里group by的interval时间单位要和写数据单位匹配！SynData1实验的写数据时间单位为ms。
+
+- 输入参数1也是实验自变量1：interval的数量。设计为1,10,20,50,100,250,500,1k,2k,5k，
+分别对应着一个time interval覆盖1000, 100, 50, 20, 10, 4, 2, 1, 0.5, 0.2个chunks。
+
+- 输入参数2也是实验自变量2：查询执行方法。1代表MAC, 2代表MOC, 3代表CPV。
+如果是MAC方法，QuerySyntheticData1会选择queryFormat_UDF这个UDF sql模板来达到MAC执行效果。
+如果是MOC或者CPV方法，它们的sql模板是相同的，区别它们的方法需要你在查询之前手动修改服务器的参数enable_CPV为false或者true（在iotdb-engine.properties文件中）。
+（所以输入参数2对于MOC或者CPV方法是不起真正控制作用的。）
+为了提高自动化水平，类似写数据操作流程，我们在change_interval_experiments.sh里把改好了enable_CPV参数以及其它相关参数
+的properties文件复制成服务器的参数文件来达到自动修改参数的效果。参数总结：
+```
+enable_CPV=false或者true
+--------------------
+system_dir=/data3/ruilei/rl/dataSpace/synData1/system
+data_dirs=/data3/ruilei/rl/dataSpace/synData1/data
+wal_dir=/data3/ruilei/rl/dataSpace/synData1/wal
+timestamp_precision=ms
+--------------------
+unseq_tsfile_size=1073741824                            # maximum size of unseq TsFile is 1024^3 Bytes
+seq_tsfile_size=1073741824                              # maximum size of seq TsFile is 1024^3 Bytes
+avg_series_point_number_threshold=10000                 # each chunk contains 10000 data points
+compaction_strategy=NO_COMPACTION                       # compaction between levels is disabled
+enable_unseq_compaction=false                           # unseq compaction is disabled
 ```
 
-The command line cli is interactive, so you should see the welcome logo and statements if everything is ready:
+2.2 自动化脚本
+
+moc方法的change_interval_experiments.sh为：
+```
+#!/bin/bash
+cp ../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
+
+./../query_experiment.sh 1 2 >> result_1.txt
+java ../MOCProcessResult result_1.txt result_1.out
+./../query_experiment.sh 10 2 >> result_10.txt
+java ../MOCProcessResult result_10.txt result_10.out
+./../query_experiment.sh 50 2 >> result_50.txt
+java ../MOCProcessResult result_50.txt result_50.out
+./../query_experiment.sh 100 2 >> result_100.txt
+java ../MOCProcessResult result_100.txt result_100.out
+./../query_experiment.sh 250 2 >> result_250.txt
+java ../MOCProcessResult result_250.txt result_250.out
+./../query_experiment.sh 500 2 >> result_500.txt
+java ../MOCProcessResult result_500.txt result_500.out
+./../query_experiment.sh 1000 2 >> result_1000.txt
+java ../MOCProcessResult result_1000.txt result_1000.out
+./../query_experiment.sh 2000 2 >> result_2000.txt
+java ../MOCProcessResult result_2000.txt result_2000.out
+./../query_experiment.sh 5000 2 >> result_5000.txt
+java ../MOCProcessResult result_5000.txt result_5000.out
 
 ```
- _____       _________  ______   ______
-|_   _|     |  _   _  ||_   _ `.|_   _ \
-  | |   .--.|_/ | | \_|  | | `. \ | |_) |
-  | | / .'`\ \  | |      | |  | | |  __'.
- _| |_| \__. | _| |_    _| |_.' /_| |__) |
-|_____|'.__.' |_____|  |______.'|_______/  version x.x.x
 
+CPV方法的change_interval_experiments.sh就是把iotdb-engine-enableCPVfalse.properties改成
+iotdb-engine-enableCPVtrue.properties。
 
-IoTDB> login successfully
-IoTDB>
+MAC方法不受enable_CPV影响，因此随意properties取false还是true的版本。
+
+query_experiment.sh是公共的，它负责把一个sql重复十次查询测试：
+```
+#!/bin/bash
+echo 3 | sudo tee /proc/sys/vm/drop_caches
+cd /data3/ruilei/rl/iotdb-server-0.12.4/sbin
+a=10
+for((i=0;i<a;i++)) do
+    ./start-server.sh &
+    sleep 3s
+    java -jar /data3/ruilei/rl/synData1_testspace/QuerySyntheticData1-0.12.4.jar $1 $2
+    ./stop-server.sh
+    echo 3 | sudo tee /proc/sys/vm/drop_caches
+    sleep 3s
+done
+
 ```
 
-#### Basic commands for IoTDB
+2.3 查询操作流程
 
-Now, let us introduce the way of creating timeseries, inserting data and querying data.
-
-The data in IoTDB is organized as timeseries. Each timeseries includes multiple data-time pairs, and is owned by a storage group. Before defining a timeseries, we should define a storage group using SET STORAGE GROUP first, and here is an example:
-
-```
-IoTDB> SET STORAGE GROUP TO root.ln
-```
-
-We can also use SHOW STORAGE GROUP to check the storage group being created:
-
-```
-IoTDB> SHOW STORAGE GROUP
-+-----------------------------------+
-|                      Storage Group|
-+-----------------------------------+
-|                            root.ln|
-+-----------------------------------+
-storage group number = 1
-```
-
-After the storage group is set, we can use CREATE TIMESERIES to create a new timeseries. When creating a timeseries, we should define its data type and the encoding scheme. Here We create two timeseries:
-
-```
-IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
-IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
-```
-
-In order to query the specific timeseries, we can use SHOW TIMESERIES <Path>. <Path> represent the location of the timeseries. The default value is "null", which queries all the timeseries in the system(the same as using "SHOW TIMESERIES root"). Here are some examples:
-
-1. Querying all timeseries in the system:
-
-```
-IoTDB> SHOW TIMESERIES
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-|                   timeseries  | alias|storage group|dataType|encoding|compression|tags|attributes|
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-|       root.ln.wf01.wt01.status|  null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
-|  root.ln.wf01.wt01.temperature|  null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-Total timeseries number = 2
-```
-
-2. Querying a specific timeseries(root.ln.wf01.wt01.status):
-
-```
-IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-|                   timeseries  | alias|storage group|dataType|encoding|compression|tags|attributes|
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-|       root.ln.wf01.wt01.status|  null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-Total timeseries number = 1
-```
-
-Insert timeseries data is a basic operation of IoTDB, you can use ‘INSERT’ command to finish this. Before insertion, you should assign the timestamp and the suffix path name:
-
-```
-IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(100,true);
-IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status,temperature) values(200,false,20.71)
-```
-
-The data that you have just inserted will display as follows:
-
-```
-IoTDB> SELECT status FROM root.ln.wf01.wt01
-+-----------------------+------------------------+
-|                   Time|root.ln.wf01.wt01.status|
-+-----------------------+------------------------+
-|1970-01-01T08:00:00.100|                    true|
-|1970-01-01T08:00:00.200|                   false|
-+-----------------------+------------------------+
-Total line number = 2
-```
-
-You can also query several timeseries data using one SQL statement:
-
-```
-IoTDB> SELECT * FROM root.ln.wf01.wt01
-+-----------------------+--------------------------+-----------------------------+
-|                   Time|  root.ln.wf01.wt01.status|root.ln.wf01.wt01.temperature|
-+-----------------------+--------------------------+-----------------------------+
-|1970-01-01T08:00:00.100|                      true|                         null|
-|1970-01-01T08:00:00.200|                     false|                        20.71|
-+-----------------------+--------------------------+-----------------------------+
-Total line number = 2
-```
-
-The commands to exit the Cli are:
-
-```
-IoTDB> quit
-or
-IoTDB> exit
-```
-
-For more information about the commands supported by IoTDB SQL, please see [SQL Reference](http://iotdb.apache.org/UserGuide/Master/Operation%20Manual/SQL%20Reference.html).
-
-### Stop IoTDB
-
-The server can be stopped with "ctrl-C" or the following script:
-
-```
-# Unix/OS X
-> sbin/stop-server.sh
-
-# Windows
-> sbin\stop-server.bat
-```
-
-## Only build server
-
-Under the root path of iotdb:
-
-```
-> mvn clean package -pl server -am -DskipTests
-```
-
-After being built, the IoTDB server is located at the folder: "server/target/iotdb-server-{project.version}".
-
-
-## Only build cli
-
-Under the root path of iotdb:
-
-```
-> mvn clean package -pl cli -am -DskipTests
-```
-
-After being built, the IoTDB cli is located at the folder "cli/target/iotdb-cli-{project.version}".
-
-# Usage of CSV Import and Export Tool
-
-see [Usage of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/Master/System%20Tools/CSV%20Tool.html)
-
-# Frequent Questions for Compiling
-see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)
-
-# Contact Us
-### QQ Group
-
-* Apache IoTDB User Group: 659990460
-
-### Wechat Group
-
-* Add friend: tietouqiao, and then we'll invite you to the group.
-
-see [Join the community](https://github.com/apache/iotdb/issues/1995) for more!
+对每个方法，分别执行相应的change_interval_experiments.sh，执行结束后把结果汇总，然后绘图分析。
