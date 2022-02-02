@@ -85,7 +85,7 @@ public class MergeGroupByExecutor implements GroupByExecutor {
   }
 
   @Override
-  public List<AggregateResult> calcResult4CPV(
+  public List<AggregateResult> calcResult(
       long curStartTime, long curEndTime, long startTime, long endTime, long interval)
       throws IOException, QueryProcessException {
     throw new IOException("no implemented");

@@ -184,14 +184,14 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   }
 
   @Override
-  public List<AggregateResult> calcResult4CPV(
-      long curStartTime, long curEndTime, long startTime, long endTime, long interval)
+  public List<AggregateResult> calcResult(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException {
     throw new IOException("no implemented");
   }
 
   @Override
-  public List<AggregateResult> calcResult(long curStartTime, long curEndTime)
+  public List<AggregateResult> calcResult(
+      long curStartTime, long curEndTime, long startTime, long endTime, long interval)
       throws IOException, QueryProcessException {
     // clear result cache
     for (AggregateResult result : results) {

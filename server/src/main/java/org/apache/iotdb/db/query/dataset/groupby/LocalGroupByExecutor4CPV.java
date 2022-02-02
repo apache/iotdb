@@ -132,7 +132,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
    * @param endTime open
    */
   @Override
-  public List<AggregateResult> calcResult4CPV(
+  public List<AggregateResult> calcResult(
       long curStartTime, long curEndTime, long startTime, long endTime, long interval)
       throws IOException, QueryProcessException {
     // System.out.println("====DEBUG====: calcResult for [" + curStartTime + "," + curEndTime +
@@ -348,7 +348,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           //                  + lastChunkMetadata.getVersion() + " " + lastChunkMetadata
           //                  .getOffsetOfChunkHeader());
 
-          currentChunkList.remove(listIdx[0]);
+          currentChunkList.remove(listIdx[1]);
           List<IPageReader> pageReaderList =
               FileLoaderUtils.loadPageReaderList(lastChunkMetadata, this.timeFilter);
           for (IPageReader pageReader : pageReaderList) { // assume only one page in a chunk

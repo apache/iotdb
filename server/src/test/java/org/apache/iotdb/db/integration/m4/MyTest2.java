@@ -24,9 +24,9 @@ import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -37,7 +37,7 @@ import java.util.Locale;
 
 import static org.junit.Assert.fail;
 
-public class MyCPVTest2 {
+public class MyTest2 {
 
   private static final String TIMESTAMP_STR = "Time";
 
@@ -52,26 +52,43 @@ public class MyCPVTest2 {
   private static final String insertTemplate =
       "INSERT INTO root.vehicle.d0(timestamp,s0)" + " VALUES(%d,%d)";
 
-  private static final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
-  private static int avgSeriesPointNumberThreshold;
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static boolean originalEnableCPV;
+  private static CompactionStrategy originalCompactionStrategy;
+  private static int originalAvgSeriesPointNumberThreshold;
+  private static long originalSeqTsFileSize;
+  private static long originalUnSeqTsFileSize;
 
-  @BeforeClass
-  public static void setUp() throws Exception {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
-    avgSeriesPointNumberThreshold = ioTDBConfig.getAvgSeriesPointNumberThreshold();
+  @Before
+  public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
+
+    originalEnableCPV = config.isEnableCPV();
+    originalCompactionStrategy = config.getCompactionStrategy();
+    originalAvgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
+    originalSeqTsFileSize = config.getSeqTsFileSize();
+    originalUnSeqTsFileSize = config.getUnSeqTsFileSize();
+
+    config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+
+    config.setSeqTsFileSize(1024 * 1024 * 1024); // 1G
+    config.setUnSeqTsFileSize(1024 * 1024 * 1024); // 1G
+    config.setAvgSeriesPointNumberThreshold(4); // this step cannot be omitted
+
+    config.setEnableCPV(
+        true); // this test cannot be false, as the expected answer for bottomTime and topTime can
+    // be different
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
-    ioTDBConfig.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
+    config.setCompactionStrategy(originalCompactionStrategy);
+    config.setAvgSeriesPointNumberThreshold(originalAvgSeriesPointNumberThreshold);
+    config.setEnableCPV(originalEnableCPV);
+    config.setSeqTsFileSize(originalSeqTsFileSize);
+    config.setUnSeqTsFileSize(originalUnSeqTsFileSize);
   }
 
   @Test
@@ -133,10 +150,6 @@ public class MyCPVTest2 {
       for (String sql : creationSqls) {
         statement.execute(sql);
       }
-
-      ioTDBConfig.setSeqTsFileSize(1024 * 1024 * 1024); // 1G
-      ioTDBConfig.setUnSeqTsFileSize(1024 * 1024 * 1024); // 1G
-      ioTDBConfig.setAvgSeriesPointNumberThreshold(4); // this step cannot be omitted
 
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 5));
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 15));
@@ -225,10 +238,6 @@ public class MyCPVTest2 {
         statement.execute(sql);
       }
 
-      ioTDBConfig.setSeqTsFileSize(1024 * 1024 * 1024); // 1G
-      ioTDBConfig.setUnSeqTsFileSize(1024 * 1024 * 1024); // 1G
-      ioTDBConfig.setAvgSeriesPointNumberThreshold(4); // this step cannot be omitted
-
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 5));
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 5));
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, 10, 5));
@@ -316,10 +325,6 @@ public class MyCPVTest2 {
         statement.execute(sql);
       }
 
-      ioTDBConfig.setSeqTsFileSize(1024 * 1024 * 1024); // 1G
-      ioTDBConfig.setUnSeqTsFileSize(1024 * 1024 * 1024); // 1G
-      ioTDBConfig.setAvgSeriesPointNumberThreshold(4); // this step cannot be omitted
-
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 5));
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 15));
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, 10, 5));
@@ -401,10 +406,6 @@ public class MyCPVTest2 {
         statement.execute(sql);
       }
 
-      ioTDBConfig.setSeqTsFileSize(1024 * 1024 * 1024); // 1G
-      ioTDBConfig.setUnSeqTsFileSize(1024 * 1024 * 1024); // 1G
-      ioTDBConfig.setAvgSeriesPointNumberThreshold(4); // this step cannot be omitted
-
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 5));
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 15));
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, 60, 1));
@@ -480,10 +481,6 @@ public class MyCPVTest2 {
       for (String sql : creationSqls) {
         statement.execute(sql);
       }
-
-      ioTDBConfig.setSeqTsFileSize(1024 * 1024 * 1024); // 1G
-      ioTDBConfig.setUnSeqTsFileSize(1024 * 1024 * 1024); // 1G
-      ioTDBConfig.setAvgSeriesPointNumberThreshold(4); // this step cannot be omitted
 
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 5));
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 15));

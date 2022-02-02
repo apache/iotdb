@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.db.integration.m4;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -37,7 +38,7 @@ import java.util.Locale;
 
 import static org.junit.Assert.fail;
 
-public class MyCPVTest1 {
+public class MyTest1 {
 
   private static final String TIMESTAMP_STR = "Time";
 
@@ -52,21 +53,28 @@ public class MyCPVTest1 {
   private static final String insertTemplate =
       "INSERT INTO root.vehicle.d0(timestamp,s0)" + " VALUES(%d,%d)";
 
-  @BeforeClass
-  public static void setUp() throws Exception {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static boolean originalEnableCPV;
+  private static CompactionStrategy originalCompactionStrategy;
+
+  @Before
+  public void setUp() throws Exception {
+    originalCompactionStrategy = config.getCompactionStrategy();
+    config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+
+    originalEnableCPV = config.isEnableCPV();
+    //    config.setEnableCPV(false); // MOC
+    config.setEnableCPV(true); // CPV
+
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
+    config.setCompactionStrategy(originalCompactionStrategy);
+    config.setEnableCPV(originalEnableCPV);
   }
 
   @Test
@@ -86,8 +94,7 @@ public class MyCPVTest1 {
       boolean hasResultSet =
           statement.execute(
               "SELECT min_time(s0), max_time(s0), first_value(s0), last_value(s0), min_value(s0), max_value(s0)"
-                  + " FROM root.vehicle.d0 group by ([0,100),25ms)"); // don't change the
-      // sequence!!!
+                  + " FROM root.vehicle.d0 group by ([0,100),25ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -167,7 +174,7 @@ public class MyCPVTest1 {
     String[] res =
         new String[] {
           "0,1,20,5,20,5[1],30[10]",
-          "25,25,27,8,20,20[27],20[27]",
+          "25,25,27,8,20,8[25],20[27]",
           "50,null,null,null,null,null,null",
           "75,null,null,null,null,null,null"
         };
@@ -261,7 +268,7 @@ public class MyCPVTest1 {
     String[] res =
         new String[] {
           "0,1,20,5,20,5[1],30[10]",
-          "25,25,27,8,20,20[27],20[27]",
+          "25,25,27,8,20,8[25],20[27]",
           "50,null,null,null,null,null,null",
           "75,null,null,null,null,null,null",
           "100,120,120,8,8,8[120],8[120]",

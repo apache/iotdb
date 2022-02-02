@@ -1,4 +1,4 @@
-package org.apache.iotdb;
+package org.apache.iotdb.writeData;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;

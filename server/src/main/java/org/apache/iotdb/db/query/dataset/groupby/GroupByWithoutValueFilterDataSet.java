@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -53,6 +55,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   private static final Logger logger =
       LoggerFactory.getLogger(GroupByWithoutValueFilterDataSet.class);
+
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private Map<PartialPath, GroupByExecutor> pathExecutors = new HashMap<>();
 
@@ -145,7 +149,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         GroupByExecutor executor = pathToExecutorEntry.getValue();
         //        long start = System.nanoTime();
         List<AggregateResult> aggregations =
-            executor.calcResult4CPV(curStartTime, curEndTime, startTime, endTime, interval);
+            executor.calcResult(curStartTime, curEndTime, startTime, endTime, interval);
         //        IOMonitor.incTotalTime(System.nanoTime() - start);
         for (int i = 0; i < aggregations.size(); i++) {
           int resultIndex = resultIndexes.get(pathToExecutorEntry.getKey()).get(i);
@@ -193,7 +197,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       TsFileFilter fileFilter,
       boolean ascending)
       throws StorageEngineException, QueryProcessException {
-    return new LocalGroupByExecutor4CPV(
-        path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
+    if (CONFIG.isEnableCPV()) {
+      System.out.println("[[[[[M4]]]]] use LocalGroupByExecutor4CPV for CPV");
+      return new LocalGroupByExecutor4CPV(
+          path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
+    } else {
+      System.out.println("[[[[[M4]]]]] use LocalGroupByExecutor for MOC");
+      return new LocalGroupByExecutor(
+          path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
+    }
   }
 }

@@ -431,6 +431,8 @@ public class IoTDBConfig {
   /** Is performance tracing enable. */
   private boolean enablePerformanceTracing = false;
 
+  private boolean enableCPV = false;
+
   /** The display of stat performance interval in ms. */
   private long performanceStatDisplayInterval = 60000;
 
@@ -1380,8 +1382,16 @@ public class IoTDBConfig {
     return enablePerformanceTracing;
   }
 
+  public boolean isEnableCPV() {
+    return enableCPV;
+  }
+
   public void setEnablePerformanceTracing(boolean enablePerformanceTracing) {
     this.enablePerformanceTracing = enablePerformanceTracing;
+  }
+
+  public void setEnableCPV(boolean enableCPV) {
+    this.enableCPV = enableCPV;
   }
 
   public long getPerformanceStatDisplayInterval() {

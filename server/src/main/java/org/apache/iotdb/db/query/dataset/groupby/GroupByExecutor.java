@@ -36,7 +36,7 @@ public interface GroupByExecutor {
   List<AggregateResult> calcResult(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException;
 
-  List<AggregateResult> calcResult4CPV(
+  List<AggregateResult> calcResult(
       long curStartTime, long curEndTime, long startTime, long endTime, long interval)
       throws IOException, QueryProcessException;
 

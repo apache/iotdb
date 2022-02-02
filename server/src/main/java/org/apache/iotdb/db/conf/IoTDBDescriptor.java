@@ -535,6 +535,10 @@ public class IoTDBDescriptor {
                       Boolean.toString(conf.isEnablePerformanceTracing()))
                   .trim()));
 
+      conf.setEnableCPV(
+          Boolean.parseBoolean(
+              properties.getProperty("enable_CPV", Boolean.toString(conf.isEnableCPV())).trim()));
+
       conf.setPerformanceStatDisplayInterval(
           Long.parseLong(
               properties

@@ -214,10 +214,12 @@ public class PageReader implements IPageReader {
     int curIdx = (int) Math.floor((curStartTime - startTime) * 1.0 / interval);
     int num = (int) Math.floor((endTime - startTime) * 1.0 / interval);
     for (int i = 0; i < num; i++) {
-      if (splitBatchDataMap.containsKey(i) && i == curIdx) {
+      if (splitBatchDataMap.containsKey(i) && i == curIdx && !splitBatchDataMap.get(i).isEmpty()) {
         currentChunkList.add(
             new ChunkSuit4CPV(splitChunkMetadataMap.get(i), splitBatchDataMap.get(i).flip()));
-      } else if (splitBatchDataMap.containsKey(i) && i != curIdx) {
+      } else if (splitBatchDataMap.containsKey(i)
+          && i != curIdx
+          && !splitBatchDataMap.get(i).isEmpty()) {
         futureChunkList.add(
             new ChunkSuit4CPV(splitChunkMetadataMap.get(i), splitBatchDataMap.get(i).flip()));
       }

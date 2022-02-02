@@ -127,6 +127,7 @@ public class UDTFM4MAC implements UDTF {
     for (int i = 0; i < w; i++) {
       result[i] = "empty";
     }
+    System.out.println("[[[[[M4]]]]] use UDTFM4MAC for MAC");
   }
 
   @Override
