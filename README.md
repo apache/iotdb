@@ -29,7 +29,7 @@ enable_unseq_compaction=false                           # unseq compaction is di
 
 1.3 写数据操作流程
 
-(0) 把写有三种方法的打包好的iotdb服务器上传，路径为/data3/ruilei/rl/iotdb-server-0.12.4。
+(0) 把写有三种方法的打包好的iotdb服务器上传（也就是本unify分支程序打包之后的server文件夹），路径为/data3/ruilei/rl/iotdb-server-0.12.4。
 
 (1) 准备好服务器参数文件：
 - /data3/ruilei/rl/synData1_testspace/iotdb-engine-enableCPVtrue.properties:
