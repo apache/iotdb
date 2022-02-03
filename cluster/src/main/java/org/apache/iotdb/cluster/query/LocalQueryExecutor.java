@@ -19,6 +19,16 @@
 
 package org.apache.iotdb.cluster.query;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.metadata.CMManager;
@@ -71,20 +81,8 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public class LocalQueryExecutor {
 
@@ -106,7 +104,9 @@ public class LocalQueryExecutor {
     return ((CMManager) IoTDB.metaManager);
   }
 
-  /** Return the data of the reader whose id is "readerId", using timestamps in "timeBuffer". */
+  /**
+   * Return the data of the reader whose id is "readerId", using timestamps in "timeBuffer".
+   */
   public ByteBuffer fetchSingleSeriesByTimestamps(long readerId, long[] timestamps, int length)
       throws ReaderNotFoundException, IOException {
     IReaderByTimestamp reader = dataGroupMember.getQueryManager().getReaderByTimestamp(readerId);
@@ -158,7 +158,7 @@ public class LocalQueryExecutor {
    * Fetch a batch from the reader whose id is "readerId".
    *
    * @param readerId reader id
-   * @param paths mult series path
+   * @param paths    mult series path
    */
   public Map<String, ByteBuffer> fetchMultSeries(long readerId, List<String> paths)
       throws ReaderNotFoundException, IOException {
@@ -603,7 +603,7 @@ public class LocalQueryExecutor {
    * @param aggregations aggregation names in SQLConstant
    * @param dataType
    * @param path
-   * @param timeFilter nullable
+   * @param timeFilter   nullable
    * @param context
    * @return
    * @throws IOException
@@ -689,7 +689,7 @@ public class LocalQueryExecutor {
    *
    * @param path
    * @param dataType
-   * @param timeFilter nullable
+   * @param timeFilter       nullable
    * @param aggregationTypes ordinals of AggregationType
    * @param context
    * @return
@@ -808,7 +808,7 @@ public class LocalQueryExecutor {
     if (executor == null) {
       throw new ReaderNotFoundException(executorId);
     }
-    List<AggregateResult> results = executor.calcResult(startTime, endTime);
+    List<AggregateResult> results = executor.calcResult(startTime, endTime, 0, 0, 0);
     List<ByteBuffer> resultBuffers = new ArrayList<>();
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     for (AggregateResult result : results) {
@@ -928,7 +928,7 @@ public class LocalQueryExecutor {
   @SuppressWarnings("java:S1135") // ignore todos
   public ByteBuffer last(LastQueryRequest request)
       throws CheckConsistencyException, QueryProcessException, IOException, StorageEngineException,
-          IllegalPathException {
+      IllegalPathException {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     RemoteQueryContext queryContext =

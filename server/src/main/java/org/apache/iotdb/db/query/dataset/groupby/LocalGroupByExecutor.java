@@ -203,6 +203,11 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       return results;
     }
 
+    // don't rush to unpack firstChunkMetadata
+    if (readAndCalcFromChunk(curStartTime, curEndTime)) {
+      return results;
+    }
+
     // read page data firstly
     if (readAndCalcFromPage(curStartTime, curEndTime)) {
       return results;
@@ -244,7 +249,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         int readCurArrayIndex = preCachedData.getReadCurArrayIndex();
         int readCurListIndex = preCachedData.getReadCurListIndex();
 
-        List<AggregateResult> aggregateResults = calcResult(nextStartTime, nextEndTime);
+        List<AggregateResult> aggregateResults = calcResult(nextStartTime, nextEndTime, 0, 0, 0);
         if (aggregateResults == null || aggregateResults.get(0).getResult() == null) {
           return null;
         }
