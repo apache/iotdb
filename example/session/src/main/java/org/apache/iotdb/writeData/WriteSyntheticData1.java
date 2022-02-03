@@ -5,7 +5,6 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.io.IOException;
 import java.util.Collections;
 
 public class WriteSyntheticData1 {
@@ -27,12 +26,12 @@ public class WriteSyntheticData1 {
   public static final String measurements = "s0";
 
   public static void main(String[] args)
-      throws IOException, IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
 
     Session session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
 
-    for (long timestamp = 1; timestamp <= 10000000; timestamp++) {
+    for (long timestamp = 0; timestamp < 10000000; timestamp++) {
       double value = Math.random();
       session.insertRecord(
           device,

@@ -23,7 +23,7 @@ enable_unseq_compaction=false                           # unseq compaction is di
 
 **1.2 写数据程序：WriteSyntheticData1.java**
 
-时间点等间隔1ms、总时长10000s、值正态分布模拟、double类型的数据，使用默认压缩方法。
+时间点等间隔1ms、总时长10000s（从0到9999s的10000000个点）、值正态分布模拟、double类型的数据，使用默认压缩方法。
 无乱序，无删除。每个chunk默认参数是装10000个点，所以每个chunk就是10s的数据量。
 使用默认压缩方法，每个chunk大约70KB，所以一共是1000个10KB的chunks也就是总共70MB左右的一个顺序tsfile。
 
@@ -146,7 +146,7 @@ a=10
 for((i=0;i<a;i++)) do
     ./start-server.sh &
     sleep 3s
-    java -jar /data3/ruilei/rl/synData1_testspace/varyW/QuerySyntheticData1VaryW-0.12.4.jar $1 $2
+    java -jar /data3/ruilei/rl/synData1_testspace/vary_w/QuerySyntheticData1VaryW-0.12.4.jar $1 $2
     ./stop-server.sh
     echo 3 | sudo tee /proc/sys/vm/drop_caches
     sleep 3s
