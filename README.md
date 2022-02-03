@@ -1,4 +1,4 @@
-# SynData1 Experiment
+# synData1_vary_w Experiment
 
 程序工作空间是/data3/ruilei/rl/synData1_testspace/
 
@@ -108,27 +108,28 @@ enable_unseq_compaction=false                           # unseq compaction is di
 moc方法的change_interval_experiments.sh为：
 ```
 #!/bin/bash
-cp ../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
+cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
 
 ./../query_experiment.sh 1 2 >> result_1.txt
-java ../MOCProcessResult result_1.txt result_1.out
+java ProcessResult result_1.txt result_1.out ../sumResultMOC.csv
 ./../query_experiment.sh 10 2 >> result_10.txt
-java ../MOCProcessResult result_10.txt result_10.out
+java ProcessResult result_10.txt result_10.out ../sumResultMOC.csv
+./../query_experiment.sh 20 2 >> result_20.txt
+java ProcessResult result_20.txt result_20.out ../sumResultMOC.csv
 ./../query_experiment.sh 50 2 >> result_50.txt
-java ../MOCProcessResult result_50.txt result_50.out
+java ProcessResult result_50.txt result_50.out ../sumResultMOC.csv
 ./../query_experiment.sh 100 2 >> result_100.txt
-java ../MOCProcessResult result_100.txt result_100.out
+java ProcessResult result_100.txt result_100.out ../sumResultMOC.csv
 ./../query_experiment.sh 250 2 >> result_250.txt
-java ../MOCProcessResult result_250.txt result_250.out
+java ProcessResult result_250.txt result_250.out ../sumResultMOC.csv
 ./../query_experiment.sh 500 2 >> result_500.txt
-java ../MOCProcessResult result_500.txt result_500.out
+java ProcessResult result_500.txt result_500.out ../sumResultMOC.csv
 ./../query_experiment.sh 1000 2 >> result_1000.txt
-java ../MOCProcessResult result_1000.txt result_1000.out
+java ProcessResult result_1000.txt result_1000.out ../sumResultMOC.csv
 ./../query_experiment.sh 2000 2 >> result_2000.txt
-java ../MOCProcessResult result_2000.txt result_2000.out
+java ProcessResult result_2000.txt result_2000.out ../sumResultMOC.csv
 ./../query_experiment.sh 5000 2 >> result_5000.txt
-java ../MOCProcessResult result_5000.txt result_5000.out
-
+java ProcessResult result_5000.txt result_5000.out ../sumResultMOC.csv
 ```
 
 CPV方法的change_interval_experiments.sh就是把iotdb-engine-enableCPVfalse.properties改成
@@ -145,7 +146,7 @@ a=10
 for((i=0;i<a;i++)) do
     ./start-server.sh &
     sleep 3s
-    java -jar /data3/ruilei/rl/synData1_testspace/QuerySyntheticData1-0.12.4.jar $1 $2
+    java -jar /data3/ruilei/rl/synData1_testspace/varyW/QuerySyntheticData1VaryW-0.12.4.jar $1 $2
     ./stop-server.sh
     echo 3 | sudo tee /proc/sys/vm/drop_caches
     sleep 3s
