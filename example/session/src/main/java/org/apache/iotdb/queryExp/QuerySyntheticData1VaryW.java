@@ -20,7 +20,7 @@ import org.apache.thrift.TException;
  * compaction_strategy=NO_COMPACTION # compaction between levels is disabled
  * enable_unseq_compaction=false # unseq compaction is disabled
  */
-public class QuerySyntheticData1 {
+public class QuerySyntheticData1VaryW {
 
   // * (1) min_time(%s), max_time(%s), first_value(%s), last_value(%s), min_value(%s), max_value(%s)
   //       => Don't change the sequence of the above six aggregates!

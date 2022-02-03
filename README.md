@@ -159,9 +159,9 @@ done
 对每个方法，分别执行相应的change_interval_experiments.sh，执行结束后把结果汇总，然后绘图分析。
 
 ## 3. Plot Result
-![1](example/session/src/main/java/org/apache/iotdb/queryExp/SynData1Figures/synData1-0disorder-0delete-varyW-compare.png)
-![2](example/session/src/main/java/org/apache/iotdb/queryExp/SynData1Figures/synData1-0disorder-0delete-varyW-compare-loadDataOnly.png)
-![3](example/session/src/main/java/org/apache/iotdb/queryExp/SynData1Figures/synData1-0disorder-0delete-varyW-compare-totalOnly.png)
-![5](example/session/src/main/java/org/apache/iotdb/queryExp/SynData1Figures/synData1-0disorder-0delete-varyW-mac.png)
-![6](example/session/src/main/java/org/apache/iotdb/queryExp/SynData1Figures/synData1-0disorder-0delete-varyW-moc.png)
-![4](example/session/src/main/java/org/apache/iotdb/queryExp/SynData1Figures/synData1-0disorder-0delete-varyW-cpv.png)
+![1](example/session/src/main/java/org/apache/iotdb/queryExp/synData1VaryWExpFigures/synData1-0disorder-0delete-varyW-compare.png)
+![2](example/session/src/main/java/org/apache/iotdb/queryExp/synData1VaryWExpFigures/synData1-0disorder-0delete-varyW-compare-loadDataOnly.png)
+![3](example/session/src/main/java/org/apache/iotdb/queryExp/synData1VaryWExpFigures/synData1-0disorder-0delete-varyW-compare-totalOnly.png)
+![5](example/session/src/main/java/org/apache/iotdb/queryExp/synData1VaryWExpFigures/synData1-0disorder-0delete-varyW-mac.png)
+![6](example/session/src/main/java/org/apache/iotdb/queryExp/synData1VaryWExpFigures/synData1-0disorder-0delete-varyW-moc.png)
+![4](example/session/src/main/java/org/apache/iotdb/queryExp/synData1VaryWExpFigures/synData1-0disorder-0delete-varyW-cpv.png)
