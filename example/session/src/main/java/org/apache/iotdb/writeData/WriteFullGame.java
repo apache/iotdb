@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Random;
 
 public class WriteFullGame {
+
   /** Before writing data, make sure check the server parameter configurations. */
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, IOException {
@@ -30,6 +31,10 @@ public class WriteFullGame {
     long deleteFreq = Long.parseLong(args[1]); // 0 means no deletes
     // 实验自变量3：每次删除的时间长度
     long deleteLen = Long.parseLong(args[2]);
+    // 参数4：时间戳idx，从0开始
+    int timeIdx = Integer.parseInt(args[3]);
+    // 参数5：值idx，从0开始
+    int valueIdx = Integer.parseInt(args[4]);
 
     Session session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
@@ -40,7 +45,7 @@ public class WriteFullGame {
     BufferedReader reader = new BufferedReader(new FileReader(f));
     while ((line = reader.readLine()) != null) {
       String[] split = line.split(",");
-      long timestamp = Long.valueOf(split[3]);
+      long timestamp = Long.valueOf(split[timeIdx]);
       if (minTime == -1) {
         minTime = timestamp;
         timestamp = 0;
@@ -58,7 +63,7 @@ public class WriteFullGame {
         session.deleteData(deletePaths, deleteStartTime, deleteEndTime);
       }
 
-      long value = Long.valueOf(split[7]);
+      long value = Long.valueOf(split[valueIdx]);
       session.insertRecord(
           device,
           timestamp,

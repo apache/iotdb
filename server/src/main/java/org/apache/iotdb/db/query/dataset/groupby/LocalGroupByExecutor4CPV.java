@@ -535,11 +535,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             while (mergeReader.hasNextTimeValuePair()) {
               Pair<TimeValuePair, MergeReaderPriority> res = mergeReader.nextElement();
               TimeValuePair ret = res.left;
-              //              System.out.println(
-              //                  "====DEBUG====: merge for bottomPoint. (t,v)="
-              //                      + ret.getTimestamp()
-              //                      + ","
-              //                      + ret.getValue().getValue());
+              //                            System.out.println(
+              //                                "====DEBUG====: merge for bottomPoint. (t,v)="
+              //                                    + ret.getTimestamp()
+              //                                    + ","
+              //                                    + ret.getValue().getValue());
               updateBatchDataMap
                   .get(res.right)
                   .putAnObject(ret.getTimestamp(), ret.getValue().getValue());
