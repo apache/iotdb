@@ -50,6 +50,9 @@ public class DiskSchemaEntry {
   // whether this device is aligned
   public boolean isAligned;
 
+  // whether this device is autoaligned
+  public boolean isAutoAligned;
+
   // this entry's serialized size
   public transient long entrySize;
 
@@ -70,6 +73,25 @@ public class DiskSchemaEntry {
     this.encoding = encoding;
     this.compressor = compressor;
     this.isAligned = isAligned;
+  }
+
+  public DiskSchemaEntry(
+      String deviceID,
+      String seriesKey,
+      String measurementName,
+      byte type,
+      byte encoding,
+      byte compressor,
+      boolean isAligned,
+      boolean isAutoAligned) {
+    this.deviceID = deviceID;
+    this.seriesKey = seriesKey;
+    this.measurementName = measurementName;
+    this.type = type;
+    this.encoding = encoding;
+    this.compressor = compressor;
+    this.isAligned = isAligned;
+    this.isAutoAligned = isAutoAligned;
   }
 
   public int serialize(OutputStream outputStream) throws IOException {

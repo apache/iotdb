@@ -37,6 +37,8 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
 
   private volatile boolean isAligned = false;
 
+  private volatile boolean isAutoAligned = false;
+
   private volatile Map<String, ILastCacheContainer> lastCacheMap = null;
 
   /**
@@ -111,8 +113,18 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   }
 
   @Override
+  public boolean isAutoAligned() {
+    return isAutoAligned;
+  }
+
+  @Override
   public void setAligned(boolean isAligned) {
     this.isAligned = isAligned;
+  }
+
+  @Override
+  public void setAutoAligned(boolean isAutoAligned) {
+    this.isAutoAligned = isAutoAligned;
   }
 
   public ILastCacheContainer getLastCacheContainer(String measurementId) {

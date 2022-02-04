@@ -273,6 +273,8 @@ public class PlanExecutor implements IPlanExecutor {
         return createTimeSeries((CreateTimeSeriesPlan) plan);
       case CREATE_ALIGNED_TIMESERIES:
         return createAlignedTimeSeries((CreateAlignedTimeSeriesPlan) plan);
+      case CREATE_AUTOALIGNED_TIMESERIES:
+        return createAutoAlignedTimeSeries((CreateAutoAlignedTimeSeriesPlan) plan);
       case CREATE_MULTI_TIMESERIES:
         return createMultiTimeSeries((CreateMultiTimeSeriesPlan) plan);
       case ALTER_TIMESERIES:
@@ -1820,6 +1822,17 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     try {
       IoTDB.metaManager.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    return true;
+  }
+
+  private boolean createAutoAlignedTimeSeries(
+      CreateAutoAlignedTimeSeriesPlan createAutoAlignedTimeSeriesPlan)
+      throws QueryProcessException {
+    try {
+      IoTDB.metaManager.createAutoAlignedTimeSeries(createAutoAlignedTimeSeriesPlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }

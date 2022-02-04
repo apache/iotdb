@@ -486,6 +486,69 @@ public class MTree implements Serializable {
     }
   }
 
+  /**
+   * Create aligned timeseries with full paths from root to one leaf node. Before creating
+   * timeseries, the * storage group should be set first, throw exception otherwise
+   *
+   * @param devicePath device path
+   * @param measurements measurements list
+   * @param dataTypes data types list
+   * @param encodings encodings list
+   * @param compressors compressor
+   */
+  public void createAutoAlignedTimeseries(
+      PartialPath devicePath,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors)
+      throws MetadataException {
+    MetaFormatUtils.checkSchemaMeasurementNames(measurements);
+    Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(devicePath);
+    IMNode cur = pair.left;
+    Template upperTemplate = pair.right;
+
+    // synchronize check and add, we need addChild and add Alias become atomic operation
+    // only write on mtree will be synchronized
+    synchronized (this) {
+      for (String measurement : measurements) {
+        if (cur.hasChild(measurement)) {
+          throw new PathAlreadyExistException(devicePath.getFullPath() + "." + measurement);
+        }
+      }
+
+      if (upperTemplate != null) {
+        for (String measurement : measurements) {
+          if (upperTemplate.getDirectNode(measurement) != null) {
+            throw new TemplateImcompatibeException(
+                devicePath.concatNode(measurement).getFullPath(), upperTemplate.getName());
+          }
+        }
+      }
+
+      if (cur.isEntity() && !cur.getAsEntityMNode().isAligned()) {
+        throw new AlignedTimeseriesException(
+            "Timeseries under this entity is not aligned, please use createTimeseries or change entity.",
+            devicePath.getFullPath());
+      }
+
+      IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
+      entityMNode.setAligned(true);
+      entityMNode.setAutoAligned(true);
+
+      for (int i = 0; i < measurements.size(); i++) {
+        IMeasurementMNode measurementMNode =
+            MeasurementMNode.getMeasurementMNode(
+                entityMNode,
+                measurements.get(i),
+                new MeasurementSchema(
+                    measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i)),
+                null);
+        entityMNode.addChild(measurements.get(i), measurementMNode);
+      }
+    }
+  }
+
   private Pair<IMNode, Template> checkAndAutoCreateInternalPath(PartialPath devicePath)
       throws MetadataException {
     String[] nodeNames = devicePath.getNodes();

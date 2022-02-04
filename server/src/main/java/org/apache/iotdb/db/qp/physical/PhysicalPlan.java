@@ -30,48 +30,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
-import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
-import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
-import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
-import org.apache.iotdb.db.qp.physical.sys.LogPlan;
-import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.MergePlan;
-import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.qp.utils.EmptyOutputStream;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -328,6 +287,9 @@ public abstract class PhysicalPlan {
         case CREATE_ALIGNED_TIMESERIES:
           plan = new CreateAlignedTimeSeriesPlan();
           break;
+        case CREATE_AUTOALIGNED_TIMESERIES:
+          plan = new CreateAutoAlignedTimeSeriesPlan();
+          break;
         case DELETE_TIMESERIES:
           plan = new DeleteTimeSeriesPlan();
           break;
@@ -557,7 +519,8 @@ public abstract class PhysicalPlan {
     UNSET_TEMPLATE,
     APPEND_TEMPLATE,
     PRUNE_TEMPLATE,
-    DROP_TEMPLATE
+    DROP_TEMPLATE,
+    CREATE_AUTOALIGNED_TIMESERIES
   }
 
   public long getIndex() {

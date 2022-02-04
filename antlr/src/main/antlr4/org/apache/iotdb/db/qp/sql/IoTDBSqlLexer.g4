@@ -85,6 +85,14 @@ ATTRIBUTES
     : A T T R I B U T E S
     ;
 
+AUTOALIGN
+    : A U T O A L I G N
+    ;
+
+AUTOALIGNED
+    : A U T O A L I G N E D
+    ;
+
 AUTOREGISTER
     : A U T O R E G I S T E R
     ;

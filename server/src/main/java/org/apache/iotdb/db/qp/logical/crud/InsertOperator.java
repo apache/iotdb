@@ -39,6 +39,7 @@ public class InsertOperator extends Operator {
   private List<String[]> valueLists;
 
   private boolean isAligned;
+  private boolean isAutoAligned;
 
   public InsertOperator(int tokenIntType) {
     super(tokenIntType);
@@ -85,6 +86,11 @@ public class InsertOperator extends Operator {
     isAligned = aligned;
   }
 
+  public void setAutoAligned(boolean autoAligned) {
+    isAligned = autoAligned;
+    isAutoAligned = autoAligned;
+  }
+
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
@@ -99,6 +105,7 @@ public class InsertOperator extends Operator {
       InsertRowPlan insertRowPlan =
           new InsertRowPlan(device, times[0], measurementList, valueLists.get(0));
       insertRowPlan.setAligned(isAligned);
+      insertRowPlan.setAutoAligned(isAutoAligned);
       return insertRowPlan;
     }
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
@@ -112,6 +119,7 @@ public class InsertOperator extends Operator {
       InsertRowPlan insertRowPlan =
           new InsertRowPlan(device, times[i], measurementList.clone(), valueLists.get(i));
       insertRowPlan.setAligned(isAligned);
+      insertRowPlan.setAutoAligned(isAutoAligned);
       insertRowsPlan.addOneInsertRowPlan(insertRowPlan, i);
     }
     return insertRowsPlan;

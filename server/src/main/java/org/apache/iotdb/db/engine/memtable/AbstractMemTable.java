@@ -136,6 +136,25 @@ public abstract class AbstractMemTable implements IMemTable {
     return memChunkGroup;
   }
 
+  private IWritableMemChunkGroup createAutoAlignedMemChunkGroupIfNotExistAndGet(
+      IDeviceID deviceId, List<IMeasurementSchema> schemaList) {
+    IWritableMemChunkGroup memChunkGroup =
+        memTableMap.computeIfAbsent(
+            deviceId,
+            k -> {
+              seriesNumber += schemaList.size();
+              totalPointsNumThreshold += ((long) avgSeriesPointNumThreshold) * schemaList.size();
+              return new AutoAlignedWritableMemChunkGroup(schemaList);
+            });
+    for (IMeasurementSchema schema : schemaList) {
+      if (!memChunkGroup.contains(schema.getMeasurementId())) {
+        seriesNumber++;
+        totalPointsNumThreshold += avgSeriesPointNumThreshold;
+      }
+    }
+    return memChunkGroup;
+  }
+
   @Override
   public void insert(InsertRowPlan insertRowPlan) {
     // if this insert plan isn't from storage engine (mainly from test), we should set a temp device
@@ -216,6 +235,47 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public void insertAutoAlignedRow(InsertRowPlan insertRowPlan) {
+    // if this insert plan isn't from storage engine, we should set a temp device id for it
+    if (insertRowPlan.getDeviceID() == null) {
+      insertRowPlan.setDeviceID(
+          DeviceIDFactory.getInstance().getDeviceID(insertRowPlan.getDevicePath()));
+    }
+
+    updatePlanIndexes(insertRowPlan.getIndex());
+    String[] measurements = insertRowPlan.getMeasurements();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < insertRowPlan.getMeasurements().length; i++) {
+      if (measurements[i] == null) {
+        continue;
+      }
+      IMeasurementSchema schema = insertRowPlan.getMeasurementMNodes()[i].getSchema();
+      schemaList.add(schema);
+      dataTypes.add(schema.getType());
+    }
+    if (schemaList.isEmpty()) {
+      return;
+    }
+    memSize +=
+        MemUtils.getAlignedRecordsSize(dataTypes, insertRowPlan.getValues(), disableMemControl);
+    writeAutoAlignedRow(
+        insertRowPlan.getDeviceID(),
+        schemaList,
+        insertRowPlan.getTime(),
+        insertRowPlan.getValues());
+    int pointsInserted =
+        insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
+    totalPointsNum += pointsInserted;
+
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .count(pointsInserted, Metric.QUANTITY.toString(), Tag.NAME.toString(), METRIC_POINT_IN);
+    }
+  }
+
+  @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException {
     updatePlanIndexes(insertTabletPlan.getIndex());
@@ -278,6 +338,17 @@ public abstract class AbstractMemTable implements IMemTable {
       Object[] objectValue) {
     IWritableMemChunkGroup memChunkGroup =
         createAlignedMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
+    memChunkGroup.write(insertTime, objectValue, schemaList);
+  }
+
+  @Override
+  public void writeAutoAlignedRow(
+      IDeviceID deviceId,
+      List<IMeasurementSchema> schemaList,
+      long insertTime,
+      Object[] objectValue) {
+    IWritableMemChunkGroup memChunkGroup =
+        createAutoAlignedMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
     memChunkGroup.write(insertTime, objectValue, schemaList);
   }
 

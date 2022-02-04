@@ -35,6 +35,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAutoAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -103,6 +104,34 @@ public class IDTableHashmapImpl implements IDTable {
               plan.getCompressors().get(i),
               deviceEntry.getDeviceID(),
               fullPath,
+              true,
+              IDiskSchemaManager);
+      deviceEntry.putSchemaEntry(plan.getMeasurements().get(i), schemaEntry);
+    }
+  }
+
+  /**
+   * create autoaligned timeseries
+   *
+   * @param plan create aligned timeseries plan
+   * @throws MetadataException if the device is not aligned, throw it
+   */
+  public synchronized void createAutoAlignedTimeseries(CreateAutoAlignedTimeSeriesPlan plan)
+      throws MetadataException {
+    DeviceEntry deviceEntry =
+        getDeviceEntryWithAutoAlignedCheck(plan.getPrefixPath().toString(), true);
+
+    for (int i = 0; i < plan.getMeasurements().size(); i++) {
+      PartialPath fullPath =
+          new PartialPath(plan.getPrefixPath().toString(), plan.getMeasurements().get(i));
+      SchemaEntry schemaEntry =
+          new SchemaEntry(
+              plan.getDataTypes().get(i),
+              plan.getEncodings().get(i),
+              plan.getCompressors().get(i),
+              deviceEntry.getDeviceID(),
+              fullPath,
+              true,
               true,
               IDiskSchemaManager);
       deviceEntry.putSchemaEntry(plan.getMeasurements().get(i), schemaEntry);
@@ -378,6 +407,33 @@ public class IDTableHashmapImpl implements IDTable {
 
     // check aligned
     if (deviceEntry.isAligned() != isAligned) {
+      throw new MetadataException(
+          String.format(
+              "Timeseries under path [%s]'s align value is [%b], which is not consistent with insert plan",
+              deviceName, deviceEntry.isAligned()));
+    }
+
+    // reuse device entry in map
+    return deviceEntry;
+  }
+
+  private DeviceEntry getDeviceEntryWithAutoAlignedCheck(String deviceName, boolean isAutoAligned)
+      throws MetadataException {
+    IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(deviceName);
+    int slot = calculateSlot(deviceID);
+
+    DeviceEntry deviceEntry = idTables[slot].get(deviceID);
+    // new device
+    if (deviceEntry == null) {
+      deviceEntry = new DeviceEntry(deviceID);
+      deviceEntry.setAutoAligned(isAutoAligned);
+      idTables[slot].put(deviceID, deviceEntry);
+
+      return deviceEntry;
+    }
+
+    // check aligned
+    if (deviceEntry.isAligned() != isAutoAligned) {
       throw new MetadataException(
           String.format(
               "Timeseries under path [%s]'s align value is [%b], which is not consistent with insert plan",

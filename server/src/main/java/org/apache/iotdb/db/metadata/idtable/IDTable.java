@@ -33,6 +33,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAutoAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -50,6 +51,14 @@ public interface IDTable {
 
   /** iotdb config */
   IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  /**
+   * create autoaligned timeseries
+   *
+   * @param plan create aligned timeseries plan
+   * @throws MetadataException if the device is not aligned, throw it
+   */
+  void createAutoAlignedTimeseries(CreateAutoAlignedTimeSeriesPlan plan) throws MetadataException;
 
   /**
    * create aligned timeseries

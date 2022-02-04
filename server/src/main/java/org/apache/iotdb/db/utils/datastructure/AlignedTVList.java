@@ -148,6 +148,10 @@ public class AlignedTVList extends TVList {
     return getAlignedValueByValueIndex(valueIndex, null, floatPrecision, encodingList);
   }
 
+  public List<List<BitMap>> getBitMaps() {
+    return this.bitMaps;
+  }
+
   public TsPrimitiveType getAlignedValue(
       List<Integer> timeDuplicatedIndexList,
       Integer floatPrecision,

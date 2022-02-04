@@ -40,6 +40,8 @@ public abstract class InsertPlan extends PhysicalPlan {
   protected PartialPath devicePath;
 
   protected boolean isAligned;
+  protected boolean isAutoAligned;
+
   protected String[] measurements;
   // get from client
   protected TSDataType[] dataTypes;
@@ -115,8 +117,16 @@ public abstract class InsertPlan extends PhysicalPlan {
     return isAligned;
   }
 
+  public boolean isAutoAligned() {
+    return isAutoAligned;
+  }
+
   public void setAligned(boolean aligned) {
     isAligned = aligned;
+  }
+
+  public void setAutoAligned(boolean autoAligned) {
+    isAutoAligned = autoAligned;
   }
 
   public abstract long getMinTime();
