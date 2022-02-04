@@ -19,11 +19,8 @@ public class ExtractFullGameData {
     PrintWriter printWriter = new PrintWriter(fileWriter);
     while ((line = reader.readLine()) != null) {
       String[] split = line.split(",");
-      long sensorNum = Long.valueOf(split[0]);
-      long timestamp = Long.valueOf(split[1]);
-      long value = Long.valueOf(split[5]);
-      printWriter.print(sensorNum);
-      printWriter.print(",");
+      long timestamp = Long.valueOf(split[3]);
+      long value = Long.valueOf(split[4]);
       printWriter.print(timestamp);
       printWriter.print(",");
       printWriter.print(value);
