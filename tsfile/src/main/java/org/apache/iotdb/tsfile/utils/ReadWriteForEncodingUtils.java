@@ -47,6 +47,15 @@ public class ReadWriteForEncodingUtils {
     return max;
   }
 
+  public static int getIntMaxBitWidth(int[] list, int size) {
+    int max = 1;
+    for (int i = 0; i < size; i++) {
+      int bitWidth = 32 - Integer.numberOfLeadingZeros(list[i]);
+      max = Math.max(bitWidth, max);
+    }
+    return max;
+  }
+
   /**
    * check all number in a long list and find max bit width.
    *
@@ -57,6 +66,15 @@ public class ReadWriteForEncodingUtils {
     int max = 1;
     for (long num : list) {
       int bitWidth = 64 - Long.numberOfLeadingZeros(num);
+      max = Math.max(bitWidth, max);
+    }
+    return max;
+  }
+
+  public static int getLongMaxBitWidth(long[] list, int size) {
+    int max = 1;
+    for (int i = 0; i < size; i++) {
+      int bitWidth = 64 - Long.numberOfLeadingZeros(list[i]);
       max = Math.max(bitWidth, max);
     }
     return max;

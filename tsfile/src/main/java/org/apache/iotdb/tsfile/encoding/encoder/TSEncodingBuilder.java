@@ -70,6 +70,12 @@ public abstract class TSEncodingBuilder {
         return new GorillaV2();
       case DICTIONARY:
         return new Dictionary();
+      case RAKE:
+        return new Rake();
+      case SPRINTZ:
+        return new Sprintz();
+      case RLBE:
+        return new RLBE();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -307,6 +313,76 @@ public abstract class TSEncodingBuilder {
         return new DictionaryEncoder();
       }
       throw new UnSupportedDataTypeException("DICTIONARY doesn't support data type: " + type);
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class Rake extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case FLOAT:
+          return new FloatRAKEEncoder();
+        case DOUBLE:
+          return new DoubleRAKEEncoder();
+        case INT32:
+          return new IntRAKEEncoder();
+        case INT64:
+          return new LongRAKEEncoder();
+        default:
+          throw new UnSupportedDataTypeException("Rake doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class Sprintz extends TSEncodingBuilder {
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+          return new IntSprintzEncoder();
+        case INT64:
+          return new LongSprintzEncoder();
+        case FLOAT:
+          return new FloatSprintzEncoder();
+        case DOUBLE:
+          return new DoubleSprintzEncoder();
+        default:
+          throw new UnSupportedDataTypeException("Sprintz doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class RLBE extends TSEncodingBuilder {
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+          return new IntRLBE();
+        case INT64:
+          return new LongRLBE();
+        case FLOAT:
+          return new FloatRLBE();
+        case DOUBLE:
+          return new DoubleRLBE();
+        default:
+          throw new UnSupportedDataTypeException("RLBE doesn't support data type: " + type);
+      }
     }
 
     @Override
