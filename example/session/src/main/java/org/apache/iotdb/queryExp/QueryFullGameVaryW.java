@@ -8,7 +8,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.thrift.TException;
 
-public class QueryFullGameExperiment {
+public class QueryFullGameVaryW {
 
   // * (1) min_time(%s), max_time(%s), first_value(%s), last_value(%s), min_value(%s), max_value(%s)
   //       => Don't change the sequence of the above six aggregates!
@@ -27,7 +27,7 @@ public class QueryFullGameExperiment {
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, TException {
-    // fix parameters for synthetic data1
+    // fixed time series path
     String measurement = "s6";
     String device = "root.game";
     // fixed query total range

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.integration.m4;
 
+import java.util.Random;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
@@ -38,14 +39,14 @@ import java.util.Locale;
 
 import static org.junit.Assert.fail;
 
-public class MyDebugTest1 {
+public class MyDebugTest2 {
 
   private static final String TIMESTAMP_STR = "Time";
 
   private static String[] creationSqls =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle.d0",
-        "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=DOUBLE, ENCODING=RLE",
+          "SET STORAGE GROUP TO root.vehicle.d0",
+          "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=DOUBLE",
       };
 
   private final String d0s0 = "root.vehicle.d0.s0";
@@ -77,7 +78,8 @@ public class MyDebugTest1 {
     config.setUnSeqTsFileSize(1024 * 1024 * 1024); // 1G
     config.setAvgSeriesPointNumberThreshold(10); // this step cannot be omitted
 
-    config.setEnableCPV(false);
+//    config.setEnableCPV(false);
+    config.setEnableCPV(true);
   }
 
   @After
@@ -92,24 +94,23 @@ public class MyDebugTest1 {
 
   @Test
   public void test1() {
-    // 现象：为什么synData1写成[0,10000000)反而更奇怪了？想象中的MOC在m=1k的时候每个interval刚好一个chunk从而不需要load任何chunk的画面没有出现
-    // 解：因为iotdb先判断了page，导致本来可以直接用firstChunkMetadata的chunkstatistics的非要解开。不过因为这种刚好chunk在边界右边的概率比较小，所以暂不处理。
+    // 现像：fullGame实验中，CPV第一个interval结果还是对的，第二个Interval开始结果不对了
     prepareData1();
 
     String[] res =
         new String[] {
-          "0,1,20,5,20,5[1],30[10]",
-          "25,25,45,8,30,8[25],40[30]",
-          "50,52,54,8,18,8[52],18[54]",
-          "75,null,null,null,null,null,null"
+            "0,1,20,5,20,5[1],30[10]",
+            "25,25,45,8,30,8[25],40[30]",
+            "50,52,54,8,18,8[52],18[54]",
+            "75,null,null,null,null,null,null"
         };
     try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "SELECT min_time(s0), max_time(s0), first_value(s0), last_value(s0), min_value(s0), max_value(s0)"
-                  + " FROM root.vehicle.d0 group by ([0,100),10ms)");
+                  + " FROM root.vehicle.d0 group by ([0,100),25ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -143,17 +144,71 @@ public class MyDebugTest1 {
     // data:
     // https://user-images.githubusercontent.com/33376433/151985070-73158010-8ba0-409d-a1c1-df69bad1aaee.png
     try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        DriverManager.getConnection(
+            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       for (String sql : creationSqls) {
         statement.execute(sql);
       }
+      Random random = new Random(100);
 
       for (int i = 0; i < 100; i++) {
-        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, Math.random()));
+        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, random.nextDouble()));
       }
+
+      for (int i = 4; i < 75; i=i+4) {
+        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, random.nextDouble()));
+      }
+
+      for (int i = 8; i < 90; i=i+3) {
+        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, random.nextDouble()));
+      }
+
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 2));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 5));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 3, 1));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 4, 3));
+//
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 8, 2));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 9, 5));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 10, 1));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 11, 3));
+//
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 15, 2));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 16, 5));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 17, 1));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 18, 3));
+//
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 24, 2));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 25, 5));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 26, 1));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 27, 3));
+//
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 30, 2));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 31, 5));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 32, 1));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 33, 3));
+//
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 40, 2));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 41, 5));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 42, 1));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 43, 3));
+//
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 49, 2));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 50, 5));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 51, 1));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 52, 3));
+//
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 4));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 10, 25));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 30, 2));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 33, 3));
+//
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 4, 4));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 11, 25));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 32, 2));
+//      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 40, 3));
 
       statement.execute("FLUSH");
 

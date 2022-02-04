@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.cluster.query.groupby;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
@@ -35,9 +31,15 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RemoteGroupByExecutor implements GroupByExecutor {
 
@@ -70,8 +72,9 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
   }
 
   @Override
-  public List<AggregateResult> calcResult(long curStartTime, long curEndTime, long startTime,
-      long endTime, long interval) throws IOException {
+  public List<AggregateResult> calcResult(
+      long curStartTime, long curEndTime, long startTime, long endTime, long interval)
+      throws IOException {
     List<ByteBuffer> aggrBuffers;
     try {
       if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -121,8 +124,7 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
   }
 
   @Override
-  public List<AggregateResult> calcResult(
-      long curStartTime, long curEndTime)
+  public List<AggregateResult> calcResult(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException {
     throw new IOException("no implemented");
   }

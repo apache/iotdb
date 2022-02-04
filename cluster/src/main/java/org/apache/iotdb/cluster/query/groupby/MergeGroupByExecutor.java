@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.cluster.query.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -34,8 +30,14 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 public class MergeGroupByExecutor implements GroupByExecutor {
 
@@ -83,23 +85,22 @@ public class MergeGroupByExecutor implements GroupByExecutor {
   }
 
   @Override
-  public List<AggregateResult> calcResult(
-      long curStartTime, long curEndTime)
+  public List<AggregateResult> calcResult(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException {
     throw new IOException("no implemented");
   }
 
   @Override
-  public List<AggregateResult> calcResult(long curStartTime, long curEndTime, long startTime,
-      long endTime, long interval)
+  public List<AggregateResult> calcResult(
+      long curStartTime, long curEndTime, long startTime, long endTime, long interval)
       throws QueryProcessException, IOException {
     if (groupByExecutors == null) {
       initExecutors();
     }
     resetAggregateResults();
     for (GroupByExecutor groupByExecutor : groupByExecutors) {
-      List<AggregateResult> subResults = groupByExecutor
-          .calcResult(curStartTime, curEndTime, 0, 0, 0);
+      List<AggregateResult> subResults =
+          groupByExecutor.calcResult(curStartTime, curEndTime, 0, 0, 0);
       for (int i = 0; i < subResults.size(); i++) {
         results.get(i).merge(subResults.get(i));
       }

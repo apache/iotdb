@@ -203,11 +203,6 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       return results;
     }
 
-    // don't rush to unpack firstChunkMetadata
-    if (readAndCalcFromChunk(curStartTime, curEndTime)) {
-      return results;
-    }
-
     // read page data firstly
     if (readAndCalcFromPage(curStartTime, curEndTime)) {
       return results;
