@@ -19,7 +19,16 @@
 
 package org.apache.iotdb.db.integration.m4;
 
-import static org.junit.Assert.fail;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -29,24 +38,16 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Locale;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+
+import static org.junit.Assert.fail;
 
 public class MyDebugTest2 {
 
   private static final String TIMESTAMP_STR = "Time";
 
   private static String[] creationSqls =
-      new String[]{
-          "SET STORAGE GROUP TO root.game",
-          "CREATE TIMESERIES root.game.s6 WITH DATATYPE=INT64",
+      new String[] {
+        "SET STORAGE GROUP TO root.game", "CREATE TIMESERIES root.game.s6 WITH DATATYPE=INT64",
       };
 
   private final String d0s0 = "root.vehicle.d0.s0";
@@ -96,9 +97,9 @@ public class MyDebugTest2 {
   public void test1() {
     // 现像：fullGame实验中，CPV第一个interval结果还是对的，第二个Interval开始结果不对了
 
-    String[] res = new String[]{};
+    String[] res = new String[] {};
     try (Connection connection =
-        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
@@ -135,8 +136,8 @@ public class MyDebugTest2 {
 
   private static void prepareData1() {
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       for (String sql : creationSqls) {

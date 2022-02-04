@@ -36,8 +36,19 @@ public class WriteFullGame {
     // 参数5：值idx，从0开始
     int valueIdx = Integer.parseInt(args[4]);
 
+    TSDataType tsDataType = TSDataType.INT64;
+
     Session session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
+
+    // this is to make all following inserts unseq chunks
+    session.insertRecord(
+        device,
+        System.nanoTime(),
+        Collections.singletonList(measurements),
+        Collections.singletonList(tsDataType), // NOTE UPDATE VALUE DATATYPE!
+        0L); // NOTE UPDATE VALUE DATATYPE!!!
+    session.executeNonQueryStatement("flush");
 
     long minTime = -1;
     File f = new File(filePath);
@@ -45,9 +56,9 @@ public class WriteFullGame {
     BufferedReader reader = new BufferedReader(new FileReader(f));
     while ((line = reader.readLine()) != null) {
       String[] split = line.split(",");
-      long timestamp = Long.valueOf(split[timeIdx]);
+      long timestamp = Long.parseLong(split[timeIdx]);
       if (minTime == -1) {
-        minTime = timestamp;
+        minTime = timestamp; // assume first timestamp is never disordered. is global minimal.
         timestamp = 0;
       } else {
         timestamp = timestamp - minTime;
@@ -63,12 +74,13 @@ public class WriteFullGame {
         session.deleteData(deletePaths, deleteStartTime, deleteEndTime);
       }
 
-      long value = Long.valueOf(split[valueIdx]);
+      long value = Long.parseLong(split[valueIdx]);
+
       session.insertRecord(
           device,
           timestamp,
           Collections.singletonList(measurements),
-          Collections.singletonList(TSDataType.INT64),
+          Collections.singletonList(tsDataType),
           value);
     }
 
