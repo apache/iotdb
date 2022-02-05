@@ -44,7 +44,7 @@ public class WriteFullGame {
     // this is to make all following inserts unseq chunks
     session.insertRecord(
         device,
-        System.nanoTime(),
+        System.nanoTime(), // NOTE UPDATE TIME DATATYPE!
         Collections.singletonList(measurements),
         Collections.singletonList(tsDataType), // NOTE UPDATE VALUE DATATYPE!
         0L); // NOTE UPDATE VALUE DATATYPE!!!
@@ -54,6 +54,7 @@ public class WriteFullGame {
     File f = new File(filePath);
     String line = null;
     BufferedReader reader = new BufferedReader(new FileReader(f));
+    int lastDeleteIdx = -1;
     while ((line = reader.readLine()) != null) {
       String[] split = line.split(",");
       long timestamp = Long.parseLong(split[timeIdx]);
@@ -65,17 +66,24 @@ public class WriteFullGame {
       }
       timestamp = (long) (timestamp / 1000); // turn to ns. original time unit is ps. IoTDB only ns.
 
-      if (deleteFreq != 0 && timestamp != 0 && timestamp % deleteFreq == 0) {
-        // [timestamp-deleteFreq, timestamp-1]内随机取一个删除时间起点
-        long min = timestamp - deleteFreq;
-        long max = timestamp - 1;
-        long deleteStartTime = min + (((long) (new Random().nextDouble() * (max - min))));
-        long deleteEndTime = deleteStartTime + deleteLen - 1;
-        session.deleteData(deletePaths, deleteStartTime, deleteEndTime);
+      if (deleteFreq != 0) {
+        int idx = (int) Math.floor(timestamp * 1.0 / deleteFreq);
+        //        System.out.println(timestamp + "," + deleteFreq + "," + idx);
+        if (idx > 0 && idx != lastDeleteIdx) {
+          lastDeleteIdx = idx;
+          // [timestamp-deleteFreq, timestamp-1]内随机取一个删除时间起点
+          long min = timestamp - deleteFreq;
+          long max = timestamp - 1;
+          long deleteStartTime = min + (((long) (new Random().nextDouble() * (max - min))));
+          long deleteEndTime = deleteStartTime + deleteLen - 1;
+          session.deleteData(deletePaths, deleteStartTime, deleteEndTime);
+
+          //          System.out.println("[[[[delete]]]]]" + deleteStartTime + "," + deleteEndTime);
+
+        }
       }
 
       long value = Long.parseLong(split[valueIdx]);
-
       session.insertRecord(
           device,
           timestamp,
