@@ -123,6 +123,22 @@ public class PageReader implements IPageReader {
       long timestamp = timeDecoder.readLong(timeBuffer);
       // prepare corresponding batchData
       if (timestamp < curStartTime) {
+        switch (dataType) {
+          case INT32:
+            valueDecoder.readInt(valueBuffer);
+            break;
+          case INT64:
+            valueDecoder.readLong(valueBuffer);
+            break;
+          case FLOAT:
+            valueDecoder.readFloat(valueBuffer);
+            break;
+          case DOUBLE:
+            valueDecoder.readDouble(valueBuffer);
+            break;
+          default:
+            throw new UnSupportedDataTypeException(String.valueOf(dataType));
+        }
         continue;
       }
       if (timestamp >= endTime) {

@@ -24,8 +24,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -47,8 +47,8 @@ public class MyDebugTest2 {
   private static final String TIMESTAMP_STR = "Time";
 
   private static String[] creationSqls =
-      new String[]{
-          "SET STORAGE GROUP TO root.game", "CREATE TIMESERIES root.game.s6 WITH DATATYPE=INT64",
+      new String[] {
+        "SET STORAGE GROUP TO root.game", "CREATE TIMESERIES root.game.s6 WITH DATATYPE=INT64",
       };
 
   private final String d0s0 = "root.game.s6";
@@ -80,13 +80,11 @@ public class MyDebugTest2 {
     config.setAvgSeriesPointNumberThreshold(10000); // this step cannot be omitted
     config.setTimestampPrecision("ns");
 
-//    config.setEnableCPV(false);
+    //    config.setEnableCPV(false);
     config.setEnableCPV(true);
 
-    // 发现如果不设置这个，会写出一个chunk里多个pages，不符合CPV实现假设。所以需要将此调大。
-    TSFileDescriptor.getInstance()
-        .getConfig()
-        .setPageSizeInByte(1024 * 1024);
+    // 如果不设置这个，会写出一个chunk里多个pages，不符合CPV实现假设。所以需要将此调大。
+    TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(1024 * 1024);
   }
 
   @After
@@ -104,19 +102,14 @@ public class MyDebugTest2 {
     // 现像：fullGame实验中，CPV第一个interval结果还是对的，第二个Interval开始结果不对了
     prepareData1();
 
-    String[] res = new String[]{};
+    String[] res = new String[] {};
     try (Connection connection =
-        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-//      boolean hasResultSet =
-//          statement.execute(
-//              "select min_time(s6), max_time(s6), first_value(s6), last_value(s6), min_value(s6), "
-//                  + "max_value(s6) from root.game group by ([426460081333,852920162666), 426460081333ns)");
-
       boolean hasResultSet =
           statement.execute(
               "select min_time(s6), max_time(s6), first_value(s6), last_value(s6), min_value(s6), "
-                  + "max_value(s6) from root.game group by ([0,426460081333), 426460081333ns)");
+                  + "max_value(s6) from root.game group by ([8000000000,16000000000), 1000000000ns)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -149,8 +142,8 @@ public class MyDebugTest2 {
 
   private static void prepareData1() {
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       for (String sql : creationSqls) {
