@@ -70,25 +70,25 @@ public class IoTDBPoint {
             && reflectField.getName().equalsIgnoreCase("fields")) {
           fields = (Map<String, Object>) reflectField.get(point);
         }
-        if (reflectField.getType().getName().equalsIgnoreCase("java.util.Map")
+        else if (reflectField.getType().getName().equalsIgnoreCase("java.util.Map")
             && reflectField.getName().equalsIgnoreCase("tags")) {
           tags = (Map<String, String>) reflectField.get(point);
         }
-        if (reflectField.getType().getName().equalsIgnoreCase("java.lang.String")
+        else if (reflectField.getType().getName().equalsIgnoreCase("java.lang.String")
             && reflectField.getName().equalsIgnoreCase("measurement")) {
           measurement = (String) reflectField.get(point);
         }
-        if (reflectField.getType().getName().equalsIgnoreCase("java.lang.Number")
+        else if (reflectField.getType().getName().equalsIgnoreCase("java.lang.Number")
             && reflectField.getName().equalsIgnoreCase("time")) {
           time = (Long) reflectField.get(point);
-        }
-        // set current time
-        if (time == null) {
-          time = System.currentTimeMillis();
         }
       } catch (IllegalAccessException e) {
         throw new IllegalArgumentException(e.getMessage());
       }
+    }
+    // set current time
+    if (time == null) {
+      time = System.currentTimeMillis();
     }
 
     ParameterUtils.checkNonEmptyString(database, "database");
