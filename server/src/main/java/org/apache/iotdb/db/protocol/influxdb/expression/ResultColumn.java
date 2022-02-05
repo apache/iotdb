@@ -18,34 +18,15 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.expression;
 
-public class ResultColumn {
+import org.apache.iotdb.db.query.expression.Expression;
 
-  private final Expression expression;
-  private final String alias;
-
-  public ResultColumn(Expression expression, String alias) {
-    this.expression = expression;
-    this.alias = alias;
-  }
+public class ResultColumn extends org.apache.iotdb.db.query.expression.ResultColumn {
 
   public ResultColumn(Expression expression) {
-    this.expression = expression;
-    alias = null;
+    super(expression);
   }
 
-  public Expression getExpression() {
-    return expression;
-  }
-
-  public boolean hasAlias() {
-    return alias != null;
-  }
-
-  public String getAlias() {
-    return alias;
-  }
-
-  public String getResultColumnName() {
-    return alias != null ? alias : expression.toString();
+  public ResultColumn(Expression expression, String alias) {
+    super(expression, alias);
   }
 }

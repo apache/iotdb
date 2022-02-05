@@ -52,8 +52,8 @@ public class MetaManager {
 
   private final BasicServiceProvider basicServiceProvider;
 
-  private static String SELECT_TAG_INFO_SQL =
-      "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ";
+  private static final String SELECT_TAG_INFO_SQL =
+      "select database_name, measurement_name, tag_name, tag_order from root.TAG_INFO ";
 
   public static MetaManager getInstance() {
     return MetaManagerHolder.INSTANCE;

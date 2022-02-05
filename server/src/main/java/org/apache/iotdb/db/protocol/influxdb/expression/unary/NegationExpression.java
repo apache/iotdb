@@ -18,21 +18,11 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.expression.unary;
 
-import org.apache.iotdb.db.protocol.influxdb.expression.Expression;
+import org.apache.iotdb.db.query.expression.Expression;
 
-public class NegationExpression implements Expression {
-
-  protected Expression expression;
+public class NegationExpression extends org.apache.iotdb.db.query.expression.unary.NegationExpression {
 
   public NegationExpression(Expression expression) {
-    this.expression = expression;
-  }
-
-  public Expression getExpression() {
-    return expression;
-  }
-
-  public void setExpression(Expression expression) {
-    this.expression = expression;
+    super(expression);
   }
 }

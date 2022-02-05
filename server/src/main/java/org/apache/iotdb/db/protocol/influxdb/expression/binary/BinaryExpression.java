@@ -19,16 +19,12 @@
 
 package org.apache.iotdb.db.protocol.influxdb.expression.binary;
 
-import org.apache.iotdb.db.protocol.influxdb.expression.Expression;
+import org.apache.iotdb.db.query.expression.Expression;
 
-public abstract class BinaryExpression implements Expression {
-
-  protected final Expression leftExpression;
-  protected final Expression rightExpression;
+public abstract class BinaryExpression extends org.apache.iotdb.db.query.expression.binary.BinaryExpression {
 
   protected BinaryExpression(Expression leftExpression, Expression rightExpression) {
-    this.leftExpression = leftExpression;
-    this.rightExpression = rightExpression;
+    super(leftExpression, rightExpression);
   }
 
   public Expression getLeftExpression() {
@@ -38,12 +34,4 @@ public abstract class BinaryExpression implements Expression {
   public Expression getRightExpression() {
     return rightExpression;
   }
-
-  @Override
-  public final String toString() {
-    return String.format(
-        "%s %s %s", leftExpression.toString(), operator(), rightExpression.toString());
-  }
-
-  protected abstract String operator();
 }

@@ -19,37 +19,18 @@
 
 package org.apache.iotdb.db.protocol.influxdb.operator;
 
-import org.apache.iotdb.db.qp.constant.FilterConstant;
+import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 
-import java.util.ArrayList;
-import java.util.List;
+public class FilterOperator extends org.apache.iotdb.db.qp.logical.crud.FilterOperator {
 
-public class FilterOperator implements Comparable<FilterOperator> {
-
-  protected FilterConstant.FilterType filterType;
   String keyName;
-  private List<FilterOperator> childOperators = new ArrayList<>();
 
-  public FilterOperator() {}
-
-  public FilterOperator(FilterConstant.FilterType filterType) {
-    this.filterType = filterType;
+  public FilterOperator() {
+    super();
   }
 
-  public FilterConstant.FilterType getFilterType() {
-    return filterType;
-  }
-
-  public void setFilterType(FilterConstant.FilterType filterType) {
-    this.filterType = filterType;
-  }
-
-  public List<FilterOperator> getChildOperators() {
-    return childOperators;
-  }
-
-  public void setChildOperators(List<FilterOperator> childOperators) {
-    this.childOperators = childOperators;
+  public FilterOperator(FilterType filterType) {
+    super(filterType);
   }
 
   public String getKeyName() {
@@ -60,16 +41,6 @@ public class FilterOperator implements Comparable<FilterOperator> {
     this.keyName = keyName;
   }
 
-  public List<FilterOperator> getChildren() {
-    return childOperators;
-  }
-
-  public boolean addChildOperator(FilterOperator op) {
-    childOperators.add(op);
-    return true;
-  }
-
-  @Override
   public int compareTo(FilterOperator o) {
     return 0;
   }

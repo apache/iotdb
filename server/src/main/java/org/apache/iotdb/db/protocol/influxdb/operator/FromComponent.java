@@ -22,7 +22,7 @@ package org.apache.iotdb.db.protocol.influxdb.operator;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FromComponent {
+public class FromComponent extends org.apache.iotdb.db.qp.logical.crud.FromComponent {
 
   private final List<String> nameList = new ArrayList<>();
 

@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** this class maintains information from select clause. */
-public final class SelectComponent {
+public class SelectComponent {
 
   private final ZoneId zoneId;
 

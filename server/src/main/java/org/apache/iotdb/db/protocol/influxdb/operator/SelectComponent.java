@@ -18,19 +18,20 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.operator;
 
+import java.time.ZoneId;
 import org.apache.iotdb.db.protocol.influxdb.constant.SQLConstant;
-import org.apache.iotdb.db.protocol.influxdb.expression.Expression;
 import org.apache.iotdb.db.protocol.influxdb.expression.ResultColumn;
 import org.apache.iotdb.db.protocol.influxdb.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.protocol.influxdb.expression.unary.NodeExpression;
+import org.apache.iotdb.db.query.expression.Expression;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /** this class maintains information from select clause. */
-public final class SelectComponent {
+public final class SelectComponent extends org.apache.iotdb.db.qp.logical.crud.SelectComponent {
 
-  private List<ResultColumn> resultColumns = new ArrayList<>();
+  private List<ResultColumn> influxResultColumns = new ArrayList<>();
 
   private boolean hasAggregationFunction = false;
   private boolean hasSelectorFunction = false;
@@ -38,6 +39,10 @@ public final class SelectComponent {
   private boolean hasMoreFunction = false;
   private boolean hasFunction = false;
   private boolean hasCommonQuery = false;
+
+  public SelectComponent() {
+    super((ZoneId) null);
+  }
 
   public void addResultColumn(ResultColumn resultColumn) {
     Expression expression = resultColumn.getExpression();
@@ -63,15 +68,15 @@ public final class SelectComponent {
     if (expression instanceof NodeExpression) {
       hasCommonQuery = true;
     }
-    resultColumns.add(resultColumn);
+    influxResultColumns.add(resultColumn);
   }
 
-  public List<ResultColumn> getResultColumns() {
-    return resultColumns;
+  public List<ResultColumn> getInfluxResultColumns() {
+    return influxResultColumns;
   }
 
-  public void setResultColumns(List<ResultColumn> resultColumns) {
-    this.resultColumns = resultColumns;
+  public void setInfluxResultColumns(List<ResultColumn> resultColumns) {
+    this.influxResultColumns = resultColumns;
   }
 
   public boolean isHasAggregationFunction() {

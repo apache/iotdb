@@ -18,9 +18,24 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.expression.unary;
 
-import org.apache.iotdb.db.protocol.influxdb.expression.Expression;
+import java.io.IOException;
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.qp.utils.WildcardsRemover;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
+import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
+import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class NodeExpression implements Expression {
+public class NodeExpression extends Expression {
 
   protected String name;
 
@@ -34,5 +49,52 @@ public class NodeExpression implements Expression {
 
   public void setName(String name) {
     this.name = name;
+  }
+
+  @Override
+  public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
+
+  }
+
+  @Override
+  public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions) throws LogicalOptimizeException {
+
+  }
+
+  @Override
+  public void collectPaths(Set<PartialPath> pathSet) {
+
+  }
+
+  @Override
+  public void constructUdfExecutors(Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
+
+  }
+
+  @Override
+  public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
+
+  }
+
+  @Override
+  public IntermediateLayer constructIntermediateLayer(
+          long queryId,
+          UDTFPlan udtfPlan,
+          RawQueryInputLayer rawTimeSeriesInputLayer,
+          Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+          Map<Expression, TSDataType> expressionDataTypeMap,
+          LayerMemoryAssigner memoryAssigner)
+          throws QueryProcessException, IOException {
+    return null;
+  }
+
+  @Override
+  protected boolean isConstantOperandInternal() {
+    return isConstantOperandCache;
+  }
+
+  @Override
+  protected String getExpressionStringInternal() {
+    return "Node name: " + name;
   }
 }

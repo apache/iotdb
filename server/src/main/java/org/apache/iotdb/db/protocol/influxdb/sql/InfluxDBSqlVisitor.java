@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.sql;
 
-import org.apache.iotdb.db.protocol.influxdb.expression.Expression;
 import org.apache.iotdb.db.protocol.influxdb.expression.ResultColumn;
 import org.apache.iotdb.db.protocol.influxdb.expression.binary.*;
 import org.apache.iotdb.db.protocol.influxdb.expression.unary.FunctionExpression;
@@ -28,6 +27,7 @@ import org.apache.iotdb.db.protocol.influxdb.operator.*;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.query.expression.Expression;
 
 public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<Operator> {
 

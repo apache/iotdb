@@ -18,11 +18,17 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.operator;
 
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+
 public class QueryOperator extends Operator {
 
   protected SelectComponent selectComponent;
   protected FromComponent fromComponent;
   protected WhereComponent whereComponent;
+
+  public QueryOperator() {
+    super(SQLConstant.TOK_QUERY);
+  }
 
   public SelectComponent getSelectComponent() {
     return selectComponent;

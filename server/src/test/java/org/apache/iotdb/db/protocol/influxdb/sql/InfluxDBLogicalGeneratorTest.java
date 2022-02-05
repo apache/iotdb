@@ -33,7 +33,7 @@ public class InfluxDBLogicalGeneratorTest {
   public void testParserSql1() {
     QueryOperator operator =
         (QueryOperator) InfluxDBLogicalGenerator.generate("SELECT * FROM h2o_feet");
-    List<ResultColumn> resultColumnList = operator.getSelectComponent().getResultColumns();
+    List<ResultColumn> resultColumnList = operator.getSelectComponent().getInfluxResultColumns();
     assertEquals(resultColumnList.size(), 1);
     NodeExpression nodeExpression = (NodeExpression) resultColumnList.get(0).getExpression();
     assertEquals(nodeExpression.getName(), "*");
@@ -46,12 +46,12 @@ public class InfluxDBLogicalGeneratorTest {
     QueryOperator operator =
         (QueryOperator)
             InfluxDBLogicalGenerator.generate("SELECT a,b,c FROM h2o_feet where a>1 and b<1");
-    List<ResultColumn> resultColumnList = operator.getSelectComponent().getResultColumns();
+    List<ResultColumn> resultColumnList = operator.getSelectComponent().getInfluxResultColumns();
     assertEquals(resultColumnList.size(), 3);
     NodeExpression nodeExpression = (NodeExpression) resultColumnList.get(0).getExpression();
     assertEquals(nodeExpression.getName(), "a");
     WhereComponent whereComponent = operator.getWhereComponent();
-    FilterOperator filterOperator = whereComponent.getFilterOperator();
+    FilterOperator filterOperator = (FilterOperator) whereComponent.getFilterOperator();
     assertEquals(filterOperator.getFilterType().toString(), "KW_AND");
     assertEquals(filterOperator.getChildren().size(), 2);
     BasicFunctionOperator basicFunctionOperator =
