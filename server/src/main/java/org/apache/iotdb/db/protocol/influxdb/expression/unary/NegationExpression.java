@@ -20,7 +20,8 @@ package org.apache.iotdb.db.protocol.influxdb.expression.unary;
 
 import org.apache.iotdb.db.query.expression.Expression;
 
-public class NegationExpression extends org.apache.iotdb.db.query.expression.unary.NegationExpression {
+public class NegationExpression
+    extends org.apache.iotdb.db.query.expression.unary.NegationExpression {
 
   public NegationExpression(Expression expression) {
     super(expression);

@@ -82,16 +82,13 @@ public class IoTDBPoint {
         if (reflectField.getType().getName().equalsIgnoreCase("java.util.Map")
             && reflectField.getName().equalsIgnoreCase("fields")) {
           fields = (Map<String, Object>) reflectField.get(point);
-        }
-        else if (reflectField.getType().getName().equalsIgnoreCase("java.util.Map")
+        } else if (reflectField.getType().getName().equalsIgnoreCase("java.util.Map")
             && reflectField.getName().equalsIgnoreCase("tags")) {
           tags = (Map<String, String>) reflectField.get(point);
-        }
-        else if (reflectField.getType().getName().equalsIgnoreCase("java.lang.String")
+        } else if (reflectField.getType().getName().equalsIgnoreCase("java.lang.String")
             && reflectField.getName().equalsIgnoreCase("measurement")) {
           measurement = (String) reflectField.get(point);
-        }
-        else if (reflectField.getType().getName().equalsIgnoreCase("java.lang.Number")
+        } else if (reflectField.getType().getName().equalsIgnoreCase("java.lang.Number")
             && reflectField.getName().equalsIgnoreCase("time")) {
           time = (Long) reflectField.get(point);
           time = TimeUnit.MILLISECONDS.convert(time, precision);

@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.operator;
 
-import java.time.ZoneId;
 import org.apache.iotdb.db.protocol.influxdb.constant.SQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.expression.ResultColumn;
 import org.apache.iotdb.db.protocol.influxdb.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.protocol.influxdb.expression.unary.NodeExpression;
 import org.apache.iotdb.db.query.expression.Expression;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 

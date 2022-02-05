@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.expression.unary;
 
-import java.io.IOException;
-import java.time.ZoneId;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -34,6 +29,13 @@ import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.io.IOException;
+import java.time.ZoneId;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class NodeExpression extends Expression {
 
@@ -52,45 +54,42 @@ public class NodeExpression extends Expression {
   }
 
   @Override
-  public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
-
-  }
+  public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {}
 
   @Override
-  public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions) throws LogicalOptimizeException {
-
-  }
-
-  @Override
-  public void collectPaths(Set<PartialPath> pathSet) {
-
-  }
+  public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
+      throws LogicalOptimizeException {}
 
   @Override
-  public void constructUdfExecutors(Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
-
-  }
+  public void collectPaths(Set<PartialPath> pathSet) {}
 
   @Override
-  public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
+  public void constructUdfExecutors(
+      Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {}
 
-  }
+  @Override
+  public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {}
 
   @Override
   public IntermediateLayer constructIntermediateLayer(
-          long queryId,
-          UDTFPlan udtfPlan,
-          RawQueryInputLayer rawTimeSeriesInputLayer,
-          Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-          Map<Expression, TSDataType> expressionDataTypeMap,
-          LayerMemoryAssigner memoryAssigner)
-          throws QueryProcessException, IOException {
+      long queryId,
+      UDTFPlan udtfPlan,
+      RawQueryInputLayer rawTimeSeriesInputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      Map<Expression, TSDataType> expressionDataTypeMap,
+      LayerMemoryAssigner memoryAssigner)
+      throws QueryProcessException, IOException {
     return null;
   }
 
   @Override
   protected boolean isConstantOperandInternal() {
     return isConstantOperandCache;
+  }
+
+  @Override
+  public List<Expression> getExpressions() {
+    return Collections.singletonList(this);
   }
 
   @Override

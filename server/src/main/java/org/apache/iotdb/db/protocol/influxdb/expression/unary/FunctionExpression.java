@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.expression.unary;
 
-public class FunctionExpression extends org.apache.iotdb.db.query.expression.unary.FunctionExpression {
+public class FunctionExpression
+    extends org.apache.iotdb.db.query.expression.unary.FunctionExpression {
 
   public FunctionExpression(String functionName) {
     super(functionName);

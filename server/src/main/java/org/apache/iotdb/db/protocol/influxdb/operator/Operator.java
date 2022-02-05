@@ -20,7 +20,7 @@ package org.apache.iotdb.db.protocol.influxdb.operator;
 
 /** This class is a superclass of all operator. */
 public abstract class Operator extends org.apache.iotdb.db.qp.logical.Operator {
-    protected Operator(int tokenIntType) {
-        super(tokenIntType);
-    }
+  protected Operator(int tokenIntType) {
+    super(tokenIntType);
+  }
 }
