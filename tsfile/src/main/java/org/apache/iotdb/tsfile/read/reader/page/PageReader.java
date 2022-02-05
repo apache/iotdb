@@ -116,7 +116,7 @@ public class PageReader implements IPageReader {
       List<ChunkSuit4CPV> currentChunkList,
       List<ChunkSuit4CPV> futureChunkList,
       ChunkMetadata chunkMetadata)
-      throws IOException { // note: [startTime,endTime), [curStartTime,curEndTime]
+      throws IOException { // note: [startTime,endTime), [curStartTime,curEndTime)
     Map<Integer, BatchData> splitBatchDataMap = new HashMap<>();
     Map<Integer, ChunkMetadata> splitChunkMetadataMap = new HashMap<>();
     while (timeDecoder.hasNext(timeBuffer)) {
