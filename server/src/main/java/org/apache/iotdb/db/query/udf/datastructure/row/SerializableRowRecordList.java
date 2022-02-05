@@ -83,7 +83,8 @@ public class SerializableRowRecordList implements SerializableList {
       }
     }
 
-    int size = (int) (memoryLimitInMB * MB / 2 / rowLength);
+    // 1 extra bit for null fields mark in bitMap
+    int size = (int) (memoryLimitInMB * MB / 2 / (rowLength + ReadWriteIOUtils.BIT_LEN));
     if (size <= 0) {
       throw new QueryProcessException("Memory is not enough for current query.");
     }

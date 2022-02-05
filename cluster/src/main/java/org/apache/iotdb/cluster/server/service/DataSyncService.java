@@ -48,7 +48,10 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -290,10 +293,11 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public Set<String> getAllDevices(RaftNode header, List<String> path) throws TException {
+  public Set<String> getAllDevices(RaftNode header, List<String> path, boolean isPrefixMatch)
+      throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CMManager) IoTDB.metaManager).getAllDevices(path);
+      return ((CMManager) IoTDB.metaManager).getAllDevices(path, isPrefixMatch);
     } catch (MetadataException | CheckConsistencyException e) {
       throw new TException(e);
     }
@@ -352,8 +356,12 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public List<ByteBuffer> getAggrResult(GetAggrResultRequest request) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().getAggrResult(request);
-    } catch (StorageEngineException | QueryProcessException | IOException e) {
-      throw new TException(e);
+    } catch (StorageEngineException
+        | QueryProcessException
+        | IOException
+        | StatisticsClassException
+        | UnSupportedDataTypeException e) {
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -408,7 +416,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
         | QueryProcessException
         | IOException
         | StorageEngineException
-        | IllegalPathException e) {
+        | MetadataException e) {
       throw new TException(e);
     }
   }

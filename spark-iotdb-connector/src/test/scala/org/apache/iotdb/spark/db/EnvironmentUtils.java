@@ -39,12 +39,11 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.Assert;
@@ -114,7 +113,6 @@ public class EnvironmentUtils {
     StorageEngine.getInstance().reset();
     IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
 
-    StatMonitor.getInstance().close();
     // clean wal
     MultiFileLogNodeManager.getInstance().stop();
     // clean cache
@@ -157,17 +155,10 @@ public class EnvironmentUtils {
     FileUtils.deleteDirectory(new File(dir));
   }
 
-  /** disable the system monitor</br> this function should be called before all code in the setup */
-  public static void closeStatMonitor() {
-    config.setEnableStatMonitor(false);
-  }
-
   /** disable memory control</br> this function should be called before all code in the setup */
   public static void envSetUp() throws StartupException {
     IoTDB.metaManager.init();
     createAllDir();
-    // disable the system monitor
-    config.setEnableStatMonitor(false);
     IAuthorizer authorizer;
     try {
       authorizer = BasicAuthorizer.getInstance();

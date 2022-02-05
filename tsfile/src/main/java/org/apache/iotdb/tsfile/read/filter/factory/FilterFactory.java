@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.Regexp;
 
 import java.nio.ByteBuffer;
 
@@ -88,6 +89,9 @@ public class FilterFactory {
         break;
       case GROUP_BY_MONTH:
         filter = new GroupByMonthFilter();
+        break;
+      case REGEXP:
+        filter = new Regexp<>();
         break;
       default:
         throw new UnsupportedOperationException("Unknown filter type " + id);

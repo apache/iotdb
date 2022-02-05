@@ -51,7 +51,8 @@ public class ListDataSetTest {
     "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
     "CREATE TIMESERIES root.test.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.test.d1.\"s3+xy\" WITH DATATYPE=TEXT, ENCODING=PLAIN"
+    "CREATE TIMESERIES root.test.d1.\"s3+xy\" WITH DATATYPE=TEXT, ENCODING=PLAIN",
+    "CREATE ALIGNED TIMESERIES root.test.d2(s1 DOUBLE, s2 BOOLEAN)"
   };
 
   public ListDataSetTest() throws QueryProcessException {}
@@ -92,7 +93,7 @@ public class ListDataSetTest {
       throws QueryProcessException, TException, StorageEngineException,
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           SQLException {
-    String[] results = new String[] {"0\troot.test.d0", "0\troot.test.d1"};
+    String[] results = new String[] {"0\troot.test.d0", "0\troot.test.d1", "0\troot.test.d2"};
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan("show child paths root.test");
     QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof ListDataSet);
@@ -110,11 +111,17 @@ public class ListDataSetTest {
       throws QueryProcessException, TException, StorageEngineException,
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           SQLException {
-    String[] results = new String[] {"0\troot.test.d0", "0\troot.test.d1", "0\troot.vehicle.d0"};
+    String[] results =
+        new String[] {
+          "0\troot.test.d0\tfalse",
+          "0\troot.test.d1\tfalse",
+          "0\troot.test.d2\ttrue",
+          "0\troot.vehicle.d0\tfalse"
+        };
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan("show devices");
     QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof ShowDevicesDataSet);
-    Assert.assertEquals("[devices]", dataSet.getPaths().toString());
+    Assert.assertEquals("[devices, isAligned]", dataSet.getPaths().toString());
     int i = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
@@ -130,15 +137,17 @@ public class ListDataSetTest {
           SQLException {
     String[] results =
         new String[] {
-          "0\troot.test.d0\troot.test",
-          "0\troot.test.d1\troot.test",
-          "0\troot.vehicle.d0\troot.vehicle"
+          "0\troot.test.d0\troot.test\tfalse",
+          "0\troot.test.d1\troot.test\tfalse",
+          "0\troot.test.d2\troot.test\ttrue",
+          "0\troot.vehicle.d0\troot.vehicle\tfalse"
         };
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan("show devices with storage group");
     QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof ShowDevicesDataSet);
     Assert.assertEquals("devices", dataSet.getPaths().get(0).toString());
     Assert.assertEquals("storage group", dataSet.getPaths().get(1).toString());
+    Assert.assertEquals("isAligned", dataSet.getPaths().get(2).toString());
     int i = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();

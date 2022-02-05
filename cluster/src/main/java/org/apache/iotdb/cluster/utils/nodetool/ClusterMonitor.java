@@ -19,6 +19,7 @@
 package org.apache.iotdb.cluster.utils.nodetool;
 
 import org.apache.iotdb.cluster.ClusterIoTDB;
+import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -30,7 +31,10 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -38,9 +42,14 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.collections4.map.MultiKeyMap;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +57,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd.BUILDING_CLUSTER_INFO;
 import static org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd.META_LEADER_UNKNOWN_INFO;
@@ -68,10 +78,84 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   public void start() throws StartupException {
     try {
       JMXService.registerMBean(INSTANCE, mbeanName);
+      if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+        startCollectClusterStatus();
+      }
     } catch (Exception e) {
       String errorMessage =
           String.format("Failed to start %s because of %s", this.getID().getName(), e.getMessage());
       throw new StartupException(errorMessage);
+    }
+  }
+
+  private void startCollectClusterStatus() {
+    // monitor all nodes' live status
+    LOGGER.info("start metric node status and leader distribution");
+    IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.Cluster_Monitor.getName())
+        .scheduleAtFixedRate(
+            () -> {
+              MetaGroupMember metaGroupMember = ClusterIoTDB.getInstance().getMetaGroupMember();
+              if (metaGroupMember != null
+                  && metaGroupMember.getLeader().equals(metaGroupMember.getThisNode())) {
+                metricNodeStatus(metaGroupMember);
+                metricLeaderDistribution(metaGroupMember);
+              }
+            },
+            10L,
+            10L,
+            TimeUnit.SECONDS);
+  }
+
+  private void metricLeaderDistribution(MetaGroupMember metaGroupMember) {
+    Map<Node, Integer> leaderCountMap = new HashMap<>();
+    ClusterIoTDB.getInstance()
+        .getDataGroupEngine()
+        .getHeaderGroupMap()
+        .forEach(
+            (header, dataGroupMember) -> {
+              Node leader = dataGroupMember.getLeader();
+              int delta = 1;
+              Integer count = leaderCountMap.getOrDefault(leader, 0);
+              leaderCountMap.put(leader, count + delta);
+            });
+    List<Node> ring = getRing();
+    for (Node node : ring) {
+      Integer count = leaderCountMap.getOrDefault(node, 0);
+      MetricsService.getInstance()
+          .getMetricManager()
+          .gauge(
+              count,
+              Metric.CLUSTER_NODE_LEADER_COUNT.toString(),
+              Tag.NAME.toString(),
+              node.internalIp);
+    }
+  }
+
+  private void metricNodeStatus(MetaGroupMember metaGroupMember) {
+    List<Node> ring = getRing();
+    for (Node node : ring) {
+      boolean isAlive = false;
+      if (node.equals(metaGroupMember.getThisNode())) {
+        isAlive = true;
+      }
+      SyncMetaClient client = (SyncMetaClient) metaGroupMember.getSyncClient(node);
+      if (client != null) {
+        try {
+          client.checkAlive();
+          isAlive = true;
+        } catch (TException e) {
+          client.getInputProtocol().getTransport().close();
+        } finally {
+          ClientUtils.putBackSyncClient(client);
+        }
+      }
+      MetricsService.getInstance()
+          .getMetricManager()
+          .gauge(
+              isAlive ? 1 : 0,
+              Metric.CLUSTER_NODE_STATUS.toString(),
+              Tag.NAME.toString(),
+              node.internalIp);
     }
   }
 

@@ -103,17 +103,25 @@ public abstract class IFill {
   }
 
   public void convertRange(long startTime, long endTime) {
-    if (isBeforeByMonth) {
-      queryStartTime =
-          slideMonth(startTime, (int) (-beforeRange / GroupByEngineDataSet.MS_TO_MONTH));
+    if (beforeRange > 0) {
+      if (isBeforeByMonth) {
+        queryStartTime =
+            slideMonth(startTime, (int) (-beforeRange / GroupByEngineDataSet.MS_TO_MONTH));
+      } else {
+        queryStartTime = startTime - beforeRange;
+      }
     } else {
-      queryStartTime = startTime - beforeRange;
+      queryStartTime = startTime;
     }
 
-    if (isAfterByMonth) {
-      queryEndTime = slideMonth(endTime, (int) (afterRange / GroupByEngineDataSet.MS_TO_MONTH));
+    if (afterRange > 0) {
+      if (isAfterByMonth) {
+        queryEndTime = slideMonth(endTime, (int) (afterRange / GroupByEngineDataSet.MS_TO_MONTH));
+      } else {
+        queryEndTime = endTime + afterRange;
+      }
     } else {
-      queryEndTime = endTime + afterRange;
+      queryEndTime = endTime;
     }
   }
 

@@ -57,6 +57,8 @@ public class TsFileManager {
   private List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
   private List<TsFileResource> unsequenceRecoverTsFileResources = new ArrayList<>();
 
+  private boolean allowCompaction = true;
+
   public TsFileManager(
       String storageGroupName, String virtualStorageGroup, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
@@ -65,6 +67,8 @@ public class TsFileManager {
   }
 
   public List<TsFileResource> getTsFileList(boolean sequence) {
+    // the iteration of ConcurrentSkipListMap is not concurrent secure
+    // so we must add read lock here
     readLock();
     try {
       List<TsFileResource> allResources = new ArrayList<>();
@@ -96,7 +100,7 @@ public class TsFileManager {
   }
 
   public void remove(TsFileResource tsFileResource, boolean sequence) {
-    writeLock("remove");
+    readLock();
     try {
       Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
       for (Map.Entry<Long, TsFileResourceList> entry : selectedMap.entrySet()) {
@@ -107,7 +111,7 @@ public class TsFileManager {
         }
       }
     } finally {
-      writeUnlock();
+      readUnlock();
     }
   }
 
@@ -274,6 +278,14 @@ public class TsFileManager {
     } finally {
       readUnlock();
     }
+  }
+
+  public boolean isAllowCompaction() {
+    return allowCompaction;
+  }
+
+  public void setAllowCompaction(boolean allowCompaction) {
+    this.allowCompaction = allowCompaction;
   }
 
   public String getVirtualStorageGroup() {

@@ -56,6 +56,7 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
       UDTFPlan udtfPlan,
       TimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries,
+      List<List<Integer>> readerToIndexList,
       List<Boolean> cached)
       throws IOException, QueryProcessException {
     super(
@@ -65,6 +66,7 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
         udtfPlan.getDeduplicatedDataTypes(),
         timestampGenerator,
         readersOfSelectedSeries,
+        readerToIndexList,
         cached);
     isInitialized = false;
   }
@@ -133,7 +135,7 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
         && (rowLimit <= 0 || alreadyReturnedRowNumArray[transformedDataColumnIndex] < rowLimit)
         && reader.next()) {
 
-      if (offsetArray[transformedDataColumnIndex] == 0) {
+      if (offsetArray[transformedDataColumnIndex] == 0 && !reader.isCurrentNull()) {
 
         long timestamp = reader.currentTime();
         ReadWriteIOUtils.write(timestamp, timeBAOS);

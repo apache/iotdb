@@ -52,7 +52,7 @@
 
 		- 游程编码，比较适合存储某些整数值连续出现的序列，不适合编码大部分情况下前后值不一样的序列数据。
 
-		- 游程编码也可用于对浮点数进行编码，但在创建时间序列的时候需指定保留小数位数（MAX_POINT_NUMBER，具体指定方式参见[SQL 参考文档](../../UserGuide/Appendix/SQL-Reference.md)）。比较适合存储某些浮点数值连续出现的序列数据，不适合存储对小数点后精度要求较高以及前后波动较大的序列数据。
+		- 游程编码也可用于对浮点数进行编码，但在创建时间序列的时候需指定保留小数位数（MAX_POINT_NUMBER，具体指定方式参见[SQL 参考文档](../../UserGuide/Reference/SQL-Reference.md)）。比较适合存储某些浮点数值连续出现的序列数据，不适合存储对小数点后精度要求较高以及前后波动较大的序列数据。
 
 			> 游程编码（RLE）和二阶差分编码（TS_2DIFF）对 float 和 double 的编码是有精度限制的，默认保留2位小数。推荐使用 GORILLA。
 
@@ -179,7 +179,6 @@ PageHeader 结构：
 | firstValue | 第一个值 | double | float | int | long | Binary | boolean|
 | lastValue | 最后一个值 | double | float | int | long | Binary | boolean|
 | sumValue | 和 | double | double | double | double | - | - |
-| extreme | 极值 | double | float | int | long | - | - |
 
 ##### ChunkGroupFooter 数据块组结尾
 

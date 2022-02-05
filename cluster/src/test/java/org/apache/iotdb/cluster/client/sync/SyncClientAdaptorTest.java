@@ -52,8 +52,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -113,7 +113,7 @@ public class SyncClientAdaptorTest {
     snapshotMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
       snapshotMap.put(i, new SimpleSnapshot(i, i));
-      measurementSchemas.add(new UnaryMeasurementSchema(String.valueOf(i), TSDataType.INT64));
+      measurementSchemas.add(new MeasurementSchema(String.valueOf(i), TSDataType.INT64));
       timeseriesSchemas.add(new TimeseriesSchema(String.valueOf(i), TSDataType.INT64));
     }
     lastResult = ByteBuffer.wrap("last".getBytes());
@@ -263,7 +263,10 @@ public class SyncClientAdaptorTest {
 
           @Override
           public void getAllDevices(
-              RaftNode header, List<String> path, AsyncMethodCallback<Set<String>> resultHandler) {
+              RaftNode header,
+              List<String> path,
+              boolean isPrefixMatch,
+              AsyncMethodCallback<Set<String>> resultHandler) {
             resultHandler.onComplete(new HashSet<>(path));
           }
 
@@ -405,7 +408,7 @@ public class SyncClientAdaptorTest {
         (int) SyncClientAdaptor.getPathCount(dataClient, TestUtils.getRaftNode(0, 0), paths, 0));
     assertEquals(
         new HashSet<>(paths),
-        SyncClientAdaptor.getAllDevices(dataClient, TestUtils.getRaftNode(0, 0), paths));
+        SyncClientAdaptor.getAllDevices(dataClient, TestUtils.getRaftNode(0, 0), paths, false));
     assertEquals(1L, (long) SyncClientAdaptor.getGroupByExecutor(dataClient, new GroupByRequest()));
     assertEquals(fillResult, SyncClientAdaptor.previousFill(dataClient, new PreviousFillRequest()));
     assertEquals(readFileResult, SyncClientAdaptor.readFile(dataClient, "a file", 0, 1000));
@@ -438,6 +441,7 @@ public class SyncClientAdaptorTest {
             dataClient,
             Collections.singletonList(new PartialPath("1")),
             Collections.singletonList(TSDataType.INT64.ordinal()),
+            null,
             new QueryContext(),
             Collections.emptyMap(),
             TestUtils.getRaftNode(0, 0)));

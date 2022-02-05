@@ -35,11 +35,11 @@ public class DropFunctionPlan extends PhysicalPlan {
   private String udfName;
 
   public DropFunctionPlan() {
-    super(false, OperatorType.DROP_FUNCTION);
+    super(OperatorType.DROP_FUNCTION);
   }
 
   public DropFunctionPlan(String udfName) {
-    super(false, OperatorType.DROP_FUNCTION);
+    super(OperatorType.DROP_FUNCTION);
     this.udfName = udfName;
   }
 

@@ -31,8 +31,8 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -170,7 +170,7 @@ public class TsFileWriter implements AutoCloseable {
                 .getMeasurementSchemaMap()
                 .put(
                     measurementList.get(i),
-                    new UnaryMeasurementSchema(
+                    new MeasurementSchema(
                         measurementList.get(i),
                         measurementSchema.getSubMeasurementsTSDataTypeList().get(i),
                         measurementSchema.getSubMeasurementsTSEncodingList().get(i)));
@@ -182,8 +182,7 @@ public class TsFileWriter implements AutoCloseable {
                   new Path(entry.getKey().getDevice()), new MeasurementGroup(false));
           group
               .getMeasurementSchemaMap()
-              .put(
-                  measurementSchema.getMeasurementId(), (UnaryMeasurementSchema) measurementSchema);
+              .put(measurementSchema.getMeasurementId(), (MeasurementSchema) measurementSchema);
           measurementGroupMap.put(new Path(entry.getKey().getDevice()), group);
         }
       }
@@ -204,7 +203,7 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   public void registerSchemaTemplate(
-      String templateName, Map<String, UnaryMeasurementSchema> template, boolean isAligned) {
+      String templateName, Map<String, MeasurementSchema> template, boolean isAligned) {
     schema.registerSchemaTemplate(templateName, new MeasurementGroup(isAligned, template));
   }
 
@@ -236,7 +235,7 @@ public class TsFileWriter implements AutoCloseable {
    * @param measurementSchema
    * @throws WriteProcessException
    */
-  public void registerTimeseries(Path devicePath, UnaryMeasurementSchema measurementSchema)
+  public void registerTimeseries(Path devicePath, MeasurementSchema measurementSchema)
       throws WriteProcessException {
     MeasurementGroup measurementGroup;
     if (schema.containsDevice(devicePath)) {
@@ -267,8 +266,8 @@ public class TsFileWriter implements AutoCloseable {
    * @param devicePath
    * @param measurementSchemas
    */
-  public void registerTimeseries(Path devicePath, List<UnaryMeasurementSchema> measurementSchemas) {
-    for (UnaryMeasurementSchema schema : measurementSchemas) {
+  public void registerTimeseries(Path devicePath, List<MeasurementSchema> measurementSchemas) {
+    for (MeasurementSchema schema : measurementSchemas) {
       try {
         registerTimeseries(devicePath, schema);
       } catch (WriteProcessException e) {
@@ -285,8 +284,7 @@ public class TsFileWriter implements AutoCloseable {
    * @param measurementSchemas
    * @throws WriteProcessException
    */
-  public void registerAlignedTimeseries(
-      Path devicePath, List<UnaryMeasurementSchema> measurementSchemas)
+  public void registerAlignedTimeseries(Path devicePath, List<MeasurementSchema> measurementSchemas)
       throws WriteProcessException {
     if (schema.containsDevice(devicePath)) {
       if (schema.getSeriesSchema(devicePath).isAligned()) {
@@ -316,7 +314,7 @@ public class TsFileWriter implements AutoCloseable {
 
     // initial all SeriesWriters of measurements in this TSRecord
     Path devicePath = new Path(record.deviceId);
-    List<IMeasurementSchema> measurementSchemas;
+    List<MeasurementSchema> measurementSchemas;
     if (schema.containsDevice(devicePath)) {
       measurementSchemas =
           checkIsAllMeasurementsInGroup(
@@ -354,7 +352,7 @@ public class TsFileWriter implements AutoCloseable {
     IChunkGroupWriter groupWriter = tryToInitialGroupWriter(tablet.prefixPath, isAligned);
 
     Path devicePath = new Path(tablet.prefixPath);
-    List<IMeasurementSchema> schemas = tablet.getSchemas();
+    List<MeasurementSchema> schemas = tablet.getSchemas();
     if (schema.containsDevice(devicePath)) {
       checkIsAllMeasurementsInGroup(schema.getSeriesSchema(devicePath), schemas, isAligned);
       if (isAligned) {
@@ -394,7 +392,7 @@ public class TsFileWriter implements AutoCloseable {
    */
   private void checkIsAllMeasurementsInGroup(
       MeasurementGroup measurementGroup,
-      List<IMeasurementSchema> measurementSchemas,
+      List<MeasurementSchema> measurementSchemas,
       boolean isAligned)
       throws NoMeasurementException {
     if (isAligned && !measurementGroup.isAligned()) {
@@ -402,7 +400,7 @@ public class TsFileWriter implements AutoCloseable {
     } else if (!isAligned && measurementGroup.isAligned()) {
       throw new NoMeasurementException("no nonAligned timeseries is registered in the group.");
     }
-    for (IMeasurementSchema measurementSchema : measurementSchemas) {
+    for (MeasurementSchema measurementSchema : measurementSchemas) {
       if (!measurementGroup
           .getMeasurementSchemaMap()
           .containsKey(measurementSchema.getMeasurementId())) {
@@ -427,7 +425,7 @@ public class TsFileWriter implements AutoCloseable {
    * @return
    * @throws NoMeasurementException
    */
-  private List<IMeasurementSchema> checkIsAllMeasurementsInGroup(
+  private List<MeasurementSchema> checkIsAllMeasurementsInGroup(
       List<DataPoint> dataPoints, MeasurementGroup measurementGroup, boolean isAligned)
       throws NoMeasurementException {
     if (isAligned && !measurementGroup.isAligned()) {
@@ -435,7 +433,7 @@ public class TsFileWriter implements AutoCloseable {
     } else if (!isAligned && measurementGroup.isAligned()) {
       throw new NoMeasurementException("no nonAligned timeseries is registered in the group.");
     }
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     for (DataPoint dataPoint : dataPoints) {
       if (!measurementGroup.getMeasurementSchemaMap().containsKey(dataPoint.getMeasurementId())) {
         if (isAligned) {

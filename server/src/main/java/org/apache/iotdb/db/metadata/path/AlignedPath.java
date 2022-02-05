@@ -32,6 +32,8 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.fill.AlignedLastPointReader;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
@@ -60,6 +62,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -122,6 +125,10 @@ public class AlignedPath extends PartialPath {
     schemaList = new ArrayList<>();
   }
 
+  public PartialPath getDevicePath() {
+    return new PartialPath(Arrays.copyOf(nodes, nodes.length));
+  }
+
   @Override
   public String getDevice() {
     return getFullPath();
@@ -168,6 +175,23 @@ public class AlignedPath extends PartialPath {
     schemaList.add(measurementPath.getMeasurementSchema());
   }
 
+  /**
+   * merge another aligned path's sub sensors into this one
+   *
+   * @param alignedPath The caller need to ensure the alignedPath must have same device as this one
+   *     and these two doesn't have same sub sensor
+   */
+  public void mergeAlignedPath(AlignedPath alignedPath) {
+    if (measurementList == null) {
+      measurementList = new ArrayList<>();
+    }
+    measurementList.addAll(alignedPath.measurementList);
+    if (schemaList == null) {
+      schemaList = new ArrayList<>();
+    }
+    schemaList.addAll(alignedPath.schemaList);
+  }
+
   public List<IMeasurementSchema> getSchemaList() {
     return this.schemaList == null ? Collections.emptyList() : this.schemaList;
   }
@@ -199,6 +223,7 @@ public class AlignedPath extends PartialPath {
     result.fullPath = fullPath;
     result.device = device;
     result.measurementList = new ArrayList<>(measurementList);
+    result.schemaList = new ArrayList<>(schemaList);
     return result;
   }
 
@@ -286,9 +311,9 @@ public class AlignedPath extends PartialPath {
       TsFileResource originTsFileResource)
       throws IOException {
     TsFileResource tsFileResource =
-        new TsFileResource(readOnlyMemChunk, chunkMetadataList, originTsFileResource);
+        new TsFileResource(this, readOnlyMemChunk, chunkMetadataList, originTsFileResource);
     tsFileResource.setTimeSeriesMetadata(
-        generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
+        this, generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
     return tsFileResource;
   }
 
@@ -296,7 +321,7 @@ public class AlignedPath extends PartialPath {
    * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
    * have chunkMetadata, but query will use these, so we need to generate it for them.
    */
-  private AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
+  public AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
       throws IOException {
     TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
@@ -368,13 +393,15 @@ public class AlignedPath extends PartialPath {
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound)
       throws QueryProcessException, IOException {
-    Map<String, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
+    Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
+    IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(this);
+
     // check If memtable contains this path
-    if (!memTableMap.containsKey(getDevice())) {
+    if (!memTableMap.containsKey(deviceID)) {
       return null;
     }
     AlignedWritableMemChunk alignedMemChunk =
-        ((AlignedWritableMemChunkGroup) memTableMap.get(getDevice())).getAlignedMemChunk();
+        ((AlignedWritableMemChunkGroup) memTableMap.get(deviceID)).getAlignedMemChunk();
     boolean containsMeasurement = false;
     for (String measurement : measurementList) {
       if (alignedMemChunk.containsMeasurement(measurement)) {
@@ -387,7 +414,7 @@ public class AlignedPath extends PartialPath {
     }
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList alignedTvListCopy = alignedMemChunk.getSortedTvListForQuery(schemaList);
-    int curSize = alignedTvListCopy.size();
+    int curSize = alignedTvListCopy.rowCount();
     List<List<TimeRange>> deletionList = null;
     if (modsToMemtable != null) {
       deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);

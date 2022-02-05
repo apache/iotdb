@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.query.udf.example.ExampleUDFConstant;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -37,9 +38,6 @@ import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class})
 public class IoTDBUDTFHybridQueryIT {
-
-  public static final String ACCESS_STRATEGY_KEY = "access";
-  public static final String ACCESS_STRATEGY_ROW_BY_ROW = "row-by-row";
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -93,7 +91,7 @@ public class IoTDBUDTFHybridQueryIT {
     String sql =
         String.format(
             "select count(*), counter(s1, '%s'='%s') from root.vehicle.d1",
-            ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
+            ExampleUDFConstant.ACCESS_STRATEGY_KEY, ExampleUDFConstant.ACCESS_STRATEGY_ROW_BY_ROW);
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -112,7 +110,7 @@ public class IoTDBUDTFHybridQueryIT {
     String sql =
         String.format(
             "select temperature, counter(temperature, '%s'='%s') from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [linear, 1m, 1m])",
-            ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
+            ExampleUDFConstant.ACCESS_STRATEGY_KEY, ExampleUDFConstant.ACCESS_STRATEGY_ROW_BY_ROW);
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -129,7 +127,7 @@ public class IoTDBUDTFHybridQueryIT {
     String sql =
         String.format(
             "select last counter(temperature, '%s'='%s') from root.sgcc.wf03.wt01",
-            ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
+            ExampleUDFConstant.ACCESS_STRATEGY_KEY, ExampleUDFConstant.ACCESS_STRATEGY_ROW_BY_ROW);
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -146,7 +144,7 @@ public class IoTDBUDTFHybridQueryIT {
     String sql =
         String.format(
             "select adder(temperature), counter(temperature, '%s'='%s') from root.sgcc.wf03.wt01 align by device",
-            ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
+            ExampleUDFConstant.ACCESS_STRATEGY_KEY, ExampleUDFConstant.ACCESS_STRATEGY_ROW_BY_ROW);
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

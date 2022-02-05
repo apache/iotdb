@@ -46,6 +46,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     if (tempSGDir.exists()) {
       FileUtils.deleteDirectory(tempSGDir);
     }
+    CompactionTaskManager.getInstance().restart();
     Assert.assertTrue(tempSGDir.mkdirs());
     super.setUp();
   }
@@ -58,25 +59,11 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     SizeTieredCompactionTask task1 =
         new SizeTieredCompactionTask(
-            "root.compactionTest",
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
+            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
     SizeTieredCompactionTask task2 =
         new SizeTieredCompactionTask(
-            "root.compactionTest",
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
-    tsFileManager.writeLock("test");
+            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
+    seqResources.get(0).readLock();
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     try {
       Assert.assertTrue(manager.addTaskToWaitingQueue(task1));
@@ -86,7 +73,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
       Assert.assertEquals(manager.getTotalTaskCount(), 1);
       manager.submitTaskFromTaskQueue();
     } finally {
-      tsFileManager.writeUnlock();
+      seqResources.get(0).readUnlock();
     }
     Thread.sleep(5000);
     Assert.assertEquals(0, manager.getTotalTaskCount());
@@ -111,25 +98,11 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     SizeTieredCompactionTask task1 =
         new SizeTieredCompactionTask(
-            "root.compactionTest",
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
+            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
     SizeTieredCompactionTask task2 =
         new SizeTieredCompactionTask(
-            "root.compactionTest",
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
-    tsFileManager.writeLock("test");
+            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
+    seqResources.get(0).readLock();
     try {
       CompactionTaskManager manager = CompactionTaskManager.getInstance();
       manager.addTaskToWaitingQueue(task1);
@@ -139,7 +112,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
       Assert.assertEquals(manager.getExecutingTaskCount(), 1);
       Assert.assertFalse(manager.addTaskToWaitingQueue(task2));
     } finally {
-      tsFileManager.writeUnlock();
+      seqResources.get(0).readUnlock();
     }
     long waitingTime = 0;
     while (CompactionTaskManager.getInstance().getRunningCompactionTaskList().size() > 0) {
@@ -162,35 +135,22 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     SizeTieredCompactionTask task1 =
         new SizeTieredCompactionTask(
-            "root.compactionTest",
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
+            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
     SizeTieredCompactionTask task2 =
         new SizeTieredCompactionTask(
-            "root.compactionTest",
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
+            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     manager.addTaskToWaitingQueue(task1);
     manager.submitTaskFromTaskQueue();
     while (manager.getTotalTaskCount() > 0) {
       Thread.sleep(10);
     }
-    tsFileManager.writeLock("test");
+    seqResources.get(0).readLock();
     // an invalid task can be submitted to waiting queue, but should not be submitted to thread pool
     Assert.assertTrue(manager.addTaskToWaitingQueue(task2));
     manager.submitTaskFromTaskQueue();
     Assert.assertEquals(manager.getExecutingTaskCount(), 0);
+    seqResources.get(0).readUnlock();
     long waitingTime = 0;
     while (manager.getRunningCompactionTaskList().size() > 0) {
       Thread.sleep(100);
@@ -212,16 +172,10 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     SizeTieredCompactionTask task1 =
         new SizeTieredCompactionTask(
-            "root.compactionTest",
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
+            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
-    tsFileManager.writeLock("test");
+    manager.restart();
+    seqResources.get(0).readLock();
     try {
       manager.addTaskToWaitingQueue(task1);
       manager.submitTaskFromTaskQueue();
@@ -231,7 +185,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
       Assert.assertEquals(1, runningList.size());
       Assert.assertTrue(runningList.contains(task1));
     } finally {
-      tsFileManager.writeUnlock();
+      seqResources.get(0).readUnlock();
     }
     // after execution, task should remove itself from running list
     Thread.sleep(5000);

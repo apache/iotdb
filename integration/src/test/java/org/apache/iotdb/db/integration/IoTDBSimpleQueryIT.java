@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -55,18 +54,14 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneTest.class})
 public class IoTDBSimpleQueryIT {
 
-  boolean autoCreateSchemaEnabled;
-
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeTest();
-    autoCreateSchemaEnabled = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterTest();
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(autoCreateSchemaEnabled);
   }
 
   @Test
@@ -592,14 +587,14 @@ public class IoTDBSimpleQueryIT {
 
         resultSet = statement.executeQuery("select * from root.** align by device");
         // has time and device columns
-        Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
+        Assert.assertEquals(3, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
           fail();
         }
 
         resultSet = statement.executeQuery("select count(*) from root align by device");
         // has device column
-        Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
+        Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
           fail();
         }
@@ -609,7 +604,7 @@ public class IoTDBSimpleQueryIT {
                 "select count(*) from root where time >= 1 and time <= 100 "
                     + "group by ([0, 100), 20ms, 20ms) align by device");
         // has time and device columns
-        Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
+        Assert.assertEquals(3, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
           fail();
         }
@@ -827,7 +822,7 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      List<String> exps = Arrays.asList("root.sg1.d1", "root.sg1.d2");
+      List<String> exps = Arrays.asList("root.sg1.d1,false", "root.sg1.d2,false");
 
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
       statement.execute("INSERT INTO root.sg1.d1(timestamp, s2) VALUES (5, 5)");
@@ -837,7 +832,8 @@ public class IoTDBSimpleQueryIT {
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show devices limit 2 offset 1")) {
         while (resultSet.next()) {
-          Assert.assertEquals(exps.get(count), resultSet.getString(1));
+          Assert.assertEquals(
+              exps.get(count), resultSet.getString(1) + "," + resultSet.getString(2));
           ++count;
         }
       }
@@ -851,7 +847,7 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      List<String> exps = Arrays.asList("root.sg1.d0", "root.sg1.d1");
+      List<String> exps = Arrays.asList("root.sg1.d0,false", "root.sg1.d1,false");
 
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
       statement.execute("INSERT INTO root.sg1.d1(timestamp, s2) VALUES (5, 5)");
@@ -861,7 +857,8 @@ public class IoTDBSimpleQueryIT {
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show devices limit 2")) {
         while (resultSet.next()) {
-          Assert.assertEquals(exps.get(count), resultSet.getString(1));
+          Assert.assertEquals(
+              exps.get(count), resultSet.getString(1) + "," + resultSet.getString(2));
           ++count;
         }
       }
@@ -930,33 +927,6 @@ public class IoTDBSimpleQueryIT {
         }
       }
     }
-  }
-
-  @Test
-  @Category({ClusterTest.class})
-  public void testPartialInsertionAllFailed() throws SQLException {
-
-    boolean autoCreateSchemaEnabled =
-        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
-    boolean enablePartialInsert = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
-
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
-      IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(true);
-
-      statement.execute("SET STORAGE GROUP TO root.sg1");
-
-      try {
-        statement.execute("INSERT INTO root.sg1(timestamp, s0) VALUES (1, 1)");
-        fail();
-      } catch (IoTDBSQLException e) {
-        assertTrue(e.getMessage().contains("s0"));
-      }
-    }
-
-    IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(enablePartialInsert);
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(autoCreateSchemaEnabled);
   }
 
   @Test

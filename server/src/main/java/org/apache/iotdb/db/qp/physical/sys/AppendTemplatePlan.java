@@ -43,7 +43,7 @@ public class AppendTemplatePlan extends PhysicalPlan {
   CompressionType[] compressors;
 
   public AppendTemplatePlan() {
-    super(false, OperatorType.APPEND_TEMPLATE);
+    super(OperatorType.APPEND_TEMPLATE);
   }
 
   public AppendTemplatePlan(
@@ -53,7 +53,7 @@ public class AppendTemplatePlan extends PhysicalPlan {
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
       List<CompressionType> compressors) {
-    super(false, OperatorType.APPEND_TEMPLATE);
+    super(OperatorType.APPEND_TEMPLATE);
     this.name = name;
     this.isAligned = isAligned;
     this.measurements = measurements.toArray(new String[0]);
@@ -69,7 +69,7 @@ public class AppendTemplatePlan extends PhysicalPlan {
       TSDataType[] dataTypes,
       TSEncoding[] encodings,
       CompressionType[] compressors) {
-    super(false, OperatorType.APPEND_TEMPLATE);
+    super(OperatorType.APPEND_TEMPLATE);
     this.name = name;
     this.isAligned = isAligned;
     this.measurements = measurements;

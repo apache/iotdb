@@ -57,11 +57,11 @@ public class FlushPlan extends PhysicalPlan {
 
   /** only for deserialize */
   public FlushPlan() {
-    super(false, OperatorType.FLUSH);
+    super(OperatorType.FLUSH);
   }
 
   public FlushPlan(Boolean isSeq, List<PartialPath> storageGroups) {
-    super(false, OperatorType.FLUSH);
+    super(OperatorType.FLUSH);
     if (storageGroups == null) {
       this.storageGroupPartitionIds = null;
     } else {
@@ -78,7 +78,7 @@ public class FlushPlan extends PhysicalPlan {
       Boolean isSeq,
       boolean isSync,
       Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds) {
-    super(false, OperatorType.FLUSH);
+    super(OperatorType.FLUSH);
     this.storageGroupPartitionIds = storageGroupPartitionIds;
     this.isSeq = isSeq;
     this.isSync = isSync;

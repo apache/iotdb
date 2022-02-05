@@ -19,9 +19,20 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+
+import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,29 +41,52 @@ public class CompactionClearUtils {
 
   /** Clear all generated and merged files in the test directory */
   public static void clearAllCompactionFiles() throws IOException {
-    File[] files = FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".tsfile");
-    for (File file : files) {
-      file.delete();
-    }
-    File[] resourceFiles =
-        FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".resource");
-    for (File resourceFile : resourceFiles) {
-      resourceFile.delete();
-    }
-    File[] mergeFiles = FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".tsfile");
-    for (File mergeFile : mergeFiles) {
-      mergeFile.delete();
-    }
-    File[] compactionLogFiles =
-        FSFactoryProducer.getFSFactory()
-            .listFilesBySuffix("target", SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
-    for (File compactionLogFile : compactionLogFiles) {
-      compactionLogFile.delete();
-    }
-    File[] modsFiles = FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".mods");
-    for (File modsFile : modsFiles) {
-      modsFile.delete();
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+    deleteAllFilesInOneDirBySuffix("target", TsFileConstant.TSFILE_SUFFIX);
+    deleteAllFilesInOneDirBySuffix("target", TsFileResource.RESOURCE_SUFFIX);
+    deleteAllFilesInOneDirBySuffix("target", ModificationFile.FILE_SUFFIX);
+    deleteAllFilesInOneDirBySuffix("target", IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX);
+    deleteAllFilesInOneDirBySuffix("target", IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX);
+    deleteAllFilesInOneDirBySuffix("target", SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
+    deleteAllFilesInOneDirBySuffix("target", RewriteCrossSpaceCompactionLogger.COMPACTION_LOG_NAME);
+    // clean cache
+    if (IoTDBDescriptor.getInstance().getConfig().isMetaDataCacheEnable()) {
+      ChunkCache.getInstance().clear();
+      TimeSeriesMetadataCache.getInstance().clear();
+      BloomFilterCache.getInstance().clear();
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+  }
+
+  private static void deleteAllFilesInOneDirBySuffix(String dirPath, String suffix)
+      throws IOException {
+    File dir = new File(dirPath);
+    if (!dir.isDirectory()) {
+      return;
+    }
+    if (!dir.exists()) {
+      return;
+    }
+    for (File f : FSFactoryProducer.getFSFactory().listFilesBySuffix(dirPath, suffix)) {
+      FileUtils.delete(f);
+    }
+    File[] tmpFiles = dir.listFiles();
+    if (tmpFiles != null) {
+      for (File f : tmpFiles) {
+        if (f.isDirectory()) {
+          deleteAllFilesInOneDirBySuffix(f.getAbsolutePath(), suffix);
+        }
+      }
+    }
+  }
+
+  public static void deleteEmptyDir(File dir) {
+    if (!dir.isDirectory()) {
+      return;
+    }
+    for (File f : dir.listFiles()) {
+      deleteEmptyDir(f);
+    }
+    dir.delete();
   }
 }

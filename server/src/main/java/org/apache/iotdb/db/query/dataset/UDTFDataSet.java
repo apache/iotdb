@@ -62,6 +62,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
       List<TSDataType> deduplicatedDataTypes,
       TimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries,
+      List<List<Integer>> readerToIndexList,
       List<Boolean> cached)
       throws QueryProcessException, IOException {
     super(new ArrayList<>(deduplicatedPaths), deduplicatedDataTypes);
@@ -75,9 +76,11 @@ public abstract class UDTFDataSet extends QueryDataSet {
             deduplicatedDataTypes,
             timestampGenerator,
             readersOfSelectedSeries,
+            readerToIndexList,
             cached);
 
     initTransformers();
+    initDataSetFields();
   }
 
   /** execute without value filters */
@@ -93,13 +96,19 @@ public abstract class UDTFDataSet extends QueryDataSet {
     this.udtfPlan = udtfPlan;
     rawQueryInputLayer =
         new RawQueryInputLayer(
-            queryId,
-            UDF_READER_MEMORY_BUDGET_IN_MB,
-            deduplicatedPaths,
-            deduplicatedDataTypes,
-            readersOfSelectedSeries);
+            queryId, UDF_READER_MEMORY_BUDGET_IN_MB, udtfPlan, readersOfSelectedSeries);
 
     initTransformers();
+    initDataSetFields();
+  }
+
+  protected UDTFDataSet(QueryContext queryContext, UDTFPlan udtfPlan, IUDFInputDataSet dataSet)
+      throws QueryProcessException, IOException {
+    queryId = queryContext.getQueryId();
+    this.udtfPlan = udtfPlan;
+    rawQueryInputLayer = new RawQueryInputLayer(queryId, UDF_READER_MEMORY_BUDGET_IN_MB, dataSet);
+    initTransformers();
+    initDataSetFields();
   }
 
   protected void initTransformers() throws QueryProcessException, IOException {
@@ -121,6 +130,10 @@ public abstract class UDTFDataSet extends QueryDataSet {
     } finally {
       UDFRegistrationService.getInstance().releaseRegistrationLock();
     }
+  }
+
+  private void initDataSetFields() {
+    columnNum = udtfPlan.getPathToIndex().size();
   }
 
   public void finalizeUDFs(long queryId) {

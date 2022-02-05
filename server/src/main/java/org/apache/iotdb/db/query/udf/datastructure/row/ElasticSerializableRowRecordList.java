@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.query.udf.datastructure.row;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.udf.core.layer.InputRowUtils;
 import org.apache.iotdb.db.query.udf.datastructure.Cache;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -43,6 +45,9 @@ public class ElasticSerializableRowRecordList {
 
   protected LRUCache cache;
   protected List<SerializableRowRecordList> rowRecordLists;
+  /** Mark bitMaps of correct index when one row has at least one null field */
+  protected List<BitMap> bitMaps;
+
   protected int size;
   protected int evictionUpperBound;
 
@@ -78,6 +83,7 @@ public class ElasticSerializableRowRecordList {
 
     cache = new ElasticSerializableRowRecordList.LRUCache(numCacheBlock);
     rowRecordLists = new ArrayList<>();
+    bitMaps = new ArrayList<>();
     size = 0;
     evictionUpperBound = 0;
 
@@ -115,6 +121,7 @@ public class ElasticSerializableRowRecordList {
 
     cache = new ElasticSerializableRowRecordList.LRUCache(numCacheBlock);
     rowRecordLists = new ArrayList<>();
+    bitMaps = new ArrayList<>();
     size = 0;
     evictionUpperBound = 0;
 
@@ -141,9 +148,28 @@ public class ElasticSerializableRowRecordList {
         .getRowRecord(index % internalRowRecordListCapacity);
   }
 
+  /** true if any field except the timestamp in the current row is null */
+  public boolean fieldsHasAnyNull(int index) {
+    return bitMaps
+        .get(index / internalRowRecordListCapacity)
+        .isMarked(index % internalRowRecordListCapacity);
+  }
+
   public void put(Object[] rowRecord) throws IOException, QueryProcessException {
+    put(rowRecord, InputRowUtils.hasNullField(rowRecord));
+  }
+
+  /**
+   * Put the row in the list with an any-field-null marker, this method is faster than calling put
+   * directly
+   */
+  private void put(Object[] rowRecord, boolean hasNullField)
+      throws IOException, QueryProcessException {
     checkExpansion();
     cache.get(size / internalRowRecordListCapacity).put(rowRecord);
+    if (hasNullField) {
+      bitMaps.get(size / internalRowRecordListCapacity).mark(size % internalRowRecordListCapacity);
+    }
     ++size;
 
     if (!disableMemoryControl) {
@@ -168,6 +194,7 @@ public class ElasticSerializableRowRecordList {
       rowRecordLists.add(
           SerializableRowRecordList.newSerializableRowRecordList(
               queryId, dataTypes, internalRowRecordListCapacity));
+      bitMaps.add(new BitMap(internalRowRecordListCapacity));
     }
   }
 
@@ -223,6 +250,7 @@ public class ElasticSerializableRowRecordList {
     int internalListEvictionUpperBound = evictionUpperBound / newInternalRowRecordListCapacity;
     for (int i = 0; i < internalListEvictionUpperBound; ++i) {
       newElasticSerializableRowRecordList.rowRecordLists.add(null);
+      newElasticSerializableRowRecordList.bitMaps.add(null);
     }
     newElasticSerializableRowRecordList.size =
         internalListEvictionUpperBound * newInternalRowRecordListCapacity;
@@ -230,12 +258,13 @@ public class ElasticSerializableRowRecordList {
       newElasticSerializableRowRecordList.put(null);
     }
     for (int i = evictionUpperBound; i < size; ++i) {
-      newElasticSerializableRowRecordList.put(getRowRecord(i));
+      newElasticSerializableRowRecordList.put(getRowRecord(i), fieldsHasAnyNull(i));
     }
 
     internalRowRecordListCapacity = newInternalRowRecordListCapacity;
     cache = newElasticSerializableRowRecordList.cache;
     rowRecordLists = newElasticSerializableRowRecordList.rowRecordLists;
+    bitMaps = newElasticSerializableRowRecordList.bitMaps;
 
     byteArrayLengthForMemoryControl = newByteArrayLengthForMemoryControl;
     totalByteArrayLengthLimit =
@@ -262,6 +291,7 @@ public class ElasticSerializableRowRecordList {
           int lastIndex = removeLast();
           if (lastIndex < evictionUpperBound / internalRowRecordListCapacity) {
             rowRecordLists.set(lastIndex, null);
+            bitMaps.set(lastIndex, null);
           } else {
             rowRecordLists.get(lastIndex).serialize();
           }

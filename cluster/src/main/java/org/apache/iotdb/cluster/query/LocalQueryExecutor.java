@@ -65,6 +65,7 @@ import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -209,7 +210,8 @@ public class LocalQueryExecutor {
    * @param request
    */
   public long querySingleSeries(SingleSeriesQueryRequest request)
-      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException {
+      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException,
+          MetadataException {
     logger.debug(
         "{}: {} is querying {}, queryId: {}",
         name,
@@ -220,6 +222,10 @@ public class LocalQueryExecutor {
 
     MeasurementPath path =
         getAssembledPathFromRequest(request.getPath(), (byte) request.getDataTypeOrdinal());
+    // The request is routed to this node since this node contains the data and
+    // metadata of the designated timeseries. Because of which, the following metadata access will
+    // not trigger an RPC.
+    path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     Filter timeFilter = null;
     Filter valueFilter = null;
@@ -288,7 +294,8 @@ public class LocalQueryExecutor {
    * @param request
    */
   public long queryMultSeries(MultSeriesQueryRequest request)
-      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException {
+      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException,
+          MetadataException {
     logger.debug(
         "{}: {} is querying {}, queryId: {}",
         name,
@@ -300,9 +307,14 @@ public class LocalQueryExecutor {
     List<MeasurementPath> paths = Lists.newArrayList();
     List<TSDataType> dataTypes = Lists.newArrayList();
     for (int i = 0; i < request.getPath().size(); i++) {
-      paths.add(
+      MeasurementPath path =
           getAssembledPathFromRequest(
-              request.getPath().get(i), request.getDataTypeOrdinal().get(i).byteValue()));
+              request.getPath().get(i), request.getDataTypeOrdinal().get(i).byteValue());
+      // The request is routed to this node since this node contains the data and
+      // metadata of the designated timeseries. Because of which, the following metadata access will
+      // not trigger an RPC.
+      path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
+      paths.add(path);
       dataTypes.add(TSDataType.values()[request.getDataTypeOrdinal().get(i)]);
     }
     Filter timeFilter = null;
@@ -532,7 +544,8 @@ public class LocalQueryExecutor {
    * be returned.
    */
   public long querySingleSeriesByTimestamp(SingleSeriesQueryRequest request)
-      throws CheckConsistencyException, QueryProcessException, StorageEngineException {
+      throws CheckConsistencyException, QueryProcessException, StorageEngineException,
+          MetadataException {
     logger.debug(
         "{}: {} is querying {} by timestamp, queryId: {}",
         name,
@@ -543,6 +556,10 @@ public class LocalQueryExecutor {
 
     MeasurementPath path =
         getAssembledPathFromRequest(request.getPath(), (byte) request.getDataTypeOrdinal());
+    // The request is routed to this node since this node contains the data and
+    // metadata of the designated timeseries. Because of which, the following metadata access will
+    // not trigger an RPC.
+    path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
     TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
@@ -733,7 +750,8 @@ public class LocalQueryExecutor {
         dataType,
         ascResults,
         descResults,
-        new SlotTsFileFilter(nodeSlots));
+        new SlotTsFileFilter(nodeSlots),
+        ascending);
     return results;
   }
 
@@ -850,7 +868,14 @@ public class LocalQueryExecutor {
             aggregationTypeOrdinals,
             queryContext,
             ascending);
-    if (!executor.isEmpty()) {
+    boolean isEmpty;
+    try {
+      isEmpty = executor.isEmpty();
+    } catch (IOException e) {
+      logger.error("Something wrong happened", e);
+      throw new QueryProcessException(e, TSStatusCode.INTERNAL_SERVER_ERROR.ordinal());
+    }
+    if (!isEmpty) {
       long executorId = queryManager.registerGroupByExecutor(executor);
       logger.debug(
           "{}: Build a GroupByExecutor of {} for {}, executorId: {}",
@@ -1005,14 +1030,16 @@ public class LocalQueryExecutor {
   @SuppressWarnings("java:S1135") // ignore todos
   public ByteBuffer last(LastQueryRequest request)
       throws CheckConsistencyException, QueryProcessException, IOException, StorageEngineException,
-          IllegalPathException {
+          MetadataException {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     RemoteQueryContext queryContext =
         queryManager.getQueryContext(request.getRequestor(), request.getQueryId());
-    List<PartialPath> partialPaths = new ArrayList<>();
+    List<PartialPath> seriesPaths = new ArrayList<>();
     for (String path : request.getPaths()) {
-      partialPaths.add(new PartialPath(path));
+      PartialPath partialPath = new PartialPath(path);
+      seriesPaths.add(
+          new MeasurementPath(partialPath, IoTDB.metaManager.getSeriesSchema(partialPath)));
     }
     List<TSDataType> dataTypes = new ArrayList<>(request.dataTypeOrdinals.size());
     for (Integer dataTypeOrdinal : request.dataTypeOrdinals) {
@@ -1027,7 +1054,7 @@ public class LocalQueryExecutor {
 
     List<Pair<Boolean, TimeValuePair>> timeValuePairs =
         LastQueryExecutor.calculateLastPairForSeriesLocally(
-            partialPaths, dataTypes, queryContext, expression, request.getDeviceMeasurements());
+            seriesPaths, dataTypes, queryContext, expression, request.getDeviceMeasurements());
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     for (Pair<Boolean, TimeValuePair> timeValuePair : timeValuePairs) {

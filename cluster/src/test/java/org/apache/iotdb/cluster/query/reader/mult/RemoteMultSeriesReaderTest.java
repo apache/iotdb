@@ -232,9 +232,8 @@ public class RemoteMultSeriesReaderTest {
                                   stringByteBufferMap.put(
                                       paths.get(i), generateByteBuffer(batchData.get(i)));
                                 }
-
-                                resultHandler.onComplete(stringByteBufferMap);
                               }
+                              resultHandler.onComplete(stringByteBufferMap);
                             })
                         .start();
                   }

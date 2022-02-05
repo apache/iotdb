@@ -304,10 +304,13 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void getAllDevices(
-      RaftNode header, List<String> path, AsyncMethodCallback<Set<String>> resultHandler) {
+      RaftNode header,
+      List<String> path,
+      boolean isPrefixMatch,
+      AsyncMethodCallback<Set<String>> resultHandler) {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      resultHandler.onComplete(((CMManager) IoTDB.metaManager).getAllDevices(path));
+      resultHandler.onComplete(((CMManager) IoTDB.metaManager).getAllDevices(path, isPrefixMatch));
     } catch (MetadataException | CheckConsistencyException e) {
       resultHandler.onError(e);
     }
@@ -438,7 +441,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
         | QueryProcessException
         | IOException
         | StorageEngineException
-        | IllegalPathException e) {
+        | MetadataException e) {
       resultHandler.onError(e);
     }
   }

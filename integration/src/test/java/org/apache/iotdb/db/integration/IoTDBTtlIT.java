@@ -39,7 +39,7 @@ import java.sql.Statement;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class})
+@Category({LocalStandaloneTest.class})
 public class IoTDBTtlIT {
 
   @Before
@@ -54,7 +54,7 @@ public class IoTDBTtlIT {
 
   @Test
   @Category({ClusterTest.class})
-  public void testTTL() throws SQLException {
+  public void testTTL() throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
@@ -126,6 +126,8 @@ public class IoTDBTtlIT {
       }
 
       statement.execute("UNSET TTL TO root.TTL_SG1");
+      // make sure other nodes have applied UNSET TTL
+      Thread.sleep(1000);
       for (int i = 0; i < 100; i++) {
         statement.execute(
             String.format(

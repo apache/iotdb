@@ -21,8 +21,9 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.MaxFileMergeFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -35,7 +36,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -56,7 +57,7 @@ public class MergeUpgradeTest {
 
   private int seqFileNum = 2;
   private TSEncoding encoding = TSEncoding.RLE;
-  private UnaryMeasurementSchema[] measurementSchemas;
+  private MeasurementSchema[] measurementSchemas;
   private int timeseriesNum = 5;
   private long ptNum = 10;
   private boolean changeVersion = true;
@@ -70,6 +71,7 @@ public class MergeUpgradeTest {
 
   @After
   public void tearDown() {
+    new CompactionConfigRestorer().restoreCompactionConfig();
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
@@ -78,8 +80,8 @@ public class MergeUpgradeTest {
   @Test
   public void testMergeUpgradeSelect() throws MergeException {
     CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqResources, unseqResources);
-    MaxFileMergeFileSelector mergeFileSelector =
-        new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
+    RewriteCompactionFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     assertEquals(0, result.length);
   }
@@ -122,10 +124,10 @@ public class MergeUpgradeTest {
   }
 
   private void prepareSeries() {
-    measurementSchemas = new UnaryMeasurementSchema[timeseriesNum];
+    measurementSchemas = new MeasurementSchema[timeseriesNum];
     for (int i = 0; i < timeseriesNum; i++) {
       measurementSchemas[i] =
-          new UnaryMeasurementSchema(
+          new MeasurementSchema(
               "sensor" + i, TSDataType.DOUBLE, encoding, CompressionType.UNCOMPRESSED);
     }
   }
@@ -169,7 +171,8 @@ public class MergeUpgradeTest {
       long ptNum,
       long valueOffset)
       throws WriteProcessException, IOException {
-    for (UnaryMeasurementSchema MeasurementSchema : measurementSchemas) {
+    for (org.apache.iotdb.tsfile.write.schema.MeasurementSchema MeasurementSchema :
+        measurementSchemas) {
       fileWriter.registerTimeseries(new Path(deviceName), MeasurementSchema);
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {

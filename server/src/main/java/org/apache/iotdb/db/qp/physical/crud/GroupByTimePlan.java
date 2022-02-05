@@ -18,27 +18,39 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+
+import org.apache.thrift.TException;
 
 public class GroupByTimePlan extends AggregationPlan {
 
   // [startTime, endTime)
-  private long startTime;
-  private long endTime;
+  protected long startTime;
+  protected long endTime;
   // aggregation time interval
-  private long interval;
+  protected long interval;
   // sliding step
-  private long slidingStep;
+  protected long slidingStep;
   // if group by query is by natural month
-  private boolean isIntervalByMonth;
-  private boolean isSlidingStepByMonth;
+  protected boolean isIntervalByMonth;
+  protected boolean isSlidingStepByMonth;
 
   // if it is left close and right open interval
-  private boolean leftCRightO = true;
+  protected boolean leftCRightO = true;
 
   public GroupByTimePlan() {
     super();
     setOperatorType(Operator.OperatorType.GROUP_BY_TIME);
+  }
+
+  @Override
+  public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery)
+      throws TException, MetadataException {
+    TSExecuteStatementResp resp = super.getTSExecuteStatementResp(isJdbcQuery);
+    resp.setIgnoreTimeStamp(false);
+    return resp;
   }
 
   public long getStartTime() {

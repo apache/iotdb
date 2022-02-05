@@ -67,7 +67,7 @@ public class AuthorityChecker {
       return true;
     }
 
-    if (!paths.isEmpty()) {
+    if (paths != null && !paths.isEmpty()) {
       for (PartialPath path : paths) {
         if (!checkOnePath(username, path, permission)) {
           return false;

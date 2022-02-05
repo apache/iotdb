@@ -109,7 +109,7 @@ set threads_number=16
 set temp_buffer_pool_size=1024
 @REM Max cached buffer size, Note: unit can only be B!
 @REM which equals DIRECT_MEMORY_SIZE / threads_number / temp_buffer_pool_size
-set MAX_CACHED_BUFFER_SIZE=%max_heap_size_in_mb% * 1024 * 1024 / %threads_number% / %temp_buffer_pool_size%
+set MAX_CACHED_BUFFER_SIZE=%max_heap_size_in_mb%*1024*1024/%threads_number%/%temp_buffer_pool_size%
 
 set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xlog:gc:"..\gc.log"
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE%

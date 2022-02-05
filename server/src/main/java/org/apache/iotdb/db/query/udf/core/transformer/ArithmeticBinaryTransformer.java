@@ -49,10 +49,14 @@ public abstract class ArithmeticBinaryTransformer extends Transformer {
     if (!cacheTime()) {
       return false;
     }
-    cachedDouble =
-        evaluate(
-            castCurrentValueToDoubleOperand(leftPointReader),
-            castCurrentValueToDoubleOperand(rightPointReader));
+    if (leftPointReader.isCurrentNull() || rightPointReader.isCurrentNull()) {
+      currentNull = true;
+    } else {
+      cachedDouble =
+          evaluate(
+              castCurrentValueToDoubleOperand(leftPointReader),
+              castCurrentValueToDoubleOperand(rightPointReader));
+    }
     leftPointReader.readyForNext();
     rightPointReader.readyForNext();
     return true;

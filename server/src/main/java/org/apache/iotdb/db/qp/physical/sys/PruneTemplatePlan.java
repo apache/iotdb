@@ -36,11 +36,11 @@ public class PruneTemplatePlan extends PhysicalPlan {
   String[] prunedMeasurements;
 
   public PruneTemplatePlan() {
-    super(false, OperatorType.PRUNE_TEMPLATE);
+    super(OperatorType.PRUNE_TEMPLATE);
   }
 
   public PruneTemplatePlan(String name, List<String> prunedMeasurements) {
-    super(false, OperatorType.PRUNE_TEMPLATE);
+    super(OperatorType.PRUNE_TEMPLATE);
 
     this.name = name;
     this.prunedMeasurements = prunedMeasurements.toArray(new String[0]);

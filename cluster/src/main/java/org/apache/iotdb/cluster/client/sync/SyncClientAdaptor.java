@@ -381,12 +381,12 @@ public class SyncClientAdaptor {
   }
 
   public static Set<String> getAllDevices(
-      AsyncDataClient client, RaftNode header, List<String> pathsToQuery)
+      AsyncDataClient client, RaftNode header, List<String> pathsToQuery, boolean isPrefixMatch)
       throws InterruptedException, TException {
     AtomicReference<Set<String>> remoteResult = new AtomicReference<>();
     GenericHandler<Set<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
 
-    client.getAllDevices(header, pathsToQuery, handler);
+    client.getAllDevices(header, pathsToQuery, isPrefixMatch, handler);
     return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 
@@ -498,6 +498,7 @@ public class SyncClientAdaptor {
       AsyncDataClient client,
       List<PartialPath> seriesPaths,
       List<Integer> dataTypeOrdinals,
+      Filter timeFilter,
       QueryContext context,
       Map<String, Set<String>> deviceMeasurements,
       RaftNode header)
@@ -512,7 +513,9 @@ public class SyncClientAdaptor {
             deviceMeasurements,
             header,
             client.getNode());
-
+    if (timeFilter != null) {
+      request.setFilterBytes(SerializeUtils.serializeFilter(timeFilter));
+    }
     client.last(request, handler);
     return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }

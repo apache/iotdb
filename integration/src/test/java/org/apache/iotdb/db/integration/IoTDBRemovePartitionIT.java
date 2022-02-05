@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -26,11 +27,11 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 
-import ch.qos.logback.classic.Level;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
@@ -47,15 +48,12 @@ import static org.junit.Assert.assertFalse;
 @Category({LocalStandaloneTest.class})
 public class IoTDBRemovePartitionIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBRemovePartitionIT.class);
+
   private static int partitionInterval = 100;
 
   @Before
   public void setUp() throws Exception {
-    ch.qos.logback.classic.Logger rootLogger =
-        (ch.qos.logback.classic.Logger)
-            LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
-    rootLogger.setLevel(Level.toLevel("trace"));
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     StorageEngine.setEnablePartition(true);
     StorageEngine.setTimePartitionInterval(partitionInterval);
@@ -67,15 +65,11 @@ public class IoTDBRemovePartitionIT {
     StorageEngine.setEnablePartition(false);
     StorageEngine.setTimePartitionInterval(-1);
     EnvironmentUtils.cleanEnv();
-
-    ch.qos.logback.classic.Logger rootLogger =
-        (ch.qos.logback.classic.Logger)
-            LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
-    rootLogger.setLevel(Level.toLevel("warn"));
   }
 
   @Test
   public void testRemoveNoPartition() throws IllegalPathException {
+    logger.warn("running testRemoveNoPartition");
     StorageEngine.getInstance()
         .removePartitions(
             new PartialPath("root.test1"), (storageGroupName, timePartitionId) -> false);
@@ -100,6 +94,7 @@ public class IoTDBRemovePartitionIT {
 
   @Test
   public void testRemovePartialPartition() throws IllegalPathException {
+    logger.warn("running testRemovePartialPartition");
     StorageEngine.getInstance()
         .removePartitions(
             new PartialPath("root.test1"),
@@ -139,6 +134,7 @@ public class IoTDBRemovePartitionIT {
 
   @Test
   public void testRemoveAllPartition() throws IllegalPathException {
+    logger.warn("running testRemoveAllPartition");
     StorageEngine.getInstance()
         .removePartitions(
             new PartialPath("root.test1"), (storageGroupName, timePartitionId) -> true);
@@ -157,6 +153,7 @@ public class IoTDBRemovePartitionIT {
 
   @Test
   public void testSQLRemovePartition() {
+    logger.warn("running testSQLRemovePartition");
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -178,6 +175,7 @@ public class IoTDBRemovePartitionIT {
 
   @Test
   public void testRemoveOnePartitionAndInsertData() {
+    logger.warn("running testRemoveOnePartitionAndInsertData");
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -202,6 +200,7 @@ public class IoTDBRemovePartitionIT {
 
   @Test
   public void testRemovePartitionAndInsertUnSeqDataAndMerge() {
+    logger.warn("running testRemovePartitionAndInsertUnSeqDataAndMerge");
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -231,6 +230,7 @@ public class IoTDBRemovePartitionIT {
 
   @Test
   public void testRemovePartitionAndInsertUnSeqDataAndUnSeqDataMerge() {
+    logger.warn("running testRemovePartitionAndInsertUnSeqDataAndUnSeqDataMerge");
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -260,6 +260,7 @@ public class IoTDBRemovePartitionIT {
 
   @Test
   public void testFlushAndRemoveOnePartitionAndInsertData() {
+    logger.warn("running testFlushAndRemoveOnePartitionAndInsertData");
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -318,6 +319,9 @@ public class IoTDBRemovePartitionIT {
       }
     }
     Class.forName(Config.JDBC_DRIVER_NAME);
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");

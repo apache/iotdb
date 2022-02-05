@@ -92,7 +92,8 @@
         <module>openapi</module>
         <module>server</module>
         <module>example</module>
-        <module>grafana</module>
+        <module>grafana-plugin</module>
+        <module>grafana-connector</module>
         <module>spark-tsfile</module>
         <module>hadoop</module>
         <module>spark-iotdb-connector</module>
@@ -108,6 +109,7 @@
         <module>client-cpp</module>
         <module>metrics</module>
         <module>integration</module>
+        <!--        <module>library-udf</module>-->
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -116,20 +118,20 @@
         <maven.assembly.version>3.1.0</maven.assembly.version>
         <scala.library.version>2.11</scala.library.version>
         <scala.version>2.11.12</scala.version>
-        <hadoop2.version>2.10.0</hadoop2.version>
+        <hadoop2.version>2.10.1</hadoop2.version>
         <hive2.version>2.3.6</hive2.version>
         <junit.version>4.13.2</junit.version>
         <slf4j.version>1.7.12</slf4j.version>
-        <logback.version>1.2.3</logback.version>
+        <logback.version>1.2.10</logback.version>
         <joda.version>2.9.9</joda.version>
-        <spark.version>2.4.3</spark.version>
+        <spark.version>2.4.5</spark.version>
         <flink.version>1.14.0</flink.version>
         <common.io.version>2.11.0</common.io.version>
         <commons.collections4>4.4</commons.collections4>
         <!-- keep consistent with client-cpp/tools/thrift/pom.xml-->
         <thrift.version>0.14.1</thrift.version>
         <airline.version>0.8</airline.version>
-        <jackson.version>2.10.0</jackson.version>
+        <jackson.version>2.10.5</jackson.version>
         <antlr4.version>4.8-1</antlr4.version>
         <common.cli.version>1.3.1</common.cli.version>
         <common.codec.version>1.13</common.codec.version>
@@ -391,7 +393,7 @@
             <dependency>
                 <groupId>org.glassfish.jaxb</groupId>
                 <artifactId>jaxb-runtime</artifactId>
-                <version>3.0.0</version>
+                <version>3.0.2</version>
                 <exclusions>
                     <exclusion>
                         <groupId>jakarta.activation</groupId>
@@ -683,6 +685,10 @@
                             <exclude>apache_iotdb.egg-info/**</exclude>
                             <!-- Java SPI uses files in resources/META-INF/services-->
                             <exclude>**/resources/META-INF/services/**</exclude>
+                            <!-- grafana plugin -->
+                            <exclude>**/yarn.lock</exclude>
+                            <!-- site-->
+                            <exclude>**/redirects</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
@@ -731,6 +737,7 @@
                         <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-sync/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-cluster/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>thrift-influxdb/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>openapi/target/generated-sources/java/src/gen/java</sourceDirectory>
                         <sourceDirectory>openapi/target/generated-sources/java/src/main/java</sourceDirectory>
                         <sourceDirectory>spark-iotdb-connector/src/main/scala</sourceDirectory>

@@ -18,26 +18,26 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -49,16 +49,18 @@ import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompac
  * SizeTieredCompactionSelector} into one file.
  */
 public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   protected TsFileResourceList tsFileResourceList;
   protected TsFileManager tsFileManager;
+  protected boolean[] isHoldingReadLock;
+  protected boolean[] isHoldingWriteLock;
 
   public SizeTieredCompactionTask(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
-      TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence,
       AtomicInteger currentTaskNum) {
@@ -68,62 +70,46 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         currentTaskNum,
         sequence,
         selectedTsFileResourceList);
-    this.tsFileResourceList = tsFileResourceList;
     this.tsFileManager = tsFileManager;
-  }
-
-  public static void combineModsInCompaction(
-      Collection<TsFileResource> mergeTsFiles, TsFileResource targetTsFile) throws IOException {
-    List<Modification> modifications = new ArrayList<>();
-    for (TsFileResource mergeTsFile : mergeTsFiles) {
-      try (ModificationFile sourceCompactionModificationFile =
-          ModificationFile.getCompactionMods(mergeTsFile)) {
-        modifications.addAll(sourceCompactionModificationFile.getModifications());
-        if (sourceCompactionModificationFile.exists()) {
-          sourceCompactionModificationFile.remove();
-        }
-      }
-      ModificationFile sourceModificationFile = ModificationFile.getNormalMods(mergeTsFile);
-      if (sourceModificationFile.exists()) {
-        sourceModificationFile.remove();
-      }
+    isHoldingReadLock = new boolean[selectedTsFileResourceList.size()];
+    isHoldingWriteLock = new boolean[selectedTsFileResourceList.size()];
+    for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
+      isHoldingWriteLock[i] = false;
+      isHoldingReadLock[i] = false;
     }
-    if (!modifications.isEmpty()) {
-      try (ModificationFile modificationFile = ModificationFile.getNormalMods(targetTsFile)) {
-        for (Modification modification : modifications) {
-          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
-          // change after compaction
-          modification.setFileOffset(Long.MAX_VALUE);
-          modificationFile.write(modification);
-        }
-      }
+    if (sequence) {
+      tsFileResourceList = tsFileManager.getSequenceListByTimePartition(timePartition);
+    } else {
+      tsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
     }
   }
 
   @Override
   protected void doCompaction() throws Exception {
+    if (!tsFileManager.isAllowCompaction()) {
+      return;
+    }
     long startTime = System.currentTimeMillis();
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
-    String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(selectedTsFileResourceList, sequence)
-            .getName();
+    // Here is tmpTargetFile, which is xxx.target
     TsFileResource targetTsFileResource =
-        new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(
+            selectedTsFileResourceList, sequence);
     LOGGER.info(
         "{} [Compaction] starting compaction task with {} files",
         fullStorageGroupName,
         selectedTsFileResourceList.size());
-    File logFile = null;
+    File logFile =
+        new File(
+            dataDirectory
+                + File.separator
+                + targetTsFileResource.getTsFile().getName()
+                + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
+    SizeTieredCompactionLogger sizeTieredCompactionLogger = null;
     try {
-      logFile =
-          new File(
-              dataDirectory
-                  + File.separator
-                  + targetFileName
-                  + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
-      SizeTieredCompactionLogger sizeTieredCompactionLogger =
-          new SizeTieredCompactionLogger(logFile.getPath());
+      sizeTieredCompactionLogger = new SizeTieredCompactionLogger(logFile.getPath());
+
       for (TsFileResource resource : selectedTsFileResourceList) {
         sizeTieredCompactionLogger.logFileInfo(SOURCE_INFO, resource.getTsFile());
       }
@@ -131,71 +117,107 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       sizeTieredCompactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
       LOGGER.info(
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
+
       // carry out the compaction
-      InnerSpaceCompactionUtils.compact(
-          targetTsFileResource, selectedTsFileResourceList, fullStorageGroupName, true);
-      LOGGER.info(
-          "{} [SizeTiredCompactionTask] compact finish, close the logger", fullStorageGroupName);
-      sizeTieredCompactionLogger.close();
+      if (sequence) {
+        InnerSpaceCompactionUtils.compact(targetTsFileResource, selectedTsFileResourceList);
+      } else {
+        CompactionUtils.compact(
+            Collections.emptyList(),
+            selectedTsFileResourceList,
+            Collections.singletonList(targetTsFileResource));
+      }
+
+      InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, fullStorageGroupName);
+
+      LOGGER.info("{} [SizeTiredCompactionTask] start to rename mods file", fullStorageGroupName);
+      InnerSpaceCompactionUtils.combineModsInCompaction(
+          selectedTsFileResourceList, targetTsFileResource);
 
       LOGGER.info(
-          "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
+          "{} [SizeTiredCompactionTask] compact finish, close the logger, edit the tsFileResourceList",
+          fullStorageGroupName);
+      sizeTieredCompactionLogger.close();
+
       if (Thread.currentThread().isInterrupted()) {
         throw new InterruptedException(
             String.format("%s [Compaction] abort", fullStorageGroupName));
       }
-      // get write lock for TsFileResource list with timeout
-      try {
-        tsFileManager.writeLockWithTimeout("size-tired compaction", 60_000);
-      } catch (WriteLockFailedException e) {
-        // if current compaction thread couldn't get writelock
-        // a WriteLockFailException will be thrown, then terminate the thread itself
-        LOGGER.warn(
-            "{} [SizeTiredCompactionTask] failed to get write lock, abort the task and delete the target file {}",
-            fullStorageGroupName,
-            targetTsFileResource.getTsFile(),
-            e);
-        targetTsFileResource.getTsFile().delete();
-        logFile.delete();
-        throw new InterruptedException(
-            String.format(
-                "%s [Compaction] compaction abort because cannot acquire write lock",
-                fullStorageGroupName));
+
+      // replace the old files with new file, the new is in same position as the old
+      for (TsFileResource resource : selectedTsFileResourceList) {
+        TsFileResourceManager.getInstance().removeTsFileResource(resource);
       }
+      TsFileResourceManager.getInstance().registerSealedTsFileResource(targetTsFileResource);
+      tsFileResourceList.writeLock();
       try {
-        // replace the old files with new file, the new is in same position as the old
-        for (TsFileResource resource : selectedTsFileResourceList) {
-          TsFileResourceManager.getInstance().removeTsFileResource(resource);
-        }
-        tsFileResourceList.insertBefore(selectedTsFileResourceList.get(0), targetTsFileResource);
-        TsFileResourceManager.getInstance().registerSealedTsFileResource(targetTsFileResource);
         for (TsFileResource resource : selectedTsFileResourceList) {
           tsFileResourceList.remove(resource);
         }
+        tsFileResourceList.keepOrderInsert(targetTsFileResource);
       } finally {
-        tsFileManager.writeUnlock();
+        tsFileResourceList.writeUnlock();
       }
+
+      LOGGER.info(
+          "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
+
+      LOGGER.info(
+          "{} [Compaction] Compacted target files, try to get the write lock of source files",
+          fullStorageGroupName);
+
+      // release the read lock of all source files, and get the write lock of them to delete them
+      for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
+        selectedTsFileResourceList.get(i).readUnlock();
+        isHoldingReadLock[i] = false;
+        selectedTsFileResourceList.get(i).writeLock();
+        isHoldingWriteLock[i] = true;
+      }
+
+      if (targetTsFileResource.getTsFile().length()
+          < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
+        // the file size is smaller than magic string and version number
+        throw new RuntimeException(
+            String.format(
+                "target file %s is smaller than magic string and version number size",
+                targetTsFileResource));
+      }
+
       // delete the old files
       InnerSpaceCompactionUtils.deleteTsFilesInDisk(
           selectedTsFileResourceList, fullStorageGroupName);
-      LOGGER.info(
-          "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
-          fullStorageGroupName);
-      combineModsInCompaction(selectedTsFileResourceList, targetTsFileResource);
+      InnerSpaceCompactionUtils.deleteModificationForSourceFile(
+          selectedTsFileResourceList, fullStorageGroupName);
+
       long costTime = System.currentTimeMillis() - startTime;
       LOGGER.info(
           "{} [SizeTiredCompactionTask] all compaction task finish, target file is {},"
               + "time cost is {} s",
           fullStorageGroupName,
-          targetFileName,
+          targetTsFileResource.getTsFile().getName(),
           costTime / 1000);
+
       if (logFile.exists()) {
-        logFile.delete();
+        FileUtils.delete(logFile);
       }
+    } catch (Throwable throwable) {
+      LOGGER.error(
+          "{} [Compaction] Throwable is caught during execution of SizeTieredCompaction, {}",
+          fullStorageGroupName,
+          throwable);
+      LOGGER.warn("{} [Compaction] Start to handle exception", fullStorageGroupName);
+      if (sizeTieredCompactionLogger != null) {
+        sizeTieredCompactionLogger.close();
+      }
+      InnerSpaceCompactionExceptionHandler.handleException(
+          fullStorageGroupName,
+          logFile,
+          targetTsFileResource,
+          selectedTsFileResourceList,
+          tsFileManager,
+          tsFileResourceList);
     } finally {
-      for (TsFileResource resource : selectedTsFileResourceList) {
-        resource.setMerging(false);
-      }
+      releaseFileLocksAndResetMergingStatus(true);
     }
   }
 
@@ -213,24 +235,42 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
 
   @Override
   public boolean checkValidAndSetMerging() {
-    long minVersionNum = Long.MAX_VALUE;
-    try {
-      for (TsFileResource resource : selectedTsFileResourceList) {
-        if (resource.isMerging() | !resource.isClosed() || !resource.getTsFile().exists()) {
-          return false;
-        }
-        TsFileNameGenerator.TsFileName tsFileName =
-            TsFileNameGenerator.getTsFileName(resource.getTsFile().getName());
-        if (tsFileName.getVersion() < minVersionNum) {
-          minVersionNum = tsFileName.getVersion();
-        }
+    for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
+      TsFileResource resource = selectedTsFileResourceList.get(i);
+      resource.readLock();
+      isHoldingReadLock[i] = true;
+      if (resource.isCompacting()
+          || !resource.isClosed()
+          || !resource.getTsFile().exists()
+          || resource.isDeleted()) {
+        // this source file cannot be compacted
+        // release the lock of locked files, and return
+        releaseFileLocksAndResetMergingStatus(false);
+        return false;
       }
-    } catch (IOException e) {
-      LOGGER.error("CompactionTask exists while check valid", e);
     }
+
     for (TsFileResource resource : selectedTsFileResourceList) {
-      resource.setMerging(true);
+      resource.setCompacting(true);
     }
     return true;
+  }
+
+  /**
+   * release the read lock and write lock of files if it is held, and set the merging status of
+   * selected files to false
+   */
+  private void releaseFileLocksAndResetMergingStatus(boolean resetCompactingStatus) {
+    for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
+      if (isHoldingReadLock[i]) {
+        selectedTsFileResourceList.get(i).readUnlock();
+      }
+      if (isHoldingWriteLock[i]) {
+        selectedTsFileResourceList.get(i).writeUnlock();
+      }
+      if (resetCompactingStatus) {
+        selectedTsFileResourceList.get(i).setCompacting(false);
+      }
+    }
   }
 }

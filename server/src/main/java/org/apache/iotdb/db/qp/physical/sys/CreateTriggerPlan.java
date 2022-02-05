@@ -55,7 +55,7 @@ public class CreateTriggerPlan extends PhysicalPlan {
   private boolean isStopped = false;
 
   public CreateTriggerPlan() {
-    super(false, OperatorType.CREATE_TRIGGER);
+    super(OperatorType.CREATE_TRIGGER);
     canBeSplit = false;
   }
 
@@ -65,7 +65,7 @@ public class CreateTriggerPlan extends PhysicalPlan {
       PartialPath fullPath,
       String className,
       Map<String, String> attributes) {
-    super(false, OperatorType.CREATE_TRIGGER);
+    super(OperatorType.CREATE_TRIGGER);
     this.triggerName = triggerName;
     this.event = event;
     this.fullPath = fullPath;
@@ -157,5 +157,10 @@ public class CreateTriggerPlan extends PhysicalPlan {
       String value = readString(buffer);
       attributes.put(key, value);
     }
+  }
+
+  @Override
+  public List<? extends PartialPath> getAuthPaths() {
+    return Collections.singletonList(fullPath);
   }
 }

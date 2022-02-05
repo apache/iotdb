@@ -22,9 +22,25 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
-import org.apache.iotdb.db.exception.metadata.*;
+import org.apache.iotdb.db.exception.ContinuousQueryException;
+import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
+import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
+import org.apache.iotdb.db.exception.metadata.DifferentTemplateException;
+import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.NoTemplateOnMNodeException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
+import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
+import org.apache.iotdb.db.metadata.idtable.IDTable;
+import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -39,27 +55,50 @@ import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.sys.*;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
@@ -72,8 +111,16 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -240,6 +287,61 @@ public class MManager {
           "Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
     initialized = true;
+
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      startStatisticCounts();
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.MEM.toString(),
+              mtree,
+              RamUsageEstimator::sizeOf,
+              Tag.NAME.toString(),
+              "mtree");
+    }
+  }
+
+  private void startStatisticCounts() {
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateAutoGauge(
+            Metric.QUANTITY.toString(),
+            totalSeriesNumber,
+            AtomicLong::get,
+            Tag.NAME.toString(),
+            "timeSeries");
+
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateAutoGauge(
+            Metric.QUANTITY.toString(),
+            mtree,
+            tree -> {
+              try {
+                return tree.getDevicesNum(new PartialPath("root.**"));
+              } catch (MetadataException e) {
+                logger.error("get deviceNum error", e);
+              }
+              return 0;
+            },
+            Tag.NAME.toString(),
+            "device");
+
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateAutoGauge(
+            Metric.QUANTITY.toString(),
+            mtree,
+            tree -> {
+              try {
+                return tree.getStorageGroupNum(new PartialPath("root.**"));
+              } catch (MetadataException e) {
+                logger.error("get storageGroupNum error", e);
+              }
+              return 0;
+            },
+            Tag.NAME.toString(),
+            "storageGroup");
   }
 
   /** @return line number of the logFile */
@@ -381,6 +483,18 @@ public class MManager {
         CreateTemplatePlan createTemplatePlan = (CreateTemplatePlan) plan;
         createSchemaTemplate(createTemplatePlan);
         break;
+      case DROP_TEMPLATE:
+        DropTemplatePlan dropTemplatePlan = (DropTemplatePlan) plan;
+        dropSchemaTemplate(dropTemplatePlan);
+        break;
+      case APPEND_TEMPLATE:
+        AppendTemplatePlan appendTemplatePlan = (AppendTemplatePlan) plan;
+        appendSchemaTemplate(appendTemplatePlan);
+        break;
+      case PRUNE_TEMPLATE:
+        PruneTemplatePlan pruneTemplatePlan = (PruneTemplatePlan) plan;
+        pruneSchemaTemplate(pruneTemplatePlan);
+        break;
       case SET_TEMPLATE:
         SetTemplatePlan setTemplatePlan = (SetTemplatePlan) plan;
         setSchemaTemplate(setTemplatePlan);
@@ -396,6 +510,15 @@ public class MManager {
       case UNSET_TEMPLATE:
         UnsetTemplatePlan unsetTemplatePlan = (UnsetTemplatePlan) plan;
         unsetSchemaTemplate(unsetTemplatePlan);
+        break;
+      case CREATE_CONTINUOUS_QUERY:
+        CreateContinuousQueryPlan createContinuousQueryPlan = (CreateContinuousQueryPlan) plan;
+        createContinuousQuery(createContinuousQueryPlan);
+        break;
+      case DROP_CONTINUOUS_QUERY:
+        DropContinuousQueryPlan dropContinuousQueryPlan = (DropContinuousQueryPlan) plan;
+        dropContinuousQuery(dropContinuousQueryPlan);
+        break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
     }
@@ -403,11 +526,27 @@ public class MManager {
   // endregion
 
   // region Interfaces for CQ
-  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws IOException {
+  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws MetadataException {
+    try {
+      ContinuousQueryService.getInstance().register(plan, false);
+    } catch (ContinuousQueryException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws MetadataException {
+    try {
+      ContinuousQueryService.getInstance().deregister(plan, false);
+    } catch (ContinuousQueryException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public void writeCreateContinuousQueryLog(CreateContinuousQueryPlan plan) throws IOException {
     logWriter.createContinuousQuery(plan);
   }
 
-  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws IOException {
+  public void writeDropContinuousQueryLog(DropContinuousQueryPlan plan) throws IOException {
     logWriter.dropContinuousQuery(plan);
   }
   // endregion
@@ -447,14 +586,13 @@ public class MManager {
       mNodeCache.invalidate(path.getDevicePath());
 
       // update tag index
-      if (plan.getTags() != null) {
+
+      if (offset != -1) {
+        // offset != -1 means the timeseries has already been created and now system is recovering
+        tagManager.recoverIndex(offset, leafMNode);
+      } else if (plan.getTags() != null) {
         // tag key, tag value
-        for (Entry<String, String> entry : plan.getTags().entrySet()) {
-          if (entry.getKey() == null || entry.getValue() == null) {
-            continue;
-          }
-          tagManager.addIndex(entry.getKey(), entry.getValue(), leafMNode);
-        }
+        tagManager.addIndex(plan.getTags(), leafMNode);
       }
 
       // update statistics and schemaDataTypeNumMap
@@ -478,6 +616,12 @@ public class MManager {
 
     } catch (IOException e) {
       throw new MetadataException(e);
+    }
+
+    // update id table if not in recovering or disable id table log file
+    if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
+      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPath().getDevicePath());
+      idTable.createTimeseries(plan);
     }
   }
 
@@ -568,6 +712,12 @@ public class MManager {
     } catch (IOException e) {
       throw new MetadataException(e);
     }
+
+    // update id table if not in recovering or disable id table log file
+    if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
+      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
+      idTable.createAlignedTimeseries(plan);
+    }
   }
 
   private void ensureStorageGroup(PartialPath path) throws MetadataException {
@@ -590,23 +740,24 @@ public class MManager {
   }
 
   /**
-   * Delete all timeseries matching the given path pattern, may cross different storage group
+   * Delete all timeseries matching the given path pattern, may cross different storage group. If
+   * using prefix match, the path pattern is used to match prefix path. All timeseries start with
+   * the matched prefix path will be deleted.
    *
    * @param pathPattern path to be deleted
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return deletion failed Timeseries
    */
-  public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
+  public String deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
     try {
-      List<MeasurementPath> allTimeseries = mtree.getMeasurementPaths(pathPattern);
+      List<MeasurementPath> allTimeseries = mtree.getMeasurementPaths(pathPattern, isPrefixMatch);
       if (allTimeseries.isEmpty()) {
-        throw new MetadataException(
-            String.format(
-                "No matched timeseries or aligned timeseries for Path [%s]",
-                pathPattern.getFullPath()));
+        // In the cluster mode, the deletion of a timeseries will be forwarded to all the nodes. For
+        // nodes that do not have the metadata of the timeseries, the coordinator expects a
+        // PathNotExistException.
+        throw new PathNotExistException(pathPattern.getFullPath());
       }
-
-      // Monitor storage group seriesPath is not allowed to be deleted
-      allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_ARRAY));
 
       Set<String> failedNames = new HashSet<>();
       for (PartialPath p : allTimeseries) {
@@ -616,6 +767,16 @@ public class MManager {
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     }
+  }
+
+  /**
+   * Delete all timeseries matching the given path pattern, may cross different storage group
+   *
+   * @param pathPattern path to be deleted
+   * @return deletion failed Timeseries
+   */
+  public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
+    return deleteTimeseries(pathPattern, false);
   }
 
   private void deleteSingleTimeseriesInternal(PartialPath p, Set<String> failedNames)
@@ -838,20 +999,59 @@ public class MManager {
 
   /**
    * To calculate the count of timeseries matching given path. The path could be a pattern of a full
+   * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
+   * path. All timeseries start with the matched prefix path will be counted.
+   */
+  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
+  }
+
+  /**
+   * To calculate the count of timeseries matching given path. The path could be a pattern of a full
    * path, may contain wildcard.
    */
   public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
-    return mtree.getAllTimeseriesCount(pathPattern);
+    return getAllTimeseriesCount(pathPattern, false);
+  }
+
+  /**
+   * To calculate the count of devices for given path pattern. If using prefix match, the path
+   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
+   * counted.
+   */
+  public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getDevicesNum(pathPattern, isPrefixMatch);
   }
 
   /** To calculate the count of devices for given path pattern. */
   public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
-    return mtree.getDevicesNum(pathPattern);
+    return getDevicesNum(pathPattern, false);
   }
 
-  /** To calculate the count of storage group for given path pattern. */
-  public int getStorageGroupNum(PartialPath pathPattern) throws MetadataException {
-    return mtree.getStorageGroupNum(pathPattern);
+  /**
+   * To calculate the count of storage group for given path pattern. If using prefix match, the path
+   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
+   * counted.
+   */
+  public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getStorageGroupNum(pathPattern, isPrefixMatch);
+  }
+
+  /**
+   * To calculate the count of nodes in the given level for given path pattern. If using prefix
+   * match, the path pattern is used to match prefix path. All timeseries start with the matched
+   * prefix path will be counted.
+   *
+   * @param pathPattern a path pattern or a full path
+   * @param level the level should match the level of the path
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   */
+  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
   }
 
   /**
@@ -862,7 +1062,12 @@ public class MManager {
    */
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
       throws MetadataException {
-    return mtree.getNodesCountInGivenLevel(pathPattern, level);
+    return getNodesCountInGivenLevel(pathPattern, level, false);
+  }
+
+  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
+    return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
   }
 
   // endregion
@@ -962,14 +1167,16 @@ public class MManager {
   }
 
   /**
-   * Get all storage group matching given path pattern.
+   * Get all storage group matching given path pattern. If using prefix match, the path pattern is
+   * used to match prefix path. All timeseries start with the matched prefix path will be collected.
    *
    * @param pathPattern a pattern of a full path
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return A ArrayList instance which stores storage group paths matching given path pattern.
    */
-  public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern)
+  public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return mtree.getMatchedStorageGroups(pathPattern);
+    return mtree.getMatchedStorageGroups(pathPattern, isPrefixMatch);
   }
 
   /** Get all storage group paths */
@@ -1012,13 +1219,16 @@ public class MManager {
   }
 
   /**
-   * Get all device paths matching the path pattern.
+   * Get all device paths matching the path pattern. If using prefix match, the path pattern is used
+   * to match prefix path. All timeseries start with the matched prefix path will be collected.
    *
    * @param pathPattern the pattern of the target devices.
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path.
    * @return A HashSet instance which stores devices paths matching the given path pattern.
    */
-  public Set<PartialPath> getMatchedDevices(PartialPath pathPattern) throws MetadataException {
-    return mtree.getDevices(pathPattern, false);
+  public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getDevices(pathPattern, isPrefixMatch);
   }
 
   /**
@@ -1037,22 +1247,40 @@ public class MManager {
   /**
    * Return all measurement paths for given path if the path is abstract. Or return the path itself.
    * Regular expression in this method is formed by the amalgamation of seriesPath and the character
+   * '*'. If using prefix match, the path pattern is used to match prefix path. All timeseries start
+   * with the matched prefix path will be collected.
+   *
+   * @param pathPattern can be a pattern or a full path of timeseries.
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   */
+  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch).left;
+  }
+
+  /**
+   * Return all measurement paths for given path if the path is abstract. Or return the path itself.
+   * Regular expression in this method is formed by the amalgamation of seriesPath and the character
    * '*'.
    *
    * @param pathPattern can be a pattern or a full path of timeseries.
    */
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
       throws MetadataException {
-    return mtree.getMeasurementPaths(pathPattern);
+    return getMeasurementPaths(pathPattern, false);
   }
 
   /**
    * Similar to method getMeasurementPaths(), but return Path with alias and filter the result by
-   * limit and offset.
+   * limit and offset. If using prefix match, the path pattern is used to match prefix path. All
+   * timeseries start with the matched prefix path will be collected.
+   *
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset) throws MetadataException {
-    return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset);
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset, isPrefixMatch);
   }
 
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
@@ -1078,7 +1306,9 @@ public class MManager {
     int limit = plan.getLimit();
     int offset = plan.getOffset();
     for (IMeasurementMNode leaf : allMatchedNodes) {
-      if (pathPattern.matchFullPath(leaf.getPartialPath())) {
+      if (plan.isPrefixMatch()
+          ? pathPattern.matchPrefixPath(leaf.getPartialPath())
+          : pathPattern.matchFullPath(leaf.getPartialPath())) {
         if (limit != 0 || offset != 0) {
           curOffset++;
           if (curOffset < offset || count == limit) {
@@ -1097,6 +1327,9 @@ public class MManager {
                   measurementSchema.getType(),
                   measurementSchema.getEncodingType(),
                   measurementSchema.getCompressor(),
+                  leaf.getLastCacheContainer().getCachedLast() != null
+                      ? leaf.getLastCacheContainer().getCachedLast().getTimestamp()
+                      : 0,
                   tagAndAttributePair.left,
                   tagAndAttributePair.right));
           if (limit != 0) {
@@ -1141,6 +1374,7 @@ public class MManager {
                 TSDataType.valueOf(ansString.right[2]),
                 TSEncoding.valueOf(ansString.right[3]),
                 CompressionType.valueOf(ansString.right[4]),
+                ansString.right[6] != null ? Long.parseLong(ansString.right[6]) : 0,
                 tagAndAttributePair.left,
                 tagAndAttributePair.right));
       } catch (IOException e) {
@@ -1229,6 +1463,7 @@ public class MManager {
 
   /** Get storage group node by path. the give path don't need to be storage group path. */
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
+    ensureStorageGroup(path);
     return mtree.getStorageGroupNodeByPath(path);
   }
 
@@ -1237,7 +1472,7 @@ public class MManager {
     return mtree.getAllStorageGroupNodes();
   }
 
-  IMNode getDeviceNode(PartialPath path) throws MetadataException {
+  public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     IMNode node;
     try {
       node = mNodeCache.get(path);
@@ -1527,8 +1762,9 @@ public class MManager {
    * @return StorageGroupName-FullPath pairs
    * @apiNote :for cluster
    */
-  public Map<String, String> groupPathByStorageGroup(PartialPath path) throws MetadataException {
-    Map<String, String> sgPathMap = mtree.groupPathByStorageGroup(path);
+  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
+      throws MetadataException {
+    Map<String, List<PartialPath>> sgPathMap = mtree.groupPathByStorageGroup(path);
     if (logger.isDebugEnabled()) {
       logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
     }
@@ -1698,7 +1934,7 @@ public class MManager {
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
     // devicePath is a logical path which is parent of measurement, whether in template or not
-    PartialPath devicePath = plan.getDeviceId();
+    PartialPath devicePath = plan.getDevicePath();
     String[] measurementList = plan.getMeasurements();
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
@@ -1708,27 +1944,38 @@ public class MManager {
     for (String measurementId : measurementList) {
       PartialPath fullPath = devicePath.concatNode(measurementId);
       int index = mtree.getMountedNodeIndexOnMeasurementPath(fullPath);
-      if (index != fullPath.getNodeLength() - 1) {
+      if ((index != fullPath.getNodeLength() - 1) && !mountedNodeFound) {
         // this measurement is in template, need to assure mounted node exists and set using
         // template.
-        if (!mountedNodeFound) {
-          // Without allowing overlap of template and MTree, this block run only once
-          String[] mountedPathNodes = Arrays.copyOfRange(fullPath.getNodes(), 0, index + 1);
-          IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
+        // Without allowing overlap of template and MTree, this block run only once
+        String[] mountedPathNodes = Arrays.copyOfRange(fullPath.getNodes(), 0, index + 1);
+        IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
+        if (!mountedNode.isUseTemplate()) {
           setUsingSchemaTemplate(mountedNode);
-          mountedNodeFound = true;
         }
+        mountedNodeFound = true;
       }
     }
     // get logical device node, may be in template. will be multiple if overlap is allowed.
     IMNode deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
 
     // check insert non-aligned InsertPlan for aligned timeseries
-    if (plan.isAligned() && deviceMNode.isEntity() && !deviceMNode.getAsEntityMNode().isAligned()) {
-      throw new MetadataException(
-          String.format(
-              "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
-              plan.getDeviceId()));
+    if (deviceMNode.isEntity()) {
+      if (plan.isAligned()) {
+        if (!deviceMNode.getAsEntityMNode().isAligned()) {
+          throw new MetadataException(
+              String.format(
+                  "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
+                  plan.getDevicePath()));
+        }
+      } else {
+        if (deviceMNode.getAsEntityMNode().isAligned()) {
+          throw new MetadataException(
+              String.format(
+                  "Timeseries under path [%s] is aligned , please set InsertPlan.isAligned() = true",
+                  plan.getDevicePath()));
+        }
+      }
     }
 
     // 2. get schema of each measurement
@@ -1786,7 +2033,7 @@ public class MManager {
 
   private Pair<IMNode, IMeasurementMNode> getMeasurementMNodeForInsertPlan(
       InsertPlan plan, int loc, IMNode deviceMNode) throws MetadataException {
-    PartialPath devicePath = plan.getDeviceId();
+    PartialPath devicePath = plan.getDevicePath();
     String[] measurementList = plan.getMeasurements();
     String measurement = measurementList[loc];
     IMeasurementMNode measurementMNode = getMeasurementMNode(deviceMNode, measurement);
@@ -1802,7 +2049,9 @@ public class MManager {
             internalCreateTimeseries(devicePath.concatNode(measurement), plan.getDataTypes()[loc]);
           } else {
             internalAlignedCreateTimeseries(
-                devicePath, Arrays.asList(measurementList), Arrays.asList(plan.getDataTypes()));
+                devicePath,
+                Collections.singletonList(measurement),
+                Collections.singletonList(plan.getDataTypes()[loc]));
           }
           // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
           deviceMNode = mtree.getNodeByPath(devicePath);
@@ -1905,6 +2154,15 @@ public class MManager {
   // region Interfaces and Implementation for Template operations
   public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
     try {
+
+      List<List<TSDataType>> dataTypes = plan.getDataTypes();
+      List<List<TSEncoding>> encodings = plan.getEncodings();
+      for (int i = 0; i < dataTypes.size(); i++) {
+        for (int j = 0; j < dataTypes.get(i).size(); j++) {
+          SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i).get(j), encodings.get(i).get(j));
+        }
+      }
+
       templateManager.createSchemaTemplate(plan);
       // write wal
       if (!isRecovering) {
@@ -1917,6 +2175,13 @@ public class MManager {
 
   public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
     try {
+
+      List<TSDataType> dataTypes = plan.getDataTypes();
+      List<TSEncoding> encodings = plan.getEncodings();
+      for (int idx = 0; idx < dataTypes.size(); idx++) {
+        SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(idx), encodings.get(idx));
+      }
+
       templateManager.appendSchemaTemplate(plan);
       // write wal
       if (!isRecovering) {
@@ -1965,6 +2230,59 @@ public class MManager {
   public List<String> getMeasurementsInTemplate(String templateName, String path)
       throws MetadataException {
     return templateManager.getTemplate(templateName).getMeasurementsUnderPath(path);
+  }
+
+  public List<Pair<String, IMeasurementSchema>> getSchemasInTemplate(
+      String templateName, String path) throws MetadataException {
+    Set<Map.Entry<String, IMeasurementSchema>> rawSchemas =
+        templateManager.getTemplate(templateName).getSchemaMap().entrySet();
+    return rawSchemas.stream()
+        .filter(e -> e.getKey().startsWith(path))
+        .collect(
+            ArrayList::new,
+            (res, elem) -> res.add(new Pair<>(elem.getKey(), elem.getValue())),
+            ArrayList::addAll);
+  }
+
+  public Set<String> getAllTemplates() {
+    return templateManager.getAllTemplateName();
+  }
+
+  /**
+   * Get all paths set designated template
+   *
+   * @param templateName designated template name, blank string for any template exists
+   * @return paths set
+   */
+  public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
+    return new HashSet<>(mtree.getPathsSetOnTemplate(templateName));
+  }
+
+  public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
+    return new HashSet<>(mtree.getPathsUsingTemplate(templateName));
+  }
+
+  public void dropSchemaTemplate(DropTemplatePlan plan) throws MetadataException {
+    try {
+      String templateName = plan.getName();
+      // check whether template exists
+      if (!templateManager.getAllTemplateName().contains(templateName)) {
+        throw new UndefinedTemplateException(templateName);
+      }
+
+      if (mtree.isTemplateSetOnMTree(templateName)) {
+        throw new MetadataException(
+            String.format(
+                "Template [%s] has been set on MTree, cannot be dropped now.", templateName));
+      }
+
+      templateManager.dropSchemaTemplate(plan);
+      if (!isRecovering) {
+        logWriter.dropSchemaTemplate(plan);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
   }
 
   public synchronized void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {

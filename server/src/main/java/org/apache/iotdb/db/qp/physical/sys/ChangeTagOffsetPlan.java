@@ -36,11 +36,11 @@ public class ChangeTagOffsetPlan extends PhysicalPlan {
   private long offset;
 
   public ChangeTagOffsetPlan() {
-    super(false, Operator.OperatorType.CHANGE_TAG_OFFSET);
+    super(Operator.OperatorType.CHANGE_TAG_OFFSET);
   }
 
   public ChangeTagOffsetPlan(PartialPath partialPath, long offset) {
-    super(false, Operator.OperatorType.CHANGE_TAG_OFFSET);
+    super(Operator.OperatorType.CHANGE_TAG_OFFSET);
     path = partialPath;
     this.offset = offset;
   }

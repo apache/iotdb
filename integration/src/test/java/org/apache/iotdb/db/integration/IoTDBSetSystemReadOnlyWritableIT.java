@@ -149,7 +149,7 @@ public class IoTDBSetSystemReadOnlyWritableIT {
   }
 
   @Test
-  public void setReadOnlyAndWritableTest() {
+  public void setReadOnlyAndWritableTest() throws InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("SET SYSTEM TO READONLY");
@@ -165,7 +165,7 @@ public class IoTDBSetSystemReadOnlyWritableIT {
       fail();
     } catch (Exception e) {
       Assert.assertEquals(
-          "411: Current system mode is read-only, does not support non-query operation",
+          "502: Database is read-only, and does not accept non-query operation now",
           e.getMessage());
     }
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -175,6 +175,8 @@ public class IoTDBSetSystemReadOnlyWritableIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+    // Sleep 1s to make sure that other nodes have applied 'SET SYSTEM TO WRITABLE'
+    Thread.sleep(1000);
     importData(sqls2);
     String[] retArray =
         new String[] {

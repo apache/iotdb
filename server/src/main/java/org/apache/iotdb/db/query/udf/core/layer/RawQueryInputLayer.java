@@ -21,9 +21,10 @@ package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.query.dataset.IUDFInputDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter;
-import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
-import org.apache.iotdb.db.query.dataset.UDFInputDataSet;
+import org.apache.iotdb.db.query.dataset.UDFRawQueryInputDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.udf.core.layer.SafetyLine.SafetyPile;
@@ -38,7 +39,7 @@ import java.util.List;
 
 public class RawQueryInputLayer {
 
-  private UDFInputDataSet queryDataSet;
+  private IUDFInputDataSet queryDataSet;
   private TSDataType[] dataTypes;
   private int timestampIndex;
 
@@ -47,16 +48,12 @@ public class RawQueryInputLayer {
 
   /** InputLayerWithoutValueFilter */
   public RawQueryInputLayer(
-      long queryId,
-      float memoryBudgetInMB,
-      List<PartialPath> paths,
-      List<TSDataType> dataTypes,
-      List<ManagedSeriesReader> readers)
+      long queryId, float memoryBudgetInMB, UDTFPlan queryPlan, List<ManagedSeriesReader> readers)
       throws QueryProcessException, IOException, InterruptedException {
     construct(
         queryId,
         memoryBudgetInMB,
-        new RawQueryDataSetWithoutValueFilter(queryId, paths, dataTypes, readers, true));
+        new UDFRawQueryInputDataSetWithoutValueFilter(queryId, queryPlan, readers));
   }
 
   /** InputLayerWithValueFilter */
@@ -67,15 +64,22 @@ public class RawQueryInputLayer {
       List<TSDataType> dataTypes,
       TimeGenerator timeGenerator,
       List<IReaderByTimestamp> readers,
+      List<List<Integer>> readerToIndexList,
       List<Boolean> cached)
       throws QueryProcessException {
     construct(
         queryId,
         memoryBudgetInMB,
-        new RawQueryDataSetWithValueFilter(paths, dataTypes, timeGenerator, readers, cached, true));
+        new RawQueryDataSetWithValueFilter(
+            paths, dataTypes, timeGenerator, readers, readerToIndexList, cached, true));
   }
 
-  private void construct(long queryId, float memoryBudgetInMB, UDFInputDataSet queryDataSet)
+  public RawQueryInputLayer(long queryId, float memoryBudgetInMB, IUDFInputDataSet queryDataSet)
+      throws QueryProcessException {
+    construct(queryId, memoryBudgetInMB, queryDataSet);
+  }
+
+  private void construct(long queryId, float memoryBudgetInMB, IUDFInputDataSet queryDataSet)
       throws QueryProcessException {
     this.queryDataSet = queryDataSet;
     dataTypes = queryDataSet.getDataTypes().toArray(new TSDataType[0]);
@@ -127,7 +131,12 @@ public class RawQueryInputLayer {
 
       for (int i = currentRowIndex + 1; i < rowRecordList.size(); ++i) {
         Object[] rowRecordCandidate = rowRecordList.getRowRecord(i);
-        if (rowRecordCandidate[columnIndex] != null) {
+        // If any field in the current row are null, we should treat this row as valid.
+        // Because in a GROUP BY time query, we must return every time window record even if there's
+        // no data.
+        // Under the situation, if hasCachedRowRecord is false, this row will be
+        // skipped and the result is not as our expected.
+        if (rowRecordCandidate[columnIndex] != null || rowRecordList.fieldsHasAnyNull(i)) {
           hasCachedRowRecord = true;
           cachedRowRecord = rowRecordCandidate;
           currentRowIndex = i;
@@ -139,7 +148,8 @@ public class RawQueryInputLayer {
         while (queryDataSet.hasNextRowInObjects()) {
           Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
           rowRecordList.put(rowRecordCandidate);
-          if (rowRecordCandidate[columnIndex] != null) {
+          if (rowRecordCandidate[columnIndex] != null
+              || rowRecordList.fieldsHasAnyNull(rowRecordList.size() - 1)) {
             hasCachedRowRecord = true;
             cachedRowRecord = rowRecordCandidate;
             currentRowIndex = rowRecordList.size() - 1;
@@ -192,6 +202,11 @@ public class RawQueryInputLayer {
     @Override
     public boolean currentBoolean() {
       return (boolean) cachedRowRecord[columnIndex];
+    }
+
+    @Override
+    public boolean isCurrentNull() {
+      return cachedRowRecord[columnIndex] == null;
     }
 
     @Override

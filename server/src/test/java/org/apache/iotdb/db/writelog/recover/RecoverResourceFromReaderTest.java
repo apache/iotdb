@@ -29,7 +29,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -45,8 +44,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -96,8 +96,8 @@ public class RecoverResourceFromReaderTest {
       for (int j = 0; j < 10; j++) {
         PartialPath path =
             new PartialPath("root.sg.device" + i + IoTDBConstant.PATH_SEPARATOR + "sensor" + j);
-        UnaryMeasurementSchema measurementSchema =
-            new UnaryMeasurementSchema("sensor" + j, TSDataType.INT64, TSEncoding.PLAIN);
+        MeasurementSchema measurementSchema =
+            new MeasurementSchema("sensor" + j, TSDataType.INT64, TSEncoding.PLAIN);
         schema.registerTimeseries(new Path(path.toTSFilePath().getDevice()), measurementSchema);
         IoTDB.metaManager.createTimeseries(
             path,
@@ -109,7 +109,7 @@ public class RecoverResourceFromReaderTest {
     }
     schema.registerTimeseries(
         new Path(("root.sg.device99")),
-        new UnaryMeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN));
+        new MeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN));
     IoTDB.metaManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor4"),
         TSDataType.INT64,
@@ -118,7 +118,7 @@ public class RecoverResourceFromReaderTest {
         Collections.emptyMap());
     schema.registerTimeseries(
         new Path("root.sg.device99"),
-        new UnaryMeasurementSchema("sensor2", TSDataType.INT64, TSEncoding.PLAIN));
+        new MeasurementSchema("sensor2", TSDataType.INT64, TSEncoding.PLAIN));
     IoTDB.metaManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor2"),
         TSDataType.INT64,
@@ -127,7 +127,7 @@ public class RecoverResourceFromReaderTest {
         Collections.emptyMap());
     schema.registerTimeseries(
         new Path(("root.sg.device99")),
-        new UnaryMeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.PLAIN));
+        new MeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.PLAIN));
     IoTDB.metaManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor1"),
         TSDataType.INT64,
@@ -155,8 +155,9 @@ public class RecoverResourceFromReaderTest {
     }
 
     writer.flushAllChunkGroups();
+    // In TSP, first endFile and then serialize TsFileResource
+    writer.getIOWriter().endFile();
     writer.getIOWriter().close();
-
     node =
         MultiFileLogNodeManager.getInstance()
             .getNode(
@@ -171,41 +172,6 @@ public class RecoverResourceFromReaderTest {
                           IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
                   return byteBuffers;
                 });
-    for (int i = 0; i < 10; i++) {
-      for (int j = 0; j < 10; j++) {
-        String[] measurements = new String[10];
-        String[] values = new String[10];
-        TSDataType[] types = new TSDataType[10];
-        for (int k = 0; k < 10; k++) {
-          measurements[k] = "sensor" + k;
-          types[k] = TSDataType.INT64;
-          values[k] = String.valueOf(k + 10);
-        }
-        InsertRowPlan insertRowPlan =
-            new InsertRowPlan(
-                new PartialPath("root.sg.device" + j), i, measurements, types, values);
-        node.write(insertRowPlan);
-      }
-      node.notifyStartFlush();
-    }
-    InsertRowPlan insertRowPlan =
-        new InsertRowPlan(
-            new PartialPath("root.sg.device99"),
-            1,
-            new String[] {"sensor4"},
-            new TSDataType[] {TSDataType.INT64},
-            new String[] {"4"});
-    node.write(insertRowPlan);
-    insertRowPlan =
-        new InsertRowPlan(
-            new PartialPath("root.sg.device99"),
-            300,
-            new String[] {"sensor2"},
-            new TSDataType[] {TSDataType.INT64},
-            new String[] {"2"});
-    node.write(insertRowPlan);
-    node.close();
-
     resource = new TsFileResource(tsF);
   }
 
@@ -233,9 +199,9 @@ public class RecoverResourceFromReaderTest {
     }
 
     TsFileRecoverPerformer performer =
-        new TsFileRecoverPerformer(logNodePrefix, resource, false, false);
-    performer
-        .recover(
+        new TsFileRecoverPerformer(logNodePrefix, resource, false, false, null);
+    RestorableTsFileIOWriter writer =
+        performer.recover(
             true,
             () -> {
               ByteBuffer[] byteBuffers = new ByteBuffer[2];
@@ -251,10 +217,12 @@ public class RecoverResourceFromReaderTest {
               for (ByteBuffer byteBuffer : byteBuffers) {
                 MmapUtil.clean((MappedByteBuffer) byteBuffer);
               }
-            })
-        .close();
-    assertEquals(1, resource.getStartTime("root.sg.device99"));
-    assertEquals(300, resource.getEndTime("root.sg.device99"));
+            });
+    if (writer != null) {
+      writer.close();
+    }
+    assertEquals(2, resource.getStartTime("root.sg.device99"));
+    assertEquals(100, resource.getEndTime("root.sg.device99"));
     for (int i = 0; i < 10; i++) {
       assertEquals(0, resource.getStartTime("root.sg.device" + i));
       assertEquals(9, resource.getEndTime("root.sg.device" + i));
