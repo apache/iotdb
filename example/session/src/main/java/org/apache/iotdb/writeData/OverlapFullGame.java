@@ -19,7 +19,7 @@ import java.util.Random;
  * full-game-small 1 5 495760. (3) java WriteOverlapChunks D:\exp\full-game-small
  * D:\exp\full-game-small-OP90-OD50 0 1 90 50.
  */
-public class WriteOverlapChunks {
+public class OverlapFullGame {
 
   public static void main(String[] args) throws IOException {
     // default
