@@ -13,15 +13,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-// java -jar /data3/ruilei/rl/mf03_testspace/WriteMF03-0.12.4.jar
-// /data3/raw_data/rl/debs2012/mf03-3h-O_10_10 0 0 0 1 0
 public class WriteMF03 {
-
   /** Before writing data, make sure check the server parameter configurations. */
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     String measurement = "mf03"; // [[update]]
     String device = "root.debs2012"; // [[update]]
+    long chunkAvgTimeLen = 102213719111L; // ns [[update]]
 
     // 实验自变量1：乱序数据源
     String filePath = args[0];
@@ -33,8 +31,6 @@ public class WriteMF03 {
     int timeIdx = Integer.parseInt(args[3]);
     // 参数5：值idx，从0开始
     int valueIdx = Integer.parseInt(args[4]);
-    // 参数6：chunkAvgTimeLen
-    long chunkAvgTimeLen = Long.parseLong(args[5]);
 
     if (deletePercentage < 0 || deletePercentage > 100) {
       throw new IOException("WRONG deletePercentage!");

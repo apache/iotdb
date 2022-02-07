@@ -8,7 +8,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.thrift.TException;
 
-public class QueryRecTime {
+public class QueryRcvTime {
 
   // * (1) min_time(%s), max_time(%s), first_value(%s), last_value(%s), min_value(%s), max_value(%s)
   //       => Don't change the sequence of the above six aggregates!
@@ -28,7 +28,7 @@ public class QueryRecTime {
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, TException {
     // fixed time series path
-    String measurement = "RecTime"; // [[update]]
+    String measurement = "RcvTime"; // [[update]]
     String device = "root.sg1"; // [[update]]
     // used to bound tqs random position
     long dataMinTime = 1616194494000L; // [[update]]

@@ -13,14 +13,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class WriteFullGame {
+public class WriteKOB {
 
   /** Before writing data, make sure check the server parameter configurations. */
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, IOException {
-    String measurements = "s6"; // [[update]]
-    String device = "root.game"; // [[update]]
-    long chunkAvgTimeLen = 5238417462L; // ns [[update]]
+    String measurement = "KOB_0002_00_67"; // [[update]]
+    String device = "root.kobelco.trans.03.1090001603.2401604"; // [[update]]
+    long chunkAvgTimeLen = 55826201L;
 
     // 实验自变量1：乱序数据源
     String filePath = args[0];
@@ -46,7 +46,7 @@ public class WriteFullGame {
     long deleteLen = (long) Math.floor(chunkAvgTimeLen * deleteLenPercentage * 1.0 / 100);
 
     List<String> deletePaths = new ArrayList<>();
-    deletePaths.add(device + "." + measurements);
+    deletePaths.add(device + "." + measurement);
 
     TSDataType tsDataType = TSDataType.INT64; // value types
 
@@ -56,14 +56,13 @@ public class WriteFullGame {
     // this is to make all following inserts unseq chunks
     session.insertRecord(
         device,
-        1644181628000000000L,
+        1644181628000L, // ms
         // NOTE UPDATE TIME DATATYPE! [[update]]. DONT USE System.nanoTime()!
-        Collections.singletonList(measurements),
+        Collections.singletonList(measurement),
         Collections.singletonList(tsDataType), // NOTE UPDATE VALUE DATATYPE!
         0L); // NOTE UPDATE VALUE DATATYPE!
     session.executeNonQueryStatement("flush");
 
-    long minTime = -1;
     File f = new File(filePath);
     String line = null;
     BufferedReader reader = new BufferedReader(new FileReader(f));
@@ -73,18 +72,11 @@ public class WriteFullGame {
     while ((line = reader.readLine()) != null) {
       String[] split = line.split(",");
       long timestamp = Long.parseLong(split[timeIdx]);
-      if (minTime == -1) {
-        minTime = timestamp; // assume first timestamp is never disordered. is global minimal.
-        timestamp = 0;
-      } else {
-        timestamp = timestamp - minTime;
-      }
-      timestamp = (long) (timestamp / 1000); // turn to ns. original time unit is ps. IoTDB only ns.
       long value = Long.parseLong(split[valueIdx]);
       session.insertRecord(
           device,
           timestamp,
-          Collections.singletonList(measurements),
+          Collections.singletonList(measurement),
           Collections.singletonList(tsDataType),
           value);
       cnt++;

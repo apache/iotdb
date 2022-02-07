@@ -11,19 +11,17 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
-public class ExtractRecTimeData {
+public class ExtractMF03Data {
 
-  // java D:\pythonPlotDoNotDeleteIt\drawRawData\RecTime\dump0.csv
-  // D:\pythonPlotDoNotDeleteIt\drawRawData\RecTime\dump1.csv 0 1 0 1644144767000
+  // java ExtractMF03Data /data3/raw_data/data/debs2012/allData.txt MF03.csv 0 4
+  // 1329955200000000000 1329966000000000000
   public static void main(String[] args) throws IOException {
-    //        String tmp = "2021-03-20T06:54:54.000+08:00";
-    //        long timestamp = getInstantWithPrecision(tmp, "ms");
-    //        System.out.println(timestamp);
-
     String inPath = args[0];
     String outPath = args[1];
     int timeIdx = Integer.parseInt(args[2]); // 0
     int valueIdx = Integer.parseInt(args[3]); // mf03: 4
+    // [1329955200000000000 Thursday, February 23, 2012 0:00:00~1329966000000000000 Thursday,
+    // February 23, 2012 3:00:00)
     long startTime = Long.parseLong(args[4]);
     long endTime = Long.parseLong(args[5]);
 
@@ -36,17 +34,13 @@ public class ExtractRecTimeData {
     long lastTimestamp = -1;
 
     while ((line = reader.readLine()) != null) {
-      String[] split = line.split(",");
+      String[] split = line.split("\\s+");
       String timestampStr = split[timeIdx];
-      long timestamp = getInstantWithPrecision(timestampStr, "ms");
+      long timestamp = getInstantWithPrecision(timestampStr, "ns");
       if (timestamp >= endTime) {
         break;
       }
       if (timestamp < startTime) {
-        continue;
-      }
-      if (timestamp <= lastTimestamp) {
-        System.out.println("out-of-order! " + timestamp + "last: " + lastTimestamp);
         continue;
       }
       long value = Long.parseLong(split[valueIdx]);
@@ -55,11 +49,45 @@ public class ExtractRecTimeData {
       printWriter.print(value);
       printWriter.println();
       cnt++;
+      if (timestamp < lastTimestamp) {
+        System.out.println("out-of-order! " + timestamp);
+      }
       lastTimestamp = timestamp;
     }
     reader.close();
     printWriter.close();
   }
+
+  //  private static long convertDatetimeStrToLong(String str, ZoneOffset offset, int depth)
+  //      throws LogicalOperatorException {
+  //
+  //    String timestampPrecision =
+  // IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+  //
+  //    if (depth >= 2) {
+  //      throw new DateTimeException(
+  //          String.format(
+  //              "Failed to convert %s to millisecond, zone offset is %s, "
+  //                  + "please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00",
+  //              str, offset));
+  //    }
+  //    if (str.contains("Z")) {
+  //      return convertDatetimeStrToLong(str.substring(0, str.indexOf('Z')) + "+00:00", offset,
+  // depth);
+  //    } else if (str.length() == 10) {
+  //      return convertDatetimeStrToLong(str + "T00:00:00", offset, depth);
+  //    } else if (str.length() - str.lastIndexOf('+') != 6
+  //        && str.length() - str.lastIndexOf('-') != 6) {
+  //      return convertDatetimeStrToLong(str + offset, offset, depth + 1);
+  //    } else if (str.contains("[") || str.contains("]")) {
+  //      throw new DateTimeException(
+  //          String.format(
+  //              "%s with [time-region] at end is not supported now, "
+  //                  + "please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00",
+  //              str));
+  //    }
+  //    return getInstantWithPrecision(str, timestampPrecision);
+  //  }
 
   private static long getInstantWithPrecision(String str, String timestampPrecision)
       throws IOException {

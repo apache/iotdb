@@ -8,7 +8,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.thrift.TException;
 
-public class QueryFullGame {
+public class QueryKOB {
 
   // * (1) min_time(%s), max_time(%s), first_value(%s), last_value(%s), min_value(%s), max_value(%s)
   //       => Don't change the sequence of the above six aggregates!
@@ -18,7 +18,7 @@ public class QueryFullGame {
   private static final String queryFormat =
       "select min_time(%s), max_time(%s), first_value(%s), last_value(%s), min_value(%s), max_value(%s) "
           + "from %s "
-          + "group by ([%d, %d), %dns)"; // note this "ns" time precision
+          + "group by ([%d, %d), %dms)"; // note this "ms" time precision
 
   private static final String queryFormat_UDF =
       "select M4(%1$s,'tqs'='%3$d','tqe'='%4$d','w'='%5$d') from %2$s where time>=%3$d and time<%4$d";
@@ -28,11 +28,11 @@ public class QueryFullGame {
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, TException {
     // fixed time series path
-    String measurement = "s6";
-    String device = "root.game";
+    String measurement = "KOB_0002_00_67"; // [[update]]
+    String device = "root.kobelco.trans.03.1090001603.2401604"; // [[update]]
     // used to bound tqs random position
-    long dataMinTime = 0;
-    long dataMaxTime = 617426057627L; // 617426057626+1
+    long dataMinTime = 1616805035973L; // [[update]]
+    long dataMaxTime = 1627380839564L; // 1627380839563+1 // [[update]]
 
     // 实验自变量1：[tqs,tqe) range length, i.e., tqe-tqs
     long range = Long.parseLong(args[0]);

@@ -7,9 +7,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-// java ExtractFullGameData /data3/raw_data/data/full-game full-game-sid8-10min 1 5 8 2000000
-// 3200000
-public class ExtractFullGameData {
+// java ExtractBallSpeedData /data3/raw_data/data/full-game BallSpeed.csv 1 5 8 2000000 3200000
+public class ExtractBallSpeedData {
 
   // sid, ts, x, y, z, |v|, |a|, vx, vy, vz, ax, ay, az
   public static void main(String[] args) throws IOException {
