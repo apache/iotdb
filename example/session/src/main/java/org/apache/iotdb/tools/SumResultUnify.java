@@ -1,4 +1,4 @@
-package org.apache.iotdb.queryExp;
+package org.apache.iotdb.tools;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
