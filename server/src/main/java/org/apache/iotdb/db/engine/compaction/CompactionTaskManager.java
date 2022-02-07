@@ -215,6 +215,7 @@ public class CompactionTaskManager implements IService {
    */
   public synchronized boolean addTaskToWaitingQueue(AbstractCompactionTask compactionTask)
       throws InterruptedException {
+    logger.warn("add {} to waiting queue", compactionTask);
     if (!candidateCompactionTaskQueue.contains(compactionTask)
         && !runningCompactionTaskList.contains(compactionTask)) {
       candidateCompactionTaskQueue.put(compactionTask);
@@ -327,6 +328,7 @@ public class CompactionTaskManager implements IService {
       String fullStorageGroupName, long timePartition, Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
     if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
+      logger.warn("submit {} to waiting queue", compactionMergeTask);
       Future<Void> future = taskExecutionPool.submit(compactionMergeTask);
       compactionTaskFutures
           .computeIfAbsent(fullStorageGroupName, k -> new ConcurrentHashMap<>())
