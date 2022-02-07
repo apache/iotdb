@@ -227,7 +227,7 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   private void flushVolatileNodes() {
-    List<IMNode> nodesToPersist = cacheStrategy.collectVolatileMNodes(root);
+    List<IMNode> nodesToPersist = cacheStrategy.collectVolatileMNodes();
     for (IMNode volatileNode : nodesToPersist) {
       file.writeMNode(volatileNode);
       if (cacheStrategy.isCached(volatileNode)) {

@@ -24,7 +24,7 @@ public class CacheEntry {
 
   protected volatile boolean isVolatile = false;
 
-  protected volatile AtomicInteger semaphore;
+  protected volatile AtomicInteger semaphore = new AtomicInteger();
 
   public boolean isVolatile() {
     return isVolatile;
@@ -35,13 +35,6 @@ public class CacheEntry {
   }
 
   public void pin() {
-    if (semaphore == null) {
-      synchronized (this) {
-        if (semaphore == null) {
-          semaphore = new AtomicInteger();
-        }
-      }
-    }
     semaphore.getAndIncrement();
   }
 
