@@ -81,10 +81,16 @@ createStorageGroup
 // Create Timeseries
 createTimeseries
     : CREATE ALIGNED TIMESERIES fullPath alignedMeasurements? #createAlignedTimeseries
+    | CREATE AUTOALIGNED TIMESERIES fullPath autoAlignedMeasurements? #createAutoAlignedTimeseries
     | CREATE TIMESERIES fullPath attributeClauses  #createNonAlignedTimeseries
     ;
 
 alignedMeasurements
+    : LR_BRACKET nodeNameWithoutWildcard attributeClauses
+    (COMMA nodeNameWithoutWildcard attributeClauses)* RR_BRACKET
+    ;
+
+autoAlignedMeasurements
     : LR_BRACKET nodeNameWithoutWildcard attributeClauses
     (COMMA nodeNameWithoutWildcard attributeClauses)* RR_BRACKET
     ;
@@ -431,7 +437,7 @@ timeInterval
 
 // Insert Statement
 insertStatement
-    : INSERT INTO prefixPath insertColumnsSpec ALIGNED? VALUES insertValuesSpec
+    : INSERT INTO prefixPath insertColumnsSpec ALIGNED? AUTOALIGNED? VALUES insertValuesSpec
     ;
 
 insertColumnsSpec

@@ -21,23 +21,24 @@ package org.apache.iotdb.db.engine.flush;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
-import org.apache.iotdb.db.engine.memtable.IMemTable;
-import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
-import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
+import org.apache.iotdb.db.engine.memtable.*;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -122,6 +123,13 @@ public class MemTableFlushTask {
         series.sortTvListForFlush();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.put(series);
+        if (series instanceof AutoAlignedWritableMemChunk) {
+          /** perform our grouping strategy* */
+          List<IMeasurementSchema> schemaList =
+              ((AutoAlignedWritableMemChunk) series).getSchemaList();
+          AlignedTVList dataList = ((AutoAlignedWritableMemChunk) series).getList();
+          FlushGroupingEngine.grouping(dataList, schemaList);
+        }
       }
 
       encodingTaskQueue.put(new EndChunkGroupIoTask());

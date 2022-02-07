@@ -109,6 +109,37 @@ public class SchemaEntry implements ILastCacheContainer {
     }
   }
 
+  public SchemaEntry(
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      IDeviceID deviceID,
+      PartialPath fullPath,
+      boolean isAligned,
+      boolean isAutoAligned,
+      IDiskSchemaManager IDiskSchemaManager) {
+    schema |= dataType.serialize();
+    schema |= (((long) encoding.serialize()) << 8);
+    schema |= (((long) compressionType.serialize()) << 16);
+
+    lastTime = Long.MIN_VALUE;
+
+    // write log file
+    if (config.isEnableIDTableLogFile()) {
+      DiskSchemaEntry diskSchemaEntry =
+          new DiskSchemaEntry(
+              deviceID.toStringID(),
+              fullPath.getFullPath(),
+              fullPath.getMeasurement(),
+              dataType.serialize(),
+              encoding.serialize(),
+              compressionType.serialize(),
+              isAligned,
+              isAutoAligned);
+      schema |= (IDiskSchemaManager.serialize(diskSchemaEntry) << 25);
+    }
+  }
+
   /**
    * get ts data type from long value of schema
    *

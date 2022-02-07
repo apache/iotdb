@@ -223,6 +223,26 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
   }
 
+  @Override
+  public Operator visitCreateAutoAlignedTimeseries(
+      IoTDBSqlParser.CreateAutoAlignedTimeseriesContext ctx) {
+    CreateAutoAlignedTimeSeriesOperator createAutoAlignedTimeSeriesOperator =
+        new CreateAutoAlignedTimeSeriesOperator(SQLConstant.TOK_METADATA_CREATE);
+    createAutoAlignedTimeSeriesOperator.setPrefixPath(parseFullPath(ctx.fullPath()));
+    parseAutoAlignedMeasurements(
+        ctx.autoAlignedMeasurements(), createAutoAlignedTimeSeriesOperator);
+    return createAutoAlignedTimeSeriesOperator;
+  }
+
+  public void parseAutoAlignedMeasurements(
+      IoTDBSqlParser.AutoAlignedMeasurementsContext ctx,
+      CreateAutoAlignedTimeSeriesOperator createAutoAlignedTimeSeriesOperator) {
+    for (int i = 0; i < ctx.nodeNameWithoutWildcard().size(); i++) {
+      createAutoAlignedTimeSeriesOperator.addMeasurement(ctx.nodeNameWithoutWildcard(i).getText());
+      parseAttributeClauses(ctx.attributeClauses(i), createAutoAlignedTimeSeriesOperator);
+    }
+  }
+
   public void parseAttributeClauses(
       IoTDBSqlParser.AttributeClausesContext ctx,
       CreateTimeSeriesOperator createTimeSeriesOperator) {
@@ -391,6 +411,44 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     if (ctx.attributeClause() != null) {
       throw new SQLParserException("schema template: attribute is not supported yet.");
+    }
+  }
+
+  public void parseAttributeClauses(
+      IoTDBSqlParser.AttributeClausesContext ctx,
+      CreateAutoAlignedTimeSeriesOperator createAutoAlignedTimeSeriesOperator) {
+    if (ctx.alias() != null) {
+      throw new SQLParserException("create aligned timeseries: alias is not supported yet.");
+    }
+
+    String dataTypeString = ctx.dataType.getText().toUpperCase();
+    TSDataType dataType = TSDataType.valueOf(dataTypeString);
+    createAutoAlignedTimeSeriesOperator.addDataType(dataType);
+
+    TSEncoding encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
+    if (Objects.nonNull(ctx.encoding)) {
+      String encodingString = ctx.encoding.getText().toUpperCase();
+      encoding = TSEncoding.valueOf(encodingString);
+    }
+    createAutoAlignedTimeSeriesOperator.addEncoding(encoding);
+
+    CompressionType compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    if (ctx.compressor != null) {
+      String compressorString = ctx.compressor.getText().toUpperCase();
+      compressor = CompressionType.valueOf(compressorString);
+    }
+    createAutoAlignedTimeSeriesOperator.addCompressor(compressor);
+
+    if (ctx.propertyClause(0) != null) {
+      throw new SQLParserException("create aligned timeseries: property is not supported yet.");
+    }
+
+    if (ctx.tagClause() != null) {
+      throw new SQLParserException("create aligned timeseries: tag is not supported yet.");
+    }
+
+    if (ctx.attributeClause() != null) {
+      throw new SQLParserException("create aligned timeseries: attribute is not supported yet.");
     }
   }
 
@@ -1599,6 +1657,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     boolean isTimeDefault = parseInsertColumnSpec(ctx.insertColumnsSpec(), insertOp);
     parseInsertValuesSpec(ctx.insertValuesSpec(), insertOp, isTimeDefault);
     insertOp.setAligned(ctx.ALIGNED() != null);
+    insertOp.setAutoAligned(ctx.AUTOALIGNED() != null);
     return insertOp;
   }
 

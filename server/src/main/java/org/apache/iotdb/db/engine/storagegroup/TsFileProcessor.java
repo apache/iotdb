@@ -27,10 +27,7 @@ import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
-import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
-import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunkGroup;
-import org.apache.iotdb.db.engine.memtable.IMemTable;
-import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.engine.memtable.*;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -217,7 +214,9 @@ public class TsFileProcessor {
 
     long[] memIncrements = null;
     if (enableMemControl) {
-      if (insertRowPlan.isAligned()) {
+      if (insertRowPlan.isAutoAligned()) {
+        memIncrements = checkAutoAlignedMemCostAndAddToTspInfo(insertRowPlan);
+      } else if (insertRowPlan.isAligned()) {
         memIncrements = checkAlignedMemCostAndAddToTspInfo(insertRowPlan);
       } else {
         memIncrements = checkMemCostAndAddToTspInfo(insertRowPlan);
@@ -239,7 +238,9 @@ public class TsFileProcessor {
       }
     }
 
-    if (insertRowPlan.isAligned()) {
+    if (insertRowPlan.isAutoAligned()) {
+      workMemTable.insertAutoAlignedRow(insertRowPlan);
+    } else if (insertRowPlan.isAligned()) {
       workMemTable.insertAlignedRow(insertRowPlan);
     } else {
       workMemTable.insert(insertRowPlan);
@@ -374,6 +375,60 @@ public class TsFileProcessor {
             (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
                 ? TVList.tvListArrayMemCost(insertRowPlan.getDataTypes()[i])
                 : 0;
+      }
+      // TEXT data mem size
+      if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {
+        textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
+      }
+    }
+    updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
+    return new long[] {memTableIncrement, textDataIncrement, chunkMetadataIncrement};
+  }
+
+  private long[] checkAutoAlignedMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan)
+      throws WriteProcessException {
+    // memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
+    long memTableIncrement = 0L;
+    long textDataIncrement = 0L;
+    long chunkMetadataIncrement = 0L;
+    AutoAlignedWritableMemChunk autoAlignedMemChunk = null;
+    // get device id
+    IDeviceID deviceID = null;
+    try {
+      deviceID = getDeviceID(insertRowPlan.getDevicePath().getFullPath());
+    } catch (IllegalPathException e) {
+      throw new WriteProcessException(e);
+    }
+
+    if (workMemTable.checkIfChunkDoesNotExist(deviceID, AlignedPath.VECTOR_PLACEHOLDER)) {
+      // ChunkMetadataIncrement
+      chunkMetadataIncrement +=
+          ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR)
+              * insertRowPlan.getDataTypes().length;
+      memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(insertRowPlan.getDataTypes());
+    } else {
+      // here currentChunkPointNum >= 1
+      long currentChunkPointNum =
+          workMemTable.getCurrentTVListSize(deviceID, AlignedPath.VECTOR_PLACEHOLDER);
+      memTableIncrement +=
+          (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
+              ? AlignedTVList.alignedTvListArrayMemCost(insertRowPlan.getDataTypes())
+              : 0;
+      autoAlignedMemChunk =
+          ((AutoAlignedWritableMemChunkGroup) workMemTable.getMemTableMap().get(deviceID))
+              .getAlignedMemChunk();
+    }
+    for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
+      // skip failed Measurements
+      if (insertRowPlan.getDataTypes()[i] == null || insertRowPlan.getMeasurements()[i] == null) {
+        continue;
+      }
+      // extending the column of aligned mem chunk
+      if (autoAlignedMemChunk != null
+          && !autoAlignedMemChunk.containsMeasurement(insertRowPlan.getMeasurements()[i])) {
+        memTableIncrement +=
+            (autoAlignedMemChunk.alignedListSize() / PrimitiveArrayManager.ARRAY_SIZE + 1)
+                * insertRowPlan.getDataTypes()[i].getDataTypeSize();
       }
       // TEXT data mem size
       if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {

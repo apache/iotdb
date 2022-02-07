@@ -114,6 +114,26 @@ public class InsertRowPlan extends InsertPlan {
     this.isAligned = isAligned;
   }
 
+  public InsertRowPlan(
+      PartialPath prefixPath,
+      long insertTime,
+      String[] measurementList,
+      ByteBuffer values,
+      boolean isAligned,
+      boolean isAutoAligned)
+      throws QueryProcessException {
+    super(Operator.OperatorType.INSERT);
+    this.time = insertTime;
+    this.devicePath = prefixPath;
+    this.measurements = measurementList;
+    this.dataTypes = new TSDataType[measurementList.length];
+    this.values = new Object[measurementList.length];
+    this.fillValues(values);
+    isNeedInferType = false;
+    this.isAligned = isAligned;
+    this.isAutoAligned = isAutoAligned;
+  }
+
   @TestOnly
   public InsertRowPlan(
       PartialPath prefixPath,
@@ -363,6 +383,7 @@ public class InsertRowPlan extends InsertPlan {
 
     stream.writeLong(index);
     stream.write((byte) (isAligned ? 1 : 0));
+    stream.write((byte) (isAutoAligned ? 1 : 0));
   }
 
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
@@ -513,6 +534,7 @@ public class InsertRowPlan extends InsertPlan {
     buffer.putLong(index);
 
     buffer.put((byte) (isAligned ? 1 : 0));
+    buffer.put((byte) (isAutoAligned ? 1 : 0));
   }
 
   @Override
@@ -542,6 +564,7 @@ public class InsertRowPlan extends InsertPlan {
     isNeedInferType = buffer.get() == 1;
     this.index = buffer.getLong();
     isAligned = buffer.get() == 1;
+    isAutoAligned = buffer.get() == 1;
   }
 
   @Override

@@ -34,6 +34,7 @@ public class DeviceEntry {
   Map<String, SchemaEntry> measurementMap;
 
   boolean isAligned;
+  boolean isAutoAligned;
 
   // for managing last time
   // time partition -> last time
@@ -86,8 +87,16 @@ public class DeviceEntry {
     return isAligned;
   }
 
+  public boolean isAutoAligned() {
+    return isAutoAligned;
+  }
+
   public void setAligned(boolean aligned) {
     isAligned = aligned;
+  }
+
+  public void setAutoAligned(boolean autoAligned) {
+    isAutoAligned = autoAligned;
   }
 
   public IDeviceID getDeviceID() {

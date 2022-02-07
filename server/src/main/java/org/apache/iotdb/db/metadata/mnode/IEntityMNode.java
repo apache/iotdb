@@ -39,7 +39,11 @@ public interface IEntityMNode extends IMNode {
 
   boolean isAligned();
 
+  boolean isAutoAligned();
+
   void setAligned(boolean isAligned);
+
+  void setAutoAligned(boolean isAutoAligned);
 
   ILastCacheContainer getLastCacheContainer(String measurementId);
 

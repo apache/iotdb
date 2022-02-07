@@ -60,26 +60,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
-import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -454,6 +435,11 @@ public class MManager {
             (CreateAlignedTimeSeriesPlan) plan;
         createAlignedTimeSeries(createAlignedTimeSeriesPlan);
         break;
+      case CREATE_AUTOALIGNED_TIMESERIES:
+        CreateAutoAlignedTimeSeriesPlan createAutoAlignedTimeSeriesPlan =
+            (CreateAutoAlignedTimeSeriesPlan) plan;
+        createAutoAlignedTimeSeries(createAutoAlignedTimeSeriesPlan);
+        break;
       case DELETE_TIMESERIES:
         DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
         // cause we only has one path for one DeleteTimeSeriesPlan
@@ -717,6 +703,74 @@ public class MManager {
     if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
       idTable.createAlignedTimeseries(plan);
+    }
+  }
+
+  public void createAutoAlignedTimeSeries(
+      PartialPath prefixPath,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors)
+      throws MetadataException {
+    createAutoAlignedTimeSeries(
+        new CreateAutoAlignedTimeSeriesPlan(
+            prefixPath, measurements, dataTypes, encodings, compressors, null));
+  }
+
+  /**
+   * create aligned timeseries
+   *
+   * @param plan CreateAlignedTimeSeriesPlan
+   */
+  public void createAutoAlignedTimeSeries(CreateAutoAlignedTimeSeriesPlan plan)
+      throws MetadataException {
+    if (!allowToCreateNewSeries) {
+      throw new MetadataException(
+          "IoTDB system load is too large to create timeseries, "
+              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+    }
+    try {
+      PartialPath prefixPath = plan.getPrefixPath();
+      List<String> measurements = plan.getMeasurements();
+      List<TSDataType> dataTypes = plan.getDataTypes();
+      List<TSEncoding> encodings = plan.getEncodings();
+
+      for (int i = 0; i < measurements.size(); i++) {
+        SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
+      }
+
+      ensureStorageGroup(prefixPath);
+
+      // create time series in MTree
+      mtree.createAutoAlignedTimeseries(
+          prefixPath,
+          measurements,
+          plan.getDataTypes(),
+          plan.getEncodings(),
+          plan.getCompressors());
+
+      // the cached mNode may be replaced by new entityMNode in mtree
+      mNodeCache.invalidate(prefixPath);
+
+      // update statistics and schemaDataTypeNumMap
+      totalSeriesNumber.addAndGet(measurements.size());
+      if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
+        logger.warn("Current series number {} is too large...", totalSeriesNumber);
+        allowToCreateNewSeries = false;
+      }
+      // write log
+      if (!isRecovering) {
+        logWriter.createAutoAlignedTimeseries(plan);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+
+    // update id table
+    if (config.isEnableIDTable()) {
+      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
+      idTable.createAutoAlignedTimeseries(plan);
     }
   }
 
