@@ -8,29 +8,17 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.thrift.TException;
 
-/**
- * !!!!!!!Before query data, make sure check the following server parameters:
- *
- * <p>system_dir=/data3/ruilei/iotdb-server-0.12.4/synData1/system
- * data_dirs=/data3/ruilei/iotdb-server-0.12.4/synData1/data
- * wal_dir=/data3/ruilei/iotdb-server-0.12.4/synData1/wal timestamp_precision=ms
- * unseq_tsfile_size=1073741824 # maximum size of unseq TsFile is 1024^3 Bytes
- * seq_tsfile_size=1073741824 # maximum size of seq TsFile is 1024^3 Bytes
- * avg_series_point_number_threshold=10000 # each chunk contains 10000 data points
- * compaction_strategy=NO_COMPACTION # compaction between levels is disabled
- * enable_unseq_compaction=false # unseq compaction is disabled
- */
-public class QuerySyntheticData1VaryW {
+public class QueryRecTime {
 
   // * (1) min_time(%s), max_time(%s), first_value(%s), last_value(%s), min_value(%s), max_value(%s)
   //       => Don't change the sequence of the above six aggregates!
   // * (2) group by ([tqs,tqe),IntervalLength) => Make sure (tqe-tqs) is divisible by
   // IntervalLength!
-  // * (3) NOTE the time unit of interval. Update for different datasets!!!!!!!!!!!
+  // * (3) NOTE the time unit of interval. Update for different datasets!
   private static final String queryFormat =
       "select min_time(%s), max_time(%s), first_value(%s), last_value(%s), min_value(%s), max_value(%s) "
           + "from %s "
-          + "group by ([%d, %d), %dms)";
+          + "group by ([%d, %d), %dms)"; // note this "ms" time precision
 
   private static final String queryFormat_UDF =
       "select M4(%1$s,'tqs'='%3$d','tqe'='%4$d','w'='%5$d') from %2$s where time>=%3$d and time<%4$d";
@@ -39,17 +27,20 @@ public class QuerySyntheticData1VaryW {
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, TException {
-    // fix parameters for synthetic data1
-    String measurement = "s0";
-    String device = "root.vehicle.d0";
-    // fixed query total range
-    long minTime = 0L;
-    long maxTime = 10000000L; // unit:ms. Set in iotdb-engine.properties `timestamp_precision`.
-    // 实验自变量1：w数量
-    int intervalNum = Integer.parseInt(args[0]);
-    // 实验自变量2：方法
+    // fixed time series path
+    String measurement = "RecTime"; // [[update]]
+    String device = "root.sg1"; // [[update]]
+    // used to bound tqs random position
+    long dataMinTime = 1616194494000L; // [[update]]
+    long dataMaxTime = 1642656230001L; // 617426057626+1 // [[update]]
+
+    // 实验自变量1：[tqs,tqe) range length, i.e., tqe-tqs
+    long range = Long.parseLong(args[0]);
+    // 实验自变量2：w数量
+    int intervalNum = Integer.parseInt(args[1]);
+    // 实验自变量3：方法
     // 1: MAC, 2: MOC, 3: CPV
-    int approach = Integer.parseInt(args[1]);
+    int approach = Integer.parseInt(args[2]);
     if (approach != 1 && approach != 2 && approach != 3) {
       throw new TException("Wrong input parameter approach!");
     }
@@ -66,12 +57,23 @@ public class QuerySyntheticData1VaryW {
       }
     }
 
+    long minTime;
+    long maxTime;
+    long interval;
+    if (range >= (dataMaxTime - dataMinTime)) {
+      minTime = dataMinTime;
+      interval = (long) Math.ceil((double) (dataMaxTime - dataMinTime) / intervalNum);
+    } else {
+      // randomize between [dataMinTime, dataMaxTime-range]
+      minTime =
+          (long) Math.ceil(dataMinTime + Math.random() * (dataMaxTime - range - dataMinTime + 1));
+      interval = (long) Math.ceil((double) range / intervalNum);
+    }
+    maxTime = minTime + interval * intervalNum;
+
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
     session.setFetchSize(100000); // this is important. Set it big to avoid multiple fetch.
-
-    long interval = (long) Math.ceil((double) (maxTime - minTime) / intervalNum);
-    maxTime = minTime + interval * intervalNum;
 
     String sql;
     if (approach == 1) { // MAC UDF

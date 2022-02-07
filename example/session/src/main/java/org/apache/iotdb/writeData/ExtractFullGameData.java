@@ -7,7 +7,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-// java ExtractFullGameData /data3/raw_data/data/full-game full-game-sid8-1000000 1 5 8 2000000 3200000
+// java ExtractFullGameData /data3/raw_data/data/full-game full-game-sid8-10min 1 5 8 2000000
+// 3200000
 public class ExtractFullGameData {
 
   // sid, ts, x, y, z, |v|, |a|, vx, vy, vz, ax, ay, az

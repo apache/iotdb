@@ -8,17 +8,17 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.thrift.TException;
 
-public class QueryFullGameVaryTqe {
+public class QueryMF03 {
 
   // * (1) min_time(%s), max_time(%s), first_value(%s), last_value(%s), min_value(%s), max_value(%s)
   //       => Don't change the sequence of the above six aggregates!
   // * (2) group by ([tqs,tqe),IntervalLength) => Make sure (tqe-tqs) is divisible by
   // IntervalLength!
-  // * (3) NOTE the time unit of interval. Update for different datasets!!!!!!!!!!!
+  // * (3) NOTE the time unit of interval. Update for different datasets!
   private static final String queryFormat =
       "select min_time(%s), max_time(%s), first_value(%s), last_value(%s), min_value(%s), max_value(%s) "
           + "from %s "
-          + "group by ([%d, %d), %dns)";
+          + "group by ([%d, %d), %dns)"; // note this "ns" time precision
 
   private static final String queryFormat_UDF =
       "select M4(%1$s,'tqs'='%3$d','tqe'='%4$d','w'='%5$d') from %2$s where time>=%3$d and time<%4$d";
@@ -28,17 +28,19 @@ public class QueryFullGameVaryTqe {
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, TException {
     // fixed time series path
-    String measurement = "s6";
-    String device = "root.game";
-    // fixed interval num
-    int intervalNum = 50;
-    // fixed tqs
-    long minTime = 0L;
-    // 实验自变量1：tqe
-    long maxTime = Long.parseLong(args[0]);
-    // 实验自变量2：方法
+    String measurement = "mf03"; // [[update]]
+    String device = "root.debs2012"; // [[update]]
+    // used to bound tqs random position
+    long dataMinTime = 1329955200008812200L;
+    long dataMaxTime = 1329965999991045201L; // 617426057626+1
+
+    // 实验自变量1：[tqs,tqe) range length, i.e., tqe-tqs
+    long range = Long.parseLong(args[0]);
+    // 实验自变量2：w数量
+    int intervalNum = Integer.parseInt(args[1]);
+    // 实验自变量3：方法
     // 1: MAC, 2: MOC, 3: CPV
-    int approach = Integer.parseInt(args[1]);
+    int approach = Integer.parseInt(args[2]);
     if (approach != 1 && approach != 2 && approach != 3) {
       throw new TException("Wrong input parameter approach!");
     }
@@ -55,12 +57,23 @@ public class QueryFullGameVaryTqe {
       }
     }
 
+    long minTime;
+    long maxTime;
+    long interval;
+    if (range >= (dataMaxTime - dataMinTime)) {
+      minTime = dataMinTime;
+      interval = (long) Math.ceil((double) (dataMaxTime - dataMinTime) / intervalNum);
+    } else {
+      // randomize between [dataMinTime, dataMaxTime-range]
+      minTime =
+          (long) Math.ceil(dataMinTime + Math.random() * (dataMaxTime - range - dataMinTime + 1));
+      interval = (long) Math.ceil((double) range / intervalNum);
+    }
+    maxTime = minTime + interval * intervalNum;
+
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
     session.setFetchSize(100000); // this is important. Set it big to avoid multiple fetch.
-
-    long interval = (long) Math.ceil((double) (maxTime - minTime) / intervalNum);
-    maxTime = minTime + interval * intervalNum;
 
     String sql;
     if (approach == 1) { // MAC UDF
