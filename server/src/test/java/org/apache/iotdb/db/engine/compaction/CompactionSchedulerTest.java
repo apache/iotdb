@@ -1716,7 +1716,6 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(0, tsFileManager.getTsFileList(false).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
       CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
       totalWaitingTime = 0;
@@ -1734,7 +1733,20 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(0, tsFileManager.getTsFileList(false).size());
+      while (tsFileManager.getTsFileList(false).size() > 0) {
+        try {
+          Thread.sleep(100);
+          totalWaitingTime += 100;
+          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
       tsFileManager.setAllowCompaction(false);
       stopCompactionTaskManager();
     } finally {
