@@ -33,6 +33,7 @@ import org.apache.iotdb.db.metadata.mnode.MNodeContainerMapImpl;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mtree.store.disk.IMNodeIterator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -110,8 +111,8 @@ public class MemMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public Iterator<IMNode> getChildrenIterator(IMNode parent) {
-    return parent.getChildren().values().iterator();
+  public IMNodeIterator getChildrenIterator(IMNode parent) {
+    return new MemMNodeIterator(parent.getChildren().values().iterator());
   }
 
   @Override
@@ -134,7 +135,7 @@ public class MemMTreeStore implements IMTreeStore {
     queue.add(cur);
     while (!queue.isEmpty()) {
       IMNode node = queue.poll();
-      Iterator<IMNode> iterator = getChildrenIterator(node);
+      IMNodeIterator iterator = getChildrenIterator(node);
       IMNode child;
       while (iterator.hasNext()) {
         child = iterator.next();
@@ -294,5 +295,27 @@ public class MemMTreeStore implements IMTreeStore {
 
   private static String jsonToString(JsonObject jsonObject) {
     return GSON.toJson(jsonObject);
+  }
+
+  private class MemMNodeIterator implements IMNodeIterator {
+
+    Iterator<IMNode> iterator;
+
+    MemMNodeIterator(Iterator<IMNode> iterator) {
+      this.iterator = iterator;
+    }
+
+    @Override
+    public void close() {}
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+
+    @Override
+    public IMNode next() {
+      return iterator.next();
+    }
   }
 }

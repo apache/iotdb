@@ -16,37 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
+package org.apache.iotdb.db.metadata.mtree.store.disk;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-import java.util.List;
+import java.util.Iterator;
 
-public interface ICacheStrategy {
+public interface IMNodeIterator extends Iterator<IMNode> {
 
-  boolean isCached(IMNode node);
-
-  void updateCacheStatusAfterMemoryRead(IMNode node);
-
-  void updateCacheStatusAfterDiskRead(IMNode node);
-
-  void updateCacheStatusAfterAppend(IMNode node);
-
-  void updateCacheStatusAfterUpdate(IMNode node);
-
-  void updateCacheStatusAfterPersist(IMNode node);
-
-  List<IMNode> collectVolatileMNodes();
-
-  List<IMNode> remove(IMNode node);
-
-  List<IMNode> evict();
-
-  void pinMNode(IMNode node);
-
-  List<IMNode> unPinMNode(IMNode node);
-
-  boolean isPinned(IMNode node);
-
-  void clear();
+  void close();
 }

@@ -54,6 +54,7 @@ import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MeasurementG
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.store.disk.IMNodeIterator;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -83,7 +84,6 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -396,15 +396,20 @@ public class MTreeService implements Serializable {
     if (!parent.isUseTemplate()) {
       boolean hasMeasurement = false;
       IMNode child;
-      Iterator<IMNode> iterator = store.getChildrenIterator(parent);
-      while (iterator.hasNext()) {
-        child = iterator.next();
-        unPinMNode(child);
-        if (child.isMeasurement()) {
-          hasMeasurement = true;
-          break;
+      IMNodeIterator iterator = store.getChildrenIterator(parent);
+      try {
+        while (iterator.hasNext()) {
+          child = iterator.next();
+          unPinMNode(child);
+          if (child.isMeasurement()) {
+            hasMeasurement = true;
+            break;
+          }
         }
+      } finally {
+        iterator.close();
       }
+
       if (!hasMeasurement) {
         synchronized (this) {
           curNode = MNodeUtils.setToInternal(parent);
@@ -565,12 +570,17 @@ public class MTreeService implements Serializable {
   }
 
   public boolean isEmptyInternalMNode(IMNode node) {
-    return !IoTDBConstant.PATH_ROOT.equals(node.getName())
-        && !node.isStorageGroup()
-        && !node.isMeasurement()
-        && node.getSchemaTemplate() == null
-        && !node.isUseTemplate()
-        && !store.getChildrenIterator(node).hasNext();
+    IMNodeIterator iterator = store.getChildrenIterator(node);
+    try {
+      return !IoTDBConstant.PATH_ROOT.equals(node.getName())
+          && !node.isStorageGroup()
+          && !node.isMeasurement()
+          && node.getSchemaTemplate() == null
+          && !node.isUseTemplate()
+          && !iterator.hasNext();
+    } finally {
+      iterator.close();
+    }
   }
 
   // endregion
@@ -1494,21 +1504,26 @@ public class MTreeService implements Serializable {
         return setToEntity(mountedNode);
       } else {
         IMNode child;
-        Iterator<IMNode> iterator = store.getChildrenIterator(mountedNode);
-        while (iterator.hasNext()) {
-          child = iterator.next();
-          unPinMNode(child);
-          if (child.isMeasurement()) {
-            if (template.isDirectAligned() != mountedNode.getAsEntityMNode().isAligned()) {
-              throw new MetadataException(
-                  "Template and mounted node has different alignment: "
-                      + template.getName()
-                      + mountedNode.getFullPath());
-            } else {
-              return mountedNode;
+        IMNodeIterator iterator = store.getChildrenIterator(mountedNode);
+        try {
+          while (iterator.hasNext()) {
+            child = iterator.next();
+            unPinMNode(child);
+            if (child.isMeasurement()) {
+              if (template.isDirectAligned() != mountedNode.getAsEntityMNode().isAligned()) {
+                throw new MetadataException(
+                    "Template and mounted node has different alignment: "
+                        + template.getName()
+                        + mountedNode.getFullPath());
+              } else {
+                return mountedNode;
+              }
             }
           }
+        } finally {
+          iterator.close();
         }
+
         mountedNode.getAsEntityMNode().setAligned(template.isDirectAligned());
       }
     }
@@ -1521,20 +1536,24 @@ public class MTreeService implements Serializable {
       return;
     }
     IMNode child;
-    Iterator<IMNode> iterator = store.getChildrenIterator(node);
-    while (iterator.hasNext()) {
-      child = iterator.next();
-      try {
-        if (child.isMeasurement()) {
-          continue;
+    IMNodeIterator iterator = store.getChildrenIterator(node);
+    try {
+      while (iterator.hasNext()) {
+        child = iterator.next();
+        try {
+          if (child.isMeasurement()) {
+            continue;
+          }
+          if (child.getSchemaTemplate() != null) {
+            throw new MetadataException("Template already exists on " + child.getFullPath());
+          }
+          checkTemplateOnSubtree(child);
+        } finally {
+          unPinMNode(child);
         }
-        if (child.getSchemaTemplate() != null) {
-          throw new MetadataException("Template already exists on " + child.getFullPath());
-        }
-        checkTemplateOnSubtree(child);
-      } finally {
-        unPinMNode(child);
       }
+    } finally {
+      iterator.close();
     }
   }
 
@@ -1543,20 +1562,24 @@ public class MTreeService implements Serializable {
       return;
     }
     IMNode child;
-    Iterator<IMNode> iterator = store.getChildrenIterator(node);
-    while (iterator.hasNext()) {
-      child = iterator.next();
-      try {
-        if (child.isMeasurement()) {
-          continue;
+    IMNodeIterator iterator = store.getChildrenIterator(node);
+    try {
+      while (iterator.hasNext()) {
+        child = iterator.next();
+        try {
+          if (child.isMeasurement()) {
+            continue;
+          }
+          if (child.isUseTemplate()) {
+            throw new TemplateIsInUseException(child.getFullPath());
+          }
+          checkTemplateInUseOnLowerNode(child);
+        } finally {
+          unPinMNode(child);
         }
-        if (child.isUseTemplate()) {
-          throw new TemplateIsInUseException(child.getFullPath());
-        }
-        checkTemplateInUseOnLowerNode(child);
-      } finally {
-        unPinMNode(child);
       }
+    } finally {
+      iterator.close();
     }
   }
 

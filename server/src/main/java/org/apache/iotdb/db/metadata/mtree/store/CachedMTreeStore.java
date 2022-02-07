@@ -22,6 +22,7 @@ import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeContainers;
+import org.apache.iotdb.db.metadata.mtree.store.disk.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.IMemManager;
@@ -35,6 +36,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer.getCachedMNodeContainer;
 
@@ -48,12 +52,17 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private IMNode root;
 
+  private Runnable flushTask = null;
+
+  private ReadWriteLock readWriteLock = new ReentrantReadWriteLock(); // default writer preferential
+  private Lock readLock = readWriteLock.readLock();
+  private Lock writeLock = readWriteLock.writeLock();
+
   @Override
   public void init() throws IOException {
     MNodeContainers.IS_DISK_MODE = true;
     file = new MockSchemaFile();
     root = file.init();
-    cacheStrategy.cacheMNode(root);
     cacheStrategy.pinMNode(root);
   }
 
@@ -64,37 +73,47 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public boolean hasChild(IMNode parent, String name) {
-    IMNode child = getChild(parent, name);
-    if (child == null) {
-      return false;
-    } else {
-      unPin(child);
-      return true;
+    readLock.lock();
+    try {
+      IMNode child = getChild(parent, name);
+      if (child == null) {
+        return false;
+      } else {
+        unPin(child);
+        return true;
+      }
+    } finally {
+      readLock.unlock();
     }
   }
 
   @Override
   public IMNode getChild(IMNode parent, String name) {
-    IMNode node = parent.getChild(name);
-    if (node == null) {
-      if (!getCachedMNodeContainer(parent).isVolatile()) {
-        node = file.getChildNode(parent, name);
-        if (node != null) {
-          node.setParent(parent);
-          pinMNodeInMemory(node);
-          cacheStrategy.updateCacheStatusAfterRead(node);
+    readLock.lock();
+    try {
+      IMNode node = parent.getChild(name);
+      if (node == null) {
+        if (!getCachedMNodeContainer(parent).isVolatile()) {
+          node = file.getChildNode(parent, name);
+          if (node != null) {
+            node.setParent(parent);
+            pinMNodeInMemory(node);
+            cacheStrategy.updateCacheStatusAfterDiskRead(node);
+          }
         }
+      } else {
+        pinMNodeInMemory(node);
+        cacheStrategy.updateCacheStatusAfterMemoryRead(node);
       }
-    } else {
-      pinMNodeInMemory(node);
-      cacheStrategy.updateCacheStatusAfterRead(node);
-    }
 
-    if (node != null && node.isMeasurement()) {
-      processAlias(parent.getAsEntityMNode(), node.getAsMeasurementMNode());
-    }
+      if (node != null && node.isMeasurement()) {
+        processAlias(parent.getAsEntityMNode(), node.getAsMeasurementMNode());
+      }
 
-    return node;
+      return node;
+    } finally {
+      readLock.unlock();
+    }
   }
 
   private void processAlias(IEntityMNode parent, IMeasurementMNode node) {
@@ -104,18 +123,24 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
+  // get iterator will take readLock, must call iterator.close after usage
   @Override
-  public Iterator<IMNode> getChildrenIterator(IMNode parent) {
+  public IMNodeIterator getChildrenIterator(IMNode parent) {
     return new CachedMNodeIterator(parent);
   }
 
   // must pin parent first
   @Override
   public void addChild(IMNode parent, String childName, IMNode child) {
-    child.setParent(parent);
-    pinMNodeInMemory(child);
-    parent.addChild(childName, child);
-    cacheStrategy.updateCacheStatusAfterAppend(child);
+    readLock.lock();
+    try {
+      child.setParent(parent);
+      pinMNodeInMemory(child);
+      parent.addChild(childName, child);
+      cacheStrategy.updateCacheStatusAfterAppend(child);
+    } finally {
+      readLock.unlock();
+    }
   }
 
   @Override
@@ -125,40 +150,49 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public List<IMeasurementMNode> deleteChild(IMNode parent, String childName) {
-    IMNode deletedMNode = getChild(parent, childName);
-    // collect all the LeafMNode in this storage group
-    List<IMeasurementMNode> leafMNodes = new LinkedList<>();
-    Queue<IMNode> queue = new LinkedList<>();
-    queue.add(deletedMNode);
-    while (!queue.isEmpty()) {
-      IMNode node = queue.poll();
-      Iterator<IMNode> iterator = getChildrenIterator(node);
-      IMNode child;
-      while (iterator.hasNext()) {
-        child = iterator.next();
-        if (child.isMeasurement()) {
-          leafMNodes.add(child.getAsMeasurementMNode());
-        } else {
-          queue.add(child);
+    readLock.lock();
+    try {
+      IMNode deletedMNode = getChild(parent, childName);
+      // collect all the LeafMNode in this storage group
+      List<IMeasurementMNode> leafMNodes = new LinkedList<>();
+      Queue<IMNode> queue = new LinkedList<>();
+      queue.add(deletedMNode);
+      while (!queue.isEmpty()) {
+        IMNode node = queue.poll();
+        IMNodeIterator iterator = getChildrenIterator(node);
+        try {
+          IMNode child;
+          while (iterator.hasNext()) {
+            child = iterator.next();
+            if (child.isMeasurement()) {
+              leafMNodes.add(child.getAsMeasurementMNode());
+            } else {
+              queue.add(child);
+            }
+          }
+        } finally {
+          iterator.close();
         }
       }
-    }
 
-    parent.deleteChild(childName);
-    if (cacheStrategy.isCached(deletedMNode)) {
-      List<IMNode> removedMNodes = cacheStrategy.remove(deletedMNode);
-      for (IMNode removedMNode : removedMNodes) {
-        if (cacheStrategy.isPinned(removedMNode)) {
-          memManager.releasePinnedMemResource(removedMNode);
+      parent.deleteChild(childName);
+      if (cacheStrategy.isCached(deletedMNode)) {
+        List<IMNode> removedMNodes = cacheStrategy.remove(deletedMNode);
+        for (IMNode removedMNode : removedMNodes) {
+          if (cacheStrategy.isPinned(removedMNode)) {
+            memManager.releasePinnedMemResource(removedMNode);
+          }
+          memManager.releaseMemResource(removedMNode);
         }
-        memManager.releaseMemResource(removedMNode);
       }
-    }
-    if (!getCachedMNodeContainer(parent).isVolatile()) {
-      file.deleteMNode(deletedMNode);
-    }
+      if (!getCachedMNodeContainer(parent).isVolatile()) {
+        file.deleteMNode(deletedMNode);
+      }
 
-    return leafMNodes;
+      return leafMNodes;
+    } finally {
+      readLock.unlock();
+    }
   }
 
   @Override
@@ -169,20 +203,30 @@ public class CachedMTreeStore implements IMTreeStore {
   // must pin first
   @Override
   public void updateMNode(IMNode node) {
-    cacheStrategy.updateCacheStatusAfterUpdate(node);
+    readLock.lock();
+    try {
+      cacheStrategy.updateCacheStatusAfterUpdate(node);
+    } finally {
+      readLock.unlock();
+    }
   }
 
   @Override
   public void unPin(IMNode node) {
-    if (!cacheStrategy.isPinned(node)) {
-      return;
-    }
-    List<IMNode> releasedMNodes = cacheStrategy.unPinMNode(node);
-    for (IMNode releasedMNode : releasedMNodes) {
-      memManager.releasePinnedMemResource(releasedMNode);
-    }
-    if (memManager.isExceedCapacity()) {
-      executeMemoryRelease();
+    readLock.lock();
+    try {
+      if (!cacheStrategy.isPinned(node)) {
+        return;
+      }
+      List<IMNode> releasedMNodes = cacheStrategy.unPinMNode(node);
+      for (IMNode releasedMNode : releasedMNodes) {
+        memManager.releasePinnedMemResource(releasedMNode);
+      }
+      if (memManager.isExceedCapacity()) {
+        tryExecuteMemoryRelease();
+      }
+    } finally {
+      readLock.unlock();
     }
   }
 
@@ -191,48 +235,64 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public void clear() {
-    root = null;
-    cacheStrategy.clear();
-    memManager.clear();
-    if (file != null) {
-      file.close();
+    writeLock.lock();
+    try {
+      root = null;
+      cacheStrategy.clear();
+      memManager.clear();
+      if (file != null) {
+        file.close();
+      }
+      file = null;
+    } finally {
+      writeLock.unlock();
     }
-    file = null;
   }
 
-  private boolean cacheMNodeInMemory(IMNode node) {
-    if (!cacheStrategy.isCached(node.getParent())) {
-      return false;
+  private void tryExecuteMemoryRelease() {
+    executeMemoryRelease();
+    if (memManager.isExceedCapacity()) {
+      registerFlushTask();
     }
-
-    if (!memManager.requestMemResource(node)) {
-      executeMemoryRelease();
-      if (!cacheStrategy.isCached(node.getParent()) || !memManager.requestMemResource(node)) {
-        return false;
-      }
-    }
-    cacheStrategy.cacheMNode(node);
-    return true;
   }
 
   private void executeMemoryRelease() {
-    flushVolatileNodes();
     List<IMNode> evictedMNodes;
     while (memManager.isExceedThreshold()) {
       evictedMNodes = cacheStrategy.evict();
+      if (evictedMNodes.isEmpty()) {
+        break;
+      }
       for (IMNode evictedMNode : evictedMNodes) {
         memManager.releaseMemResource(evictedMNode);
       }
     }
   }
 
-  private void flushVolatileNodes() {
-    List<IMNode> nodesToPersist = cacheStrategy.collectVolatileMNodes();
-    for (IMNode volatileNode : nodesToPersist) {
-      file.writeMNode(volatileNode);
-      if (cacheStrategy.isCached(volatileNode)) {
-        cacheStrategy.updateCacheStatusAfterPersist(volatileNode);
+  private void registerFlushTask() {
+    if (flushTask == null) {
+      synchronized (this) {
+        flushTask = this::flushVolatileNodes;
+        flushTask.run();
       }
+    }
+  }
+
+  private void flushVolatileNodes() {
+    writeLock.lock();
+    try {
+      List<IMNode> nodesToPersist = cacheStrategy.collectVolatileMNodes();
+      for (IMNode volatileNode : nodesToPersist) {
+        file.writeMNode(volatileNode);
+        if (cacheStrategy.isCached(volatileNode)) {
+          cacheStrategy.updateCacheStatusAfterPersist(volatileNode);
+        }
+      }
+    } finally {
+      writeLock.unlock();
+    }
+    if (memManager.isExceedCapacity()) {
+      executeMemoryRelease();
     }
   }
 
@@ -241,17 +301,16 @@ public class CachedMTreeStore implements IMTreeStore {
       if (cacheStrategy.isCached(node)) {
         memManager.upgradeMemResource(node);
       } else {
-        cacheStrategy.cacheMNode(node);
         memManager.requestPinnedMemResource(node);
       }
     }
     cacheStrategy.pinMNode(node);
     if (memManager.isExceedCapacity()) {
-      executeMemoryRelease();
+      tryExecuteMemoryRelease();
     }
   }
 
-  private class CachedMNodeIterator implements Iterator<IMNode> {
+  private class CachedMNodeIterator implements IMNodeIterator {
 
     IMNode parent;
     Iterator<IMNode> iterator;
@@ -261,10 +320,16 @@ public class CachedMTreeStore implements IMTreeStore {
     IMNode nextNode;
 
     CachedMNodeIterator(IMNode parent) {
-      this.parent = parent;
-      bufferIterator = getCachedMNodeContainer(parent).getChildrenBufferIterator();
-      this.iterator = file.getChildren(parent);
-      readNext();
+      readLock.lock();
+      try {
+        this.parent = parent;
+        bufferIterator = getCachedMNodeContainer(parent).getChildrenBufferIterator();
+        this.iterator = file.getChildren(parent);
+        readNext();
+      } catch (Throwable e) {
+        readLock.unlock();
+        throw e;
+      }
     }
 
     @Override
@@ -287,7 +352,11 @@ public class CachedMTreeStore implements IMTreeStore {
         nextNode.setParent(parent);
       }
       pinMNodeInMemory(nextNode);
-      cacheStrategy.updateCacheStatusAfterRead(nextNode);
+      if (loadedFromDisk) {
+        cacheStrategy.updateCacheStatusAfterDiskRead(nextNode);
+      } else {
+        cacheStrategy.updateCacheStatusAfterMemoryRead(nextNode);
+      }
       IMNode result = nextNode;
       nextNode = null;
       return result;
@@ -323,6 +392,11 @@ public class CachedMTreeStore implements IMTreeStore {
       iterator = bufferIterator;
       isIteratingDisk = false;
       loadedFromDisk = false;
+    }
+
+    @Override
+    public void close() {
+      readLock.unlock();
     }
   }
 }

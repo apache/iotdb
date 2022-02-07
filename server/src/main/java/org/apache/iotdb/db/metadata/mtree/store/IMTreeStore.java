@@ -21,9 +21,9 @@ package org.apache.iotdb.db.metadata.mtree.store;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mtree.store.disk.IMNodeIterator;
 
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -41,7 +41,7 @@ public interface IMTreeStore {
 
   IMNode getChild(IMNode parent, String name);
 
-  Iterator<IMNode> getChildrenIterator(IMNode parent);
+  IMNodeIterator getChildrenIterator(IMNode parent);
 
   void addChild(IMNode parent, String childName, IMNode child);
 

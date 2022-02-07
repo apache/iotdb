@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.store.disk.IMNodeIterator;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -148,15 +149,20 @@ public abstract class Traverser {
       throws MetadataException {
     traverseContext.push(node);
     IMNode child;
-    Iterator<IMNode> iterator = store.getChildrenIterator(node);
-    while (iterator.hasNext()) {
-      child = iterator.next();
-      try {
-        traverse(child, idx + 1, level + 1);
-      } finally {
-        store.unPin(child);
+    IMNodeIterator iterator = store.getChildrenIterator(node);
+    try {
+      while (iterator.hasNext()) {
+        child = iterator.next();
+        try {
+          traverse(child, idx + 1, level + 1);
+        } finally {
+          store.unPin(child);
+        }
       }
+    } finally {
+      iterator.close();
     }
+
     traverseContext.pop();
 
     if (!node.isUseTemplate()) {
@@ -176,38 +182,47 @@ public abstract class Traverser {
     String targetNameRegex = nodes[idx + 1].replace("*", ".*");
     traverseContext.push(node);
     IMNode child;
-    Iterator<IMNode> iterator = store.getChildrenIterator(node);
-    while (iterator.hasNext()) {
-      child = iterator.next();
-      try {
-        if (child.isMeasurement()) {
-          String alias = child.getAsMeasurementMNode().getAlias();
-          if (!Pattern.matches(targetNameRegex, child.getName())
-              && !(alias != null && Pattern.matches(targetNameRegex, alias))) {
-            continue;
+    IMNodeIterator iterator = store.getChildrenIterator(node);
+    try {
+      while (iterator.hasNext()) {
+        child = iterator.next();
+        try {
+          if (child.isMeasurement()) {
+            String alias = child.getAsMeasurementMNode().getAlias();
+            if (!Pattern.matches(targetNameRegex, child.getName())
+                && !(alias != null && Pattern.matches(targetNameRegex, alias))) {
+              continue;
+            }
+          } else {
+            if (!Pattern.matches(targetNameRegex, child.getName())) {
+              continue;
+            }
           }
-        } else {
-          if (!Pattern.matches(targetNameRegex, child.getName())) {
-            continue;
-          }
+          traverse(child, idx + 1, level + 1);
+        } finally {
+          store.unPin(child);
         }
-        traverse(child, idx + 1, level + 1);
-      } finally {
-        store.unPin(child);
       }
+    } finally {
+      iterator.close();
     }
+
     traverseContext.pop();
 
     if (multiLevelWildcard) {
       traverseContext.push(node);
       iterator = store.getChildrenIterator(node);
-      while (iterator.hasNext()) {
-        child = iterator.next();
-        try {
-          traverse(child, idx, level + 1);
-        } finally {
-          store.unPin(child);
+      try {
+        while (iterator.hasNext()) {
+          child = iterator.next();
+          try {
+            traverse(child, idx, level + 1);
+          } finally {
+            store.unPin(child);
+          }
         }
+      } finally {
+        iterator.close();
       }
       traverseContext.pop();
     }
@@ -254,14 +269,18 @@ public abstract class Traverser {
     if (multiLevelWildcard) {
       traverseContext.push(node);
       IMNode child;
-      Iterator<IMNode> iterator = store.getChildrenIterator(node);
-      while (iterator.hasNext()) {
-        child = iterator.next();
-        try {
-          traverse(child, idx, level + 1);
-        } finally {
-          store.unPin(child);
+      IMNodeIterator iterator = store.getChildrenIterator(node);
+      try {
+        while (iterator.hasNext()) {
+          child = iterator.next();
+          try {
+            traverse(child, idx, level + 1);
+          } finally {
+            store.unPin(child);
+          }
         }
+      } finally {
+        iterator.close();
       }
       traverseContext.pop();
     }
