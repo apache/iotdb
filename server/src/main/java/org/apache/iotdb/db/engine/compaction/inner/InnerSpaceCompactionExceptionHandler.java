@@ -241,17 +241,11 @@ public class InnerSpaceCompactionExceptionHandler {
                 fullStorageGroupName,
                 sourceFile);
             handleSuccess = false;
-          } else {
-            tsFileResourceList.remove(sourceFile);
           }
         }
-
         InnerSpaceCompactionUtils.deleteModificationForSourceFile(
             selectedTsFileResourceList, fullStorageGroupName);
 
-        if (!tsFileResourceList.contains(targetTsFile)) {
-          tsFileResourceList.keepOrderInsert(targetTsFile);
-        }
       } else {
         // target file is not complete, and some source file is lost
         // some data is lost

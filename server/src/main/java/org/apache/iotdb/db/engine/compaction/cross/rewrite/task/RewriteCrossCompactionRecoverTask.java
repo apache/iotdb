@@ -102,7 +102,7 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
         if (isAllSourcesFileExisted) {
           handleSuccess =
               handleWithAllSourceFilesExist(
-                  logAnalyzer, targetFileIdentifiers, sourceFileIdentifiers, fullStorageGroupName);
+                  targetFileIdentifiers, sourceFileIdentifiers, fullStorageGroupName);
         } else {
           handleSuccess = handleWithoutAllSourceFilesExist(sourceFileIdentifiers);
         }
@@ -136,19 +136,18 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
     }
   }
 
+  /**
+   * All source files exist: (1) delete all the target files and tmp target files (2) append new
+   * modifications to old mods files
+   */
   private boolean handleWithAllSourceFilesExist(
-      RewriteCrossSpaceCompactionLogAnalyzer analyzer,
       List<TsFileIdentifier> targetFileIdentifiers,
       List<TsFileIdentifier> sourceFileIdentifiers,
       String fullStorageGroupName) {
-    // all source files exist, delete all the target files and tmp target files
     LOGGER.info(
         "{} [Compaction][Recover] all source files exists, delete all target files.",
         fullStorageGroupName);
-    List<TsFileResource> sourceTsFileResourceList = new ArrayList<>();
-    for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
-      sourceTsFileResourceList.add(new TsFileResource(sourceFileIdentifier.getFileFromDataDirs()));
-    }
+
     for (TsFileIdentifier targetFileIdentifier : targetFileIdentifiers) {
       // xxx.merge
       File tmpTargetFile = targetFileIdentifier.getFileFromDataDirs();
@@ -177,7 +176,12 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
         return false;
       }
     }
+
     // deal with compaction modification
+    List<TsFileResource> sourceTsFileResourceList = new ArrayList<>();
+    for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
+      sourceTsFileResourceList.add(new TsFileResource(sourceFileIdentifier.getFileFromDataDirs()));
+    }
     try {
       CompactionUtils.appendNewModificationsToOldModsFile(sourceTsFileResourceList);
     } catch (Throwable e) {
@@ -190,6 +194,10 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
     return true;
   }
 
+  /**
+   * Some source files lost: delete remaining source files, encluding: tsfile, resource file, mods
+   * file and compaction mods file.
+   */
   private boolean handleWithoutAllSourceFilesExist(List<TsFileIdentifier> sourceFileIdentifiers) {
     // some source files have been deleted, while target file must exist.
     boolean handleSuccess = true;

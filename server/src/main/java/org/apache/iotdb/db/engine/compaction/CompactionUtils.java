@@ -359,6 +359,22 @@ public class CompactionUtils {
     targetFile.getModFile().close();
   }
 
+  public static void removeCompactionModification(
+      List<TsFileResource> selectedSeqTsFileResourceList,
+      List<TsFileResource> selectedUnSeqTsFileResourceList,
+      String fullStorageGroupName) {
+    try {
+      for (TsFileResource seqFile : selectedSeqTsFileResourceList) {
+        ModificationFile.getCompactionMods(seqFile).remove();
+      }
+      for (TsFileResource unseqFile : selectedUnSeqTsFileResourceList) {
+        ModificationFile.getCompactionMods(unseqFile).remove();
+      }
+    } catch (IOException e) {
+      logger.error("{} cannot remove merging modification ", fullStorageGroupName, e);
+    }
+  }
+
   /**
    * This method is called to recover modifications while an exception occurs during compaction. It
    * appends new modifications of each selected tsfile to its corresponding old mods file and delete
