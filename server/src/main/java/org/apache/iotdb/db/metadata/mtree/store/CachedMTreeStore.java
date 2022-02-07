@@ -52,7 +52,8 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private IMNode root;
 
-  private Runnable flushTask = null;
+  private Thread flushTask = new Thread(this::flushVolatileNodes);
+  private boolean hasFlushTask = false;
 
   private ReadWriteLock readWriteLock = new ReentrantReadWriteLock(); // default writer preferential
   private Lock readLock = readWriteLock.readLock();
@@ -211,6 +212,20 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
+  private void pinMNodeInMemory(IMNode node) {
+    if (!cacheStrategy.isPinned(node)) {
+      if (cacheStrategy.isCached(node)) {
+        memManager.upgradeMemResource(node);
+      } else {
+        memManager.requestPinnedMemResource(node);
+      }
+    }
+    cacheStrategy.pinMNode(node);
+    if (memManager.isExceedCapacity()) {
+      tryExecuteMemoryRelease();
+    }
+  }
+
   @Override
   public void unPin(IMNode node) {
     readLock.lock();
@@ -252,7 +267,9 @@ public class CachedMTreeStore implements IMTreeStore {
   private void tryExecuteMemoryRelease() {
     executeMemoryRelease();
     if (memManager.isExceedCapacity()) {
-      registerFlushTask();
+      if (!hasFlushTask) {
+        registerFlushTask();
+      }
     }
   }
 
@@ -269,13 +286,12 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
-  private void registerFlushTask() {
-    if (flushTask == null) {
-      synchronized (this) {
-        flushTask = this::flushVolatileNodes;
-        flushTask.run();
-      }
+  private synchronized void registerFlushTask() {
+    if (hasFlushTask) {
+      return;
     }
+    hasFlushTask = true;
+    flushTask.start();
   }
 
   private void flushVolatileNodes() {
@@ -288,25 +304,12 @@ public class CachedMTreeStore implements IMTreeStore {
           cacheStrategy.updateCacheStatusAfterPersist(volatileNode);
         }
       }
+      if (memManager.isExceedCapacity()) {
+        executeMemoryRelease();
+      }
+      hasFlushTask = false;
     } finally {
       writeLock.unlock();
-    }
-    if (memManager.isExceedCapacity()) {
-      executeMemoryRelease();
-    }
-  }
-
-  private void pinMNodeInMemory(IMNode node) {
-    if (!cacheStrategy.isPinned(node)) {
-      if (cacheStrategy.isCached(node)) {
-        memManager.upgradeMemResource(node);
-      } else {
-        memManager.requestPinnedMemResource(node);
-      }
-    }
-    cacheStrategy.pinMNode(node);
-    if (memManager.isExceedCapacity()) {
-      tryExecuteMemoryRelease();
     }
   }
 
