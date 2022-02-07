@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -39,12 +38,17 @@ public class FloatStatistics extends Statistics<Float> {
   private double sumValue;
 
   static final int FLOAT_STATISTICS_FIXED_RAM_SIZE = 64;
+  private static final String FLOAT = "Float";
 
   @Override
   public TSDataType getType() {
     return TSDataType.FLOAT;
   }
 
+  /**
+   * The output of this method should be identical to the method "serializeStats(OutputStream
+   * outputStream)"
+   */
   @Override
   public int getStatsSize() {
     return 24;
@@ -96,12 +100,6 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    minValue = BytesUtils.bytesToFloat(minBytes);
-    maxValue = BytesUtils.bytesToFloat(maxBytes);
-  }
-
-  @Override
   void updateStats(float value) {
     if (this.isEmpty) {
       initializeStats(value, value, value, value, value);
@@ -150,7 +148,7 @@ public class FloatStatistics extends Statistics<Float> {
 
   @Override
   public long getSumLongValue() {
-    throw new StatisticsClassException("Float statistics does not support: long sum");
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, FLOAT, "long sum"));
   }
 
   @Override
@@ -174,56 +172,6 @@ public class FloatStatistics extends Statistics<Float> {
           stats.getStartTime(),
           stats.getEndTime());
     }
-  }
-
-  @Override
-  public byte[] getMinValueBytes() {
-    return BytesUtils.floatToBytes(minValue);
-  }
-
-  @Override
-  public byte[] getMaxValueBytes() {
-    return BytesUtils.floatToBytes(maxValue);
-  }
-
-  @Override
-  public byte[] getFirstValueBytes() {
-    return BytesUtils.floatToBytes(firstValue);
-  }
-
-  @Override
-  public byte[] getLastValueBytes() {
-    return BytesUtils.floatToBytes(lastValue);
-  }
-
-  @Override
-  public byte[] getSumValueBytes() {
-    return BytesUtils.doubleToBytes(sumValue);
-  }
-
-  @Override
-  public ByteBuffer getMinValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(minValue);
-  }
-
-  @Override
-  public ByteBuffer getMaxValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(maxValue);
-  }
-
-  @Override
-  public ByteBuffer getFirstValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(firstValue);
-  }
-
-  @Override
-  public ByteBuffer getLastValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(lastValue);
-  }
-
-  @Override
-  public ByteBuffer getSumValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(sumValue);
   }
 
   @Override

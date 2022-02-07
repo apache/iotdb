@@ -214,7 +214,7 @@ public class IoTDBAggregationLargeDataIT {
                   + resultSet.getString(sum(d0s1))
                   + ","
                   + Math.round(resultSet.getDouble(sum(d0s2)));
-          Assert.assertEquals(ans, retArray[cnt]);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
@@ -236,7 +236,7 @@ public class IoTDBAggregationLargeDataIT {
                   + resultSet.getString(sum(d0s1))
                   + ","
                   + Math.round(resultSet.getDouble(sum(d0s2)));
-          Assert.assertEquals(ans, retArray[retArray.length - cnt - 1]);
+          Assert.assertEquals(retArray[retArray.length - cnt - 1], ans);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
@@ -274,7 +274,7 @@ public class IoTDBAggregationLargeDataIT {
                   + resultSet.getString(firstValue(d0s3))
                   + ","
                   + resultSet.getString(firstValue(d0s4));
-          Assert.assertEquals(ans, retArray[cnt]);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
@@ -301,7 +301,7 @@ public class IoTDBAggregationLargeDataIT {
                   + resultSet.getString(firstValue(d0s3))
                   + ","
                   + resultSet.getString(firstValue(d0s4));
-          Assert.assertEquals(ans, retArray[cnt]);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
@@ -446,7 +446,7 @@ public class IoTDBAggregationLargeDataIT {
                   + resultSet.getString(minTime(d0s3))
                   + ","
                   + resultSet.getString(minTime(d0s4));
-          Assert.assertEquals(ans, retArray[cnt]);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
@@ -473,7 +473,7 @@ public class IoTDBAggregationLargeDataIT {
                   + resultSet.getString(minTime(d0s3))
                   + ","
                   + resultSet.getString(minTime(d0s4));
-          Assert.assertEquals(ans, retArray[cnt]);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
@@ -507,7 +507,7 @@ public class IoTDBAggregationLargeDataIT {
                     + resultSet.getString(minValue(d0s1))
                     + ","
                     + resultSet.getString(minValue(d0s2));
-            Assert.assertEquals(ans, retArray[cnt]);
+            Assert.assertEquals(retArray[cnt], ans);
             cnt++;
           }
           Assert.assertEquals(1, cnt);
@@ -531,7 +531,7 @@ public class IoTDBAggregationLargeDataIT {
                     + resultSet.getString(minValue(d0s1))
                     + ","
                     + resultSet.getString(minValue(d0s2));
-            Assert.assertEquals(ans, retArray[cnt]);
+            Assert.assertEquals(retArray[cnt], ans);
             cnt++;
           }
           Assert.assertEquals(1, cnt);
@@ -567,7 +567,7 @@ public class IoTDBAggregationLargeDataIT {
                     + resultSet.getString(maxValue(d0s1))
                     + ","
                     + resultSet.getString(maxValue(d0s2));
-            Assert.assertEquals(ans, retArray[cnt]);
+            Assert.assertEquals(retArray[cnt], ans);
             cnt++;
           }
           Assert.assertEquals(1, cnt);
@@ -591,7 +591,7 @@ public class IoTDBAggregationLargeDataIT {
                     + resultSet.getString(maxValue(d0s1))
                     + ","
                     + resultSet.getString(maxValue(d0s2));
-            Assert.assertEquals(ans, retArray[cnt]);
+            Assert.assertEquals(retArray[cnt], ans);
             cnt++;
           }
           Assert.assertEquals(1, cnt);
@@ -628,7 +628,7 @@ public class IoTDBAggregationLargeDataIT {
                     + resultSet.getString(extreme(d0s1))
                     + ","
                     + resultSet.getString(extreme(d0s2));
-            Assert.assertEquals(ans, retArray[cnt]);
+            Assert.assertEquals(retArray[cnt], ans);
             cnt++;
           }
           Assert.assertEquals(1, cnt);
@@ -653,7 +653,7 @@ public class IoTDBAggregationLargeDataIT {
                     + resultSet.getString(extreme(d0s1))
                     + ","
                     + resultSet.getString(extreme(d0s2));
-            Assert.assertEquals(ans, retArray[cnt]);
+            Assert.assertEquals(retArray[cnt], ans);
             cnt++;
           }
           Assert.assertEquals(1, cnt);
@@ -890,7 +890,7 @@ public class IoTDBAggregationLargeDataIT {
                   + resultSet.getString(maxTime(d0s3))
                   + ","
                   + resultSet.getString(maxTime(d0s4));
-          Assert.assertEquals(ans, retArray[cnt]);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
@@ -917,7 +917,7 @@ public class IoTDBAggregationLargeDataIT {
                   + resultSet.getString(maxTime(d0s3))
                   + ","
                   + resultSet.getString(maxTime(d0s4));
-          Assert.assertEquals(ans, retArray[cnt]);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
