@@ -31,11 +31,11 @@ github:
   features:
     wiki: true
     issues: true
-  github:
-    enabled_merge_buttons:
-      # enable squash button:
-      squash:  true
-      # enable merge button:
-      merge:   false
-      # disable rebase button:
-      rebase:  true
+github:
+  enabled_merge_buttons:
+  # enable squash button:
+  squash:  true
+  # enable merge button:
+  merge:   false
+  # disable rebase button:
+  rebase:  true
