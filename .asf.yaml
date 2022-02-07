@@ -31,7 +31,6 @@ github:
   features:
     wiki: true
     issues: true
-  
   github:
     enabled_merge_buttons:
       # enable squash button:
