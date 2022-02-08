@@ -17,6 +17,11 @@
  */
 
 var config = {
+    plugins: [
+        ['@vuepress/plugin-html-redirect', {
+          countdown: 0,
+        }],
+      ],
     head: [
 		['link', { rel: 'icon', href: '/favicon.ico' }],
 		["meta", {name: "Description", content: "Apache IoTDB: Time Series Database for IoT"}],
@@ -90,7 +95,7 @@ var config = {
 				  },
 				  {
 					text: 'Design',
-					link: '/SystemDesign/Architecture/Architecture'
+					link: 'https://cwiki.apache.org/confluence/display/IOTDB/System+Design'
 				  },
 				  {
 					text: 'Download',
@@ -589,7 +594,8 @@ var config = {
 							['System-Tools/MLogParser-Tool','MLogParser Tool'],
 							['System-Tools/NodeTool','Node Tool'],
 							['System-Tools/Query-History-Visualization-Tool','Query History Visualization Tool'],
-							['System-Tools/Watermark-Tool','Watermark Tool']
+							['System-Tools/Watermark-Tool','Watermark Tool'],
+							['System-Tools/TsFile-Split-Tool','TsFile Split Tool']
 						]
 					},
 					{
@@ -1077,7 +1083,7 @@ var config = {
 				  },
 				  	{
 					text: '系统设计',
-					link: '/zh/SystemDesign/Architecture/Architecture'
+					link: 'https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=177051872'
 				  },
 				  {
 					text: '下载',
@@ -1564,6 +1570,7 @@ var config = {
 							['System-Tools/NodeTool','节点工具'],
 							['System-Tools/Query-History-Visualization-Tool','查询历史可视化工具'],
 							['System-Tools/Watermark-Tool','水印工具'],
+							['System-Tools/TsFile-Split-Tool','TsFile 拆分工具']
 						]
 					},
 					{

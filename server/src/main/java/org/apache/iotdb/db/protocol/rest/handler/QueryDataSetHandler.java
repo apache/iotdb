@@ -68,9 +68,10 @@ public class QueryDataSetHandler {
       return fillAggregationPlanDataSet(
           sourceDataSet, (AggregationPlan) physicalPlan, actualRowSizeLimit);
     } else if (sourceDataSet instanceof GroupByLevelDataSet) {
-      return fillGroupByLevelDataSet(sourceDataSet, actualRowSizeLimit);
+      return fillGroupByLevelDataSet(sourceDataSet, actualRowSizeLimit, 1);
     } else if (physicalPlan instanceof QueryPlan) {
-      return fillDataSetWithTimestamps(sourceDataSet, (QueryPlan) physicalPlan, actualRowSizeLimit);
+      return fillDataSetWithTimestamps(
+          sourceDataSet, (QueryPlan) physicalPlan, actualRowSizeLimit, 1);
     } else {
       return Response.ok()
           .entity(
@@ -84,7 +85,10 @@ public class QueryDataSetHandler {
   }
 
   public static Response fillDataSetWithTimestamps(
-      QueryDataSet sourceDataSet, QueryPlan queryPlan, final int actualRowSizeLimit)
+      QueryDataSet sourceDataSet,
+      QueryPlan queryPlan,
+      final int actualRowSizeLimit,
+      final long timePrecision)
       throws IOException {
     org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet =
         new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
@@ -101,7 +105,11 @@ public class QueryDataSetHandler {
     }
 
     return fillQueryDataSetWithTimestamps(
-        sourceDataSet, actualRowSizeLimit, targetDataSetIndexToSourceDataSetIndex, targetDataSet);
+        sourceDataSet,
+        actualRowSizeLimit,
+        targetDataSetIndexToSourceDataSetIndex,
+        targetDataSet,
+        timePrecision);
   }
 
   public static Response fillLastQueryPlanDataSet(
@@ -113,11 +121,16 @@ public class QueryDataSetHandler {
         sourceDataSet, targetDataSetIndexToSourceDataSetIndex, targetDataSet);
 
     return fillQueryDataSetWithTimestamps(
-        sourceDataSet, actualRowSizeLimit, targetDataSetIndexToSourceDataSetIndex, targetDataSet);
+        sourceDataSet,
+        actualRowSizeLimit,
+        targetDataSetIndexToSourceDataSetIndex,
+        targetDataSet,
+        1);
   }
 
   public static Response fillGroupByLevelDataSet(
-      QueryDataSet sourceDataSet, final int actualRowSizeLimit) throws IOException {
+      QueryDataSet sourceDataSet, final int actualRowSizeLimit, final long timePrecision)
+      throws IOException {
     int[] targetDataSetIndexToSourceDataSetIndex = new int[sourceDataSet.getPaths().size()];
     org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet =
         new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
@@ -125,7 +138,11 @@ public class QueryDataSetHandler {
         sourceDataSet, targetDataSetIndexToSourceDataSetIndex, targetDataSet);
 
     return fillQueryDataSetWithTimestamps(
-        sourceDataSet, actualRowSizeLimit, targetDataSetIndexToSourceDataSetIndex, targetDataSet);
+        sourceDataSet,
+        actualRowSizeLimit,
+        targetDataSetIndexToSourceDataSetIndex,
+        targetDataSet,
+        timePrecision);
   }
 
   private static Response fillAggregationPlanDataSet(
@@ -195,7 +212,8 @@ public class QueryDataSetHandler {
       QueryDataSet sourceDataSet,
       int actualRowSizeLimit,
       int[] targetDataSetIndexToSourceDataSetIndex,
-      org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet)
+      org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet,
+      final long timePrecision)
       throws IOException {
     int fetched = 0;
 
@@ -213,7 +231,10 @@ public class QueryDataSetHandler {
       }
 
       RowRecord sourceDataSetRowRecord = sourceDataSet.next();
-      targetDataSet.addTimestampsItem(sourceDataSetRowRecord.getTimestamp());
+      targetDataSet.addTimestampsItem(
+          timePrecision == 1
+              ? sourceDataSetRowRecord.getTimestamp()
+              : sourceDataSetRowRecord.getTimestamp() / timePrecision);
       fillSourceRowRecordIntoTargetDataSet(
           sourceDataSetRowRecord, targetDataSetIndexToSourceDataSetIndex, targetDataSet);
 

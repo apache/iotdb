@@ -47,6 +47,9 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -57,6 +60,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
+
+  private static final Logger logger = LoggerFactory.getLogger(GroupByWithValueFilterDataSet.class);
 
   private Map<IReaderByTimestamp, List<List<Integer>>> readerToAggrIndexesMap;
 
@@ -122,27 +127,30 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-      // init non-aligned series reader
-      for (PartialPath path : pathToAggrIndexesMap.keySet()) {
-        IReaderByTimestamp seriesReaderByTimestamp =
-            getReaderByTime(path, groupByTimePlan, context);
-        readerToAggrIndexesMap.put(
-            seriesReaderByTimestamp, Collections.singletonList(pathToAggrIndexesMap.get(path)));
-      }
-      // init aligned series reader
-      for (PartialPath alignedPath : alignedPathToAggrIndexesMap.keySet()) {
-        IReaderByTimestamp seriesReaderByTimestamp =
-            getReaderByTime(alignedPath, groupByTimePlan, context);
-        readerToAggrIndexesMap.put(
-            seriesReaderByTimestamp, alignedPathToAggrIndexesMap.get(alignedPath));
-      }
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
-
-      // assign null to be friendly for GC
-      pathToAggrIndexesMap = null;
-      alignedPathToAggrIndexesMap = null;
     }
+
+    // init non-aligned series reader
+    for (PartialPath path : pathToAggrIndexesMap.keySet()) {
+      IReaderByTimestamp seriesReaderByTimestamp = getReaderByTime(path, groupByTimePlan, context);
+      readerToAggrIndexesMap.put(
+          seriesReaderByTimestamp, Collections.singletonList(pathToAggrIndexesMap.get(path)));
+    }
+    // assign null to be friendly for GC
+    pathToAggrIndexesMap = null;
+    // init aligned series reader
+    for (PartialPath alignedPath : alignedPathToAggrIndexesMap.keySet()) {
+      IReaderByTimestamp seriesReaderByTimestamp =
+          getReaderByTime(alignedPath, groupByTimePlan, context);
+      readerToAggrIndexesMap.put(
+          seriesReaderByTimestamp, alignedPathToAggrIndexesMap.get(alignedPath));
+    }
+    // assign null to be friendly for GC
+    alignedPathToAggrIndexesMap = null;
   }
 
   protected TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan queryPlan)

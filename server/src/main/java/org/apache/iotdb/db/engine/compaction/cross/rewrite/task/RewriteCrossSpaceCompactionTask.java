@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionExceptionHandler;
@@ -51,7 +52,8 @@ import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.Rewrit
 
 public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactionTask {
 
-  private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   protected List<TsFileResource> selectedSeqTsFileResourceList;
   protected List<TsFileResource> selectedUnSeqTsFileResourceList;
   protected TsFileManager tsFileManager;
@@ -86,6 +88,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       executeCompaction();
     } catch (Throwable throwable) {
       // catch throwable instead of exception to handle OOM errors
+      logger.error("Meet errors in cross space compaction, {}", throwable.getMessage());
       CrossSpaceCompactionExceptionHandler.handleException(
           fullStorageGroupName,
           logFile,
@@ -102,6 +105,9 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   private void executeCompaction()
       throws IOException, StorageEngineException, MetadataException, InterruptedException,
           WriteProcessException {
+    if (!tsFileManager.isAllowCompaction()) {
+      return;
+    }
     long startTime = System.currentTimeMillis();
     targetTsfileResourceList =
         TsFileNameGenerator.getCrossCompactionTargetFileResources(selectedSeqTsFileResourceList);
@@ -182,6 +188,8 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
 
   private boolean addReadLock(List<TsFileResource> tsFileResourceList) {
     for (TsFileResource tsFileResource : tsFileResourceList) {
+      tsFileResource.readLock();
+      holdReadLockList.add(tsFileResource);
       if (tsFileResource.isCompacting()
           || !tsFileResource.isClosed()
           || !tsFileResource.getTsFile().exists()
@@ -189,8 +197,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         releaseAllLock();
         return false;
       }
-      tsFileResource.readLock();
-      holdReadLockList.add(tsFileResource);
       tsFileResource.setCompacting(true);
     }
     return true;

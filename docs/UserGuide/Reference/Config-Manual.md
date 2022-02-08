@@ -832,15 +832,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 30 |
 |Effective|After restart system|
 
-* max\_open\_file\_num\_in\_cross\_space\_compaction
-
-|Name| max\_open\_file\_num\_in\_cross\_space\_compaction |
-|:---:|:---|
-|Description| Max open file num in a cross compaction |
-|Type| Int32 |
-|Default| 100 |
-|Effective|After restart system|
-
 * cross\_compaction\_file\_selection\_time\_budget
 
 |Name| cross\_compaction\_file\_selection\_time\_budget |
@@ -892,7 +883,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| The write rate of all compaction tasks in MB/s |
 |Type| Int32 |
-|Default| 8 |
+|Default| 30 |
 |Effective|After restart system|
 
 ### Insertion
