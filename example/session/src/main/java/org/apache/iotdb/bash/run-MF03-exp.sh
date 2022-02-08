@@ -6,7 +6,7 @@
 # lineNum=-1 means extracting total lines
 ############################
 cd /data3/raw_data/rl/MF03
-java ExtractMF03Data /data3/raw_data/data/MF03/allData.txt MF03.csv 0 4 1329955200000000000 1329966000000000000
+# java ExtractMF03Data /data3/raw_data/data/MF03/allData.txt MF03.csv 0 4 1329955200000000000 1329966000000000000
 
 ############################
 # generate out-of-order source data

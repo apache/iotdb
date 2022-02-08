@@ -6,7 +6,7 @@
 # lineNum=-1 means extracting total lines
 ############################
 cd /data3/raw_data/rl/BallSpeed
-java ExtractBallSpeedData /data3/raw_data/data/full-game BallSpeed.csv 1 5 8 2000000 3200000
+# java ExtractBallSpeedData /data3/raw_data/data/full-game BallSpeed.csv 1 5 8 2000000 3200000
 
 
 ############################

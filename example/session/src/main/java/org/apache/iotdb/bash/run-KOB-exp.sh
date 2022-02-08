@@ -6,7 +6,7 @@
 # lineNum=-1 means extracting total lines
 ############################
 cd /data3/raw_data/rl/KOB
-java ExtractKOB /data3/raw_data/data/KOB/root.kobelco.trans.03.1090001603.2401604.KOB_0002_00_67.csv KOB.csv 0 1
+# java ExtractKOB /data3/raw_data/data/KOB/root.kobelco.trans.03.1090001603.2401604.KOB_0002_00_67.csv KOB.csv 0 1
 
 ############################
 # generate out-of-order source data
