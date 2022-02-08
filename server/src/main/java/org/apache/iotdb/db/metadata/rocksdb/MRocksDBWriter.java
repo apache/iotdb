@@ -77,10 +77,8 @@ public class MRocksDBWriter {
     try {
       int len = nodes.length;
       for (int i = 0; i < nodes.length; i++) {
-        String levelKey = RocksDBUtils.toLevelKey(nodes, i);
-        CheckKeyResult keyCheckResult =
-            readWriteHandler.keyExist(
-                levelKey, RocksDBMNodeType.INTERNAL, RocksDBMNodeType.STORAGE_GROUP);
+        String levelKey = RocksDBUtils.getLevelPath(nodes, i);
+        CheckKeyResult keyCheckResult = readWriteHandler.keyExistByAllTypes(levelKey);
         if (!keyCheckResult.existAnyKey()) {
           if (i < len - 1) {
             readWriteHandler.createNode(
@@ -143,12 +141,19 @@ public class MRocksDBWriter {
       Map<String, String> tags,
       Map<String, String> attributes)
       throws MetadataException {
-    String[] nodes = path.getNodes();
-    int sgIndex = ensureStorageGroup(path, path.getNodeLength() - 2);
+    // regular check
     MetaFormatUtils.checkTimeseries(path);
+    MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), schema.getProps());
+
+    // sg check and create
+    String[] nodes = path.getNodes();
+    SchemaUtils.checkDataTypeWithEncoding(schema.getType(), schema.getEncodingType());
+    int sgIndex = ensureStorageGroup(path, path.getNodeLength() - 2);
+
     try {
-      createTimeSeriesRecursively(
-          nodes, nodes.length, sgIndex + 1, schema, alias, tags, attributes);
+      createTimeSeriesRecursively(nodes, nodes.length, schema, alias, tags, attributes);
+      // TODO: insert node to tag table
+      // TODO: load tags to memory
     } catch (RocksDBException | InterruptedException | IOException e) {
       throw new MetadataException(e);
     }
@@ -157,36 +162,48 @@ public class MRocksDBWriter {
   private void createTimeSeriesRecursively(
       String nodes[],
       int start,
-      int end,
       MeasurementSchema schema,
       String alias,
       Map<String, String> tags,
       Map<String, String> attributes)
       throws InterruptedException, MetadataException, RocksDBException, IOException {
-    if (start <= end) {
-      // nodes before "end" must exist
+    if (start <= 1) {
+      // nodes "root" must exist and don't need to check
       return;
     }
-    String levelPath = RocksDBUtils.constructKey(nodes, start - 1);
+    String levelPath = RocksDBUtils.getLevelPath(nodes, start - 1);
     Holder<byte[]> holder = new Holder<>();
-    CheckKeyResult checkResult =
-        readWriteHandler.keyExist(
-            levelPath,
-            holder,
-            RocksDBMNodeType.INTERNAL,
-            RocksDBMNodeType.ENTITY,
-            RocksDBMNodeType.MEASUREMENT);
+    CheckKeyResult checkResult = readWriteHandler.keyExistByAllTypes(levelPath, holder);
     if (!checkResult.existAnyKey()) {
-      createTimeSeriesRecursively(nodes, start - 1, end, schema, alias, tags, attributes);
+      createTimeSeriesRecursively(nodes, start - 1, schema, alias, tags, attributes);
       if (start == nodes.length) {
         createTimeSeriesNode(nodes, levelPath, schema, alias, tags, attributes);
       } else if (start == nodes.length - 1) {
         // create entity node
-        readWriteHandler.createNode(levelPath, RocksDBMNodeType.ENTITY, DEFAULT_ENTITY_NODE_VALUE);
+        try {
+          readWriteHandler.createNode(
+              levelPath, RocksDBMNodeType.ENTITY, DEFAULT_ENTITY_NODE_VALUE);
+        } catch (PathAlreadyExistException e) {
+          Holder<byte[]> tempHolder = new Holder<>();
+          if (readWriteHandler.keyExistByType(levelPath, RocksDBMNodeType.ENTITY, tempHolder)) {
+            logger.info("Entity node created by another thread: {}", levelPath);
+          } else {
+            throw new PathAlreadyExistException("Entity type node is expected for " + levelPath);
+          }
+        }
       } else {
         // create internal node
-        readWriteHandler.createNode(
-            levelPath, RocksDBMNodeType.ENTITY, DEFAULT_INTERNAL_NODE_VALUE);
+        try {
+          readWriteHandler.createNode(
+              levelPath, RocksDBMNodeType.ENTITY, DEFAULT_INTERNAL_NODE_VALUE);
+        } catch (PathAlreadyExistException e) {
+          Holder<byte[]> tempHolder = new Holder<>();
+          if (readWriteHandler.keyExistByType(levelPath, RocksDBMNodeType.INTERNAL, tempHolder)) {
+            logger.info("Internal node created by another thread: {}", levelPath);
+          } else {
+            throw new PathAlreadyExistException("Internal type node is expected for " + levelPath);
+          }
+        }
       }
     } else {
       if (start == nodes.length) {
@@ -231,7 +248,7 @@ public class MRocksDBWriter {
       throws IOException, RocksDBException, MetadataException, InterruptedException {
     // create time-series node
     WriteBatch batch = new WriteBatch();
-    byte[] value = readWriteHandler.buildMeasurementNodeValue(schema, alias, tags, attributes);
+    byte[] value = RocksDBUtils.buildMeasurementNodeValue(schema, alias, tags, attributes);
     byte[] measurementKey = RocksDBUtils.toMeasurementNodeKey(levelPath);
     batch.put(measurementKey, value);
 
@@ -248,14 +265,13 @@ public class MRocksDBWriter {
     if (StringUtils.isNotEmpty(alias)) {
       String[] aliasNodes = Arrays.copyOf(nodes, nodes.length);
       aliasNodes[nodes.length - 1] = alias;
-      String aliasLevelPath = RocksDBUtils.constructKey(aliasNodes, aliasNodes.length - 1);
+      String aliasLevelPath = RocksDBUtils.getLevelPath(aliasNodes, aliasNodes.length - 1);
       byte[] aliasNodeKey = RocksDBUtils.toAliasNodeKey(aliasLevelPath);
       if (!readWriteHandler.keyExist(aliasNodeKey)) {
         batch.put(
             aliasLevelPath.getBytes(),
             Bytes.concat(new byte[] {DATA_VERSION, NODE_TYPE_ALIAS}, levelPath.getBytes()));
-        readWriteHandler.batchCreateTwoKeys(
-            levelPath, aliasLevelPath, measurementKey, aliasNodeKey, batch);
+        readWriteHandler.batchCreateTwoKeys(levelPath, aliasLevelPath, batch);
       } else {
         throw new AliasAlreadyExistException(levelPath, alias);
       }
@@ -318,50 +334,30 @@ public class MRocksDBWriter {
 
     for (int i = 0; i < measurements.size(); i++) {
       SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
+      MetaFormatUtils.checkNodeName(measurements.get(i));
     }
 
     int sgIndex = ensureStorageGroup(prefixPath, prefixPath.getNodeLength() - 1);
 
     try {
-      // 1. create parent internal nodes recursively, the last one is device, take care of that
-      // 2. create all measurement nodes
-
-    } catch (Exception e) {
+      createEntityRecursively(prefixPath.getNodes(), prefixPath.getNodeLength(), sgIndex + 1, true);
+      WriteBatch batch = new WriteBatch();
+      String[] locks = new String[measurements.size()];
+      for (int i = 0; i < measurements.size(); i++) {
+        String measurement = measurements.get(i);
+        String levelPath = RocksDBUtils.getMeasurementLevelPath(prefixPath.getNodes(), measurement);
+        locks[i] = levelPath;
+        MeasurementSchema schema =
+            new MeasurementSchema(measurement, dataTypes.get(i), encodings.get(i));
+        byte[] key = RocksDBUtils.toMeasurementNodeKey(levelPath);
+        byte[] value = RocksDBUtils.buildMeasurementNodeValue(schema, null, null, null);
+        batch.put(key, value);
+      }
+      readWriteHandler.batchCreateWithLocks(locks, batch);
+      // TODO: update cache if necessary
+    } catch (InterruptedException | RocksDBException | IOException e) {
       throw new MetadataException(e);
     }
-
-    //      ensureStorageGroup(prefixPath);
-    //
-    //      // create time series in MTree
-    //      mtree.createAlignedTimeseries(
-    //          prefixPath,
-    //          measurements,
-    //          plan.getDataTypes(),
-    //          plan.getEncodings(),
-    //          plan.getCompressors());
-    //
-    //      // the cached mNode may be replaced by new entityMNode in mtree
-    //      mNodeCache.invalidate(prefixPath);
-    //
-    //      // update statistics and schemaDataTypeNumMap
-    //      totalSeriesNumber.addAndGet(measurements.size());
-    //      if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
-    //        logger.warn("Current series number {} is too large...", totalSeriesNumber);
-    //        allowToCreateNewSeries = false;
-    //      }
-    //      // write log
-    //      if (!isRecovering) {
-    //        logWriter.createAlignedTimeseries(plan);
-    //      }
-    //    } catch (IOException e) {
-    //      throw new MetadataException(e);
-    //    }
-    //
-    //    // update id table if not in recovering or disable id table log file
-    //    if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
-    //      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
-    //      idTable.createAlignedTimeseries(plan);
-    //    }
   }
 
   /**
@@ -378,13 +374,9 @@ public class MRocksDBWriter {
       // nodes before "end" must exist
       return;
     }
-    String levelPath = RocksDBUtils.constructKey(nodes, start - 1);
-    CheckKeyResult checkResult =
-        readWriteHandler.keyExist(
-            levelPath,
-            RocksDBMNodeType.INTERNAL,
-            RocksDBMNodeType.ENTITY,
-            RocksDBMNodeType.MEASUREMENT);
+    String levelPath = RocksDBUtils.getLevelPath(nodes, start - 1);
+    Holder<byte[]> holder = new Holder<>();
+    CheckKeyResult checkResult = readWriteHandler.keyExistByAllTypes(levelPath, holder);
     if (!checkResult.existAnyKey()) {
       createEntityRecursively(nodes, start - 1, end, aligned);
       if (start == nodes.length) {
@@ -395,15 +387,21 @@ public class MRocksDBWriter {
         readWriteHandler.createNode(
             levelPath, RocksDBMNodeType.INTERNAL, DEFAULT_ENTITY_NODE_VALUE);
       }
-    } else if (start == nodes.length) {
-      throw new PathAlreadyExistException("Node already exists");
-    } else if (checkResult.getResult(RocksDBMNodeType.MEASUREMENT)
-        || checkResult.getResult(RocksDBMNodeType.ALISA)) {
-      throw new PathAlreadyExistException("Path contains measurement node");
+    } else {
+      if (start == nodes.length) {
+        if (!checkResult.getResult(RocksDBMNodeType.ENTITY)) {
+          throw new PathAlreadyExistException("Node already exists but not entity");
+        }
+
+        if ((holder.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
+          throw new PathAlreadyExistException("Entity node exists but not aligned");
+        }
+      } else if (checkResult.getResult(RocksDBMNodeType.MEASUREMENT)
+          || checkResult.getResult(RocksDBMNodeType.ALISA)) {
+        throw new PathAlreadyExistException("Path contains measurement node");
+      }
     }
   }
-
-  private void createEntity() {}
 
   //  public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
   //    String[] nodes = fullPath.getNodes();
@@ -426,8 +424,8 @@ public class MRocksDBWriter {
     String[] nodes = path.getNodes();
     // ignore the first element: "root"
     for (int i = 1; i < nodes.length; i++) {
-      String levelPath = RocksDBUtils.constructKey(nodes, i);
-      if (readWriteHandler.typeKyeExist(levelPath, RocksDBMNodeType.STORAGE_GROUP)) {
+      String levelPath = RocksDBUtils.getLevelPath(nodes, i);
+      if (readWriteHandler.keyExistByType(levelPath, RocksDBMNodeType.STORAGE_GROUP)) {
         return true;
       }
     }
@@ -438,8 +436,8 @@ public class MRocksDBWriter {
     int result = -1;
     // ignore the first element: "root"
     for (int i = 1; i < nodes.length; i++) {
-      String levelPath = RocksDBUtils.constructKey(nodes, i);
-      if (readWriteHandler.typeKyeExist(levelPath, RocksDBMNodeType.STORAGE_GROUP)) {
+      String levelPath = RocksDBUtils.getLevelPath(nodes, i);
+      if (readWriteHandler.keyExistByType(levelPath, RocksDBMNodeType.STORAGE_GROUP)) {
         result = i;
         break;
       }
@@ -460,7 +458,7 @@ public class MRocksDBWriter {
   public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) {
     String[] nodes = pathPattern.getNodes();
     String startKey =
-        RocksDBUtils.constructKey(nodes, nodes.length - 1, nodes.length)
+        RocksDBUtils.getLevelPath(nodes, nodes.length - 1, nodes.length)
             + PATH_SEPARATOR
             + (char) (ZERO + nodes.length);
     return readWriteHandler.getAllByPrefix(startKey);

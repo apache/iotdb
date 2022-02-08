@@ -35,12 +35,10 @@ public class RockDBConstants {
 
   protected static final byte DEFAULT_FLAG = 0x00;
   protected static final byte FLAG_SET_TTL = 0x01;
-  protected static final byte FLAG_SAVING_TEMPLATE = 0x01 << 1;
-  protected static final byte FLAG_HAS_ALIAS = 0x01 << 2;
-  protected static final byte FLAG_HAS_TAGS = 0x01 << 3;
-  protected static final byte FLAG_HAS_ATTRIBUTES = 0x01 << 4;
-  protected static final byte FLAG_IS_ALIGNED = 0x01 << 5;
-  protected static final byte FLAG_USING_TEMPLATE = 0x01 << 6;
+  protected static final byte FLAG_HAS_ALIAS = 0x01 << 1;
+  protected static final byte FLAG_HAS_TAGS = 0x01 << 2;
+  protected static final byte FLAG_HAS_ATTRIBUTES = 0x01 << 3;
+  protected static final byte FLAG_IS_ALIGNED = 0x01 << 4;
 
   protected static final byte DATA_BLOCK_TYPE_TTL = 0x01;
   protected static final byte DATA_BLOCK_TYPE_SCHEMA_TEMPLATE = 0x01 << 1;
