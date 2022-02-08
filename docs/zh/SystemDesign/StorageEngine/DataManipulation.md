@@ -32,7 +32,7 @@
 	* Session 的 insertRecord 和 insertRecords
 
 * 总入口：public void insert(InsertRowPlan insertRowPlan)   StorageEngine.java
-	* 找到对应的 StorageGroupProcessor
+	* 找到对应的 VirtualStorageGroupProcessor
 	* 根据写入数据的时间以及当前设备落盘的最后时间戳，找到对应的 TsFileProcessor
 	* 写入 TsFileProcessor 对应的 memtable 中
 	    * 如果是乱序文件，则更新 tsfileResource 中的 endTimeMap
@@ -48,7 +48,7 @@
 	* Session 的 insertTablet
 
 * 总入口：public void insertTablet(InsertTabletPlan insertTabletPlan)  StorageEngine.java
-    * 找到对应的 StorageGroupProcessor
+    * 找到对应的 VirtualStorageGroupProcessor
 	* 根据这批数据的时间以及当前设备落盘的最后时间戳，将这批数据分成小批，分别对应到一个 TsFileProcessor 中
 	* 分别将每小批写入 TsFileProcessor 对应的 memtable 中
 	    * 如果是乱序文件，则更新 tsfileResource 中的 endTimeMap
@@ -71,14 +71,14 @@
 	* JDBC 的 execute 接口，使用 delete SQL 语句
 	
 
-每个 StorageGroupProsessor 中针对每个分区会维护一个自增的版本号，由 SimpleFileVersionController 管理。
+每个 VirtualStorageGroupProcessor 中针对每个分区会维护一个自增的版本号，由 SimpleFileVersionController 管理。
 每个内存缓冲区 memtable 在持久化的时候会申请一个版本号。持久化到 TsFile 后，会在 TsFileMetadata 中记录此 memtable 对应的 多个 ChunkGroup 的终止位置和版本号。
 查询时会根据此信息对 ChunkMetadata 赋 version。
 
 StorageEngine.java 中的 delete 入口：
 
 ```public void delete(String deviceId, String measurementId, long timestamp)```
-  * 找到对应的 StorageGroupProcessor
+  * 找到对应的 VirtualStorageGroupProcessor
   * 找到受影响的所有 working TsFileProcessor 记录写前日志
   * 找到受影响的所有 TsFileResource，在其对应的 mods 文件中记录一条记录：path，version，startTime，endTime
     * 如果存在 working memtable：则删除内存中的数据
@@ -94,8 +94,8 @@ Mods 文件用来存储所有的删除记录。下图的 mods 文件中，d1.s1 
 	* JDBC 的 execute 接口，使用 SET TTL 语句
 
 * 总入口：public void setTTL(String storageGroup, long dataTTL) StorageEngine.java
-    * 找到对应的 StorageGroupProcessor
-    * 在 StorageGroupProcessor 中设置新的 data ttl
+    * 找到对应的 VirtualStorageGroupProcessor
+    * 在 VirtualStorageGroupProcessor 中设置新的 data ttl
     * 对所有 TsfileResource 进行 TTL 检查
     * 如果某个文件在当前 TTL 下失效，则删除文件
 

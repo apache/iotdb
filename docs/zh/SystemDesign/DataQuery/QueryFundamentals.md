@@ -46,8 +46,9 @@ TsFile 各级结构在前面的 [TsFile](../TsFile/TsFile.md) 文档中已有介
 
 ## 顺序和乱序文件的数据特点
 
-对于顺序和乱序文件的数据，其数据在文件中的分部特征有所不同。
-顺序文件的 TimeseriesMetadata 中所包含的 ChunkMetadata 也是有序的，也就是说如果按照 chunkMetadata1, chunkMetadata2 的顺序存储，那么将会保证 chunkMetadata1.endtime <= chunkMetadata2.startTime。
+对于顺序和乱序文件的数据，其数据在文件中的分部特征有所不同。 
+
+顺序文件的 TimeseriesMetadata 中所包含的 ChunkMetadata 也是有序的，也就是说如果按照  chunkMetadata1, chunkMetadata2 的顺序存储，那么将会保证 chunkMetadata1.endtime <= chunkMetadata2.startTime。
 
 乱序文件的 TimeseriesMetadata 中所包含的 ChunkMetadata 是无序的，乱序文件中多个 Chunk 所覆盖的数据可能存在重叠，同时也可能与顺序文件中的 Chunk 数据存在重叠。
 
@@ -67,6 +68,7 @@ Modification 文件：org.apache.iotdb.db.engine.modification.ModificationFile
 删除区间的内部表示：org.apache.iotdb.tsfile.read.common.TimeRange
 
 ### Modification 文件
+
 IoTDB 通过为包含数据的 TsFile 写入一个 Modification 文件来完成删除操作。
 
 在 0.11.0 版本的 IoTDB 中对 Modification 文件中的删除记录格式进行了修改，每一行的删除记录包含删除的开始时间和结束时间。
