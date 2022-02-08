@@ -43,7 +43,7 @@ public class CacheStrategy implements ICacheStrategy {
 
   @Override
   public void updateCacheStatusAfterMemoryRead(IMNode node) {
-    if (isEvictable(node)) {
+    if (nodeCache.containsKey(node.getCacheEntry())) {
       // todo update cache status for node selection during eviction
     }
   }
@@ -76,12 +76,16 @@ public class CacheStrategy implements ICacheStrategy {
 
   private void addNodeToBuffer(IMNode node) {
     IMNode parent = node.getParent();
-    while (parent != null && isEvictable(parent)) {
-      setNotEvictable(parent);
+    CacheEntry cacheEntry = parent.getCacheEntry();
+    while (parent != null && nodeCache.containsKey(cacheEntry)) {
+      // the ancestors of volatile node should not stay in nodeCache in which the node will be
+      // evicted
+      nodeCache.remove(cacheEntry);
       parent = parent.getParent();
+      cacheEntry = parent.getCacheEntry();
     }
     parent = node.getParent();
-    CacheEntry cacheEntry = parent.getCacheEntry();
+    cacheEntry = parent.getCacheEntry();
     if (!cacheEntry.isVolatile()) {
       // make sure that the nodeBuffer contains all the root node of volatile subTree
       // give that root.sg.d.s, if root, sg and d have been persisted and s are volatile, then d
@@ -92,6 +96,11 @@ public class CacheStrategy implements ICacheStrategy {
 
   @Override
   public void updateCacheStatusAfterPersist(IMNode node) {
+    IMNode tmp = node;
+    while (tmp.getParent() != null && !nodeCache.containsKey(tmp.getCacheEntry())) {
+      nodeCache.put(node.getCacheEntry(), node);
+      tmp = tmp.getParent();
+    }
     ICachedMNodeContainer container = getCachedMNodeContainer(node);
     Map<String, IMNode> persistedChildren = container.getNewChildBuffer();
     for (IMNode child : persistedChildren.values()) {
@@ -108,7 +117,6 @@ public class CacheStrategy implements ICacheStrategy {
     CacheEntry cacheEntry = node.getCacheEntry();
     cacheEntry.setVolatile(false);
     container.moveMNodeToCache(node.getName());
-    nodeBuffer.remove(cacheEntry);
     nodeCache.put(cacheEntry, node);
   }
 
@@ -118,6 +126,7 @@ public class CacheStrategy implements ICacheStrategy {
     for (IMNode node : nodeBuffer.values()) {
       collectVolatileNodes(node, nodesToPersist);
     }
+    nodeBuffer.clear();
     return nodesToPersist;
   }
 
@@ -191,15 +200,6 @@ public class CacheStrategy implements ICacheStrategy {
       evictedMNodes.add(child);
       collectEvictedMNodes(child, evictedMNodes);
     }
-  }
-
-  private boolean isEvictable(IMNode node) {
-    CacheEntry cacheEntry = node.getCacheEntry();
-    return cacheEntry != null && !cacheEntry.isPinned() && nodeCache.containsKey(cacheEntry);
-  }
-
-  private void setNotEvictable(IMNode node) {
-    nodeCache.remove(node.getCacheEntry());
   }
 
   @Override
