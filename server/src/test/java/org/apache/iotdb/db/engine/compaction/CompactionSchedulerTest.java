@@ -1585,13 +1585,16 @@ public class CompactionSchedulerTest {
         tsFileManager.add(tsFileResource, false);
       }
 
+      assertEquals(100, tsFileManager.getTsFileList(true).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
       CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      assertEquals(100, tsFileManager.getTsFileList(true).size());
       long totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 99) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
+          assertEquals(100, tsFileManager.getTsFileList(true).size());
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
           CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
           if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -1609,6 +1612,7 @@ public class CompactionSchedulerTest {
       while (tsFileManager.getTsFileList(false).size() > 98) {
         try {
           Thread.sleep(100);
+          assertEquals(100, tsFileManager.getTsFileList(true).size());
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
           CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
