@@ -1,10 +1,13 @@
-Take BallSpeed Experiment as an example.
+# Experiment Guidance
+Take the BallSpeed experiment as an example.
 
 Before running `run-BallSpeed-exp.sh`, prepare the workspace as follows:
 ```
 /data3/raw_data/rl
 ---- BallSpeed
 ---- ---- BallSpeed.csv
+---- ---- OverlapGenerator.class
+---- ---- OverlapGenerator.java
 /data3/ruilei/rl/dataSpace
 /data3/ruilei/rl/iotdb-server-0.12.4
 /data3/ruilei/rl/iotdb-engine-example.properties
@@ -19,7 +22,7 @@ Before running `run-BallSpeed-exp.sh`, prepare the workspace as follows:
 ---- query_experiment.sh [make sure updated the Query jar path]
 ```
 
-And then you can run `run-BallSpeed-exp.sh` to perform experiments on BallSpeed dataset.
+And then you can run `run-BallSpeed-exp.sh` to perform the BallSpeed experiment.
 
 The results are in:
 ```
