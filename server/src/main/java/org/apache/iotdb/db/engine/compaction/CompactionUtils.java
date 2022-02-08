@@ -363,13 +363,13 @@ public class CompactionUtils {
       List<TsFileResource> selectedUnSeqTsFileResourceList)
       throws IOException {
     for (TsFileResource seqFile : selectedSeqTsFileResourceList) {
-      ModificationFile modificationFile = ModificationFile.getCompactionMods(seqFile);
+      ModificationFile modificationFile = seqFile.getCompactionModFile();
       if (modificationFile.exists()) {
         modificationFile.remove();
       }
     }
     for (TsFileResource unseqFile : selectedUnSeqTsFileResourceList) {
-      ModificationFile modificationFile = ModificationFile.getCompactionMods(unseqFile);
+      ModificationFile modificationFile = unseqFile.getCompactionModFile();
       if (modificationFile.exists()) {
         modificationFile.remove();
       }

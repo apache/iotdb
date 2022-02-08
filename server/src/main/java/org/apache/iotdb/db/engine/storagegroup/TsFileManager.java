@@ -177,29 +177,20 @@ public class TsFileManager {
       List<TsFileResource> seqFileResources,
       List<TsFileResource> unseqFileResources,
       List<TsFileResource> targetFileResources,
-      long timePartition)
+      long timePartition,
+      boolean isTargetSequence)
       throws IOException {
     writeLock("replace");
     try {
       for (TsFileResource tsFileResource : seqFileResources) {
-        for (Map.Entry<Long, TsFileResourceList> entry : sequenceFiles.entrySet()) {
-          if (entry.getValue().contains(tsFileResource)) {
-            entry.getValue().remove(tsFileResource);
-            TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
-            break;
-          }
-        }
+        sequenceFiles.get(timePartition).remove(tsFileResource);
+        TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
       }
       for (TsFileResource tsFileResource : unseqFileResources) {
-        for (Map.Entry<Long, TsFileResourceList> entry : unsequenceFiles.entrySet()) {
-          if (entry.getValue().contains(tsFileResource)) {
-            entry.getValue().remove(tsFileResource);
-            TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
-            break;
-          }
-        }
+        unsequenceFiles.get(timePartition).remove(tsFileResource);
+        TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
       }
-      if (unseqFileResources.size() == 0 || seqFileResources.size() != 0) {
+      if (isTargetSequence) {
         // seq inner space compaction or cross space compaction
         for (TsFileResource resource : targetFileResources) {
           TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);

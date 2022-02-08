@@ -181,7 +181,8 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         selectedSeqTsFileResourceList,
         selectedUnSeqTsFileResourceList,
         targetTsfileResourceList,
-        timePartition);
+        timePartition,
+        true);
   }
 
   private boolean addReadLock(List<TsFileResource> tsFileResourceList) {

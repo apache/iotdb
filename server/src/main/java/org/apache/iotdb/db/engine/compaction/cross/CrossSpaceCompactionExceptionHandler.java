@@ -27,7 +27,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -143,35 +142,7 @@ public class CrossSpaceCompactionExceptionHandler {
     tsFileManager.writeLock("CrossSpaceCompactionExceptionHandler");
     try {
       for (TsFileResource targetTsFile : targetTsFiles) {
-        // delete target files and tmp target files
-        TsFileResource tmpTargetTsFile;
-        if (targetTsFile.getTsFilePath().endsWith(IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX)) {
-          tmpTargetTsFile = targetTsFile;
-          targetTsFile =
-              new TsFileResource(
-                  new File(
-                      tmpTargetTsFile
-                          .getTsFilePath()
-                          .replace(
-                              IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX,
-                              TsFileConstant.TSFILE_SUFFIX)));
-        } else {
-          tmpTargetTsFile =
-              new TsFileResource(
-                  new File(
-                      targetTsFile
-                          .getTsFilePath()
-                          .replace(
-                              TsFileConstant.TSFILE_SUFFIX,
-                              IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX)));
-        }
-        if (!tmpTargetTsFile.remove()) {
-          LOGGER.error(
-              "{} [Compaction][Exception] failed to delete tmp target tsfile {} when handling exception",
-              storageGroup,
-              tmpTargetTsFile);
-          removeAllTargetFile = false;
-        }
+        // delete target files
         if (!targetTsFile.remove()) {
           LOGGER.error(
               "{} [Compaction][Exception] failed to delete target tsfile {} when handling exception",

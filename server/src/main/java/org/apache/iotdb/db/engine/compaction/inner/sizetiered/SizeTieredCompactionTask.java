@@ -149,13 +149,15 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
             selectedTsFileResourceList,
             Collections.emptyList(),
             Collections.singletonList(targetTsFileResource),
-            timePartition);
+            timePartition,
+            true);
       } else {
         tsFileManager.replace(
             Collections.emptyList(),
             selectedTsFileResourceList,
             Collections.singletonList(targetTsFileResource),
-            timePartition);
+            timePartition,
+            false);
       }
 
       LOGGER.info(
