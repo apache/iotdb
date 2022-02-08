@@ -172,6 +172,7 @@ public class TsFileManager {
     }
   }
 
+  /** This method is called after compaction to update memory. */
   public void replace(
       List<TsFileResource> seqFileResources,
       List<TsFileResource> unseqFileResources,
@@ -198,10 +199,20 @@ public class TsFileManager {
           }
         }
       }
-      for (TsFileResource resource : targetFileResources) {
-        TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
-        sequenceFiles.get(timePartition).keepOrderInsert(resource);
+      if (unseqFileResources.size() == 0 || seqFileResources.size() != 0) {
+        // seq inner space compaction or cross space compaction
+        for (TsFileResource resource : targetFileResources) {
+          TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+          sequenceFiles.get(timePartition).keepOrderInsert(resource);
+        }
+      } else {
+        // unseq inner space compaction
+        for (TsFileResource resource : targetFileResources) {
+          TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+          unsequenceFiles.get(timePartition).keepOrderInsert(resource);
+        }
       }
+
     } finally {
       writeUnlock();
     }

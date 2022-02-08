@@ -397,6 +397,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
           deviceIds[0] + "." + measurementSchemas[0].getMeasurementId(),
           new Pair<>(i * ptNum + 10, i * ptNum + 15));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
+      CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
     }
     compactionLogger.close();
 

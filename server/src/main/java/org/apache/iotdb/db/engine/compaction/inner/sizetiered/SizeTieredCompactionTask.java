@@ -144,11 +144,19 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       }
 
       // replace the old files with new file, the new is in same position as the old
-      tsFileManager.replace(
-          selectedTsFileResourceList,
-          Collections.emptyList(),
-          Collections.singletonList(targetTsFileResource),
-          timePartition);
+      if (sequence) {
+        tsFileManager.replace(
+            selectedTsFileResourceList,
+            Collections.emptyList(),
+            Collections.singletonList(targetTsFileResource),
+            timePartition);
+      } else {
+        tsFileManager.replace(
+            Collections.emptyList(),
+            selectedTsFileResourceList,
+            Collections.singletonList(targetTsFileResource),
+            timePartition);
+      }
 
       LOGGER.info(
           "{} [Compaction] Compacted target files, try to get the write lock of source files",

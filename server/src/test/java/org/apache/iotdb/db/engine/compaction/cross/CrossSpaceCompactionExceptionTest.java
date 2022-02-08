@@ -513,12 +513,12 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     for (TsFileResource resource : seqResources) {
       resource.resetModFile();
       Assert.assertTrue(resource.getModFile().exists());
-      Assert.assertEquals(2, resource.getModFile().getModifications().size());
+      Assert.assertEquals(1, resource.getModFile().getModifications().size());
     }
     for (TsFileResource resource : unseqResources) {
       resource.resetModFile();
       Assert.assertTrue(resource.getModFile().exists());
-      Assert.assertEquals(2, resource.getModFile().getModifications().size());
+      Assert.assertEquals(1, resource.getModFile().getModifications().size());
     }
 
     // compaction log file should not exist
