@@ -2,14 +2,11 @@ package org.apache.iotdb.db.metadata.rocksdb;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.primitives.Bytes;
 import com.google.common.util.concurrent.Striped;
@@ -30,7 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -38,8 +34,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
@@ -71,7 +67,7 @@ public class RocksDBReadWriteHandler {
   List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>();
 
   // TODO: check how Stripped Lock consume memory
-  private Striped<Lock> locks = Striped.lazyWeakLock(10000);
+  private Striped<Lock> locksPool = Striped.lazyWeakLock(10000);
 
   static {
     RocksDB.loadLibrary();
@@ -146,7 +142,7 @@ public class RocksDBReadWriteHandler {
 
   public void updateNode(String key, byte[] value)
       throws MetadataException, InterruptedException, RocksDBException {
-    Lock lock = locks.get(key);
+    Lock lock = locksPool.get(key);
     if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
       try {
         rocksDB.put(key.getBytes(), value);
@@ -160,13 +156,13 @@ public class RocksDBReadWriteHandler {
 
   public void createNode(String key, RocksDBMNodeType type, byte[] value)
       throws RocksDBException, InterruptedException, MetadataException {
-    Lock lock = locks.get(key);
+    Lock lock = locksPool.get(key);
     if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
       try {
-        byte[] nodeKey = RocksDBUtils.toRocksDBKey(key, type.value);
-        if (keyExist(nodeKey)) {
+        if (keyExistByAllTypes(key).existAnyKey()) {
           throw new PathAlreadyExistException(key);
         }
+        byte[] nodeKey = RocksDBUtils.toRocksDBKey(key, type.value);
         rocksDB.put(nodeKey, value);
       } finally {
         lock.unlock();
@@ -178,10 +174,10 @@ public class RocksDBReadWriteHandler {
 
   public void createNode(String key, byte[] nodeKey, byte[] value)
       throws RocksDBException, InterruptedException, MetadataException {
-    Lock lock = locks.get(key);
+    Lock lock = locksPool.get(key);
     if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
       try {
-        if (keyExist(nodeKey)) {
+        if (keyExistByAllTypes(key).existAnyKey()) {
           throw new PathAlreadyExistException(key);
         }
         rocksDB.put(nodeKey, value);
@@ -194,8 +190,8 @@ public class RocksDBReadWriteHandler {
   }
 
   public void convertToEntityNode(String lockKey, byte[] entityNodeKey, WriteBatch batch)
-      throws InterruptedException, MetadataException {
-    Lock lock = locks.get(lockKey);
+      throws InterruptedException, MetadataException, RocksDBException {
+    Lock lock = locksPool.get(lockKey);
     if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
       try {
         if (keyExist(entityNodeKey)) {
@@ -203,8 +199,6 @@ public class RocksDBReadWriteHandler {
         }
         // check exist of some key to make sure execute could success
         rocksDB.write(new WriteOptions(), batch);
-      } catch (RocksDBException e) {
-        e.printStackTrace();
       } finally {
         lock.unlock();
       }
@@ -213,24 +207,19 @@ public class RocksDBReadWriteHandler {
     }
   }
 
-  public void batchCreateTwoKeys(
-      String primaryKey,
-      String aliasKey,
-      byte[] primaryNodeKey,
-      byte[] aliasNodeKey,
-      WriteBatch batch)
+  public void batchCreateTwoKeys(String primaryKey, String aliasKey, WriteBatch batch)
       throws RocksDBException, MetadataException, InterruptedException {
-    Lock primaryLock = locks.get(primaryKey);
-    Lock aliasLock = locks.get(aliasKey);
+    Lock primaryLock = locksPool.get(primaryKey);
+    Lock aliasLock = locksPool.get(aliasKey);
     if (primaryLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
       try {
-        if (keyExist(primaryNodeKey)) {
+        if (keyExistByAllTypes(primaryKey).existAnyKey()) {
           throw new PathAlreadyExistException(primaryKey);
         }
         if (aliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
           try {
-            if (keyExist(aliasNodeKey)) {
-              throw new AliasAlreadyExistException(aliasKey, aliasKey);
+            if (keyExistByAllTypes(aliasKey).existAnyKey()) {
+              throw new PathAlreadyExistException(aliasKey);
             }
             rocksDB.write(new WriteOptions(), batch);
           } finally {
@@ -249,7 +238,7 @@ public class RocksDBReadWriteHandler {
 
   public void batchCreateOneKey(String key, byte[] nodeKey, WriteBatch batch)
       throws RocksDBException, MetadataException, InterruptedException {
-    Lock lock = locks.get(key);
+    Lock lock = locksPool.get(key);
     if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
       try {
         if (keyExist(nodeKey)) {
@@ -264,51 +253,33 @@ public class RocksDBReadWriteHandler {
     }
   }
 
-  public byte[] buildMeasurementNodeValue(
-      MeasurementSchema schema,
-      String alias,
-      Map<String, String> tags,
-      Map<String, String> attributes)
-      throws IOException {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    ReadWriteIOUtils.write(DATA_VERSION, outputStream);
-
-    byte flag = DEFAULT_FLAG;
-    if (alias != null) {
-      flag = (byte) (flag | FLAG_HAS_ALIAS);
+  public void batchCreateWithLocks(String[] locks, WriteBatch batch)
+      throws RocksDBException, MetadataException, InterruptedException {
+    Stack<Lock> acquiredLock = new Stack<>();
+    try {
+      for (String lockKey : locks) {
+        Lock lock = locksPool.get(lockKey);
+        if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+          acquiredLock.push(lock);
+          if (keyExistByAllTypes(lockKey).existAnyKey()) {
+            throw new PathAlreadyExistException(lockKey);
+          }
+        } else {
+          throw new MetadataException("acquire lock timeout: " + lockKey);
+        }
+      }
+      rocksDB.write(new WriteOptions(), batch);
+    } finally {
+      while (!acquiredLock.isEmpty()) {
+        Lock lock = acquiredLock.pop();
+        lock.unlock();
+      }
     }
-
-    if (tags != null && tags.size() > 0) {
-      flag = (byte) (flag | FLAG_HAS_TAGS);
-    }
-
-    if (attributes != null && attributes.size() > 0) {
-      flag = (byte) (flag | FLAG_HAS_ATTRIBUTES);
-    }
-
-    ReadWriteIOUtils.write(flag, outputStream);
-    schema.serializeTo(outputStream);
-
-    if (alias != null) {
-      ReadWriteIOUtils.write(DATA_BLOCK_TYPE_ALIAS, outputStream);
-      ReadWriteIOUtils.write(alias, outputStream);
-    }
-
-    if (tags != null && tags.size() > 0) {
-      ReadWriteIOUtils.write(DATA_BLOCK_TYPE_TAGS, outputStream);
-      ReadWriteIOUtils.write(tags, outputStream);
-    }
-
-    if (attributes != null && attributes.size() > 0) {
-      ReadWriteIOUtils.write(DATA_BLOCK_TYPE_TAGS, outputStream);
-      ReadWriteIOUtils.write(tags, outputStream);
-    }
-    return outputStream.toByteArray();
   }
 
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     String[] nodes = fullPath.getNodes();
-    String key = RocksDBUtils.constructKey(nodes, nodes.length - 1);
+    String key = RocksDBUtils.getLevelPath(nodes, nodes.length - 1);
     try {
       byte[] value = rocksDB.get(key.getBytes());
       if (value == null) {
@@ -332,24 +303,40 @@ public class RocksDBReadWriteHandler {
     return count;
   }
 
-  public boolean typeKyeExist(String levelKey, RocksDBMNodeType type) throws RocksDBException {
-    byte[] key = Bytes.concat(new byte[] {type.value}, levelKey.getBytes());
-    return keyExist(key, new Holder<>());
+  public boolean keyExistByType(String levelKey, RocksDBMNodeType type) throws RocksDBException {
+    return keyExistByType(levelKey, type, new Holder<>());
   }
 
-  public boolean keyExist(String levelKey, RocksDBMNodeType type, Holder<byte[]> holder)
+  public boolean keyExistByType(String levelKey, RocksDBMNodeType type, Holder<byte[]> holder)
       throws RocksDBException {
     byte[] key = Bytes.concat(new byte[] {type.value}, levelKey.getBytes());
     return keyExist(key, holder);
   }
 
-  public CheckKeyResult keyExist(String levelKey, RocksDBMNodeType... types)
-      throws RocksDBException {
-    return keyExist(levelKey, new Holder<>(), types);
+  public CheckKeyResult keyExistByAllTypes(String levelKey) throws RocksDBException {
+    return keyExistByAllTypes(levelKey, new Holder<>());
   }
 
-  public CheckKeyResult keyExist(String levelKey, Holder<byte[]> holder, RocksDBMNodeType... types)
+  public CheckKeyResult keyExistByAllTypes(String levelKey, Holder<byte[]> holder)
       throws RocksDBException {
+    RocksDBMNodeType[] types =
+        new RocksDBMNodeType[] {
+          RocksDBMNodeType.ALISA,
+          RocksDBMNodeType.ENTITY,
+          RocksDBMNodeType.INTERNAL,
+          RocksDBMNodeType.MEASUREMENT,
+          RocksDBMNodeType.STORAGE_GROUP
+        };
+    return keyExistByTypes(levelKey, holder, types);
+  }
+
+  public CheckKeyResult keyExistByTypes(String levelKey, RocksDBMNodeType... types)
+      throws RocksDBException {
+    return keyExistByTypes(levelKey, new Holder<>(), types);
+  }
+
+  public CheckKeyResult keyExistByTypes(
+      String levelKey, Holder<byte[]> holder, RocksDBMNodeType... types) throws RocksDBException {
     CheckKeyResult result = new CheckKeyResult();
     try {
       Arrays.stream(types)
@@ -391,17 +378,7 @@ public class RocksDBReadWriteHandler {
   }
 
   public boolean keyExist(String key, Holder<byte[]> holder) throws RocksDBException {
-    boolean exist = false;
-    if (!rocksDB.keyMayExist(key.getBytes(), holder)) {
-      exist = false;
-    } else {
-      byte[] value = rocksDB.get(key.getBytes());
-      if (value != null) {
-        exist = true;
-        holder.setValue(value);
-      }
-    }
-    return exist;
+    return keyExist(key.getBytes(), holder);
   }
 
   public boolean keyExist(String key) throws RocksDBException {
