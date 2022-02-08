@@ -156,7 +156,13 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       CompactionUtils.combineModsInCompaction(
           selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
 
-      updateTsFileResource();
+      // update tsfile resource in memory
+      tsFileManager.replace(
+          selectedSeqTsFileResourceList,
+          selectedUnSeqTsFileResourceList,
+          targetTsfileResourceList,
+          timePartition,
+          true);
 
       releaseReadAndLockWrite(selectedSeqTsFileResourceList);
       releaseReadAndLockWrite(selectedUnSeqTsFileResourceList);
@@ -174,15 +180,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
           fullStorageGroupName,
           (System.currentTimeMillis() - startTime) / 1000);
     }
-  }
-
-  private void updateTsFileResource() throws IOException {
-    tsFileManager.replace(
-        selectedSeqTsFileResourceList,
-        selectedUnSeqTsFileResourceList,
-        targetTsfileResourceList,
-        timePartition,
-        true);
   }
 
   private boolean addReadLock(List<TsFileResource> tsFileResourceList) {

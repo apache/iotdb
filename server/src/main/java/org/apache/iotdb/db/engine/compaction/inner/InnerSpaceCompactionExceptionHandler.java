@@ -98,11 +98,7 @@ public class InnerSpaceCompactionExceptionHandler {
       } else {
         handleSuccess =
             handleWhenSomeSourceFilesLost(
-                fullStorageGroupName,
-                targetTsFile,
-                selectedTsFileResourceList,
-                tsFileResourceList,
-                lostSourceFiles);
+                fullStorageGroupName, targetTsFile, selectedTsFileResourceList, lostSourceFiles);
       }
     }
 
@@ -205,14 +201,19 @@ public class InnerSpaceCompactionExceptionHandler {
           tsFileManager.writeUnlock();
         }
       }
-      if (!targetTsFile.remove()) {
-        // failed to remove target tsfile
-        // system should not carry out the subsequent compaction in case of data redundant
-        LOGGER.error(
-            "{} [Compaction][ExceptionHandler] failed to remove target file {}",
-            fullStorageGroupName,
-            targetTsFile);
-        return false;
+      targetTsFile.writeLock();
+      try {
+        if (!targetTsFile.remove()) {
+          // failed to remove target tsfile
+          // system should not carry out the subsequent compaction in case of data redundant
+          LOGGER.error(
+              "{} [Compaction][ExceptionHandler] failed to remove target file {}",
+              fullStorageGroupName,
+              targetTsFile);
+          return false;
+        }
+      } finally {
+        targetTsFile.writeUnlock();
       }
       // delete compaction mods files
       CompactionUtils.deleteCompactionModsFile(selectedTsFileResourceList, Collections.emptyList());
@@ -230,7 +231,6 @@ public class InnerSpaceCompactionExceptionHandler {
       String fullStorageGroupName,
       TsFileResource targetTsFile,
       List<TsFileResource> selectedTsFileResourceList,
-      TsFileResourceList tsFileResourceList,
       List<TsFileResource> lostSourceFiles) {
     boolean handleSuccess = true;
     try {

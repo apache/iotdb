@@ -183,12 +183,14 @@ public class TsFileManager {
     writeLock("replace");
     try {
       for (TsFileResource tsFileResource : seqFileResources) {
-        sequenceFiles.get(timePartition).remove(tsFileResource);
-        TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
+        if (sequenceFiles.get(timePartition).remove(tsFileResource)) {
+          TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
+        }
       }
       for (TsFileResource tsFileResource : unseqFileResources) {
-        unsequenceFiles.get(timePartition).remove(tsFileResource);
-        TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
+        if (unsequenceFiles.get(timePartition).remove(tsFileResource)) {
+          TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
+        }
       }
       if (isTargetSequence) {
         // seq inner space compaction or cross space compaction

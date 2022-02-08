@@ -143,6 +143,7 @@ public class CrossSpaceCompactionExceptionHandler {
     try {
       for (TsFileResource targetTsFile : targetTsFiles) {
         // delete target files
+        targetTsFile.writeLock();
         if (!targetTsFile.remove()) {
           LOGGER.error(
               "{} [Compaction][Exception] failed to delete target tsfile {} when handling exception",
@@ -150,6 +151,7 @@ public class CrossSpaceCompactionExceptionHandler {
               targetTsFile);
           removeAllTargetFile = false;
         }
+        targetTsFile.writeUnlock();
 
         // remove target tsfile resource in memory
         if (targetTsFile.isFileInList()) {
