@@ -155,7 +155,8 @@ public class DoubleStatistics extends Statistics<Double> {
 
   @Override
   public long getSumLongValue() {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TSDataType.DOUBLE, "long sum"));
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.DOUBLE, "long sum"));
   }
 
   @Override

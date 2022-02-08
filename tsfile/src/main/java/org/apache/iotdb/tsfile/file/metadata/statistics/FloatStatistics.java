@@ -147,7 +147,8 @@ public class FloatStatistics extends Statistics<Float> {
 
   @Override
   public long getSumLongValue() {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TSDataType.FLOAT, "long sum"));
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.FLOAT, "long sum"));
   }
 
   @Override
