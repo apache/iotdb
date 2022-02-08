@@ -35,7 +35,6 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   private Binary firstValue = new Binary("");
   private Binary lastValue = new Binary("");
-  private static final String BINARY = "Binary";
   static final int BINARY_STATISTICS_FIXED_RAM_SIZE = 32;
 
   @Override
@@ -81,12 +80,14 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public Binary getMinValue() {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, BINARY, "min"));
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.TEXT, "min"));
   }
 
   @Override
   public Binary getMaxValue() {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, BINARY, "max"));
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.TEXT, "max"));
   }
 
   @Override
@@ -101,12 +102,14 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public double getSumDoubleValue() {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, BINARY, "double sum"));
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.TEXT, "double sum"));
   }
 
   @Override
   public long getSumLongValue() {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, BINARY, "long sum"));
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.TEXT, "long sum"));
   }
 
   @Override

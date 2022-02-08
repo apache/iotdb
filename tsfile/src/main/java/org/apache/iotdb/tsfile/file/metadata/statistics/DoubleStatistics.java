@@ -37,7 +37,6 @@ public class DoubleStatistics extends Statistics<Double> {
   private double sumValue;
 
   static final int DOUBLE_STATISTICS_FIXED_RAM_SIZE = 80;
-  private static final String DOUBLE = "Double";
 
   @Override
   public TSDataType getType() {
@@ -156,7 +155,8 @@ public class DoubleStatistics extends Statistics<Double> {
 
   @Override
   public long getSumLongValue() {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, DOUBLE, "long sum"));
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.DOUBLE, "long sum"));
   }
 
   @Override
