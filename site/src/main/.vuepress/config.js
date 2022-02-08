@@ -95,7 +95,7 @@ var config = {
 				  },
 				  {
 					text: 'Design',
-					link: '/SystemDesign/Architecture/Architecture'
+					link: 'https://cwiki.apache.org/confluence/display/IOTDB/System+Design'
 				  },
 				  {
 					text: 'Download',
@@ -1083,7 +1083,7 @@ var config = {
 				  },
 				  	{
 					text: '系统设计',
-					link: '/zh/SystemDesign/Architecture/Architecture'
+					link: 'https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=177051872'
 				  },
 				  {
 					text: '下载',
