@@ -316,34 +316,41 @@ public class IoTDBSyntaxConventionIT {
   }
 
   @Test
-  public void testIllegalNodeName1() {
+  public void testIllegalNodeName() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.`a.b` TEXT");
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.`a.b` TEXT");
+        fail();
+      } catch (SQLException ignored) {
+      }
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.\"a\"\".\"\"b\" TEXT");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertTrue(e.getMessage().contains("\"a\".\"b\" is not a legal node name"));
+      }
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.'a\\'.\\'b' TEXT");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertTrue(e.getMessage().contains("'a'.'b' is not a legal node name"));
+      }
+      try {
+        statement.execute("CREATE TIMESERIES root.sg.\"a.\" TEXT");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertTrue(e.getMessage().contains("\"a.\" is not a legal node name"));
+      }
+      try {
+        statement.execute("CREATE TIMESERIES root.sg.`\"ab`.`cd\"` TEXT");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertTrue(e.getMessage().contains("\"ab is not a legal node name"));
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
       fail();
-    } catch (SQLException ignored) {
-    }
-  }
-
-  @Test
-  public void testIllegalNodeName2() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.\"a\"\".\"\"b\" TEXT");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertTrue(e.getMessage().contains("\"a\".\"b\" is not a legal node name"));
-    }
-  }
-
-  @Test
-  public void testIllegalNodeName3() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.'a\\'.\\'b' TEXT");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertTrue(e.getMessage().contains("'a'.'b' is not a legal node name"));
     }
   }
 }
