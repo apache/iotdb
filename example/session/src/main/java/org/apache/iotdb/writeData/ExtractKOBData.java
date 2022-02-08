@@ -7,7 +7,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-// java ExtractTianyuan /data3/raw_data/data/tianyuan/root.kobelco.trans.03.1090001603.2401604.KOB_0002_00_67.csv
+// java ExtractTianyuan
+// /data3/raw_data/data/KOB/root.kobelco.trans.03.1090001603.2401604.KOB_0002_00_67.csv
 // KOB.csv 0 1
 public class ExtractKOBData {
 

@@ -37,7 +37,6 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 
 *.txt
 
-*.jar
 *.gz
 *.tar.gz
 *.tar

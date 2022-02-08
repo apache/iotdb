@@ -12,8 +12,8 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * 每次快要写到10000个点（chunk size）还剩下OD%个点的时候，OP%的概率决定要不要乱序. 如果要乱序， 方法是剩下的这OD%个点，和接下来再OD%个点，合在一起2*OD%个点随机打乱然后再写。
- * 0<=OP<=100 0<OD<=50.
+ * 每次快要写到10000个点（chunk size）还剩下OD%个点的时候，OP%的概率决定要不要乱序. 如果要乱序，
+ * 方法是剩下的这OD%个点，和接下来再OD%个点，合在一起2*OD%个点随机打乱然后再写。 0<=OP<=100 0<OD<=50.
  */
 public class OverlapGenerator {
 

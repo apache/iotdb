@@ -10,7 +10,7 @@
     with the License.  You may obtain a copy of the License at
 
         http://www.apache.org/licenses/LICENSE-2.0
-
+git
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -26,8 +26,8 @@
         <version>0.12.4</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>WriteMF03</artifactId>
-    <name>WriteMF03</name>
+    <artifactId>QueryRcvTime</artifactId>
+    <name>QueryRcvTime</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.7</maven.compiler.source>
@@ -61,7 +61,7 @@
                         <configuration>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>org.apache.iotdb.writeData.WriteMF03</mainClass>
+                                    <mainClass>org.apache.iotdb.queryExp.QueryRcvTime</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
