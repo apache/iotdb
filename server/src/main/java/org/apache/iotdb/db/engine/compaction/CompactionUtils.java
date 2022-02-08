@@ -48,14 +48,12 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -162,6 +160,7 @@ public class CompactionUtils {
     MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
         deviceIterator.iterateNotAlignedSeries(device, false);
     Set<String> allMeasurements = measurementIterator.getAllMeasurements();
+    Set<String> allMeasurementSet = new HashSet<>(allMeasurements);
     for (String measurement : allMeasurements) {
       List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
       measurementSchemas.add(
@@ -172,7 +171,7 @@ public class CompactionUtils {
               device,
               Collections.singletonList(measurement),
               measurementSchemas,
-              new HashSet<>(allMeasurements),
+              allMeasurementSet,
               queryContext,
               queryDataSource,
               false);
@@ -359,46 +358,20 @@ public class CompactionUtils {
     targetFile.getModFile().close();
   }
 
-  public static void removeCompactionModification(
+  public static void deleteCompactionModsFile(
       List<TsFileResource> selectedSeqTsFileResourceList,
-      List<TsFileResource> selectedUnSeqTsFileResourceList,
-      String fullStorageGroupName) {
-    try {
-      for (TsFileResource seqFile : selectedSeqTsFileResourceList) {
-        ModificationFile.getCompactionMods(seqFile).remove();
+      List<TsFileResource> selectedUnSeqTsFileResourceList)
+      throws IOException {
+    for (TsFileResource seqFile : selectedSeqTsFileResourceList) {
+      ModificationFile modificationFile = ModificationFile.getCompactionMods(seqFile);
+      if (modificationFile.exists()) {
+        modificationFile.remove();
       }
-      for (TsFileResource unseqFile : selectedUnSeqTsFileResourceList) {
-        ModificationFile.getCompactionMods(unseqFile).remove();
-      }
-    } catch (IOException e) {
-      logger.error("{} cannot remove merging modification ", fullStorageGroupName, e);
     }
-  }
-
-  /**
-   * This method is called to recover modifications while an exception occurs during compaction. It
-   * appends new modifications of each selected tsfile to its corresponding old mods file and delete
-   * the compaction mods file.
-   *
-   * @param selectedTsFileResources
-   * @throws IOException
-   */
-  public static void appendNewModificationsToOldModsFile(
-      List<TsFileResource> selectedTsFileResources) throws IOException {
-    for (TsFileResource sourceFile : selectedTsFileResources) {
-      // if there are modifications to this seqFile during compaction
-      if (sourceFile.getCompactionModFile().exists()) {
-        ModificationFile compactionModificationFile =
-            ModificationFile.getCompactionMods(sourceFile);
-        Collection<Modification> newModification = compactionModificationFile.getModifications();
-        compactionModificationFile.close();
-        // write the new modifications to its old modification file
-        try (ModificationFile oldModificationFile = sourceFile.getModFile()) {
-          for (Modification modification : newModification) {
-            oldModificationFile.write(modification);
-          }
-        }
-        FileUtils.delete(new File(ModificationFile.getCompactionMods(sourceFile).getFilePath()));
+    for (TsFileResource unseqFile : selectedUnSeqTsFileResourceList) {
+      ModificationFile modificationFile = ModificationFile.getCompactionMods(unseqFile);
+      if (modificationFile.exists()) {
+        modificationFile.remove();
       }
     }
   }

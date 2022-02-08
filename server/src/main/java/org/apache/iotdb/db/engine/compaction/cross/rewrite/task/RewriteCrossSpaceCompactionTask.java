@@ -31,7 +31,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import org.apache.commons.io.FileUtils;
@@ -98,7 +97,8 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
           targetTsfileResourceList,
           selectedSeqTsFileResourceList,
           selectedUnSeqTsFileResourceList,
-          tsFileManager);
+          tsFileManager,
+          timePartition);
       throw throwable;
     } finally {
       releaseAllLock();
@@ -163,8 +163,8 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
 
       deleteOldFiles(selectedSeqTsFileResourceList);
       deleteOldFiles(selectedUnSeqTsFileResourceList);
-      CompactionUtils.removeCompactionModification(
-          selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, fullStorageGroupName);
+      CompactionUtils.deleteCompactionModsFile(
+          selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList);
 
       if (logFile.exists()) {
         FileUtils.delete(logFile);
@@ -177,22 +177,11 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   }
 
   private void updateTsFileResource() throws IOException {
-    seqTsFileResourceList.writeLock();
-    unseqTsFileResourceList.writeLock();
-    for (TsFileResource resource : selectedSeqTsFileResourceList) {
-      TsFileResourceManager.getInstance().removeTsFileResource(resource);
-      seqTsFileResourceList.remove(resource);
-    }
-    for (TsFileResource resource : selectedUnSeqTsFileResourceList) {
-      TsFileResourceManager.getInstance().removeTsFileResource(resource);
-      unseqTsFileResourceList.remove(resource);
-    }
-    for (TsFileResource resource : targetTsfileResourceList) {
-      TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
-      seqTsFileResourceList.keepOrderInsert(resource);
-    }
-    seqTsFileResourceList.writeUnlock();
-    unseqTsFileResourceList.writeUnlock();
+    tsFileManager.replace(
+        selectedSeqTsFileResourceList,
+        selectedUnSeqTsFileResourceList,
+        targetTsfileResourceList,
+        timePartition);
   }
 
   private boolean addReadLock(List<TsFileResource> tsFileResourceList) {

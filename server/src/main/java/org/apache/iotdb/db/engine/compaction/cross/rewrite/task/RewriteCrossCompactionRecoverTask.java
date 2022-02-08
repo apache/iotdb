@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -137,8 +138,8 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
   }
 
   /**
-   * All source files exist: (1) delete all the target files and tmp target files (2) append new
-   * modifications to old mods files
+   * All source files exist: (1) delete all the target files and tmp target files (2) delete
+   * compaction mods files.
    */
   private boolean handleWithAllSourceFilesExist(
       List<TsFileIdentifier> targetFileIdentifiers,
@@ -177,16 +178,16 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
       }
     }
 
-    // deal with compaction modification
+    // delete compaction mods files
     List<TsFileResource> sourceTsFileResourceList = new ArrayList<>();
     for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
       sourceTsFileResourceList.add(new TsFileResource(sourceFileIdentifier.getFileFromDataDirs()));
     }
     try {
-      CompactionUtils.appendNewModificationsToOldModsFile(sourceTsFileResourceList);
+      CompactionUtils.deleteCompactionModsFile(sourceTsFileResourceList, Collections.emptyList());
     } catch (Throwable e) {
       LOGGER.error(
-          "{} Exception occurs while handling exception, set allowCompaction to false",
+          "{} [Compaction][Recover] Exception occurs while deleting compaction mods file, set allowCompaction to false",
           fullStorageGroupName,
           e);
       return false;

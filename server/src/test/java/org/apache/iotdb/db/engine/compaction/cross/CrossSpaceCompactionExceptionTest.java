@@ -102,7 +102,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
         targetResources,
         seqResources,
         unseqResources,
-        tsFileManager);
+        tsFileManager,
+        0L);
     // all source file should still exist
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
@@ -174,7 +175,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
         targetResources,
         seqResources,
         unseqResources,
-        tsFileManager);
+        tsFileManager,
+        0L);
     // all source file should still exist
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
@@ -256,7 +258,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
         targetResources,
         seqResources,
         unseqResources,
-        tsFileManager);
+        tsFileManager,
+        0L);
     // all source file should not exist
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
@@ -356,7 +359,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
         targetResources,
         seqResources,
         unseqResources,
-        tsFileManager);
+        tsFileManager,
+        0L);
     // All source file should not exist. All compaction mods file and old mods file of each source
     // file should not exist
     for (TsFileResource resource : seqResources) {
@@ -460,7 +464,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
         targetResources,
         seqResources,
         unseqResources,
-        tsFileManager);
+        tsFileManager,
+        0L);
     // all source file should still exist
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());

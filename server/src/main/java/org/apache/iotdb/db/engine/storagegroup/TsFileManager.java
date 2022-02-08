@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -165,6 +166,41 @@ public class TsFileManager {
     try {
       for (TsFileResource resource : tsFileResourceList) {
         add(resource, sequence);
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  public void replace(
+      List<TsFileResource> seqFileResources,
+      List<TsFileResource> unseqFileResources,
+      List<TsFileResource> targetFileResources,
+      long timePartition)
+      throws IOException {
+    writeLock("replace");
+    try {
+      for (TsFileResource tsFileResource : seqFileResources) {
+        for (Map.Entry<Long, TsFileResourceList> entry : sequenceFiles.entrySet()) {
+          if (entry.getValue().contains(tsFileResource)) {
+            entry.getValue().remove(tsFileResource);
+            TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
+            break;
+          }
+        }
+      }
+      for (TsFileResource tsFileResource : unseqFileResources) {
+        for (Map.Entry<Long, TsFileResourceList> entry : unsequenceFiles.entrySet()) {
+          if (entry.getValue().contains(tsFileResource)) {
+            entry.getValue().remove(tsFileResource);
+            TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
+            break;
+          }
+        }
+      }
+      for (TsFileResource resource : targetFileResources) {
+        TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+        sequenceFiles.get(timePartition).keepOrderInsert(resource);
       }
     } finally {
       writeUnlock();

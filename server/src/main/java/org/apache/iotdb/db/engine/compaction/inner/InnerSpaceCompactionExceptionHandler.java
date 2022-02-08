@@ -20,10 +20,11 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
@@ -34,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -75,6 +77,7 @@ public class InnerSpaceCompactionExceptionHandler {
               targetTsFile,
               selectedTsFileResourceList,
               tsFileResourceList,
+              tsFileManager,
               false);
     } else {
       // some source file does not exists
@@ -143,6 +146,7 @@ public class InnerSpaceCompactionExceptionHandler {
       TsFileResource targetTsFile,
       List<TsFileResource> selectedTsFileResourceList,
       TsFileResourceList tsFileResourceList,
+      TsFileManager tsFileManager,
       boolean isRecover) {
     try {
       // all source file exists, delete the target file
@@ -182,21 +186,23 @@ public class InnerSpaceCompactionExceptionHandler {
         return false;
       }
       if (!isRecover) {
-        tsFileResourceList.writeLock();
+        tsFileManager.writeLock("InnerSpaceCompactionExceptionHandler");
         try {
           if (targetTsFile.isFileInList()) {
             // target tsfile is in the list, remove it
             tsFileResourceList.remove(targetTsFile);
+            TsFileResourceManager.getInstance().removeTsFileResource(targetTsFile);
           }
           for (TsFileResource tsFileResource : selectedTsFileResourceList) {
             // if the source file is not in tsfileResourceList
             // insert it into the list
             if (!tsFileResource.isFileInList()) {
               tsFileResourceList.keepOrderInsert(tsFileResource);
+              TsFileResourceManager.getInstance().registerSealedTsFileResource(tsFileResource);
             }
           }
         } finally {
-          tsFileResourceList.writeUnlock();
+          tsFileManager.writeUnlock();
         }
       }
       if (!targetTsFile.remove()) {
@@ -208,8 +214,8 @@ public class InnerSpaceCompactionExceptionHandler {
             targetTsFile);
         return false;
       }
-      // deal with compaction modification
-      InnerSpaceCompactionUtils.appendNewModificationsToOldModsFile(selectedTsFileResourceList);
+      // delete compaction mods files
+      CompactionUtils.deleteCompactionModsFile(selectedTsFileResourceList, Collections.emptyList());
     } catch (Throwable e) {
       LOGGER.error(
           "{} Exception occurs while handling exception, set allowCompaction to false",
@@ -243,8 +249,9 @@ public class InnerSpaceCompactionExceptionHandler {
             handleSuccess = false;
           }
         }
-        InnerSpaceCompactionUtils.deleteModificationForSourceFile(
-            selectedTsFileResourceList, fullStorageGroupName);
+        // delete compaction mods files
+        CompactionUtils.deleteCompactionModsFile(
+            selectedTsFileResourceList, Collections.emptyList());
 
       } else {
         // target file is not complete, and some source file is lost
