@@ -66,14 +66,14 @@ public class Cli extends AbstractCli {
               + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
       println("For more information, please check the following hint.");
       hf.printHelp(SCRIPT_HINT, options, true);
-      return;
+      System.exit(CODE_ERROR);
     }
     init();
     String[] newArgs = removePasswordArgs(args);
     String[] newArgs2 = processExecuteArgs(newArgs);
     boolean continues = parseCommandLine(options, newArgs2, hf);
     if (!continues) {
-      return;
+      System.exit(CODE_ERROR);
     }
 
     try {
@@ -82,8 +82,10 @@ public class Cli extends AbstractCli {
       username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
     } catch (ArgsErrorException e) {
       println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
+      System.exit(CODE_ERROR);
     } catch (Exception e) {
       println(IOTDB_CLI_PREFIX + "> exit cli with error " + e.getMessage());
+      System.exit(CODE_ERROR);
     }
 
     lineReader = JlineUtils.getLineReader(username, host, port);
@@ -135,9 +137,10 @@ public class Cli extends AbstractCli {
           timestampPrecision = properties.getTimestampPrecision();
           AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
           processCommand(execute, connection);
-          return;
+          System.exit(lastProcessStatus);
         } catch (SQLException e) {
           println(IOTDB_CLI_PREFIX + "> can't execute sql because" + e.getMessage());
+          System.exit(CODE_ERROR);
         }
       }
       if (password == null) {
@@ -146,6 +149,7 @@ public class Cli extends AbstractCli {
       receiveCommands(lineReader);
     } catch (Exception e) {
       println(IOTDB_CLI_PREFIX + "> exit cli with error " + e.getMessage());
+      System.exit(CODE_ERROR);
     }
   }
 
@@ -174,17 +178,18 @@ public class Cli extends AbstractCli {
           try {
             reader.readLine("Press CTRL+C again to exit, or press ENTER to continue", '\0');
           } catch (UserInterruptException | EndOfFileException e2) {
-            System.exit(0);
+            System.exit(CODE_OK);
           }
         } catch (EndOfFileException e) {
           // Exit on EOF (usually by pressing CTRL+D).
-          System.exit(0);
+          System.exit(CODE_OK);
         }
       }
     } catch (SQLException e) {
       println(
           String.format(
               "%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host, port));
+      System.exit(CODE_ERROR);
     }
   }
 }

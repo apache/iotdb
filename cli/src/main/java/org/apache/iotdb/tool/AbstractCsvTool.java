@@ -98,6 +98,9 @@ public abstract class AbstractCsvTool {
         "yyyy/MM/dd'T'HH:mm:ss",
         "yyyy.MM.dd'T'HH:mm:ss"
       };
+  protected static final int CODE_OK = 0;
+  protected static final int CODE_ERROR = 1;
+
   protected static String host;
   protected static String port;
   protected static String username;

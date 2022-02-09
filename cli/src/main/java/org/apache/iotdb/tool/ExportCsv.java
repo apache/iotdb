@@ -94,7 +94,7 @@ public class ExportCsv extends AbstractCsvTool {
   public static void main(String[] args) {
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
-    CommandLine commandLine;
+    CommandLine commandLine = null;
     CommandLineParser parser = new DefaultParser();
     hf.setOptionComparator(null); // avoid reordering
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
@@ -102,25 +102,25 @@ public class ExportCsv extends AbstractCsvTool {
     if (args == null || args.length == 0) {
       System.out.println("Too few params input, please check the following hint.");
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-      return;
+      System.exit(CODE_ERROR);
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (ParseException e) {
       System.out.println(e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-      return;
+      System.exit(CODE_ERROR);
     }
     if (commandLine.hasOption(HELP_ARGS)) {
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-      return;
+      System.exit(CODE_ERROR);
     }
-
+    int exitCode = CODE_OK;
     try {
       parseBasicParams(commandLine);
       parseSpecialParams(commandLine);
       if (!checkTimeFormat()) {
-        return;
+        System.exit(CODE_ERROR);
       }
 
       session = new Session(host, Integer.parseInt(port), username, password);
@@ -149,23 +149,29 @@ public class ExportCsv extends AbstractCsvTool {
 
     } catch (IOException e) {
       System.out.println("Failed to operate on file, because " + e.getMessage());
+      exitCode = CODE_ERROR;
     } catch (ArgsErrorException e) {
       System.out.println("Invalid args: " + e.getMessage());
+      exitCode = CODE_ERROR;
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       System.out.println("Connect failed because " + e.getMessage());
+      exitCode = CODE_ERROR;
     } catch (TException e) {
       System.out.println(
           "Can not get the timestamp precision from server because " + e.getMessage());
+      exitCode = CODE_ERROR;
     } finally {
       if (session != null) {
         try {
           session.close();
         } catch (IoTDBConnectionException e) {
+          exitCode = CODE_ERROR;
           System.out.println(
               "Encounter an error when closing session, error is: " + e.getMessage());
         }
       }
     }
+    System.exit(exitCode);
   }
 
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
