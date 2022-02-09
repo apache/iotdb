@@ -2,6 +2,7 @@ package org.apache.iotdb.db.metadata.rocksdb;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.Holder;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksIterator;
@@ -23,12 +24,12 @@ public class MRocksDBQueryUtils {
   private static final char START_FLAG = '\u0019';
   private static final char SPLIT_FLAG = '.';
   private static final byte[] ALL_NODE_TYPE =
-      new byte[] {
-        RockDBConstants.NODE_TYPE_INTERNAL,
-        RockDBConstants.NODE_TYPE_ENTITY,
-        RockDBConstants.NODE_TYPE_SG,
-        RockDBConstants.NODE_TYPE_MEASUREMENT,
-        RockDBConstants.NODE_TYPE_ALIAS
+      new byte[]{
+          RockDBConstants.NODE_TYPE_INTERNAL,
+          RockDBConstants.NODE_TYPE_ENTITY,
+          RockDBConstants.NODE_TYPE_SG,
+          RockDBConstants.NODE_TYPE_MEASUREMENT,
+          RockDBConstants.NODE_TYPE_ALIAS
       };
 
   private static final Logger logger = LoggerFactory.getLogger(MRocksDBQueryUtils.class);
@@ -37,7 +38,7 @@ public class MRocksDBQueryUtils {
    * parse value and return a specified type. if no data is required, null is returned.
    *
    * @param value value written in default table
-   * @param type the type of value to obtain
+   * @param type  the type of value to obtain
    */
   public static Object getValueByParse(byte[] value, byte type) {
     ByteBuffer byteBuffer = ByteBuffer.wrap(value);
@@ -77,8 +78,8 @@ public class MRocksDBQueryUtils {
    * get all possible inner paths within the specified level range
    *
    * @param partialPath path to be processed
-   * @param startLevel min level
-   * @param endLevel max level
+   * @param startLevel  min level
+   * @param endLevel    max level
    * @return all inner name
    */
   public static Set<String> getAllPossiblePath(String partialPath, int startLevel, int endLevel) {
@@ -106,8 +107,8 @@ public class MRocksDBQueryUtils {
    * ("x.x" ,2,3)
    *
    * @param partialPath path to be processed
-   * @param startLevel min level
-   * @param endLevel max level
+   * @param startLevel  min level
+   * @param endLevel    max level
    * @return all inner name
    */
   public static List<Set<String>> getAllPossiblePathGroupByType(
@@ -132,8 +133,8 @@ public class MRocksDBQueryUtils {
    * ["sroot.2x.2x","sroot.3x.3x"] if input is ("x.x" ,2,3,s)
    *
    * @param partialPath path to be processed
-   * @param startLevel min level
-   * @param endLevel max level
+   * @param startLevel  min level
+   * @param endLevel    max level
    * @return all inner name
    */
   public static Set<String> getSpecifiedPossiblePath(
@@ -157,8 +158,8 @@ public class MRocksDBQueryUtils {
    * get inner name by converting partial path.
    *
    * @param partialPath the path needed to be converted.
-   * @param level the level needed to be added.
-   * @param nodeType specified type
+   * @param level       the level needed to be added.
+   * @param nodeType    specified type
    * @return inner name
    */
   public static String convertPartialPathToInner(String partialPath, int level, byte nodeType) {
@@ -222,4 +223,68 @@ public class MRocksDBQueryUtils {
     }
     return null;
   }
+
+  /**
+   * Statistics the number of all data entries for a specified column family
+   *
+   * @param rocksDB            rocksdb
+   * @param columnFamilyHandle specified column family handle
+   * @return total number in this column family
+   */
+  public static long countNodesNum(RocksDB rocksDB, ColumnFamilyHandle columnFamilyHandle) {
+    RocksIterator iter;
+    if (columnFamilyHandle == null) {
+      iter = rocksDB.newIterator();
+    } else {
+      iter = rocksDB.newIterator(columnFamilyHandle);
+    }
+    long count = 0;
+    for (iter.seekToFirst(); iter.isValid(); iter.next()) {
+      count++;
+    }
+    return count;
+  }
+
+  /**
+   * Count the number of keys with the specified prefix in the specified column family
+   *
+   * @param rocksDB            rocksdb
+   * @param columnFamilyHandle specified column family handle
+   * @param nodeType           specified prefix
+   * @return total number in this column family
+   */
+  public static long countNodesNumByType(RocksDB rocksDB, ColumnFamilyHandle columnFamilyHandle,
+      byte nodeType) {
+    RocksIterator iter;
+    if (columnFamilyHandle == null) {
+      iter = rocksDB.newIterator();
+    } else {
+      iter = rocksDB.newIterator(columnFamilyHandle);
+    }
+    long count = 0;
+    for (iter.seek(new byte[]{nodeType}); iter.isValid(); iter.next()) {
+      if (iter.key()[0] == nodeType) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+
+  public static String getPathByInnerName(String innerName) {
+    char[] keyConvertToCharArray = innerName.toCharArray();
+    StringBuilder stringBuilder = new StringBuilder();
+    char lastChar = START_FLAG;
+    for (char c : keyConvertToCharArray) {
+      if (SPLIT_FLAG == lastChar || START_FLAG == lastChar) {
+        lastChar = c;
+        continue;
+      }
+      stringBuilder.append(c);
+      lastChar = c;
+    }
+    return stringBuilder.toString();
+  }
+
+
 }
