@@ -268,17 +268,17 @@ mkdir moc
 cd moc
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 255534297777 5 2 >> result_1.txt
+./../../../query_experiment.sh 255534297777 100 2 >> result_1.txt
 java ProcessResult result_1.txt result_1.out ../sumResultMOC.csv
-./../../../query_experiment.sh 511068595555 5 2 >> result_2.txt
+./../../../query_experiment.sh 511068595555 100 2 >> result_2.txt
 java ProcessResult result_2.txt result_2.out ../sumResultMOC.csv
-./../../../query_experiment.sh 1022137191110 5 2 >> result_3.txt
+./../../../query_experiment.sh 1022137191110 100 2 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMOC.csv
-./../../../query_experiment.sh 2555342977775 5 2 >> result_4.txt
+./../../../query_experiment.sh 2555342977775 100 2 >> result_4.txt
 java ProcessResult result_4.txt result_4.out ../sumResultMOC.csv
-./../../../query_experiment.sh 5110685955550 5 2 >> result_5.txt
+./../../../query_experiment.sh 5110685955550 100 2 >> result_5.txt
 java ProcessResult result_5.txt result_5.out ../sumResultMOC.csv
-./../../../query_experiment.sh 10799982233001 5 2 >> result_6.txt
+./../../../query_experiment.sh 10799982233001 100 2 >> result_6.txt
 java ProcessResult result_6.txt result_6.out ../sumResultMOC.csv
 
 cd ..
@@ -286,17 +286,17 @@ mkdir mac
 cd mac
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 255534297777 5 1 >> result_1.txt
+./../../../query_experiment.sh 255534297777 100 1 >> result_1.txt
 java ProcessResult result_1.txt result_1.out ../sumResultMAC.csv
-./../../../query_experiment.sh 511068595555 5 1 >> result_2.txt
+./../../../query_experiment.sh 511068595555 100 1 >> result_2.txt
 java ProcessResult result_2.txt result_2.out ../sumResultMAC.csv
-./../../../query_experiment.sh 1022137191110 5 1 >> result_3.txt
+./../../../query_experiment.sh 1022137191110 100 1 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMAC.csv
-./../../../query_experiment.sh 2555342977775 5 1 >> result_4.txt
+./../../../query_experiment.sh 2555342977775 100 1 >> result_4.txt
 java ProcessResult result_4.txt result_4.out ../sumResultMAC.csv
-./../../../query_experiment.sh 5110685955550 5 1 >> result_5.txt
+./../../../query_experiment.sh 5110685955550 100 1 >> result_5.txt
 java ProcessResult result_5.txt result_5.out ../sumResultMAC.csv
-./../../../query_experiment.sh 10799982233001 5 1 >> result_6.txt
+./../../../query_experiment.sh 10799982233001 100 1 >> result_6.txt
 java ProcessResult result_6.txt result_6.out ../sumResultMAC.csv
 
 cd ..
@@ -304,17 +304,17 @@ mkdir cpv
 cd cpv
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVtrue.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 255534297777 5 3 >> result_1.txt
+./../../../query_experiment.sh 255534297777 100 3 >> result_1.txt
 java ProcessResult result_1.txt result_1.out ../sumResultCPV.csv
-./../../../query_experiment.sh 511068595555 5 3 >> result_2.txt
+./../../../query_experiment.sh 511068595555 100 3 >> result_2.txt
 java ProcessResult result_2.txt result_2.out ../sumResultCPV.csv
-./../../../query_experiment.sh 1022137191110 5 3 >> result_3.txt
+./../../../query_experiment.sh 1022137191110 100 3 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultCPV.csv
-./../../../query_experiment.sh 2555342977775 5 3 >> result_4.txt
+./../../../query_experiment.sh 2555342977775 100 3 >> result_4.txt
 java ProcessResult result_4.txt result_4.out ../sumResultCPV.csv
-./../../../query_experiment.sh 5110685955550 5 3 >> result_5.txt
+./../../../query_experiment.sh 5110685955550 100 3 >> result_5.txt
 java ProcessResult result_5.txt result_5.out ../sumResultCPV.csv
-./../../../query_experiment.sh 10799982233001 5 3 >> result_6.txt
+./../../../query_experiment.sh 10799982233001 100 3 >> result_6.txt
 java ProcessResult result_6.txt result_6.out ../sumResultCPV.csv
 
 cd ..
@@ -402,7 +402,7 @@ mkdir moc
 cd moc
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 2 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 2 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMOC.csv
 
 cd ..
@@ -410,7 +410,7 @@ mkdir mac
 cd mac
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 1 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 1 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMAC.csv
 
 cd ..
@@ -418,7 +418,7 @@ mkdir cpv
 cd cpv
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVtrue.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 3 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 3 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultCPV.csv
 
 cd ..
@@ -483,7 +483,7 @@ mkdir moc
 cd moc
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 2 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 2 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMOC.csv
 
 cd ..
@@ -491,7 +491,7 @@ mkdir mac
 cd mac
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 1 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 1 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMAC.csv
 
 cd ..
@@ -499,7 +499,7 @@ mkdir cpv
 cd cpv
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVtrue.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 3 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 3 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultCPV.csv
 
 cd ..
@@ -564,7 +564,7 @@ mkdir moc
 cd moc
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 2 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 2 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMOC.csv
 
 cd ..
@@ -572,7 +572,7 @@ mkdir mac
 cd mac
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 1 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 1 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMAC.csv
 
 cd ..
@@ -580,7 +580,7 @@ mkdir cpv
 cd cpv
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVtrue.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 3 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 3 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultCPV.csv
 
 cd ..
@@ -645,7 +645,7 @@ mkdir moc
 cd moc
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 2 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 2 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMOC.csv
 
 cd ..
@@ -653,7 +653,7 @@ mkdir mac
 cd mac
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 1 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 1 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMAC.csv
 
 cd ..
@@ -661,7 +661,7 @@ mkdir cpv
 cd cpv
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVtrue.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 3 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 3 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultCPV.csv
 
 cd ..
@@ -726,7 +726,7 @@ mkdir moc
 cd moc
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 2 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 2 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMOC.csv
 
 cd ..
@@ -734,7 +734,7 @@ mkdir mac
 cd mac
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 1 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 1 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMAC.csv
 
 cd ..
@@ -742,7 +742,7 @@ mkdir cpv
 cd cpv
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVtrue.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 3 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 3 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultCPV.csv
 
 cd ..
@@ -815,7 +815,7 @@ mkdir moc
 cd moc
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 2 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 2 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMOC.csv
 
 cd ..
@@ -823,7 +823,7 @@ mkdir mac
 cd mac
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 1 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 1 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMAC.csv
 
 cd ..
@@ -831,7 +831,7 @@ mkdir cpv
 cd cpv
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVtrue.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 3 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 3 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultCPV.csv
 
 cd ..
@@ -896,7 +896,7 @@ mkdir moc
 cd moc
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 2 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 2 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMOC.csv
 
 cd ..
@@ -904,7 +904,7 @@ mkdir mac
 cd mac
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 1 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 1 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMAC.csv
 
 cd ..
@@ -912,7 +912,7 @@ mkdir cpv
 cd cpv
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVtrue.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 3 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 3 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultCPV.csv
 
 cd ..
@@ -977,7 +977,7 @@ mkdir moc
 cd moc
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 2 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 2 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMOC.csv
 
 cd ..
@@ -985,7 +985,7 @@ mkdir mac
 cd mac
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 1 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 1 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMAC.csv
 
 cd ..
@@ -993,7 +993,7 @@ mkdir cpv
 cd cpv
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVtrue.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 3 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 3 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultCPV.csv
 
 cd ..
@@ -1058,7 +1058,7 @@ mkdir moc
 cd moc
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 2 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 2 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMOC.csv
 
 cd ..
@@ -1066,7 +1066,7 @@ mkdir mac
 cd mac
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 1 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 1 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMAC.csv
 
 cd ..
@@ -1074,7 +1074,7 @@ mkdir cpv
 cd cpv
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVtrue.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 3 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 3 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultCPV.csv
 
 cd ..
@@ -1139,7 +1139,7 @@ mkdir moc
 cd moc
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 2 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 2 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMOC.csv
 
 cd ..
@@ -1147,7 +1147,7 @@ mkdir mac
 cd mac
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 1 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 1 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMAC.csv
 
 cd ..
@@ -1155,7 +1155,7 @@ mkdir cpv
 cd cpv
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVtrue.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 3 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 3 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultCPV.csv
 
 cd ..
@@ -1225,7 +1225,7 @@ mkdir moc
 cd moc
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 2 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 2 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMOC.csv
 
 cd ..
@@ -1233,7 +1233,7 @@ mkdir mac
 cd mac
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 1 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 1 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMAC.csv
 
 cd ..
@@ -1241,7 +1241,7 @@ mkdir cpv
 cd cpv
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVtrue.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 3 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 3 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultCPV.csv
 
 cd ..
@@ -1305,7 +1305,7 @@ mkdir moc
 cd moc
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 2 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 2 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMOC.csv
 
 cd ..
@@ -1313,7 +1313,7 @@ mkdir mac
 cd mac
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 1 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 1 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMAC.csv
 
 cd ..
@@ -1321,7 +1321,7 @@ mkdir cpv
 cd cpv
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVtrue.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 3 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 3 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultCPV.csv
 
 cd ..
@@ -1385,7 +1385,7 @@ mkdir moc
 cd moc
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 2 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 2 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMOC.csv
 
 cd ..
@@ -1393,7 +1393,7 @@ mkdir mac
 cd mac
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 1 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 1 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMAC.csv
 
 cd ..
@@ -1401,7 +1401,7 @@ mkdir cpv
 cd cpv
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVtrue.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 3 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 3 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultCPV.csv
 
 cd ..
@@ -1465,7 +1465,7 @@ mkdir moc
 cd moc
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 2 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 2 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMOC.csv
 
 cd ..
@@ -1473,7 +1473,7 @@ mkdir mac
 cd mac
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVfalse.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 1 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 1 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultMAC.csv
 
 cd ..
@@ -1481,7 +1481,7 @@ mkdir cpv
 cd cpv
 cp /data3/ruilei/rl/ProcessResult.* .
 cp ../../iotdb-engine-enableCPVtrue.properties /data3/ruilei/rl/iotdb-server-0.12.4/conf/iotdb-engine.properties
-./../../../query_experiment.sh 10799982233001 5 3 >> result_3.txt
+./../../../query_experiment.sh 10799982233001 100 3 >> result_3.txt
 java ProcessResult result_3.txt result_3.out ../sumResultCPV.csv
 
 cd ..
