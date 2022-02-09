@@ -1132,17 +1132,17 @@ Therefore, users can implement the asymmetricencrypt interface and use their own
 - iotdb_server_encrypt_decrypt_provider
 
 |     Name     | iotdb_server_encrypt_decrypt_provider |
-| :----------: | :--------------------------------- |
-|     Description     | encrypt provider class      |
-|     Type     | String                              |
-|    Default    | org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt                               |
-| Effective | After restarting system                       |
+| :----------: | :---------------------------------    |
+|  Description | encrypt provider class                |
+|     Type     | String                                |
+|    Default   | org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt|
+|   Effective  | After restarting system               |
 
 - iotdb_server_encrypt_decrypt_provider_parameter
 
 |     Name     | continuous_query_min_every_interval |
 | :----------: | :---------------------------------- |
-|     Description     | encrypt provider class parameter        |
-|     Type     | String                            |
-|    Default    | null                                  |
-| Effective | After restarting system                        |
+| Description  | encrypt provider class parameter    |
+|     Type     | String                              |
+|    Default   | null                                |
+|  Effective   | After restarting system             |

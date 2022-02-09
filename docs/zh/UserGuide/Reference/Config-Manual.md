@@ -1691,16 +1691,16 @@ GC 日志会被存储在`IOTDB_HOME/logs/gc.log`. 至多会存储 10 个 gc.log 
 
 |     名字     | iotdb_server_encrypt_decrypt_provider |
 | :----------: | :--------------------------------- |
-|     描述     | 密码加密提供类       |
+|     描述     | 密码加密提供类                         |
 |     类型     | String                              |
 |    默认值    | org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt                               |
-| 改后生效方式 | 重启服务生效                       |
+| 改后生效方式  | 重启服务生效                          |
 
 - iotdb_server_encrypt_decrypt_provider_parameter
 
 |     名字     | continuous_query_min_every_interval |
 | :----------: | :---------------------------------- |
-|     描述     | 密码加密提供类参数        |
-|     类型     | String                            |
+|     描述     | 密码加密提供类参数                      |
+|     类型     | String                              |
 |    默认值    | 空                                  |
-| 改后生效方式 | 重启服务生效                        |
+| 改后生效方式 | 重启服务生效                           |
