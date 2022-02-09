@@ -15,9 +15,9 @@ import java.util.Set;
 
 public class MRocksDBTest {
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private MRocksDBWriter rocksDBManager;
+  private MRocksDBManager rocksDBManager;
 
-  public MRocksDBTest(MRocksDBWriter rocksDBManager) {
+  public MRocksDBTest(MRocksDBManager rocksDBManager) {
     this.rocksDBManager = rocksDBManager;
   }
 
