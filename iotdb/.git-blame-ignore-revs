@@ -1,0 +1,4 @@
+# This feature requires Git >= 2.24
+# To use it by default in git blame:
+# git config blame.ignoreRevsFile .git-blame-ignore-revs
+70fc76de8b5a032269b2d4f10b956d045b0e95ec
