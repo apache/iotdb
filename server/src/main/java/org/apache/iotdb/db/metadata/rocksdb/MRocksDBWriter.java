@@ -14,6 +14,7 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -76,7 +77,7 @@ public class MRocksDBWriter {
     String[] nodes = storageGroup.getNodes();
     try {
       int len = nodes.length;
-      for (int i = 0; i < nodes.length; i++) {
+      for (int i = 1; i < nodes.length; i++) {
         String levelKey = RocksDBUtils.getLevelPath(nodes, i);
         CheckKeyResult keyCheckResult = readWriteHandler.keyExistByAllTypes(levelKey);
         if (!keyCheckResult.existAnyKey()) {
@@ -195,7 +196,7 @@ public class MRocksDBWriter {
         // create internal node
         try {
           readWriteHandler.createNode(
-              levelPath, RocksDBMNodeType.ENTITY, DEFAULT_INTERNAL_NODE_VALUE);
+              levelPath, RocksDBMNodeType.INTERNAL, DEFAULT_INTERNAL_NODE_VALUE);
         } catch (PathAlreadyExistException e) {
           Holder<byte[]> tempHolder = new Holder<>();
           if (readWriteHandler.keyExistByType(levelPath, RocksDBMNodeType.INTERNAL, tempHolder)) {
@@ -269,7 +270,7 @@ public class MRocksDBWriter {
       byte[] aliasNodeKey = RocksDBUtils.toAliasNodeKey(aliasLevelPath);
       if (!readWriteHandler.keyExist(aliasNodeKey)) {
         batch.put(
-            aliasLevelPath.getBytes(),
+            aliasNodeKey,
             Bytes.concat(new byte[] {DATA_VERSION, NODE_TYPE_ALIAS}, levelPath.getBytes()));
         readWriteHandler.batchCreateTwoKeys(levelPath, aliasLevelPath, batch);
       } else {
@@ -502,6 +503,16 @@ public class MRocksDBWriter {
               });
     }
     return RocksDBUtils.convertToPartialPath(paths, nodeLevel);
+  }
+
+  @TestOnly
+  public void printScanAllKeys() throws IOException {
+    readWriteHandler.scanAllKeys(config.getSystemDir() + "/" + "rocksdb.key");
+  }
+
+  @TestOnly
+  public void close() {
+    readWriteHandler.close();
   }
 
   public static void main(String[] args) throws RocksDBException, MetadataException, IOException {}

@@ -7,6 +7,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.utils.TestOnly;
 
 import com.google.common.primitives.Bytes;
 import com.google.common.util.concurrent.Striped;
@@ -31,7 +32,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -97,6 +97,11 @@ public class RocksDBReadWriteHandler {
 
   private void initColumnFamilyDescriptors(Options options) throws RocksDBException {
     List<byte[]> cfs = RocksDB.listColumnFamilies(options, ROCKSDB_PATH);
+    if (cfs == null || cfs.size() <= 0) {
+      cfs = new ArrayList<>();
+      cfs.add(RocksDB.DEFAULT_COLUMN_FAMILY);
+    }
+
     for (byte[] tableBytes : cfs) {
       columnFamilyDescriptors.add(
           new ColumnFamilyDescriptor(tableBytes, new ColumnFamilyOptions()));
@@ -122,8 +127,9 @@ public class RocksDBReadWriteHandler {
   }
 
   private void initRootKey() throws RocksDBException {
-    if (!keyExist(ROOT)) {
-      rocksDB.put(ROOT.getBytes(), new byte[] {0x00});
+    byte[] rootKey = RocksDBUtils.toRocksDBKey(ROOT, NODE_TYPE_ROOT);
+    if (!keyExist(rootKey)) {
+      rocksDB.put(rootKey, new byte[] {DATA_VERSION, DEFAULT_FLAG});
     }
   }
 
@@ -337,26 +343,40 @@ public class RocksDBReadWriteHandler {
 
   public CheckKeyResult keyExistByTypes(
       String levelKey, Holder<byte[]> holder, RocksDBMNodeType... types) throws RocksDBException {
+    // TODO: compare the performance between two methods
     CheckKeyResult result = new CheckKeyResult();
-    try {
-      Arrays.stream(types)
-          .parallel()
-          .forEach(
-              x -> {
-                byte[] key = Bytes.concat(new byte[] {x.value}, levelKey.getBytes());
-                try {
-                  result.setSingleCheckValue(x.value, keyExist(key, holder));
-                } catch (RocksDBException e) {
-                  throw new RuntimeException(e);
-                }
-              });
-    } catch (Exception e) {
-      if (e.getCause() instanceof RocksDBException) {
-        throw (RocksDBException) e.getCause();
+    for (RocksDBMNodeType type : types) {
+      byte[] key = Bytes.concat(new byte[] {type.value}, levelKey.getBytes());
+      if (keyExist(key, holder)) {
+        result.setSingleCheckValue(type.value, keyExist(key, holder));
+        break;
       }
-      throw e;
     }
     return result;
+
+    //    try {
+    //      Arrays.stream(types)
+    //          .parallel()
+    //          .forEach(
+    //              x -> {
+    //                byte[] key = Bytes.concat(new byte[] {x.value}, levelKey.getBytes());
+    //                try {
+    //                  boolean keyExisted = keyExist(key, holder);
+    //                  if (keyExisted) {
+    //                    holder.getValue();
+    //                    result.setSingleCheckValue(x.value, true);
+    //                  }
+    //                } catch (RocksDBException e) {
+    //                  throw new RuntimeException(e);
+    //                }
+    //              });
+    //    } catch (Exception e) {
+    //      if (e.getCause() instanceof RocksDBException) {
+    //        throw (RocksDBException) e.getCause();
+    //      }
+    //      throw e;
+    //    }
+    //    return result;
   }
 
   public boolean keyExist(byte[] key, Holder<byte[]> holder) throws RocksDBException {
@@ -487,17 +507,21 @@ public class RocksDBReadWriteHandler {
     //        });
   }
 
-  public void scanAllKeys() throws IOException {
+  @TestOnly
+  public void scanAllKeys(String filePath) throws IOException {
     RocksIterator iterator = rocksDB.newIterator();
     System.out.println("\n-----------------scan rocksdb start----------------------");
     iterator.seekToFirst();
-    File outputFile = new File(config.getSystemDir() + "/" + "rocksdb.key");
-    if (!outputFile.exists()) {
-      outputFile.createNewFile();
+    File outputFile = new File(filePath);
+    if (outputFile.exists()) {
+      boolean deleted = outputFile.delete();
+      System.out.println("delete output file: " + deleted);
     }
     BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(outputFile));
     while (iterator.isValid()) {
-      outputStream.write(iterator.key());
+      byte[] key = iterator.key();
+      key[0] = (byte) (Integer.valueOf(key[0]) + '0');
+      outputStream.write(key);
       outputStream.write(" -> ".getBytes());
       outputStream.write(iterator.value());
       outputStream.write("\n".getBytes());
@@ -505,5 +529,10 @@ public class RocksDBReadWriteHandler {
     }
     outputStream.close();
     System.out.println("\n-----------------scan rocksdb end----------------------");
+  }
+
+  @TestOnly
+  public void close() {
+    rocksDB.close();
   }
 }
