@@ -19,7 +19,7 @@ public class WriteBallSpeed {
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     String measurements = "s6"; // [[update]]
     String device = "root.game"; // [[update]]
-    long chunkAvgTimeLen = 5238417462L; // ns [[update]]
+    long chunkAvgTimeLen = 523841746L; // ns [[update]]
 
     // 实验自变量1：乱序数据源
     String filePath = args[0];

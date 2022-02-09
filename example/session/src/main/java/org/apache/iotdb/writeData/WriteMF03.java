@@ -19,7 +19,7 @@ public class WriteMF03 {
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     String measurement = "mf03"; // [[update]]
     String device = "root.debs2012"; // [[update]]
-    long chunkAvgTimeLen = 102213719111L; // ns [[update]]
+    long chunkAvgTimeLen = 10221371911L; // ns [[update]]
 
     // 实验自变量1：乱序数据源
     String filePath = args[0];

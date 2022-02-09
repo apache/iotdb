@@ -20,7 +20,7 @@ public class WriteRcvTime {
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     String measurement = "RcvTime"; // [[update]]
     String device = "root.sg1"; // [[update]]
-    long chunkAvgTimeLen = 203613320L;
+    long chunkAvgTimeLen = 20361332L;
 
     // 实验自变量1：乱序数据源
     String filePath = args[0];

@@ -20,7 +20,7 @@ public class WriteKOB {
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     String measurement = "KOB_0002_00_67"; // [[update]]
     String device = "root.kobelco.trans.03.1090001603.2401604"; // [[update]]
-    long chunkAvgTimeLen = 55826201L;
+    long chunkAvgTimeLen = 5582620L;
 
     // 实验自变量1：乱序数据源
     String filePath = args[0];
