@@ -1123,3 +1123,26 @@ sbin\start-server.bat printgc
 GC log is stored at `IOTDB_HOME/logs/gc.log`.
 There will be at most 10 gc.log.* files and each one can reach to 10MB.
 
+## Adaptive cipher encryption algorithm
+
+The user password is encrypted and stored locally. If the encryption algorithm level is not high, it may be cracked.
+
+Therefore, users can implement the asymmetricencrypt interface and use their own encryption algorithm according to their own scenarios.
+
+- iotdb_server_encrypt_decrypt_provider
+
+|     Name     | iotdb_server_encrypt_decrypt_provider |
+| :----------: | :--------------------------------- |
+|     Description     | encrypt provider class      |
+|     Type     | String                              |
+|    Default    | org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt                               |
+| Effective | After restarting system                       |
+
+- iotdb_server_encrypt_decrypt_provider_parameter
+
+|     Name     | continuous_query_min_every_interval |
+| :----------: | :---------------------------------- |
+|     Description     | encrypt provider class parameter        |
+|     Type     | String                            |
+|    Default    | null                                  |
+| Effective | After restarting system                        |
