@@ -26,8 +26,8 @@ git
         <version>0.12.4</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>WriteBallSpeed</artifactId>
-    <name>WriteBallSpeed</name>
+    <artifactId>WriteRcvTime</artifactId>
+    <name>WriteRcvTime</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.7</maven.compiler.source>
@@ -61,7 +61,7 @@ git
                         <configuration>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>org.apache.iotdb.writeData.WriteBallSpeed</mainClass>
+                                    <mainClass>org.apache.iotdb.writeData.WriteRcvTime</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

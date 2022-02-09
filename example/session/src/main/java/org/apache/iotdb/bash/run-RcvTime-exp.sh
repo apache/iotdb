@@ -24,7 +24,7 @@ java OverlapGenerator RcvTime.csv RcvTime-O_90_10 0 1 90 10
 ############################
 # /data3/raw_data/rl
 # ---- RcvTime
-# /data3/ruilei/rl/dataSpace
+# /data3/ruilei/rl/dataSpace2
 # /data3/ruilei/rl/iotdb-server-0.12.4
 # /data3/ruilei/rl/iotdb-engine-example.properties
 # /data3/ruilei/rl/tool.sh
@@ -115,14 +115,14 @@ cd O_10_10_D_0_0
 # prepare iotdb-engine-enableCPVtrue.properties and iotdb-engine-enableCPVfalse.properties
 ############################
 ./../../tool.sh enable_CPV true ../../iotdb-engine-example.properties
-./../../tool.sh system_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_0_0/system ../../iotdb-engine-example.properties
-./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_0_0/data ../../iotdb-engine-example.properties
-./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_0_0/wal ../../iotdb-engine-example.properties
+./../../tool.sh system_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_0_0/system ../../iotdb-engine-example.properties
+./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_0_0/data ../../iotdb-engine-example.properties
+./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_0_0/wal ../../iotdb-engine-example.properties
 ./../../tool.sh timestamp_precision ms ../../iotdb-engine-example.properties
 
 ./../../tool.sh unseq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
 ./../../tool.sh seq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
-./../../tool.sh avg_series_point_number_threshold 10000 ../../iotdb-engine-example.properties
+./../../tool.sh avg_series_point_number_threshold 1000 ../../iotdb-engine-example.properties
 ./../../tool.sh compaction_strategy NO_COMPACTION ../../iotdb-engine-example.properties
 ./../../tool.sh enable_unseq_compaction false ../../iotdb-engine-example.properties
 ./../../tool.sh page_size_in_byte 1073741824 ../../iotdb-engine-example.properties
@@ -181,6 +181,12 @@ java ProcessResult result_8.txt result_8.out ../sumResultMOC.csv
 java ProcessResult result_9.txt result_9.out ../sumResultMOC.csv
 ./../../../query_experiment.sh 26461736001 1000 2 >> result_10.txt
 java ProcessResult result_10.txt result_10.out ../sumResultMOC.csv
+./../../../query_experiment.sh 26461736001 2000 2 >> result_11.txt
+java ProcessResult result_11.txt result_11.out ../sumResultMOC.csv
+./../../../query_experiment.sh 26461736001 4000 2 >> result_12.txt
+java ProcessResult result_12.txt result_12.out ../sumResultMOC.csv
+./../../../query_experiment.sh 26461736001 8000 2 >> result_13.txt
+java ProcessResult result_13.txt result_13.out ../sumResultMOC.csv
 
 cd ..
 mkdir mac
@@ -207,6 +213,12 @@ java ProcessResult result_8.txt result_8.out ../sumResultMAC.csv
 java ProcessResult result_9.txt result_9.out ../sumResultMAC.csv
 ./../../../query_experiment.sh 26461736001 1000 1 >> result_10.txt
 java ProcessResult result_10.txt result_10.out ../sumResultMAC.csv
+./../../../query_experiment.sh 26461736001 2000 1 >> result_11.txt
+java ProcessResult result_11.txt result_11.out ../sumResultMAC.csv
+./../../../query_experiment.sh 26461736001 4000 1 >> result_12.txt
+java ProcessResult result_12.txt result_12.out ../sumResultMAC.csv
+./../../../query_experiment.sh 26461736001 8000 1 >> result_13.txt
+java ProcessResult result_13.txt result_13.out ../sumResultMAC.csv
 
 cd ..
 mkdir cpv
@@ -233,6 +245,12 @@ java ProcessResult result_8.txt result_8.out ../sumResultCPV.csv
 java ProcessResult result_9.txt result_9.out ../sumResultCPV.csv
 ./../../../query_experiment.sh 26461736001 1000 3 >> result_10.txt
 java ProcessResult result_10.txt result_10.out ../sumResultCPV.csv
+./../../../query_experiment.sh 26461736001 2000 3 >> result_11.txt
+java ProcessResult result_11.txt result_11.out ../sumResultCPV.csv
+./../../../query_experiment.sh 26461736001 4000 3 >> result_12.txt
+java ProcessResult result_12.txt result_12.out ../sumResultCPV.csv
+./../../../query_experiment.sh 26461736001 8000 3 >> result_13.txt
+java ProcessResult result_13.txt result_13.out ../sumResultCPV.csv
 
 cd ..
 cp /data3/ruilei/rl/SumResultUnify.* .
@@ -337,14 +355,14 @@ cd O_0_0_D_0_0
 # prepare iotdb-engine-enableCPVtrue.properties and iotdb-engine-enableCPVfalse.properties
 ############################
 ./../../tool.sh enable_CPV true ../../iotdb-engine-example.properties
-./../../tool.sh system_dir /data3/ruilei/rl/dataSpace/RcvTime_O_0_0_D_0_0/system ../../iotdb-engine-example.properties
-./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace/RcvTime_O_0_0_D_0_0/data ../../iotdb-engine-example.properties
-./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace/RcvTime_O_0_0_D_0_0/wal ../../iotdb-engine-example.properties
+./../../tool.sh system_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_0_0_D_0_0/system ../../iotdb-engine-example.properties
+./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace2/RcvTime_O_0_0_D_0_0/data ../../iotdb-engine-example.properties
+./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_0_0_D_0_0/wal ../../iotdb-engine-example.properties
 ./../../tool.sh timestamp_precision ms ../../iotdb-engine-example.properties
 
 ./../../tool.sh unseq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
 ./../../tool.sh seq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
-./../../tool.sh avg_series_point_number_threshold 10000 ../../iotdb-engine-example.properties
+./../../tool.sh avg_series_point_number_threshold 1000 ../../iotdb-engine-example.properties
 ./../../tool.sh compaction_strategy NO_COMPACTION ../../iotdb-engine-example.properties
 ./../../tool.sh enable_unseq_compaction false ../../iotdb-engine-example.properties
 ./../../tool.sh page_size_in_byte 1073741824 ../../iotdb-engine-example.properties
@@ -418,14 +436,14 @@ cd O_30_10_D_0_0
 # prepare iotdb-engine-enableCPVtrue.properties and iotdb-engine-enableCPVfalse.properties
 ############################
 ./../../tool.sh enable_CPV true ../../iotdb-engine-example.properties
-./../../tool.sh system_dir /data3/ruilei/rl/dataSpace/RcvTime_O_30_10_D_0_0/system ../../iotdb-engine-example.properties
-./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace/RcvTime_O_30_10_D_0_0/data ../../iotdb-engine-example.properties
-./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace/RcvTime_O_30_10_D_0_0/wal ../../iotdb-engine-example.properties
+./../../tool.sh system_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_30_10_D_0_0/system ../../iotdb-engine-example.properties
+./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace2/RcvTime_O_30_10_D_0_0/data ../../iotdb-engine-example.properties
+./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_30_10_D_0_0/wal ../../iotdb-engine-example.properties
 ./../../tool.sh timestamp_precision ms ../../iotdb-engine-example.properties
 
 ./../../tool.sh unseq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
 ./../../tool.sh seq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
-./../../tool.sh avg_series_point_number_threshold 10000 ../../iotdb-engine-example.properties
+./../../tool.sh avg_series_point_number_threshold 1000 ../../iotdb-engine-example.properties
 ./../../tool.sh compaction_strategy NO_COMPACTION ../../iotdb-engine-example.properties
 ./../../tool.sh enable_unseq_compaction false ../../iotdb-engine-example.properties
 ./../../tool.sh page_size_in_byte 1073741824 ../../iotdb-engine-example.properties
@@ -499,14 +517,14 @@ cd O_50_10_D_0_0
 # prepare iotdb-engine-enableCPVtrue.properties and iotdb-engine-enableCPVfalse.properties
 ############################
 ./../../tool.sh enable_CPV true ../../iotdb-engine-example.properties
-./../../tool.sh system_dir /data3/ruilei/rl/dataSpace/RcvTime_O_50_10_D_0_0/system ../../iotdb-engine-example.properties
-./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace/RcvTime_O_50_10_D_0_0/data ../../iotdb-engine-example.properties
-./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace/RcvTime_O_50_10_D_0_0/wal ../../iotdb-engine-example.properties
+./../../tool.sh system_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_50_10_D_0_0/system ../../iotdb-engine-example.properties
+./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace2/RcvTime_O_50_10_D_0_0/data ../../iotdb-engine-example.properties
+./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_50_10_D_0_0/wal ../../iotdb-engine-example.properties
 ./../../tool.sh timestamp_precision ms ../../iotdb-engine-example.properties
 
 ./../../tool.sh unseq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
 ./../../tool.sh seq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
-./../../tool.sh avg_series_point_number_threshold 10000 ../../iotdb-engine-example.properties
+./../../tool.sh avg_series_point_number_threshold 1000 ../../iotdb-engine-example.properties
 ./../../tool.sh compaction_strategy NO_COMPACTION ../../iotdb-engine-example.properties
 ./../../tool.sh enable_unseq_compaction false ../../iotdb-engine-example.properties
 ./../../tool.sh page_size_in_byte 1073741824 ../../iotdb-engine-example.properties
@@ -580,14 +598,14 @@ cd O_70_10_D_0_0
 # prepare iotdb-engine-enableCPVtrue.properties and iotdb-engine-enableCPVfalse.properties
 ############################
 ./../../tool.sh enable_CPV true ../../iotdb-engine-example.properties
-./../../tool.sh system_dir /data3/ruilei/rl/dataSpace/RcvTime_O_70_10_D_0_0/system ../../iotdb-engine-example.properties
-./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace/RcvTime_O_70_10_D_0_0/data ../../iotdb-engine-example.properties
-./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace/RcvTime_O_70_10_D_0_0/wal ../../iotdb-engine-example.properties
+./../../tool.sh system_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_70_10_D_0_0/system ../../iotdb-engine-example.properties
+./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace2/RcvTime_O_70_10_D_0_0/data ../../iotdb-engine-example.properties
+./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_70_10_D_0_0/wal ../../iotdb-engine-example.properties
 ./../../tool.sh timestamp_precision ms ../../iotdb-engine-example.properties
 
 ./../../tool.sh unseq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
 ./../../tool.sh seq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
-./../../tool.sh avg_series_point_number_threshold 10000 ../../iotdb-engine-example.properties
+./../../tool.sh avg_series_point_number_threshold 1000 ../../iotdb-engine-example.properties
 ./../../tool.sh compaction_strategy NO_COMPACTION ../../iotdb-engine-example.properties
 ./../../tool.sh enable_unseq_compaction false ../../iotdb-engine-example.properties
 ./../../tool.sh page_size_in_byte 1073741824 ../../iotdb-engine-example.properties
@@ -661,14 +679,14 @@ cd O_90_10_D_0_0
 # prepare iotdb-engine-enableCPVtrue.properties and iotdb-engine-enableCPVfalse.properties
 ############################
 ./../../tool.sh enable_CPV true ../../iotdb-engine-example.properties
-./../../tool.sh system_dir /data3/ruilei/rl/dataSpace/RcvTime_O_90_10_D_0_0/system ../../iotdb-engine-example.properties
-./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace/RcvTime_O_90_10_D_0_0/data ../../iotdb-engine-example.properties
-./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace/RcvTime_O_90_10_D_0_0/wal ../../iotdb-engine-example.properties
+./../../tool.sh system_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_90_10_D_0_0/system ../../iotdb-engine-example.properties
+./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace2/RcvTime_O_90_10_D_0_0/data ../../iotdb-engine-example.properties
+./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_90_10_D_0_0/wal ../../iotdb-engine-example.properties
 ./../../tool.sh timestamp_precision ms ../../iotdb-engine-example.properties
 
 ./../../tool.sh unseq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
 ./../../tool.sh seq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
-./../../tool.sh avg_series_point_number_threshold 10000 ../../iotdb-engine-example.properties
+./../../tool.sh avg_series_point_number_threshold 1000 ../../iotdb-engine-example.properties
 ./../../tool.sh compaction_strategy NO_COMPACTION ../../iotdb-engine-example.properties
 ./../../tool.sh enable_unseq_compaction false ../../iotdb-engine-example.properties
 ./../../tool.sh page_size_in_byte 1073741824 ../../iotdb-engine-example.properties
@@ -750,14 +768,14 @@ cd O_10_10_D_9_10
 # prepare iotdb-engine-enableCPVtrue.properties and iotdb-engine-enableCPVfalse.properties
 ############################
 ./../../tool.sh enable_CPV true ../../iotdb-engine-example.properties
-./../../tool.sh system_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_9_10/system ../../iotdb-engine-example.properties
-./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_9_10/data ../../iotdb-engine-example.properties
-./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_9_10/wal ../../iotdb-engine-example.properties
+./../../tool.sh system_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_9_10/system ../../iotdb-engine-example.properties
+./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_9_10/data ../../iotdb-engine-example.properties
+./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_9_10/wal ../../iotdb-engine-example.properties
 ./../../tool.sh timestamp_precision ms ../../iotdb-engine-example.properties
 
 ./../../tool.sh unseq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
 ./../../tool.sh seq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
-./../../tool.sh avg_series_point_number_threshold 10000 ../../iotdb-engine-example.properties
+./../../tool.sh avg_series_point_number_threshold 1000 ../../iotdb-engine-example.properties
 ./../../tool.sh compaction_strategy NO_COMPACTION ../../iotdb-engine-example.properties
 ./../../tool.sh enable_unseq_compaction false ../../iotdb-engine-example.properties
 ./../../tool.sh page_size_in_byte 1073741824 ../../iotdb-engine-example.properties
@@ -831,14 +849,14 @@ cd O_10_10_D_29_10
 # prepare iotdb-engine-enableCPVtrue.properties and iotdb-engine-enableCPVfalse.properties
 ############################
 ./../../tool.sh enable_CPV true ../../iotdb-engine-example.properties
-./../../tool.sh system_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_29_10/system ../../iotdb-engine-example.properties
-./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_29_10/data ../../iotdb-engine-example.properties
-./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_29_10/wal ../../iotdb-engine-example.properties
+./../../tool.sh system_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_29_10/system ../../iotdb-engine-example.properties
+./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_29_10/data ../../iotdb-engine-example.properties
+./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_29_10/wal ../../iotdb-engine-example.properties
 ./../../tool.sh timestamp_precision ms ../../iotdb-engine-example.properties
 
 ./../../tool.sh unseq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
 ./../../tool.sh seq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
-./../../tool.sh avg_series_point_number_threshold 10000 ../../iotdb-engine-example.properties
+./../../tool.sh avg_series_point_number_threshold 1000 ../../iotdb-engine-example.properties
 ./../../tool.sh compaction_strategy NO_COMPACTION ../../iotdb-engine-example.properties
 ./../../tool.sh enable_unseq_compaction false ../../iotdb-engine-example.properties
 ./../../tool.sh page_size_in_byte 1073741824 ../../iotdb-engine-example.properties
@@ -912,14 +930,14 @@ cd O_10_10_D_49_10
 # prepare iotdb-engine-enableCPVtrue.properties and iotdb-engine-enableCPVfalse.properties
 ############################
 ./../../tool.sh enable_CPV true ../../iotdb-engine-example.properties
-./../../tool.sh system_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_49_10/system ../../iotdb-engine-example.properties
-./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_49_10/data ../../iotdb-engine-example.properties
-./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_49_10/wal ../../iotdb-engine-example.properties
+./../../tool.sh system_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_49_10/system ../../iotdb-engine-example.properties
+./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_49_10/data ../../iotdb-engine-example.properties
+./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_49_10/wal ../../iotdb-engine-example.properties
 ./../../tool.sh timestamp_precision ms ../../iotdb-engine-example.properties
 
 ./../../tool.sh unseq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
 ./../../tool.sh seq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
-./../../tool.sh avg_series_point_number_threshold 10000 ../../iotdb-engine-example.properties
+./../../tool.sh avg_series_point_number_threshold 1000 ../../iotdb-engine-example.properties
 ./../../tool.sh compaction_strategy NO_COMPACTION ../../iotdb-engine-example.properties
 ./../../tool.sh enable_unseq_compaction false ../../iotdb-engine-example.properties
 ./../../tool.sh page_size_in_byte 1073741824 ../../iotdb-engine-example.properties
@@ -993,14 +1011,14 @@ cd O_10_10_D_69_10
 # prepare iotdb-engine-enableCPVtrue.properties and iotdb-engine-enableCPVfalse.properties
 ############################
 ./../../tool.sh enable_CPV true ../../iotdb-engine-example.properties
-./../../tool.sh system_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_69_10/system ../../iotdb-engine-example.properties
-./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_69_10/data ../../iotdb-engine-example.properties
-./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_69_10/wal ../../iotdb-engine-example.properties
+./../../tool.sh system_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_69_10/system ../../iotdb-engine-example.properties
+./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_69_10/data ../../iotdb-engine-example.properties
+./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_69_10/wal ../../iotdb-engine-example.properties
 ./../../tool.sh timestamp_precision ms ../../iotdb-engine-example.properties
 
 ./../../tool.sh unseq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
 ./../../tool.sh seq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
-./../../tool.sh avg_series_point_number_threshold 10000 ../../iotdb-engine-example.properties
+./../../tool.sh avg_series_point_number_threshold 1000 ../../iotdb-engine-example.properties
 ./../../tool.sh compaction_strategy NO_COMPACTION ../../iotdb-engine-example.properties
 ./../../tool.sh enable_unseq_compaction false ../../iotdb-engine-example.properties
 ./../../tool.sh page_size_in_byte 1073741824 ../../iotdb-engine-example.properties
@@ -1074,14 +1092,14 @@ cd O_10_10_D_89_10
 # prepare iotdb-engine-enableCPVtrue.properties and iotdb-engine-enableCPVfalse.properties
 ############################
 ./../../tool.sh enable_CPV true ../../iotdb-engine-example.properties
-./../../tool.sh system_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_89_10/system ../../iotdb-engine-example.properties
-./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_89_10/data ../../iotdb-engine-example.properties
-./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_89_10/wal ../../iotdb-engine-example.properties
+./../../tool.sh system_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_89_10/system ../../iotdb-engine-example.properties
+./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_89_10/data ../../iotdb-engine-example.properties
+./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_89_10/wal ../../iotdb-engine-example.properties
 ./../../tool.sh timestamp_precision ms ../../iotdb-engine-example.properties
 
 ./../../tool.sh unseq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
 ./../../tool.sh seq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
-./../../tool.sh avg_series_point_number_threshold 10000 ../../iotdb-engine-example.properties
+./../../tool.sh avg_series_point_number_threshold 1000 ../../iotdb-engine-example.properties
 ./../../tool.sh compaction_strategy NO_COMPACTION ../../iotdb-engine-example.properties
 ./../../tool.sh enable_unseq_compaction false ../../iotdb-engine-example.properties
 ./../../tool.sh page_size_in_byte 1073741824 ../../iotdb-engine-example.properties
@@ -1160,14 +1178,14 @@ cd O_10_10_D_49_30
 # prepare iotdb-engine-enableCPVtrue.properties and iotdb-engine-enableCPVfalse.properties
 ############################
 ./../../tool.sh enable_CPV true ../../iotdb-engine-example.properties
-./../../tool.sh system_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_49_30/system ../../iotdb-engine-example.properties
-./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_49_30/data ../../iotdb-engine-example.properties
-./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_49_30/wal ../../iotdb-engine-example.properties
+./../../tool.sh system_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_49_30/system ../../iotdb-engine-example.properties
+./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_49_30/data ../../iotdb-engine-example.properties
+./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_49_30/wal ../../iotdb-engine-example.properties
 ./../../tool.sh timestamp_precision ms ../../iotdb-engine-example.properties
 
 ./../../tool.sh unseq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
 ./../../tool.sh seq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
-./../../tool.sh avg_series_point_number_threshold 10000 ../../iotdb-engine-example.properties
+./../../tool.sh avg_series_point_number_threshold 1000 ../../iotdb-engine-example.properties
 ./../../tool.sh compaction_strategy NO_COMPACTION ../../iotdb-engine-example.properties
 ./../../tool.sh enable_unseq_compaction false ../../iotdb-engine-example.properties
 ./../../tool.sh page_size_in_byte 1073741824 ../../iotdb-engine-example.properties
@@ -1240,14 +1258,14 @@ cd O_10_10_D_49_50
 # prepare iotdb-engine-enableCPVtrue.properties and iotdb-engine-enableCPVfalse.properties
 ############################
 ./../../tool.sh enable_CPV true ../../iotdb-engine-example.properties
-./../../tool.sh system_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_49_50/system ../../iotdb-engine-example.properties
-./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_49_50/data ../../iotdb-engine-example.properties
-./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_49_50/wal ../../iotdb-engine-example.properties
+./../../tool.sh system_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_49_50/system ../../iotdb-engine-example.properties
+./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_49_50/data ../../iotdb-engine-example.properties
+./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_49_50/wal ../../iotdb-engine-example.properties
 ./../../tool.sh timestamp_precision ms ../../iotdb-engine-example.properties
 
 ./../../tool.sh unseq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
 ./../../tool.sh seq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
-./../../tool.sh avg_series_point_number_threshold 10000 ../../iotdb-engine-example.properties
+./../../tool.sh avg_series_point_number_threshold 1000 ../../iotdb-engine-example.properties
 ./../../tool.sh compaction_strategy NO_COMPACTION ../../iotdb-engine-example.properties
 ./../../tool.sh enable_unseq_compaction false ../../iotdb-engine-example.properties
 ./../../tool.sh page_size_in_byte 1073741824 ../../iotdb-engine-example.properties
@@ -1320,14 +1338,14 @@ cd O_10_10_D_49_70
 # prepare iotdb-engine-enableCPVtrue.properties and iotdb-engine-enableCPVfalse.properties
 ############################
 ./../../tool.sh enable_CPV true ../../iotdb-engine-example.properties
-./../../tool.sh system_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_49_70/system ../../iotdb-engine-example.properties
-./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_49_70/data ../../iotdb-engine-example.properties
-./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_49_70/wal ../../iotdb-engine-example.properties
+./../../tool.sh system_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_49_70/system ../../iotdb-engine-example.properties
+./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_49_70/data ../../iotdb-engine-example.properties
+./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_49_70/wal ../../iotdb-engine-example.properties
 ./../../tool.sh timestamp_precision ms ../../iotdb-engine-example.properties
 
 ./../../tool.sh unseq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
 ./../../tool.sh seq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
-./../../tool.sh avg_series_point_number_threshold 10000 ../../iotdb-engine-example.properties
+./../../tool.sh avg_series_point_number_threshold 1000 ../../iotdb-engine-example.properties
 ./../../tool.sh compaction_strategy NO_COMPACTION ../../iotdb-engine-example.properties
 ./../../tool.sh enable_unseq_compaction false ../../iotdb-engine-example.properties
 ./../../tool.sh page_size_in_byte 1073741824 ../../iotdb-engine-example.properties
@@ -1400,14 +1418,14 @@ cd O_10_10_D_49_90
 # prepare iotdb-engine-enableCPVtrue.properties and iotdb-engine-enableCPVfalse.properties
 ############################
 ./../../tool.sh enable_CPV true ../../iotdb-engine-example.properties
-./../../tool.sh system_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_49_90/system ../../iotdb-engine-example.properties
-./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_49_90/data ../../iotdb-engine-example.properties
-./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace/RcvTime_O_10_10_D_49_90/wal ../../iotdb-engine-example.properties
+./../../tool.sh system_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_49_90/system ../../iotdb-engine-example.properties
+./../../tool.sh data_dirs /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_49_90/data ../../iotdb-engine-example.properties
+./../../tool.sh wal_dir /data3/ruilei/rl/dataSpace2/RcvTime_O_10_10_D_49_90/wal ../../iotdb-engine-example.properties
 ./../../tool.sh timestamp_precision ms ../../iotdb-engine-example.properties
 
 ./../../tool.sh unseq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
 ./../../tool.sh seq_tsfile_size 1073741824 ../../iotdb-engine-example.properties
-./../../tool.sh avg_series_point_number_threshold 10000 ../../iotdb-engine-example.properties
+./../../tool.sh avg_series_point_number_threshold 1000 ../../iotdb-engine-example.properties
 ./../../tool.sh compaction_strategy NO_COMPACTION ../../iotdb-engine-example.properties
 ./../../tool.sh enable_unseq_compaction false ../../iotdb-engine-example.properties
 ./../../tool.sh page_size_in_byte 1073741824 ../../iotdb-engine-example.properties
