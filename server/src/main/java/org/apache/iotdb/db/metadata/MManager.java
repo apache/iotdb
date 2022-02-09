@@ -553,9 +553,8 @@ public class MManager implements IMetaManager {
     createTimeseries(plan, -1);
   }
 
-  @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
+  private void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     if (!allowToCreateNewSeries) {
       throw new MetadataException(
           "IoTDB system load is too large to create timeseries, "
@@ -1578,12 +1577,10 @@ public class MManager implements IMetaManager {
    * @param path timeseries
    * @param offset offset in the tag file
    */
-  @Override
   public void changeOffset(PartialPath path, long offset) throws MetadataException {
     mtree.getMeasurementMNode(path).setOffset(offset);
   }
 
-  @Override
   public void changeAlias(PartialPath path, String alias) throws MetadataException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(path);
     if (leafMNode.getAlias() != null) {
@@ -1825,6 +1822,7 @@ public class MManager implements IMetaManager {
     }
     return sgPathMap;
   }
+  // end region
 
   /**
    * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise

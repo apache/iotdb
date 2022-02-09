@@ -61,8 +61,7 @@ public class RocksDBReadWriteHandler {
   private static final String[] INNER_TABLES =
       new String[] {new String(RocksDB.DEFAULT_COLUMN_FAMILY), TABLE_NAME_TAGS};
 
-  private static final String ROCKSDB_PATH =
-      config.getSystemDir() + File.separator + ROCKSDB_FOLDER;
+  public static final String ROCKSDB_PATH = config.getSystemDir() + File.separator + ROCKSDB_FOLDER;
 
   private RocksDB rocksDB;
 
@@ -491,24 +490,6 @@ public class RocksDBReadWriteHandler {
           return true;
         });
     return counter.get();
-  }
-
-  public static void main(String[] args) throws RocksDBException, MetadataException, IOException {
-    MRocksDBWriter rocksDBWriter = new MRocksDBWriter();
-    long start = System.currentTimeMillis();
-    //    int count1 = getAllTimeseriesCount(null);
-    //    System.out.println(
-    //        "timeseries count: " + count1 + ", cost: " + (System.currentTimeMillis() - start));
-    //    start = System.currentTimeMillis();
-    //    int count2 = getDevicesNum(null);
-    //    System.out.println(
-    //        "devices count: " + count2 + ", cost: " + (System.currentTimeMillis() - start));
-    //    List<PartialPath> path = rocksDBWriter.getNodesListInGivenLevel(null, 4);
-    //    System.out.println("----------- nodes in level 2 --------");
-    //    path.forEach(
-    //        p -> {
-    //          System.out.println(p.getFullPath());
-    //        });
   }
 
   @TestOnly

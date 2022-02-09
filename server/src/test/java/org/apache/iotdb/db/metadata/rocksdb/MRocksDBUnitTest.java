@@ -16,14 +16,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.metadata.rocksdb.MRocksDBManager.ROCKSDB_PATH;
+import static org.apache.iotdb.db.metadata.rocksdb.RocksDBReadWriteHandler.ROCKSDB_PATH;
 
 public class MRocksDBUnitTest {
-  private MRocksDBWriter mRocksDBWriter;
+  private MRocksDBManager mRocksDBManager;
 
   @Before
   public void setUp() throws MetadataException {
-    mRocksDBWriter = new MRocksDBWriter();
+    mRocksDBManager = new MRocksDBManager();
   }
 
   @Test
@@ -36,26 +36,26 @@ public class MRocksDBUnitTest {
     storageGroups.add(new PartialPath("root.inner1.inner2.sg"));
 
     for (PartialPath sg : storageGroups) {
-      mRocksDBWriter.setStorageGroup(sg);
+      mRocksDBManager.setStorageGroup(sg);
     }
 
     for (PartialPath sg : storageGroups) {
-      mRocksDBWriter.setTTL(sg, 200 * 10000);
+      mRocksDBManager.setTTL(sg, 200 * 10000);
     }
 
-    mRocksDBWriter.printScanAllKeys();
+    mRocksDBManager.printScanAllKeys();
   }
 
   @Test
   public void testCreateTimeSeries() throws MetadataException, IOException {
     PartialPath path = new PartialPath("root.tt.sg.dd.m1");
-    mRocksDBWriter.createTimeseries(
+    mRocksDBManager.createTimeseries(
         path, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, null);
 
     PartialPath path2 = new PartialPath("root.tt.sg.dd.m2");
-    mRocksDBWriter.createTimeseries(
+    mRocksDBManager.createTimeseries(
         path2, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, "ma");
-    mRocksDBWriter.printScanAllKeys();
+    mRocksDBManager.printScanAllKeys();
   }
 
   @Test
@@ -72,23 +72,23 @@ public class MRocksDBUnitTest {
       encodings.add(TSEncoding.PLAIN);
       compressions.add(CompressionType.UNCOMPRESSED);
     }
-    mRocksDBWriter.createAlignedTimeSeries(
+    mRocksDBManager.createAlignedTimeSeries(
         prefixPath, measurements, dataTypes, encodings, compressions);
 
     try {
       PartialPath path = new PartialPath("root.tt.sg.dd.mn");
-      mRocksDBWriter.createTimeseries(
+      mRocksDBManager.createTimeseries(
           path, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, null);
       assert false;
     } catch (MetadataException e) {
       assert true;
     }
-    mRocksDBWriter.printScanAllKeys();
+    mRocksDBManager.printScanAllKeys();
   }
 
   @After
   public void clean() {
-    mRocksDBWriter.close();
+    mRocksDBManager.close();
     resetEnv();
   }
 

@@ -1,25 +1,37 @@
 package org.apache.iotdb.db.metadata.rocksdb;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.primitives.Bytes;
 import org.apache.commons.lang3.ArrayUtils;
+import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.Holder;
+import org.rocksdb.RocksDB;
+import org.rocksdb.RocksIterator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
 
 public class RocksDBUtils {
+
+  private static final Logger logger = LoggerFactory.getLogger(RocksDBUtils.class);
 
   protected static RocksDBMNodeType[] NODE_TYPE_ARRAY = new RocksDBMNodeType[NODE_TYPE_ALIAS + 1];
 
@@ -187,6 +199,9 @@ public class RocksDBUtils {
         case DATA_BLOCK_TYPE_ALIAS:
           ReadWriteIOUtils.readString(byteBuffer);
           break;
+        case DATA_BLOCK_TYPE_ORIGIN_KEY:
+          readOriginKey(byteBuffer);
+          break;
         case DATA_BLOCK_TYPE_SCHEMA:
           MeasurementSchema.deserializeFrom(byteBuffer);
           break;
@@ -218,5 +233,186 @@ public class RocksDBUtils {
       BytesUtils.longToBytes(ttl, origin, index + 1);
       return origin;
     }
+  }
+
+  private static final char START_FLAG = '\u0019';
+  private static final char SPLIT_FLAG = '.';
+
+  /**
+   * parse value and return a specified type. if no data is required, null is returned.
+   *
+   * @param value value written in default table
+   * @param type the type of value to obtain
+   */
+  public static Object parseNodeValue(byte[] value, byte type) {
+    ByteBuffer byteBuffer = ByteBuffer.wrap(value);
+    // skip the version flag and node type flag
+    ReadWriteIOUtils.readByte(byteBuffer);
+    // get block type
+    byte flag = ReadWriteIOUtils.readByte(byteBuffer);
+
+    Object obj = null;
+    // this means that the following data contains the information we need
+    if ((flag & type) > 0) {
+      while (byteBuffer.hasRemaining()) {
+        byte blockType = ReadWriteIOUtils.readByte(byteBuffer);
+        switch (blockType) {
+          case DATA_BLOCK_TYPE_TTL:
+            obj = ReadWriteIOUtils.readLong(byteBuffer);
+            break;
+          case DATA_BLOCK_TYPE_ALIAS:
+            obj = ReadWriteIOUtils.readString(byteBuffer);
+            break;
+          case DATA_BLOCK_TYPE_ORIGIN_KEY:
+            obj = readOriginKey(byteBuffer);
+            break;
+          case DATA_BLOCK_TYPE_SCHEMA:
+            obj = MeasurementSchema.deserializeFrom(byteBuffer);
+            break;
+          case DATA_BLOCK_TYPE_TAGS:
+          case DATA_BLOCK_TYPE_ATTRIBUTES:
+            obj = ReadWriteIOUtils.readMap(byteBuffer);
+            break;
+          default:
+            break;
+        }
+        // got the data we need,don't need to read any more
+        if (type == blockType) {
+          break;
+        }
+      }
+    }
+    return obj;
+  }
+
+  /**
+   * get inner name by converting partial path.
+   *
+   * @param partialPath the path needed to be converted.
+   * @param level the level needed to be added.
+   * @param nodeType specified type
+   * @return inner name
+   */
+  public static String convertPartialPathToInner(String partialPath, int level, byte nodeType) {
+    char lastChar = START_FLAG;
+    StringBuilder stringBuilder = new StringBuilder();
+    for (char c : partialPath.toCharArray()) {
+      if (START_FLAG == lastChar) {
+        stringBuilder.append(nodeType);
+      }
+      if (SPLIT_FLAG == lastChar) {
+        stringBuilder.append(level);
+      }
+      stringBuilder.append(c);
+      lastChar = c;
+    }
+    return stringBuilder.toString();
+  }
+
+  public static String convertPartialPathToInnerByNodes(String[] nodes, int level, byte nodeType) {
+    StringBuilder stringBuilder = new StringBuilder();
+    stringBuilder.append(nodeType).append(TsFileConstant.PATH_ROOT);
+    for (String str : nodes) {
+      stringBuilder.append(SPLIT_FLAG).append(level).append(str);
+    }
+    return stringBuilder.toString();
+  }
+
+  public static Set<String> getKeyByPrefix(RocksDB rocksDB, String innerName) {
+    RocksIterator iterator = rocksDB.newIterator();
+    Set<String> result = new HashSet<>();
+    for (iterator.seek(innerName.getBytes()); iterator.isValid(); iterator.next()) {
+      String keyStr = new String(iterator.key());
+      if (!keyStr.startsWith(innerName)) {
+        break;
+      }
+      result.add(keyStr);
+    }
+    return result;
+  }
+
+  public static int getLevelByPartialPath(String partialPath) {
+    int levelCount = 0;
+    for (char c : partialPath.toCharArray()) {
+      if (SPLIT_FLAG == c) {
+        levelCount++;
+      }
+    }
+    return levelCount;
+  }
+
+  public static String findBelongToSpecifiedNodeType(
+      String[] nodes, RocksDB rocksDB, byte nodeType) {
+    String innerPathName;
+    for (int level = nodes.length; level > 0; level--) {
+      String[] copy = Arrays.copyOf(nodes, level);
+      innerPathName = convertPartialPathToInnerByNodes(copy, level, nodeType);
+      boolean isBelongToType = rocksDB.keyMayExist(innerPathName.getBytes(), new Holder<>());
+      if (isBelongToType) {
+        return innerPathName;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Statistics the number of all data entries for a specified column family
+   *
+   * @param rocksDB rocksdb
+   * @param columnFamilyHandle specified column family handle
+   * @return total number in this column family
+   */
+  public static long countNodesNum(RocksDB rocksDB, ColumnFamilyHandle columnFamilyHandle) {
+    RocksIterator iter;
+    if (columnFamilyHandle == null) {
+      iter = rocksDB.newIterator();
+    } else {
+      iter = rocksDB.newIterator(columnFamilyHandle);
+    }
+    long count = 0;
+    for (iter.seekToFirst(); iter.isValid(); iter.next()) {
+      count++;
+    }
+    return count;
+  }
+
+  /**
+   * Count the number of keys with the specified prefix in the specified column family
+   *
+   * @param rocksDB rocksdb
+   * @param columnFamilyHandle specified column family handle
+   * @param nodeType specified prefix
+   * @return total number in this column family
+   */
+  public static long countNodesNumByType(
+      RocksDB rocksDB, ColumnFamilyHandle columnFamilyHandle, byte nodeType) {
+    RocksIterator iter;
+    if (columnFamilyHandle == null) {
+      iter = rocksDB.newIterator();
+    } else {
+      iter = rocksDB.newIterator(columnFamilyHandle);
+    }
+    long count = 0;
+    for (iter.seek(new byte[] {nodeType}); iter.isValid(); iter.next()) {
+      if (iter.key()[0] == nodeType) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  public static String getPathByInnerName(String innerName) {
+    char[] keyConvertToCharArray = innerName.toCharArray();
+    StringBuilder stringBuilder = new StringBuilder();
+    char lastChar = START_FLAG;
+    for (char c : keyConvertToCharArray) {
+      if (SPLIT_FLAG == lastChar || START_FLAG == lastChar) {
+        lastChar = c;
+        continue;
+      }
+      stringBuilder.append(c);
+      lastChar = c;
+    }
+    return stringBuilder.toString();
   }
 }
