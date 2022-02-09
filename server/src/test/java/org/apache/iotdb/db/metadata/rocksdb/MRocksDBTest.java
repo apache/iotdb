@@ -3,7 +3,6 @@ package org.apache.iotdb.db.metadata.rocksdb;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -16,9 +15,9 @@ import java.util.Set;
 
 public class MRocksDBTest {
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private MRocksDBManager rocksDBManager;
+  private MRocksDBWriter rocksDBManager;
 
-  public MRocksDBTest(MRocksDBManager rocksDBManager) {
+  public MRocksDBTest(MRocksDBWriter rocksDBManager) {
     this.rocksDBManager = rocksDBManager;
   }
 
@@ -72,25 +71,25 @@ public class MRocksDBTest {
     benchmarkResults.add(result);
   }
 
-  public void testMeasurementNodeQuery(Collection<String> queryTsSet) {
-    RocksDBTestTask<String> task =
-        new RocksDBTestTask<>(queryTsSet, RocksDBTestUtils.WRITE_CLIENT_NUM, 10000);
-    RocksDBTestTask.BenchmarkResult result =
-        task.runWork(
-            s -> {
-              try {
-                IMNode node = rocksDBManager.getMeasurementMNode(new PartialPath(s));
-                if (node != null) {
-                  node.toString();
-                }
-                return true;
-              } catch (Exception e) {
-                return false;
-              }
-            },
-            "MeasurementNodeQuery");
-    benchmarkResults.add(result);
-  }
+  //  public void testMeasurementNodeQuery(Collection<String> queryTsSet) {
+  //    RocksDBTestTask<String> task =
+  //        new RocksDBTestTask<>(queryTsSet, RocksDBTestUtils.WRITE_CLIENT_NUM, 10000);
+  //    RocksDBTestTask.BenchmarkResult result =
+  //        task.runWork(
+  //            s -> {
+  //              try {
+  //                IMNode node = rocksDBManager.getMeasurementMNode(new PartialPath(s));
+  //                if (node != null) {
+  //                  node.toString();
+  //                }
+  //                return true;
+  //              } catch (Exception e) {
+  //                return false;
+  //              }
+  //            },
+  //            "MeasurementNodeQuery");
+  //    benchmarkResults.add(result);
+  //  }
 
   public void testNodeChildrenQuery(Collection<String> queryTsSet) {
     RocksDBTestTask<String> task =
@@ -128,48 +127,48 @@ public class MRocksDBTest {
     benchmarkResults.add(result);
   }
 
-  public void testCountTimeseries() throws MetadataException {
-    long start = System.currentTimeMillis();
-    int count = rocksDBManager.getAllTimeseriesCount(new PartialPath("root.**"));
-    RocksDBTestTask.BenchmarkResult result =
-        new RocksDBTestTask.BenchmarkResult(
-            "timeseriesCount", count, 0, System.currentTimeMillis() - start);
-    benchmarkResults.add(result);
-  }
+  //  public void testCountTimeseries() throws MetadataException {
+  //    long start = System.currentTimeMillis();
+  //    int count = rocksDBManager.getAllTimeseriesCount(new PartialPath("root.**"));
+  //    RocksDBTestTask.BenchmarkResult result =
+  //        new RocksDBTestTask.BenchmarkResult(
+  //            "timeseriesCount", count, 0, System.currentTimeMillis() - start);
+  //    benchmarkResults.add(result);
+  //  }
 
-  public void testCountTimeseriesByTable() {
-    long start = System.currentTimeMillis();
-    long count = rocksDBManager.countMeasurementNodes();
-    RocksDBTestTask.BenchmarkResult result =
-        new RocksDBTestTask.BenchmarkResult(
-            "traverseAllMeasurement", count, 0, System.currentTimeMillis() - start);
-    benchmarkResults.add(result);
-  }
-
-  public void testCountStorageGroupByTable() {
-    long start = System.currentTimeMillis();
-    long count = rocksDBManager.countStorageGroupNodes();
-    RocksDBTestTask.BenchmarkResult result =
-        new RocksDBTestTask.BenchmarkResult(
-            "storageGroupCountByTable", count, 0, System.currentTimeMillis() - start);
-    benchmarkResults.add(result);
-  }
-
-  public void testCountDeviceByTable() {
-    long start = System.currentTimeMillis();
-    long count = rocksDBManager.countDeviceNodes();
-    RocksDBTestTask.BenchmarkResult result =
-        new RocksDBTestTask.BenchmarkResult(
-            "traverseAllDevice", count, 0, System.currentTimeMillis() - start);
-    benchmarkResults.add(result);
-  }
-
-  public void testCountDevices() throws MetadataException {
-    long start = System.currentTimeMillis();
-    int count = rocksDBManager.getDevicesNum(new PartialPath("root.**"));
-    RocksDBTestTask.BenchmarkResult result =
-        new RocksDBTestTask.BenchmarkResult(
-            "devicesCount", count, 0, System.currentTimeMillis() - start);
-    benchmarkResults.add(result);
-  }
+  //  public void testCountTimeseriesByTable() {
+  //    long start = System.currentTimeMillis();
+  //    long count = rocksDBManager.countMeasurementNodes();
+  //    RocksDBTestTask.BenchmarkResult result =
+  //        new RocksDBTestTask.BenchmarkResult(
+  //            "traverseAllMeasurement", count, 0, System.currentTimeMillis() - start);
+  //    benchmarkResults.add(result);
+  //  }
+  //
+  //  public void testCountStorageGroupByTable() {
+  //    long start = System.currentTimeMillis();
+  //    long count = rocksDBManager.countStorageGroupNodes();
+  //    RocksDBTestTask.BenchmarkResult result =
+  //        new RocksDBTestTask.BenchmarkResult(
+  //            "storageGroupCountByTable", count, 0, System.currentTimeMillis() - start);
+  //    benchmarkResults.add(result);
+  //  }
+  //
+  //  public void testCountDeviceByTable() {
+  //    long start = System.currentTimeMillis();
+  //    long count = rocksDBManager.countDeviceNodes();
+  //    RocksDBTestTask.BenchmarkResult result =
+  //        new RocksDBTestTask.BenchmarkResult(
+  //            "traverseAllDevice", count, 0, System.currentTimeMillis() - start);
+  //    benchmarkResults.add(result);
+  //  }
+  //
+  //  public void testCountDevices() throws MetadataException {
+  //    long start = System.currentTimeMillis();
+  //    int count = rocksDBManager.getDevicesNum(new PartialPath("root.**"));
+  //    RocksDBTestTask.BenchmarkResult result =
+  //        new RocksDBTestTask.BenchmarkResult(
+  //            "devicesCount", count, 0, System.currentTimeMillis() - start);
+  //    benchmarkResults.add(result);
+  //  }
 }
