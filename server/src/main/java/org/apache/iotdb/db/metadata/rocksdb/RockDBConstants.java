@@ -34,6 +34,7 @@ public class RockDBConstants {
   protected static final byte DATA_VERSION = 0x00;
 
   protected static final byte DEFAULT_FLAG = 0x00;
+
   protected static final byte FLAG_SET_TTL = 0x01;
   protected static final byte FLAG_HAS_ALIAS = 0x01 << 1;
   protected static final byte FLAG_HAS_TAGS = 0x01 << 2;
@@ -41,11 +42,12 @@ public class RockDBConstants {
   protected static final byte FLAG_IS_ALIGNED = 0x01 << 4;
 
   protected static final byte DATA_BLOCK_TYPE_TTL = 0x01;
-  protected static final byte DATA_BLOCK_TYPE_SCHEMA_TEMPLATE = 0x01 << 1;
+  protected static final byte DATA_BLOCK_TYPE_SCHEMA = 0x01 << 1;
   protected static final byte DATA_BLOCK_TYPE_ALIAS = 0x01 << 2;
   protected static final byte DATA_BLOCK_TYPE_TAGS = 0x01 << 3;
   protected static final byte DATA_BLOCK_TYPE_ATTRIBUTES = 0x01 << 4;
-  protected static final byte DATA_BLOCK_TYPE_SCHEMA = 0x01 << 5;
+  // alias's origin key
+  protected static final byte DATA_BLOCK_TYPE_ORIGIN_KEY = 0x01 << 5;
 
   protected static final byte[] EMPTY_NODE_VALUE = new byte[] {0x00};
   protected static final byte[] DEFAULT_SG_NODE_VALUE = new byte[] {DATA_VERSION, DEFAULT_FLAG};

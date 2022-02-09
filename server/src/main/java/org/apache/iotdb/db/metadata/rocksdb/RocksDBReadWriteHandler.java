@@ -8,6 +8,8 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.primitives.Bytes;
 import com.google.common.util.concurrent.Striped;
@@ -31,9 +33,11 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
@@ -146,17 +150,17 @@ public class RocksDBReadWriteHandler {
     return columnFamilyHandleMap.get(columnFamilyName);
   }
 
-  public void updateNode(String key, byte[] value)
+  public void updateNode(String lockKey, byte[] key, byte[] value)
       throws MetadataException, InterruptedException, RocksDBException {
-    Lock lock = locksPool.get(key);
+    Lock lock = locksPool.get(lockKey);
     if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
       try {
-        rocksDB.put(key.getBytes(), value);
+        rocksDB.put(key, value);
       } finally {
         lock.unlock();
       }
     } else {
-      throw new MetadataException("acquire lock timeout: " + key);
+      throw new MetadataException("acquire lock timeout: " + lockKey);
     }
   }
 
@@ -523,7 +527,46 @@ public class RocksDBReadWriteHandler {
       key[0] = (byte) (Integer.valueOf(key[0]) + '0');
       outputStream.write(key);
       outputStream.write(" -> ".getBytes());
-      outputStream.write(iterator.value());
+
+      byte[] value = iterator.value();
+      ByteBuffer byteBuffer = ByteBuffer.wrap(value);
+      // skip the version flag and node type flag
+      ReadWriteIOUtils.readBytes(byteBuffer, 2);
+      while (byteBuffer.hasRemaining()) {
+        byte blockType = ReadWriteIOUtils.readByte(byteBuffer);
+        switch (blockType) {
+          case RockDBConstants.DATA_BLOCK_TYPE_TTL:
+            long l = ReadWriteIOUtils.readLong(byteBuffer);
+            outputStream.write(String.valueOf(l).getBytes());
+            outputStream.write(" ".getBytes());
+            break;
+          case DATA_BLOCK_TYPE_SCHEMA:
+            MeasurementSchema schema = MeasurementSchema.deserializeFrom(byteBuffer);
+            outputStream.write(schema.toString().getBytes());
+            outputStream.write(" ".getBytes());
+            break;
+          case RockDBConstants.DATA_BLOCK_TYPE_ALIAS:
+            String str = ReadWriteIOUtils.readString(byteBuffer);
+            outputStream.write(str.getBytes());
+            outputStream.write(" ".getBytes());
+            break;
+          case DATA_BLOCK_TYPE_ORIGIN_KEY:
+            byte[] originKey = RocksDBUtils.readOriginKey(byteBuffer);
+            outputStream.write(originKey);
+            outputStream.write(" ".getBytes());
+            break;
+          case RockDBConstants.DATA_BLOCK_TYPE_TAGS:
+          case RockDBConstants.DATA_BLOCK_TYPE_ATTRIBUTES:
+            Map<String, String> map = ReadWriteIOUtils.readMap(byteBuffer);
+            for (Map.Entry<String, String> entry : map.entrySet()) {
+              outputStream.write(("<" + entry.getKey() + "," + entry.getValue() + ">").getBytes());
+            }
+            outputStream.write(" ".getBytes());
+            break;
+          default:
+            break;
+        }
+      }
       outputStream.write("\n".getBytes());
       iterator.next();
     }
