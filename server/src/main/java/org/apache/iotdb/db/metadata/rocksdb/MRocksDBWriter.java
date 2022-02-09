@@ -6,6 +6,7 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -21,7 +22,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import com.google.common.primitives.Bytes;
 import org.apache.commons.lang3.StringUtils;
 import org.rocksdb.Holder;
 import org.rocksdb.RocksDB;
@@ -269,9 +269,7 @@ public class MRocksDBWriter {
       String aliasLevelPath = RocksDBUtils.getLevelPath(aliasNodes, aliasNodes.length - 1);
       byte[] aliasNodeKey = RocksDBUtils.toAliasNodeKey(aliasLevelPath);
       if (!readWriteHandler.keyExist(aliasNodeKey)) {
-        batch.put(
-            aliasNodeKey,
-            Bytes.concat(new byte[] {DATA_VERSION, NODE_TYPE_ALIAS}, levelPath.getBytes()));
+        batch.put(aliasNodeKey, RocksDBUtils.buildAliasNodeValue(measurementKey));
         readWriteHandler.batchCreateTwoKeys(levelPath, aliasLevelPath, batch);
       } else {
         throw new AliasAlreadyExistException(levelPath, alias);
@@ -382,7 +380,10 @@ public class MRocksDBWriter {
       createEntityRecursively(nodes, start - 1, end, aligned);
       if (start == nodes.length) {
         byte[] nodeKey = RocksDBUtils.toEntityNodeKey(levelPath);
-        byte[] value = aligned ? new byte[] {FLAG_IS_ALIGNED} : new byte[] {DEFAULT_FLAG};
+        byte[] value =
+            aligned
+                ? new byte[] {DATA_VERSION, FLAG_IS_ALIGNED}
+                : new byte[] {DATA_VERSION, DEFAULT_FLAG};
         readWriteHandler.createNode(levelPath, nodeKey, value);
       } else {
         readWriteHandler.createNode(
@@ -445,6 +446,24 @@ public class MRocksDBWriter {
     }
     return result;
   }
+
+  public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
+    String levelPath =
+        RocksDBUtils.getLevelPath(storageGroup.getNodes(), storageGroup.getNodeLength() - 1);
+    byte[] pathKey = RocksDBUtils.toStorageNodeKey(levelPath);
+    Holder<byte[]> holder = new Holder<>();
+    try {
+      if (readWriteHandler.keyExist(pathKey, holder)) {
+        byte[] value = RocksDBUtils.updateTTL(holder.getValue(), dataTTL);
+        readWriteHandler.updateNode(levelPath, pathKey, value);
+      } else {
+        throw new PathNotExistException("Storage group node of path doesn't exist: " + levelPath);
+      }
+    } catch (InterruptedException | RocksDBException e) {
+      throw new MetadataException(e);
+    }
+  }
+
   /**
    * Get child node path in the next level of the given path pattern.
    *

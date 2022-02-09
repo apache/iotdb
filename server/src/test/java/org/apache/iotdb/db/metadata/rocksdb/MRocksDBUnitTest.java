@@ -1,6 +1,5 @@
 package org.apache.iotdb.db.metadata.rocksdb;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.FileUtils;
@@ -28,7 +27,7 @@ public class MRocksDBUnitTest {
   }
 
   @Test
-  public void testSetStorageGroup() throws IllegalPathException {
+  public void testSetStorageGroup() throws MetadataException, IOException {
     List<PartialPath> storageGroups = new ArrayList<>();
     storageGroups.add(new PartialPath("root.sg1"));
     storageGroups.add(new PartialPath("root.inner.sg1"));
@@ -36,14 +35,15 @@ public class MRocksDBUnitTest {
     storageGroups.add(new PartialPath("root.inner1.inner2.inner3.sg"));
     storageGroups.add(new PartialPath("root.inner1.inner2.sg"));
 
-    try {
-      for (PartialPath sg : storageGroups) {
-        mRocksDBWriter.setStorageGroup(sg);
-      }
-      mRocksDBWriter.printScanAllKeys();
-    } catch (Exception e) {
-      assert (false);
+    for (PartialPath sg : storageGroups) {
+      mRocksDBWriter.setStorageGroup(sg);
     }
+
+    for (PartialPath sg : storageGroups) {
+      mRocksDBWriter.setTTL(sg, 200 * 10000);
+    }
+
+    mRocksDBWriter.printScanAllKeys();
   }
 
   @Test
@@ -55,6 +55,34 @@ public class MRocksDBUnitTest {
     PartialPath path2 = new PartialPath("root.tt.sg.dd.m2");
     mRocksDBWriter.createTimeseries(
         path2, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, "ma");
+    mRocksDBWriter.printScanAllKeys();
+  }
+
+  @Test
+  public void testCreateAlignedTimeSeries() throws MetadataException, IOException {
+    PartialPath prefixPath = new PartialPath("root.tt.sg.dd");
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressions = new ArrayList<>();
+
+    for (int i = 0; i < 6; i++) {
+      measurements.add("mm" + i);
+      dataTypes.add(TSDataType.INT32);
+      encodings.add(TSEncoding.PLAIN);
+      compressions.add(CompressionType.UNCOMPRESSED);
+    }
+    mRocksDBWriter.createAlignedTimeSeries(
+        prefixPath, measurements, dataTypes, encodings, compressions);
+
+    try {
+      PartialPath path = new PartialPath("root.tt.sg.dd.mn");
+      mRocksDBWriter.createTimeseries(
+          path, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, null);
+      assert false;
+    } catch (MetadataException e) {
+      assert true;
+    }
     mRocksDBWriter.printScanAllKeys();
   }
 
