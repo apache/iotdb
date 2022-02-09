@@ -121,8 +121,6 @@ public interface IMetaManager {
   // including create and delete
   void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException;
 
-  void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException;
-
   void createTimeseries(
       PartialPath path,
       TSDataType dataType,
@@ -264,10 +262,6 @@ public interface IMetaManager {
   // endregion
 
   // region Interfaces for alias and tag/attribute operations
-  void changeOffset(PartialPath path, long offset) throws MetadataException;
-
-  void changeAlias(PartialPath path, String alias) throws MetadataException;
-
   void upsertTagsAndAttributes(
       String alias,
       Map<String, String> tagsMap,
@@ -299,9 +293,11 @@ public interface IMetaManager {
       PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas);
 
   Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path) throws MetadataException;
+  // end region
 
   void cacheMeta(PartialPath path, IMeasurementMNode measurementMNode, boolean needSetFullPath);
 
+  // region Interfaces for lastCache operations
   void updateLastCache(
       PartialPath seriesPath,
       TimeValuePair timeValuePair,
