@@ -1693,7 +1693,7 @@ GC 日志会被存储在`IOTDB_HOME/logs/gc.log`. 至多会存储 10 个 gc.log 
 | :----------: | :--------------------------------- |
 |     描述     | 密码加密提供类                         |
 |     类型     | String                              |
-|    默认值    | org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt                               |
+|    默认值    | org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt   |
 | 改后生效方式  | 重启服务生效                          |
 
 - iotdb_server_encrypt_decrypt_provider_parameter
