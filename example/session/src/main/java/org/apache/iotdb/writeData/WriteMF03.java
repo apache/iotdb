@@ -39,7 +39,7 @@ public class WriteMF03 {
       throw new IOException("WRONG deleteLenPercentage!");
     }
 
-    int avgSeriesPointNumberThreshold = 10000; // fixed
+    int avgSeriesPointNumberThreshold = 1000; // fixed
     int deletePeriod =
         (int) Math.floor(100 * 1.0 / deletePercentage * avgSeriesPointNumberThreshold);
     long deleteLen = (long) Math.floor(chunkAvgTimeLen * deleteLenPercentage * 1.0 / 100);

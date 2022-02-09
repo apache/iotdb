@@ -19,7 +19,7 @@ public class OverlapGenerator {
 
   public static void main(String[] args) throws IOException {
     // default
-    int avgSeriesPointNumberThreshold = 10000;
+    int avgSeriesPointNumberThreshold = 1000;
 
     String inPath = args[0];
     String outPath = args[1];
