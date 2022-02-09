@@ -27,13 +27,14 @@ import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeContainerMapImpl;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.MemMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.metadata.mtree.store.disk.IMNodeIterator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -50,7 +51,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -295,27 +295,5 @@ public class MemMTreeStore implements IMTreeStore {
 
   private static String jsonToString(JsonObject jsonObject) {
     return GSON.toJson(jsonObject);
-  }
-
-  private class MemMNodeIterator implements IMNodeIterator {
-
-    Iterator<IMNode> iterator;
-
-    MemMNodeIterator(Iterator<IMNode> iterator) {
-      this.iterator = iterator;
-    }
-
-    @Override
-    public void close() {}
-
-    @Override
-    public boolean hasNext() {
-      return iterator.hasNext();
-    }
-
-    @Override
-    public IMNode next() {
-      return iterator.next();
-    }
   }
 }

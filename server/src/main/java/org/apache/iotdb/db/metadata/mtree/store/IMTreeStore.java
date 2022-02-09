@@ -20,8 +20,8 @@ package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mtree.store.disk.IMNodeIterator;
 
 import java.io.IOException;
 import java.util.List;

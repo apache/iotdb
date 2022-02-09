@@ -16,9 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.store.disk;
-
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+package org.apache.iotdb.db.metadata.mnode;
 
 import java.util.Iterator;
 
