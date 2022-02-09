@@ -10,6 +10,7 @@ import org.apache.commons.lang3.ArrayUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -134,7 +135,11 @@ public class RocksDBUtils {
     }
 
     ReadWriteIOUtils.write(flag, outputStream);
-    schema.serializeTo(outputStream);
+
+    if (schema != null) {
+      ReadWriteIOUtils.write(DATA_BLOCK_TYPE_SCHEMA, outputStream);
+      schema.serializeTo(outputStream);
+    }
 
     if (alias != null) {
       ReadWriteIOUtils.write(DATA_BLOCK_TYPE_ALIAS, outputStream);
@@ -151,5 +156,67 @@ public class RocksDBUtils {
       ReadWriteIOUtils.write(tags, outputStream);
     }
     return outputStream.toByteArray();
+  }
+
+  public static byte[] buildAliasNodeValue(byte[] originKey) {
+    byte[] prefix = new byte[] {DATA_VERSION, DEFAULT_FLAG, DATA_BLOCK_TYPE_ORIGIN_KEY};
+    byte[] len = BytesUtils.intToBytes(originKey.length);
+    return BytesUtils.concatByteArray(BytesUtils.concatByteArray(prefix, len), originKey);
+  }
+
+  public static byte[] readOriginKey(ByteBuffer buffer) {
+    int len = ReadWriteIOUtils.readInt(buffer);
+    return ReadWriteIOUtils.readBytes(buffer, len);
+  }
+
+  public static int indexOfDataBlockType(byte[] data, byte type) {
+    if ((data[1] & FLAG_SET_TTL) == 0) {
+      return -1;
+    }
+
+    int index = -1;
+    ByteBuffer byteBuffer = ByteBuffer.wrap(data);
+    // skip the version flag and node type flag
+    ReadWriteIOUtils.readBytes(byteBuffer, 2);
+    while (byteBuffer.hasRemaining()) {
+      byte blockType = ReadWriteIOUtils.readByte(byteBuffer);
+      switch (blockType) {
+        case DATA_BLOCK_TYPE_TTL:
+          ReadWriteIOUtils.readLong(byteBuffer);
+          break;
+        case DATA_BLOCK_TYPE_ALIAS:
+          ReadWriteIOUtils.readString(byteBuffer);
+          break;
+        case DATA_BLOCK_TYPE_SCHEMA:
+          MeasurementSchema.deserializeFrom(byteBuffer);
+          break;
+        case DATA_BLOCK_TYPE_TAGS:
+        case DATA_BLOCK_TYPE_ATTRIBUTES:
+          ReadWriteIOUtils.readMap(byteBuffer);
+          break;
+        default:
+          break;
+      }
+      // got the data we need,don't need to read any more
+      if (type == blockType) {
+        index = byteBuffer.arrayOffset();
+        break;
+      }
+    }
+    return index;
+  }
+
+  public static byte[] updateTTL(byte[] origin, long ttl) {
+    int index = indexOfDataBlockType(origin, DATA_BLOCK_TYPE_TTL);
+    if (index == -1) {
+      byte[] ttlBlock = new byte[Long.BYTES + 1];
+      ttlBlock[0] = DATA_BLOCK_TYPE_TTL;
+      BytesUtils.longToBytes(ttl, ttlBlock, 1);
+      origin[1] = (byte) (origin[1] | FLAG_SET_TTL);
+      return BytesUtils.concatByteArray(origin, ttlBlock);
+    } else {
+      BytesUtils.longToBytes(ttl, origin, index + 1);
+      return origin;
+    }
   }
 }
