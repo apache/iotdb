@@ -4,6 +4,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
@@ -15,7 +16,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.utils.FileUtils;
 
 import org.apache.commons.lang3.ArrayUtils;
-import org.rocksdb.RocksDBException;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,19 +49,22 @@ public class RocksDBTestEngine {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
   }
 
+  @Test
   public void startTest() {
     RocksDBTestUtils.printMemInfo("Benchmark rocksdb start");
     try {
       prepareBenchmark();
       /** rocksdb benchmark * */
-      MRocksDBManager rocksDBManager = new MRocksDBManager();
+      MRocksDBWriter rocksDBManager = new MRocksDBWriter();
+      rocksDBManager.printScanAllKeys();
       MRocksDBTest mRocksDBTest = new MRocksDBTest(rocksDBManager);
       mRocksDBTest.testStorageGroupCreation(storageGroups);
-      mRocksDBTest.testTimeSeriesCreation(timeSeriesSet);
-      RocksDBTestUtils.printReport(mRocksDBTest.benchmarkResults, "rocksDB");
-      RocksDBTestUtils.printMemInfo("Benchmark finished");
+      rocksDBManager.printScanAllKeys();
+      //      mRocksDBTest.testTimeSeriesCreation(timeSeriesSet);
+      //      RocksDBTestUtils.printReport(mRocksDBTest.benchmarkResults, "rocksDB");
+      //      RocksDBTestUtils.printMemInfo("Benchmark finished");
 
-    } catch (IOException | RocksDBException e) {
+    } catch (IOException | MetadataException e) {
       logger.error("Error happened when run benchmark", e);
     }
   }
@@ -75,7 +79,7 @@ public class RocksDBTestEngine {
     try (MLogReader mLogReader =
         new MLogReader(config.getSchemaDir(), MetadataConstant.METADATA_LOG)) {
       parseForTestSet(mLogReader);
-      logger.info("spend {} ms to prepare dataset", System.currentTimeMillis() - time);
+      System.out.println("spend" + (System.currentTimeMillis() - time) + "ms to prepare dataset");
     } catch (Exception e) {
       throw new IOException("Failed to parser mlog.bin for err:" + e);
     }

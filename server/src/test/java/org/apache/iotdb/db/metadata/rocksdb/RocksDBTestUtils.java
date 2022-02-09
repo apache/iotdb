@@ -7,8 +7,8 @@ import java.util.List;
 
 public class RocksDBTestUtils {
 
-  public static int WRITE_CLIENT_NUM = 20;
-  public static int READ_CLIENT_NUM = 30;
+  public static int WRITE_CLIENT_NUM = 1;
+  public static int READ_CLIENT_NUM = 1;
 
   public static void printBenchmarkBaseline(
       List storageGroups,
