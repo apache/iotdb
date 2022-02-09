@@ -23,6 +23,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeContainers;
+import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.IMemManager;
@@ -370,16 +371,26 @@ public class CachedMTreeStore implements IMTreeStore {
     private void readNext() {
       IMNode node = null;
       if (isIteratingDisk) {
+        ICachedMNodeContainer container = getCachedMNodeContainer(parent);
         if (iterator.hasNext()) {
           node = iterator.next();
+          while (container.hasChildInBuffer(node.getName())) {
+            if (iterator.hasNext()) {
+              node = iterator.next();
+            } else {
+              node = null;
+              break;
+            }
+          }
+        }
+        if (node != null) {
           if (parent.hasChild(node.getName())) {
+            // this branch means the node load from disk is in cache, thus use the instance in cache
             node = parent.getChild(node.getName());
             loadedFromDisk = false;
           } else {
             loadedFromDisk = true;
           }
-        }
-        if (node != null) {
           nextNode = node;
           return;
         } else {
