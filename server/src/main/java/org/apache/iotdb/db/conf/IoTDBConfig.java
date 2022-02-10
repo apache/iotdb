@@ -193,6 +193,12 @@ public class IoTDBConfig {
   private int mlogBufferSize = 1024 * 1024;
 
   /**
+   * The cycle when metadata log is periodically forced to be written to disk(in milliseconds) If
+   * set this parameter to 0 it means call channel.force(true) after every each operation
+   */
+  private long forceMlogPeriodInMs = 0;
+
+  /**
    * The size of log buffer for every trigger management operation plan. If the size of a trigger
    * management operation plan is larger than this parameter, the trigger management operation plan
    * will be rejected by TriggerManager. Unit: byte
@@ -2298,6 +2304,14 @@ public class IoTDBConfig {
 
   public void setMlogBufferSize(int mlogBufferSize) {
     this.mlogBufferSize = mlogBufferSize;
+  }
+
+  public long getForceMlogPeriodInMs() {
+    return forceMlogPeriodInMs;
+  }
+
+  public void setForceMlogPeriodInMs(long forceMlogPeriodInMs) {
+    this.forceMlogPeriodInMs = forceMlogPeriodInMs;
   }
 
   public int getTlogBufferSize() {
