@@ -196,7 +196,7 @@ public class IoTDBConfig {
    * The cycle when metadata log is periodically forced to be written to disk(in milliseconds) If
    * set this parameter to 0 it means call channel.force(true) after every each operation
    */
-  private long forceMlogPeriodInMs = 0;
+  private long syncMlogPeriodInMs = 0;
 
   /**
    * The size of log buffer for every trigger management operation plan. If the size of a trigger
@@ -2306,12 +2306,12 @@ public class IoTDBConfig {
     this.mlogBufferSize = mlogBufferSize;
   }
 
-  public long getForceMlogPeriodInMs() {
-    return forceMlogPeriodInMs;
+  public long getSyncMlogPeriodInMs() {
+    return syncMlogPeriodInMs;
   }
 
-  public void setForceMlogPeriodInMs(long forceMlogPeriodInMs) {
-    this.forceMlogPeriodInMs = forceMlogPeriodInMs;
+  public void setSyncMlogPeriodInMs(long syncMlogPeriodInMs) {
+    this.syncMlogPeriodInMs = syncMlogPeriodInMs;
   }
 
   public int getTlogBufferSize() {

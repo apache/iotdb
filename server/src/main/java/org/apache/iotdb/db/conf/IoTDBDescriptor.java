@@ -241,9 +241,9 @@ public class IoTDBDescriptor {
       long forceMlogPeriodInMs =
           Long.parseLong(
               properties.getProperty(
-                  "force_mlog_period_in_ms", Long.toString(conf.getForceMlogPeriodInMs())));
+                  "sync_mlog_period_in_ms", Long.toString(conf.getSyncMlogPeriodInMs())));
       if (forceMlogPeriodInMs > 0) {
-        conf.setForceMlogPeriodInMs(forceMlogPeriodInMs);
+        conf.setSyncMlogPeriodInMs(forceMlogPeriodInMs);
       }
 
       conf.setMultiDirStrategyClassName(
