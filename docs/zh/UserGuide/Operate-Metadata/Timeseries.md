@@ -127,39 +127,6 @@ Total line number = 4
 It costs 0.004s
 ```
 
-* SHOW TIMESERIES (<`PathPattern`>)? WhereClause 
-  
-  返回给定路径的下的所有满足条件的时间序列信息，SQL 语句如下所示：
-
-```
-ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
-ALTER timeseries root.ln.wf02.wt02.status ADD TAGS description=test1
-show timeseries root.ln.** where unit=c
-show timeseries root.ln.** where description contains 'test1'
-```
-
-执行结果分别为：
-
-```
-+--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
-|                timeseries|alias|storage group|dataType|encoding|compression|        tags|attributes|
-+--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
-|root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|{"unit":"c"}|      null|
-+--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
-Total line number = 1
-It costs 0.005s
-
-+------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
-|              timeseries|alias|storage group|dataType|encoding|compression|                   tags|attributes|
-+------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
-|root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|{"description":"test1"}|      null|
-+------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
-Total line number = 1
-It costs 0.004s
-```
-
-> 注意，现在我们只支持一个查询条件，要么是等值条件查询，要么是包含条件查询。当然 where 子句中涉及的必须是标签值，而不能是属性值。
-
 * SHOW TIMESERIES LIMIT INT OFFSET INT
 
   只返回从指定下标开始的结果，最大返回条数被 LIMIT 限制，用于分页查询。例如：
@@ -297,3 +264,39 @@ ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
 ```
 ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4)
 ```
+
+* 使用标签作为过滤条件查询时间序列
+```
+* SHOW TIMESERIES (<`PathPattern`>)? WhereClause
+```
+
+  返回给定路径的下的所有满足条件的时间序列信息，SQL 语句如下所示：
+
+```
+ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
+ALTER timeseries root.ln.wf02.wt02.status ADD TAGS description=test1
+show timeseries root.ln.** where unit=c
+show timeseries root.ln.** where description contains 'test1'
+```
+
+执行结果分别为：
+
+```
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+|                timeseries|alias|storage group|dataType|encoding|compression|        tags|attributes|
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+|root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|{"unit":"c"}|      null|
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+Total line number = 1
+It costs 0.005s
+
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+|              timeseries|alias|storage group|dataType|encoding|compression|                   tags|attributes|
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+|root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|{"description":"test1"}|      null|
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+Total line number = 1
+It costs 0.004s
+```
+
+> 注意，现在我们只支持一个查询条件，要么是等值条件查询，要么是包含条件查询。当然 where 子句中涉及的必须是标签值，而不能是属性值。
