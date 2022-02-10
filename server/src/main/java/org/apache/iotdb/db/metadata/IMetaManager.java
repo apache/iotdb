@@ -200,7 +200,7 @@ public interface IMetaManager {
   // region Interfaces for StorageGroup and TTL info Query
   boolean isStorageGroup(PartialPath path) throws MetadataException;
 
-  boolean checkStorageGroupByPath(PartialPath path);
+  boolean checkStorageGroupByPath(PartialPath path) throws MetadataException;
 
   PartialPath getBelongedStorageGroup(PartialPath path)
       throws StorageGroupNotSetException, IllegalPathException;
