@@ -91,12 +91,12 @@ public class MLogWriter implements AutoCloseable {
     }
 
     logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
-    logWriter = new LogWriter(logFile, config.getForceMlogPeriodInMs() == 0);
+    logWriter = new LogWriter(logFile, config.getSyncMlogPeriodInMs() == 0);
   }
 
   public MLogWriter(String logFilePath) throws IOException {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
-    logWriter = new LogWriter(logFile, config.getForceMlogPeriodInMs() == 0);
+    logWriter = new LogWriter(logFile, config.getSyncMlogPeriodInMs() == 0);
   }
 
   @Override

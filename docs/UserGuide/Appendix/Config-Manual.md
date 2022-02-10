@@ -409,9 +409,9 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 1048576 |
 |Effective|After restart system|
 
-* force\_mlog\_period\_in\_ms
+* sync\_mlog\_period\_in\_ms
 
-|Name| force\_mlog\_period\_in\_ms |
+|Name| sync\_mlog\_period\_in\_ms |
 |:---:|:---|
 |Description| The cycle when metadata log is periodically forced to be written to disk(in milliseconds)|
 |Type| Int64 |

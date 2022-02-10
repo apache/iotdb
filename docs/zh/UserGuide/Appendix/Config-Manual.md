@@ -259,9 +259,9 @@
 |默认值| 1048576 |
 |改后生效方式|触发生效|
 
-* force\_mlog\_period\_in\_ms
+* sync\_mlog\_period\_in\_ms
 
-|Name| force\_mlog\_period\_in\_ms |
+|Name| sync\_mlog\_period\_in\_ms |
 |:---:|:---|
 |Description| mlog定期刷新到磁盘的周期，单位毫秒|
 |Type| Int64 |

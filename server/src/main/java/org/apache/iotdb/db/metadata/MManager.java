@@ -185,14 +185,14 @@ public class MManager {
           TimeUnit.SECONDS);
     }
 
-    if (config.getForceMlogPeriodInMs() != 0) {
+    if (config.getSyncMlogPeriodInMs() != 0) {
       timedForceMLogThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
 
       timedForceMLogThread.scheduleAtFixedRate(
           this::forceMlog,
-          config.getForceMlogPeriodInMs(),
-          config.getForceMlogPeriodInMs(),
+          config.getSyncMlogPeriodInMs(),
+          config.getSyncMlogPeriodInMs(),
           TimeUnit.MILLISECONDS);
     }
   }
