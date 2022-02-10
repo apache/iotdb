@@ -264,6 +264,15 @@ public interface IMetaManager {
   // endregion
 
   // region Interfaces for alias and tag/attribute operations
+  /**
+   * upsert tags and attributes key-value for the timeseries if the key has existed, just use the
+   * new value to update it.
+   *
+   * @param alias newly added alias
+   * @param tagsMap newly added tags map
+   * @param attributesMap newly added attributes map
+   * @param fullPath timeseries
+   */
   void upsertTagsAndAttributes(
       String alias,
       Map<String, String> tagsMap,
