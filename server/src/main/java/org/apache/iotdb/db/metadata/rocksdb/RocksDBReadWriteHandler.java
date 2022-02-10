@@ -578,6 +578,10 @@ public class RocksDBReadWriteHandler {
     return null;
   }
 
+  public void executeBatch(WriteBatch batch) throws RocksDBException {
+    rocksDB.write(new WriteOptions(), batch);
+  }
+
   @TestOnly
   public void scanAllKeys(String filePath) throws IOException {
     RocksIterator iterator = rocksDB.newIterator();
