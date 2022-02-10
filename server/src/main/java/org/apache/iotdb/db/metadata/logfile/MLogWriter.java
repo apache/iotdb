@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.logfile;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -67,6 +68,8 @@ import java.util.Map;
 public class MLogWriter implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(MLogWriter.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   private final File logFile;
   private LogWriter logWriter;
   private int logNum;
@@ -88,12 +91,12 @@ public class MLogWriter implements AutoCloseable {
     }
 
     logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
-    logWriter = new LogWriter(logFile, false);
+    logWriter = new LogWriter(logFile, config.getForceMlogPeriodInMs() == 0);
   }
 
   public MLogWriter(String logFilePath) throws IOException {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
-    logWriter = new LogWriter(logFile, false);
+    logWriter = new LogWriter(logFile, config.getForceMlogPeriodInMs() == 0);
   }
 
   @Override
