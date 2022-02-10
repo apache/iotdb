@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.db.metadata.rocksdb;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
@@ -88,14 +82,31 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_VERSION;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_ENTITY_NODE_VALUE;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_FLAG;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_INTERNAL_NODE_VALUE;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_SG_NODE_VALUE;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_ALIGNED;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_SET_TTL;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -153,8 +164,7 @@ public class MRocksDBManager implements IMetaManager {
 
   // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
   @Override
-  public void init() {
-  }
+  public void init() {}
 
   @Override
   public void createMTreeSnapshot() {
@@ -163,30 +173,24 @@ public class MRocksDBManager implements IMetaManager {
 
   @TestOnly
   @Override
-  public void clear() {
-  }
+  public void clear() {}
 
   @Override
-  public void operation(PhysicalPlan plan) throws IOException, MetadataException {
-  }
+  public void operation(PhysicalPlan plan) throws IOException, MetadataException {}
   // endregion
 
   // region Interfaces for CQ
   @Override
-  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws MetadataException {
-  }
+  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws MetadataException {}
 
   @Override
-  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws MetadataException {
-  }
+  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws MetadataException {}
 
   @Override
-  public void writeCreateContinuousQueryLog(CreateContinuousQueryPlan plan) throws IOException {
-  }
+  public void writeCreateContinuousQueryLog(CreateContinuousQueryPlan plan) throws IOException {}
 
   @Override
-  public void writeDropContinuousQueryLog(DropContinuousQueryPlan plan) throws IOException {
-  }
+  public void writeDropContinuousQueryLog(DropContinuousQueryPlan plan) throws IOException {}
   // endregion
 
   // region Interfaces and Implementation for Timeseries operation
@@ -209,9 +213,9 @@ public class MRocksDBManager implements IMetaManager {
   /**
    * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
    *
-   * @param path       the timeseries path
-   * @param dataType   the dateType {@code DataType} of the timeseries
-   * @param encoding   the encoding function {@code Encoding} of the timeseries
+   * @param path the timeseries path
+   * @param dataType the dateType {@code DataType} of the timeseries
+   * @param encoding the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
    */
   @Override
@@ -228,9 +232,9 @@ public class MRocksDBManager implements IMetaManager {
   /**
    * Add one timeseries to metadata, if the timeseries already exists, throw exception
    *
-   * @param path       the timeseries path
-   * @param dataType   the dateType {@code DataType} of the timeseries
-   * @param encoding   the encoding function {@code Encoding} of the timeseries
+   * @param path the timeseries path
+   * @param dataType the dateType {@code DataType} of the timeseries
+   * @param encoding the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
    */
   public void createTimeseries(
@@ -476,8 +480,8 @@ public class MRocksDBManager implements IMetaManager {
         byte[] nodeKey = RocksDBUtils.toEntityNodeKey(levelPath);
         byte[] value =
             aligned
-                ? new byte[]{DATA_VERSION, FLAG_IS_ALIGNED}
-                : new byte[]{DATA_VERSION, DEFAULT_FLAG};
+                ? new byte[] {DATA_VERSION, FLAG_IS_ALIGNED}
+                : new byte[] {DATA_VERSION, DEFAULT_FLAG};
         readWriteHandler.createNode(levelPath, nodeKey, value);
       } else {
         readWriteHandler.createNode(
@@ -810,7 +814,6 @@ public class MRocksDBManager implements IMetaManager {
     } catch (RocksDBException e) {
       throw new MetadataException(e);
     }
-
   }
 
   @Override
@@ -828,8 +831,7 @@ public class MRocksDBManager implements IMetaManager {
       throw new StorageGroupNotSetException(
           String.format("Cannot find [%s] belong to which storage group.", path.getFullPath()));
     }
-    return new PartialPath(
-        RocksDBUtils.getPathByInnerName(innerPathName));
+    return new PartialPath(RocksDBUtils.getPathByInnerName(innerPathName));
   }
 
   @Override
@@ -860,7 +862,7 @@ public class MRocksDBManager implements IMetaManager {
     Map<PartialPath, Long> allStorageGroupAndTTL = new HashMap<>();
     RocksIterator iterator = readWriteHandler.iterator(null);
 
-    for (iterator.seek(new byte[]{NODE_TYPE_SG}); iterator.isValid(); iterator.next()) {
+    for (iterator.seek(new byte[] {NODE_TYPE_SG}); iterator.isValid(); iterator.next()) {
       if (iterator.key()[0] != (NODE_TYPE_SG)) {
         break;
       }
@@ -1001,7 +1003,7 @@ public class MRocksDBManager implements IMetaManager {
     List<IStorageGroupMNode> result = new ArrayList<>();
     RocksIterator iterator = readWriteHandler.iterator(null);
     // get all storage group path
-    for (iterator.seek(new byte[]{NODE_TYPE_SG}); iterator.isValid(); iterator.next()) {
+    for (iterator.seek(new byte[] {NODE_TYPE_SG}); iterator.isValid(); iterator.next()) {
       if (iterator.key()[0] != NODE_TYPE_SG) {
         break;
       }
@@ -1071,45 +1073,37 @@ public class MRocksDBManager implements IMetaManager {
       Map<String, String> tagsMap,
       Map<String, String> attributesMap,
       PartialPath fullPath)
-      throws MetadataException, IOException {
-  }
+      throws MetadataException, IOException {}
 
   @Override
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
-      throws MetadataException, IOException {
-  }
+      throws MetadataException, IOException {}
 
   @Override
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
-      throws MetadataException, IOException {
-  }
+      throws MetadataException, IOException {}
 
   @Override
   public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
-      throws MetadataException, IOException {
-  }
+      throws MetadataException, IOException {}
 
   @Override
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
-      throws MetadataException, IOException {
-  }
+      throws MetadataException, IOException {}
 
   @Override
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
-      throws MetadataException, IOException {
-  }
+      throws MetadataException, IOException {}
   // endregion
 
   // region Interfaces only for Cluster module usage
   @Override
   public void collectMeasurementSchema(
-      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
-  }
+      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {}
 
   @Override
   public void collectTimeseriesSchema(
-      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
-  }
+      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {}
 
   @Override
   public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
@@ -1130,16 +1124,14 @@ public class MRocksDBManager implements IMetaManager {
       PartialPath seriesPath,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-  }
+      Long latestFlushedTime) {}
 
   @Override
   public void updateLastCache(
       IMeasurementMNode node,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-  }
+      Long latestFlushedTime) {}
 
   @Override
   public TimeValuePair getLastCache(PartialPath seriesPath) {
@@ -1152,18 +1144,15 @@ public class MRocksDBManager implements IMetaManager {
   }
 
   @Override
-  public void resetLastCache(PartialPath seriesPath) {
-  }
+  public void resetLastCache(PartialPath seriesPath) {}
 
   @Override
-  public void deleteLastCacheByDevice(PartialPath deviceId) throws MetadataException {
-  }
+  public void deleteLastCacheByDevice(PartialPath deviceId) throws MetadataException {}
 
   @Override
   public void deleteLastCacheByDevice(
       PartialPath deviceId, PartialPath originalPath, long startTime, long endTime)
-      throws MetadataException {
-  }
+      throws MetadataException {}
   // endregion
 
   // region Interfaces and Implementation for InsertPlan process

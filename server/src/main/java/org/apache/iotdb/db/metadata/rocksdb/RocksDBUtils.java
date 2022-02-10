@@ -9,7 +9,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import com.google.common.primitives.Bytes;
 import org.apache.commons.lang3.ArrayUtils;
 import org.rocksdb.ColumnFamilyHandle;
-import org.rocksdb.Holder;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksIterator;
 import org.slf4j.Logger;
@@ -18,12 +17,9 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
@@ -46,7 +42,7 @@ public class RocksDBUtils {
   protected static byte[] constructDataBlock(byte type, String data) {
     byte[] dataInBytes = data.getBytes();
     int size = dataInBytes.length;
-    return Bytes.concat(new byte[]{type}, BytesUtils.intToBytes(size), dataInBytes);
+    return Bytes.concat(new byte[] {type}, BytesUtils.intToBytes(size), dataInBytes);
   }
 
   protected static byte[] toInternalNodeKey(String levelPath) {
@@ -70,7 +66,7 @@ public class RocksDBUtils {
   }
 
   protected static byte[] toRocksDBKey(String levelPath, byte type) {
-    return Bytes.concat(new byte[]{type}, levelPath.getBytes());
+    return Bytes.concat(new byte[] {type}, levelPath.getBytes());
   }
 
   public static String getLevelPath(String[] nodes, int end) {
@@ -171,7 +167,7 @@ public class RocksDBUtils {
   }
 
   public static byte[] buildAliasNodeValue(byte[] originKey) {
-    byte[] prefix = new byte[]{DATA_VERSION, DEFAULT_FLAG, DATA_BLOCK_TYPE_ORIGIN_KEY};
+    byte[] prefix = new byte[] {DATA_VERSION, DEFAULT_FLAG, DATA_BLOCK_TYPE_ORIGIN_KEY};
     byte[] len = BytesUtils.intToBytes(originKey.length);
     return BytesUtils.concatByteArray(BytesUtils.concatByteArray(prefix, len), originKey);
   }
@@ -242,7 +238,7 @@ public class RocksDBUtils {
    * parse value and return a specified type. if no data is required, null is returned.
    *
    * @param value value written in default table
-   * @param type  the type of value to obtain
+   * @param type the type of value to obtain
    */
   public static Object parseNodeValue(byte[] value, byte type) {
     ByteBuffer byteBuffer = ByteBuffer.wrap(value);
@@ -289,8 +285,8 @@ public class RocksDBUtils {
    * get inner name by converting partial path.
    *
    * @param partialPath the path needed to be converted.
-   * @param level       the level needed to be added.
-   * @param nodeType    specified type
+   * @param level the level needed to be added.
+   * @param nodeType specified type
    * @return inner name
    */
   public static String convertPartialPathToInner(String partialPath, int level, byte nodeType) {
@@ -331,7 +327,7 @@ public class RocksDBUtils {
   /**
    * Statistics the number of all data entries for a specified column family
    *
-   * @param rocksDB            rocksdb
+   * @param rocksDB rocksdb
    * @param columnFamilyHandle specified column family handle
    * @return total number in this column family
    */
