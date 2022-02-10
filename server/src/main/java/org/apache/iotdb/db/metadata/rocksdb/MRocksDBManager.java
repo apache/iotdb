@@ -19,20 +19,6 @@
 
 package org.apache.iotdb.db.metadata.rocksdb;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
@@ -55,6 +41,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.rocksdb.mnode.RMeasurementMNode;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -87,12 +74,28 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+
+import org.apache.commons.lang3.StringUtils;
 import org.rocksdb.Holder;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
 import org.rocksdb.WriteBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
@@ -688,7 +691,8 @@ public class MRocksDBManager implements IMetaManager {
       return;
     }
     Set<String> children = ConcurrentHashMap.newKeySet();
-    seeds.parallelStream()
+    seeds
+        .parallelStream()
         .forEach(
             x -> {
               if (op.apply(x)) {
@@ -804,7 +808,8 @@ public class MRocksDBManager implements IMetaManager {
       String prefix =
           builder.append(RockDBConstants.ROOT).append(PATH_SEPARATOR).append(upperLevel).toString();
       Set<String> parentPaths = readWriteHandler.getAllByPrefix(prefix);
-      parentPaths.parallelStream()
+      parentPaths
+          .parallelStream()
           .forEach(
               x -> {
                 String targetPrefix = RocksDBUtils.getNextLevelOfPath(x, upperLevel);
@@ -1294,45 +1299,274 @@ public class MRocksDBManager implements IMetaManager {
       String alias,
       Map<String, String> tagsMap,
       Map<String, String> attributesMap,
-      PartialPath fullPath)
+      PartialPath path)
       throws MetadataException, IOException {
-    String levelPath = RocksDBUtils.getLevelPath(fullPath.getNodes(), fullPath.getNodeLength() - 1);
+    String levelPath = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
     byte[] originKey = RocksDBUtils.toMeasurementNodeKey(levelPath);
     Holder<byte[]> holder = new Holder<>();
     try {
       if (!readWriteHandler.keyExist(originKey, holder)) {
-        throw new PathNotExistException(fullPath.getFullPath());
+        throw new PathNotExistException(path.getFullPath());
       }
+
+      String[] nodes = path.getNodes();
       byte[] originValue = holder.getValue();
+      RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
 
+      // upsert alias
+      if (StringUtils.isEmpty(mNode.getAlias()) || !mNode.getAlias().equals(alias)) {
+        WriteBatch batch = new WriteBatch();
+        String[] newAlias = Arrays.copyOf(nodes, nodes.length);
+        newAlias[nodes.length - 1] = alias;
+        byte[] newAliasKey =
+            RocksDBUtils.toAliasNodeKey(RocksDBUtils.getLevelPath(newAlias, newAlias.length - 1));
+        batch.put(newAliasKey, RocksDBUtils.buildAliasNodeValue(originKey));
+
+        if (!mNode.getAlias().equals(alias)) {
+          String[] oldAlias = Arrays.copyOf(nodes, nodes.length);
+          oldAlias[nodes.length - 1] = mNode.getAlias();
+          byte[] oldAliasKey =
+              RocksDBUtils.toAliasNodeKey(RocksDBUtils.getLevelPath(oldAlias, oldAlias.length - 1));
+          batch.delete(oldAliasKey);
+        }
+        // TODO: need application lock
+        readWriteHandler.executeBatch(batch);
+      }
+
+      WriteBatch batch = new WriteBatch();
+      boolean hasUpdate = false;
+      if (tagsMap != null && !tagsMap.isEmpty()) {
+        if (mNode.getTags() == null) {
+          mNode.setTags(tagsMap);
+        } else {
+          mNode.getTags().putAll(tagsMap);
+        }
+        batch.put(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), originKey, EMPTY_NODE_VALUE);
+        hasUpdate = true;
+      }
+      if (attributesMap != null && !attributesMap.isEmpty()) {
+        if (mNode.getAttributes() == null) {
+          mNode.setAttributes(attributesMap);
+        } else {
+          mNode.getAttributes().putAll(attributesMap);
+        }
+        hasUpdate = true;
+      }
+
+      if (hasUpdate) {
+        batch.put(originKey, mNode.getRocksDBValue());
+        readWriteHandler.executeBatch(batch);
+      }
     } catch (RocksDBException e) {
-
+      throw new MetadataException(e);
     }
-
-    if (StringUtils.isNotEmpty(alias)) {}
   }
 
-  private void updateAlias(String alias, PartialPath fullPath) {}
+  @Override
+  public void addAttributes(Map<String, String> attributesMap, PartialPath path)
+      throws MetadataException, IOException {
+    if (attributesMap == null || attributesMap.isEmpty()) {
+      return;
+    }
+
+    String levelPath = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+    byte[] key = RocksDBUtils.toMeasurementNodeKey(levelPath);
+    Holder<byte[]> holder = new Holder<>();
+    try {
+      if (!readWriteHandler.keyExist(key, holder)) {
+        throw new PathNotExistException(path.getFullPath());
+      }
+
+      byte[] originValue = holder.getValue();
+      RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
+      if (mNode.getAttributes() != null) {
+        for (Map.Entry<String, String> entry : attributesMap.entrySet()) {
+          if (mNode.getAttributes().containsKey(entry.getKey())) {
+            throw new MetadataException(
+                String.format("TimeSeries [%s] already has the attribute [%s].", path, key));
+          }
+        }
+        attributesMap.putAll(mNode.getAttributes());
+      }
+      mNode.setAttributes(attributesMap);
+      readWriteHandler.updateNode(levelPath, key, mNode.getRocksDBValue());
+    } catch (RocksDBException | InterruptedException e) {
+      throw new MetadataException(e);
+    }
+  }
 
   @Override
-  public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
-      throws MetadataException, IOException {}
+  public void addTags(Map<String, String> tagsMap, PartialPath path)
+      throws MetadataException, IOException {
+    if (tagsMap == null || tagsMap.isEmpty()) {
+      return;
+    }
+
+    String levelPath = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+    byte[] key = RocksDBUtils.toMeasurementNodeKey(levelPath);
+    Holder<byte[]> holder = new Holder<>();
+    try {
+      if (!readWriteHandler.keyExist(key, holder)) {
+        throw new PathNotExistException(path.getFullPath());
+      }
+
+      byte[] originValue = holder.getValue();
+      RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
+      boolean hasTags = false;
+      if (mNode.getTags() != null && mNode.getTags().size() > 0) {
+        hasTags = true;
+        for (Map.Entry<String, String> entry : tagsMap.entrySet()) {
+          if (mNode.getTags().containsKey(entry.getKey())) {
+            throw new MetadataException(
+                String.format("TimeSeries [%s] already has the tag [%s].", path, key));
+          }
+          tagsMap.putAll(mNode.getTags());
+        }
+      }
+      mNode.setTags(tagsMap);
+      WriteBatch batch = new WriteBatch();
+      if (!hasTags) {
+        batch.put(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key, EMPTY_NODE_VALUE);
+      }
+      batch.put(key, mNode.getRocksDBValue());
+      // TODO: need application lock
+      readWriteHandler.executeBatch(batch);
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
+    }
+  }
 
   @Override
-  public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
-      throws MetadataException, IOException {}
+  public void dropTagsOrAttributes(Set<String> keySet, PartialPath path)
+      throws MetadataException, IOException {
+    if (keySet == null || keySet.isEmpty()) {
+      return;
+    }
+    String levelPath = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+    byte[] key = RocksDBUtils.toMeasurementNodeKey(levelPath);
+    Holder<byte[]> holder = new Holder<>();
+    try {
+      if (!readWriteHandler.keyExist(key, holder)) {
+        throw new PathNotExistException(path.getFullPath());
+      }
+
+      byte[] originValue = holder.getValue();
+      RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
+      int tagLen = mNode.getTags() == null ? 0 : mNode.getTags().size();
+
+      boolean didAnyUpdate = false;
+      for (String toDelete : keySet) {
+        didAnyUpdate = false;
+        if (mNode.getTags() != null && mNode.getTags().containsKey(toDelete)) {
+          mNode.getTags().remove(toDelete);
+          didAnyUpdate = true;
+        }
+        if (mNode.getAttributes() != null && mNode.getAttributes().containsKey(toDelete)) {
+          mNode.getAttributes().remove(toDelete);
+          didAnyUpdate = true;
+        }
+        if (!didAnyUpdate) {
+          logger.warn("TimeSeries [{}] does not have tag/attribute [{}]", path, toDelete);
+        }
+      }
+      if (didAnyUpdate) {
+        WriteBatch batch = new WriteBatch();
+        if (tagLen > 0 && mNode.getTags().size() <= 0) {
+          batch.delete(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key);
+        }
+        batch.put(key, mNode.getRocksDBValue());
+        readWriteHandler.executeBatch(batch);
+      }
+
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
+    }
+  }
 
   @Override
-  public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
-      throws MetadataException, IOException {}
+  public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath path)
+      throws MetadataException, IOException {
+    if (alterMap == null || alterMap.isEmpty()) {
+      return;
+    }
+
+    String levelPath = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+    byte[] key = RocksDBUtils.toMeasurementNodeKey(levelPath);
+    Holder<byte[]> holder = new Holder<>();
+    try {
+      if (!readWriteHandler.keyExist(key, holder)) {
+        throw new PathNotExistException(path.getFullPath());
+      }
+
+      byte[] originValue = holder.getValue();
+      RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
+      boolean didAnyUpdate = false;
+      for (Map.Entry<String, String> entry : alterMap.entrySet()) {
+        didAnyUpdate = false;
+        if (mNode.getTags() != null && mNode.getTags().containsKey(entry.getKey())) {
+          mNode.getTags().put(entry.getKey(), entry.getValue());
+          didAnyUpdate = true;
+        }
+        if (mNode.getAttributes() != null && mNode.getAttributes().containsKey(entry.getKey())) {
+          mNode.getAttributes().put(entry.getKey(), entry.getValue());
+          didAnyUpdate = true;
+        }
+        if (!didAnyUpdate) {
+          throw new MetadataException(
+              String.format("TimeSeries [%s] does not have tag/attribute [%s].", path, key), true);
+        }
+      }
+
+      if (didAnyUpdate) {
+        readWriteHandler.updateNode(levelPath, key, mNode.getRocksDBValue());
+      }
+    } catch (RocksDBException | InterruptedException e) {
+      throw new MetadataException(e);
+    }
+  }
 
   @Override
-  public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
-      throws MetadataException, IOException {}
+  public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath path)
+      throws MetadataException, IOException {
+    if (StringUtils.isEmpty(oldKey) || StringUtils.isEmpty(newKey)) {
+      return;
+    }
 
-  @Override
-  public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
-      throws MetadataException, IOException {}
+    String levelPath = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+    byte[] nodeKey = RocksDBUtils.toMeasurementNodeKey(levelPath);
+    Holder<byte[]> holder = new Holder<>();
+    try {
+      if (!readWriteHandler.keyExist(nodeKey, holder)) {
+        throw new PathNotExistException(path.getFullPath());
+      }
+
+      byte[] originValue = holder.getValue();
+      RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
+      boolean didAnyUpdate = false;
+      if (mNode.getTags() != null && mNode.getTags().containsKey(oldKey)) {
+        String value = mNode.getTags().get(oldKey);
+        mNode.getTags().remove(oldKey);
+        mNode.getTags().put(newKey, value);
+        didAnyUpdate = true;
+      }
+
+      if (mNode.getAttributes() != null && mNode.getAttributes().containsKey(oldKey)) {
+        String value = mNode.getAttributes().get(oldKey);
+        mNode.getAttributes().remove(oldKey);
+        mNode.getAttributes().put(newKey, value);
+        didAnyUpdate = true;
+      }
+
+      if (didAnyUpdate) {
+        readWriteHandler.updateNode(levelPath, nodeKey, mNode.getRocksDBValue());
+      } else {
+        throw new MetadataException(
+            String.format("TimeSeries [%s] does not have tag/attribute [%s].", path, oldKey), true);
+      }
+    } catch (RocksDBException | InterruptedException e) {
+      throw new MetadataException(e);
+    }
+  }
   // endregion
 
   // region Interfaces only for Cluster module usage

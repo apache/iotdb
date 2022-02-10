@@ -4,6 +4,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.primitives.Bytes;
@@ -121,7 +122,7 @@ public class RocksDBUtils {
   }
 
   public static byte[] buildMeasurementNodeValue(
-      MeasurementSchema schema,
+      IMeasurementSchema schema,
       String alias,
       Map<String, String> tags,
       Map<String, String> attributes)
