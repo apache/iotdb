@@ -794,6 +794,13 @@ public class IoTDBConfig {
    */
   private boolean enableIDTableLogFile = false;
 
+  /** Encryption provider class */
+  private String encryptDecryptProvider =
+      "org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt";
+
+  /** Encryption provided class parameter */
+  private String encryptDecryptProviderParameter;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -2490,5 +2497,21 @@ public class IoTDBConfig {
 
   public void setEnableIDTableLogFile(boolean enableIDTableLogFile) {
     this.enableIDTableLogFile = enableIDTableLogFile;
+  }
+
+  public String getEncryptDecryptProvider() {
+    return encryptDecryptProvider;
+  }
+
+  public void setEncryptDecryptProvider(String encryptDecryptProvider) {
+    this.encryptDecryptProvider = encryptDecryptProvider;
+  }
+
+  public String getEncryptDecryptProviderParameter() {
+    return encryptDecryptProviderParameter;
+  }
+
+  public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
+    this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
   }
 }

@@ -759,6 +759,15 @@ public class IoTDBDescriptor {
                   "insert_multi_tablet_enable_multithreading_column_threshold",
                   String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
 
+      conf.setEncryptDecryptProvider(
+          properties.getProperty(
+              "iotdb_server_encrypt_decrypt_provider", conf.getEncryptDecryptProvider()));
+
+      conf.setEncryptDecryptProviderParameter(
+          properties.getProperty(
+              "iotdb_server_encrypt_decrypt_provider_parameter",
+              conf.getEncryptDecryptProviderParameter()));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()
