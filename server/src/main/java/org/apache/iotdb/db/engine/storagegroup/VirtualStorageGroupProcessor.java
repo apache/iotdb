@@ -1771,7 +1771,6 @@ public class VirtualStorageGroupProcessor {
       Filter timeFilter)
       throws QueryProcessException {
     readLock();
-
     try {
       List<TsFileResource> seqResources =
           getFileResourceListForQuery(

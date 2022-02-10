@@ -233,21 +233,26 @@ public class CrossSpaceCompactionExceptionHandler {
         tsFileManager.getUnsequenceListByTimePartition(unseqFileList.get(0).getTimePartition());
     TsFileResourceList seqTsFileResourceList =
         tsFileManager.getSequenceListByTimePartition(seqFileList.get(0).getTimePartition());
-    for (TsFileResource unseqFile : unseqFileList) {
-      unseqFile.remove();
-      unseqFile.setDeleted(true);
-      unseqTsFileResourceList.remove(unseqFile);
-    }
+    tsFileManager.writeLock("CrossSpaceCompactionExceptionHandler");
+    try {
+      for (TsFileResource unseqFile : unseqFileList) {
+        unseqFile.remove();
+        unseqFile.setDeleted(true);
+        unseqTsFileResourceList.remove(unseqFile);
+      }
 
-    for (TsFileResource seqFile : seqFileList) {
-      seqFile.remove();
-      seqFile.setDeleted(true);
-      seqTsFileResourceList.remove(seqFile);
-    }
+      for (TsFileResource seqFile : seqFileList) {
+        seqFile.remove();
+        seqFile.setDeleted(true);
+        seqTsFileResourceList.remove(seqFile);
+      }
 
-    for (TsFileResource targetFile : targetResources) {
-      targetFile.setClosed(true);
-      seqTsFileResourceList.keepOrderInsert(targetFile);
+      for (TsFileResource targetFile : targetResources) {
+        targetFile.setClosed(true);
+        seqTsFileResourceList.keepOrderInsert(targetFile);
+      }
+    } finally {
+      tsFileManager.writeUnlock();
     }
 
     // delete compaction mods files

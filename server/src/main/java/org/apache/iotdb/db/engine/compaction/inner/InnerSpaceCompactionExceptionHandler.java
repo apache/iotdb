@@ -75,6 +75,7 @@ public class InnerSpaceCompactionExceptionHandler {
               targetTsFile,
               selectedTsFileResourceList,
               tsFileResourceList,
+              tsFileManager,
               false);
     } else {
       // some source file does not exists
@@ -143,6 +144,7 @@ public class InnerSpaceCompactionExceptionHandler {
       TsFileResource targetTsFile,
       List<TsFileResource> selectedTsFileResourceList,
       TsFileResourceList tsFileResourceList,
+      TsFileManager tsFileManager,
       boolean isRecover) {
     try {
       // all source file exists, delete the target file
@@ -182,7 +184,7 @@ public class InnerSpaceCompactionExceptionHandler {
         return false;
       }
       if (!isRecover) {
-        tsFileResourceList.writeLock();
+        tsFileManager.writeLock("InnerSpaceCompactionExceptionHandler");
         try {
           if (targetTsFile.isFileInList()) {
             // target tsfile is in the list, remove it
@@ -196,7 +198,7 @@ public class InnerSpaceCompactionExceptionHandler {
             }
           }
         } finally {
-          tsFileResourceList.writeUnlock();
+          tsFileManager.writeUnlock();
         }
       }
       if (!targetTsFile.remove()) {

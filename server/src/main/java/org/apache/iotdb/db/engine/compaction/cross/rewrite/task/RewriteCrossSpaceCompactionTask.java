@@ -172,17 +172,22 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   }
 
   private void updateTsFileResource() throws IOException {
-    for (TsFileResource resource : selectedSeqTsFileResourceList) {
-      TsFileResourceManager.getInstance().removeTsFileResource(resource);
-      tsFileManager.remove(resource, true);
-    }
-    for (TsFileResource resource : selectedUnSeqTsFileResourceList) {
-      TsFileResourceManager.getInstance().removeTsFileResource(resource);
-      tsFileManager.remove(resource, false);
-    }
-    for (TsFileResource resource : targetTsfileResourceList) {
-      tsFileManager.getSequenceListByTimePartition(timePartition).keepOrderInsert(resource);
-      TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+    tsFileManager.writeLock("RewriteCrossSpaceCompactionTask");
+    try {
+      for (TsFileResource resource : selectedSeqTsFileResourceList) {
+        TsFileResourceManager.getInstance().removeTsFileResource(resource);
+        tsFileManager.remove(resource, true);
+      }
+      for (TsFileResource resource : selectedUnSeqTsFileResourceList) {
+        TsFileResourceManager.getInstance().removeTsFileResource(resource);
+        tsFileManager.remove(resource, false);
+      }
+      for (TsFileResource resource : targetTsfileResourceList) {
+        tsFileManager.keepOrderInsert(resource, true);
+        TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+      }
+    } finally {
+      tsFileManager.writeUnlock();
     }
   }
 
