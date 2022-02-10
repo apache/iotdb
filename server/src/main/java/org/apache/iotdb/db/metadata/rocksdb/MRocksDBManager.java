@@ -36,6 +36,7 @@ import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -618,6 +619,11 @@ public class MRocksDBManager implements IMetaManager {
   // endregion
 
   // region Interfaces for metadata info Query
+  /**
+   * Check whether the path exists.
+   *
+   * @param path a full path or a prefix path
+   */
   @Override
   public boolean isPathExist(PartialPath path) throws MetadataException {
     String innerPathName = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength());
@@ -628,16 +634,23 @@ public class MRocksDBManager implements IMetaManager {
     }
   }
 
+  /** Get metadata in string */
   @Override
   public String getMetadataInString() {
     throw new UnsupportedOperationException("This operation is not supported.");
   }
 
+  // todo mem count
   @Override
   public long getTotalSeriesNumber() {
     return readWriteHandler.countNodesNumByType(null, RockDBConstants.NODE_TYPE_MEASUREMENT);
   }
 
+  /**
+   * To calculate the count of timeseries matching given path. The path could be a pattern of a full
+   * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
+   * path. All timeseries start with the matched prefix path will be counted.
+   */
   @Override
   public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
@@ -723,6 +736,11 @@ public class MRocksDBManager implements IMetaManager {
     return getAllTimeseriesCount(pathPattern, false);
   }
 
+  /**
+   * To calculate the count of devices for given path pattern. If using prefix match, the path
+   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
+   * counted.
+   */
   @Override
   public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
@@ -734,12 +752,26 @@ public class MRocksDBManager implements IMetaManager {
     return getDevicesNum(pathPattern, false);
   }
 
+  /**
+   * To calculate the count of storage group for given path pattern. If using prefix match, the path
+   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
+   * counted.
+   */
   @Override
   public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return getKeyNumByPrefix(pathPattern, NODE_TYPE_SG);
   }
 
+  /**
+   * To calculate the count of nodes in the given level for given path pattern. If using prefix
+   * match, the path pattern is used to match prefix path. All timeseries start with the matched
+   * prefix path will be counted.
+   *
+   * @param pathPattern a path pattern or a full path
+   * @param level the level should match the level of the path
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   */
   @Override
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
@@ -748,6 +780,12 @@ public class MRocksDBManager implements IMetaManager {
     return readWriteHandler.getKeyByPrefix(innerNameByLevel).size();
   }
 
+  /**
+   * To calculate the count of nodes in the given level for given path pattern.
+   *
+   * @param pathPattern a path pattern or a full path
+   * @param level the level should match the level of the path
+   */
   @Override
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
       throws MetadataException {
@@ -762,10 +800,48 @@ public class MRocksDBManager implements IMetaManager {
   // endregion
 
   // region Interfaces for level Node info Query
+  /**
+   * Get all nodes matching the given path pattern in the given level. The level of the path should
+   * match the nodeLevel. 1. The given level equals the path level with out **, e.g. give path
+   * root.*.d.* and the level should be 4. 2. The given level is greater than path level with **,
+   * e.g. give path root.** and the level could be 2 or 3.
+   *
+   * @param pathPattern can be a pattern of a full path.
+   * @param nodeLevel the level should match the level of the path
+   * @return A List instance which stores all node at given level
+   */
   @Override
   public List<PartialPath> getNodesListInGivenLevel(PartialPath pathPattern, int nodeLevel)
       throws MetadataException {
-    return null;
+    // TODO: ignore pathPattern with *, all nodeLevel are start from "root.*"
+    List<PartialPath> results = new ArrayList<>();
+    if (nodeLevel == 0) {
+      results.add(new PartialPath(RockDBConstants.ROOT));
+      return results;
+    }
+    // TODO: level one usually only contains small numbers, query in serialize
+    Set<String> paths;
+    StringBuilder builder = new StringBuilder();
+    if (nodeLevel <= 5) {
+      char level = (char) (ZERO + nodeLevel);
+      String prefix =
+          builder.append(RockDBConstants.ROOT).append(PATH_SEPARATOR).append(level).toString();
+      paths = getAllByPrefix(prefix);
+    } else {
+      paths = ConcurrentHashMap.newKeySet();
+      char upperLevel = (char) (ZERO + nodeLevel - 1);
+      String prefix =
+          builder.append(RockDBConstants.ROOT).append(PATH_SEPARATOR).append(upperLevel).toString();
+      Set<String> parentPaths = getAllByPrefix(prefix);
+      parentPaths
+          .parallelStream()
+          .forEach(
+              x -> {
+                String targetPrefix = getNextLevelOfPath(x, upperLevel);
+                paths.addAll(getAllByPrefix(targetPrefix));
+              });
+    }
+    return RocksDBUtils.convertToPartialPath(paths, nodeLevel);
   }
 
   @Override
@@ -775,6 +851,16 @@ public class MRocksDBManager implements IMetaManager {
     return getNodesListInGivenLevel(pathPattern, nodeLevel);
   }
 
+  /**
+   * Get child node in the next level of the given path pattern.
+   *
+   * <p>give pathPattern and the child nodes is those matching pathPattern.*
+   *
+   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
+   * return [d1, d2] given path = root.sg.d1 return [s1,s2]
+   *
+   * @return All child nodes of given seriesPath.
+   */
   @Override
   public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
     Set<String> result = new HashSet<>();
@@ -816,11 +902,33 @@ public class MRocksDBManager implements IMetaManager {
     }
   }
 
+  /** Check whether the given path contains a storage group */
   @Override
-  public boolean checkStorageGroupByPath(PartialPath path) {
+  public boolean checkStorageGroupByPath(PartialPath path) throws MetadataException {
+    String[] nodes = path.getNodes();
+    // ignore the first element: "root"
+    for (int i = 1; i < nodes.length; i++) {
+      String key = RocksDBUtils.getLevelPath(nodes, i);
+      byte[] value;
+      try {
+        if ((value = readWriteHandler.get(null, key.getBytes())) != null) {
+          return value.length > 0 && value[0] == NODE_TYPE_SG;
+        }
+      } catch (RocksDBException e) {
+        throw new MetadataException(e);
+      }
+    }
     return false;
   }
 
+  /**
+   * Get storage group name by path
+   *
+   * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
+   *
+   * @param path only full path, cannot be path pattern
+   * @return storage group in the given path
+   */
   @Override
   public PartialPath getBelongedStorageGroup(PartialPath path)
       throws StorageGroupNotSetException, IllegalPathException {
@@ -834,18 +942,37 @@ public class MRocksDBManager implements IMetaManager {
     return new PartialPath(RocksDBUtils.getPathByInnerName(innerPathName));
   }
 
+  /**
+   * Get the storage group that given path pattern matches or belongs to.
+   *
+   * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
+   * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
+   * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
+   *
+   * @param pathPattern a path pattern or a full path
+   * @return a list contains all storage groups related to given path pattern
+   */
   @Override
   public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
       throws MetadataException {
     return null;
   }
 
+  /**
+   * Get all storage group matching given path pattern. If using prefix match, the path pattern is
+   * used to match prefix path. All timeseries start with the matched prefix path will be collected.
+   *
+   * @param pathPattern a pattern of a full path
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   * @return A ArrayList instance which stores storage group paths matching given path pattern.
+   */
   @Override
   public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return null;
   }
 
+  /** Get all storage group paths */
   @Override
   public List<PartialPath> getAllStorageGroupPaths() throws IllegalPathException {
     List<PartialPath> allStorageGroupPath = new ArrayList<>();
@@ -857,6 +984,11 @@ public class MRocksDBManager implements IMetaManager {
     return allStorageGroupPath;
   }
 
+  /**
+   * get all storageGroups ttl
+   *
+   * @return key-> storageGroupPath, value->ttl
+   */
   @Override
   public Map<PartialPath, Long> getStorageGroupsTTL() throws IllegalPathException {
     Map<PartialPath, Long> allStorageGroupAndTTL = new HashMap<>();
@@ -880,17 +1012,38 @@ public class MRocksDBManager implements IMetaManager {
   // endregion
 
   // region Interfaces for Entity/Device info Query
+  /**
+   * Get all devices that one of the timeseries, matching the given timeseries path pattern, belongs
+   * to.
+   *
+   * @param timeseries a path pattern of the target timeseries
+   * @return A HashSet instance which stores devices paths.
+   */
   @Override
   public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
     return null;
   }
 
+  /**
+   * Get all device paths matching the path pattern. If using prefix match, the path pattern is used
+   * to match prefix path. All timeseries start with the matched prefix path will be collected.
+   *
+   * @param pathPattern the pattern of the target devices.
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path.
+   * @return A HashSet instance which stores devices paths matching the given path pattern.
+   */
   @Override
   public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return null;
   }
 
+  /**
+   * Get all device paths and according storage group paths as ShowDevicesResult.
+   *
+   * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
+   * @return ShowDevicesResult.
+   */
   @Override
   public List<ShowDevicesResult> getMatchedDevices(ShowDevicesPlan plan) throws MetadataException {
     return null;
@@ -898,18 +1051,41 @@ public class MRocksDBManager implements IMetaManager {
   // endregion
 
   // region Interfaces for timeseries, measurement and schema info Query
+  /**
+   * Return all measurement paths for given path if the path is abstract. Or return the path itself.
+   * Regular expression in this method is formed by the amalgamation of seriesPath and the character
+   * '*'. If using prefix match, the path pattern is used to match prefix path. All timeseries start
+   * with the matched prefix path will be collected.
+   *
+   * @param pathPattern can be a pattern or a full path of timeseries.
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   */
   @Override
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return null;
   }
 
+  /**
+   * Return all measurement paths for given path if the path is abstract. Or return the path itself.
+   * Regular expression in this method is formed by the amalgamation of seriesPath and the character
+   * '*'.
+   *
+   * @param pathPattern can be a pattern or a full path of timeseries.
+   */
   @Override
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
       throws MetadataException {
     return null;
   }
 
+  /**
+   * Similar to method getMeasurementPaths(), but return Path with alias and filter the result by
+   * limit and offset. If using prefix match, the path pattern is used to match prefix path. All
+   * timeseries start with the matched prefix path will be collected.
+   *
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   */
   @Override
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
@@ -923,6 +1099,11 @@ public class MRocksDBManager implements IMetaManager {
     return null;
   }
 
+  /**
+   * Get series type for given seriesPath.
+   *
+   * @param fullPath full path
+   */
   @Override
   public TSDataType getSeriesType(PartialPath fullPath) throws MetadataException {
     return null;
@@ -945,6 +1126,11 @@ public class MRocksDBManager implements IMetaManager {
     return null;
   }
 
+  /**
+   * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
+   * device], return the MNode of root.sg Get storage group node by path. If storage group is not
+   * set, StorageGroupNotSetException will be thrown
+   */
   @Override
   public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
       throws MetadataException {
@@ -968,6 +1154,7 @@ public class MRocksDBManager implements IMetaManager {
     return new StorageGroupEntityMNode(null, path.getFullPath(), (Long) ttl);
   }
 
+  /** Get storage group node by path. the give path don't need to be storage group path. */
   @Override
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
@@ -998,6 +1185,7 @@ public class MRocksDBManager implements IMetaManager {
     return new StorageGroupMNode(null, path.getFullPath(), (Long) ttl);
   }
 
+  /** Get all storage group MNodes */
   @Override
   public List<IStorageGroupMNode> getAllStorageGroupNodes() {
     List<IStorageGroupMNode> result = new ArrayList<>();
@@ -1043,6 +1231,11 @@ public class MRocksDBManager implements IMetaManager {
     return new EntityMNode(null, path.getFullPath());
   }
 
+  /**
+   * Invoked during insertPlan process. Get target MeasurementMNode from given EntityMNode. If the
+   * result is not null and is not MeasurementMNode, it means a timeseries with same path cannot be
+   * created thus throw PathAlreadyExistException.
+   */
   @Override
   public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
@@ -1062,7 +1255,19 @@ public class MRocksDBManager implements IMetaManager {
 
   @Override
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
-    return null;
+    String[] nodes = fullPath.getNodes();
+    String key = RocksDBUtils.getLevelPath(nodes, nodes.length - 1);
+    try {
+      byte[] value = readWriteHandler.get(null, key.getBytes());
+      if (value == null) {
+        logger.warn("path not exist: {}", key);
+        throw new MetadataException("key not exist");
+      }
+      IMeasurementMNode node = new MeasurementMNode(null, fullPath.getFullPath(), null, null);
+      return node;
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
+    }
   }
   // endregion
 
