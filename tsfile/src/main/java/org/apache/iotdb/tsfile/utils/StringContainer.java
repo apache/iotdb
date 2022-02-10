@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * this class is used to contact String effectively.It contains a StringBuider and initialize it
+ * this class is used to concatenate Strings effectively.It contains a StringBuilder and initialize it
  * until {@code toString} is called. Note:it's not thread safety
  */
 public class StringContainer {
