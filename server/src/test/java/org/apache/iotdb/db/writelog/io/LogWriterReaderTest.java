@@ -31,10 +31,13 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.CRC32;
 
 import static org.junit.Assert.assertEquals;
 
@@ -90,6 +93,104 @@ public class LogWriterReaderTest {
         assertEquals(plans.get(i), res.get(i));
       }
       reader.close();
+    } finally {
+      new File(filePath).delete();
+    }
+  }
+
+  @Test
+  public void testReachEOF() throws IOException {
+    try {
+      // write normal data
+      LogWriter writer =
+          new LogWriter(
+              filePath, IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs() == 0);
+      writer.write(logsBuffer);
+      writer.force();
+      writer.close();
+      long expectedLength = new File(filePath).length();
+
+      // just write partial content
+      FileChannel channel = new FileOutputStream(filePath, true).getChannel();
+      ByteBuffer logBuffer = ByteBuffer.allocate(4 * 30);
+      for (int i = 0; i < 20; ++i) {
+        logBuffer.putInt(Integer.MIN_VALUE);
+      }
+      logBuffer.flip();
+      ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
+      lengthBuffer.putInt(logBuffer.capacity());
+      lengthBuffer.flip();
+
+      channel.write(lengthBuffer);
+      channel.write(logBuffer);
+      channel.force(true);
+      channel.close();
+
+      // read & check
+      SingleFileLogReader reader = new SingleFileLogReader(new File(filePath));
+      List<PhysicalPlan> res = new ArrayList<>();
+      while (reader.hasNext()) {
+        res.add(reader.next());
+      }
+      for (int i = 0; i < plans.size(); i++) {
+        assertEquals(plans.get(i), res.get(i));
+      }
+      reader.close();
+      assertEquals(expectedLength, new File(filePath).length());
+    } finally {
+      new File(filePath).delete();
+    }
+  }
+
+  @Test
+  public void testTruncateBrokenLogs() throws IOException {
+    try {
+      // write normal data
+      LogWriter writer =
+          new LogWriter(
+              filePath, IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs() == 0);
+      writer.write(logsBuffer);
+      writer.force();
+      writer.close();
+      long expectedLength = new File(filePath).length();
+
+      // write broken data
+      FileChannel channel = new FileOutputStream(filePath, true).getChannel();
+      ByteBuffer logBuffer = ByteBuffer.allocate(4 * 30);
+      for (int i = 0; i < 30; ++i) {
+        logBuffer.putInt(Integer.MIN_VALUE);
+      }
+      logBuffer.flip();
+
+      ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
+      lengthBuffer.putInt(logBuffer.limit());
+      lengthBuffer.flip();
+
+      CRC32 checkSummer = new CRC32();
+      checkSummer.reset();
+      checkSummer.update(logBuffer);
+      ByteBuffer checkSumBuffer = ByteBuffer.allocate(8);
+      checkSumBuffer.putLong(checkSummer.getValue());
+      logBuffer.flip();
+      checkSumBuffer.flip();
+
+      channel.write(lengthBuffer);
+      channel.write(logBuffer);
+      channel.write(checkSumBuffer);
+      channel.force(true);
+      channel.close();
+
+      // read & check
+      SingleFileLogReader reader = new SingleFileLogReader(new File(filePath));
+      List<PhysicalPlan> res = new ArrayList<>();
+      while (reader.hasNext()) {
+        res.add(reader.next());
+      }
+      for (int i = 0; i < plans.size(); i++) {
+        assertEquals(plans.get(i), res.get(i));
+      }
+      reader.close();
+      assertEquals(expectedLength, new File(filePath).length());
     } finally {
       new File(filePath).delete();
     }
