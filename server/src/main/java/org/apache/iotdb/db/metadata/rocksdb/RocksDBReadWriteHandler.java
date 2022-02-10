@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.metadata.rocksdb;
 
+import java.util.Arrays;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -50,6 +51,7 @@ import java.util.function.Function;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
 
 public class RocksDBReadWriteHandler {
+
   private static final Logger logger = LoggerFactory.getLogger(RocksDBReadWriteHandler.class);
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -59,7 +61,7 @@ public class RocksDBReadWriteHandler {
   private static final String ROCKSDB_FOLDER = "rocksdb-schema";
 
   private static final String[] INNER_TABLES =
-      new String[] {new String(RocksDB.DEFAULT_COLUMN_FAMILY), TABLE_NAME_TAGS};
+      new String[]{new String(RocksDB.DEFAULT_COLUMN_FAMILY), TABLE_NAME_TAGS};
 
   public static final String ROCKSDB_PATH = config.getSystemDir() + File.separator + ROCKSDB_FOLDER;
 
@@ -132,7 +134,7 @@ public class RocksDBReadWriteHandler {
   private void initRootKey() throws RocksDBException {
     byte[] rootKey = RocksDBUtils.toRocksDBKey(ROOT, NODE_TYPE_ROOT);
     if (!keyExist(rootKey)) {
-      rocksDB.put(rootKey, new byte[] {DATA_VERSION, DEFAULT_FLAG});
+      rocksDB.put(rootKey, new byte[]{DATA_VERSION, DEFAULT_FLAG});
     }
   }
 
@@ -318,7 +320,7 @@ public class RocksDBReadWriteHandler {
 
   public boolean keyExistByType(String levelKey, RocksDBMNodeType type, Holder<byte[]> holder)
       throws RocksDBException {
-    byte[] key = Bytes.concat(new byte[] {type.value}, levelKey.getBytes());
+    byte[] key = Bytes.concat(new byte[]{type.value}, levelKey.getBytes());
     return keyExist(key, holder);
   }
 
@@ -329,12 +331,12 @@ public class RocksDBReadWriteHandler {
   public CheckKeyResult keyExistByAllTypes(String levelKey, Holder<byte[]> holder)
       throws RocksDBException {
     RocksDBMNodeType[] types =
-        new RocksDBMNodeType[] {
-          RocksDBMNodeType.ALISA,
-          RocksDBMNodeType.ENTITY,
-          RocksDBMNodeType.INTERNAL,
-          RocksDBMNodeType.MEASUREMENT,
-          RocksDBMNodeType.STORAGE_GROUP
+        new RocksDBMNodeType[]{
+            RocksDBMNodeType.ALISA,
+            RocksDBMNodeType.ENTITY,
+            RocksDBMNodeType.INTERNAL,
+            RocksDBMNodeType.MEASUREMENT,
+            RocksDBMNodeType.STORAGE_GROUP
         };
     return keyExistByTypes(levelKey, holder, types);
   }
@@ -349,7 +351,7 @@ public class RocksDBReadWriteHandler {
     // TODO: compare the performance between two methods
     CheckKeyResult result = new CheckKeyResult();
     for (RocksDBMNodeType type : types) {
-      byte[] key = Bytes.concat(new byte[] {type.value}, levelKey.getBytes());
+      byte[] key = Bytes.concat(new byte[]{type.value}, levelKey.getBytes());
       if (keyExist(key, holder)) {
         result.setSingleCheckValue(type.value, keyExist(key, holder));
         break;
@@ -469,7 +471,9 @@ public class RocksDBReadWriteHandler {
     return counter.get();
   }
 
-  /** To calculate the count of devices for given path pattern. */
+  /**
+   * To calculate the count of devices for given path pattern.
+   */
   public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
     AtomicInteger counter = new AtomicInteger(0);
     Set<String> seeds = new HashSet<>();
@@ -490,6 +494,70 @@ public class RocksDBReadWriteHandler {
           return true;
         });
     return counter.get();
+  }
+
+  /**
+   * Count the number of keys with the specified prefix in the specified column family
+   *
+   * @param columnFamilyHandle specified column family handle
+   * @param nodeType           specified prefix
+   * @return total number in this column family
+   */
+  public long countNodesNumByType(ColumnFamilyHandle columnFamilyHandle, byte nodeType) {
+    RocksIterator iter;
+    if (columnFamilyHandle == null) {
+      iter = rocksDB.newIterator();
+    } else {
+      iter = rocksDB.newIterator(columnFamilyHandle);
+    }
+    long count = 0;
+    for (iter.seek(new byte[]{nodeType}); iter.isValid(); iter.next()) {
+      if (iter.key()[0] == nodeType) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  public byte[] get(ColumnFamilyHandle columnFamilyHandle, byte[] key) throws RocksDBException {
+    if (columnFamilyHandle == null) {
+      return rocksDB.get(key);
+    }
+    return rocksDB.get(columnFamilyHandle, key);
+  }
+
+  public RocksIterator iterator(ColumnFamilyHandle columnFamilyHandle) {
+    if (columnFamilyHandle == null) {
+      return rocksDB.newIterator();
+    }
+    return rocksDB.newIterator(columnFamilyHandle);
+  }
+
+  public Set<String> getKeyByPrefix(String innerName) {
+    RocksIterator iterator = rocksDB.newIterator();
+    Set<String> result = new HashSet<>();
+    for (iterator.seek(innerName.getBytes()); iterator.isValid(); iterator.next()) {
+      String keyStr = new String(iterator.key());
+      if (!keyStr.startsWith(innerName)) {
+        break;
+      }
+      result.add(keyStr);
+    }
+    return result;
+  }
+
+  public String findBelongToSpecifiedNodeType(
+      String[] nodes, byte nodeType) {
+    String innerPathName;
+    for (int level = nodes.length; level > 0; level--) {
+      String[] copy = Arrays.copyOf(nodes, level);
+      innerPathName = RocksDBUtils.convertPartialPathToInnerByNodes(copy, level, nodeType);
+      boolean isBelongToType = rocksDB.keyMayExist(innerPathName.getBytes(), new Holder<>());
+      if (isBelongToType) {
+        return innerPathName;
+      }
+    }
+    return null;
   }
 
   @TestOnly

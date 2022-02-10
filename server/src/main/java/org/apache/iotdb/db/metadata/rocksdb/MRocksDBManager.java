@@ -19,10 +19,18 @@
 
 package org.apache.iotdb.db.metadata.rocksdb;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -30,9 +38,12 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.IMetaManager;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
@@ -70,6 +81,7 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.commons.lang3.StringUtils;
 import org.rocksdb.Holder;
 import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
 import org.rocksdb.WriteBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,7 +94,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -139,7 +153,8 @@ public class MRocksDBManager implements IMetaManager {
 
   // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
   @Override
-  public void init() {}
+  public void init() {
+  }
 
   @Override
   public void createMTreeSnapshot() {
@@ -148,24 +163,30 @@ public class MRocksDBManager implements IMetaManager {
 
   @TestOnly
   @Override
-  public void clear() {}
+  public void clear() {
+  }
 
   @Override
-  public void operation(PhysicalPlan plan) throws IOException, MetadataException {}
+  public void operation(PhysicalPlan plan) throws IOException, MetadataException {
+  }
   // endregion
 
   // region Interfaces for CQ
   @Override
-  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws MetadataException {}
+  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws MetadataException {
+  }
 
   @Override
-  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws MetadataException {}
+  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws MetadataException {
+  }
 
   @Override
-  public void writeCreateContinuousQueryLog(CreateContinuousQueryPlan plan) throws IOException {}
+  public void writeCreateContinuousQueryLog(CreateContinuousQueryPlan plan) throws IOException {
+  }
 
   @Override
-  public void writeDropContinuousQueryLog(DropContinuousQueryPlan plan) throws IOException {}
+  public void writeDropContinuousQueryLog(DropContinuousQueryPlan plan) throws IOException {
+  }
   // endregion
 
   // region Interfaces and Implementation for Timeseries operation
@@ -188,9 +209,9 @@ public class MRocksDBManager implements IMetaManager {
   /**
    * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
    *
-   * @param path the timeseries path
-   * @param dataType the dateType {@code DataType} of the timeseries
-   * @param encoding the encoding function {@code Encoding} of the timeseries
+   * @param path       the timeseries path
+   * @param dataType   the dateType {@code DataType} of the timeseries
+   * @param encoding   the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
    */
   @Override
@@ -207,9 +228,9 @@ public class MRocksDBManager implements IMetaManager {
   /**
    * Add one timeseries to metadata, if the timeseries already exists, throw exception
    *
-   * @param path the timeseries path
-   * @param dataType the dateType {@code DataType} of the timeseries
-   * @param encoding the encoding function {@code Encoding} of the timeseries
+   * @param path       the timeseries path
+   * @param dataType   the dateType {@code DataType} of the timeseries
+   * @param encoding   the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
    */
   public void createTimeseries(
@@ -455,8 +476,8 @@ public class MRocksDBManager implements IMetaManager {
         byte[] nodeKey = RocksDBUtils.toEntityNodeKey(levelPath);
         byte[] value =
             aligned
-                ? new byte[] {DATA_VERSION, FLAG_IS_ALIGNED}
-                : new byte[] {DATA_VERSION, DEFAULT_FLAG};
+                ? new byte[]{DATA_VERSION, FLAG_IS_ALIGNED}
+                : new byte[]{DATA_VERSION, DEFAULT_FLAG};
         readWriteHandler.createNode(levelPath, nodeKey, value);
       } else {
         readWriteHandler.createNode(
@@ -594,58 +615,139 @@ public class MRocksDBManager implements IMetaManager {
 
   // region Interfaces for metadata info Query
   @Override
-  public boolean isPathExist(PartialPath path) {
-    return false;
+  public boolean isPathExist(PartialPath path) throws MetadataException {
+    String innerPathName = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength());
+    try {
+      return readWriteHandler.keyExist(RocksDBUtils.toStorageNodeKey(innerPathName));
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
+    }
   }
 
   @Override
   public String getMetadataInString() {
-    return null;
+    throw new UnsupportedOperationException("This operation is not supported.");
   }
 
   @Override
   public long getTotalSeriesNumber() {
-    return 0;
+    return readWriteHandler.countNodesNumByType(null, RockDBConstants.NODE_TYPE_MEASUREMENT);
   }
 
   @Override
   public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return 0;
+    return getKeyNumByPrefix(pathPattern, NODE_TYPE_MEASUREMENT);
+  }
+
+  private int getKeyNumByPrefix(PartialPath pathPattern, byte nodeType) throws MetadataException {
+    AtomicInteger counter = new AtomicInteger(0);
+    Set<String> seeds = new HashSet<>();
+
+    String seedPath;
+
+    int nonWildcardAvailablePosition =
+        pathPattern.getFullPath().indexOf(ONE_LEVEL_PATH_WILDCARD) - 1;
+    if (nonWildcardAvailablePosition < 0) {
+      seedPath = RocksDBUtils.getLevelPath(pathPattern.getNodes(), pathPattern.getNodeLength());
+    } else {
+      seedPath = pathPattern.getFullPath().substring(0, nonWildcardAvailablePosition);
+    }
+
+    seeds.add(seedPath);
+    scanAllKeysRecursively(
+        seeds,
+        0,
+        s -> {
+          try {
+            byte[] value = readWriteHandler.get(null, s.getBytes());
+            if (value != null && value.length > 0 && value[0] == nodeType) {
+              counter.incrementAndGet();
+              return false;
+            }
+          } catch (RocksDBException e) {
+            return false;
+          }
+          return true;
+        });
+    return counter.get();
+  }
+
+  private void scanAllKeysRecursively(Set<String> seeds, int level, Function<String, Boolean> op) {
+    if (seeds == null || seeds.isEmpty()) {
+      return;
+    }
+    Set<String> children = ConcurrentHashMap.newKeySet();
+    seeds
+        .parallelStream()
+        .forEach(
+            x -> {
+              if (op.apply(x)) {
+                // x is not leaf node
+                String childrenPrefix = getNextLevelOfPath(x, level);
+                children.addAll(getAllByPrefix(childrenPrefix));
+              }
+            });
+    if (!children.isEmpty()) {
+      scanAllKeysRecursively(children, level + 1, op);
+    }
+  }
+
+  private Set<String> getAllByPrefix(String prefix) {
+    Set<String> result = new HashSet<>();
+    byte[] prefixKey = prefix.getBytes();
+    RocksIterator iterator = readWriteHandler.iterator(null);
+    for (iterator.seek(prefixKey); iterator.isValid(); iterator.next()) {
+      String key = new String(iterator.key());
+      if (!key.startsWith(prefix)) {
+        break;
+      }
+      result.add(key);
+    }
+    return result;
+  }
+
+  private String getNextLevelOfPath(String innerPath, int currentLevel) {
+    char levelChar = (char) (ZERO + currentLevel);
+    String old = PATH_SEPARATOR + levelChar;
+    String target = PATH_SEPARATOR + (char) (levelChar + 1);
+    return innerPath.replace(old, target);
   }
 
   @Override
   public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
-    return 0;
+    return getAllTimeseriesCount(pathPattern, false);
   }
 
   @Override
   public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return 0;
+    return getKeyNumByPrefix(pathPattern, NODE_TYPE_ENTITY);
   }
 
   @Override
   public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
-    return 0;
+    return getDevicesNum(pathPattern, false);
   }
 
   @Override
   public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return 0;
+    return getKeyNumByPrefix(pathPattern, NODE_TYPE_SG);
   }
 
   @Override
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
-    return 0;
+    String innerNameByLevel =
+        RocksDBUtils.getLevelPath(pathPattern.getNodes(), pathPattern.getNodeLength(), level);
+    return readWriteHandler.getKeyByPrefix(innerNameByLevel).size();
   }
 
   @Override
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
       throws MetadataException {
-    return 0;
+    return getNodesCountInGivenLevel(pathPattern, level, false);
   }
 
   @Override
@@ -666,24 +768,49 @@ public class MRocksDBManager implements IMetaManager {
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, MManager.StorageGroupFilter filter)
       throws MetadataException {
-    return null;
+    return getNodesListInGivenLevel(pathPattern, nodeLevel);
   }
 
   @Override
   public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
-    return null;
+    Set<String> result = new HashSet<>();
+    String innerNameByLevel =
+        RocksDBUtils.getLevelPath(
+            pathPattern.getNodes(), pathPattern.getNodeLength(), pathPattern.getNodeLength() + 1);
+    Set<String> allKeyByPrefix = readWriteHandler.getKeyByPrefix(innerNameByLevel);
+    for (String str : allKeyByPrefix) {
+      result.add(RocksDBUtils.getPathByInnerName(str));
+    }
+    return result;
   }
 
   @Override
   public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
-    return null;
+    Set<String> result = new HashSet<>();
+    String innerNameByLevel =
+        RocksDBUtils.getLevelPath(
+            pathPattern.getNodes(), pathPattern.getNodeLength(), pathPattern.getNodeLength() + 1);
+    Set<String> allKeyByPrefix = readWriteHandler.getKeyByPrefix(innerNameByLevel);
+    for (String str : allKeyByPrefix) {
+      result.add(RocksDBUtils.getPathByInnerName(str));
+    }
+    return result;
   }
   // endregion
 
   // region Interfaces for StorageGroup and TTL info Query
   @Override
-  public boolean isStorageGroup(PartialPath path) {
-    return false;
+  public boolean isStorageGroup(PartialPath path) throws MetadataException {
+    int level = RocksDBUtils.getLevelByPartialPath(path.getFullPath());
+    String innerPathName =
+        RocksDBUtils.convertPartialPathToInner(
+            path.getFullPath(), level, RockDBConstants.NODE_TYPE_SG);
+    try {
+      return readWriteHandler.keyExist(innerPathName.getBytes());
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
+    }
+
   }
 
   @Override
@@ -692,8 +819,17 @@ public class MRocksDBManager implements IMetaManager {
   }
 
   @Override
-  public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
-    return null;
+  public PartialPath getBelongedStorageGroup(PartialPath path)
+      throws StorageGroupNotSetException, IllegalPathException {
+    String innerPathName =
+        readWriteHandler.findBelongToSpecifiedNodeType(
+            path.getNodes(), RockDBConstants.NODE_TYPE_SG);
+    if (innerPathName == null) {
+      throw new StorageGroupNotSetException(
+          String.format("Cannot find [%s] belong to which storage group.", path.getFullPath()));
+    }
+    return new PartialPath(
+        RocksDBUtils.getPathByInnerName(innerPathName));
   }
 
   @Override
@@ -709,13 +845,35 @@ public class MRocksDBManager implements IMetaManager {
   }
 
   @Override
-  public List<PartialPath> getAllStorageGroupPaths() {
-    return null;
+  public List<PartialPath> getAllStorageGroupPaths() throws IllegalPathException {
+    List<PartialPath> allStorageGroupPath = new ArrayList<>();
+    Set<String> allStorageGroupInnerName =
+        readWriteHandler.getKeyByPrefix(String.valueOf(NODE_TYPE_SG));
+    for (String str : allStorageGroupInnerName) {
+      allStorageGroupPath.add(new PartialPath(RocksDBUtils.getPathByInnerName(str)));
+    }
+    return allStorageGroupPath;
   }
 
   @Override
-  public Map<PartialPath, Long> getStorageGroupsTTL() {
-    return null;
+  public Map<PartialPath, Long> getStorageGroupsTTL() throws IllegalPathException {
+    Map<PartialPath, Long> allStorageGroupAndTTL = new HashMap<>();
+    RocksIterator iterator = readWriteHandler.iterator(null);
+
+    for (iterator.seek(new byte[]{NODE_TYPE_SG}); iterator.isValid(); iterator.next()) {
+      if (iterator.key()[0] != (NODE_TYPE_SG)) {
+        break;
+      }
+      byte[] value = iterator.value();
+      String key = new String(iterator.key());
+      Object ttl = RocksDBUtils.parseNodeValue(value, RockDBConstants.FLAG_SET_TTL);
+      // initialize a value
+      if (ttl == null) {
+        ttl = 0L;
+      }
+      allStorageGroupAndTTL.put(new PartialPath(RocksDBUtils.getPathByInnerName(key)), (Long) ttl);
+    }
+    return allStorageGroupAndTTL;
   }
   // endregion
 
@@ -788,28 +946,116 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
       throws MetadataException {
-    return null;
+    String innerName =
+        RocksDBUtils.convertPartialPathToInner(
+            path.getFullPath(), path.getNodeLength(), NODE_TYPE_SG);
+    byte[] value = new byte[0];
+    try {
+      value = readWriteHandler.get(null, innerName.getBytes());
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
+    }
+    if (value == null) {
+      throw new StorageGroupNotSetException(
+          String.format("Can not find storage group by path : %s", path.getFullPath()));
+    }
+    Object ttl = RocksDBUtils.parseNodeValue(value, RockDBConstants.FLAG_SET_TTL);
+    if (ttl == null) {
+      ttl = 0L;
+    }
+    return new StorageGroupEntityMNode(null, path.getFullPath(), (Long) ttl);
   }
 
   @Override
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
-    return null;
+    String[] nodes = path.getNodes();
+    byte[] innerPathName;
+    int i;
+    byte[] value = null;
+    for (i = nodes.length; i > 0; i--) {
+      String[] copy = Arrays.copyOf(nodes, i);
+      innerPathName = RocksDBUtils.toStorageNodeKey(RocksDBUtils.getLevelPath(copy, copy.length));
+      try {
+        value = readWriteHandler.get(null, innerPathName);
+      } catch (RocksDBException e) {
+        throw new MetadataException(e);
+      }
+      if (value != null) {
+        break;
+      }
+    }
+    if (value == null) {
+      throw new StorageGroupNotSetException(
+          String.format("Cannot find the storage group by %s.", path.getFullPath()));
+    }
+
+    Object ttl = RocksDBUtils.parseNodeValue(value, RockDBConstants.FLAG_SET_TTL);
+    if (ttl == null) {
+      ttl = 0L;
+    }
+    return new StorageGroupMNode(null, path.getFullPath(), (Long) ttl);
   }
 
   @Override
   public List<IStorageGroupMNode> getAllStorageGroupNodes() {
-    return null;
+    List<IStorageGroupMNode> result = new ArrayList<>();
+    RocksIterator iterator = readWriteHandler.iterator(null);
+    // get all storage group path
+    for (iterator.seek(new byte[]{NODE_TYPE_SG}); iterator.isValid(); iterator.next()) {
+      if (iterator.key()[0] != NODE_TYPE_SG) {
+        break;
+      }
+      Object ttl = RocksDBUtils.parseNodeValue(iterator.value(), FLAG_SET_TTL);
+      if (ttl == null) {
+        ttl = 0L;
+      }
+      result.add(
+          new StorageGroupMNode(
+              null, RocksDBUtils.getPathByInnerName(new String(iterator.key())), (Long) ttl));
+    }
+    return result;
   }
 
   @Override
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
-    return null;
+    String[] nodes = path.getNodes();
+    byte[] innerPathName;
+    int i;
+    boolean isDevice = false;
+    for (i = nodes.length; i > 0; i--) {
+      String[] copy = Arrays.copyOf(nodes, i);
+      innerPathName = RocksDBUtils.toEntityNodeKey(RocksDBUtils.getLevelPath(copy, copy.length));
+      try {
+        isDevice = readWriteHandler.keyExist(innerPathName);
+      } catch (RocksDBException e) {
+        throw new MetadataException(e);
+      }
+      if (isDevice) {
+        break;
+      }
+    }
+    if (!isDevice) {
+      throw new StorageGroupNotSetException(
+          String.format("Cannot find the storage group by %s.", path.getFullPath()));
+    }
+    return new EntityMNode(null, path.getFullPath());
   }
 
   @Override
   public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
-    return new IMeasurementMNode[0];
+    IMeasurementMNode[] mNodes = new IMeasurementMNode[measurements.length];
+    for (int i = 0; i < mNodes.length; i++) {
+      try {
+        mNodes[i] = getMeasurementMNode(deviceId.concatNode(measurements[i]));
+      } catch (PathNotExistException | MNodeTypeMismatchException ignored) {
+        logger.warn("MeasurementMNode {} does not exist in {}", measurements[i], deviceId);
+      }
+      if (mNodes[i] == null && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+        throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
+      }
+    }
+    return mNodes;
   }
 
   @Override
@@ -825,37 +1071,45 @@ public class MRocksDBManager implements IMetaManager {
       Map<String, String> tagsMap,
       Map<String, String> attributesMap,
       PartialPath fullPath)
-      throws MetadataException, IOException {}
+      throws MetadataException, IOException {
+  }
 
   @Override
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
-      throws MetadataException, IOException {}
+      throws MetadataException, IOException {
+  }
 
   @Override
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
-      throws MetadataException, IOException {}
+      throws MetadataException, IOException {
+  }
 
   @Override
   public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
-      throws MetadataException, IOException {}
+      throws MetadataException, IOException {
+  }
 
   @Override
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
-      throws MetadataException, IOException {}
+      throws MetadataException, IOException {
+  }
 
   @Override
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
-      throws MetadataException, IOException {}
+      throws MetadataException, IOException {
+  }
   // endregion
 
   // region Interfaces only for Cluster module usage
   @Override
   public void collectMeasurementSchema(
-      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {}
+      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
+  }
 
   @Override
   public void collectTimeseriesSchema(
-      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {}
+      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
+  }
 
   @Override
   public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
@@ -876,14 +1130,16 @@ public class MRocksDBManager implements IMetaManager {
       PartialPath seriesPath,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
-      Long latestFlushedTime) {}
+      Long latestFlushedTime) {
+  }
 
   @Override
   public void updateLastCache(
       IMeasurementMNode node,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
-      Long latestFlushedTime) {}
+      Long latestFlushedTime) {
+  }
 
   @Override
   public TimeValuePair getLastCache(PartialPath seriesPath) {
@@ -896,15 +1152,18 @@ public class MRocksDBManager implements IMetaManager {
   }
 
   @Override
-  public void resetLastCache(PartialPath seriesPath) {}
+  public void resetLastCache(PartialPath seriesPath) {
+  }
 
   @Override
-  public void deleteLastCacheByDevice(PartialPath deviceId) throws MetadataException {}
+  public void deleteLastCacheByDevice(PartialPath deviceId) throws MetadataException {
+  }
 
   @Override
   public void deleteLastCacheByDevice(
       PartialPath deviceId, PartialPath originalPath, long startTime, long endTime)
-      throws MetadataException {}
+      throws MetadataException {
+  }
   // endregion
 
   // region Interfaces and Implementation for InsertPlan process

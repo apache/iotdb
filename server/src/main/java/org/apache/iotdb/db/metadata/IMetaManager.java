@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -157,7 +158,7 @@ public interface IMetaManager {
   // endregion
 
   // region Interfaces for metadata info Query
-  boolean isPathExist(PartialPath path);
+  boolean isPathExist(PartialPath path) throws MetadataException;
 
   String getMetadataInString();
 
@@ -197,20 +198,21 @@ public interface IMetaManager {
   // endregion
 
   // region Interfaces for StorageGroup and TTL info Query
-  boolean isStorageGroup(PartialPath path);
+  boolean isStorageGroup(PartialPath path) throws MetadataException;
 
   boolean checkStorageGroupByPath(PartialPath path);
 
-  PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException;
+  PartialPath getBelongedStorageGroup(PartialPath path)
+      throws StorageGroupNotSetException, IllegalPathException;
 
   List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern) throws MetadataException;
 
   List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
-  List<PartialPath> getAllStorageGroupPaths();
+  List<PartialPath> getAllStorageGroupPaths() throws IllegalPathException;
 
-  Map<PartialPath, Long> getStorageGroupsTTL();
+  Map<PartialPath, Long> getStorageGroupsTTL() throws IllegalPathException;
   // endregion
 
   // region Interfaces for Entity/Device info Query

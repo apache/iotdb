@@ -46,7 +46,7 @@ public class RocksDBUtils {
   protected static byte[] constructDataBlock(byte type, String data) {
     byte[] dataInBytes = data.getBytes();
     int size = dataInBytes.length;
-    return Bytes.concat(new byte[] {type}, BytesUtils.intToBytes(size), dataInBytes);
+    return Bytes.concat(new byte[]{type}, BytesUtils.intToBytes(size), dataInBytes);
   }
 
   protected static byte[] toInternalNodeKey(String levelPath) {
@@ -70,7 +70,7 @@ public class RocksDBUtils {
   }
 
   protected static byte[] toRocksDBKey(String levelPath, byte type) {
-    return Bytes.concat(new byte[] {type}, levelPath.getBytes());
+    return Bytes.concat(new byte[]{type}, levelPath.getBytes());
   }
 
   public static String getLevelPath(String[] nodes, int end) {
@@ -171,7 +171,7 @@ public class RocksDBUtils {
   }
 
   public static byte[] buildAliasNodeValue(byte[] originKey) {
-    byte[] prefix = new byte[] {DATA_VERSION, DEFAULT_FLAG, DATA_BLOCK_TYPE_ORIGIN_KEY};
+    byte[] prefix = new byte[]{DATA_VERSION, DEFAULT_FLAG, DATA_BLOCK_TYPE_ORIGIN_KEY};
     byte[] len = BytesUtils.intToBytes(originKey.length);
     return BytesUtils.concatByteArray(BytesUtils.concatByteArray(prefix, len), originKey);
   }
@@ -242,7 +242,7 @@ public class RocksDBUtils {
    * parse value and return a specified type. if no data is required, null is returned.
    *
    * @param value value written in default table
-   * @param type the type of value to obtain
+   * @param type  the type of value to obtain
    */
   public static Object parseNodeValue(byte[] value, byte type) {
     ByteBuffer byteBuffer = ByteBuffer.wrap(value);
@@ -289,8 +289,8 @@ public class RocksDBUtils {
    * get inner name by converting partial path.
    *
    * @param partialPath the path needed to be converted.
-   * @param level the level needed to be added.
-   * @param nodeType specified type
+   * @param level       the level needed to be added.
+   * @param nodeType    specified type
    * @return inner name
    */
   public static String convertPartialPathToInner(String partialPath, int level, byte nodeType) {
@@ -318,19 +318,6 @@ public class RocksDBUtils {
     return stringBuilder.toString();
   }
 
-  public static Set<String> getKeyByPrefix(RocksDB rocksDB, String innerName) {
-    RocksIterator iterator = rocksDB.newIterator();
-    Set<String> result = new HashSet<>();
-    for (iterator.seek(innerName.getBytes()); iterator.isValid(); iterator.next()) {
-      String keyStr = new String(iterator.key());
-      if (!keyStr.startsWith(innerName)) {
-        break;
-      }
-      result.add(keyStr);
-    }
-    return result;
-  }
-
   public static int getLevelByPartialPath(String partialPath) {
     int levelCount = 0;
     for (char c : partialPath.toCharArray()) {
@@ -341,24 +328,10 @@ public class RocksDBUtils {
     return levelCount;
   }
 
-  public static String findBelongToSpecifiedNodeType(
-      String[] nodes, RocksDB rocksDB, byte nodeType) {
-    String innerPathName;
-    for (int level = nodes.length; level > 0; level--) {
-      String[] copy = Arrays.copyOf(nodes, level);
-      innerPathName = convertPartialPathToInnerByNodes(copy, level, nodeType);
-      boolean isBelongToType = rocksDB.keyMayExist(innerPathName.getBytes(), new Holder<>());
-      if (isBelongToType) {
-        return innerPathName;
-      }
-    }
-    return null;
-  }
-
   /**
    * Statistics the number of all data entries for a specified column family
    *
-   * @param rocksDB rocksdb
+   * @param rocksDB            rocksdb
    * @param columnFamilyHandle specified column family handle
    * @return total number in this column family
    */
@@ -372,31 +345,6 @@ public class RocksDBUtils {
     long count = 0;
     for (iter.seekToFirst(); iter.isValid(); iter.next()) {
       count++;
-    }
-    return count;
-  }
-
-  /**
-   * Count the number of keys with the specified prefix in the specified column family
-   *
-   * @param rocksDB rocksdb
-   * @param columnFamilyHandle specified column family handle
-   * @param nodeType specified prefix
-   * @return total number in this column family
-   */
-  public static long countNodesNumByType(
-      RocksDB rocksDB, ColumnFamilyHandle columnFamilyHandle, byte nodeType) {
-    RocksIterator iter;
-    if (columnFamilyHandle == null) {
-      iter = rocksDB.newIterator();
-    } else {
-      iter = rocksDB.newIterator(columnFamilyHandle);
-    }
-    long count = 0;
-    for (iter.seek(new byte[] {nodeType}); iter.isValid(); iter.next()) {
-      if (iter.key()[0] == nodeType) {
-        count++;
-      }
     }
     return count;
   }
