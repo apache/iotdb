@@ -259,6 +259,15 @@
 |默认值| 1048576 |
 |改后生效方式|触发生效|
 
+* force\_mlog\_period\_in\_ms
+
+|Name| force\_mlog\_period\_in\_ms |
+|:---:|:---|
+|Description| mlog定期刷新到磁盘的周期，单位毫秒|
+|Type| Int64 |
+|Default| 0 |
+|Effective|重启服务生效|
+
 * force\_wal\_period\_in\_ms
 
 |名字| force\_wal\_period\_in\_ms |
