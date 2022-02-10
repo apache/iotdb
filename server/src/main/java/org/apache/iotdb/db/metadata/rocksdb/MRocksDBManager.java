@@ -19,6 +19,20 @@
 
 package org.apache.iotdb.db.metadata.rocksdb;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
@@ -43,6 +57,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
@@ -72,8 +87,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-
-import org.apache.commons.lang3.StringUtils;
 import org.rocksdb.Holder;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
@@ -81,21 +94,8 @@ import org.rocksdb.WriteBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_VERSION;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_ENTITY_NODE_VALUE;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_FLAG;
@@ -628,10 +628,15 @@ public class MRocksDBManager implements IMetaManager {
   public boolean isPathExist(PartialPath path) throws MetadataException {
     String innerPathName = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength());
     try {
-      return readWriteHandler.keyExist(RocksDBUtils.toStorageNodeKey(innerPathName));
+      CheckKeyResult checkKeyResult =
+          readWriteHandler.keyExistByTypes(innerPathName, RocksDBMNodeType.values());
+      if (checkKeyResult.existAnyKey()) {
+        return true;
+      }
     } catch (RocksDBException e) {
       throw new MetadataException(e);
     }
+    return false;
   }
 
   /** Get metadata in string */
@@ -695,40 +700,18 @@ public class MRocksDBManager implements IMetaManager {
       return;
     }
     Set<String> children = ConcurrentHashMap.newKeySet();
-    seeds
-        .parallelStream()
+    seeds.parallelStream()
         .forEach(
             x -> {
               if (op.apply(x)) {
                 // x is not leaf node
-                String childrenPrefix = getNextLevelOfPath(x, level);
-                children.addAll(getAllByPrefix(childrenPrefix));
+                String childrenPrefix = RocksDBUtils.getNextLevelOfPath(x, level);
+                children.addAll(readWriteHandler.getAllByPrefix(childrenPrefix));
               }
             });
     if (!children.isEmpty()) {
       scanAllKeysRecursively(children, level + 1, op);
     }
-  }
-
-  private Set<String> getAllByPrefix(String prefix) {
-    Set<String> result = new HashSet<>();
-    byte[] prefixKey = prefix.getBytes();
-    RocksIterator iterator = readWriteHandler.iterator(null);
-    for (iterator.seek(prefixKey); iterator.isValid(); iterator.next()) {
-      String key = new String(iterator.key());
-      if (!key.startsWith(prefix)) {
-        break;
-      }
-      result.add(key);
-    }
-    return result;
-  }
-
-  private String getNextLevelOfPath(String innerPath, int currentLevel) {
-    char levelChar = (char) (ZERO + currentLevel);
-    String old = PATH_SEPARATOR + levelChar;
-    String target = PATH_SEPARATOR + (char) (levelChar + 1);
-    return innerPath.replace(old, target);
   }
 
   @Override
@@ -826,19 +809,18 @@ public class MRocksDBManager implements IMetaManager {
       char level = (char) (ZERO + nodeLevel);
       String prefix =
           builder.append(RockDBConstants.ROOT).append(PATH_SEPARATOR).append(level).toString();
-      paths = getAllByPrefix(prefix);
+      paths = readWriteHandler.getAllByPrefix(prefix);
     } else {
       paths = ConcurrentHashMap.newKeySet();
       char upperLevel = (char) (ZERO + nodeLevel - 1);
       String prefix =
           builder.append(RockDBConstants.ROOT).append(PATH_SEPARATOR).append(upperLevel).toString();
-      Set<String> parentPaths = getAllByPrefix(prefix);
-      parentPaths
-          .parallelStream()
+      Set<String> parentPaths = readWriteHandler.getAllByPrefix(prefix);
+      parentPaths.parallelStream()
           .forEach(
               x -> {
-                String targetPrefix = getNextLevelOfPath(x, upperLevel);
-                paths.addAll(getAllByPrefix(targetPrefix));
+                String targetPrefix = RocksDBUtils.getNextLevelOfPath(x, upperLevel);
+                paths.addAll(readWriteHandler.getAllByPrefix(targetPrefix));
               });
     }
     return RocksDBUtils.convertToPartialPath(paths, nodeLevel);
@@ -852,14 +834,15 @@ public class MRocksDBManager implements IMetaManager {
   }
 
   /**
-   * Get child node in the next level of the given path pattern.
+   * Get child node path in the next level of the given path pattern.
    *
    * <p>give pathPattern and the child nodes is those matching pathPattern.*
    *
    * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [d1, d2] given path = root.sg.d1 return [s1,s2]
+   * return [root.sg1.d1, root.sg1.d2]
    *
-   * @return All child nodes of given seriesPath.
+   * @param pathPattern The given path
+   * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   @Override
   public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
@@ -874,17 +857,24 @@ public class MRocksDBManager implements IMetaManager {
     return result;
   }
 
+  /**
+   * Get child node in the next level of the given path pattern.
+   *
+   * <p>give pathPattern and the child nodes is those matching pathPattern.*
+   *
+   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
+   * return [d1, d2] given path = root.sg.d1 return [s1,s2]
+   *
+   * @return All child nodes of given seriesPath.
+   */
   @Override
   public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
-    Set<String> result = new HashSet<>();
-    String innerNameByLevel =
-        RocksDBUtils.getLevelPath(
-            pathPattern.getNodes(), pathPattern.getNodeLength(), pathPattern.getNodeLength() + 1);
-    Set<String> allKeyByPrefix = readWriteHandler.getKeyByPrefix(innerNameByLevel);
-    for (String str : allKeyByPrefix) {
-      result.add(RocksDBUtils.getPathByInnerName(str));
+    Set<String> childPath = getChildNodePathInNextLevel(pathPattern);
+    Set<String> childName = new HashSet<>();
+    for (String str : childPath) {
+      childName.add(str.substring(str.lastIndexOf(RockDBConstants.PATH_SEPARATOR) + 1));
     }
-    return result;
+    return childName;
   }
   // endregion
 
@@ -1106,18 +1096,57 @@ public class MRocksDBManager implements IMetaManager {
    */
   @Override
   public TSDataType getSeriesType(PartialPath fullPath) throws MetadataException {
-    return null;
+    if (fullPath.equals(SQLConstant.TIME_PATH)) {
+      return TSDataType.INT64;
+    }
+    return getSeriesSchema(fullPath).getType();
   }
 
   @Override
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
-    return null;
+    try {
+      byte[] value =
+          readWriteHandler.get(
+              null,
+              RocksDBUtils.convertPartialPathToInner(
+                      fullPath.getFullPath(), fullPath.getNodeLength(), NODE_TYPE_MEASUREMENT)
+                  .getBytes());
+      if (value == null) {
+        throw new MetadataException("can not find this measurement:" + fullPath.getFullPath());
+      }
+      Object schema = RocksDBUtils.parseNodeValue(value, DATA_BLOCK_TYPE_SCHEMA);
+      if (schema != null) {
+        return (MeasurementSchema) schema;
+      } else {
+        throw new MetadataException(
+            String.format("Schema of this measurement [%s] is null !", fullPath.getFullPath()));
+      }
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
+    }
   }
 
   @Override
   public List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
       throws PathNotExistException {
-    return null;
+    List<MeasurementPath> result = new ArrayList<>();
+    String nextLevelPathName =
+        RocksDBUtils.convertPartialPathToInner(
+            devicePath.getFullPath(), devicePath.getNodeLength() + 1, NODE_TYPE_MEASUREMENT);
+    Map<byte[], byte[]> allMeasurementPath =
+        readWriteHandler.getKeyValueByPrefix(nextLevelPathName);
+    for (Map.Entry<byte[], byte[]> entry : allMeasurementPath.entrySet()) {
+      PartialPath pathName;
+      try {
+        pathName = new PartialPath(new String(entry.getKey()));
+      } catch (IllegalPathException e) {
+        throw new PathNotExistException(e.getMessage());
+      }
+      MeasurementSchema measurementSchema =
+          (MeasurementSchema) RocksDBUtils.parseNodeValue(entry.getValue(), NODE_TYPE_MEASUREMENT);
+      result.add(new MeasurementPath(pathName, measurementSchema));
+    }
+    return result;
   }
 
   @Override
