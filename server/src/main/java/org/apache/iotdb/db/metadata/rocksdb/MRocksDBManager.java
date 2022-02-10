@@ -95,19 +95,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_VERSION;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_ENTITY_NODE_VALUE;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_FLAG;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_INTERNAL_NODE_VALUE;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_SG_NODE_VALUE;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_ALIGNED;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_SET_TTL;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -1307,7 +1295,24 @@ public class MRocksDBManager implements IMetaManager {
       Map<String, String> tagsMap,
       Map<String, String> attributesMap,
       PartialPath fullPath)
-      throws MetadataException, IOException {}
+      throws MetadataException, IOException {
+    String levelPath = RocksDBUtils.getLevelPath(fullPath.getNodes(), fullPath.getNodeLength() - 1);
+    byte[] originKey = RocksDBUtils.toMeasurementNodeKey(levelPath);
+    Holder<byte[]> holder = new Holder<>();
+    try {
+      if (!readWriteHandler.keyExist(originKey, holder)) {
+        throw new PathNotExistException(fullPath.getFullPath());
+      }
+      byte[] originValue = holder.getValue();
+
+    } catch (RocksDBException e) {
+
+    }
+
+    if (StringUtils.isNotEmpty(alias)) {}
+  }
+
+  private void updateAlias(String alias, PartialPath fullPath) {}
 
   @Override
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
