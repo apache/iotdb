@@ -130,39 +130,6 @@ Total line number = 4
 It costs 0.004s
 ```
 
-* SHOW TIMESERIES (<`PathPattern`>)? WhereClause
- 
-  returns all the timeseries information that satisfy the where condition and match the pathPattern. SQL statements are as follows:
-
-```
-ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
-ALTER timeseries root.ln.wf02.wt02.status ADD TAGS description=test1
-show timeseries root.ln.** where unit=c
-show timeseries root.ln.** where description contains 'test1'
-```
-
-The results are shown below respectly:
-
-```
-+--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
-|                timeseries|alias|storage group|dataType|encoding|compression|        tags|attributes|
-+--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
-|root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|{"unit":"c"}|      null|
-+--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
-Total line number = 1
-It costs 0.005s
-
-+------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
-|              timeseries|alias|storage group|dataType|encoding|compression|                   tags|attributes|
-+------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
-|root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|{"description":"test1"}|      null|
-+------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
-Total line number = 1
-It costs 0.004s
-```
-
-> Notice that, we only support one condition in the where clause. Either it's an equal filter or it is an `contains` filter. In both case, the property in the where condition must be a tag.
-
 * SHOW TIMESERIES LIMIT INT OFFSET INT
 
   returns all the timeseries information start from the offset and limit the number of series returned. For example,
@@ -298,3 +265,38 @@ ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
 ```
 ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag3=v3, tag4=v4) ATTRIBUTES(attr3=v3, attr4=v4)
 ```
+* show timeseries using tags
+```
+SHOW TIMESERIES (<`PathPattern`>)? WhereClause
+```
+
+  returns all the timeseries information that satisfy the where condition and match the pathPattern. SQL statements are as follows:
+
+```
+ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
+ALTER timeseries root.ln.wf02.wt02.status ADD TAGS description=test1
+show timeseries root.ln.** where unit=c
+show timeseries root.ln.** where description contains 'test1'
+```
+
+The results are shown below respectly:
+
+```
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+|                timeseries|alias|storage group|dataType|encoding|compression|        tags|attributes|
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+|root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|{"unit":"c"}|      null|
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+Total line number = 1
+It costs 0.005s
+
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+|              timeseries|alias|storage group|dataType|encoding|compression|                   tags|attributes|
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+|root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|{"description":"test1"}|      null|
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+Total line number = 1
+It costs 0.004s
+```
+
+> Notice that, we only support one condition in the where clause. Either it's an equal filter or it is an `contains` filter. In both case, the property in the where condition must be a tag.
