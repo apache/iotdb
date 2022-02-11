@@ -222,6 +222,12 @@ It costs 0.002s
 ## 标签点管理
 
 我们可以在创建时间序列的时候，为它添加别名和额外的标签和属性信息。
+
+标签和属性的区别在于：
+
+* 标签可以用来查询时间序列路径，会在内存中维护标点到时间序列路径的倒排索引：标签 -> 时间序列路径
+* 属性只能用时间序列路径来查询：时间序列路径 -> 属性
+
 所用到的扩展的创建时间序列的 SQL 语句如下所示：
 ```
 create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)
@@ -231,8 +237,6 @@ create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=R
 我们可以在任何用到`s1`的地方，将其用`temprature`代替，这两者是等价的。
 
 > IoTDB 同时支持在查询语句中 [使用 AS 函数](../Reference/DML-Data-Manipulation%20Language.md) 设置别名。二者的区别在于：AS 函数设置的别名用于替代整条时间序列名，且是临时的，不与时间序列绑定；而上文中的别名只作为传感器的别名，与其绑定且可与原传感器名等价使用。
-
-标签和属性的唯一差别在于，我们为标签信息在内存中维护了一个倒排索引，所以可以在`show timeseries`的条件语句中使用标签作为查询条件，你将会在下一节看到具体查询内容。
 
 > 注意：额外的标签和属性信息总的大小不能超过`tag_attribute_total_size`.
 
