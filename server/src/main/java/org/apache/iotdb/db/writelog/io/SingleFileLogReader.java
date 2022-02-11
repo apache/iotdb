@@ -145,7 +145,8 @@ public class SingleFileLogReader implements ILogReader {
   }
 
   private void truncateBrokenLogs() {
-    try (FileChannel channel = new FileOutputStream(filepath, true).getChannel()) {
+    try (FileOutputStream outputStream = new FileOutputStream(filepath, true);
+        FileChannel channel = outputStream.getChannel()) {
       channel.truncate(unbrokenLogsSize);
     } catch (IOException e) {
       logger.error("Fail to truncate log file to size {}", unbrokenLogsSize, e);
