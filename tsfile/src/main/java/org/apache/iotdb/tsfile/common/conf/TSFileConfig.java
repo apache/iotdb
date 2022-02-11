@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSType;
 import java.io.Serializable;
 import java.nio.charset.Charset;
 
-/** TSFileConfig is a configure class. Every variables is public and has default value. */
+/** TSFileConfig is a configuration class. Every variable is public and has default value. */
 public class TSFileConfig implements Serializable {
 
   /** encoding configuration */
