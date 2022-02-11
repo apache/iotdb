@@ -1288,7 +1288,7 @@ public class IoTDBDescriptor {
                 "max_deduplicated_path_num",
                 Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
 
-    if (conf.isMetaDataCacheEnable()) {
+    if (!conf.isMetaDataCacheEnable()) {
       return;
     }
 
