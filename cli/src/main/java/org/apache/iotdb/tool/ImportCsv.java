@@ -44,7 +44,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -164,24 +169,24 @@ public class ImportCsv extends AbstractCsvTool {
     HelpFormatter hf = new HelpFormatter();
     hf.setOptionComparator(null);
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
-    CommandLine commandLine;
+    CommandLine commandLine = null;
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
       System.out.println("Too few params input, please check the following hint.");
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-      return;
+      System.exit(CODE_ERROR);
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (org.apache.commons.cli.ParseException e) {
       System.out.println("Parse error: " + e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-      return;
+      System.exit(CODE_ERROR);
     }
     if (commandLine.hasOption(HELP_ARGS)) {
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-      return;
+      System.exit(CODE_ERROR);
     }
 
     try {
@@ -189,16 +194,20 @@ public class ImportCsv extends AbstractCsvTool {
       String filename = commandLine.getOptionValue(FILE_ARGS);
       if (filename == null) {
         hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-        return;
+        System.exit(CODE_ERROR);
       }
       parseSpecialParams(commandLine);
     } catch (ArgsErrorException e) {
       System.out.println("Args error: " + e.getMessage());
+      System.exit(CODE_ERROR);
     } catch (Exception e) {
       System.out.println("Encounter an error, because: " + e.getMessage());
+      System.exit(CODE_ERROR);
     }
 
-    importFromTargetPath(host, Integer.valueOf(port), username, password, targetPath, timeZoneID);
+    System.exit(
+        importFromTargetPath(
+            host, Integer.parseInt(port), username, password, targetPath, timeZoneID));
   }
 
   /**
@@ -211,13 +220,14 @@ public class ImportCsv extends AbstractCsvTool {
    * @param password
    * @param targetPath a CSV file or a directory including CSV files
    * @param timeZone
+   * @return the status code
    * @throws IoTDBConnectionException
    */
-  public static void importFromTargetPath(
+  public static int importFromTargetPath(
       String host, int port, String username, String password, String targetPath, String timeZone)
       throws IoTDBConnectionException {
     try {
-      session = new Session(host, Integer.valueOf(port), username, password, false);
+      session = new Session(host, port, username, password, false);
       session.open(false);
       timeZoneID = timeZone;
       setTimeZone();
@@ -228,7 +238,7 @@ public class ImportCsv extends AbstractCsvTool {
       } else if (file.isDirectory()) {
         File[] files = file.listFiles();
         if (files == null) {
-          return;
+          return CODE_OK;
         }
 
         for (File subFile : files) {
@@ -238,14 +248,17 @@ public class ImportCsv extends AbstractCsvTool {
         }
       } else {
         System.out.println("File not found!");
+        return CODE_ERROR;
       }
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       System.out.println("Encounter an error when connecting to server, because " + e.getMessage());
+      return CODE_ERROR;
     } finally {
       if (session != null) {
         session.close();
       }
     }
+    return CODE_OK;
   }
 
   /**
