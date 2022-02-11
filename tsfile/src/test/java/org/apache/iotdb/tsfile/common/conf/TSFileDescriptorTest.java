@@ -57,7 +57,7 @@ public class TSFileDescriptorTest {
     }
     String configDirectory = tempFolder.getRoot().getAbsolutePath();
 
-    String originalProperty =  System.getProperty(TsFileConstant.TSFILE_CONF);
+    String originalProperty = System.getProperty(TsFileConstant.TSFILE_CONF);
     System.setProperty(TsFileConstant.TSFILE_CONF, configDirectory);
     this.tsFileConfig1 = new TSFileConfig();
     this.tsFileConfig2 = new TSFileDescriptor().getConfig();
