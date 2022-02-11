@@ -149,7 +149,7 @@ public class TSFileDescriptor {
     }
     String tsFileHome = System.getProperty(TsFileConstant.TSFILE_HOME);
     if (tsFileHome != null) {
-      return Paths.get(tsFileHome, TSFileConfig.CONFIG_FILE_NAME).toAbsolutePath().toString();
+      return Paths.get(tsFileHome, "conf", TSFileConfig.CONFIG_FILE_NAME).toAbsolutePath().toString();
     }
 
     return detectPropertiesFromClassPath();
