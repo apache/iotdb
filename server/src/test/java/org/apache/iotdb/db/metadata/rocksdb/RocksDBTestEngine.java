@@ -54,16 +54,15 @@ public class RocksDBTestEngine {
     RocksDBTestUtils.printMemInfo("Benchmark rocksdb start");
     try {
       prepareBenchmark();
+      RocksDBTestUtils.printBenchmarkBaseline(
+          storageGroups, timeSeriesSet, measurementPathSet, innerPathSet);
       /** rocksdb benchmark * */
       MRocksDBManager rocksDBManager = new MRocksDBManager();
-      rocksDBManager.printScanAllKeys();
       MRocksDBTest mRocksDBTest = new MRocksDBTest(rocksDBManager);
       mRocksDBTest.testStorageGroupCreation(storageGroups);
-      rocksDBManager.printScanAllKeys();
-      //      mRocksDBTest.testTimeSeriesCreation(timeSeriesSet);
-      //      RocksDBTestUtils.printReport(mRocksDBTest.benchmarkResults, "rocksDB");
-      //      RocksDBTestUtils.printMemInfo("Benchmark finished");
-
+      mRocksDBTest.testTimeSeriesCreation(timeSeriesSet);
+      RocksDBTestUtils.printReport(mRocksDBTest.benchmarkResults, "rocksDB");
+      RocksDBTestUtils.printMemInfo("Benchmark finished");
     } catch (IOException | MetadataException e) {
       logger.error("Error happened when run benchmark", e);
     }
@@ -79,7 +78,7 @@ public class RocksDBTestEngine {
     try (MLogReader mLogReader =
         new MLogReader(config.getSchemaDir(), MetadataConstant.METADATA_LOG)) {
       parseForTestSet(mLogReader);
-      System.out.println("spend" + (System.currentTimeMillis() - time) + "ms to prepare dataset");
+      System.out.println("spend " + (System.currentTimeMillis() - time) + "ms to prepare dataset");
     } catch (Exception e) {
       throw new IOException("Failed to parser mlog.bin for err:" + e);
     }

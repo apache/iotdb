@@ -1,36 +1,16 @@
 package org.apache.iotdb.db.metadata.rocksdb;
 
-import com.google.common.primitives.Bytes;
-import com.google.common.util.concurrent.Striped;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Stack;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Lock;
-import java.util.function.Function;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import com.google.common.primitives.Bytes;
 import org.rocksdb.ColumnFamilyDescriptor;
 import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.ColumnFamilyOptions;
@@ -47,25 +27,30 @@ import org.rocksdb.WriteOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_VERSION;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_FLAG;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ROOT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.PATH_SEPARATOR;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
 
 public class RocksDBReadWriteHandler {
 
   private static final Logger logger = LoggerFactory.getLogger(RocksDBReadWriteHandler.class);
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
-  private static final long MAX_LOCK_WAIT_TIME = 300;
 
   private static final String ROCKSDB_FOLDER = "rocksdb-schema";
 
@@ -79,9 +64,6 @@ public class RocksDBReadWriteHandler {
   ConcurrentMap<String, ColumnFamilyHandle> columnFamilyHandleMap = new ConcurrentHashMap<>();
   List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>();
   List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>();
-
-  // TODO: check how Stripped Lock consume memory
-  private Striped<Lock> locksPool = Striped.lazyWeakLock(10000);
 
   static {
     RocksDB.loadLibrary();
@@ -160,141 +142,26 @@ public class RocksDBReadWriteHandler {
     return columnFamilyHandleMap.get(columnFamilyName);
   }
 
-  public void updateNode(String lockKey, byte[] key, byte[] value)
-      throws MetadataException, InterruptedException, RocksDBException {
-    Lock lock = locksPool.get(lockKey);
-    if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-      try {
-        rocksDB.put(key, value);
-      } finally {
-        lock.unlock();
-      }
-    } else {
-      throw new MetadataException("acquire lock timeout: " + lockKey);
-    }
+  public void updateNode(byte[] key, byte[] value) throws RocksDBException {
+    rocksDB.put(key, value);
   }
 
-  public void createNode(String key, RocksDBMNodeType type, byte[] value)
-      throws RocksDBException, InterruptedException, MetadataException {
-    Lock lock = locksPool.get(key);
-    if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-      try {
-        if (keyExistByAllTypes(key).existAnyKey()) {
-          throw new PathAlreadyExistException(key);
-        }
-        byte[] nodeKey = RocksDBUtils.toRocksDBKey(key, type.value);
-        rocksDB.put(nodeKey, value);
-      } finally {
-        lock.unlock();
-      }
-    } else {
-      throw new MetadataException("acquire lock timeout: " + key);
-    }
+  public void createNode(String key, RocksDBMNodeType type, byte[] value) throws RocksDBException {
+    byte[] nodeKey = RocksDBUtils.toRocksDBKey(key, type.value);
+    rocksDB.put(nodeKey, value);
   }
 
-  public void createNode(String key, byte[] nodeKey, byte[] value)
-      throws RocksDBException, InterruptedException, MetadataException {
-    Lock lock = locksPool.get(key);
-    if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-      try {
-        if (keyExistByAllTypes(key).existAnyKey()) {
-          throw new PathAlreadyExistException(key);
-        }
-        rocksDB.put(nodeKey, value);
-      } finally {
-        lock.unlock();
-      }
-    } else {
-      throw new MetadataException("acquire lock timeout: " + key);
-    }
+  public void createNode(byte[] nodeKey, byte[] value) throws RocksDBException {
+    rocksDB.put(nodeKey, value);
   }
 
-  public void convertToEntityNode(String lockKey, byte[] entityNodeKey, WriteBatch batch)
-      throws InterruptedException, MetadataException, RocksDBException {
-    Lock lock = locksPool.get(lockKey);
-    if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-      try {
-        if (keyExist(entityNodeKey)) {
-          throw new PathAlreadyExistException(lockKey);
-        }
-        // check exist of some key to make sure execute could success
-        rocksDB.write(new WriteOptions(), batch);
-      } finally {
-        lock.unlock();
-      }
-    } else {
-      throw new MetadataException("acquire lock timeout: " + lockKey);
-    }
-  }
-
-  public void batchCreateTwoKeys(String primaryKey, String aliasKey, WriteBatch batch)
-      throws RocksDBException, MetadataException, InterruptedException {
-    Lock primaryLock = locksPool.get(primaryKey);
-    Lock aliasLock = locksPool.get(aliasKey);
-    if (primaryLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-      try {
-        if (keyExistByAllTypes(primaryKey).existAnyKey()) {
-          throw new PathAlreadyExistException(primaryKey);
-        }
-        if (aliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-          try {
-            if (keyExistByAllTypes(aliasKey).existAnyKey()) {
-              throw new PathAlreadyExistException(aliasKey);
-            }
-            rocksDB.write(new WriteOptions(), batch);
-          } finally {
-            aliasLock.unlock();
-          }
-        } else {
-          throw new MetadataException("acquire lock timeout: " + aliasKey);
-        }
-      } finally {
-        primaryLock.unlock();
-      }
-    } else {
-      throw new MetadataException("acquire lock timeout: " + primaryKey);
-    }
-  }
-
-  public void batchCreateOneKey(String key, byte[] nodeKey, WriteBatch batch)
-      throws RocksDBException, MetadataException, InterruptedException {
-    Lock lock = locksPool.get(key);
-    if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-      try {
-        if (keyExist(nodeKey)) {
-          throw new PathAlreadyExistException(key);
-        }
-        rocksDB.write(new WriteOptions(), batch);
-      } finally {
-        lock.unlock();
-      }
-    } else {
-      throw new MetadataException("acquire lock timeout: " + key);
-    }
-  }
-
-  public void batchCreateWithLocks(String[] locks, WriteBatch batch)
-      throws RocksDBException, MetadataException, InterruptedException {
-    Stack<Lock> acquiredLock = new Stack<>();
-    try {
-      for (String lockKey : locks) {
-        Lock lock = locksPool.get(lockKey);
-        if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-          acquiredLock.push(lock);
-          if (keyExistByAllTypes(lockKey).existAnyKey()) {
-            throw new PathAlreadyExistException(lockKey);
-          }
-        } else {
-          throw new MetadataException("acquire lock timeout: " + lockKey);
-        }
-      }
-      rocksDB.write(new WriteOptions(), batch);
-    } finally {
-      while (!acquiredLock.isEmpty()) {
-        Lock lock = acquiredLock.pop();
-        lock.unlock();
-      }
-    }
+  public void convertToEntityNode(String levelPath, byte[] value) throws RocksDBException {
+    WriteBatch batch = new WriteBatch();
+    byte[] internalKey = RocksDBUtils.toInternalNodeKey(levelPath);
+    byte[] entityKey = RocksDBUtils.toEntityNodeKey(levelPath);
+    batch.delete(internalKey);
+    batch.put(entityKey, value);
+    executeBatch(batch);
   }
 
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
@@ -424,7 +291,8 @@ public class RocksDBReadWriteHandler {
       return;
     }
     Set<String> children = ConcurrentHashMap.newKeySet();
-    seeds.parallelStream()
+    seeds
+        .parallelStream()
         .forEach(
             x -> {
               if (op.apply(x)) {
