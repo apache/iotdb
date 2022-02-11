@@ -49,8 +49,7 @@ public class RockDBConstants {
   // alias's origin key
   public static final byte DATA_BLOCK_TYPE_ORIGIN_KEY = 0x01 << 5;
 
-  public static final byte[] EMPTY_NODE_VALUE = new byte[] {DATA_VERSION, DEFAULT_FLAG};
-  public static final byte[] DEFAULT_SG_NODE_VALUE = new byte[] {DATA_VERSION, DEFAULT_FLAG};
-  public static final byte[] DEFAULT_INTERNAL_NODE_VALUE = new byte[] {DATA_VERSION, DEFAULT_FLAG};
-  public static final byte[] DEFAULT_ENTITY_NODE_VALUE = new byte[] {DATA_VERSION, DEFAULT_FLAG};
+  public static final byte[] DEFAULT_NODE_VALUE = new byte[] {DATA_VERSION, DEFAULT_FLAG};
+  public static final byte[] DEFAULT_ALIGNED_ENTITY_VALUE =
+      new byte[] {DATA_VERSION, FLAG_IS_ALIGNED};
 }
