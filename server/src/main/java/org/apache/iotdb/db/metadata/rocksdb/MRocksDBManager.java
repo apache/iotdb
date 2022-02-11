@@ -70,11 +70,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
+import com.google.common.util.concurrent.Striped;
 import org.apache.commons.lang3.StringUtils;
 import org.rocksdb.Holder;
 import org.rocksdb.RocksDBException;
@@ -83,7 +83,6 @@ import org.rocksdb.WriteBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -93,8 +92,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
@@ -144,6 +146,11 @@ public class MRocksDBManager implements IMetaManager {
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private RocksDBReadWriteHandler readWriteHandler;
+
+  // TODO: check how Stripped Lock consume memory
+  private Striped<Lock> locksPool = Striped.lock(10000);
+
+  private static final long MAX_LOCK_WAIT_TIME = 50;
 
   public MRocksDBManager() throws MetadataException {
     try {
@@ -262,8 +269,8 @@ public class MRocksDBManager implements IMetaManager {
     int sgIndex = ensureStorageGroup(path, path.getNodeLength() - 2);
 
     try {
-      createTimeSeriesRecursively(nodes, nodes.length, schema, alias, tags, attributes);
-      // TODO: insert node to tag table
+      createTimeSeriesRecursively(
+          nodes, nodes.length, schema, alias, tags, attributes, new Stack<>());
       // TODO: load tags to memory
     } catch (RocksDBException | InterruptedException | IOException e) {
       throw new MetadataException(e);
@@ -276,7 +283,8 @@ public class MRocksDBManager implements IMetaManager {
       MeasurementSchema schema,
       String alias,
       Map<String, String> tags,
-      Map<String, String> attributes)
+      Map<String, String> attributes,
+      Stack<Lock> lockedLocks)
       throws InterruptedException, MetadataException, RocksDBException, IOException {
     if (start <= 1) {
       // nodes "root" must exist and don't need to check
@@ -284,68 +292,62 @@ public class MRocksDBManager implements IMetaManager {
     }
     String levelPath = RocksDBUtils.getLevelPath(nodes, start - 1);
     Holder<byte[]> holder = new Holder<>();
-    CheckKeyResult checkResult = readWriteHandler.keyExistByAllTypes(levelPath, holder);
-    if (!checkResult.existAnyKey()) {
-      createTimeSeriesRecursively(nodes, start - 1, schema, alias, tags, attributes);
-      if (start == nodes.length) {
-        createTimeSeriesNode(nodes, levelPath, schema, alias, tags, attributes);
-      } else if (start == nodes.length - 1) {
-        // create entity node
-        try {
-          readWriteHandler.createNode(
-              levelPath, RocksDBMNodeType.ENTITY, DEFAULT_ENTITY_NODE_VALUE);
-        } catch (PathAlreadyExistException e) {
-          Holder<byte[]> tempHolder = new Holder<>();
-          if (readWriteHandler.keyExistByType(levelPath, RocksDBMNodeType.ENTITY, tempHolder)) {
-            logger.info("Entity node created by another thread: {}", levelPath);
+    Lock lock = locksPool.get(levelPath);
+    if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+      lockedLocks.push(lock);
+      try {
+        CheckKeyResult checkResult = readWriteHandler.keyExistByAllTypes(levelPath, holder);
+        if (!checkResult.existAnyKey()) {
+          createTimeSeriesRecursively(
+              nodes, start - 1, schema, alias, tags, attributes, lockedLocks);
+          if (start == nodes.length) {
+            createTimeSeriesNode(nodes, levelPath, schema, alias, tags, attributes);
+          } else if (start == nodes.length - 1) {
+            readWriteHandler.createNode(levelPath, RocksDBMNodeType.ENTITY, DEFAULT_NODE_VALUE);
           } else {
-            throw new PathAlreadyExistException("Entity type node is expected for " + levelPath);
+            readWriteHandler.createNode(levelPath, RocksDBMNodeType.INTERNAL, DEFAULT_NODE_VALUE);
+          }
+        } else {
+          if (start == nodes.length) {
+            throw new PathAlreadyExistException("Measurement node already exists");
+          }
+
+          if (checkResult.getResult(RocksDBMNodeType.MEASUREMENT)
+              || checkResult.getResult(RocksDBMNodeType.ALISA)) {
+            throw new PathAlreadyExistException("Path contains measurement node");
+          }
+
+          if (start == nodes.length - 1) {
+            if (checkResult.getResult(RocksDBMNodeType.INTERNAL)) {
+              // convert the parent node to entity if it is internal node
+              readWriteHandler.convertToEntityNode(levelPath, DEFAULT_NODE_VALUE);
+            } else if (checkResult.getResult(RocksDBMNodeType.ENTITY)) {
+              if ((holder.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
+                throw new AlignedTimeseriesException(
+                    "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
+                    levelPath);
+              }
+            } else {
+              throw new MetadataException(
+                  "parent of measurement could only be entity or internal node");
+            }
           }
         }
-      } else {
-        // create internal node
-        try {
-          readWriteHandler.createNode(
-              levelPath, RocksDBMNodeType.INTERNAL, DEFAULT_INTERNAL_NODE_VALUE);
-        } catch (PathAlreadyExistException e) {
-          Holder<byte[]> tempHolder = new Holder<>();
-          if (readWriteHandler.keyExistByType(levelPath, RocksDBMNodeType.INTERNAL, tempHolder)) {
-            logger.info("Internal node created by another thread: {}", levelPath);
-          } else {
-            throw new PathAlreadyExistException("Internal type node is expected for " + levelPath);
-          }
+      } catch (Exception e) {
+        while (!lockedLocks.isEmpty()) {
+          lockedLocks.pop().unlock();
+        }
+        throw e;
+      } finally {
+        if (!lockedLocks.isEmpty()) {
+          lockedLocks.pop().unlock();
         }
       }
     } else {
-      if (start == nodes.length) {
-        throw new PathAlreadyExistException("Measurement node already exists");
+      while (!lockedLocks.isEmpty()) {
+        lockedLocks.pop().unlock();
       }
-
-      if (checkResult.getResult(RocksDBMNodeType.MEASUREMENT)
-          || checkResult.getResult(RocksDBMNodeType.ALISA)) {
-        throw new PathAlreadyExistException("Path contains measurement node");
-      }
-
-      if (start == nodes.length - 1) {
-        if (checkResult.getResult(RocksDBMNodeType.INTERNAL)) {
-          // convert the parent node to entity if it is internal node
-          WriteBatch batch = new WriteBatch();
-          byte[] internalKey = RocksDBUtils.toInternalNodeKey(levelPath);
-          byte[] entityKey = RocksDBUtils.toEntityNodeKey(levelPath);
-          batch.delete(internalKey);
-          batch.put(entityKey, DEFAULT_ENTITY_NODE_VALUE);
-          readWriteHandler.convertToEntityNode(levelPath, entityKey, batch);
-        } else if (checkResult.getResult(RocksDBMNodeType.ENTITY)) {
-          if ((holder.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
-            throw new AlignedTimeseriesException(
-                "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
-                levelPath);
-          }
-        } else {
-          throw new MetadataException(
-              "parent of measurement could only be entity or internal node");
-        }
-      }
+      throw new MetadataException("acquire lock timeout: " + levelPath);
     }
   }
 
@@ -365,12 +367,7 @@ public class MRocksDBManager implements IMetaManager {
 
     // measurement with tags will save in a separate table at the same time
     if (tags != null && !tags.isEmpty()) {
-      ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-      ReadWriteIOUtils.write(tags, outputStream);
-      batch.put(
-          readWriteHandler.getCFHByName(TABLE_NAME_TAGS),
-          measurementKey,
-          outputStream.toByteArray());
+      batch.put(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), measurementKey, DEFAULT_NODE_VALUE);
     }
 
     if (StringUtils.isNotEmpty(alias)) {
@@ -378,14 +375,23 @@ public class MRocksDBManager implements IMetaManager {
       aliasNodes[nodes.length - 1] = alias;
       String aliasLevelPath = RocksDBUtils.getLevelPath(aliasNodes, aliasNodes.length - 1);
       byte[] aliasNodeKey = RocksDBUtils.toAliasNodeKey(aliasLevelPath);
-      if (!readWriteHandler.keyExist(aliasNodeKey)) {
-        batch.put(aliasNodeKey, RocksDBUtils.buildAliasNodeValue(measurementKey));
-        readWriteHandler.batchCreateTwoKeys(levelPath, aliasLevelPath, batch);
+      Lock lock = locksPool.get(aliasLevelPath);
+      if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        try {
+          if (!readWriteHandler.keyExistByAllTypes(aliasLevelPath).existAnyKey()) {
+            batch.put(aliasNodeKey, RocksDBUtils.buildAliasNodeValue(measurementKey));
+            readWriteHandler.executeBatch(batch);
+          } else {
+            throw new AliasAlreadyExistException(levelPath, alias);
+          }
+        } finally {
+          lock.unlock();
+        }
       } else {
-        throw new AliasAlreadyExistException(levelPath, alias);
+        throw new MetadataException("acquire lock timeout: " + levelPath);
       }
     } else {
-      readWriteHandler.batchCreateOneKey(levelPath, measurementKey, batch);
+      readWriteHandler.executeBatch(batch);
     }
   }
 
@@ -429,7 +435,8 @@ public class MRocksDBManager implements IMetaManager {
     int sgIndex = ensureStorageGroup(prefixPath, prefixPath.getNodeLength() - 1);
 
     try {
-      createEntityRecursively(prefixPath.getNodes(), prefixPath.getNodeLength(), sgIndex + 1, true);
+      createEntityRecursively(
+          prefixPath.getNodes(), prefixPath.getNodeLength(), sgIndex + 1, true, new Stack<>());
       WriteBatch batch = new WriteBatch();
       String[] locks = new String[measurements.size()];
       for (int i = 0; i < measurements.size(); i++) {
@@ -442,7 +449,27 @@ public class MRocksDBManager implements IMetaManager {
         byte[] value = RocksDBUtils.buildMeasurementNodeValue(schema, null, null, null);
         batch.put(key, value);
       }
-      readWriteHandler.batchCreateWithLocks(locks, batch);
+
+      Stack<Lock> acquiredLock = new Stack<>();
+      try {
+        for (String lockKey : locks) {
+          Lock lock = locksPool.get(lockKey);
+          if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+            acquiredLock.push(lock);
+            if (readWriteHandler.keyExistByAllTypes(lockKey).existAnyKey()) {
+              throw new PathAlreadyExistException(lockKey);
+            }
+          } else {
+            throw new MetadataException("acquire lock timeout: " + lockKey);
+          }
+        }
+        readWriteHandler.executeBatch(batch);
+      } finally {
+        while (!acquiredLock.isEmpty()) {
+          Lock lock = acquiredLock.pop();
+          lock.unlock();
+        }
+      }
       // TODO: update cache if necessary
     } catch (InterruptedException | RocksDBException | IOException e) {
       throw new MetadataException(e);
@@ -457,7 +484,8 @@ public class MRocksDBManager implements IMetaManager {
    * @param end
    * @param aligned
    */
-  private void createEntityRecursively(String[] nodes, int start, int end, boolean aligned)
+  private void createEntityRecursively(
+      String[] nodes, int start, int end, boolean aligned, Stack<Lock> lockedLocks)
       throws RocksDBException, MetadataException, InterruptedException {
     if (start <= end) {
       // nodes before "end" must exist
@@ -465,33 +493,48 @@ public class MRocksDBManager implements IMetaManager {
     }
     String levelPath = RocksDBUtils.getLevelPath(nodes, start - 1);
     Holder<byte[]> holder = new Holder<>();
-    CheckKeyResult checkResult = readWriteHandler.keyExistByAllTypes(levelPath, holder);
-    if (!checkResult.existAnyKey()) {
-      createEntityRecursively(nodes, start - 1, end, aligned);
-      if (start == nodes.length) {
-        byte[] nodeKey = RocksDBUtils.toEntityNodeKey(levelPath);
-        byte[] value =
-            aligned
-                ? new byte[] {DATA_VERSION, FLAG_IS_ALIGNED}
-                : new byte[] {DATA_VERSION, DEFAULT_FLAG};
-        readWriteHandler.createNode(levelPath, nodeKey, value);
-      } else {
-        readWriteHandler.createNode(
-            levelPath, RocksDBMNodeType.INTERNAL, DEFAULT_ENTITY_NODE_VALUE);
+    Lock lock = locksPool.get(levelPath);
+    if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+      try {
+        CheckKeyResult checkResult = readWriteHandler.keyExistByAllTypes(levelPath, holder);
+        if (!checkResult.existAnyKey()) {
+          createEntityRecursively(nodes, start - 1, end, aligned, lockedLocks);
+          if (start == nodes.length) {
+            byte[] nodeKey = RocksDBUtils.toEntityNodeKey(levelPath);
+            byte[] value = aligned ? DEFAULT_ALIGNED_ENTITY_VALUE : DEFAULT_NODE_VALUE;
+            readWriteHandler.createNode(nodeKey, value);
+          } else {
+            readWriteHandler.createNode(levelPath, RocksDBMNodeType.INTERNAL, DEFAULT_NODE_VALUE);
+          }
+        } else {
+          if (start == nodes.length) {
+            if (!checkResult.getResult(RocksDBMNodeType.ENTITY)) {
+              throw new PathAlreadyExistException("Node already exists but not entity");
+            }
+
+            if ((holder.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
+              throw new PathAlreadyExistException("Entity node exists but not aligned");
+            }
+          } else if (checkResult.getResult(RocksDBMNodeType.MEASUREMENT)
+              || checkResult.getResult(RocksDBMNodeType.ALISA)) {
+            throw new PathAlreadyExistException("Path contains measurement node");
+          }
+        }
+      } catch (Exception e) {
+        while (!lockedLocks.isEmpty()) {
+          lockedLocks.pop().unlock();
+        }
+        throw e;
+      } finally {
+        if (!lockedLocks.isEmpty()) {
+          lockedLocks.pop().unlock();
+        }
       }
     } else {
-      if (start == nodes.length) {
-        if (!checkResult.getResult(RocksDBMNodeType.ENTITY)) {
-          throw new PathAlreadyExistException("Node already exists but not entity");
-        }
-
-        if ((holder.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
-          throw new PathAlreadyExistException("Entity node exists but not aligned");
-        }
-      } else if (checkResult.getResult(RocksDBMNodeType.MEASUREMENT)
-          || checkResult.getResult(RocksDBMNodeType.ALISA)) {
-        throw new PathAlreadyExistException("Path contains measurement node");
+      while (!lockedLocks.isEmpty()) {
+        lockedLocks.pop().unlock();
       }
+      throw new MetadataException("acquire lock timeout: " + levelPath);
     }
   }
 
@@ -564,17 +607,26 @@ public class MRocksDBManager implements IMetaManager {
       int len = nodes.length;
       for (int i = 1; i < nodes.length; i++) {
         String levelKey = RocksDBUtils.getLevelPath(nodes, i);
-        CheckKeyResult keyCheckResult = readWriteHandler.keyExistByAllTypes(levelKey);
-        if (!keyCheckResult.existAnyKey()) {
-          if (i < len - 1) {
-            readWriteHandler.createNode(
-                levelKey, RocksDBMNodeType.INTERNAL, DEFAULT_INTERNAL_NODE_VALUE);
-          } else {
-            readWriteHandler.createNode(
-                levelKey, RocksDBMNodeType.STORAGE_GROUP, DEFAULT_SG_NODE_VALUE);
+        Lock lock = locksPool.get(levelKey);
+        if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+          try {
+            CheckKeyResult keyCheckResult = readWriteHandler.keyExistByAllTypes(levelKey);
+            if (!keyCheckResult.existAnyKey()) {
+              if (i < len - 1) {
+                readWriteHandler.createNode(
+                    levelKey, RocksDBMNodeType.INTERNAL, DEFAULT_NODE_VALUE);
+              } else {
+                readWriteHandler.createNode(
+                    levelKey, RocksDBMNodeType.STORAGE_GROUP, DEFAULT_NODE_VALUE);
+              }
+            } else if (keyCheckResult.getResult(RocksDBMNodeType.STORAGE_GROUP)) {
+              throw new StorageGroupAlreadySetException(storageGroup.toString());
+            }
+          } finally {
+            lock.unlock();
           }
-        } else if (keyCheckResult.getResult(RocksDBMNodeType.STORAGE_GROUP)) {
-          throw new StorageGroupAlreadySetException(storageGroup.toString());
+        } else {
+          throw new MetadataException("acquire lock timeout: " + levelKey);
         }
       }
     } catch (RocksDBException | InterruptedException e) {
@@ -594,11 +646,21 @@ public class MRocksDBManager implements IMetaManager {
     byte[] pathKey = RocksDBUtils.toStorageNodeKey(levelPath);
     Holder<byte[]> holder = new Holder<>();
     try {
-      if (readWriteHandler.keyExist(pathKey, holder)) {
-        byte[] value = RocksDBUtils.updateTTL(holder.getValue(), dataTTL);
-        readWriteHandler.updateNode(levelPath, pathKey, value);
+      Lock lock = locksPool.get(levelPath);
+      if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        try {
+          if (readWriteHandler.keyExist(pathKey, holder)) {
+            byte[] value = RocksDBUtils.updateTTL(holder.getValue(), dataTTL);
+            readWriteHandler.updateNode(pathKey, value);
+          } else {
+            throw new PathNotExistException(
+                "Storage group node of path doesn't exist: " + levelPath);
+          }
+        } finally {
+          lock.unlock();
+        }
       } else {
-        throw new PathNotExistException("Storage group node of path doesn't exist: " + levelPath);
+        throw new MetadataException("acquire lock timeout: " + levelPath);
       }
     } catch (InterruptedException | RocksDBException e) {
       throw new MetadataException(e);
@@ -1305,59 +1367,97 @@ public class MRocksDBManager implements IMetaManager {
     byte[] originKey = RocksDBUtils.toMeasurementNodeKey(levelPath);
     Holder<byte[]> holder = new Holder<>();
     try {
-      if (!readWriteHandler.keyExist(originKey, holder)) {
-        throw new PathNotExistException(path.getFullPath());
-      }
-
       String[] nodes = path.getNodes();
       byte[] originValue = holder.getValue();
       RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
+      Lock rawKeyLock = locksPool.get(levelPath);
+      if (rawKeyLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        try {
+          if (!readWriteHandler.keyExist(originKey, holder)) {
+            throw new PathNotExistException(path.getFullPath());
+          }
 
-      // upsert alias
-      if (StringUtils.isEmpty(mNode.getAlias()) || !mNode.getAlias().equals(alias)) {
-        WriteBatch batch = new WriteBatch();
-        String[] newAlias = Arrays.copyOf(nodes, nodes.length);
-        newAlias[nodes.length - 1] = alias;
-        byte[] newAliasKey =
-            RocksDBUtils.toAliasNodeKey(RocksDBUtils.getLevelPath(newAlias, newAlias.length - 1));
-        batch.put(newAliasKey, RocksDBUtils.buildAliasNodeValue(originKey));
+          // upsert alias
+          if (StringUtils.isEmpty(mNode.getAlias()) || !mNode.getAlias().equals(alias)) {
+            WriteBatch batch = new WriteBatch();
+            String[] newAlias = Arrays.copyOf(nodes, nodes.length);
+            newAlias[nodes.length - 1] = alias;
+            String newAliasLevel = RocksDBUtils.getLevelPath(newAlias, newAlias.length - 1);
+            byte[] newAliasKey = RocksDBUtils.toAliasNodeKey(newAliasLevel);
 
-        if (!mNode.getAlias().equals(alias)) {
-          String[] oldAlias = Arrays.copyOf(nodes, nodes.length);
-          oldAlias[nodes.length - 1] = mNode.getAlias();
-          byte[] oldAliasKey =
-              RocksDBUtils.toAliasNodeKey(RocksDBUtils.getLevelPath(oldAlias, oldAlias.length - 1));
-          batch.delete(oldAliasKey);
+            Lock newAliasLock = locksPool.get(newAliasLevel);
+            Lock oldAliasLock = null;
+            boolean lockedOldAlias = false;
+            try {
+              if (newAliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+                if (readWriteHandler.keyExistByAllTypes(newAliasLevel).existAnyKey()) {
+                  throw new PathAlreadyExistException("Alias node has exist: " + newAliasLevel);
+                }
+                batch.put(newAliasKey, RocksDBUtils.buildAliasNodeValue(originKey));
+              } else {
+                throw new MetadataException("acquire lock timeout: " + newAliasLevel);
+              }
+
+              if (StringUtils.isNotEmpty(mNode.getAlias()) && !mNode.getAlias().equals(alias)) {
+                String[] oldAlias = Arrays.copyOf(nodes, nodes.length);
+                oldAlias[nodes.length - 1] = mNode.getAlias();
+                String oldAliasLevel = RocksDBUtils.getLevelPath(oldAlias, oldAlias.length - 1);
+                byte[] oldAliasKey = RocksDBUtils.toAliasNodeKey(oldAliasLevel);
+                oldAliasLock = locksPool.get(oldAliasLevel);
+                if (oldAliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+                  lockedOldAlias = true;
+                  if (!readWriteHandler.keyExist(oldAliasKey)) {
+                    logger.error(
+                        "origin node [{}] has alias but alias node [{}] doesn't exist ",
+                        levelPath,
+                        oldAliasLevel);
+                  }
+                  batch.delete(oldAliasKey);
+                } else {
+                  throw new MetadataException("acquire lock timeout: " + oldAliasLevel);
+                }
+              }
+              // TODO: need application lock
+              readWriteHandler.executeBatch(batch);
+            } finally {
+              newAliasLock.unlock();
+              if (oldAliasLock != null && lockedOldAlias) {
+                oldAliasLock.unlock();
+              }
+            }
+          }
+
+          WriteBatch batch = new WriteBatch();
+          boolean hasUpdate = false;
+          if (tagsMap != null && !tagsMap.isEmpty()) {
+            if (mNode.getTags() == null) {
+              mNode.setTags(tagsMap);
+            } else {
+              mNode.getTags().putAll(tagsMap);
+            }
+            batch.put(
+                readWriteHandler.getCFHByName(TABLE_NAME_TAGS), originKey, DEFAULT_NODE_VALUE);
+            hasUpdate = true;
+          }
+          if (attributesMap != null && !attributesMap.isEmpty()) {
+            if (mNode.getAttributes() == null) {
+              mNode.setAttributes(attributesMap);
+            } else {
+              mNode.getAttributes().putAll(attributesMap);
+            }
+            hasUpdate = true;
+          }
+          if (hasUpdate) {
+            batch.put(originKey, mNode.getRocksDBValue());
+            readWriteHandler.executeBatch(batch);
+          }
+        } finally {
+          rawKeyLock.unlock();
         }
-        // TODO: need application lock
-        readWriteHandler.executeBatch(batch);
+      } else {
+        throw new MetadataException("acquire lock timeout: " + levelPath);
       }
-
-      WriteBatch batch = new WriteBatch();
-      boolean hasUpdate = false;
-      if (tagsMap != null && !tagsMap.isEmpty()) {
-        if (mNode.getTags() == null) {
-          mNode.setTags(tagsMap);
-        } else {
-          mNode.getTags().putAll(tagsMap);
-        }
-        batch.put(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), originKey, EMPTY_NODE_VALUE);
-        hasUpdate = true;
-      }
-      if (attributesMap != null && !attributesMap.isEmpty()) {
-        if (mNode.getAttributes() == null) {
-          mNode.setAttributes(attributesMap);
-        } else {
-          mNode.getAttributes().putAll(attributesMap);
-        }
-        hasUpdate = true;
-      }
-
-      if (hasUpdate) {
-        batch.put(originKey, mNode.getRocksDBValue());
-        readWriteHandler.executeBatch(batch);
-      }
-    } catch (RocksDBException e) {
+    } catch (RocksDBException | InterruptedException e) {
       throw new MetadataException(e);
     }
   }
@@ -1368,28 +1468,36 @@ public class MRocksDBManager implements IMetaManager {
     if (attributesMap == null || attributesMap.isEmpty()) {
       return;
     }
-
     String levelPath = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
     byte[] key = RocksDBUtils.toMeasurementNodeKey(levelPath);
     Holder<byte[]> holder = new Holder<>();
     try {
-      if (!readWriteHandler.keyExist(key, holder)) {
-        throw new PathNotExistException(path.getFullPath());
-      }
-
-      byte[] originValue = holder.getValue();
-      RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
-      if (mNode.getAttributes() != null) {
-        for (Map.Entry<String, String> entry : attributesMap.entrySet()) {
-          if (mNode.getAttributes().containsKey(entry.getKey())) {
-            throw new MetadataException(
-                String.format("TimeSeries [%s] already has the attribute [%s].", path, key));
+      Lock lock = locksPool.get(levelPath);
+      if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        try {
+          if (!readWriteHandler.keyExist(key, holder)) {
+            throw new PathNotExistException(path.getFullPath());
           }
+
+          byte[] originValue = holder.getValue();
+          RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
+          if (mNode.getAttributes() != null) {
+            for (Map.Entry<String, String> entry : attributesMap.entrySet()) {
+              if (mNode.getAttributes().containsKey(entry.getKey())) {
+                throw new MetadataException(
+                    String.format("TimeSeries [%s] already has the attribute [%s].", path, key));
+              }
+            }
+            attributesMap.putAll(mNode.getAttributes());
+          }
+          mNode.setAttributes(attributesMap);
+          readWriteHandler.updateNode(key, mNode.getRocksDBValue());
+        } finally {
+          lock.unlock();
         }
-        attributesMap.putAll(mNode.getAttributes());
+      } else {
+        throw new MetadataException("acquire lock timeout: " + levelPath);
       }
-      mNode.setAttributes(attributesMap);
-      readWriteHandler.updateNode(levelPath, key, mNode.getRocksDBValue());
     } catch (RocksDBException | InterruptedException e) {
       throw new MetadataException(e);
     }
@@ -1406,32 +1514,40 @@ public class MRocksDBManager implements IMetaManager {
     byte[] key = RocksDBUtils.toMeasurementNodeKey(levelPath);
     Holder<byte[]> holder = new Holder<>();
     try {
-      if (!readWriteHandler.keyExist(key, holder)) {
-        throw new PathNotExistException(path.getFullPath());
-      }
-
-      byte[] originValue = holder.getValue();
-      RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
-      boolean hasTags = false;
-      if (mNode.getTags() != null && mNode.getTags().size() > 0) {
-        hasTags = true;
-        for (Map.Entry<String, String> entry : tagsMap.entrySet()) {
-          if (mNode.getTags().containsKey(entry.getKey())) {
-            throw new MetadataException(
-                String.format("TimeSeries [%s] already has the tag [%s].", path, key));
+      Lock lock = locksPool.get(levelPath);
+      if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        try {
+          if (!readWriteHandler.keyExist(key, holder)) {
+            throw new PathNotExistException(path.getFullPath());
           }
-          tagsMap.putAll(mNode.getTags());
+          byte[] originValue = holder.getValue();
+          RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
+          boolean hasTags = false;
+          if (mNode.getTags() != null && mNode.getTags().size() > 0) {
+            hasTags = true;
+            for (Map.Entry<String, String> entry : tagsMap.entrySet()) {
+              if (mNode.getTags().containsKey(entry.getKey())) {
+                throw new MetadataException(
+                    String.format("TimeSeries [%s] already has the tag [%s].", path, key));
+              }
+              tagsMap.putAll(mNode.getTags());
+            }
+          }
+          mNode.setTags(tagsMap);
+          WriteBatch batch = new WriteBatch();
+          if (!hasTags) {
+            batch.put(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key, DEFAULT_NODE_VALUE);
+          }
+          batch.put(key, mNode.getRocksDBValue());
+          // TODO: need application lock
+          readWriteHandler.executeBatch(batch);
+        } finally {
+          lock.unlock();
         }
+      } else {
+        throw new MetadataException("acquire lock timeout: " + levelPath);
       }
-      mNode.setTags(tagsMap);
-      WriteBatch batch = new WriteBatch();
-      if (!hasTags) {
-        batch.put(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key, EMPTY_NODE_VALUE);
-      }
-      batch.put(key, mNode.getRocksDBValue());
-      // TODO: need application lock
-      readWriteHandler.executeBatch(batch);
-    } catch (RocksDBException e) {
+    } catch (RocksDBException | InterruptedException e) {
       throw new MetadataException(e);
     }
   }
@@ -1446,39 +1562,47 @@ public class MRocksDBManager implements IMetaManager {
     byte[] key = RocksDBUtils.toMeasurementNodeKey(levelPath);
     Holder<byte[]> holder = new Holder<>();
     try {
-      if (!readWriteHandler.keyExist(key, holder)) {
-        throw new PathNotExistException(path.getFullPath());
-      }
+      Lock lock = locksPool.get(levelPath);
+      if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        try {
+          if (!readWriteHandler.keyExist(key, holder)) {
+            throw new PathNotExistException(path.getFullPath());
+          }
 
-      byte[] originValue = holder.getValue();
-      RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
-      int tagLen = mNode.getTags() == null ? 0 : mNode.getTags().size();
+          byte[] originValue = holder.getValue();
+          RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
+          int tagLen = mNode.getTags() == null ? 0 : mNode.getTags().size();
 
-      boolean didAnyUpdate = false;
-      for (String toDelete : keySet) {
-        didAnyUpdate = false;
-        if (mNode.getTags() != null && mNode.getTags().containsKey(toDelete)) {
-          mNode.getTags().remove(toDelete);
-          didAnyUpdate = true;
+          boolean didAnyUpdate = false;
+          for (String toDelete : keySet) {
+            didAnyUpdate = false;
+            if (mNode.getTags() != null && mNode.getTags().containsKey(toDelete)) {
+              mNode.getTags().remove(toDelete);
+              didAnyUpdate = true;
+            }
+            if (mNode.getAttributes() != null && mNode.getAttributes().containsKey(toDelete)) {
+              mNode.getAttributes().remove(toDelete);
+              didAnyUpdate = true;
+            }
+            if (!didAnyUpdate) {
+              logger.warn("TimeSeries [{}] does not have tag/attribute [{}]", path, toDelete);
+            }
+          }
+          if (didAnyUpdate) {
+            WriteBatch batch = new WriteBatch();
+            if (tagLen > 0 && mNode.getTags().size() <= 0) {
+              batch.delete(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key);
+            }
+            batch.put(key, mNode.getRocksDBValue());
+            readWriteHandler.executeBatch(batch);
+          }
+        } finally {
+          lock.unlock();
         }
-        if (mNode.getAttributes() != null && mNode.getAttributes().containsKey(toDelete)) {
-          mNode.getAttributes().remove(toDelete);
-          didAnyUpdate = true;
-        }
-        if (!didAnyUpdate) {
-          logger.warn("TimeSeries [{}] does not have tag/attribute [{}]", path, toDelete);
-        }
+      } else {
+        throw new MetadataException("acquire lock timeout: " + levelPath);
       }
-      if (didAnyUpdate) {
-        WriteBatch batch = new WriteBatch();
-        if (tagLen > 0 && mNode.getTags().size() <= 0) {
-          batch.delete(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key);
-        }
-        batch.put(key, mNode.getRocksDBValue());
-        readWriteHandler.executeBatch(batch);
-      }
-
-    } catch (RocksDBException e) {
+    } catch (RocksDBException | InterruptedException e) {
       throw new MetadataException(e);
     }
   }
@@ -1494,31 +1618,40 @@ public class MRocksDBManager implements IMetaManager {
     byte[] key = RocksDBUtils.toMeasurementNodeKey(levelPath);
     Holder<byte[]> holder = new Holder<>();
     try {
+      Lock lock = locksPool.get(levelPath);
+      if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        try {
+          byte[] originValue = holder.getValue();
+          RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
+          boolean didAnyUpdate = false;
+          for (Map.Entry<String, String> entry : alterMap.entrySet()) {
+            didAnyUpdate = false;
+            if (mNode.getTags() != null && mNode.getTags().containsKey(entry.getKey())) {
+              mNode.getTags().put(entry.getKey(), entry.getValue());
+              didAnyUpdate = true;
+            }
+            if (mNode.getAttributes() != null
+                && mNode.getAttributes().containsKey(entry.getKey())) {
+              mNode.getAttributes().put(entry.getKey(), entry.getValue());
+              didAnyUpdate = true;
+            }
+            if (!didAnyUpdate) {
+              throw new MetadataException(
+                  String.format("TimeSeries [%s] does not have tag/attribute [%s].", path, key),
+                  true);
+            }
+          }
+          if (didAnyUpdate) {
+            readWriteHandler.updateNode(key, mNode.getRocksDBValue());
+          }
+        } finally {
+          lock.unlock();
+        }
+      } else {
+        throw new MetadataException("acquire lock timeout: " + levelPath);
+      }
       if (!readWriteHandler.keyExist(key, holder)) {
         throw new PathNotExistException(path.getFullPath());
-      }
-
-      byte[] originValue = holder.getValue();
-      RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
-      boolean didAnyUpdate = false;
-      for (Map.Entry<String, String> entry : alterMap.entrySet()) {
-        didAnyUpdate = false;
-        if (mNode.getTags() != null && mNode.getTags().containsKey(entry.getKey())) {
-          mNode.getTags().put(entry.getKey(), entry.getValue());
-          didAnyUpdate = true;
-        }
-        if (mNode.getAttributes() != null && mNode.getAttributes().containsKey(entry.getKey())) {
-          mNode.getAttributes().put(entry.getKey(), entry.getValue());
-          didAnyUpdate = true;
-        }
-        if (!didAnyUpdate) {
-          throw new MetadataException(
-              String.format("TimeSeries [%s] does not have tag/attribute [%s].", path, key), true);
-        }
-      }
-
-      if (didAnyUpdate) {
-        readWriteHandler.updateNode(levelPath, key, mNode.getRocksDBValue());
       }
     } catch (RocksDBException | InterruptedException e) {
       throw new MetadataException(e);
@@ -1536,32 +1669,41 @@ public class MRocksDBManager implements IMetaManager {
     byte[] nodeKey = RocksDBUtils.toMeasurementNodeKey(levelPath);
     Holder<byte[]> holder = new Holder<>();
     try {
-      if (!readWriteHandler.keyExist(nodeKey, holder)) {
-        throw new PathNotExistException(path.getFullPath());
-      }
+      Lock lock = locksPool.get(levelPath);
+      if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+        try {
+          if (!readWriteHandler.keyExist(nodeKey, holder)) {
+            throw new PathNotExistException(path.getFullPath());
+          }
+          byte[] originValue = holder.getValue();
+          RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
+          boolean didAnyUpdate = false;
+          if (mNode.getTags() != null && mNode.getTags().containsKey(oldKey)) {
+            String value = mNode.getTags().get(oldKey);
+            mNode.getTags().remove(oldKey);
+            mNode.getTags().put(newKey, value);
+            didAnyUpdate = true;
+          }
 
-      byte[] originValue = holder.getValue();
-      RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
-      boolean didAnyUpdate = false;
-      if (mNode.getTags() != null && mNode.getTags().containsKey(oldKey)) {
-        String value = mNode.getTags().get(oldKey);
-        mNode.getTags().remove(oldKey);
-        mNode.getTags().put(newKey, value);
-        didAnyUpdate = true;
-      }
+          if (mNode.getAttributes() != null && mNode.getAttributes().containsKey(oldKey)) {
+            String value = mNode.getAttributes().get(oldKey);
+            mNode.getAttributes().remove(oldKey);
+            mNode.getAttributes().put(newKey, value);
+            didAnyUpdate = true;
+          }
 
-      if (mNode.getAttributes() != null && mNode.getAttributes().containsKey(oldKey)) {
-        String value = mNode.getAttributes().get(oldKey);
-        mNode.getAttributes().remove(oldKey);
-        mNode.getAttributes().put(newKey, value);
-        didAnyUpdate = true;
-      }
-
-      if (didAnyUpdate) {
-        readWriteHandler.updateNode(levelPath, nodeKey, mNode.getRocksDBValue());
+          if (didAnyUpdate) {
+            readWriteHandler.updateNode(nodeKey, mNode.getRocksDBValue());
+          } else {
+            throw new MetadataException(
+                String.format("TimeSeries [%s] does not have tag/attribute [%s].", path, oldKey),
+                true);
+          }
+        } finally {
+          lock.unlock();
+        }
       } else {
-        throw new MetadataException(
-            String.format("TimeSeries [%s] does not have tag/attribute [%s].", path, oldKey), true);
+        throw new MetadataException("acquire lock timeout: " + levelPath);
       }
     } catch (RocksDBException | InterruptedException e) {
       throw new MetadataException(e);
