@@ -20,6 +20,7 @@ package org.apache.iotdb.cross.tests.tools.importCsv;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.QuoteMode;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.thrift.annotation.Nullable;
 
@@ -111,9 +112,10 @@ public abstract class AbstractScript {
   }
 
   protected static CSVParser readCsvFile(String path) throws IOException {
-    return CSVFormat.EXCEL
-        .withQuote('\'')
-        .withEscape('\\')
+    return CSVFormat.Builder.create(CSVFormat.DEFAULT)
+        .setEscape('\\')
+        .setQuoteMode(QuoteMode.NONE)
+        .build()
         .parse(new InputStreamReader(new FileInputStream(path)));
   }
 }

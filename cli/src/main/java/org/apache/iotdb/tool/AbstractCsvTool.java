@@ -212,10 +212,12 @@ public abstract class AbstractCsvTool {
       List<String> headerNames, List<List<Object>> records, String filePath) {
     try {
       CSVPrinter printer =
-          CSVFormat.DEFAULT
-              .withFirstRecordAsHeader()
-              .withEscape('\\')
-              .withQuoteMode(QuoteMode.NONE)
+          CSVFormat.Builder.create(CSVFormat.DEFAULT)
+              .setHeader()
+              .setSkipHeaderRecord(true)
+              .setEscape('\\')
+              .setQuoteMode(QuoteMode.NONE)
+              .build()
               .print(new PrintWriter(filePath));
       if (headerNames != null) {
         printer.printRecord(headerNames);

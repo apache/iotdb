@@ -325,10 +325,12 @@ public class ExportCsv extends AbstractCsvTool {
   public static Boolean writeCsvFile(SessionDataSet sessionDataSet, String filePath)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     CSVPrinter printer =
-        CSVFormat.DEFAULT
-            .withFirstRecordAsHeader()
-            .withEscape('\\')
-            .withQuoteMode(QuoteMode.NONE)
+        CSVFormat.Builder.create(CSVFormat.DEFAULT)
+            .setHeader()
+            .setSkipHeaderRecord(true)
+            .setEscape('\\')
+            .setQuoteMode(QuoteMode.NONE)
+            .build()
             .print(new PrintWriter(filePath));
 
     List<Object> headers = new ArrayList<>();
@@ -362,7 +364,7 @@ public class ExportCsv extends AbstractCsvTool {
                 if (!"null".equals(field.getStringValue())) {
                   if (field.getDataType() == TSDataType.TEXT
                       && !fieldStringValue.startsWith("root.")) {
-                    fieldStringValue = "\"" + fieldStringValue + "\"";
+                    fieldStringValue = "'" + fieldStringValue + "'";
                   }
                   record.add(fieldStringValue);
                 } else {
