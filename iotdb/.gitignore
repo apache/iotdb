@@ -1,0 +1,115 @@
+**/*.pid
+**/gc.log*
+**/logs/*
+**/lib/**
+**/data/**
+
+# Python runtime file
+**/__pycache__/**
+
+# Eclipse IDE files
+**/.classpath
+**/.project
+**/.settings/
+# src/main/resources/
+# intellij IDE files
+**/*.iml
+**/.idea/
+**/*.log
+**/*.ipr
+**/*.iws
+# Apple OS X related
+**/.DS_Store
+derby-tsfile-db
+
+# build generated
+**/target/
+
+# intermediately generated locally
+
+tsfile-timeseries/src/main/resources/logback.out.out.xml
+tsfile-timeseries/src/main/resources/logback.out.xml
+tsfile-service/derby-tsfile-db/
+tsfile-timeseries/src/test/resources/data
+src/main/resources/metadata/mlog.txt
+tsfile-jdbc/src/main/resources/output/queryRes.csv
+
+*.txt
+
+*.jar
+*.gz
+*.tar.gz
+*.tar
+#src/test/resources/logback.xml
+
+### CSV ###
+*.csv
+### Maven ###
+grafana/target/
+!grafana/.mvn/wrapper/maven-wrapper.jar
+grafana/.mvn/
+
+grafana/logs/
+*.log
+
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+
+
+### NetBeans ###
+**/nbproject/private/
+**/nbbuild/
+**/dist/
+**/nbdist/
+**/.nb-gradle/
+grafana/data/
+
+### vscode project
+**/.vscode/
+
+
+grafana/data/test.csv
+**/lib/
+/target/
+*.tsfile
+tsfile/src/test/resources/*.ts
+
+### Apache release ###
+local-snapshots-dir/
+venv/
+
+partitions.tmp
+partitions
+node_identifier
+
+### temporary file of the distributed version ###
+remote/
+
+# gitpod
+.theia/
+
+classes/
+
+### Cmake files ###
+*.cmake
+Makefile
+**/CMakeFiles/
+
+### cluster test data
+node1/
+node2/
+node3/
+
+# Exclude copied license
+/client-py/LICENSE
+
+# ANTLR
+antlr/gen/
+antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/gen/
+antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.tokens
