@@ -577,7 +577,6 @@ public class PhysicalGenerator {
           List<TSDataType> seriesTypes = getSeriesTypes(filterPaths);
           HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
           for (int i = 0; i < filterPaths.size(); i++) {
-            ((RawDataQueryPlan) queryPlan).addFilterPathInDeviceToMeasurements(filterPaths.get(i));
             pathTSDataTypeHashMap.put(filterPaths.get(i), seriesTypes.get(i));
           }
           IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
