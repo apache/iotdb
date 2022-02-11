@@ -263,7 +263,7 @@
 
 |Name| sync\_mlog\_period\_in\_ms |
 |:---:|:---|
-|Description| mlog定期刷新到磁盘的周期，单位毫秒|
+|Description| mlog定期刷新到磁盘的周期，单位毫秒。如果该参数为0，则表示每次对元数据的更新操作都会被立即写到磁盘上。|
 |Type| Int64 |
 |Default| 0 |
 |Effective|重启服务生效|
