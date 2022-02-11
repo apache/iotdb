@@ -56,6 +56,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class IoTDBSessionSimpleIT {
 
@@ -680,5 +681,45 @@ public class IoTDBSessionSimpleIT {
     for (int i : index) {
       Assert.assertNull(record.getFields().get(i).getDataType());
     }
+  }
+
+  @Test
+  public void testInsertWithIllegalMeasurementId() throws Exception {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("a.b");
+    measurements.add("a\".\"b");
+    measurements.add("a“（Φ）”b");
+    measurements.add("a>b");
+
+    List<String> values = new ArrayList<>();
+    values.add("1");
+    values.add("1.2");
+    values.add("true");
+    values.add("dad");
+    try {
+      session.insertRecord(deviceId, 1L, measurements, values);
+      fail();
+    } catch (Exception ignored) {
+
+    }
+
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
+    Assert.assertFalse(dataSet.hasNext());
+
+    measurements.clear();
+    measurements.add("\"a.b\"");
+    measurements.add("\"a“（Φ）”b\"");
+    measurements.add("\"a>b\"");
+    values.remove(0);
+    session.insertRecord(deviceId, 1L, measurements, values);
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"a.b\""));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"a“（Φ）”b\""));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"a>b\""));
+
+    session.close();
   }
 }

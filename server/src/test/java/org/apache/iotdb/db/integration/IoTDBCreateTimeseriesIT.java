@@ -40,6 +40,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.junit.Assert.fail;
+
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
@@ -157,5 +159,88 @@ public class IoTDBCreateTimeseriesIT {
       }
     }
     Assert.assertTrue(resultList.contains(storageGroup));
+  }
+
+  @Test
+  public void testCreateTimeseriesWithSpecialCharacter() throws Exception {
+    try {
+      statement.execute(
+          String.format(
+              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
+              "root.sg.d.a\".\"b"));
+      fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          "401: Error occurred while parsing SQL to physical plan: line 1:29 mismatched input '\".\"' expecting {WITH, '('}",
+          e.getMessage());
+    }
+
+    try {
+      statement.execute(
+          String.format(
+              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
+              "root.sg.d.a“（Φ）”b"));
+      fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          "401: Error occurred while parsing SQL to physical plan: line 1:29 token recognition error at: '“'",
+          e.getMessage());
+    }
+
+    try {
+      statement.execute(
+          String.format(
+              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
+              "root.sg.d.a>b"));
+      fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          "401: Error occurred while parsing SQL to physical plan: line 1:29 mismatched input '>' expecting {WITH, '('}",
+          e.getMessage());
+    }
+
+    String[] timeSeriesArray = {"root.sg.d.\"a.b\"", "root.sg.d.\"a“（Φ）”b\"", "root.sg.d.\"a>b\""};
+
+    for (String timeSeries : timeSeriesArray) {
+      statement.execute(
+          String.format(
+              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
+              timeSeries));
+    }
+
+    // ensure that current timeseries in cache is right.
+    createTimeSeriesWithSpecialCharacterTool(timeSeriesArray);
+
+    statement.close();
+    connection.close();
+    EnvironmentUtils.stopDaemon();
+    setUp();
+
+    // ensure timeseries in cache is right after recovered.
+    createTimeSeriesWithSpecialCharacterTool(timeSeriesArray);
+  }
+
+  private void createTimeSeriesWithSpecialCharacterTool(String[] timeSeriesArray)
+      throws SQLException {
+    boolean hasResult = statement.execute("show timeseries");
+    Assert.assertTrue(hasResult);
+
+    List<String> resultList = new ArrayList<>();
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        String timeseries = resultSet.getString("timeseries");
+        resultList.add(timeseries);
+      }
+    }
+    Assert.assertEquals(3, resultList.size());
+
+    List<String> collect =
+        resultList.stream()
+            .sorted(Comparator.comparingInt(e -> e.split("\\.").length))
+            .collect(Collectors.toList());
+
+    for (String timeseries : timeSeriesArray) {
+      Assert.assertTrue(collect.contains(timeseries));
+    }
   }
 }
