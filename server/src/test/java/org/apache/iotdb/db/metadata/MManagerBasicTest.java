@@ -1277,7 +1277,7 @@ public class MManagerBasicTest {
     manager.getSeriesSchemasAndReadLockDevice(insertPlan);
     assertTrue(manager.isPathExist(deviceId.concatNode("\"a.b\"")));
 
-    String[] illegalMeasurementIds = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
+    String[] illegalMeasurementIds = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP", "a\".\"c"};
     for (String measurementId : illegalMeasurementIds) {
       insertPlan = getInsertPlan(measurementId);
       try {

@@ -310,6 +310,13 @@ public class MTree implements Serializable {
         && !(measurementId.startsWith("\"") && measurementId.endsWith("\""))) {
       throw new MetadataException(String.format("%s is an illegal measurementId", measurementId));
     }
+
+    // measurementId like a"b.c"d or "ab"cd" is forbidden
+    for (int i = 1; i < measurementId.length() - 1; i++) {
+      if (measurementId.charAt(i) == '"' && measurementId.charAt(i - 1) != '\\') {
+        throw new MetadataException(String.format("%s is an illegal measurementId", measurementId));
+      }
+    }
   }
 
   // check if sdt parameters are valid
