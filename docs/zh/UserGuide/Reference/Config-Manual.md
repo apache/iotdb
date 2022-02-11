@@ -414,12 +414,12 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 
 * force\_mlog\_period\_in\_ms
 
-|Name| force\_mlog\_period\_in\_ms |
+|名字| force\_mlog\_period\_in\_ms |
 |:---:|:---|
-|Description| mlog定期刷新到磁盘的周期，单位毫秒。如果该参数为0，则表示每次对元数据的更新操作都会被立即写到磁盘上。|
-|Type| Int64 |
-|Default| 0 |
-|Effective|重启服务生效|
+|描述| mlog定期刷新到磁盘的周期，单位毫秒。如果该参数为0，则表示每次对元数据的更新操作都会被立即写到磁盘上。|
+|类型| Int64 |
+|默认值| 0 |
+|改后生效方式|重启服务生效|
 
 * memtable\_size\_threshold
 
