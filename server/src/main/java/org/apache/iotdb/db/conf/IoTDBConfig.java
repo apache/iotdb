@@ -58,7 +58,7 @@ public class IoTDBConfig {
   public static final Pattern STORAGE_GROUP_PATTERN = Pattern.compile(STORAGE_GROUP_MATCHER);
 
   // e.g., a31+/$%#&[]{}3e4, "a.b", 'a.b'
-  private static final String NODE_NAME_MATCHER = ".+";
+  private static final String NODE_NAME_MATCHER = "([^\n\t]+)";
 
   // e.g.,  .s1
   private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + NODE_NAME_MATCHER;
