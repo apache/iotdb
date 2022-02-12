@@ -49,6 +49,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -359,10 +360,9 @@ public class ImportCsv extends AbstractCsvTool {
                   if (type != null) {
                     headerTypeMap.put(header, type);
                   } else {
-                    System.out.println(
-                        String.format(
-                            "Line '%s', column '%s': '%s' unknown type",
-                            record.getRecordNumber(), header, value));
+                    System.out.printf(
+                        "Line '%s', column '%s': '%s' unknown type%n",
+                        record.getRecordNumber(), header, value);
                     isFail = true;
                   }
                 }
@@ -371,10 +371,9 @@ public class ImportCsv extends AbstractCsvTool {
                   Object valueTrans = typeTrans(value, type);
                   if (valueTrans == null) {
                     isFail = true;
-                    System.out.println(
-                        String.format(
-                            "Line '%s', column '%s': '%s' can't convert to '%s'",
-                            record.getRecordNumber(), header, value, type));
+                    System.out.printf(
+                        "Line '%s', column '%s': '%s' can't convert to '%s'%n",
+                        record.getRecordNumber(), header, value, type);
                   } else {
                     measurements.add(headerNameMap.get(header).replace(deviceId + '.', ""));
                     types.add(type);
@@ -451,7 +450,7 @@ public class ImportCsv extends AbstractCsvTool {
           if (deviceName.get() == null) {
             deviceName.set(record.get(1));
             timeFormatter.set(formatterInit(record.get(0)));
-          } else if (deviceName.get() != record.get(1)) {
+          } else if (!Objects.equals(deviceName.get(), record.get(1))) {
             // if device changed
             writeAndEmptyDataSet(
                 deviceName.get(), times, typesList, valuesList, measurementsList, 3);
@@ -490,10 +489,9 @@ public class ImportCsv extends AbstractCsvTool {
                   if (type != null) {
                     headerTypeMap.put(measurement, type);
                   } else {
-                    System.out.println(
-                        String.format(
-                            "Line '%s', column '%s': '%s' unknown type",
-                            record.getRecordNumber(), measurement, value));
+                    System.out.printf(
+                        "Line '%s', column '%s': '%s' unknown type%n",
+                        record.getRecordNumber(), measurement, value);
                     isFail.set(true);
                   }
                 }
@@ -503,10 +501,9 @@ public class ImportCsv extends AbstractCsvTool {
                 Object valueTrans = typeTrans(value, type);
                 if (valueTrans == null) {
                   isFail.set(true);
-                  System.out.println(
-                      String.format(
-                          "Line '%s', column '%s': '%s' can't convert to '%s'",
-                          record.getRecordNumber(), headerNameMap.get(measurement), value, type));
+                  System.out.printf(
+                      "Line '%s', column '%s': '%s' can't convert to '%s'%n",
+                      record.getRecordNumber(), headerNameMap.get(measurement), value, type);
                 } else {
                   values.add(valueTrans);
                   measurements.add(headerNameMap.get(measurement));
@@ -566,8 +563,6 @@ public class ImportCsv extends AbstractCsvTool {
           System.out.println("Meet error when insert csv because " + e.getMessage());
         }
         writeAndEmptyDataSet(device, times, typesList, valuesList, measurementsList, --retryTime);
-      } else {
-        return;
       }
     } catch (StatementExecutionException e) {
       System.out.println("Meet error when insert csv because " + e.getMessage());
@@ -597,8 +592,6 @@ public class ImportCsv extends AbstractCsvTool {
         }
         writeAndEmptyDataSet(
             deviceIds, times, typesList, valuesList, measurementsList, --retryTime);
-      } else {
-        return;
       }
     } catch (StatementExecutionException e) {
       System.out.println("Meet error when insert csv because " + e.getMessage());
@@ -619,11 +612,13 @@ public class ImportCsv extends AbstractCsvTool {
    * @throws IOException
    */
   private static CSVParser readCsvFile(String path) throws IOException {
-    return CSVFormat.EXCEL
-        .withFirstRecordAsHeader()
-        .withQuote('`')
-        .withEscape('\\')
-        .withIgnoreEmptyLines()
+    return CSVFormat.Builder.create(CSVFormat.DEFAULT)
+        .setHeader()
+        .setSkipHeaderRecord(true)
+        .setQuote('`')
+        .setEscape('\\')
+        .setIgnoreEmptyLines(true)
+        .build()
         .parse(new InputStreamReader(new FileInputStream(path)));
   }
 
@@ -700,9 +695,9 @@ public class ImportCsv extends AbstractCsvTool {
       return false;
     } else {
       for (int i = 1; i < columnNames.size(); i++) {
-        if (alignedType == "Time") {
+        if (Objects.equals(alignedType, "Time")) {
           headerTypeMap.put(columnNames.get(i), getType(columnTypes.get(i)));
-        } else if (alignedType == "Device") {
+        } else if (Objects.equals(alignedType, "Device")) {
           String[] split = columnNames.get(i).split("\\.");
           String measurement = split[split.length - 1];
           headerTypeMap.put(measurement, getType(columnTypes.get(i)));
@@ -729,7 +724,7 @@ public class ImportCsv extends AbstractCsvTool {
     for (String timeFormat : STRING_TIME_FORMAT) {
       SimpleDateFormat format = new SimpleDateFormat(timeFormat);
       try {
-        format.parse(time).getTime();
+        format.parse(time);
         return format;
       } catch (java.text.ParseException ignored) {
         // do nothing
