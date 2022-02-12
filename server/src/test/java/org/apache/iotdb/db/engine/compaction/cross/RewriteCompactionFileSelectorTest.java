@@ -147,6 +147,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     assertEquals(2, result.length);
+    assertEquals(5, result[0].size());
+    assertEquals(1, result[1].size());
     resource.clear();
   }
 
