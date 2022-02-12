@@ -93,7 +93,7 @@ public class TsFileManager {
   }
 
   public TsFileResourceList getUnsequenceListByTimePartition(long timePartition) {
-    readUnlock();
+    readLock();
     try {
       return unsequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
     } finally {
