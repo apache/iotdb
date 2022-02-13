@@ -160,10 +160,7 @@ CREATE TIMESERIES root.a.b."s1.s2".c WITH DATATYPE=INT32, ENCODING=RLE
 // root.a.b."s1.s2".c 将被解析为 Path[root, a, b, "s1.s2", c]
 ```
 
-注意：使用引号对路径分隔符（`.`）进行转义时，为避免引发歧义，需遵循以下规则：
-
-- 在反引号括起的路径节点名内，不能以单、双引号开头或结尾。
-- 在单引号括起的路径节点名内，路径分隔符前后不能使用单引号。同理，在双引号括起的路径节点名内，路径分隔符前后不能使用双引号。
+注意：使用引号对路径分隔符（`.`）进行转义时，需要保证路径没有歧义。
 
 ```sql
 CREATE TIMESERIES root.sg."s1\".\"s2" WITH DATATYPE=INT32, ENCODING=RLE

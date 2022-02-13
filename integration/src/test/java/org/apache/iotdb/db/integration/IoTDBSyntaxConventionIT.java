@@ -349,40 +349,40 @@ public class IoTDBSyntaxConventionIT {
       } catch (SQLException ignored) {
       }
       try {
+        statement.execute("CREATE TIMESERIES root.sg.d1.`\"a`.s1 TEXT");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertTrue(e.getMessage().contains("Illegal name of time series"));
+      }
+      try {
         statement.execute("CREATE TIMESERIES root.sg1.d1.\"a\"\".\"\"b\" TEXT");
         fail();
       } catch (SQLException e) {
-        Assert.assertTrue(e.getMessage().contains("\"a\".\"b\" is not a legal node name"));
-      }
-      try {
-        statement.execute("CREATE TIMESERIES root.sg1.d1.\"a.\"\"b\" TEXT");
-        fail();
-      } catch (SQLException e) {
-        Assert.assertTrue(e.getMessage().contains("\"a.\"b\" is not a legal node name"));
+        Assert.assertTrue(e.getMessage().contains("Ambiguity name of time series"));
       }
       try {
         statement.execute("CREATE TIMESERIES root.sg1.d1.\"a\"\".b\" TEXT");
         fail();
       } catch (SQLException e) {
-        Assert.assertTrue(e.getMessage().contains("\"a\".b\" is not a legal node name"));
+        Assert.assertTrue(e.getMessage().contains("Ambiguity name of time series"));
       }
       try {
         statement.execute("CREATE TIMESERIES root.sg1.d1.'a\\'.\\'b' TEXT");
         fail();
       } catch (SQLException e) {
-        Assert.assertTrue(e.getMessage().contains("'a'.'b' is not a legal node name"));
+        Assert.assertTrue(e.getMessage().contains("Ambiguity name of time series"));
       }
       try {
         statement.execute("CREATE TIMESERIES root.sg.`\"a`.`\"` TEXT");
         fail();
       } catch (SQLException e) {
-        Assert.assertTrue(e.getMessage().contains("\"a is not a legal node name"));
+        Assert.assertTrue(e.getMessage().contains("Ambiguity name of time series"));
       }
       try {
         statement.execute("CREATE TIMESERIES root.sg.`\"ab`.`cd\"` TEXT");
         fail();
       } catch (SQLException e) {
-        Assert.assertTrue(e.getMessage().contains("\"ab is not a legal node name"));
+        Assert.assertTrue(e.getMessage().contains("Ambiguity name of time series"));
       }
     } catch (Exception e) {
       e.printStackTrace();

@@ -1599,6 +1599,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     boolean isTimeDefault = parseInsertColumnSpec(ctx.insertColumnsSpec(), insertOp);
     parseInsertValuesSpec(ctx.insertValuesSpec(), insertOp, isTimeDefault);
     insertOp.setAligned(ctx.ALIGNED() != null);
+
+    // check if time series paths are ambiguous or illegal
+    for (String measurement : insertOp.getMeasurementList()) {
+      PartialPath fullPath = insertOp.getDevice().concatNode(measurement);
+      checkFullPathIllegal(fullPath);
+    }
     return insertOp;
   }
 
@@ -2171,7 +2177,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       i++;
       path[i] = parseNodeNameWithoutWildcard(nodeNameWithoutStar);
     }
-    return new PartialPath(path);
+
+    // check if time series paths are ambiguous or illegal
+    PartialPath res = new PartialPath(path);
+    checkFullPathIllegal(res);
+    return res;
   }
 
   private PartialPath parsePrefixPath(IoTDBSqlParser.PrefixPathContext ctx) {
@@ -2846,15 +2856,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (2 <= src.length()) {
       if (src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
         String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-        if (unescapeString.charAt(0) == '"'
-            || unescapeString.charAt(unescapeString.length() - 1) == '"'
-            || unescapeString.charAt(0) == '\''
-            || unescapeString.charAt(unescapeString.length() - 1) == '\'') {
-          throw new SQLParserException(
-              String.format(
-                  "%s is not a legal node name, because it is not allowed to start or end with a single or double quote",
-                  unescapeString));
-        }
         return unescapeString.replace("``", "`");
       }
       if (src.charAt(0) == '"' && src.charAt(src.length() - 1) == '"') {
@@ -2875,25 +2876,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       res.append(unescapeSrc.replace(String.valueOf(quote) + quote, String.valueOf(quote)));
     }
     res.append(quote);
-    if (!checkNodeName(res.substring(1, res.length() - 1), quote)) {
-      throw new SQLParserException(
-          String.format(
-              "%s is not a legal node name, because quote cannot be used around the path separator",
-              res));
-    }
     return res.toString();
-  }
-
-  boolean checkNodeName(String src, char quote) {
-    int dotIndex = src.indexOf('.');
-    while (dotIndex != -1) {
-      if ((dotIndex > 1 && src.charAt(dotIndex - 1) == quote)
-          || (dotIndex < src.length() - 1 && src.charAt(dotIndex + 1) == quote)) {
-        return false;
-      }
-      dotIndex = src.indexOf('.', dotIndex + 1);
-    }
-    return true;
   }
 
   private String parseStringLiteralInInsertValue(String src) {
@@ -2969,6 +2952,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         return new Pair<>(time, time);
       default:
         throw new SQLParserException(DELETE_RANGE_ERROR_MSG);
+    }
+  }
+
+  /** check if time series paths are ambiguous or illegal */
+  void checkFullPathIllegal(PartialPath path) {
+    try {
+      if (!path.equals(new PartialPath(path.getFullPath()))) {
+        throw new SQLParserException(
+            String.format("Ambiguity name of time series [%s]", path.getFullPath()));
+      }
+    } catch (IllegalPathException e) {
+      throw new SQLParserException(
+          String.format("Illegal name of time series [%s]", path.getFullPath()));
     }
   }
 }
