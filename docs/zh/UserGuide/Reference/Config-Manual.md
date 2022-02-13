@@ -412,6 +412,15 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 1048576 |
 |改后生效方式|触发生效|
 
+* force\_mlog\_period\_in\_ms
+
+|名字| force\_mlog\_period\_in\_ms |
+|:---:|:---|
+|描述| mlog定期刷新到磁盘的周期，单位毫秒。如果该参数为0，则表示每次对元数据的更新操作都会被立即写到磁盘上。|
+|类型| Int64 |
+|默认值| 0 |
+|改后生效方式|重启服务生效|
+
 * memtable\_size\_threshold
 
 |名字| memtable\_size\_threshold |
@@ -1681,3 +1690,26 @@ sbin\start-server.bat printgc
 ```
 
 GC 日志会被存储在`IOTDB_HOME/logs/gc.log`. 至多会存储 10 个 gc.log 文件，每个文件最多 10MB。
+
+## 适配密码加密算法
+
+用户密码加密后存储在本地，如果加密算法级别不高，那么就有可能会被破解。
+因此用户可以根据自己的场景，实现AsymmetricEncrypt接口，使用自己的加密算法。
+
+- iotdb_server_encrypt_decrypt_provider
+
+|     名字     | iotdb_server_encrypt_decrypt_provider |
+| :----------: | :--------------------------------- |
+|     描述     | 密码加密提供类                         |
+|     类型     | String                              |
+|    默认值    | org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt   |
+| 改后生效方式  | 重启服务生效                          |
+
+- iotdb_server_encrypt_decrypt_provider_parameter
+
+|     名字     | continuous_query_min_every_interval |
+| :----------: | :---------------------------------- |
+|     描述     | 密码加密提供类参数                      |
+|     类型     | String                              |
+|    默认值    | 空                                  |
+| 改后生效方式 | 重启服务生效                           |
