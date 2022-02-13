@@ -169,8 +169,8 @@ Note: When escaping the path separator (`.`) with quotes, to avoid ambiguity, yo
 CREATE TIMESERIES root.sg."s1\".\"s2" WITH DATATYPE=INT32, ENCODING=RLE
 // invalid! ambiguity with root.sg."s1"."s2"
 
-CREATE TIMESERIES root.sg."a." WITH DATATYPE=INT32, ENCODING=RLE
-// invalid! ambiguity with root.sg.`"a`.`"`
+CREATE TIMESERIES root.sg.`"a`.`"` WITH DATATYPE=INT32, ENCODING=RLE
+// invalid! ambiguity with root.sg."a."
 
 CREATE TIMESERIES root.sg.`"ab`.`cd"` WITH DATATYPE=INT32, ENCODING=RLE
 // invalid! ambiguity with root.sg."ab.cd"

@@ -169,8 +169,8 @@ CREATE TIMESERIES root.a.b."s1.s2".c WITH DATATYPE=INT32, ENCODING=RLE
 CREATE TIMESERIES root.sg."s1\".\"s2" WITH DATATYPE=INT32, ENCODING=RLE
 // 解析失败！与 root.sg."s1"."s2" 产生歧义
 
-CREATE TIMESERIES root.sg."a." WITH DATATYPE=INT32, ENCODING=RLE
-// 解析失败！与 root.sg.`"a`.`"` 产生歧义
+CREATE TIMESERIES root.sg.`"a`.`"` WITH DATATYPE=INT32, ENCODING=RLE
+// 解析失败！与 root.sg."a." 产生歧义
 
 CREATE TIMESERIES root.sg.`"ab`.`cd"` WITH DATATYPE=INT32, ENCODING=RLE
 // 解析失败！与 root.sg."ab.cd" 产生歧义

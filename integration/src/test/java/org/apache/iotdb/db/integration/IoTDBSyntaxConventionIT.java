@@ -247,7 +247,11 @@ public class IoTDBSyntaxConventionIT {
       "\"a+b\"",
       "'a.b'",
       "\"a.b\"",
-      "\"a'.'b\""
+      "\"a'.'b\"",
+      "\"a.\"",
+      "\".a\"",
+      "'a.'",
+      "'.a'"
     };
     String[] selectNodeNames = {
       "`select`",
@@ -258,10 +262,26 @@ public class IoTDBSyntaxConventionIT {
       "`\"a+b\"`",
       "`'a.b'`",
       "`\"a.b\"`",
-      "`\"a'.'b\"`"
+      "`\"a'.'b\"`",
+      "`\"a.\"`",
+      "`\".a\"`",
+      "`'a.'`",
+      "`'.a'`"
     };
     String[] resultNodeNames = {
-      "select", "'select'", "\"select\"", "a+b", "'a+b'", "\"a+b\"", "'a.b'", "\"a.b\"", "\"a'.'b\""
+      "select",
+      "'select'",
+      "\"select\"",
+      "a+b",
+      "'a+b'",
+      "\"a+b\"",
+      "'a.b'",
+      "\"a.b\"",
+      "\"a'.'b\"",
+      "\"a.\"",
+      "\".a\"",
+      "'a.'",
+      "'.a'"
     };
     String[] resultTimeseries = {
       "root.sg1.d1.select",
@@ -272,7 +292,11 @@ public class IoTDBSyntaxConventionIT {
       "root.sg1.d1.\"a+b\"",
       "root.sg1.d1.'a.b'",
       "root.sg1.d1.\"a.b\"",
-      "root.sg1.d1.\"a'.'b\""
+      "root.sg1.d1.\"a'.'b\"",
+      "root.sg1.d1.\"a.\"",
+      "root.sg1.d1.\".a\"",
+      "root.sg1.d1.'a.'",
+      "root.sg1.d1.'.a'"
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -331,16 +355,28 @@ public class IoTDBSyntaxConventionIT {
         Assert.assertTrue(e.getMessage().contains("\"a\".\"b\" is not a legal node name"));
       }
       try {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.\"a.\"\"b\" TEXT");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertTrue(e.getMessage().contains("\"a.\"b\" is not a legal node name"));
+      }
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.\"a\"\".b\" TEXT");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertTrue(e.getMessage().contains("\"a\".b\" is not a legal node name"));
+      }
+      try {
         statement.execute("CREATE TIMESERIES root.sg1.d1.'a\\'.\\'b' TEXT");
         fail();
       } catch (SQLException e) {
         Assert.assertTrue(e.getMessage().contains("'a'.'b' is not a legal node name"));
       }
       try {
-        statement.execute("CREATE TIMESERIES root.sg.\"a.\" TEXT");
+        statement.execute("CREATE TIMESERIES root.sg.`\"a`.`\"` TEXT");
         fail();
       } catch (SQLException e) {
-        Assert.assertTrue(e.getMessage().contains("\"a.\" is not a legal node name"));
+        Assert.assertTrue(e.getMessage().contains("\"a is not a legal node name"));
       }
       try {
         statement.execute("CREATE TIMESERIES root.sg.`\"ab`.`cd\"` TEXT");

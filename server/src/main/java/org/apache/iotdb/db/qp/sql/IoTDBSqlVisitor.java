@@ -2875,7 +2875,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       res.append(unescapeSrc.replace(String.valueOf(quote) + quote, String.valueOf(quote)));
     }
     res.append(quote);
-    if (!checkNodeName(res.toString(), quote)) {
+    if (!checkNodeName(res.substring(1, res.length() - 1), quote)) {
       throw new SQLParserException(
           String.format(
               "%s is not a legal node name, because quote cannot be used around the path separator",
@@ -2887,7 +2887,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   boolean checkNodeName(String src, char quote) {
     int dotIndex = src.indexOf('.');
     while (dotIndex != -1) {
-      if (src.charAt(dotIndex - 1) == quote || src.charAt(dotIndex + 1) == quote) {
+      if ((dotIndex > 1 && src.charAt(dotIndex - 1) == quote)
+          || (dotIndex < src.length() - 1 && src.charAt(dotIndex + 1) == quote)) {
         return false;
       }
       dotIndex = src.indexOf('.', dotIndex + 1);
