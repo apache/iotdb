@@ -384,8 +384,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           //          System.out.println("====DEBUG====: find lastPoint");
         }
       }
-      // verify bottomPoint:
-      if (!isFinal[2]) {
+      if (!isFinal[2]) { // bottomPoint
         long bottomTimestamp = timestamps[2];
         ChunkMetadata bottomChunkMetadata = currentChunkList.get(listIdx[2]).getChunkMetadata();
         List<Long> mergedVersionList = currentChunkList.get(listIdx[2]).getMergeVersionList();
@@ -593,8 +592,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         }
       }
 
-      // TODO: verify topPoint
-      if (!isFinal[3]) {
+      if (!isFinal[3]) { // topPoint
         long topTimestamp = timestamps[3];
         ChunkMetadata topChunkMetadata = currentChunkList.get(listIdx[3]).getChunkMetadata();
         List<Long> mergedVersionList = currentChunkList.get(listIdx[3]).getMergeVersionList();

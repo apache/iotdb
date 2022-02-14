@@ -179,7 +179,7 @@ public class MyTest2 {
   }
 
   @Test
-  public void test2() { // all constant
+  public void test2() {
     prepareData2();
 
     String[] res =
@@ -266,7 +266,7 @@ public class MyTest2 {
   }
 
   @Test
-  public void test3() { // all constant
+  public void test3() {
     prepareData3();
 
     String[] res =
@@ -353,7 +353,7 @@ public class MyTest2 {
   }
 
   @Test
-  public void test4() { // all constant
+  public void test4() {
     prepareData4();
 
     String[] res = new String[] {"0,1,10,5,18,3[9],25[6]", "50,60,60,1,1,1[60],1[60]"};
@@ -429,7 +429,7 @@ public class MyTest2 {
   }
 
   @Test
-  public void test5() { // all constant
+  public void test5() {
     prepareData5();
 
     String[] res = new String[] {"0,1,10,5,18,3[9],25[6]", "50,60,60,1,1,1[60],1[60]"};
