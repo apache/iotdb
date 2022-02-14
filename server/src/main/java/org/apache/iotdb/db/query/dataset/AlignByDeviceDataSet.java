@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -151,7 +152,13 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
       // get filter to execute for the current device
       if (deviceToFilterMap != null) {
-        this.expression = deviceToFilterMap.get(currentDevice);
+        try {
+          this.expression =
+              ExpressionOptimizer.getInstance()
+                  .optimize(deviceToFilterMap.get(currentDevice), new ArrayList<>(executePaths));
+        } catch (QueryFilterOptimizationException e) {
+          throw new IOException(e.getMessage());
+        }
       }
 
       // for tracing: try to calculate the number of series paths
