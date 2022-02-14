@@ -323,9 +323,7 @@ IoTDB 规定用户名的字符长度不小于 4，其中用户名不能包含空
 
 ### 密码限制
 
-IoTDB 规定密码的字符长度不小于 4，其中密码不能包含空格，密码采用 MD5 进行加密。
-用户根据自己的场景，适配不同的加密算法，需要实现AsymmetricEncrypt接口，并增加到配置项iotdb_server_encrypt_decrypt_provider中。
-如果此加密算法需要参数，需要将此参数加入到iotdb_server_encrypt_decrypt_provider_parameter配置项中，然后在此实现类中初始化。
+IoTDB 规定密码的字符长度不小于 4，其中密码不能包含空格，密码默认采用 MD5 进行加密。
 
 ### 角色名限制
 
