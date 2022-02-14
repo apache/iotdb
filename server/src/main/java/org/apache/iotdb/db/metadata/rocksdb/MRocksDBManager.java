@@ -100,7 +100,17 @@ import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_NODE_VALUE;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_ALIGNED;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_SET_TTL;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -672,6 +682,7 @@ public class MRocksDBManager implements IMetaManager {
   // endregion
 
   // region Interfaces for metadata info Query
+
   /**
    * Check whether the path exists.
    *
@@ -679,7 +690,7 @@ public class MRocksDBManager implements IMetaManager {
    */
   @Override
   public boolean isPathExist(PartialPath path) throws MetadataException {
-    String innerPathName = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength());
+    String innerPathName = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
     try {
       CheckKeyResult checkKeyResult =
           readWriteHandler.keyExistByTypes(innerPathName, RocksDBMNodeType.values());
@@ -715,7 +726,7 @@ public class MRocksDBManager implements IMetaManager {
     return getKeyNumByPrefix(pathPattern, NODE_TYPE_MEASUREMENT);
   }
 
-  private int getKeyNumByPrefix(PartialPath pathPattern, byte nodeType) throws MetadataException {
+  private int getKeyNumByPrefix(PartialPath pathPattern, char nodeType) {
     AtomicInteger counter = new AtomicInteger(0);
     Set<String> seeds = new HashSet<>();
 
@@ -724,19 +735,22 @@ public class MRocksDBManager implements IMetaManager {
     int nonWildcardAvailablePosition =
         pathPattern.getFullPath().indexOf(ONE_LEVEL_PATH_WILDCARD) - 1;
     if (nonWildcardAvailablePosition < 0) {
-      seedPath = RocksDBUtils.getLevelPath(pathPattern.getNodes(), pathPattern.getNodeLength());
+      seedPath = RocksDBUtils.getLevelPath(pathPattern.getNodes(), pathPattern.getNodeLength() - 1);
     } else {
       seedPath = pathPattern.getFullPath().substring(0, nonWildcardAvailablePosition);
     }
 
-    seeds.add(seedPath);
+    for (RocksDBMNodeType type : RocksDBMNodeType.values()) {
+      seeds.add(new String(RocksDBUtils.toRocksDBKey(seedPath, type.value)));
+    }
+
     scanAllKeysRecursively(
         seeds,
         0,
         s -> {
           try {
             byte[] value = readWriteHandler.get(null, s.getBytes());
-            if (value != null && value.length > 0 && value[0] == nodeType) {
+            if (value != null && value.length > 0 && s.charAt(0) == nodeType) {
               counter.incrementAndGet();
               return false;
             }
@@ -813,7 +827,7 @@ public class MRocksDBManager implements IMetaManager {
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
     String innerNameByLevel =
-        RocksDBUtils.getLevelPath(pathPattern.getNodes(), pathPattern.getNodeLength(), level);
+        RocksDBUtils.getLevelPath(pathPattern.getNodes(), pathPattern.getNodeLength() - 1, level);
     return readWriteHandler.getKeyByPrefix(innerNameByLevel).size();
   }
 
@@ -837,6 +851,7 @@ public class MRocksDBManager implements IMetaManager {
   // endregion
 
   // region Interfaces for level Node info Query
+
   /**
    * Get all nodes matching the given path pattern in the given level. The level of the path should
    * match the nodeLevel. 1. The given level equals the path level with out **, e.g. give path
@@ -904,7 +919,9 @@ public class MRocksDBManager implements IMetaManager {
     Set<String> result = new HashSet<>();
     String innerNameByLevel =
         RocksDBUtils.getLevelPath(
-            pathPattern.getNodes(), pathPattern.getNodeLength(), pathPattern.getNodeLength() + 1);
+            pathPattern.getNodes(),
+            pathPattern.getNodeLength() - 1,
+            pathPattern.getNodeLength() + 1);
     Set<String> allKeyByPrefix = readWriteHandler.getKeyByPrefix(innerNameByLevel);
     for (String str : allKeyByPrefix) {
       result.add(RocksDBUtils.getPathByInnerName(str));
@@ -1057,6 +1074,7 @@ public class MRocksDBManager implements IMetaManager {
   // endregion
 
   // region Interfaces for Entity/Device info Query
+
   /**
    * Get all devices that one of the timeseries, matching the given timeseries path pattern, belongs
    * to.
@@ -1096,6 +1114,7 @@ public class MRocksDBManager implements IMetaManager {
   // endregion
 
   // region Interfaces for timeseries, measurement and schema info Query
+
   /**
    * Return all measurement paths for given path if the path is abstract. Or return the path itself.
    * Regular expression in this method is formed by the amalgamation of seriesPath and the character
@@ -1198,7 +1217,7 @@ public class MRocksDBManager implements IMetaManager {
         throw new PathNotExistException(e.getMessage());
       }
       MeasurementSchema measurementSchema =
-          (MeasurementSchema) RocksDBUtils.parseNodeValue(entry.getValue(), NODE_TYPE_MEASUREMENT);
+          (MeasurementSchema) RocksDBUtils.parseNodeValue(entry.getValue(), FLAG_IS_SCHEMA);
       result.add(new MeasurementPath(pathName, measurementSchema));
     }
     return result;
@@ -1247,7 +1266,8 @@ public class MRocksDBManager implements IMetaManager {
     byte[] value = null;
     for (i = nodes.length; i > 0; i--) {
       String[] copy = Arrays.copyOf(nodes, i);
-      innerPathName = RocksDBUtils.toStorageNodeKey(RocksDBUtils.getLevelPath(copy, copy.length));
+      innerPathName =
+          RocksDBUtils.toStorageNodeKey(RocksDBUtils.getLevelPath(copy, copy.length - 1));
       try {
         value = readWriteHandler.get(null, innerPathName);
       } catch (RocksDBException e) {
@@ -1298,7 +1318,8 @@ public class MRocksDBManager implements IMetaManager {
     boolean isDevice = false;
     for (i = nodes.length; i > 0; i--) {
       String[] copy = Arrays.copyOf(nodes, i);
-      innerPathName = RocksDBUtils.toEntityNodeKey(RocksDBUtils.getLevelPath(copy, copy.length));
+      innerPathName =
+          RocksDBUtils.toEntityNodeKey(RocksDBUtils.getLevelPath(copy, copy.length - 1));
       try {
         isDevice = readWriteHandler.keyExist(innerPathName);
       } catch (RocksDBException e) {

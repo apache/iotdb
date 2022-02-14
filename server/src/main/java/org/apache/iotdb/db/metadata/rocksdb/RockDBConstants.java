@@ -11,13 +11,13 @@ public class RockDBConstants {
   public static final String TABLE_NAME_TAGS = "tags";
 
   // Node type
-  public static final byte NODE_TYPE_ROOT = 0x00;
-  public static final byte NODE_TYPE_INTERNAL = 0x01;
-  public static final byte NODE_TYPE_SG = 0x01 << 1;
-  public static final byte NODE_TYPE_ENTITY = 0x01 << 2;
-  public static final byte NODE_TYPE_MEASUREMENT = 0x01 << 3;
-  public static final byte NODE_TYPE_ALIAS = 0x01 << 4;
-  public static final byte NODE_TYPE_ENTITY_SG = NODE_TYPE_SG | NODE_TYPE_ENTITY;
+  public static final char NODE_TYPE_ROOT = '\u0000';
+  public static final char NODE_TYPE_INTERNAL = '\u0001';
+  public static final char NODE_TYPE_SG = '\u0002';
+  public static final char NODE_TYPE_ENTITY = '\u0003';
+  public static final char NODE_TYPE_MEASUREMENT = '\u0004';
+  public static final char NODE_TYPE_ALIAS = '\u0005';
+  public static final char NODE_TYPE_ENTITY_SG = NODE_TYPE_SG | NODE_TYPE_ENTITY;
 
   public static final int MAX_NODE_TYPE_NUM = NODE_TYPE_ALIAS + 1;
 
@@ -40,6 +40,7 @@ public class RockDBConstants {
   public static final byte FLAG_HAS_TAGS = 0x01 << 2;
   public static final byte FLAG_HAS_ATTRIBUTES = 0x01 << 3;
   public static final byte FLAG_IS_ALIGNED = 0x01 << 4;
+  public static final byte FLAG_IS_SCHEMA = 0x01 << 5;
 
   public static final byte DATA_BLOCK_TYPE_TTL = 0x01;
   public static final byte DATA_BLOCK_TYPE_SCHEMA = 0x01 << 1;

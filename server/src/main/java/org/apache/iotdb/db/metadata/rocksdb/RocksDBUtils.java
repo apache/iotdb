@@ -24,7 +24,27 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ALIAS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ATTRIBUTES;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_TTL;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_VERSION;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_FLAG;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ESCAPE_PATH_SEPARATOR;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_ALIAS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_ATTRIBUTES;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_SET_TTL;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ALIAS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_INTERNAL;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.PATH_SEPARATOR;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
 
 public class RocksDBUtils {
 
@@ -66,8 +86,8 @@ public class RocksDBUtils {
     return toRocksDBKey(levelPath, NODE_TYPE_ALIAS);
   }
 
-  protected static byte[] toRocksDBKey(String levelPath, byte type) {
-    return Bytes.concat(new byte[] {type}, levelPath.getBytes());
+  protected static byte[] toRocksDBKey(String levelPath, char type) {
+    return (type + levelPath).getBytes();
   }
 
   public static String getLevelPath(String[] nodes, int end) {
@@ -290,7 +310,7 @@ public class RocksDBUtils {
    * @param nodeType specified type
    * @return inner name
    */
-  public static String convertPartialPathToInner(String partialPath, int level, byte nodeType) {
+  public static String convertPartialPathToInner(String partialPath, int level, char nodeType) {
     char lastChar = START_FLAG;
     StringBuilder stringBuilder = new StringBuilder();
     for (char c : partialPath.toCharArray()) {
@@ -306,7 +326,7 @@ public class RocksDBUtils {
     return stringBuilder.toString();
   }
 
-  public static String convertPartialPathToInnerByNodes(String[] nodes, int level, byte nodeType) {
+  public static String convertPartialPathToInnerByNodes(String[] nodes, int level, char nodeType) {
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder.append(nodeType).append(TsFileConstant.PATH_ROOT);
     for (String str : nodes) {
