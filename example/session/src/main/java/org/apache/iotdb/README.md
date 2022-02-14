@@ -7,7 +7,6 @@ Before running `run-BallSpeed-exp.sh`, prepare the workspace as follows
 ---- BallSpeed.csv
 ---- OverlapGenerator.class
 ---- OverlapGenerator.java (before javac, remove package header in the source code)
-/data3/ruilei/rl/dataSpace
 /data3/ruilei/rl/iotdb-server-0.12.4 (`chmod +x *` on the bash files in the sbin directory)
 /data3/ruilei/rl/iotdb-engine-example.properties
 /data3/ruilei/rl/tool.sh
@@ -40,7 +39,6 @@ Before running `run-MF03-exp.sh`, prepare the workspace as follows
 ---- MF03.csv
 ---- OverlapGenerator.class
 ---- OverlapGenerator.java (before javac, remove package header in the source code)
-/data3/ruilei/rl/dataSpace
 /data3/ruilei/rl/iotdb-server-0.12.4 (`chmod +x *` on the bash files in the sbin directory)
 /data3/ruilei/rl/iotdb-engine-example.properties
 /data3/ruilei/rl/tool.sh
@@ -73,7 +71,6 @@ Before running `run-KOB-exp.sh`, prepare the workspace as follows
 ---- KOB.csv
 ---- OverlapGenerator.class
 ---- OverlapGenerator.java (before javac, remove package header in the source code)
-/data3/ruilei/rl/dataSpace
 /data3/ruilei/rl/iotdb-server-0.12.4 (`chmod +x *` on the bash files in the sbin directory)
 /data3/ruilei/rl/iotdb-engine-example.properties
 /data3/ruilei/rl/tool.sh
@@ -106,7 +103,6 @@ Before running `run-RcvTime-exp.sh`, prepare the workspace as follows
 ---- RcvTime.csv
 ---- OverlapGenerator.class
 ---- OverlapGenerator.java (before javac, remove package header in the source code)
-/data3/ruilei/rl/dataSpace
 /data3/ruilei/rl/iotdb-server-0.12.4 (`chmod +x *` on the bash files in the sbin directory)
 /data3/ruilei/rl/iotdb-engine-example.properties
 /data3/ruilei/rl/tool.sh
