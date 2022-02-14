@@ -72,9 +72,6 @@ public class ImportCsv extends AbstractCsvTool {
   private static final String FAILED_FILE_ARGS = "fd";
   private static final String FAILED_FILE_NAME = "failed file directory";
 
-  private static final String ALIGNED_ARGS = "aligned";
-  private static final String ALIGNED_NAME = "use the aligned interface";
-
   private static final String CSV_SUFFIXS = "csv";
   private static final String TXT_SUFFIXS = "txt";
 
@@ -117,14 +114,6 @@ public class ImportCsv extends AbstractCsvTool {
             .build();
     options.addOption(opFailedFile);
 
-    Option opAligned =
-        Option.builder(ALIGNED_ARGS)
-            .argName(ALIGNED_NAME)
-            .hasArg()
-            .desc("Whether to use the interface of aligned (optional)")
-            .build();
-    options.addOption(opAligned);
-
     Option opHelp =
         Option.builder(HELP_ARGS)
             .longOpt(HELP_ARGS)
@@ -160,9 +149,6 @@ public class ImportCsv extends AbstractCsvTool {
         failedFileDirectory = file.getAbsolutePath() + File.separator;
       }
     }
-    if (commandLine.getOptionValue(ALIGNED_ARGS) != null) {
-      aligned = Boolean.valueOf(commandLine.getOptionValue(ALIGNED_ARGS));
-    }
   }
 
   public static void main(String[] args) throws IoTDBConnectionException {
@@ -176,18 +162,15 @@ public class ImportCsv extends AbstractCsvTool {
     if (args == null || args.length == 0) {
       System.out.println("Too few params input, please check the following hint.");
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-      System.exit(CODE_ERROR);
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (org.apache.commons.cli.ParseException e) {
       System.out.println("Parse error: " + e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-      System.exit(CODE_ERROR);
     }
     if (commandLine.hasOption(HELP_ARGS)) {
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-      System.exit(CODE_ERROR);
     }
 
     try {
@@ -195,20 +178,15 @@ public class ImportCsv extends AbstractCsvTool {
       String filename = commandLine.getOptionValue(FILE_ARGS);
       if (filename == null) {
         hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-        System.exit(CODE_ERROR);
       }
       parseSpecialParams(commandLine);
     } catch (ArgsErrorException e) {
       System.out.println("Args error: " + e.getMessage());
-      System.exit(CODE_ERROR);
     } catch (Exception e) {
       System.out.println("Encounter an error, because: " + e.getMessage());
-      System.exit(CODE_ERROR);
     }
 
-    System.exit(
-        importFromTargetPath(
-            host, Integer.parseInt(port), username, password, targetPath, timeZoneID));
+    importFromTargetPath(host, Integer.parseInt(port), username, password, targetPath, timeZoneID);
   }
 
   /**
@@ -224,7 +202,7 @@ public class ImportCsv extends AbstractCsvTool {
    * @return the status code
    * @throws IoTDBConnectionException
    */
-  public static int importFromTargetPath(
+  public static void importFromTargetPath(
       String host, int port, String username, String password, String targetPath, String timeZone)
       throws IoTDBConnectionException {
     try {
@@ -239,7 +217,7 @@ public class ImportCsv extends AbstractCsvTool {
       } else if (file.isDirectory()) {
         File[] files = file.listFiles();
         if (files == null) {
-          return CODE_OK;
+          return;
         }
 
         for (File subFile : files) {
@@ -249,17 +227,16 @@ public class ImportCsv extends AbstractCsvTool {
         }
       } else {
         System.out.println("File not found!");
-        return CODE_ERROR;
+        return;
       }
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       System.out.println("Encounter an error when connecting to server, because " + e.getMessage());
-      return CODE_ERROR;
+      return;
     } finally {
       if (session != null) {
         session.close();
       }
     }
-    return CODE_OK;
   }
 
   /**
