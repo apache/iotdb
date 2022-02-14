@@ -214,14 +214,14 @@ public class QueryOperator extends Operator {
       throw new QueryProcessException(e);
     }
 
+    convertSpecialClauseValues(rawDataQueryPlan);
+
     // transform filter operator to expression
     IExpression expression = transformFilterOperatorToExpression();
     expression = optimizeExpression(expression, (RawDataQueryPlan) queryPlan);
     if (expression != null) {
       ((RawDataQueryPlan) queryPlan).setExpression(expression);
     }
-
-    convertSpecialClauseValues(rawDataQueryPlan);
 
     return rawDataQueryPlan;
   }

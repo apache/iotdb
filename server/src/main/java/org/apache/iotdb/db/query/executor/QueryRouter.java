@@ -219,7 +219,7 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet groupByFill(GroupByTimeFillPlan groupByFillPlan, QueryContext context)
-      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException {
+      throws StorageEngineException, QueryProcessException {
 
     GroupByFillDataSet dataSet = new GroupByFillDataSet(context, groupByFillPlan);
 

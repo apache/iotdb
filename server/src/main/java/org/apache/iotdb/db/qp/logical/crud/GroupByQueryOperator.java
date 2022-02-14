@@ -27,17 +27,16 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
-import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
-import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan.getTimeExpression;
 
 public class GroupByQueryOperator extends AggregationQueryOperator {
 
@@ -98,28 +97,6 @@ public class GroupByQueryOperator extends AggregationQueryOperator {
           .optimize(expression, new ArrayList<>(selectedSeries));
     } catch (QueryFilterOptimizationException e) {
       throw new QueryProcessException(e.getMessage());
-    }
-  }
-
-  private GlobalTimeExpression getTimeExpression(GroupByTimePlan plan)
-      throws QueryProcessException {
-    if (plan.isSlidingStepByMonth() || plan.isIntervalByMonth()) {
-      if (!plan.isAscending()) {
-        throw new QueryProcessException("Group by month doesn't support order by time desc now.");
-      }
-      return new GlobalTimeExpression(
-          (new GroupByMonthFilter(
-              plan.getInterval(),
-              plan.getSlidingStep(),
-              plan.getStartTime(),
-              plan.getEndTime(),
-              plan.isSlidingStepByMonth(),
-              plan.isIntervalByMonth(),
-              SessionManager.getInstance().getCurrSessionTimeZone())));
-    } else {
-      return new GlobalTimeExpression(
-          new GroupByFilter(
-              plan.getInterval(), plan.getSlidingStep(), plan.getStartTime(), plan.getEndTime()));
     }
   }
 }
