@@ -3,19 +3,18 @@
 Before running `run-BallSpeed-exp.sh`, prepare the workspace as follows 
 (or update the corresponding paths in the `run-BallSpeed-exp.sh`):
 ```
-/data3/raw_data/rl
----- BallSpeed
----- ---- BallSpeed.csv
----- ---- OverlapGenerator.class
----- ---- OverlapGenerator.java
+/data3/raw_data/rl/BallSpeed
+---- BallSpeed.csv
+---- OverlapGenerator.class
+---- OverlapGenerator.java (before javac, remove package header in the source code)
 /data3/ruilei/rl/dataSpace
-/data3/ruilei/rl/iotdb-server-0.12.4
+/data3/ruilei/rl/iotdb-server-0.12.4 (`chmod +x *` on the bash files in the sbin directory)
 /data3/ruilei/rl/iotdb-engine-example.properties
 /data3/ruilei/rl/tool.sh
 /data3/ruilei/rl/ProcessResult.class
-/data3/ruilei/rl/ProcessResult.java
+/data3/ruilei/rl/ProcessResult.java (before javac, remove package header in the source code)
 /data3/ruilei/rl/SumResultUnify.class
-/data3/ruilei/rl/SumResultUnify.java
+/data3/ruilei/rl/SumResultUnify.java (before javac, remove package header in the source code)
 /data3/ruilei/rl/BallSpeed_testspace
 ---- WriteBallSpeed-0.12.4.jar
 ---- QueryBallSpeed-0.12.4.jar
@@ -37,19 +36,18 @@ FOR EXP5: BallSpeed_testspace/exp5.csv
 Before running `run-MF03-exp.sh`, prepare the workspace as follows 
 (or update the corresponding paths in the `run-MF03-exp.sh`):
 ```
-/data3/raw_data/rl
----- MF03
----- ---- MF03.csv
----- ---- OverlapGenerator.class
----- ---- OverlapGenerator.java
+/data3/raw_data/rl/MF03
+---- MF03.csv
+---- OverlapGenerator.class
+---- OverlapGenerator.java (before javac, remove package header in the source code)
 /data3/ruilei/rl/dataSpace
-/data3/ruilei/rl/iotdb-server-0.12.4
+/data3/ruilei/rl/iotdb-server-0.12.4 (`chmod +x *` on the bash files in the sbin directory)
 /data3/ruilei/rl/iotdb-engine-example.properties
 /data3/ruilei/rl/tool.sh
 /data3/ruilei/rl/ProcessResult.class
-/data3/ruilei/rl/ProcessResult.java
+/data3/ruilei/rl/ProcessResult.java (before javac, remove package header in the source code)
 /data3/ruilei/rl/SumResultUnify.class
-/data3/ruilei/rl/SumResultUnify.java
+/data3/ruilei/rl/SumResultUnify.java (before javac, remove package header in the source code)
 /data3/ruilei/rl/MF03_testspace
 ---- WriteMF03-0.12.4.jar
 ---- QueryMF03-0.12.4.jar
@@ -71,19 +69,18 @@ FOR EXP5: MF03_testspace/exp5.csv
 Before running `run-KOB-exp.sh`, prepare the workspace as follows 
 (or update the corresponding paths in the `run-KOB-exp.sh`):
 ```
-/data3/raw_data/rl
----- KOB
----- ---- KOB.csv
----- ---- OverlapGenerator.class
----- ---- OverlapGenerator.java
+/data3/raw_data/rl/KOB
+---- KOB.csv
+---- OverlapGenerator.class
+---- OverlapGenerator.java (before javac, remove package header in the source code)
 /data3/ruilei/rl/dataSpace
-/data3/ruilei/rl/iotdb-server-0.12.4
+/data3/ruilei/rl/iotdb-server-0.12.4 (`chmod +x *` on the bash files in the sbin directory)
 /data3/ruilei/rl/iotdb-engine-example.properties
 /data3/ruilei/rl/tool.sh
 /data3/ruilei/rl/ProcessResult.class
-/data3/ruilei/rl/ProcessResult.java
+/data3/ruilei/rl/ProcessResult.java (before javac, remove package header in the source code)
 /data3/ruilei/rl/SumResultUnify.class
-/data3/ruilei/rl/SumResultUnify.java
+/data3/ruilei/rl/SumResultUnify.java (before javac, remove package header in the source code)
 /data3/ruilei/rl/KOB_testspace
 ---- WriteKOB-0.12.4.jar
 ---- QueryKOB-0.12.4.jar
@@ -105,19 +102,18 @@ FOR EXP5: KOB_testspace/exp5.csv
 Before running `run-RcvTime-exp.sh`, prepare the workspace as follows 
 (or update the corresponding paths in the `run-RcvTime-exp.sh`):
 ```
-/data3/raw_data/rl
----- RcvTime
----- ---- RcvTime.csv
----- ---- OverlapGenerator.class
----- ---- OverlapGenerator.java
+/data3/raw_data/rl/RcvTime
+---- RcvTime.csv
+---- OverlapGenerator.class
+---- OverlapGenerator.java (before javac, remove package header in the source code)
 /data3/ruilei/rl/dataSpace
-/data3/ruilei/rl/iotdb-server-0.12.4
+/data3/ruilei/rl/iotdb-server-0.12.4 (`chmod +x *` on the bash files in the sbin directory)
 /data3/ruilei/rl/iotdb-engine-example.properties
 /data3/ruilei/rl/tool.sh
 /data3/ruilei/rl/ProcessResult.class
-/data3/ruilei/rl/ProcessResult.java
+/data3/ruilei/rl/ProcessResult.java (before javac, remove package header in the source code)
 /data3/ruilei/rl/SumResultUnify.class
-/data3/ruilei/rl/SumResultUnify.java
+/data3/ruilei/rl/SumResultUnify.java (before javac, remove package header in the source code)
 /data3/ruilei/rl/RcvTime_testspace
 ---- WriteRcvTime-0.12.4.jar
 ---- QueryRcvTime-0.12.4.jar
