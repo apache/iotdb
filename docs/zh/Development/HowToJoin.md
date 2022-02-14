@@ -1,5 +1,5 @@
 ﻿# IoTDB研发入门步骤
-## 订阅邮件列表（dev@iotdb.apache.org)
+## 订阅邮件列表 (dev@iotdb.apache.org)
 我们要打造一个国际化的开源社区，邮件列表是 Apache 唯一指定的开源贡献者的交流渠道，所以尽量将所有计划和路线都公开到邮件列表。订阅方式如下：
 
  1. 发送订阅邮件：向 [dev-subscribe@iotdb.apache.org](dev-subscribe@iotdb.apache.org) 发送一封邮件，主题内容不限。
@@ -23,6 +23,7 @@
 ## 关注公众号
 扫码关注官方公众号：Apache IoTDB
 ![IoTDB公众号二维码](https://img-blog.csdnimg.cn/907f9d614b2f47e3b0c66a7c53bcbd5d.png#pic_left)
+
 ## 长期事项
 ### 学习IoTDB的基本使用
 
@@ -41,5 +42,5 @@
 
 ### 寻找待做任务
 
- - [在Jira上解决issue](https://issues.apache.org/jira/projects/IOTDB/issues)，详细教程我会再发布一篇文章
+ - [在Jira上解决issue](https://issues.apache.org/jira/projects/IOTDB/issues)
 
