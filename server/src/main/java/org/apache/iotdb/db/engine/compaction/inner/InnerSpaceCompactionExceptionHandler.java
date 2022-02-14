@@ -20,10 +20,11 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
@@ -34,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -96,11 +98,7 @@ public class InnerSpaceCompactionExceptionHandler {
       } else {
         handleSuccess =
             handleWhenSomeSourceFilesLost(
-                fullStorageGroupName,
-                targetTsFile,
-                selectedTsFileResourceList,
-                tsFileResourceList,
-                lostSourceFiles);
+                fullStorageGroupName, targetTsFile, selectedTsFileResourceList, lostSourceFiles);
       }
     }
 
@@ -189,29 +187,36 @@ public class InnerSpaceCompactionExceptionHandler {
           if (targetTsFile.isFileInList()) {
             // target tsfile is in the list, remove it
             tsFileResourceList.remove(targetTsFile);
+            TsFileResourceManager.getInstance().removeTsFileResource(targetTsFile);
           }
           for (TsFileResource tsFileResource : selectedTsFileResourceList) {
             // if the source file is not in tsfileResourceList
             // insert it into the list
             if (!tsFileResource.isFileInList()) {
               tsFileResourceList.keepOrderInsert(tsFileResource);
+              TsFileResourceManager.getInstance().registerSealedTsFileResource(tsFileResource);
             }
           }
         } finally {
           tsFileManager.writeUnlock();
         }
       }
-      if (!targetTsFile.remove()) {
-        // failed to remove target tsfile
-        // system should not carry out the subsequent compaction in case of data redundant
-        LOGGER.error(
-            "{} [Compaction][ExceptionHandler] failed to remove target file {}",
-            fullStorageGroupName,
-            targetTsFile);
-        return false;
+      targetTsFile.writeLock();
+      try {
+        if (!targetTsFile.remove()) {
+          // failed to remove target tsfile
+          // system should not carry out the subsequent compaction in case of data redundant
+          LOGGER.error(
+              "{} [Compaction][ExceptionHandler] failed to remove target file {}",
+              fullStorageGroupName,
+              targetTsFile);
+          return false;
+        }
+      } finally {
+        targetTsFile.writeUnlock();
       }
-      // deal with compaction modification
-      InnerSpaceCompactionUtils.appendNewModificationsToOldModsFile(selectedTsFileResourceList);
+      // delete compaction mods files
+      CompactionUtils.deleteCompactionModsFile(selectedTsFileResourceList, Collections.emptyList());
     } catch (Throwable e) {
       LOGGER.error(
           "{} Exception occurs while handling exception, set allowCompaction to false",
@@ -226,7 +231,6 @@ public class InnerSpaceCompactionExceptionHandler {
       String fullStorageGroupName,
       TsFileResource targetTsFile,
       List<TsFileResource> selectedTsFileResourceList,
-      TsFileResourceList tsFileResourceList,
       List<TsFileResource> lostSourceFiles) {
     boolean handleSuccess = true;
     try {
@@ -243,17 +247,12 @@ public class InnerSpaceCompactionExceptionHandler {
                 fullStorageGroupName,
                 sourceFile);
             handleSuccess = false;
-          } else {
-            tsFileResourceList.remove(sourceFile);
           }
         }
+        // delete compaction mods files
+        CompactionUtils.deleteCompactionModsFile(
+            selectedTsFileResourceList, Collections.emptyList());
 
-        InnerSpaceCompactionUtils.deleteModificationForSourceFile(
-            selectedTsFileResourceList, fullStorageGroupName);
-
-        if (!tsFileResourceList.contains(targetTsFile)) {
-          tsFileResourceList.keepOrderInsert(targetTsFile);
-        }
       } else {
         // target file is not complete, and some source file is lost
         // some data is lost

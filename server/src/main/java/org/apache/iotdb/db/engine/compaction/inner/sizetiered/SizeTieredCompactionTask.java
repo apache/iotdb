@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 import org.apache.commons.io.FileUtils;
@@ -145,22 +144,21 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       }
 
       // replace the old files with new file, the new is in same position as the old
-      for (TsFileResource resource : selectedTsFileResourceList) {
-        TsFileResourceManager.getInstance().removeTsFileResource(resource);
+      if (sequence) {
+        tsFileManager.replace(
+            selectedTsFileResourceList,
+            Collections.emptyList(),
+            Collections.singletonList(targetTsFileResource),
+            timePartition,
+            true);
+      } else {
+        tsFileManager.replace(
+            Collections.emptyList(),
+            selectedTsFileResourceList,
+            Collections.singletonList(targetTsFileResource),
+            timePartition,
+            false);
       }
-      TsFileResourceManager.getInstance().registerSealedTsFileResource(targetTsFileResource);
-      tsFileManager.writeLock("SizeTieredCompactionTask");
-      try {
-        for (TsFileResource resource : selectedTsFileResourceList) {
-          tsFileManager.remove(resource, sequence);
-        }
-        tsFileManager.keepOrderInsert(targetTsFileResource, sequence);
-      } finally {
-        tsFileManager.writeUnlock();
-      }
-
-      LOGGER.info(
-          "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
 
       LOGGER.info(
           "{} [Compaction] Compacted target files, try to get the write lock of source files",
@@ -183,6 +181,8 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
                 targetTsFileResource));
       }
 
+      LOGGER.info(
+          "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
       // delete the old files
       InnerSpaceCompactionUtils.deleteTsFilesInDisk(
           selectedTsFileResourceList, fullStorageGroupName);

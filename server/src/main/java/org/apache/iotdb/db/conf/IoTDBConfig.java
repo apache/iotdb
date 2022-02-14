@@ -54,20 +54,17 @@ public class IoTDBConfig {
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
 
-  // e.g., a31+/$%#&[]{}3e4
-  private static final String ID_MATCHER =
-      "([a-zA-Z0-9/\"'`[ ],:@#$%&{}()*=?!~\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
-
   private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\-\\u2E80-\\u9FFF]+)";
+  public static final Pattern STORAGE_GROUP_PATTERN = Pattern.compile(STORAGE_GROUP_MATCHER);
+
+  // e.g., a31+/$%#&[]{}3e4, "a.b", 'a.b'
+  private static final String NODE_NAME_MATCHER = "([^\n\t]+)";
 
   // e.g.,  .s1
-  private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
+  private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + NODE_NAME_MATCHER;
 
-  // TODO : need to match the rule of antlr grammar
   private static final String NODE_MATCHER =
-      "([" + PATH_SEPARATOR + "])?" + ID_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
-
-  public static final Pattern STORAGE_GROUP_PATTERN = Pattern.compile(STORAGE_GROUP_MATCHER);
+      "([" + PATH_SEPARATOR + "])?" + NODE_NAME_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
@@ -191,6 +188,12 @@ public class IoTDBConfig {
    * Unit: byte
    */
   private int mlogBufferSize = 1024 * 1024;
+
+  /**
+   * The cycle when metadata log is periodically forced to be written to disk(in milliseconds) If
+   * set this parameter to 0 it means call channel.force(true) after every each operation
+   */
+  private long syncMlogPeriodInMs = 0;
 
   /**
    * The size of log buffer for every trigger management operation plan. If the size of a trigger
@@ -2305,6 +2308,14 @@ public class IoTDBConfig {
 
   public void setMlogBufferSize(int mlogBufferSize) {
     this.mlogBufferSize = mlogBufferSize;
+  }
+
+  public long getSyncMlogPeriodInMs() {
+    return syncMlogPeriodInMs;
+  }
+
+  public void setSyncMlogPeriodInMs(long syncMlogPeriodInMs) {
+    this.syncMlogPeriodInMs = syncMlogPeriodInMs;
   }
 
   public int getTlogBufferSize() {

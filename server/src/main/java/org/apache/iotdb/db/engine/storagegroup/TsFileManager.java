@@ -199,6 +199,45 @@ public class TsFileManager {
     }
   }
 
+  /** This method is called after compaction to update memory. */
+  public void replace(
+      List<TsFileResource> seqFileResources,
+      List<TsFileResource> unseqFileResources,
+      List<TsFileResource> targetFileResources,
+      long timePartition,
+      boolean isTargetSequence)
+      throws IOException {
+    writeLock("replace");
+    try {
+      for (TsFileResource tsFileResource : seqFileResources) {
+        if (sequenceFiles.get(timePartition).remove(tsFileResource)) {
+          TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
+        }
+      }
+      for (TsFileResource tsFileResource : unseqFileResources) {
+        if (unsequenceFiles.get(timePartition).remove(tsFileResource)) {
+          TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
+        }
+      }
+      if (isTargetSequence) {
+        // seq inner space compaction or cross space compaction
+        for (TsFileResource resource : targetFileResources) {
+          TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+          sequenceFiles.get(timePartition).keepOrderInsert(resource);
+        }
+      } else {
+        // unseq inner space compaction
+        for (TsFileResource resource : targetFileResources) {
+          TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+          unsequenceFiles.get(timePartition).keepOrderInsert(resource);
+        }
+      }
+
+    } finally {
+      writeUnlock();
+    }
+  }
+
   public boolean contains(TsFileResource tsFileResource, boolean sequence) {
     readLock();
     try {
