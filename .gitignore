@@ -43,7 +43,7 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 #src/test/resources/logback.xml
 
 ### CSV ###
-*.csv
+# *.csv
 ### Maven ###
 grafana/target/
 !grafana/.mvn/wrapper/maven-wrapper.jar
