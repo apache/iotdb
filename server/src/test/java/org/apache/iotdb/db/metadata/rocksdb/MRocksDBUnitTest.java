@@ -8,6 +8,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -19,10 +20,15 @@ import java.util.List;
 import static org.apache.iotdb.db.metadata.rocksdb.RocksDBReadWriteHandler.ROCKSDB_PATH;
 
 public class MRocksDBUnitTest {
+
   private MRocksDBManager mRocksDBManager;
 
   @Before
   public void setUp() throws MetadataException {
+    File file = new File(ROCKSDB_PATH);
+    if (!file.exists()) {
+      file.mkdirs();
+    }
     mRocksDBManager = new MRocksDBManager();
   }
 
@@ -44,6 +50,10 @@ public class MRocksDBUnitTest {
     }
 
     mRocksDBManager.printScanAllKeys();
+
+    Assert.assertTrue(mRocksDBManager.isPathExist(new PartialPath("root.sg1")));
+    Assert.assertTrue(mRocksDBManager.isPathExist(new PartialPath("root.inner1.inner2.inner3")));
+    Assert.assertFalse(mRocksDBManager.isPathExist(new PartialPath("root.inner1.inner5")));
   }
 
   @Test
@@ -56,6 +66,11 @@ public class MRocksDBUnitTest {
     mRocksDBManager.createTimeseries(
         path2, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, "ma");
     mRocksDBManager.printScanAllKeys();
+
+    Assert.assertEquals(
+        1, mRocksDBManager.getAllTimeseriesCount(new PartialPath("root.tt.sg.dd.m1")));
+    // todo prefixed match and wildcard
+    Assert.assertEquals(2, mRocksDBManager.getAllTimeseriesCount(new PartialPath("root.tt.sg.dd")));
   }
 
   @Test
@@ -84,6 +99,28 @@ public class MRocksDBUnitTest {
       assert true;
     }
     mRocksDBManager.printScanAllKeys();
+  }
+
+  @Test
+  public void testPathExist() throws MetadataException, IOException {
+    List<PartialPath> storageGroups = new ArrayList<>();
+    storageGroups.add(new PartialPath("root.sg1"));
+    storageGroups.add(new PartialPath("root.inner.sg1"));
+    storageGroups.add(new PartialPath("root.inner.sg2"));
+    storageGroups.add(new PartialPath("root.inner1.inner2.inner3.sg"));
+    storageGroups.add(new PartialPath("root.inner1.inner2.sg"));
+
+    for (PartialPath sg : storageGroups) {
+      mRocksDBManager.setStorageGroup(sg);
+    }
+
+    Assert.assertTrue(mRocksDBManager.isPathExist(new PartialPath("root.sg1")));
+    Assert.assertTrue(mRocksDBManager.isPathExist(new PartialPath("root.inner1.inner2.inner3")));
+    try {
+      Assert.assertFalse(mRocksDBManager.isPathExist(new PartialPath("root.inner1.inner.")));
+    } catch (MetadataException e) {
+      assert true;
+    }
   }
 
   @After

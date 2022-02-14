@@ -10,7 +10,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import com.google.common.primitives.Bytes;
 import org.rocksdb.ColumnFamilyDescriptor;
 import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.ColumnFamilyOptions;
@@ -44,7 +43,17 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_VERSION;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_FLAG;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ROOT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.PATH_SEPARATOR;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
 
 public class RocksDBReadWriteHandler {
 
@@ -196,7 +205,7 @@ public class RocksDBReadWriteHandler {
 
   public boolean keyExistByType(String levelKey, RocksDBMNodeType type, Holder<byte[]> holder)
       throws RocksDBException {
-    byte[] key = Bytes.concat(new byte[] {type.value}, levelKey.getBytes());
+    byte[] key = RocksDBUtils.toRocksDBKey(levelKey, type.value);
     return keyExist(key, holder);
   }
 
@@ -227,7 +236,7 @@ public class RocksDBReadWriteHandler {
     // TODO: compare the performance between two methods
     CheckKeyResult result = new CheckKeyResult();
     for (RocksDBMNodeType type : types) {
-      byte[] key = Bytes.concat(new byte[] {type.value}, levelKey.getBytes());
+      byte[] key = RocksDBUtils.toRocksDBKey(levelKey, type.value);
       if (keyExist(key, holder)) {
         result.setSingleCheckValue(type.value, keyExist(key, holder));
         break;
@@ -377,7 +386,7 @@ public class RocksDBReadWriteHandler {
    * @param nodeType specified prefix
    * @return total number in this column family
    */
-  public long countNodesNumByType(ColumnFamilyHandle columnFamilyHandle, byte nodeType) {
+  public long countNodesNumByType(ColumnFamilyHandle columnFamilyHandle, char nodeType) {
     RocksIterator iter;
     if (columnFamilyHandle == null) {
       iter = rocksDB.newIterator();
@@ -385,7 +394,7 @@ public class RocksDBReadWriteHandler {
       iter = rocksDB.newIterator(columnFamilyHandle);
     }
     long count = 0;
-    for (iter.seek(new byte[] {nodeType}); iter.isValid(); iter.next()) {
+    for (iter.seek(String.valueOf(nodeType).getBytes()); iter.isValid(); iter.next()) {
       if (iter.key()[0] == nodeType) {
         count++;
       }
@@ -433,7 +442,7 @@ public class RocksDBReadWriteHandler {
     return result;
   }
 
-  public String findBelongToSpecifiedNodeType(String[] nodes, byte nodeType) {
+  public String findBelongToSpecifiedNodeType(String[] nodes, char nodeType) {
     String innerPathName;
     for (int level = nodes.length; level > 0; level--) {
       String[] copy = Arrays.copyOf(nodes, level);
