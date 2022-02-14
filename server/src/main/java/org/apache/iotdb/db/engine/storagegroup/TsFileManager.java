@@ -84,11 +84,21 @@ public class TsFileManager {
   }
 
   public TsFileResourceList getSequenceListByTimePartition(long timePartition) {
-    return sequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
+    readLock();
+    try {
+      return sequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
+    } finally {
+      readUnlock();
+    }
   }
 
   public TsFileResourceList getUnsequenceListByTimePartition(long timePartition) {
-    return unsequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
+    readLock();
+    try {
+      return unsequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
+    } finally {
+      readUnlock();
+    }
   }
 
   public Iterator<TsFileResource> getIterator(boolean sequence) {
@@ -101,7 +111,7 @@ public class TsFileManager {
   }
 
   public void remove(TsFileResource tsFileResource, boolean sequence) {
-    readLock();
+    writeLock("remove");
     try {
       Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
       for (Map.Entry<Long, TsFileResourceList> entry : selectedMap.entrySet()) {
@@ -112,14 +122,19 @@ public class TsFileManager {
         }
       }
     } finally {
-      readUnlock();
+      writeUnlock();
     }
   }
 
   public void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
-    for (TsFileResource resource : tsFileResourceList) {
-      remove(resource, sequence);
-      TsFileResourceManager.getInstance().removeTsFileResource(resource);
+    writeLock("removeAll");
+    try {
+      for (TsFileResource resource : tsFileResourceList) {
+        remove(resource, sequence);
+        TsFileResourceManager.getInstance().removeTsFileResource(resource);
+      }
+    } finally {
+      writeLock("removeAll");
     }
   }
 
@@ -148,6 +163,18 @@ public class TsFileManager {
       selectedMap
           .computeIfAbsent(tsFileResource.getTimePartition(), o -> new TsFileResourceList())
           .add(tsFileResource);
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  public void keepOrderInsert(TsFileResource tsFileResource, boolean sequence) throws IOException {
+    writeLock("keepOrderInsert");
+    try {
+      Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
+      selectedMap
+          .computeIfAbsent(tsFileResource.getTimePartition(), o -> new TsFileResourceList())
+          .keepOrderInsert(tsFileResource);
     } finally {
       writeUnlock();
     }
