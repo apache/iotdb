@@ -1,4 +1,4 @@
-package org.apache.iotdb.writeData;
+package org.apache.iotdb.tools;
 
 import java.io.BufferedReader;
 import java.io.File;

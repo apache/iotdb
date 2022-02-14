@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 
+// This is the UDFM4 in paper.
 // The integration test for MAC is in org.apache.iotdb.db.integration.m4.MyTest3.test1_2
 public class UDTFM4MAC implements UDTF {
 

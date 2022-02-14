@@ -193,7 +193,7 @@ public class PageReader implements IPageReader {
             // update batchData1
             batchData1.putInt(timestamp, anInt);
             // update statistics of chunkMetadata1
-            chunkMetadata1.getStatistics().update(timestamp, anInt); // TODO skeptical bug ?
+            chunkMetadata1.getStatistics().update(timestamp, anInt);
           }
           break;
         case INT64:
@@ -202,7 +202,7 @@ public class PageReader implements IPageReader {
             // update batchData1
             batchData1.putLong(timestamp, aLong);
             // update statistics of chunkMetadata1
-            chunkMetadata1.getStatistics().update(timestamp, aLong); // TODO skeptical bug ?
+            chunkMetadata1.getStatistics().update(timestamp, aLong);
           }
           break;
         case FLOAT:
@@ -211,7 +211,7 @@ public class PageReader implements IPageReader {
             // update batchData1
             batchData1.putFloat(timestamp, aFloat);
             // update statistics of chunkMetadata1
-            chunkMetadata1.getStatistics().update(timestamp, aFloat); // TODO skeptical bug ?
+            chunkMetadata1.getStatistics().update(timestamp, aFloat);
           }
           break;
         case DOUBLE:
@@ -220,7 +220,7 @@ public class PageReader implements IPageReader {
             // update batchData1
             batchData1.putDouble(timestamp, aDouble);
             // update statistics of chunkMetadata1
-            chunkMetadata1.getStatistics().update(timestamp, aDouble); // TODO skeptical bug ?
+            chunkMetadata1.getStatistics().update(timestamp, aDouble);
           }
           break;
         default:

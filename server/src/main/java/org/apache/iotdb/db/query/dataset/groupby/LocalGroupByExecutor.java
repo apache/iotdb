@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+// This is the MOCGroupByExecutor in paper.
 public class LocalGroupByExecutor implements GroupByExecutor {
 
   private final IAggregateReader reader;

@@ -64,6 +64,7 @@ import java.util.Set;
  * sequence of the above six aggregates (2) Make sure (tqe-tqs) is divisible by IntervalLength. (3)
  * Assume each chunk has only one page.
  */
+// This is the CPVGroupByExecutor in paper.
 public class LocalGroupByExecutor4CPV implements GroupByExecutor {
 
   // Aggregate result buffer of this path
