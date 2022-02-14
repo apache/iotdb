@@ -37,7 +37,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_ALL_FILES_LOGGED;
 import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_SEQ_FILES;
 import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_UNSEQ_FILES;
 
@@ -142,14 +141,11 @@ public class MergeLogAnalyzer {
     if (!STR_UNSEQ_FILES.equals(currLine)) {
       return;
     }
+    status = Status.MERGE_START;
     long startTime = System.currentTimeMillis();
     List<TsFileResource> mergeUnseqFiles = new ArrayList<>();
     boolean allSourceFileExists = true;
     while ((currLine = bufferedReader.readLine()) != null) {
-      if (currLine.equals(STR_ALL_FILES_LOGGED)) {
-        status = Status.MERGE_START;
-        break;
-      }
       Iterator<TsFileResource> iterator = resource.getUnseqFiles().iterator();
       MergeFileInfo toMatchInfo = MergeFileInfo.getFileInfoFromString(currLine);
       boolean currentFileFound = false;

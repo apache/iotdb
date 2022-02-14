@@ -35,7 +35,6 @@ public class MergeLogger {
 
   static final String STR_SEQ_FILES = "seqFiles";
   static final String STR_UNSEQ_FILES = "unseqFiles";
-  static final String STR_ALL_FILES_LOGGED = "all files logged";
 
   private BufferedWriter logStream;
 
@@ -50,8 +49,6 @@ public class MergeLogger {
   public void logFiles(MergeResource resource) throws IOException {
     logSeqFiles(resource.getSeqFiles());
     logUnseqFiles(resource.getUnseqFiles());
-    logStream.write(STR_ALL_FILES_LOGGED);
-    logStream.newLine();
     logStream.flush();
   }
 
