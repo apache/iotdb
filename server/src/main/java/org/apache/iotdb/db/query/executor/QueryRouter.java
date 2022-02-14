@@ -222,7 +222,6 @@ public class QueryRouter implements IQueryRouter {
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException {
 
     GroupByFillDataSet dataSet = new GroupByFillDataSet(context, groupByFillPlan);
-    groupByFillPlan.initFillRange();
 
     GroupByEngineDataSet engineDataSet;
     if (groupByFillPlan.getExpression().getType() == ExpressionType.GLOBAL_TIME) {
