@@ -1,6 +1,27 @@
-# IoTDB R&D Beginning
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+    
+        http://www.apache.org/licenses/LICENSE-2.0
+    
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+
+# IoTDB Contributor Beginning
 ## Subscribe to the mailing list (dev@iotdb.apache.org)
-What we want to build is an international open source community. The mailing list is the only communication channel that Apache designates for open source contributors. So try to make all plans and routes public on the mailing list. The subscription method is as follows:
+The mailing list is the only communication channel that Apache designates for open source contributors. So try to make discussions on the mailing list as much as possible. The mailing list is essentially a mailbox. After subscription, all emails sent to this mailbox will be forwarded to the subscribed mailbox. The subscription method is as follows:
 
  1. Sending subscription email: Send an email to [dev-subscribe@iotdb.apache.org](dev-subscribe@iotdb.apache.org) with any subject you want.
  2. Confirming subscription: You will receive a subscription confirmation email from iotdb.apache.org after completing the previous step. Confirm your subscription by sending another email to this email with any subject matter.
@@ -13,11 +34,9 @@ What we want to build is an international open source community. The mailing lis
 After creation, please send an email to the mailing list including **self introduction**, **Jira ID** and **Confluence ID**. The community PMC will add permissions to the account.
 
 ## Enter user/development chat group
-Users in China use QQ and WeChat a lot. This is the place where the interaction with the community is closest, and it is also our front line.
 
  - QQ user group: 659990460
  - WeChat user group: IoTDB 数据库交流x群
- - WeChat developer group: IoTDB Community
  - Slack: [Apache IoTDB Community](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
 
 ## Subscribe WeChat public account

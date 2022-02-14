@@ -1,6 +1,27 @@
-﻿# IoTDB研发入门步骤
+﻿<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+    
+        http://www.apache.org/licenses/LICENSE-2.0
+    
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+
+# IoTDB Contributor 入门步骤
 ## 订阅邮件列表 (dev@iotdb.apache.org)
-我们要打造一个国际化的开源社区，邮件列表是 Apache 唯一指定的开源贡献者的交流渠道，所以尽量将所有计划和路线都公开到邮件列表。订阅方式如下：
+邮件列表是 Apache 唯一指定的贡献者交流渠道，所有设计和讨论尽量都在邮件列表里进行。邮件列表本质是一个邮箱，订阅之后，所有发往这个邮箱的邮件，都会转发到订阅的邮箱中，订阅方式如下：
 
  1. 发送订阅邮件：向 [dev-subscribe@iotdb.apache.org](dev-subscribe@iotdb.apache.org) 发送一封邮件，主题内容不限。
  2. 确认订阅邮件：完成上一步后，将收到一封来自 iotdb.apache.org 结尾的确认订阅邮件。向该邮件再次发一封主题内容不限的邮件即可确认订阅。
@@ -13,11 +34,9 @@
 创建好后，向邮件列表发送一封邮件，包括 **自我介绍** 以及 **Jira ID** 和 **Confluence ID**，社区PMC会为账户添加权限。
 
 ## 进用户/开发群
-国内用户使用QQ、微信群比较多，这里是和社区交互最紧密的地方，也是我们的最前线。
 
  - QQ用户群：659990460
  - 微信用户群：IoTDB 数据库交流x群
- - 微信开发者群：IoTDB Community
  - Slack：[Apache IoTDB Community](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
 
 ## 关注公众号
