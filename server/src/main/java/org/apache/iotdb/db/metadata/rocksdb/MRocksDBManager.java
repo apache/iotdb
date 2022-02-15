@@ -157,6 +157,9 @@ public class MRocksDBManager implements IMetaManager {
 
   private RocksDBReadWriteHandler readWriteHandler;
 
+  // todo should be calculated by writing
+  private int maxLevel = 10;
+
   // TODO: check how Stripped Lock consume memory
   private Striped<Lock> locksPool = Striped.lock(10000);
 
@@ -723,10 +726,10 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return getKeyNumByPrefix(pathPattern, NODE_TYPE_MEASUREMENT);
+    return getKeyNumByPrefix(pathPattern, NODE_TYPE_MEASUREMENT, isPrefixMatch);
   }
 
-  private int getKeyNumByPrefix(PartialPath pathPattern, char nodeType) {
+  private int getKeyNumByPrefix(PartialPath pathPattern, char nodeType, boolean isPrefixMatch) {
     AtomicInteger counter = new AtomicInteger(0);
     Set<String> seeds = new HashSet<>();
 
@@ -740,9 +743,7 @@ public class MRocksDBManager implements IMetaManager {
       seedPath = pathPattern.getFullPath().substring(0, nonWildcardAvailablePosition);
     }
 
-    for (RocksDBMNodeType type : RocksDBMNodeType.values()) {
-      seeds.add(new String(RocksDBUtils.toRocksDBKey(seedPath, type.value)));
-    }
+    seeds.add(new String(RocksDBUtils.toRocksDBKey(seedPath, nodeType)));
 
     scanAllKeysRecursively(
         seeds,
@@ -751,18 +752,34 @@ public class MRocksDBManager implements IMetaManager {
           try {
             byte[] value = readWriteHandler.get(null, s.getBytes());
             if (value != null && value.length > 0 && s.charAt(0) == nodeType) {
-              counter.incrementAndGet();
-              return false;
+              if (!isPrefixMatch || isMatched(pathPattern, s)) {
+                counter.incrementAndGet();
+                return false;
+              }
             }
           } catch (RocksDBException e) {
             return false;
           }
           return true;
-        });
+        },
+        isPrefixMatch);
     return counter.get();
   }
 
-  private void scanAllKeysRecursively(Set<String> seeds, int level, Function<String, Boolean> op) {
+  // eg. pathPatter:root.a.b     prefixedKey=sroot.2a.2bbb
+  private boolean isMatched(PartialPath pathPattern, String prefixedKey) {
+    // path = root.a.bbb
+    String path = RocksDBUtils.getPathByInnerName(prefixedKey);
+    if (path.length() <= pathPattern.getNodeLength()) {
+      return true;
+    } else {
+      String fullPath = pathPattern.getFullPath() + RockDBConstants.PATH_SEPARATOR;
+      return path.startsWith(fullPath);
+    }
+  }
+
+  private void scanAllKeysRecursively(
+      Set<String> seeds, int level, Function<String, Boolean> op, boolean isPrefixMatch) {
     if (seeds == null || seeds.isEmpty()) {
       return;
     }
@@ -772,13 +789,20 @@ public class MRocksDBManager implements IMetaManager {
         .forEach(
             x -> {
               if (op.apply(x)) {
-                // x is not leaf node
-                String childrenPrefix = RocksDBUtils.getNextLevelOfPath(x, level);
-                children.addAll(readWriteHandler.getAllByPrefix(childrenPrefix));
+                if (isPrefixMatch) {
+                  for (int i = level; i < maxLevel; i++) {
+                    // x is not leaf node
+                    String nextLevel = RocksDBUtils.getNextLevelOfPath(x, i);
+                    children.addAll(readWriteHandler.getAllByPrefix(nextLevel));
+                  }
+                } else {
+                  String nextLevel = RocksDBUtils.getNextLevelOfPath(x, level);
+                  children.addAll(readWriteHandler.getAllByPrefix(nextLevel));
+                }
               }
             });
     if (!children.isEmpty()) {
-      scanAllKeysRecursively(children, level + 1, op);
+      scanAllKeysRecursively(children, level + 1, op, isPrefixMatch);
     }
   }
 
@@ -795,7 +819,7 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return getKeyNumByPrefix(pathPattern, NODE_TYPE_ENTITY);
+    return getKeyNumByPrefix(pathPattern, NODE_TYPE_ENTITY, isPrefixMatch);
   }
 
   @Override
@@ -811,7 +835,7 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return getKeyNumByPrefix(pathPattern, NODE_TYPE_SG);
+    return getKeyNumByPrefix(pathPattern, NODE_TYPE_SG, isPrefixMatch);
   }
 
   /**

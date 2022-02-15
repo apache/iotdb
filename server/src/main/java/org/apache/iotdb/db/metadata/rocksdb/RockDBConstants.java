@@ -3,7 +3,9 @@ package org.apache.iotdb.db.metadata.rocksdb;
 public class RockDBConstants {
 
   public static final char ZERO = '0';
+  public static final char ROOT_CHAR = 'r';
   public static final String ROOT = "r";
+  public static final String ROOT_STRING = "root";
 
   public static final String PATH_SEPARATOR = ".";
   public static final String ESCAPE_PATH_SEPARATOR = "[.]";
