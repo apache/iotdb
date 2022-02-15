@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
@@ -58,23 +59,27 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
   @Override
   public boolean checkValidAndSetMerging() {
     for (TsFileResource resource : selectedSequenceFiles) {
-      if (resource.isCompacting() || !resource.isClosed() || !resource.getTsFile().exists()) {
+      if (resource.getStatus() == IoTDBConstant.COMPACTING
+          || resource.getStatus() != IoTDBConstant.CLOSED
+          || !resource.getTsFile().exists()) {
         return false;
       }
     }
 
     for (TsFileResource resource : selectedUnsequenceFiles) {
-      if (resource.isCompacting() || !resource.isClosed() || !resource.getTsFile().exists()) {
+      if (resource.getStatus() == IoTDBConstant.COMPACTING
+          || resource.getStatus() != IoTDBConstant.CLOSED
+          || !resource.getTsFile().exists()) {
         return false;
       }
     }
 
     for (TsFileResource resource : selectedSequenceFiles) {
-      resource.setCompacting(true);
+      resource.setStatus(IoTDBConstant.COMPACTING);
     }
 
     for (TsFileResource resource : selectedUnsequenceFiles) {
-      resource.setCompacting(true);
+      resource.setStatus(IoTDBConstant.COMPACTING);
     }
 
     return true;
@@ -95,7 +100,9 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
 
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
-    selectedSequenceFiles.forEach(x -> x.setCompactionCandidate(false));
-    selectedUnsequenceFiles.forEach(x -> x.setCompactionCandidate(false));
+    //    selectedSequenceFiles.forEach(x -> x.setCompactionCandidate(false));
+    selectedSequenceFiles.forEach(x -> x.setStatus(IoTDBConstant.CLOSED));
+    //    selectedUnsequenceFiles.forEach(x -> x.setCompactionCandidate(false));
+    selectedUnsequenceFiles.forEach(x -> x.setStatus(IoTDBConstant.CLOSED));
   }
 }

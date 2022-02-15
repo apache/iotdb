@@ -781,7 +781,7 @@ public class VirtualStorageGroupProcessor {
     List<TsFileResource> upgradeRet = new ArrayList<>();
     for (File f : upgradeFiles) {
       TsFileResource fileResource = new TsFileResource(f);
-      fileResource.setClosed(true);
+      fileResource.setStatus(IoTDBConstant.CLOSED);
       // make sure the flush command is called before IoTDB is down.
       fileResource.deserializeFromOldFile();
       upgradeRet.add(fileResource);
@@ -850,7 +850,7 @@ public class VirtualStorageGroupProcessor {
           if (writer != null && writer.hasCrashed()) {
             tsFileManager.addForRecover(tsFileResource, isSeq);
           } else {
-            tsFileResource.setClosed(true);
+            tsFileResource.setStatus(IoTDBConstant.CLOSED);
             tsFileManager.add(tsFileResource, isSeq);
             tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
           }
@@ -1572,12 +1572,13 @@ public class VirtualStorageGroupProcessor {
   }
 
   private void checkFileTTL(TsFileResource resource, long ttlLowerBound, boolean isSeq) {
-    if (!resource.isClosed() || !resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
+    if (resource.getStatus() != IoTDBConstant.CLOSED
+        || resource.getStatus() != IoTDBConstant.DELETED && resource.stillLives(ttlLowerBound)) {
       return;
     }
 
     // prevent new merges and queries from choosing this file
-    resource.setDeleted(true);
+    resource.setStatus(IoTDBConstant.DELETED);
 
     // ensure that the file is not used by any queries
     if (resource.tryWriteLock()) {
@@ -1882,7 +1883,7 @@ public class VirtualStorageGroupProcessor {
       }
       closeQueryLock.readLock().lock();
       try {
-        if (tsFileResource.isClosed()) {
+        if (tsFileResource.getStatus() == IoTDBConstant.CLOSED) {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
           tsFileResource.getProcessor().query(pathList, context, tsfileResourcesForQuery);
@@ -2040,7 +2041,7 @@ public class VirtualStorageGroupProcessor {
         continue;
       }
 
-      if (tsFileResource.isCompacting) {
+      if (tsFileResource.getStatus() == IoTDBConstant.COMPACTING) {
         // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
         // change after compaction
         deletion.setFileOffset(Long.MAX_VALUE);
@@ -2068,7 +2069,7 @@ public class VirtualStorageGroupProcessor {
       tsFileResource.updatePlanIndexes(planIndex);
 
       // delete data in memory of unsealed file
-      if (!tsFileResource.isClosed()) {
+      if (tsFileResource.getStatus() != IoTDBConstant.CLOSED) {
         TsFileProcessor tsfileProcessor = tsFileResource.getProcessor();
         tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
       }
@@ -2491,7 +2492,7 @@ public class VirtualStorageGroupProcessor {
     for (int i = 0; i < sequenceList.size(); i++) {
       TsFileResource localFile = sequenceList.get(i);
 
-      if (!localFile.isClosed() && localFile.getProcessor() != null) {
+      if (localFile.getStatus() != IoTDBConstant.CLOSED && localFile.getProcessor() != null) {
         // we cannot compare two files by TsFileResource unless they are both closed
         syncCloseOneTsFileProcessor(true, localFile.getProcessor());
       }
@@ -2610,8 +2611,10 @@ public class VirtualStorageGroupProcessor {
   private void removeFullyOverlapFile(
       TsFileResource tsFileResource, Iterator<TsFileResource> iterator, boolean isSeq) {
     logger.info(
-        "Removing a covered file {}, closed: {}", tsFileResource, tsFileResource.isClosed());
-    if (!tsFileResource.isClosed()) {
+        "Removing a covered file {}, closed: {}",
+        tsFileResource,
+        tsFileResource.getStatus() == IoTDBConstant.CLOSED);
+    if (tsFileResource.getStatus() != IoTDBConstant.CLOSED) {
       try {
         // also remove the TsFileProcessor if the overlapped file is not closed
         long timePartition = tsFileResource.getTimePartition();
@@ -3174,14 +3177,14 @@ public class VirtualStorageGroupProcessor {
       List<String> tsFilePaths) {
     if (tsFilePaths.size() == 0) {
       for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
-        if (!resource.isClosed()) {
+        if (resource.getStatus() != IoTDBConstant.CLOSED) {
           continue;
         }
         resource.setSettleTsFileCallBack(this::settleTsFileCallBack);
         seqResourcesToBeSettled.add(resource);
       }
       for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
-        if (!resource.isClosed()) {
+        if (resource.getStatus() != IoTDBConstant.CLOSED) {
           continue;
         }
         resource.setSettleTsFileCallBack(this::settleTsFileCallBack);

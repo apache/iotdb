@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
@@ -86,13 +87,14 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource) {
-    FILE_READER_MANAGER.increaseFileReaderReference(tsFileResource, tsFileResource.isClosed());
+    FILE_READER_MANAGER.increaseFileReaderReference(
+        tsFileResource, tsFileResource.getStatus() == IoTDBConstant.CLOSED);
     try {
       TsFileSequenceReader fileReader = FileReaderManager.getInstance().get(tsFilePath, true);
       return new HashSet<>(fileReader.getAllDevices());
     } catch (NoSuchFileException e) {
       // deleted by ttl
-      if (tsFileResource.isDeleted()) {
+      if (tsFileResource.getStatus() == IoTDBConstant.DELETED) {
         return Collections.emptySet();
       } else {
         logger.error("Can't read file {} from disk ", tsFilePath, e);
@@ -102,7 +104,8 @@ public class FileTimeIndex implements ITimeIndex {
       logger.error("Failed to get devices from tsfile: {}", tsFilePath, e);
       throw new RuntimeException("Failed to get devices from tsfile:: " + tsFilePath);
     } finally {
-      FILE_READER_MANAGER.decreaseFileReaderReference(tsFileResource, tsFileResource.isClosed());
+      FILE_READER_MANAGER.decreaseFileReaderReference(
+          tsFileResource, tsFileResource.getStatus() == IoTDBConstant.CLOSED);
     }
   }
 

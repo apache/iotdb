@@ -239,10 +239,10 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       TsFileResource resource = selectedTsFileResourceList.get(i);
       resource.readLock();
       isHoldingReadLock[i] = true;
-      if (resource.isCompacting()
-          || !resource.isClosed()
+      if (resource.getStatus() == IoTDBConstant.COMPACTING
+          || resource.getStatus() != IoTDBConstant.CLOSED
           || !resource.getTsFile().exists()
-          || resource.isDeleted()) {
+          || resource.getStatus() == IoTDBConstant.DELETED) {
         // this source file cannot be compacted
         // release the lock of locked files, and return
         releaseFileLocksAndResetMergingStatus(false);
@@ -251,7 +251,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
     }
 
     for (TsFileResource resource : selectedTsFileResourceList) {
-      resource.setCompacting(true);
+      resource.setStatus(IoTDBConstant.COMPACTING);
     }
     return true;
   }
@@ -269,7 +269,8 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         selectedTsFileResourceList.get(i).writeUnlock();
       }
       if (resetCompactingStatus) {
-        selectedTsFileResourceList.get(i).setCompacting(false);
+        //        selectedTsFileResourceList.get(i).setCompacting(false);
+        selectedTsFileResourceList.get(i).setStatus(IoTDBConstant.COMPACTION_CANDIDATE);
       }
     }
   }

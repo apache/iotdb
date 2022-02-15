@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader.chunk.metadata;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -85,7 +86,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
         chunkMetadata -> {
           if (chunkMetadata.needSetChunkLoader()) {
             chunkMetadata.setFilePath(resource.getTsFilePath());
-            chunkMetadata.setClosed(resource.isClosed());
+            chunkMetadata.setClosed(resource.getStatus() == IoTDBConstant.CLOSED);
             chunkMetadata.setChunkLoader(new DiskChunkLoader(context.isDebug()));
           }
         });

@@ -123,7 +123,8 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     for (TsFileResource currentFile : tsFileResources) {
       TsFileNameGenerator.TsFileName currentName =
           TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
-      if (currentName.getInnerCompactionCnt() != level || currentFile.isCompactionCandidate()) {
+      if (currentName.getInnerCompactionCnt() != level
+          || currentFile.getStatus() == IoTDBConstant.COMPACTION_CANDIDATE) {
         selectedFileList.clear();
         selectedFileSize = 0L;
         continue;
@@ -167,7 +168,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
 
   private boolean createAndSubmitTask(List<TsFileResource> selectedFileList)
       throws InterruptedException {
-    selectedFileList.forEach(x -> x.setCompactionCandidate(true));
+    selectedFileList.forEach(x -> x.setStatus(IoTDBConstant.COMPACTION_CANDIDATE));
     AbstractCompactionTask compactionTask =
         taskFactory.createTask(
             logicalStorageGroupName,

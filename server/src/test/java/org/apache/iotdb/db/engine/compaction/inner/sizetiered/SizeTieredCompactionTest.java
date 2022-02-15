@@ -130,7 +130,7 @@ public class SizeTieredCompactionTest {
                           + 0
                           + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setClosed(true);
+      tsFileResource.setStatus(IoTDBConstant.CLOSED);
       tsFileResource.updatePlanIndexes((long) i);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
@@ -149,7 +149,7 @@ public class SizeTieredCompactionTest {
                           + 0
                           + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setClosed(true);
+      tsFileResource.setStatus(IoTDBConstant.CLOSED);
       tsFileResource.updatePlanIndexes(i + seqFileNum);
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
@@ -168,7 +168,7 @@ public class SizeTieredCompactionTest {
                         + 0
                         + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(IoTDBConstant.CLOSED);
     tsFileResource.updatePlanIndexes(seqFileNum + unseqFileNum);
     unseqResources.add(tsFileResource);
     prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
@@ -243,7 +243,7 @@ public class SizeTieredCompactionTest {
                         + 0
                         + ".tsfile"));
     TsFileResource tsFileResource1 = new TsFileResource(file1);
-    tsFileResource1.setClosed(true);
+    tsFileResource1.setStatus(IoTDBConstant.CLOSED);
     tsFileResource1.updatePlanIndexes((long) 0);
     TsFileWriter fileWriter1 = new TsFileWriter(tsFileResource1.getTsFile());
     fileWriter1.registerTimeseries(
@@ -270,7 +270,7 @@ public class SizeTieredCompactionTest {
                         + 0
                         + ".tsfile"));
     TsFileResource tsFileResource2 = new TsFileResource(file2);
-    tsFileResource2.setClosed(true);
+    tsFileResource2.setStatus(IoTDBConstant.CLOSED);
     tsFileResource2.updatePlanIndexes((long) 1);
     TsFileWriter fileWriter2 = new TsFileWriter(tsFileResource2.getTsFile());
     fileWriter2.registerTimeseries(

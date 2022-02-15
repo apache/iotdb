@@ -181,6 +181,13 @@ public class IoTDBConstant {
   // cross space compaction
   public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX = ".cross";
 
+  // TsFileResource Status
+  public static final int UNCLOSED = 0;
+  public static final int CLOSED = 1;
+  public static final int COMPACTION_CANDIDATE = 2;
+  public static final int COMPACTING = 3;
+  public static final int DELETED = 4;
+
   // client version number
   public enum ClientVersion {
     V_0_12,

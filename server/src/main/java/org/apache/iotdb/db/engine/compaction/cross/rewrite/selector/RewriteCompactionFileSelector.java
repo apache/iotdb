@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -226,8 +227,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
    */
   private boolean checkIsSeqFilesValid() {
     for (Integer seqIdx : tmpSelectedSeqFiles) {
-      if (resource.getSeqFiles().get(seqIdx).isCompactionCandidate()
-          || resource.getSeqFiles().get(seqIdx).isCompacting()) {
+      if (resource.getSeqFiles().get(seqIdx).getStatus() == IoTDBConstant.COMPACTION_CANDIDATE
+          || resource.getSeqFiles().get(seqIdx).getStatus() == IoTDBConstant.COMPACTING) {
         return false;
       }
     }
@@ -266,7 +267,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
             tmpSelectedSeqFiles.add(i);
           }
           noMoreOverlap = true;
-        } else if (!seqFile.isClosed()) {
+        } else if (seqFile.getStatus() != IoTDBConstant.CLOSED) {
           // we cannot make sure whether unclosed file has overlap or not, so we just add it.
           tmpSelectedSeqFiles.add(i);
           tmpSelectedNum++;

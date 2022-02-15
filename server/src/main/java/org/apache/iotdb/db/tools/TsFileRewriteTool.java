@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -503,7 +504,7 @@ public class TsFileRewriteTool implements AutoCloseable {
     }
     tsFileResource.setMinPlanIndex(minPlanIndex);
     tsFileResource.setMaxPlanIndex(maxPlanIndex);
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(IoTDBConstant.CLOSED);
     tsFileResource.serialize();
     return tsFileResource;
   }

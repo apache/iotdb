@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
@@ -203,7 +204,7 @@ public class AbstractCompactionTest {
       }
     }
     resource.updatePlanIndexes(fileVersion);
-    resource.setClosed(true);
+    resource.setStatus(IoTDBConstant.CLOSED);
     // resource.setTimeIndexType((byte) 0);
     resource.serialize();
     if (isSeq) {

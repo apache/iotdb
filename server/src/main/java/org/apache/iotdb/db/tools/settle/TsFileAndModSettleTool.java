@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.tools.settle;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.settle.SettleLog;
 import org.apache.iotdb.db.engine.settle.SettleLog.SettleCheckStatus;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -66,7 +67,7 @@ public class TsFileAndModSettleTool {
     for (Map.Entry<String, Integer> entry : getInstance().recoverSettleFileMap.entrySet()) {
       String path = entry.getKey();
       TsFileResource resource = new TsFileResource(new File(path));
-      resource.setClosed(true);
+      resource.setStatus(IoTDBConstant.CLOSED);
       oldTsFileResources.put(resource.getTsFile().getName(), resource);
     }
     List<File> tsFiles = checkArgs(args);
@@ -74,7 +75,7 @@ public class TsFileAndModSettleTool {
       if (!oldTsFileResources.containsKey(file.getName())) {
         if (new File(file + TsFileResource.RESOURCE_SUFFIX).exists()) {
           TsFileResource resource = new TsFileResource(file);
-          resource.setClosed(true);
+          resource.setStatus(IoTDBConstant.CLOSED);
           oldTsFileResources.put(file.getName(), resource);
         }
       }
@@ -202,7 +203,7 @@ public class TsFileAndModSettleTool {
   public void settleOneTsFileAndMod(
       TsFileResource resourceToBeSettled, List<TsFileResource> settledResources)
       throws WriteProcessException, IllegalPathException, IOException {
-    if (!resourceToBeSettled.isClosed()) {
+    if (resourceToBeSettled.getStatus() != IoTDBConstant.CLOSED) {
       logger.warn(
           "The tsFile {} should be sealed when rewritting.", resourceToBeSettled.getTsFilePath());
       return;
@@ -215,7 +216,7 @@ public class TsFileAndModSettleTool {
       tsFileRewriteTool.parseAndRewriteFile(settledResources);
     }
     if (settledResources.size() == 0) {
-      resourceToBeSettled.setDeleted(true);
+      resourceToBeSettled.setStatus(IoTDBConstant.DELETED);
     }
   }
 
@@ -307,7 +308,7 @@ public class TsFileAndModSettleTool {
                 + File.separator
                 + oldTsFileResource.getTimePartition());
     if (newTsFileResources.size() == 0) { // if the oldTsFile has no mods, it should not be deleted.
-      if (oldTsFileResource.isDeleted()) {
+      if (oldTsFileResource.getStatus() == IoTDBConstant.DELETED) {
         oldTsFileResource.remove();
       }
       if (newPartitionDir.exists()) {
@@ -336,7 +337,7 @@ public class TsFileAndModSettleTool {
 
         // move .resource File
         newTsFileResource.setFile(fsFactory.getFile(oldTsFile.getParent(), newTsFile.getName()));
-        newTsFileResource.setClosed(true);
+        newTsFileResource.setStatus(IoTDBConstant.CLOSED);
         try {
           newTsFileResource.serialize();
         } catch (IOException e) {

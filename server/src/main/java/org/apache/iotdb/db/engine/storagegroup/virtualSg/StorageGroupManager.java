@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -418,7 +419,7 @@ public class StorageGroupManager {
         List<TsFileResource> allResources = virtualStorageGroupProcessor.getSequenceFileTreeSet();
         allResources.addAll(virtualStorageGroupProcessor.getUnSequenceFileList());
         for (TsFileResource tsfile : allResources) {
-          if (!tsfile.isClosed()) {
+          if (tsfile.getStatus() != IoTDBConstant.CLOSED) {
             continue;
           }
           long partitionNum = tsfile.getTimePartition();

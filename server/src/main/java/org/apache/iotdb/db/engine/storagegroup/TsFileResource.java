@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -99,10 +100,7 @@ public class TsFileResource {
 
   private ModificationFile compactionModFile;
 
-  protected volatile boolean closed = false;
-  private volatile boolean deleted = false;
-  volatile boolean isCompacting = false;
-  volatile boolean compactionCandidate = false;
+  private volatile int status = 0;
 
   private TsFileLock tsFileLock = new TsFileLock();
 
@@ -164,9 +162,7 @@ public class TsFileResource {
     this.timeIndex = other.timeIndex;
     this.timeIndexType = other.timeIndexType;
     this.modFile = other.modFile;
-    this.closed = other.closed;
-    this.deleted = other.deleted;
-    this.isCompacting = other.isCompacting;
+    this.status = other.status;
     this.pathToChunkMetadataListMap = other.pathToChunkMetadataListMap;
     this.pathToReadOnlyMemChunkMap = other.pathToReadOnlyMemChunkMap;
     this.pathToTimeSeriesMetadataMap = other.pathToTimeSeriesMetadataMap;
@@ -383,7 +379,7 @@ public class TsFileResource {
   }
 
   public long getTsFileSize() {
-    if (closed) {
+    if (status == IoTDBConstant.CLOSED) {
       if (tsFileSize == -1) {
         synchronized (this) {
           if (tsFileSize == -1) {
@@ -432,11 +428,11 @@ public class TsFileResource {
   }
 
   public boolean isClosed() {
-    return closed;
+    return status == IoTDBConstant.CLOSED;
   }
 
   public void close() throws IOException {
-    closed = true;
+    status = IoTDBConstant.CLOSED;
     if (modFile != null) {
       modFile.close();
       modFile = null;
@@ -575,32 +571,20 @@ public class TsFileResource {
     return Objects.hash(file);
   }
 
-  public void setClosed(boolean closed) {
-    this.closed = closed;
+  //  public void setCompacting(boolean compacting) {
+  //    return;
+  //  }
+
+  //  public void setCompactionCandidate(boolean compactionCandidate) {
+  //    return;
+  //  }
+
+  public int getStatus() {
+    return status;
   }
 
-  public boolean isDeleted() {
-    return deleted;
-  }
-
-  public void setDeleted(boolean deleted) {
-    this.deleted = deleted;
-  }
-
-  public boolean isCompacting() {
-    return isCompacting;
-  }
-
-  public void setCompacting(boolean compacting) {
-    isCompacting = compacting;
-  }
-
-  public boolean isCompactionCandidate() {
-    return compactionCandidate;
-  }
-
-  public void setCompactionCandidate(boolean compactionCandidate) {
-    this.compactionCandidate = compactionCandidate;
+  public void setStatus(int status) {
+    this.status = status;
   }
 
   /**
@@ -608,7 +592,7 @@ public class TsFileResource {
    * return true.
    */
   public boolean stillLives(long timeLowerBound) {
-    return !isClosed() || timeIndex.stillLives(timeLowerBound);
+    return getStatus() != IoTDBConstant.CLOSED || timeIndex.stillLives(timeLowerBound);
   }
 
   public boolean isDeviceIdExist(String deviceId) {
@@ -631,7 +615,7 @@ public class TsFileResource {
     }
 
     long startTime = getStartTime(deviceId);
-    long endTime = closed || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
+    long endTime = status == IoTDBConstant.CLOSED || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
 
     if (!isAlive(endTime, ttl)) {
       if (debug) {
@@ -654,7 +638,7 @@ public class TsFileResource {
   /** @return true if the TsFile lives beyond TTL */
   private boolean isSatisfied(Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
     long startTime = getFileStartTime();
-    long endTime = closed || !isSeq ? getFileEndTime() : Long.MAX_VALUE;
+    long endTime = status == IoTDBConstant.CLOSED || !isSeq ? getFileEndTime() : Long.MAX_VALUE;
 
     if (!isAlive(endTime, ttl)) {
       if (debug) {
@@ -693,7 +677,7 @@ public class TsFileResource {
     }
 
     long startTime = getStartTime(deviceId);
-    long endTime = closed || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
+    long endTime = status == IoTDBConstant.CLOSED || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
 
     if (timeFilter != null) {
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
@@ -851,7 +835,7 @@ public class TsFileResource {
     }
     maxPlanIndex = Math.max(maxPlanIndex, planIndex);
     minPlanIndex = Math.min(minPlanIndex, planIndex);
-    if (closed) {
+    if (status == IoTDBConstant.CLOSED) {
       try {
         serialize();
       } catch (IOException e) {

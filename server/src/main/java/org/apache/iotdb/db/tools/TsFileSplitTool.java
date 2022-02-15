@@ -278,7 +278,7 @@ public class TsFileSplitTool {
     }
     tsFileResource.setMinPlanIndex(minPlanIndex);
     tsFileResource.setMaxPlanIndex(maxPlanIndex);
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(IoTDBConstant.CLOSED);
     tsFileResource.serialize();
 
     return tsFileResource;

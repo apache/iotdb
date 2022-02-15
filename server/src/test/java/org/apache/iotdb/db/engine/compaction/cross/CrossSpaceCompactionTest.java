@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
@@ -442,7 +443,7 @@ public class CrossSpaceCompactionTest {
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setClosed(true);
+              targetResource.setStatus(IoTDBConstant.CLOSED);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);
@@ -745,7 +746,7 @@ public class CrossSpaceCompactionTest {
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setClosed(true);
+              targetResource.setStatus(IoTDBConstant.CLOSED);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);
@@ -1047,7 +1048,7 @@ public class CrossSpaceCompactionTest {
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setClosed(true);
+              targetResource.setStatus(IoTDBConstant.CLOSED);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);

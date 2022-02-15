@@ -1231,7 +1231,7 @@ public class PlanExecutor implements IPlanExecutor {
       return;
     }
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(IoTDBConstant.CLOSED);
     try {
       // check file
       RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);

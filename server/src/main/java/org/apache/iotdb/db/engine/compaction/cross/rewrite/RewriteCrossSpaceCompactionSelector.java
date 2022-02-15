@@ -118,8 +118,10 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
       mergeResource.setCacheDeviceMeta(true);
 
       if (mergeFiles[0].size() > 0 && mergeFiles[1].size() > 0) {
-        mergeFiles[0].forEach(x -> ((TsFileResource) x).setCompactionCandidate(true));
-        mergeFiles[1].forEach(x -> ((TsFileResource) x).setCompactionCandidate(true));
+        mergeFiles[0].forEach(
+            x -> ((TsFileResource) x).setStatus(IoTDBConstant.COMPACTION_CANDIDATE));
+        mergeFiles[1].forEach(
+            x -> ((TsFileResource) x).setStatus(IoTDBConstant.COMPACTION_CANDIDATE));
         AbstractCompactionTask compactionTask =
             taskFactory.createTask(
                 logicalStorageGroupName,

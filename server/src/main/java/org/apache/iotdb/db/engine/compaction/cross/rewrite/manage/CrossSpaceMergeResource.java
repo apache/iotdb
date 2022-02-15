@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.manage;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -70,7 +71,7 @@ public class CrossSpaceMergeResource {
 
   /** Fitler the seq files into the compaction. Seq files should be not deleted or over ttl. */
   private boolean filterSeqResource(TsFileResource res) {
-    return !res.isDeleted() && res.stillLives(ttlLowerBound);
+    return res.getStatus() != IoTDBConstant.DELETED && res.stillLives(ttlLowerBound);
   }
 
   /**
@@ -81,9 +82,12 @@ public class CrossSpaceMergeResource {
    */
   private void filterUnseqResource(List<TsFileResource> unseqResources) {
     for (TsFileResource resource : unseqResources) {
-      if (resource.isCompacting() || resource.isCompactionCandidate() || !resource.isClosed()) {
+      if (resource.getStatus() == IoTDBConstant.COMPACTING
+          || resource.getStatus() == IoTDBConstant.COMPACTION_CANDIDATE
+          || resource.getStatus() != IoTDBConstant.CLOSED) {
         return;
-      } else if (!resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
+      } else if (resource.getStatus() != IoTDBConstant.DELETED
+          && resource.stillLives(ttlLowerBound)) {
         this.unseqFiles.add(resource);
       }
     }

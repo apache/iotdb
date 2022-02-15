@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -62,7 +63,7 @@ public class FileLoaderUtils {
     } else {
       tsFileResource.deserialize();
     }
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(IoTDBConstant.CLOSED);
   }
 
   public static void updateTsFileResource(
@@ -98,7 +99,7 @@ public class FileLoaderUtils {
     // common path
     TimeseriesMetadata timeSeriesMetadata;
     // If the tsfile is closed, we need to load from tsfile
-    if (resource.isClosed()) {
+    if (resource.getStatus() == IoTDBConstant.CLOSED) {
       timeSeriesMetadata =
           TimeSeriesMetadataCache.getInstance()
               .get(
@@ -150,7 +151,7 @@ public class FileLoaderUtils {
       throws IOException {
     AlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // If the tsfile is closed, we need to load from tsfile
-    if (resource.isClosed()) {
+    if (resource.getStatus() == IoTDBConstant.CLOSED) {
       if (!resource.getTsFile().exists()) {
         return null;
       }

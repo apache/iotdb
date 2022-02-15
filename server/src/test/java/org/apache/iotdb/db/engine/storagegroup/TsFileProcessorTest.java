@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -396,7 +397,7 @@ public class TsFileProcessorTest {
       e.printStackTrace();
     }
 
-    assertTrue(processor.getTsFileResource().isClosed());
+    assertEquals(IoTDBConstant.CLOSED, processor.getTsFileResource().getStatus());
   }
 
   private void closeTsFileProcessor(TsFileProcessor unsealedTsFileProcessor)

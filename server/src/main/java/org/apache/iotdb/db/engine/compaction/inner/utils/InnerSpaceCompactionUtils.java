@@ -220,7 +220,7 @@ public class InnerSpaceCompactionUtils {
   public static boolean deleteTsFile(TsFileResource seqFile) {
     try {
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-      seqFile.setDeleted(true);
+      seqFile.setStatus(IoTDBConstant.DELETED);
       seqFile.delete();
     } catch (IOException e) {
       logger.error(e.getMessage(), e);

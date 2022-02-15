@@ -119,7 +119,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                     + ".tsfile"));
     TsFileResource largeUnseqTsFileResource = new TsFileResource(file);
     unseqResources.add(largeUnseqTsFileResource);
-    largeUnseqTsFileResource.setClosed(true);
+    largeUnseqTsFileResource.setStatus(IoTDBConstant.CLOSED);
     largeUnseqTsFileResource.setMinPlanIndex(10);
     largeUnseqTsFileResource.setMaxPlanIndex(10);
     largeUnseqTsFileResource.setVersion(10);
@@ -127,7 +127,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
     // update the second file's status to open
     TsFileResource secondTsFileResource = seqResources.get(1);
-    secondTsFileResource.setClosed(false);
+    secondTsFileResource.setStatus(IoTDBConstant.UNCLOSED);
     Set<String> devices = secondTsFileResource.getDevices();
     // update the end time of the file to Long.MIN_VALUE, so we can simulate a real open file
     Field timeIndexField = TsFileResource.class.getDeclaredField("timeIndex");
@@ -174,7 +174,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                     + ".tsfile"));
     TsFileResource largeUnseqTsFileResource = new TsFileResource(file);
     unseqResources.add(largeUnseqTsFileResource);
-    largeUnseqTsFileResource.setClosed(true);
+    largeUnseqTsFileResource.setStatus(IoTDBConstant.CLOSED);
     largeUnseqTsFileResource.setMinPlanIndex(10);
     largeUnseqTsFileResource.setMaxPlanIndex(10);
     largeUnseqTsFileResource.setVersion(10);
@@ -182,7 +182,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
     // update the second file's status to open
     TsFileResource secondTsFileResource = seqResources.get(1);
-    secondTsFileResource.setClosed(false);
+    secondTsFileResource.setStatus(IoTDBConstant.UNCLOSED);
     Set<String> devices = secondTsFileResource.getDevices();
     // update the end time of the file to Long.MIN_VALUE, so we can simulate a real open file
     Field timeIndexField = TsFileResource.class.getDeclaredField("timeIndex");
@@ -226,7 +226,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                     + 0
                     + ".tsfile"));
     TsFileResource largeUnseqTsFileResource = new TsFileResource(file);
-    largeUnseqTsFileResource.setClosed(true);
+    largeUnseqTsFileResource.setStatus(IoTDBConstant.CLOSED);
     largeUnseqTsFileResource.setMinPlanIndex(10);
     largeUnseqTsFileResource.setMaxPlanIndex(10);
     largeUnseqTsFileResource.setVersion(10);
@@ -265,7 +265,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                         + 0
                         + ".tsfile"));
         TsFileResource fileResource = new TsFileResource(file);
-        fileResource.setClosed(true);
+        fileResource.setStatus(IoTDBConstant.CLOSED);
         prepareFile(fileResource, i, 1, 0);
         seqList.add(fileResource);
       }
@@ -285,7 +285,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                         + 0
                         + ".tsfile"));
         TsFileResource fileResource = new TsFileResource(file);
-        fileResource.setClosed(true);
+        fileResource.setStatus(IoTDBConstant.CLOSED);
         unseqList.add(fileResource);
       }
       prepareFile(unseqList.get(0), 0, 1, 10);

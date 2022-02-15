@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.task;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
@@ -88,7 +89,8 @@ public class FakedInnerSpaceCompactionTask extends SizeTieredCompactionTask {
   @Override
   public boolean checkValidAndSetMerging() {
     for (TsFileResource resource : selectedTsFileResourceList) {
-      if (resource.isCompacting() || !resource.isClosed()) {
+      if (resource.getStatus() == IoTDBConstant.COMPACTING
+          || resource.getStatus() != IoTDBConstant.CLOSED) {
         return false;
       }
     }

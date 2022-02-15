@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
@@ -110,7 +111,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     TsFileResourceList tsFileResources = new TsFileResourceList();
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
     createFiles(2, 3, 5, 50, 250, 250, 50, 50, false, true);
-    seqResources.get(0).setCompacting(true);
+    seqResources.get(0).setStatus(IoTDBConstant.COMPACTING);
     TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
     tsFileManager.addAll(seqResources, true);
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(

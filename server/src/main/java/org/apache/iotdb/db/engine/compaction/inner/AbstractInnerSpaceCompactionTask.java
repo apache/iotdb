@@ -103,13 +103,15 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
   @Override
   public boolean checkValidAndSetMerging() {
     for (TsFileResource resource : selectedTsFileResourceList) {
-      if (resource.isCompacting() | !resource.isClosed() || !resource.getTsFile().exists()) {
+      if (resource.getStatus() == IoTDBConstant.COMPACTING
+              | resource.getStatus() != IoTDBConstant.CLOSED
+          || !resource.getTsFile().exists()) {
         return false;
       }
     }
 
     for (TsFileResource resource : selectedTsFileResourceList) {
-      resource.setCompacting(true);
+      resource.setStatus(IoTDBConstant.COMPACTING);
     }
     return true;
   }
@@ -131,6 +133,7 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
 
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
-    selectedTsFileResourceList.forEach(x -> x.setCompactionCandidate(false));
+    //    selectedTsFileResourceList.forEach(x -> x.setCompactionCandidate(false));
+    selectedTsFileResourceList.forEach(x -> x.setStatus(IoTDBConstant.CLOSED));
   }
 }

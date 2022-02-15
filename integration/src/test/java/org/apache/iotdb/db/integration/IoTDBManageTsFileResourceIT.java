@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -46,9 +47,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 @Category({LocalStandaloneTest.class})
 public class IoTDBManageTsFileResourceIT {
@@ -221,9 +220,9 @@ public class IoTDBManageTsFileResourceIT {
       // not close, so degrade method can't be called.
       for (int i = 0; i < seqResources.size(); i++) {
         if (i < 4) {
-          assertTrue(seqResources.get(i).isClosed());
+          assertEquals(IoTDBConstant.CLOSED, seqResources.get(i).getStatus());
         } else {
-          assertFalse(seqResources.get(i).isClosed());
+          assertNotEquals(IoTDBConstant.CLOSED, seqResources.get(i).getStatus());
         }
         if (i < 1) {
           assertEquals(
@@ -242,7 +241,7 @@ public class IoTDBManageTsFileResourceIT {
                   .getUnSequenceFileList());
       assertEquals(3, unSeqResources.size());
       for (TsFileResource resource : unSeqResources) {
-        assertTrue(resource.isClosed());
+        assertEquals(IoTDBConstant.CLOSED, resource.getStatus());
         assertEquals(
             TimeIndexLevel.FILE_TIME_INDEX, TimeIndexLevel.valueOf(resource.getTimeIndexType()));
       }
@@ -260,7 +259,7 @@ public class IoTDBManageTsFileResourceIT {
                 .getSequenceFileTreeSet());
     assertEquals(5, seqResources.size());
     for (int i = 0; i < seqResources.size(); i++) {
-      assertTrue(seqResources.get(i).isClosed());
+      assertEquals(IoTDBConstant.CLOSED, seqResources.get(i).getStatus());
     }
     List<TsFileResource> unSeqResources =
         new ArrayList<>(
@@ -271,7 +270,7 @@ public class IoTDBManageTsFileResourceIT {
     for (TsFileResource resource : unSeqResources) {
       assertEquals(
           TimeIndexLevel.FILE_TIME_INDEX, TimeIndexLevel.valueOf(resource.getTimeIndexType()));
-      assertTrue(resource.isClosed());
+      assertEquals(IoTDBConstant.CLOSED, resource.getStatus());
     }
 
     try (Connection connection =

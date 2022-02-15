@@ -186,14 +186,14 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     for (TsFileResource tsFileResource : tsFileResourceList) {
       tsFileResource.readLock();
       holdReadLockList.add(tsFileResource);
-      if (tsFileResource.isCompacting()
-          || !tsFileResource.isClosed()
+      if (tsFileResource.getStatus() == IoTDBConstant.COMPACTING
+          || tsFileResource.getStatus() != IoTDBConstant.CLOSED
           || !tsFileResource.getTsFile().exists()
-          || tsFileResource.isDeleted()) {
+          || tsFileResource.getStatus() == IoTDBConstant.DELETED) {
         releaseAllLock();
         return false;
       }
-      tsFileResource.setCompacting(true);
+      tsFileResource.setStatus(IoTDBConstant.COMPACTING);
     }
     return true;
   }
@@ -216,11 +216,13 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   private void releaseAllLock() {
     for (TsFileResource tsFileResource : holdReadLockList) {
       tsFileResource.readUnlock();
-      tsFileResource.setCompacting(false);
+      //      tsFileResource.setCompacting(false);
+      tsFileResource.setStatus(IoTDBConstant.COMPACTION_CANDIDATE);
     }
     for (TsFileResource tsFileResource : holdWriteLockList) {
       tsFileResource.writeUnlock();
-      tsFileResource.setCompacting(false);
+      //      tsFileResource.setCompacting(false);
+      tsFileResource.setStatus(IoTDBConstant.COMPACTION_CANDIDATE);
     }
     holdReadLockList.clear();
     holdWriteLockList.clear();
@@ -229,7 +231,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   private void deleteOldFiles(List<TsFileResource> tsFileResourceList) throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
-      tsFileResource.setDeleted(true);
+      tsFileResource.setStatus(IoTDBConstant.DELETED);
       tsFileResource.remove();
       logger.info(
           "[CrossSpaceCompaction] Delete TsFile :{}.",

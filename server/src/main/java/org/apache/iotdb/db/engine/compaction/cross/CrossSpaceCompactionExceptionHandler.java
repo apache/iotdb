@@ -228,11 +228,11 @@ public class CrossSpaceCompactionExceptionHandler {
     // delete source files
     for (TsFileResource unseqFile : unseqFileList) {
       unseqFile.remove();
-      unseqFile.setDeleted(true);
+      unseqFile.setStatus(IoTDBConstant.DELETED);
     }
     for (TsFileResource seqFile : seqFileList) {
       seqFile.remove();
-      seqFile.setDeleted(true);
+      seqFile.setStatus(IoTDBConstant.DELETED);
     }
 
     // delete compaction mods files

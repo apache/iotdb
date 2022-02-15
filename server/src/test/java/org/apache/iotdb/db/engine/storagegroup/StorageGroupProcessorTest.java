@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
@@ -182,7 +183,7 @@ public class StorageGroupProcessorTest {
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
-      Assert.assertTrue(resource.isClosed());
+      Assert.assertEquals(IoTDBConstant.CLOSED, resource.getStatus());
     }
   }
 
@@ -285,7 +286,7 @@ public class StorageGroupProcessorTest {
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(1, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
-      Assert.assertTrue(resource.isClosed());
+      Assert.assertEquals(IoTDBConstant.CLOSED, resource.getStatus());
     }
   }
 
@@ -320,10 +321,10 @@ public class StorageGroupProcessorTest {
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
-      Assert.assertTrue(resource.isClosed());
+      Assert.assertEquals(IoTDBConstant.CLOSED, resource.getStatus());
     }
     for (TsFileResource resource : queryDataSource.getUnseqResources()) {
-      Assert.assertTrue(resource.isClosed());
+      Assert.assertEquals(IoTDBConstant.CLOSED, resource.getStatus());
     }
   }
 
@@ -365,10 +366,10 @@ public class StorageGroupProcessorTest {
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
-      Assert.assertTrue(resource.isClosed());
+      Assert.assertEquals(IoTDBConstant.CLOSED, resource.getStatus());
     }
     for (TsFileResource resource : queryDataSource.getUnseqResources()) {
-      Assert.assertTrue(resource.isClosed());
+      Assert.assertEquals(IoTDBConstant.CLOSED, resource.getStatus());
     }
 
     config.setEnableDiscardOutOfOrderData(defaultValue);
@@ -452,7 +453,7 @@ public class StorageGroupProcessorTest {
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
-      Assert.assertTrue(resource.isClosed());
+      Assert.assertEquals(IoTDBConstant.CLOSED, resource.getStatus());
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
@@ -538,7 +539,7 @@ public class StorageGroupProcessorTest {
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
-      Assert.assertTrue(resource.isClosed());
+      Assert.assertEquals(IoTDBConstant.CLOSED, resource.getStatus());
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
@@ -624,7 +625,7 @@ public class StorageGroupProcessorTest {
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
-      Assert.assertTrue(resource.isClosed());
+      Assert.assertEquals(IoTDBConstant.CLOSED, resource.getStatus());
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
@@ -689,10 +690,10 @@ public class StorageGroupProcessorTest {
             null);
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
-      Assert.assertTrue(resource.isClosed());
+      Assert.assertEquals(IoTDBConstant.CLOSED, resource.getStatus());
     }
     for (TsFileResource resource : queryDataSource.getUnseqResources()) {
-      Assert.assertTrue(resource.isClosed());
+      Assert.assertEquals(IoTDBConstant.CLOSED, resource.getStatus());
     }
     IoTDBDescriptor.getInstance()
         .getConfig()

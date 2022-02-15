@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.control;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
@@ -72,11 +73,11 @@ public class QueryFileManager {
     Iterator<TsFileResource> iterator = resources.iterator();
     while (iterator.hasNext()) {
       TsFileResource tsFileResource = iterator.next();
-      boolean isClosed = tsFileResource.isClosed();
+      boolean isClosed = tsFileResource.getStatus() == IoTDBConstant.CLOSED;
       addFilePathToMap(queryId, tsFileResource, isClosed);
 
       // this file may be deleted just before we lock it
-      if (tsFileResource.isDeleted()) {
+      if (tsFileResource.getStatus() == IoTDBConstant.DELETED) {
         Map<Long, Map<TsFileResource, TsFileResource>> pathMap =
             !isClosed ? unsealedFilePathsMap : sealedFilePathsMap;
         // This resource may be removed by other threads of this query.

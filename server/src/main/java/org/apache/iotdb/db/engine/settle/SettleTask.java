@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.settle;
 
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.settle.SettleLog.SettleCheckStatus;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -54,7 +55,7 @@ public class SettleTask extends WrappedRunnable {
 
   public void settleTsFile() throws WriteProcessException {
     List<TsFileResource> settledResources = new ArrayList<>();
-    if (!resourceToBeSettled.isClosed()) {
+    if (resourceToBeSettled.getStatus() != IoTDBConstant.CLOSED) {
       logger.warn(
           "The tsFile {} should be sealed when settling.",
           resourceToBeSettled.getTsFile().getAbsolutePath());

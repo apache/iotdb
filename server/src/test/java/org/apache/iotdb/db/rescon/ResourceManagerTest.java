@@ -194,7 +194,7 @@ public class ResourceManagerTest {
                     + 0
                     + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(IoTDBConstant.CLOSED);
     tsFileResource.updatePlanIndexes((long) 0);
     prepareFile(tsFileResource, 0, ptNum, 0);
     long previousRamSize = tsFileResource.calculateRamSize();
@@ -221,7 +221,7 @@ public class ResourceManagerTest {
                     + 0
                     + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(IoTDBConstant.CLOSED);
     tsFileResource.updatePlanIndexes((long) 0);
     prepareFile(tsFileResource, 0, ptNum, 0);
     assertEquals(
@@ -248,7 +248,7 @@ public class ResourceManagerTest {
                     + 0
                     + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(IoTDBConstant.CLOSED);
     tsFileResource.updatePlanIndexes((long) 0);
     prepareFile(tsFileResource, 0, ptNum, 0);
     assertEquals(
@@ -278,7 +278,7 @@ public class ResourceManagerTest {
                     + 0
                     + ".tsfile"));
     TsFileResource tsFileResource1 = new TsFileResource(file1);
-    tsFileResource1.setClosed(true);
+    tsFileResource1.setStatus(IoTDBConstant.CLOSED);
     tsFileResource1.updatePlanIndexes((long) 0);
     prepareFile(tsFileResource1, 0, ptNum, 0);
     assertEquals(
@@ -302,7 +302,7 @@ public class ResourceManagerTest {
                     + 0
                     + ".tsfile"));
     TsFileResource tsFileResource2 = new TsFileResource(file2);
-    tsFileResource2.setClosed(true);
+    tsFileResource2.setStatus(IoTDBConstant.CLOSED);
     tsFileResource2.updatePlanIndexes((long) 1);
     prepareFile(tsFileResource2, ptNum, ptNum, 0);
     assertEquals(
@@ -333,7 +333,7 @@ public class ResourceManagerTest {
                       + 0
                       + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setClosed(true);
+      tsFileResource.setStatus(IoTDBConstant.CLOSED);
       tsFileResource.updatePlanIndexes((long) i);
       assertEquals(
           TimeIndexLevel.DEVICE_TIME_INDEX,
@@ -376,7 +376,7 @@ public class ResourceManagerTest {
                         + 0
                         + ".tsfile"));
         TsFileResource tsFileResource = new TsFileResource(file);
-        tsFileResource.setClosed(true);
+        tsFileResource.setStatus(IoTDBConstant.CLOSED);
         tsFileResource.updatePlanIndexes((long) i);
         seqResources.add(tsFileResource);
         assertEquals(

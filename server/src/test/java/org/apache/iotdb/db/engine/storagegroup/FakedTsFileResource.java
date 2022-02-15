@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 
@@ -33,15 +34,13 @@ public class FakedTsFileResource extends TsFileResource {
   public FakedTsFileResource(long tsFileSize, String name) {
     this.timeIndex = new FileTimeIndex();
     this.tsFileSize = tsFileSize;
-    super.closed = true;
-    super.isCompacting = false;
+    super.setStatus(IoTDBConstant.CLOSED);
     fakeTsfileName = name;
   }
 
   public FakedTsFileResource(long tsFileSize, boolean isClosed, boolean isMerging, String name) {
     this.tsFileSize = tsFileSize;
-    super.closed = isClosed;
-    super.isCompacting = isMerging;
+    super.setStatus(IoTDBConstant.CLOSED);
     fakeTsfileName = name;
   }
 
@@ -65,8 +64,8 @@ public class FakedTsFileResource extends TsFileResource {
   public String toString() {
     StringBuilder builder = new StringBuilder();
     builder.append(tsFileSize).append(",");
-    builder.append(closed).append(",");
-    builder.append(isCompacting);
+    builder.append(getStatus() == IoTDBConstant.CLOSED).append(",");
+    builder.append(getStatus() == IoTDBConstant.COMPACTING);
     return builder.toString();
   }
 
