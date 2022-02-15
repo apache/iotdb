@@ -75,14 +75,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.google.common.util.concurrent.Striped;
-import org.apache.commons.lang3.StringUtils;
-import org.rocksdb.Holder;
-import org.rocksdb.RocksDBException;
-import org.rocksdb.RocksIterator;
-import org.rocksdb.WriteBatch;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -91,13 +83,20 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
+import org.apache.commons.lang3.StringUtils;
+import org.rocksdb.Holder;
+import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
+import org.rocksdb.WriteBatch;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
@@ -176,7 +175,8 @@ public class MRocksDBManager implements IMetaManager {
 
   // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
   @Override
-  public void init() {}
+  public void init() {
+  }
 
   @Override
   public void createMTreeSnapshot() {
@@ -185,24 +185,30 @@ public class MRocksDBManager implements IMetaManager {
 
   @TestOnly
   @Override
-  public void clear() {}
+  public void clear() {
+  }
 
   @Override
-  public void operation(PhysicalPlan plan) throws IOException, MetadataException {}
+  public void operation(PhysicalPlan plan) throws IOException, MetadataException {
+  }
   // endregion
 
   // region Interfaces for CQ
   @Override
-  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws MetadataException {}
+  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws MetadataException {
+  }
 
   @Override
-  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws MetadataException {}
+  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws MetadataException {
+  }
 
   @Override
-  public void writeCreateContinuousQueryLog(CreateContinuousQueryPlan plan) throws IOException {}
+  public void writeCreateContinuousQueryLog(CreateContinuousQueryPlan plan) throws IOException {
+  }
 
   @Override
-  public void writeDropContinuousQueryLog(DropContinuousQueryPlan plan) throws IOException {}
+  public void writeDropContinuousQueryLog(DropContinuousQueryPlan plan) throws IOException {
+  }
   // endregion
 
   // region Interfaces and Implementation for Timeseries operation
@@ -225,9 +231,9 @@ public class MRocksDBManager implements IMetaManager {
   /**
    * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
    *
-   * @param path the timeseries path
-   * @param dataType the dateType {@code DataType} of the timeseries
-   * @param encoding the encoding function {@code Encoding} of the timeseries
+   * @param path       the timeseries path
+   * @param dataType   the dateType {@code DataType} of the timeseries
+   * @param encoding   the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
    */
   @Override
@@ -244,9 +250,9 @@ public class MRocksDBManager implements IMetaManager {
   /**
    * Add one timeseries to metadata, if the timeseries already exists, throw exception
    *
-   * @param path the timeseries path
-   * @param dataType the dateType {@code DataType} of the timeseries
-   * @param encoding the encoding function {@code Encoding} of the timeseries
+   * @param path       the timeseries path
+   * @param dataType   the dateType {@code DataType} of the timeseries
+   * @param encoding   the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
    */
   public void createTimeseries(
@@ -706,7 +712,9 @@ public class MRocksDBManager implements IMetaManager {
     return false;
   }
 
-  /** Get metadata in string */
+  /**
+   * Get metadata in string
+   */
   @Override
   public String getMetadataInString() {
     throw new UnsupportedOperationException("This operation is not supported.");
@@ -726,11 +734,13 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return getKeyNumByPrefix(pathPattern, NODE_TYPE_MEASUREMENT, isPrefixMatch);
+
+    return getKeyNumByPrefix(pathPattern, NODE_TYPE_MEASUREMENT, isPrefixMatch).size();
   }
 
-  private int getKeyNumByPrefix(PartialPath pathPattern, char nodeType, boolean isPrefixMatch) {
-    AtomicInteger counter = new AtomicInteger(0);
+  private Map<String, byte[]> getKeyNumByPrefix(PartialPath pathPattern, char nodeType,
+      boolean isPrefixMatch) {
+    Map<String, byte[]> result = new ConcurrentHashMap<>();
     Set<String> seeds = new HashSet<>();
 
     String seedPath;
@@ -753,7 +763,7 @@ public class MRocksDBManager implements IMetaManager {
             byte[] value = readWriteHandler.get(null, s.getBytes());
             if (value != null && value.length > 0 && s.charAt(0) == nodeType) {
               if (!isPrefixMatch || isMatched(pathPattern, s)) {
-                counter.incrementAndGet();
+                result.put(s, value);
                 return false;
               }
             }
@@ -763,7 +773,7 @@ public class MRocksDBManager implements IMetaManager {
           return true;
         },
         isPrefixMatch);
-    return counter.get();
+    return result;
   }
 
   // eg. pathPatter:root.a.b     prefixedKey=sroot.2a.2bbb
@@ -819,7 +829,7 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return getKeyNumByPrefix(pathPattern, NODE_TYPE_ENTITY, isPrefixMatch);
+    return getKeyNumByPrefix(pathPattern, NODE_TYPE_ENTITY, isPrefixMatch).size();
   }
 
   @Override
@@ -835,7 +845,7 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return getKeyNumByPrefix(pathPattern, NODE_TYPE_SG, isPrefixMatch);
+    return getKeyNumByPrefix(pathPattern, NODE_TYPE_SG, isPrefixMatch).size();
   }
 
   /**
@@ -843,8 +853,8 @@ public class MRocksDBManager implements IMetaManager {
    * match, the path pattern is used to match prefix path. All timeseries start with the matched
    * prefix path will be counted.
    *
-   * @param pathPattern a path pattern or a full path
-   * @param level the level should match the level of the path
+   * @param pathPattern   a path pattern or a full path
+   * @param level         the level should match the level of the path
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   @Override
@@ -859,7 +869,7 @@ public class MRocksDBManager implements IMetaManager {
    * To calculate the count of nodes in the given level for given path pattern.
    *
    * @param pathPattern a path pattern or a full path
-   * @param level the level should match the level of the path
+   * @param level       the level should match the level of the path
    */
   @Override
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
@@ -883,7 +893,7 @@ public class MRocksDBManager implements IMetaManager {
    * e.g. give path root.** and the level could be 2 or 3.
    *
    * @param pathPattern can be a pattern of a full path.
-   * @param nodeLevel the level should match the level of the path
+   * @param nodeLevel   the level should match the level of the path
    * @return A List instance which stores all node at given level
    */
   @Override
@@ -988,7 +998,9 @@ public class MRocksDBManager implements IMetaManager {
     }
   }
 
-  /** Check whether the given path contains a storage group */
+  /**
+   * Check whether the given path contains a storage group
+   */
   @Override
   public boolean checkStorageGroupByPath(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
@@ -1046,9 +1058,10 @@ public class MRocksDBManager implements IMetaManager {
 
   /**
    * Get all storage group matching given path pattern. If using prefix match, the path pattern is
-   * used to match prefix path. All timeseries start with the matched prefix path will be collected.
+   * used to match prefix path. All timeseries start with the matched prefix path will be
+   * collected.
    *
-   * @param pathPattern a pattern of a full path
+   * @param pathPattern   a pattern of a full path
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return A ArrayList instance which stores storage group paths matching given path pattern.
    */
@@ -1058,7 +1071,9 @@ public class MRocksDBManager implements IMetaManager {
     return null;
   }
 
-  /** Get all storage group paths */
+  /**
+   * Get all storage group paths
+   */
   @Override
   public List<PartialPath> getAllStorageGroupPaths() throws IllegalPathException {
     List<PartialPath> allStorageGroupPath = new ArrayList<>();
@@ -1080,7 +1095,7 @@ public class MRocksDBManager implements IMetaManager {
     Map<PartialPath, Long> allStorageGroupAndTTL = new HashMap<>();
     RocksIterator iterator = readWriteHandler.iterator(null);
 
-    for (iterator.seek(new byte[] {NODE_TYPE_SG}); iterator.isValid(); iterator.next()) {
+    for (iterator.seek(new byte[]{NODE_TYPE_SG}); iterator.isValid(); iterator.next()) {
       if (iterator.key()[0] != (NODE_TYPE_SG)) {
         break;
       }
@@ -1115,7 +1130,7 @@ public class MRocksDBManager implements IMetaManager {
    * Get all device paths matching the path pattern. If using prefix match, the path pattern is used
    * to match prefix path. All timeseries start with the matched prefix path will be collected.
    *
-   * @param pathPattern the pattern of the target devices.
+   * @param pathPattern   the pattern of the target devices.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path.
    * @return A HashSet instance which stores devices paths matching the given path pattern.
    */
@@ -1145,13 +1160,22 @@ public class MRocksDBManager implements IMetaManager {
    * '*'. If using prefix match, the path pattern is used to match prefix path. All timeseries start
    * with the matched prefix path will be collected.
    *
-   * @param pathPattern can be a pattern or a full path of timeseries.
+   * @param pathPattern   can be a pattern or a full path of timeseries.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   @Override
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return null;
+    List<MeasurementPath> result = new ArrayList<>();
+    Map<String, byte[]> allMeasurement = getKeyNumByPrefix(pathPattern, NODE_TYPE_MEASUREMENT,
+        isPrefixMatch);
+    for (Entry<String, byte[]> entry : allMeasurement.entrySet()) {
+      MeasurementSchema schema = (MeasurementSchema) RocksDBUtils
+          .parseNodeValue(entry.getValue(), FLAG_IS_SCHEMA);
+      PartialPath path = new PartialPath(RocksDBUtils.getPathByInnerName(entry.getKey()));
+      result.add(new MeasurementPath(path, schema));
+    }
+    return result;
   }
 
   /**
@@ -1164,7 +1188,7 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
       throws MetadataException {
-    return null;
+    return getMeasurementPaths(pathPattern, false);
   }
 
   /**
@@ -1207,7 +1231,7 @@ public class MRocksDBManager implements IMetaManager {
           readWriteHandler.get(
               null,
               RocksDBUtils.convertPartialPathToInner(
-                      fullPath.getFullPath(), fullPath.getNodeLength(), NODE_TYPE_MEASUREMENT)
+                  fullPath.getFullPath(), fullPath.getNodeLength(), NODE_TYPE_MEASUREMENT)
                   .getBytes());
       if (value == null) {
         throw new MetadataException("can not find this measurement:" + fullPath.getFullPath());
@@ -1281,7 +1305,9 @@ public class MRocksDBManager implements IMetaManager {
     return new StorageGroupEntityMNode(null, path.getFullPath(), (Long) ttl);
   }
 
-  /** Get storage group node by path. the give path don't need to be storage group path. */
+  /**
+   * Get storage group node by path. the give path don't need to be storage group path.
+   */
   @Override
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
@@ -1313,13 +1339,15 @@ public class MRocksDBManager implements IMetaManager {
     return new StorageGroupMNode(null, path.getFullPath(), (Long) ttl);
   }
 
-  /** Get all storage group MNodes */
+  /**
+   * Get all storage group MNodes
+   */
   @Override
   public List<IStorageGroupMNode> getAllStorageGroupNodes() {
     List<IStorageGroupMNode> result = new ArrayList<>();
     RocksIterator iterator = readWriteHandler.iterator(null);
     // get all storage group path
-    for (iterator.seek(new byte[] {NODE_TYPE_SG}); iterator.isValid(); iterator.next()) {
+    for (iterator.seek(new byte[]{NODE_TYPE_SG}); iterator.isValid(); iterator.next()) {
       if (iterator.key()[0] != NODE_TYPE_SG) {
         break;
       }
@@ -1759,11 +1787,13 @@ public class MRocksDBManager implements IMetaManager {
   // region Interfaces only for Cluster module usage
   @Override
   public void collectMeasurementSchema(
-      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {}
+      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
+  }
 
   @Override
   public void collectTimeseriesSchema(
-      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {}
+      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
+  }
 
   @Override
   public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
@@ -1784,14 +1814,16 @@ public class MRocksDBManager implements IMetaManager {
       PartialPath seriesPath,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
-      Long latestFlushedTime) {}
+      Long latestFlushedTime) {
+  }
 
   @Override
   public void updateLastCache(
       IMeasurementMNode node,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
-      Long latestFlushedTime) {}
+      Long latestFlushedTime) {
+  }
 
   @Override
   public TimeValuePair getLastCache(PartialPath seriesPath) {
@@ -1804,15 +1836,18 @@ public class MRocksDBManager implements IMetaManager {
   }
 
   @Override
-  public void resetLastCache(PartialPath seriesPath) {}
+  public void resetLastCache(PartialPath seriesPath) {
+  }
 
   @Override
-  public void deleteLastCacheByDevice(PartialPath deviceId) throws MetadataException {}
+  public void deleteLastCacheByDevice(PartialPath deviceId) throws MetadataException {
+  }
 
   @Override
   public void deleteLastCacheByDevice(
       PartialPath deviceId, PartialPath originalPath, long startTime, long endTime)
-      throws MetadataException {}
+      throws MetadataException {
+  }
   // endregion
 
   // region Interfaces and Implementation for InsertPlan process
