@@ -104,6 +104,7 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.RemovalCause;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -241,6 +242,8 @@ public class MManager {
     mNodeCache =
         Caffeine.newBuilder()
             .maximumSize(cacheSize)
+            .evictionListener(
+                (PartialPath path, IMNode node, RemovalCause cause) -> mtree.unPinMNode(node))
             .build(
                 new com.github.benmanes.caffeine.cache.CacheLoader<PartialPath, IMNode>() {
                   @Override
@@ -1419,46 +1422,6 @@ public class MManager {
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     return getMeasurementMNode(fullPath).getSchema();
-  }
-
-  // attention: this path must be a device node
-  public List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
-      throws PathNotExistException {
-    List<MeasurementPath> res = new LinkedList<>();
-    try {
-      IMNode node = mNodeCache.get(devicePath);
-
-      for (IMNode child : node.getChildren().values()) {
-        if (child.isMeasurement()) {
-          IMeasurementMNode measurementMNode = child.getAsMeasurementMNode();
-          res.add(measurementMNode.getMeasurementPath());
-        }
-      }
-
-      // template
-      Template template = node.getUpperTemplate();
-      if (node.isUseTemplate() && template != null) {
-        MeasurementPath measurementPath;
-        for (IMeasurementSchema schema : template.getSchemaMap().values()) {
-          measurementPath =
-              new MeasurementPath(devicePath.concatNode(schema.getMeasurementId()), schema);
-          measurementPath.setUnderAlignedEntity(node.getAsEntityMNode().isAligned());
-          res.add(measurementPath);
-        }
-      }
-    } catch (Exception e) {
-      if (e.getCause() instanceof MetadataException) {
-        throw new PathNotExistException(devicePath.getFullPath());
-      }
-      throw e;
-    }
-
-    return new ArrayList<>(res);
-  }
-
-  public Map<PartialPath, IMeasurementSchema> getAllMeasurementSchemaByPrefix(
-      PartialPath prefixPath) throws MetadataException {
-    return mtree.getAllMeasurementSchemaByPrefix(prefixPath);
   }
   // endregion
   // endregion

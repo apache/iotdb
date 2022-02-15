@@ -94,7 +94,7 @@ public class TemplateTest {
 
     Set<IMeasurementSchema> allSchema =
         new HashSet<>(node.getSchemaTemplate().getSchemaMap().values());
-    manager.getAllMeasurementByDevicePath(new PartialPath("root.sg1.d1")).stream()
+    manager.getMeasurementPaths(new PartialPath("root.sg1.d1.**")).stream()
         .map(MeasurementPath::getMeasurementSchema)
         .forEach(allSchema::remove);
 
