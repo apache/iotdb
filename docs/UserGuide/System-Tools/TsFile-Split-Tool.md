@@ -39,7 +39,8 @@ For Linux or MacOs:
 ./split-tsfile-tool.sh <path of your TsFile> (-level <LEVEL of the target files>) (-size <SIZE of the target files>)
 ```
 
-> Note that if `-level` is not set, the default level of target files is 10; if `-size` is not set, the default size of target files is about 1GB.
+> Note that if `-level` is not set, the default level of target files is 10; if `-size` is not set, the default size of target files is about 1GB. The unit of `-size` is byte.
+> For example, if the target files size is 100MB, and the level is 6, the command would be `./split-tsfile-tool.sh test.tsfile -level 6 -size 1048576000` (Linux or MacOs)
 
 Here are some configurations:
 

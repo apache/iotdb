@@ -62,6 +62,8 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 public class LastQueryExecutor {
 
+  private static final Logger logger = LoggerFactory.getLogger(LastQueryExecutor.class);
+
   private List<PartialPath> selectedSeries;
   private List<TSDataType> dataTypes;
   protected IExpression expression;
@@ -183,24 +185,27 @@ public class LastQueryExecutor {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, filter);
-
-      for (int i = 0; i < nonCachedPaths.size(); i++) {
-        QueryDataSource dataSource =
-            QueryResourceManager.getInstance()
-                .getQueryDataSource(nonCachedPaths.get(i), context, filter);
-        LastPointReader lastReader =
-            new LastPointReader(
-                nonCachedPaths.get(i),
-                nonCachedDataTypes.get(i),
-                deviceMeasurementsMap.get(nonCachedPaths.get(i).getDevice()),
-                context,
-                dataSource,
-                Long.MAX_VALUE,
-                filter);
-        readerList.add(lastReader);
-      }
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    for (int i = 0; i < nonCachedPaths.size(); i++) {
+      QueryDataSource dataSource =
+          QueryResourceManager.getInstance()
+              .getQueryDataSource(nonCachedPaths.get(i), context, filter);
+      LastPointReader lastReader =
+          new LastPointReader(
+              nonCachedPaths.get(i),
+              nonCachedDataTypes.get(i),
+              deviceMeasurementsMap.get(nonCachedPaths.get(i).getDevice()),
+              context,
+              dataSource,
+              Long.MAX_VALUE,
+              filter);
+      readerList.add(lastReader);
     }
 
     // Compute Last result for the rest series paths by scanning Tsfiles

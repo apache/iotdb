@@ -46,6 +46,9 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.activation.UnsupportedDataTypeException;
 
 import java.io.IOException;
@@ -55,6 +58,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class FillQueryExecutor {
+
+  private static final Logger logger = LoggerFactory.getLogger(FillQueryExecutor.class);
 
   protected FillQueryPlan plan;
   protected List<PartialPath> selectedSeries;
@@ -89,53 +94,57 @@ public class FillQueryExecutor {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, contructTimeFilter());
-      List<TimeValuePair> timeValuePairs = getTimeValuePairs(context);
-      long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
-      for (int i = 0; i < selectedSeries.size(); i++) {
-        PartialPath path = selectedSeries.get(i);
-        TSDataType dataType = dataTypes.get(i);
-
-        if (timeValuePairs.get(i) != null) {
-          // No need to fill
-          record.addField(timeValuePairs.get(i).getValue().getValue(), dataType);
-          continue;
-        }
-
-        IFill fill;
-        if (!typeIFillMap.containsKey(dataType)) {
-          switch (dataType) {
-            case INT32:
-            case INT64:
-            case FLOAT:
-            case DOUBLE:
-            case BOOLEAN:
-            case TEXT:
-              fill = new PreviousFill(dataType, queryTime, defaultFillInterval);
-              break;
-            default:
-              throw new UnsupportedDataTypeException("unsupported data type " + dataType);
-          }
-        } else {
-          fill = typeIFillMap.get(dataType).copy();
-        }
-        fill =
-            configureFill(
-                fill,
-                path,
-                dataType,
-                queryTime,
-                plan.getAllMeasurementsInDevice(path.getDevice()),
-                context);
-
-        TimeValuePair timeValuePair = fill.getFillResult();
-        if (timeValuePair == null || timeValuePair.getValue() == null) {
-          record.addField(null);
-        } else {
-          record.addField(timeValuePair.getValue().getValue(), dataType);
-        }
-      }
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    List<TimeValuePair> timeValuePairs = getTimeValuePairs(context);
+    long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
+    for (int i = 0; i < selectedSeries.size(); i++) {
+      PartialPath path = selectedSeries.get(i);
+      TSDataType dataType = dataTypes.get(i);
+
+      if (timeValuePairs.get(i) != null) {
+        // No need to fill
+        record.addField(timeValuePairs.get(i).getValue().getValue(), dataType);
+        continue;
+      }
+
+      IFill fill;
+      if (!typeIFillMap.containsKey(dataType)) {
+        switch (dataType) {
+          case INT32:
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+          case BOOLEAN:
+          case TEXT:
+            fill = new PreviousFill(dataType, queryTime, defaultFillInterval);
+            break;
+          default:
+            throw new UnsupportedDataTypeException("unsupported data type " + dataType);
+        }
+      } else {
+        fill = typeIFillMap.get(dataType).copy();
+      }
+      fill =
+          configureFill(
+              fill,
+              path,
+              dataType,
+              queryTime,
+              plan.getAllMeasurementsInDevice(path.getDevice()),
+              context);
+
+      TimeValuePair timeValuePair = fill.getFillResult();
+      if (timeValuePair == null || timeValuePair.getValue() == null) {
+        record.addField(null);
+      } else {
+        record.addField(timeValuePair.getValue().getValue(), dataType);
+      }
     }
 
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);

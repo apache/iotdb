@@ -42,6 +42,9 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,6 +55,8 @@ import static org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenera
 
 /** IoTDB query executor. */
 public class RawDataQueryExecutor {
+
+  private static final Logger logger = LoggerFactory.getLogger(RawDataQueryExecutor.class);
 
   protected RawDataQueryPlan queryPlan;
 
@@ -112,29 +117,33 @@ public class RawDataQueryExecutor {
       // init QueryDataSource cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-      for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
-        PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
-        TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
-
-        QueryDataSource queryDataSource =
-            QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
-        timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
-
-        ManagedSeriesReader reader =
-            new SeriesRawDataBatchReader(
-                path,
-                queryPlan.getAllMeasurementsInDevice(path.getDevice()),
-                dataType,
-                context,
-                queryDataSource,
-                timeFilter,
-                null,
-                null,
-                queryPlan.isAscending());
-        readersOfSelectedSeries.add(reader);
-      }
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
+      PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
+      TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
+
+      QueryDataSource queryDataSource =
+          QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
+      timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
+
+      ManagedSeriesReader reader =
+          new SeriesRawDataBatchReader(
+              path,
+              queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+              dataType,
+              context,
+              queryDataSource,
+              timeFilter,
+              null,
+              null,
+              queryPlan.isAscending());
+      readersOfSelectedSeries.add(reader);
     }
     return readersOfSelectedSeries;
   }
@@ -185,22 +194,26 @@ public class RawDataQueryExecutor {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-      for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
-        if (cached.get(i)) {
-          readersOfSelectedSeries.add(null);
-          continue;
-        }
-        PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
-        IReaderByTimestamp seriesReaderByTimestamp =
-            getReaderByTimestamp(
-                path,
-                queryPlan.getAllMeasurementsInDevice(path.getDevice()),
-                queryPlan.getDeduplicatedDataTypes().get(i),
-                context);
-        readersOfSelectedSeries.add(seriesReaderByTimestamp);
-      }
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
+      if (cached.get(i)) {
+        readersOfSelectedSeries.add(null);
+        continue;
+      }
+      PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
+      IReaderByTimestamp seriesReaderByTimestamp =
+          getReaderByTimestamp(
+              path,
+              queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+              queryPlan.getDeduplicatedDataTypes().get(i),
+              context);
+      readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
     return readersOfSelectedSeries;
   }

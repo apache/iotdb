@@ -54,7 +54,7 @@ public class IoTDBConfig {
 
   // e.g., a31+/$%#&[]{}3e4
   private static final String ID_MATCHER =
-      "([a-zA-Z0-9/\"[ ],:@#$%&{}()*=?!~\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
+      "([a-zA-Z0-9/\"[ ],:@#$%&{}()*=?!~\\[\\]\\-+\\u2E80-\\u9FFF_]+|(\".+\"))";
 
   private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\-\\u2E80-\\u9FFF]+)";
 
@@ -184,6 +184,12 @@ public class IoTDBConfig {
    * larger than this parameter, then the MetaData operation plan will be rejected by MManager.
    */
   private int mlogBufferSize = 1024 * 1024;
+
+  /**
+   * The cycle when metadata log is periodically forced to be written to disk(in milliseconds) If
+   * set this parameter to 0 it means call channel.force(true) after every each operation
+   */
+  private long syncMlogPeriodInMs = 0;
 
   /** default base dir, stores all IoTDB runtime files */
   private static final String DEFAULT_BASE_DIR = "data";
@@ -2281,6 +2287,14 @@ public class IoTDBConfig {
 
   public void setMlogBufferSize(int mlogBufferSize) {
     this.mlogBufferSize = mlogBufferSize;
+  }
+
+  public long getSyncMlogPeriodInMs() {
+    return syncMlogPeriodInMs;
+  }
+
+  public void setSyncMlogPeriodInMs(long syncMlogPeriodInMs) {
+    this.syncMlogPeriodInMs = syncMlogPeriodInMs;
   }
 
   public boolean isEnableRpcService() {

@@ -99,6 +99,7 @@ public abstract class AbstractCsvTool {
         "yyyy/MM/dd'T'HH:mm:ss",
         "yyyy.MM.dd'T'HH:mm:ss"
       };
+
   protected static String host;
   protected static String port;
   protected static String username;
@@ -213,10 +214,12 @@ public abstract class AbstractCsvTool {
       @Nullable List<String> headerNames, List<List<Object>> records, String filePath) {
     try {
       CSVPrinter printer =
-          CSVFormat.DEFAULT
-              .withFirstRecordAsHeader()
-              .withEscape('\\')
-              .withQuoteMode(QuoteMode.NONE)
+          CSVFormat.Builder.create(CSVFormat.DEFAULT)
+              .setHeader()
+              .setSkipHeaderRecord(true)
+              .setEscape('\\')
+              .setQuoteMode(QuoteMode.NONE)
+              .build()
               .print(new PrintWriter(filePath));
       if (headerNames != null) {
         printer.printRecord(headerNames);

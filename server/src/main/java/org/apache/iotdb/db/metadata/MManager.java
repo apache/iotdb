@@ -184,6 +184,17 @@ public class MManager {
           MTREE_SNAPSHOT_THREAD_CHECK_TIME,
           TimeUnit.SECONDS);
     }
+
+    if (config.getSyncMlogPeriodInMs() != 0) {
+      timedForceMLogThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
+
+      timedForceMLogThread.scheduleAtFixedRate(
+          this::forceMlog,
+          config.getSyncMlogPeriodInMs(),
+          config.getSyncMlogPeriodInMs(),
+          TimeUnit.MILLISECONDS);
+    }
   }
 
   /** we should not use this function in other place, but only in IoTDB class */
@@ -213,6 +224,14 @@ public class MManager {
           "Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
     initialized = true;
+  }
+
+  private void forceMlog() {
+    try {
+      logWriter.force();
+    } catch (IOException e) {
+      logger.error("Cannot force mlog to the storage device", e);
+    }
   }
 
   /** @return line number of the logFile */
@@ -844,18 +863,21 @@ public class MManager {
           // init QueryDataSource Cache
           QueryResourceManager.getInstance()
               .initQueryDataSourceCache(processorToSeriesMap, context, null);
-
-          allMatchedNodes =
-              allMatchedNodes.stream()
-                  .sorted(
-                      Comparator.comparingLong(
-                              (MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
-                          .reversed()
-                          .thenComparing(MNode::getFullPath))
-                  .collect(toList());
+        } catch (Exception e) {
+          logger.error("Meet error when init QueryDataSource ", e);
+          throw new QueryProcessException("Meet error when init QueryDataSource.", e);
         } finally {
           StorageEngine.getInstance().mergeUnLock(list);
         }
+
+        allMatchedNodes =
+            allMatchedNodes.stream()
+                .sorted(
+                    Comparator.comparingLong(
+                            (MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
+                        .reversed()
+                        .thenComparing(MNode::getFullPath))
+                .collect(toList());
       } catch (StorageEngineException | QueryProcessException e) {
         throw new MetadataException(e);
       }
