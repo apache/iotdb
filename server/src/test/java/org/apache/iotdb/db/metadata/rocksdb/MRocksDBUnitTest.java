@@ -33,7 +33,7 @@ public class MRocksDBUnitTest {
   }
 
   @Test
-  public void testSetStorageGroup() throws MetadataException, IOException {
+  public void testStorageGroupOps() throws MetadataException, IOException, InterruptedException {
     List<PartialPath> storageGroups = new ArrayList<>();
     storageGroups.add(new PartialPath("root.sg1"));
     storageGroups.add(new PartialPath("root.inner.sg1"));
@@ -59,6 +59,53 @@ public class MRocksDBUnitTest {
     } catch (MetadataException e) {
       assert true;
     }
+
+    Thread t1 =
+        new Thread(
+            () -> {
+              try {
+                List<PartialPath> toDelete = new ArrayList<>();
+                toDelete.add(new PartialPath("root.sg1"));
+                mRocksDBManager.deleteStorageGroups(toDelete);
+              } catch (Exception e) {
+                Assert.fail(e.getMessage());
+              }
+            });
+
+    Thread t2 =
+        new Thread(
+            () -> {
+              try {
+                PartialPath path = new PartialPath("root.sg1.dd.m1");
+                mRocksDBManager.createTimeseries(
+                    path,
+                    TSDataType.TEXT,
+                    TSEncoding.PLAIN,
+                    CompressionType.UNCOMPRESSED,
+                    null,
+                    null);
+              } catch (Exception e) {
+                Assert.fail(e.getMessage());
+              }
+            });
+
+    t2.start();
+    Thread.sleep(10);
+    t1.start();
+    Thread.sleep(10);
+
+    PartialPath path = new PartialPath("root.sg1.dd.m2");
+    Assert.assertThrows(
+        MetadataException.class,
+        () -> {
+          mRocksDBManager.createTimeseries(
+              path, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, null);
+        });
+
+    t1.join();
+    t2.join();
+
+    mRocksDBManager.printScanAllKeys();
   }
 
   @Test
