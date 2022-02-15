@@ -159,7 +159,6 @@ public class MergeMultiChunkTask {
       logger.info(
           "{} all series are merged after {}ms", taskName, System.currentTimeMillis() - startTime);
     }
-    mergeLogger.logAllTsEnd();
   }
 
   private void logMergeProgress() {
@@ -177,7 +176,6 @@ public class MergeMultiChunkTask {
   }
 
   private void mergePaths() throws IOException, MetadataException {
-    mergeLogger.logTSStart(currMergingPaths);
     IPointReader[] unseqReaders = resource.getUnseqReaders(currMergingPaths);
     currTimeValuePairs = new TimeValuePair[currMergingPaths.size()];
     for (int i = 0; i < currMergingPaths.size(); i++) {
@@ -194,7 +192,6 @@ public class MergeMultiChunkTask {
         return;
       }
     }
-    mergeLogger.logTSEnd();
   }
 
   private String getMaxSensor(List<PartialPath> sensors) {
@@ -326,7 +323,6 @@ public class MergeMultiChunkTask {
             currTsFile);
     if (dataWritten) {
       mergeFileWriter.endChunkGroup();
-      mergeLogger.logFilePosition(mergeFileWriter.getFile());
       currTsFile.updateStartTime(deviceId, currDeviceMinTime);
     }
   }

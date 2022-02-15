@@ -135,7 +135,6 @@ public class MergeFileTask {
       logger.info(
           "{} has merged all files after {}ms", taskName, System.currentTimeMillis() - startTime);
     }
-    mergeLogger.logMergeEnd();
   }
 
   private void logProgress() {
@@ -204,7 +203,6 @@ public class MergeFileTask {
       oldFileWriter.endFile();
       updatePlanIndexes(seqFile);
       seqFile.serialize();
-      mergeLogger.logFileMergeEnd();
       logger.debug("{} moved merged chunks of {} to the old file", taskName, seqFile);
 
       if (!newFileWriter.getFile().delete()) {
@@ -268,8 +266,6 @@ public class MergeFileTask {
     TsFileIOWriter oldFileWriter;
     try {
       oldFileWriter = new ForceAppendTsFileWriter(seqFile.getTsFile());
-      mergeLogger.logFileMergeStart(
-          seqFile.getTsFile(), ((ForceAppendTsFileWriter) oldFileWriter).getTruncatePosition());
       logger.debug("{} moving merged chunks of {} to the old file", taskName, seqFile);
       ((ForceAppendTsFileWriter) oldFileWriter).doTruncate();
     } catch (TsFileNotCompleteException e) {
@@ -311,7 +307,6 @@ public class MergeFileTask {
         context.getUnmergedChunkStartTimes().get(seqFile);
     RestorableTsFileIOWriter fileWriter = resource.getMergeFileWriter(seqFile, false);
 
-    mergeLogger.logFileMergeStart(fileWriter.getFile(), fileWriter.getFile().length());
     logger.debug("{} moving unmerged chunks of {} to the new file", taskName, seqFile);
 
     int unmergedChunkNum = context.getUnmergedChunkCnt().getOrDefault(seqFile, 0);
@@ -355,7 +350,6 @@ public class MergeFileTask {
       }
 
       seqFile.serialize();
-      mergeLogger.logFileMergeEnd();
       logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
 
@@ -363,13 +357,12 @@ public class MergeFileTask {
       if (!seqFile.getTsFile().delete()) {
         logger.warn("fail to delete {}", seqFile.getTsFile());
       }
+      fsFactory.deleteIfExists(
+          new File(seqFile.getTsFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
       File nextMergeVersionFile = modifyTsFileNameUnseqMergCnt(seqFile.getTsFile());
       fsFactory.moveFile(fileWriter.getFile(), nextMergeVersionFile);
-      fsFactory.moveFile(
-          fsFactory.getFile(seqFile.getTsFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
-          fsFactory.getFile(
-              nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
       seqFile.setFile(nextMergeVersionFile);
+      seqFile.serialize();
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
     } finally {

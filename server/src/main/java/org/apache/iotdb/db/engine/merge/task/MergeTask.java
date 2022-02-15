@@ -161,8 +161,6 @@ public class MergeTask implements Callable<Void> {
       }
     }
 
-    mergeLogger.logMergeStart();
-
     chunkTask =
         new MergeMultiChunkTask(
             mergeContext,

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.merge.recover;
 
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.PartialPath;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -36,11 +35,6 @@ public class MergeLogger {
 
   static final String STR_SEQ_FILES = "seqFiles";
   static final String STR_UNSEQ_FILES = "unseqFiles";
-  static final String STR_START = "start";
-  static final String STR_END = "end";
-  static final String STR_ALL_TS_END = "all ts end";
-  static final String STR_MERGE_START = "merge start";
-  static final String STR_MERGE_END = "merge end";
 
   private BufferedWriter logStream;
 
@@ -52,54 +46,10 @@ public class MergeLogger {
     logStream.close();
   }
 
-  public void logTSStart(List<PartialPath> paths) throws IOException {
-    logStream.write(STR_START);
-    for (PartialPath path : paths) {
-      logStream.write(" " + path);
-    }
-    logStream.newLine();
-    logStream.flush();
-  }
-
-  public void logFilePosition(File file) throws IOException {
-    logStream.write(String.format("%s %d", MergeFileInfo.getFileInfoFromFile(file), file.length()));
-    logStream.newLine();
-    logStream.flush();
-  }
-
-  public void logTSEnd() throws IOException {
-    logStream.write(STR_END);
-    logStream.newLine();
-    logStream.flush();
-  }
-
-  public void logAllTsEnd() throws IOException {
-    logStream.write(STR_ALL_TS_END);
-    logStream.newLine();
-    logStream.flush();
-  }
-
-  public void logFileMergeStart(File file, long position) throws IOException {
-    logStream.write(String.format("%s %d", MergeFileInfo.getFileInfoFromFile(file), position));
-    logStream.newLine();
-    logStream.flush();
-  }
-
-  public void logFileMergeEnd() throws IOException {
-    logStream.write(STR_END);
-    logStream.newLine();
-    logStream.flush();
-  }
-
-  public void logMergeEnd() throws IOException {
-    logStream.write(STR_MERGE_END);
-    logStream.newLine();
-    logStream.flush();
-  }
-
   public void logFiles(MergeResource resource) throws IOException {
     logSeqFiles(resource.getSeqFiles());
     logUnseqFiles(resource.getUnseqFiles());
+    logStream.flush();
   }
 
   private void logSeqFiles(List<TsFileResource> seqFiles) throws IOException {
@@ -119,12 +69,6 @@ public class MergeLogger {
       logStream.write(MergeFileInfo.getFileInfoFromFile(tsFileResource.getTsFile()).toString());
       logStream.newLine();
     }
-    logStream.flush();
-  }
-
-  public void logMergeStart() throws IOException {
-    logStream.write(STR_MERGE_START);
-    logStream.newLine();
     logStream.flush();
   }
 }
