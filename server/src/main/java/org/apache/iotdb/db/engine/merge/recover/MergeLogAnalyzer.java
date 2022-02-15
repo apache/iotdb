@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.merge.recover;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,10 +31,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_SEQ_FILES;
 import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_UNSEQ_FILES;
@@ -55,15 +52,6 @@ public class MergeLogAnalyzer {
   private MergeResource resource;
   private String taskName;
   private File logFile;
-  private String storageGroupName;
-
-  private Map<File, Long> fileLastPositions = new HashMap<>();
-  private Map<File, Long> tempFileLastPositions = new HashMap<>();
-  private Map<File, Long> prevTempFileLastPositions = null;
-
-  private List<PartialPath> mergedPaths = new ArrayList<>();
-  private List<PartialPath> unmergedPaths;
-  private List<TsFileResource> unmergedFiles;
   private String currLine;
 
   private Status status;
@@ -73,7 +61,6 @@ public class MergeLogAnalyzer {
     this.resource = resource;
     this.taskName = taskName;
     this.logFile = logFile;
-    this.storageGroupName = storageGroupName;
   }
 
   /**
