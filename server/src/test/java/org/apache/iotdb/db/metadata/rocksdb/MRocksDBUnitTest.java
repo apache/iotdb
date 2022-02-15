@@ -54,6 +54,11 @@ public class MRocksDBUnitTest {
     Assert.assertTrue(mRocksDBManager.isPathExist(new PartialPath("root.sg1")));
     Assert.assertTrue(mRocksDBManager.isPathExist(new PartialPath("root.inner1.inner2.inner3")));
     Assert.assertFalse(mRocksDBManager.isPathExist(new PartialPath("root.inner1.inner5")));
+    try {
+      Assert.assertFalse(mRocksDBManager.isPathExist(new PartialPath("root.inner1...")));
+    } catch (MetadataException e) {
+      assert true;
+    }
   }
 
   @Test
@@ -66,11 +71,6 @@ public class MRocksDBUnitTest {
     mRocksDBManager.createTimeseries(
         path2, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, "ma");
     mRocksDBManager.printScanAllKeys();
-
-    Assert.assertEquals(
-        1, mRocksDBManager.getAllTimeseriesCount(new PartialPath("root.tt.sg.dd.m1")));
-    // todo prefixed match and wildcard
-    Assert.assertEquals(2, mRocksDBManager.getAllTimeseriesCount(new PartialPath("root.tt.sg.dd")));
   }
 
   @Test
@@ -102,7 +102,7 @@ public class MRocksDBUnitTest {
   }
 
   @Test
-  public void testPathExist() throws MetadataException, IOException {
+  public void testNodeTypeCount() throws MetadataException, IOException {
     List<PartialPath> storageGroups = new ArrayList<>();
     storageGroups.add(new PartialPath("root.sg1"));
     storageGroups.add(new PartialPath("root.inner.sg1"));
@@ -114,13 +114,26 @@ public class MRocksDBUnitTest {
       mRocksDBManager.setStorageGroup(sg);
     }
 
-    Assert.assertTrue(mRocksDBManager.isPathExist(new PartialPath("root.sg1")));
-    Assert.assertTrue(mRocksDBManager.isPathExist(new PartialPath("root.inner1.inner2.inner3")));
-    try {
-      Assert.assertFalse(mRocksDBManager.isPathExist(new PartialPath("root.inner1.inner.")));
-    } catch (MetadataException e) {
-      assert true;
-    }
+    PartialPath path = new PartialPath("root.tt.sg.dd.m1");
+    mRocksDBManager.createTimeseries(
+        path, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, null);
+
+    PartialPath path2 = new PartialPath("root.tt.sg.dd.m2");
+    mRocksDBManager.createTimeseries(
+        path2, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, "ma");
+    mRocksDBManager.printScanAllKeys();
+
+    Assert.assertEquals(
+        1,
+        mRocksDBManager.getStorageGroupNum(new PartialPath("root.inner1.inner2.inner3.sg"), false));
+    Assert.assertEquals(2, mRocksDBManager.getStorageGroupNum(new PartialPath("root.inner"), true));
+    Assert.assertEquals(6, mRocksDBManager.getStorageGroupNum(new PartialPath("root"), true));
+
+    Assert.assertEquals(
+        1, mRocksDBManager.getAllTimeseriesCount(new PartialPath("root.tt.sg.dd.m1")));
+    Assert.assertEquals(2, mRocksDBManager.getAllTimeseriesCount(new PartialPath("root"), true));
+    // todo wildcard
+
   }
 
   @After
