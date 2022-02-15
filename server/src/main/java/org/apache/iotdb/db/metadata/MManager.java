@@ -606,8 +606,9 @@ public class MManager {
 
       // update tag index
 
-      if (offset != -1) {
-        // offset != -1 means the timeseries has already been created and now system is recovering
+      if (offset != -1 && isRecovering) {
+        // the timeseries has already been created and now system is recovering, using the tag info
+        // in tagFile to recover index directly
         tagManager.recoverIndex(offset, leafMNode);
       } else if (plan.getTags() != null) {
         // tag key, tag value
