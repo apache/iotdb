@@ -419,8 +419,9 @@ public class MManager {
 
       // update tag index
       Map<String, String> tagMap = null;
-      if (offset != -1) {
-        // offset != -1 means the timeseries has already been created and now system is recovering
+      if (offset != -1 && isRecovering) {
+        // the timeseries has already been created and now system is recovering, using the tag info
+        // in tagFile to recover index directly
         tagMap = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
       } else if (plan.getTags() != null) {
         // the tags only in plan means creating timeseries
