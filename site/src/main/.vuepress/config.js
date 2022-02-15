@@ -116,7 +116,7 @@ var config = {
 					items: [
 					  { text: 'How to vote', link: '/Development/VoteRelease'},
 					  { text: 'How to Commit', link: '/Development/HowToCommit'},
-					  { text: 'Become a Contributor', link: '/zh/Development/HowToJoin'}
+					  { text: 'Become a Contributor', link: '/Development/HowToJoin'}
 					  { text: 'Become a Committer', link: '/Development/Committer'},
 					  { text: 'ContributeGuide', link: '/Development/ContributeGuide'},
 					  { text: 'Changelist of TsFile', link: '/Development/format-changelist'},
