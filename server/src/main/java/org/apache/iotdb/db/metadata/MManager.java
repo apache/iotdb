@@ -242,7 +242,7 @@ public class MManager {
     mNodeCache =
         Caffeine.newBuilder()
             .maximumSize(cacheSize)
-            .evictionListener(
+            .removalListener(
                 (PartialPath path, IMNode node, RemovalCause cause) -> mtree.unPinMNode(node))
             .build(
                 new com.github.benmanes.caffeine.cache.CacheLoader<PartialPath, IMNode>() {
