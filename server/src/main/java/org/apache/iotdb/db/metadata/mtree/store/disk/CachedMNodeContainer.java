@@ -100,7 +100,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Nullable
   @Override
-  public IMNode put(String key, IMNode value) {
+  public synchronized IMNode put(String key, IMNode value) {
     if (newChildBuffer == null) {
       newChildBuffer = new ConcurrentHashMap<>();
     }
@@ -108,7 +108,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public IMNode remove(Object key) {
+  public synchronized IMNode remove(Object key) {
     IMNode result = remove(childCache, key);
     if (result == null) {
       result = remove(newChildBuffer, key);
@@ -124,7 +124,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public void putAll(@NotNull Map<? extends String, ? extends IMNode> m) {
+  public synchronized void putAll(@NotNull Map<? extends String, ? extends IMNode> m) {
     if (newChildBuffer == null) {
       newChildBuffer = new ConcurrentHashMap<>();
     }
@@ -132,7 +132,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public void clear() {
+  public synchronized void clear() {
     childCache = null;
     newChildBuffer = null;
     updatedChildBuffer = null;
@@ -182,7 +182,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Nullable
   @Override
-  public IMNode replace(String key, IMNode value) {
+  public synchronized IMNode replace(String key, IMNode value) {
     IMNode replacedOne = replace(childCache, key, value);
     if (replacedOne == null) {
       replacedOne = replace(newChildBuffer, key, value);
@@ -261,7 +261,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public void loadChildrenFromDisk(Map<String, IMNode> children) {
+  public synchronized void loadChildrenFromDisk(Map<String, IMNode> children) {
     if (childCache == null) {
       childCache = new ConcurrentHashMap<>();
     }
@@ -269,7 +269,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public void addChildToCache(IMNode node) {
+  public synchronized void addChildToCache(IMNode node) {
     String name = node.getName();
     if (containsKey(name)) {
       return;
@@ -281,7 +281,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public void appendMNode(IMNode node) {
+  public synchronized void appendMNode(IMNode node) {
     if (newChildBuffer == null) {
       newChildBuffer = new ConcurrentHashMap<>();
     }
@@ -289,7 +289,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public void updateMNode(String name) {
+  public synchronized void updateMNode(String name) {
     IMNode node = remove(childCache, name);
     if (node != null) {
       if (updatedChildBuffer == null) {
@@ -300,7 +300,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public void moveMNodeToCache(String name) {
+  public synchronized void moveMNodeToCache(String name) {
     IMNode node = remove(newChildBuffer, name);
     if (node == null) {
       node = remove(updatedChildBuffer, name);
@@ -312,7 +312,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public void evictMNode(String name) {
+  public synchronized void evictMNode(String name) {
     IMNode result = remove(childCache, name);
     if (result == null) {
       result = remove(newChildBuffer, name);
