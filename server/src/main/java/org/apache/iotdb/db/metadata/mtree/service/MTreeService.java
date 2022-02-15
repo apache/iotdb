@@ -196,58 +196,58 @@ public class MTreeService implements Serializable {
     IMNode device = pair.left;
     Template upperTemplate = pair.right;
 
-    MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
+    try {
+      MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
 
-    String leafName = path.getMeasurement();
+      String leafName = path.getMeasurement();
 
-    // synchronize check and add, we need addChild and add Alias become atomic operation
-    // only write on mtree will be synchronized
-    synchronized (this) {
-      if (store.hasChild(device, leafName)) {
-        unPinPath(device);
-        throw new PathAlreadyExistException(path.getFullPath());
+      // synchronize check and add, we need addChild and add Alias become atomic operation
+      // only write on mtree will be synchronized
+      synchronized (this) {
+        if (store.hasChild(device, leafName)) {
+          throw new PathAlreadyExistException(path.getFullPath());
+        }
+
+        if (alias != null && store.hasChild(device, alias)) {
+          throw new AliasAlreadyExistException(path.getFullPath(), alias);
+        }
+
+        if (upperTemplate != null
+            && (upperTemplate.getDirectNode(leafName) != null
+                || upperTemplate.getDirectNode(alias) != null)) {
+          throw new TemplateImcompatibeException(path.getFullPath(), upperTemplate.getName());
+        }
+
+        if (device.isEntity() && device.getAsEntityMNode().isAligned()) {
+          throw new AlignedTimeseriesException(
+              "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
+              device.getFullPath());
+        }
+
+        IEntityMNode entityMNode;
+        if (device.isEntity()) {
+          entityMNode = device.getAsEntityMNode();
+        } else {
+          entityMNode = MNodeUtils.setToEntity(device);
+          store.updateMNode(entityMNode);
+          device = entityMNode;
+        }
+
+        IMeasurementMNode measurementMNode =
+            MeasurementMNode.getMeasurementMNode(
+                entityMNode,
+                leafName,
+                new MeasurementSchema(leafName, dataType, encoding, compressor, props),
+                alias);
+        store.addChild(entityMNode, leafName, measurementMNode);
+        // link alias to LeafMNode
+        if (alias != null) {
+          store.addAlias(entityMNode, alias, measurementMNode);
+        }
+        return measurementMNode;
       }
-
-      if (alias != null && store.hasChild(device, alias)) {
-        unPinPath(device);
-        throw new AliasAlreadyExistException(path.getFullPath(), alias);
-      }
-
-      if (upperTemplate != null
-          && (upperTemplate.getDirectNode(leafName) != null
-              || upperTemplate.getDirectNode(alias) != null)) {
-        unPinPath(device);
-        throw new TemplateImcompatibeException(path.getFullPath(), upperTemplate.getName());
-      }
-
-      if (device.isEntity() && device.getAsEntityMNode().isAligned()) {
-        unPinPath(device);
-        throw new AlignedTimeseriesException(
-            "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
-            device.getFullPath());
-      }
-
-      IEntityMNode entityMNode;
-      if (device.isEntity()) {
-        entityMNode = device.getAsEntityMNode();
-      } else {
-        entityMNode = MNodeUtils.setToEntity(device);
-        store.updateMNode(entityMNode);
-      }
-
-      IMeasurementMNode measurementMNode =
-          MeasurementMNode.getMeasurementMNode(
-              entityMNode,
-              leafName,
-              new MeasurementSchema(leafName, dataType, encoding, compressor, props),
-              alias);
-      store.addChild(entityMNode, leafName, measurementMNode);
-      // link alias to LeafMNode
-      if (alias != null) {
-        store.addAlias(entityMNode, alias, measurementMNode);
-      }
-      unPinPath(entityMNode);
-      return measurementMNode;
+    } finally {
+      unPinMNode(device);
     }
   }
 
@@ -273,54 +273,55 @@ public class MTreeService implements Serializable {
     IMNode device = pair.left;
     Template upperTemplate = pair.right;
 
-    // synchronize check and add, we need addChild and add Alias become atomic operation
-    // only write on mtree will be synchronized
-    synchronized (this) {
-      for (String measurement : measurements) {
-        if (store.hasChild(device, measurement)) {
-          unPinPath(device);
-          throw new PathAlreadyExistException(devicePath.getFullPath() + "." + measurement);
-        }
-      }
-
-      if (upperTemplate != null) {
+    try {
+      // synchronize check and add, we need addChild and add Alias become atomic operation
+      // only write on mtree will be synchronized
+      synchronized (this) {
         for (String measurement : measurements) {
-          if (upperTemplate.getDirectNode(measurement) != null) {
-            unPinPath(device);
-            throw new TemplateImcompatibeException(
-                devicePath.concatNode(measurement).getFullPath(), upperTemplate.getName());
+          if (store.hasChild(device, measurement)) {
+            throw new PathAlreadyExistException(devicePath.getFullPath() + "." + measurement);
           }
         }
-      }
 
-      if (device.isEntity() && !device.getAsEntityMNode().isAligned()) {
-        unPinPath(device);
-        throw new AlignedTimeseriesException(
-            "Timeseries under this entity is not aligned, please use createTimeseries or change entity.",
-            devicePath.getFullPath());
-      }
+        if (upperTemplate != null) {
+          for (String measurement : measurements) {
+            if (upperTemplate.getDirectNode(measurement) != null) {
+              throw new TemplateImcompatibeException(
+                  devicePath.concatNode(measurement).getFullPath(), upperTemplate.getName());
+            }
+          }
+        }
 
-      IEntityMNode entityMNode;
-      if (device.isEntity()) {
-        entityMNode = device.getAsEntityMNode();
-      } else {
-        entityMNode = MNodeUtils.setToEntity(device);
-        entityMNode.setAligned(true);
-        store.updateMNode(entityMNode);
-      }
+        if (device.isEntity() && !device.getAsEntityMNode().isAligned()) {
+          throw new AlignedTimeseriesException(
+              "Timeseries under this entity is not aligned, please use createTimeseries or change entity.",
+              devicePath.getFullPath());
+        }
 
-      for (int i = 0; i < measurements.size(); i++) {
-        IMeasurementMNode measurementMNode =
-            MeasurementMNode.getMeasurementMNode(
-                entityMNode,
-                measurements.get(i),
-                new MeasurementSchema(
-                    measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i)),
-                null);
-        store.addChild(entityMNode, measurements.get(i), measurementMNode);
-        unPinMNode(measurementMNode);
+        IEntityMNode entityMNode;
+        if (device.isEntity()) {
+          entityMNode = device.getAsEntityMNode();
+        } else {
+          entityMNode = MNodeUtils.setToEntity(device);
+          entityMNode.setAligned(true);
+          store.updateMNode(entityMNode);
+          device = entityMNode;
+        }
+
+        for (int i = 0; i < measurements.size(); i++) {
+          IMeasurementMNode measurementMNode =
+              MeasurementMNode.getMeasurementMNode(
+                  entityMNode,
+                  measurements.get(i),
+                  new MeasurementSchema(
+                      measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i)),
+                  null);
+          store.addChild(entityMNode, measurements.get(i), measurementMNode);
+          unPinMNode(measurementMNode);
+        }
       }
-      unPinPath(device);
+    } finally {
+      unPinMNode(device);
     }
   }
 
@@ -366,6 +367,7 @@ public class MTreeService implements Serializable {
         upperTemplate = cur.getSchemaTemplate();
       }
     }
+    unPinPath(cur.getParent());
     return new Pair<>(cur, upperTemplate);
   }
 
