@@ -1434,6 +1434,7 @@ public class MTreeService implements Serializable {
     if (node.isMeasurement()) {
       return node.getAsMeasurementMNode();
     } else {
+      unPinMNode(node);
       throw new MNodeTypeMismatchException(
           path.getFullPath(), MetadataConstant.MEASUREMENT_MNODE_TYPE);
     }

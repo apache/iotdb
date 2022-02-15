@@ -1550,7 +1550,10 @@ public class MManager {
    * @param offset offset in the tag file
    */
   public void changeOffset(PartialPath path, long offset) throws MetadataException {
-    mtree.getMeasurementMNode(path).setOffset(offset);
+    IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
+    measurementMNode.setOffset(offset);
+    mtree.updateMNode(measurementMNode);
+    mtree.unPinMNode(measurementMNode);
   }
 
   public void changeAlias(PartialPath path, String alias) throws MetadataException {
@@ -1560,6 +1563,8 @@ public class MManager {
     }
     leafMNode.getParent().addAlias(alias, leafMNode);
     leafMNode.setAlias(alias);
+    mtree.updateMNode(leafMNode);
+    mtree.unPinMNode(leafMNode);
   }
 
   /**
@@ -1579,23 +1584,39 @@ public class MManager {
       PartialPath fullPath)
       throws MetadataException, IOException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
-    // upsert alias
-    upsertAlias(alias, fullPath, leafMNode);
+    try {
+      // upsert alias
+      upsertAlias(alias, fullPath, leafMNode);
+    } catch (MetadataException | IOException e) {
+      mtree.unPinMNode(leafMNode);
+      throw e;
+    }
 
     if (tagsMap == null && attributesMap == null) {
+      mtree.unPinMNode(leafMNode);
       return;
     }
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
-      long offset = tagManager.writeTagFile(tagsMap, attributesMap);
-      logWriter.changeOffset(fullPath, offset);
-      leafMNode.setOffset(offset);
-      // update inverted Index map
-      tagManager.addIndex(tagsMap, leafMNode);
-      return;
+      try {
+        long offset = tagManager.writeTagFile(tagsMap, attributesMap);
+        logWriter.changeOffset(fullPath, offset);
+        leafMNode.setOffset(offset);
+        mtree.updateMNode(leafMNode);
+        // update inverted Index map
+        tagManager.addIndex(tagsMap, leafMNode);
+        return;
+      } catch (MetadataException | IOException e) {
+        mtree.unPinMNode(leafMNode);
+        throw e;
+      }
     }
 
-    tagManager.updateTagsAndAttributes(tagsMap, attributesMap, leafMNode);
+    try {
+      tagManager.updateTagsAndAttributes(tagsMap, attributesMap, leafMNode);
+    } finally {
+      mtree.unPinMNode(leafMNode);
+    }
   }
 
   private void upsertAlias(String alias, PartialPath fullPath, IMeasurementMNode leafMNode)
@@ -1611,6 +1632,7 @@ public class MManager {
       }
 
       leafMNode.setAlias(alias);
+      mtree.updateMNode(leafMNode);
       // persist to WAL
       logWriter.changeAlias(fullPath, alias);
     }
@@ -1627,13 +1649,23 @@ public class MManager {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
-      long offset = tagManager.writeTagFile(Collections.emptyMap(), attributesMap);
-      logWriter.changeOffset(fullPath, offset);
-      leafMNode.setOffset(offset);
-      return;
+      try {
+        long offset = tagManager.writeTagFile(Collections.emptyMap(), attributesMap);
+        logWriter.changeOffset(fullPath, offset);
+        leafMNode.setOffset(offset);
+        mtree.updateMNode(leafMNode);
+        return;
+      } catch (MetadataException | IOException e) {
+        mtree.unPinMNode(leafMNode);
+        throw e;
+      }
     }
 
-    tagManager.addAttributes(attributesMap, fullPath, leafMNode);
+    try {
+      tagManager.addAttributes(attributesMap, fullPath, leafMNode);
+    } finally {
+      mtree.updateMNode(leafMNode);
+    }
   }
 
   /**
@@ -1647,15 +1679,25 @@ public class MManager {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
-      long offset = tagManager.writeTagFile(tagsMap, Collections.emptyMap());
-      logWriter.changeOffset(fullPath, offset);
-      leafMNode.setOffset(offset);
-      // update inverted Index map
-      tagManager.addIndex(tagsMap, leafMNode);
-      return;
+      try {
+        long offset = tagManager.writeTagFile(tagsMap, Collections.emptyMap());
+        logWriter.changeOffset(fullPath, offset);
+        leafMNode.setOffset(offset);
+        mtree.updateMNode(leafMNode);
+        // update inverted Index map
+        tagManager.addIndex(tagsMap, leafMNode);
+        return;
+      } catch (MetadataException | IOException e) {
+        mtree.unPinMNode(leafMNode);
+        throw e;
+      }
     }
 
-    tagManager.addTags(tagsMap, fullPath, leafMNode);
+    try {
+      tagManager.addTags(tagsMap, fullPath, leafMNode);
+    } finally {
+      mtree.unPinMNode(leafMNode);
+    }
   }
 
   /**
@@ -1668,11 +1710,16 @@ public class MManager {
   public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
       throws MetadataException, IOException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
-    // no tag or attribute, just do nothing.
-    if (leafMNode.getOffset() < 0) {
-      return;
+    try {
+      // no tag or attribute, just do nothing.
+      if (leafMNode.getOffset() != -1) {
+        tagManager.dropTagsOrAttributes(keySet, fullPath, leafMNode);
+        mtree.unPinMNode(
+            leafMNode); // when the measurementMNode was added to tagIndex, it was pinned
+      }
+    } finally {
+      mtree.unPinMNode(leafMNode);
     }
-    tagManager.dropTagsOrAttributes(keySet, fullPath, leafMNode);
   }
 
   /**
@@ -1685,13 +1732,17 @@ public class MManager {
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
-    if (leafMNode.getOffset() < 0) {
-      throw new MetadataException(
-          String.format("TimeSeries [%s] does not have any tag/attribute.", fullPath));
-    }
+    try {
+      if (leafMNode.getOffset() < 0) {
+        throw new MetadataException(
+            String.format("TimeSeries [%s] does not have any tag/attribute.", fullPath));
+      }
 
-    // tags, attributes
-    tagManager.setTagsOrAttributesValue(alterMap, fullPath, leafMNode);
+      // tags, attributes
+      tagManager.setTagsOrAttributesValue(alterMap, fullPath, leafMNode);
+    } finally {
+      mtree.unPinMNode(leafMNode);
+    }
   }
 
   /**
@@ -1705,13 +1756,17 @@ public class MManager {
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
-    if (leafMNode.getOffset() < 0) {
-      throw new MetadataException(
-          String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey),
-          true);
+    try {
+      if (leafMNode.getOffset() < 0) {
+        throw new MetadataException(
+            String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey),
+            true);
+      }
+      // tags, attributes
+      tagManager.renameTagOrAttributeKey(oldKey, newKey, fullPath, leafMNode);
+    } finally {
+      mtree.unPinMNode(leafMNode);
     }
-    // tags, attributes
-    tagManager.renameTagOrAttributeKey(oldKey, newKey, fullPath, leafMNode);
   }
 
   /** remove the node from the tag inverted index */
