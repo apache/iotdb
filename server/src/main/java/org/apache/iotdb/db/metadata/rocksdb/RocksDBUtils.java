@@ -44,6 +44,8 @@ import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEA
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.PATH_SEPARATOR;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT_CHAR;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT_STRING;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
 
 public class RocksDBUtils {
@@ -370,9 +372,16 @@ public class RocksDBUtils {
     char[] keyConvertToCharArray = innerName.toCharArray();
     StringBuilder stringBuilder = new StringBuilder();
     char lastChar = START_FLAG;
+    boolean replaceFlag = true;
     for (char c : keyConvertToCharArray) {
       if (SPLIT_FLAG == lastChar || START_FLAG == lastChar) {
         lastChar = c;
+        continue;
+      }
+      if (ROOT_CHAR == c && replaceFlag) {
+        lastChar = c;
+        stringBuilder.append(ROOT_STRING);
+        replaceFlag = false;
         continue;
       }
       stringBuilder.append(c);
