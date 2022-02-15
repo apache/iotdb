@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.rocksdb;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
@@ -49,13 +50,18 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -154,15 +160,20 @@ public class MRocksDBManager implements IMetaManager {
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  // TODO: make it configurable
+  private static int MAX_PATH_DEPTH = 10;
+
+  private static final long MAX_LOCK_WAIT_TIME = 50;
+
   private RocksDBReadWriteHandler readWriteHandler;
 
   // todo should be calculated by writing
   private int maxLevel = 10;
 
   // TODO: check how Stripped Lock consume memory
-  private Striped<Lock> locksPool = Striped.lock(10000);
+  private Striped<Lock> locksPool = Striped.lazyWeakLock(10000);
 
-  private static final long MAX_LOCK_WAIT_TIME = 50;
+  private Map<String, Boolean> storageGroupDeletingFlagMap = new ConcurrentHashMap<>();
 
   public MRocksDBManager() throws MetadataException {
     try {
@@ -187,7 +198,55 @@ public class MRocksDBManager implements IMetaManager {
   public void clear() {}
 
   @Override
-  public void operation(PhysicalPlan plan) throws IOException, MetadataException {}
+  public void operation(PhysicalPlan plan) throws IOException, MetadataException {
+    switch (plan.getOperatorType()) {
+      case CREATE_TIMESERIES:
+        CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
+        createTimeseries(createTimeSeriesPlan);
+        break;
+      case CREATE_ALIGNED_TIMESERIES:
+        CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
+            (CreateAlignedTimeSeriesPlan) plan;
+        createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+        break;
+      case DELETE_TIMESERIES:
+        DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
+        // cause we only has one path for one DeleteTimeSeriesPlan
+        deleteTimeseries(deleteTimeSeriesPlan.getPaths().get(0));
+        break;
+      case SET_STORAGE_GROUP:
+        SetStorageGroupPlan setStorageGroupPlan = (SetStorageGroupPlan) plan;
+        setStorageGroup(setStorageGroupPlan.getPath());
+        break;
+      case DELETE_STORAGE_GROUP:
+        DeleteStorageGroupPlan deleteStorageGroupPlan = (DeleteStorageGroupPlan) plan;
+        deleteStorageGroups(deleteStorageGroupPlan.getPaths());
+        break;
+      case TTL:
+        SetTTLPlan setTTLPlan = (SetTTLPlan) plan;
+        setTTL(setTTLPlan.getStorageGroup(), setTTLPlan.getDataTTL());
+        break;
+      case CHANGE_ALIAS:
+        ChangeAliasPlan changeAliasPlan = (ChangeAliasPlan) plan;
+        changeAlias(changeAliasPlan.getPath(), changeAliasPlan.getAlias());
+        break;
+      case AUTO_CREATE_DEVICE_MNODE:
+      case CHANGE_TAG_OFFSET:
+      case CREATE_TEMPLATE:
+      case DROP_TEMPLATE:
+      case APPEND_TEMPLATE:
+      case PRUNE_TEMPLATE:
+      case SET_TEMPLATE:
+      case ACTIVATE_TEMPLATE:
+      case UNSET_TEMPLATE:
+      case CREATE_CONTINUOUS_QUERY:
+      case DROP_CONTINUOUS_QUERY:
+        logger.error("unsupported operations {}", plan.toString());
+        break;
+      default:
+        logger.error("Unrecognizable command {}", plan.getOperatorType());
+    }
+  }
   // endregion
 
   // region Interfaces for CQ
@@ -553,12 +612,95 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public String deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+    List<MeasurementPath> allTimeseries = getMeasurementPaths(pathPattern, isPrefixMatch);
+    if (allTimeseries.isEmpty()) {
+      // In the cluster mode, the deletion of a timeseries will be forwarded to all the nodes. For
+      // nodes that do not have the metadata of the timeseries, the coordinator expects a
+      // PathNotExistException.
+      throw new PathNotExistException(pathPattern.getFullPath());
+    }
+
+    Set<String> failedNames = new HashSet<>();
+    for (PartialPath p : allTimeseries) {
+      try {
+        String[] nodes = p.getNodes();
+        if (nodes.length == 0 || !IoTDBConstant.PATH_ROOT.equals(nodes[0])) {
+          throw new IllegalPathException(p.getFullPath());
+        }
+
+        // Delete measurement node
+        String mLevelPath = RocksDBUtils.getLevelPath(p.getNodes(), p.getNodeLength() - 1);
+        Lock lock = locksPool.get(mLevelPath);
+        RMeasurementMNode deletedNode;
+        if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+          try {
+            deletedNode = (RMeasurementMNode) getMeasurementMNode(p);
+            WriteBatch batch = new WriteBatch();
+            // delete the last node of path
+            byte[] mNodeKey = RocksDBUtils.toMeasurementNodeKey(mLevelPath);
+            batch.delete(mNodeKey);
+            if (deletedNode.getAlias() != null) {
+              batch.delete(RocksDBUtils.toAliasNodeKey(mLevelPath));
+            }
+            if (deletedNode.getTags() != null && !deletedNode.getTags().isEmpty()) {
+              batch.delete(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), mNodeKey);
+              // TODO: tags invert index update
+            }
+            readWriteHandler.executeBatch(batch);
+          } finally {
+            lock.unlock();
+          }
+        } else {
+          throw new MetadataException("acquire lock timeout, " + p.getFullPath());
+        }
+
+        // delete parent node if is empty
+        IMNode curNode = deletedNode;
+        while (curNode != null) {
+          PartialPath curPath = curNode.getPartialPath();
+          String curLevelPath =
+              RocksDBUtils.getLevelPath(curPath.getNodes(), curPath.getNodeLength() - 1);
+          Lock curLock = locksPool.get(curLevelPath);
+          if (curLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+            try {
+              IMNode toDelete = curNode.getParent();
+              if (toDelete == null || toDelete.isStorageGroup()) {
+                break;
+              }
+
+              if (toDelete.isEmptyInternal()) {
+                if (toDelete.isEntity()) {
+                  // TODO: aligned timeseries needs special check????
+                  readWriteHandler.deleteNode(
+                      toDelete.getPartialPath().getNodes(), RocksDBMNodeType.ENTITY);
+                } else {
+                  readWriteHandler.deleteNode(
+                      toDelete.getPartialPath().getNodes(), RocksDBMNodeType.INTERNAL);
+                }
+                curNode = toDelete;
+              } else {
+                break;
+              }
+            } finally {
+              curLock.unlock();
+            }
+          } else {
+            throw new MetadataException("acquire lock timeout, " + curNode.getFullPath());
+          }
+        }
+        // TODO: trigger engine update
+        // TODO: update totalTimeSeriesNumber
+      } catch (Exception e) {
+        logger.error("delete timeseries [{}] fail", p.getFullPath(), e);
+        failedNames.add(p.getFullPath());
+      }
+    }
+    return failedNames.isEmpty() ? null : String.join(",", failedNames);
   }
 
   @Override
   public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
-    throw new UnsupportedOperationException();
+    return deleteTimeseries(pathPattern, false);
   }
   // endregion
 
@@ -648,7 +790,44 @@ public class MRocksDBManager implements IMetaManager {
 
   @Override
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
-    throw new UnsupportedOperationException();
+    storageGroups.stream()
+        .parallel()
+        .forEach(
+            path -> {
+              storageGroupDeletingFlagMap.put(path.getFullPath(), true);
+              try {
+                String[] nodes = path.getNodes();
+                List<String> levelPrefixes = new ArrayList<>();
+                for (int i = nodes.length; i < 10; i++) {
+                  levelPrefixes.add(RocksDBUtils.getLevelPath(nodes, nodes.length - 1, i));
+                }
+
+                Arrays.asList(ALL_NODE_TYPE_ARRAY).stream()
+                    .parallel()
+                    .forEach(
+                        type -> {
+                          try {
+                            String startLevelPath =
+                                RocksDBUtils.getLevelPath(nodes, nodes.length - 1, nodes.length);
+                            byte[] startKey = RocksDBUtils.toRocksDBKey(startLevelPath, type);
+                            String endLevelPath =
+                                RocksDBUtils.getLevelPath(nodes, nodes.length - 1, MAX_PATH_DEPTH);
+                            byte[] endKey = RocksDBUtils.toRocksDBKey(endLevelPath, type);
+                            if (type == NODE_TYPE_MEASUREMENT) {
+                              readWriteHandler.deleteNodeByPrefix(
+                                  readWriteHandler.getCFHByName(TABLE_NAME_TAGS), startKey, endKey);
+                            }
+                            readWriteHandler.deleteNodeByPrefix(startKey, endKey);
+                          } catch (RocksDBException e) {
+                            logger.error("delete storage error {}", path.getFullPath(), e);
+                          }
+                        });
+              } finally {
+                storageGroupDeletingFlagMap.put(path.getFullPath(), false);
+              }
+            });
+    // TODO: trigger engine update
+    // TODO: tag invert index update
   }
 
   @Override
@@ -1440,6 +1619,10 @@ public class MRocksDBManager implements IMetaManager {
   // endregion
 
   // region Interfaces for alias and tag/attribute operations
+  public void changeAlias(PartialPath path, String alias) throws MetadataException, IOException {
+    upsertTagsAndAttributes(alias, null, null, path);
+  }
+
   @Override
   public void upsertTagsAndAttributes(
       String alias,
@@ -1449,18 +1632,12 @@ public class MRocksDBManager implements IMetaManager {
       throws MetadataException, IOException {
     String levelPath = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
     byte[] originKey = RocksDBUtils.toMeasurementNodeKey(levelPath);
-    Holder<byte[]> holder = new Holder<>();
     try {
-      String[] nodes = path.getNodes();
-      byte[] originValue = holder.getValue();
-      RMeasurementMNode mNode = new RMeasurementMNode(path.getFullPath(), originValue);
       Lock rawKeyLock = locksPool.get(levelPath);
       if (rawKeyLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
         try {
-          if (!readWriteHandler.keyExist(originKey, holder)) {
-            throw new PathNotExistException(path.getFullPath());
-          }
-
+          String[] nodes = path.getNodes();
+          RMeasurementMNode mNode = (RMeasurementMNode) getMeasurementMNode(path);
           // upsert alias
           if (StringUtils.isEmpty(mNode.getAlias()) || !mNode.getAlias().equals(alias)) {
             WriteBatch batch = new WriteBatch();

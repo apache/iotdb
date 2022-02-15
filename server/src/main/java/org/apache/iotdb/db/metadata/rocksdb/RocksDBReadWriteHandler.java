@@ -459,6 +459,22 @@ public class RocksDBReadWriteHandler {
     rocksDB.write(new WriteOptions(), batch);
   }
 
+  public void deleteNode(String[] nodes, RocksDBMNodeType type) throws RocksDBException {
+    byte[] key =
+        RocksDBUtils.toRocksDBKey(
+            RocksDBUtils.getLevelPath(nodes, nodes.length - 1), type.getValue());
+    rocksDB.delete(key);
+  }
+
+  public void deleteNodeByPrefix(byte[] startKey, byte[] endKey) throws RocksDBException {
+    rocksDB.deleteRange(startKey, endKey);
+  }
+
+  public void deleteNodeByPrefix(ColumnFamilyHandle handle, byte[] startKey, byte[] endKey)
+      throws RocksDBException {
+    rocksDB.deleteRange(startKey, endKey);
+  }
+
   @TestOnly
   public void scanAllKeys(String filePath) throws IOException {
     RocksIterator iterator = rocksDB.newIterator();

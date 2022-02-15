@@ -23,8 +23,8 @@ public class RockDBConstants {
 
   public static final int MAX_NODE_TYPE_NUM = NODE_TYPE_ALIAS + 1;
 
-  public static final byte[] ALL_NODE_TYPE_ARRAY =
-      new byte[] {
+  public static final Byte[] ALL_NODE_TYPE_ARRAY =
+      new Byte[] {
         NODE_TYPE_ROOT,
         NODE_TYPE_INTERNAL,
         NODE_TYPE_SG,
