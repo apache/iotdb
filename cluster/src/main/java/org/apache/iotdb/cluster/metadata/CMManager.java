@@ -1078,6 +1078,9 @@ public class CMManager extends MManager {
         if (withAlias && matchedPath != null) {
           matchedPath.setMeasurementAlias(result.aliasList.get(i));
         }
+        if (matchedPath != null) {
+          matchedPath.setUnderAlignedEntity(result.getUnderAlignedEntity().get(i));
+        }
       }
       return measurementPaths;
     } else {
@@ -1722,6 +1725,7 @@ public class CMManager extends MManager {
     List<String> retPaths = new ArrayList<>();
     List<Byte> dataTypes = new ArrayList<>();
     List<String> alias = withAlias ? new ArrayList<>() : null;
+    List<Boolean> underAlignedEntity = new ArrayList<>();
 
     for (String path : paths) {
       List<MeasurementPath> allTimeseriesPathWithAlias =
@@ -1732,6 +1736,7 @@ public class CMManager extends MManager {
         if (withAlias) {
           alias.add(timeseriesPathWithAlias.getMeasurementAlias());
         }
+        underAlignedEntity.add(timeseriesPathWithAlias.isUnderAlignedEntity());
       }
     }
 
@@ -1739,6 +1744,7 @@ public class CMManager extends MManager {
     getAllPathsResult.setPaths(retPaths);
     getAllPathsResult.setDataTypes(dataTypes);
     getAllPathsResult.setAliasList(alias);
+    getAllPathsResult.setUnderAlignedEntity(underAlignedEntity);
     return getAllPathsResult;
   }
 
