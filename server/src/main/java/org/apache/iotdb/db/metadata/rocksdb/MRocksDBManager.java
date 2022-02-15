@@ -81,6 +81,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.google.common.util.concurrent.Striped;
+import org.apache.commons.lang3.ArrayUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -104,18 +105,9 @@ import org.rocksdb.WriteBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_NODE_VALUE;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_ALIGNED;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_SCHEMA;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_SET_TTL;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -161,19 +153,16 @@ public class MRocksDBManager implements IMetaManager {
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   // TODO: make it configurable
-  private static int MAX_PATH_DEPTH = 10;
+  public static int MAX_PATH_DEPTH = 10;
 
   private static final long MAX_LOCK_WAIT_TIME = 50;
 
   private RocksDBReadWriteHandler readWriteHandler;
 
-  // todo should be calculated by writing
-  private int maxLevel = 10;
-
   // TODO: check how Stripped Lock consume memory
   private Striped<Lock> locksPool = Striped.lazyWeakLock(10000);
 
-  private Map<String, Boolean> storageGroupDeletingFlagMap = new ConcurrentHashMap<>();
+  private volatile Map<String, Boolean> storageGroupDeletingFlagMap = new ConcurrentHashMap<>();
 
   public MRocksDBManager() throws MetadataException {
     try {
@@ -190,7 +179,8 @@ public class MRocksDBManager implements IMetaManager {
 
   @Override
   public void createMTreeSnapshot() {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException(
+        "RocksDB based MetaData Manager doesn't support the operation");
   }
 
   @TestOnly
@@ -331,6 +321,12 @@ public class MRocksDBManager implements IMetaManager {
       Map<String, String> attributes)
       throws MetadataException {
     // regular check
+    if (path.getNodes().length > MRocksDBManager.MAX_PATH_DEPTH) {
+      throw new IllegalPathException(
+          String.format(
+              "path is too long, provide: %d, max: %d",
+              path.getNodeLength(), MRocksDBManager.MAX_PATH_DEPTH));
+    }
     MetaFormatUtils.checkTimeseries(path);
     MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), schema.getProps());
 
@@ -341,7 +337,7 @@ public class MRocksDBManager implements IMetaManager {
 
     try {
       createTimeSeriesRecursively(
-          nodes, nodes.length, schema, alias, tags, attributes, new Stack<>());
+          nodes, nodes.length, sgIndex, schema, alias, tags, attributes, new Stack<>());
       // TODO: load tags to memory
     } catch (RocksDBException | InterruptedException | IOException e) {
       throw new MetadataException(e);
@@ -351,13 +347,14 @@ public class MRocksDBManager implements IMetaManager {
   private void createTimeSeriesRecursively(
       String nodes[],
       int start,
+      int end,
       MeasurementSchema schema,
       String alias,
       Map<String, String> tags,
       Map<String, String> attributes,
       Stack<Lock> lockedLocks)
       throws InterruptedException, MetadataException, RocksDBException, IOException {
-    if (start <= 1) {
+    if (start <= end) {
       // nodes "root" must exist and don't need to check
       return;
     }
@@ -365,12 +362,13 @@ public class MRocksDBManager implements IMetaManager {
     Holder<byte[]> holder = new Holder<>();
     Lock lock = locksPool.get(levelPath);
     if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+      Thread.sleep(5);
       lockedLocks.push(lock);
       try {
         CheckKeyResult checkResult = readWriteHandler.keyExistByAllTypes(levelPath, holder);
         if (!checkResult.existAnyKey()) {
           createTimeSeriesRecursively(
-              nodes, start - 1, schema, alias, tags, attributes, lockedLocks);
+              nodes, start - 1, end, schema, alias, tags, attributes, lockedLocks);
           if (start == nodes.length) {
             createTimeSeriesNode(nodes, levelPath, schema, alias, tags, attributes);
           } else if (start == nodes.length - 1) {
@@ -497,6 +495,12 @@ public class MRocksDBManager implements IMetaManager {
     List<String> measurements = plan.getMeasurements();
     List<TSDataType> dataTypes = plan.getDataTypes();
     List<TSEncoding> encodings = plan.getEncodings();
+
+    if (prefixPath.getNodeLength() > MAX_PATH_DEPTH - 1) {
+      String.format(
+          "Prefix path is too long, provide: %d, max: %d",
+          prefixPath.getNodeLength(), MRocksDBManager.MAX_PATH_DEPTH - 1);
+    }
 
     for (int i = 0; i < measurements.size(); i++) {
       SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
@@ -723,6 +727,11 @@ public class MRocksDBManager implements IMetaManager {
         setStorageGroup(sgPath);
         sgIndex = sgPath.getNodeLength() - 1;
       }
+      String sgPath =
+          String.join(PATH_SEPARATOR, ArrayUtils.subarray(path.getNodes(), 0, sgIndex + 1));
+      if (storageGroupDeletingFlagMap.getOrDefault(sgPath, false)) {
+        throw new MetadataException("Storage Group is deleting: " + sgPath);
+      }
     } catch (RocksDBException e) {
       throw new MetadataException(e);
     }
@@ -755,6 +764,12 @@ public class MRocksDBManager implements IMetaManager {
    */
   @Override
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
+    if (storageGroup.getNodes().length > MRocksDBManager.MAX_PATH_DEPTH) {
+      throw new IllegalPathException(
+          String.format(
+              "Storage group path is too long, provide: %d, max: %d",
+              storageGroup.getNodeLength(), MRocksDBManager.MAX_PATH_DEPTH - 2));
+    }
     MetaFormatUtils.checkStorageGroup(storageGroup.getFullPath());
     String[] nodes = storageGroup.getNodes();
     try {
@@ -788,31 +803,34 @@ public class MRocksDBManager implements IMetaManager {
     }
   }
 
+  /**
+   * @param storageGroups
+   * @throws MetadataException
+   */
   @Override
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
-    storageGroups.stream()
-        .parallel()
+    storageGroups
+        .parallelStream()
         .forEach(
             path -> {
-              storageGroupDeletingFlagMap.put(path.getFullPath(), true);
               try {
+                storageGroupDeletingFlagMap.put(path.getFullPath(), true);
+                // wait for all executing createTimeseries operations are complete
+                Thread.sleep(MAX_LOCK_WAIT_TIME * MAX_PATH_DEPTH);
                 String[] nodes = path.getNodes();
-                List<String> levelPrefixes = new ArrayList<>();
-                for (int i = nodes.length; i < 10; i++) {
-                  levelPrefixes.add(RocksDBUtils.getLevelPath(nodes, nodes.length - 1, i));
-                }
-
-                Arrays.asList(ALL_NODE_TYPE_ARRAY).stream()
+                Arrays.asList(RockDBConstants.ALL_NODE_TYPE_ARRAY).stream()
                     .parallel()
                     .forEach(
                         type -> {
                           try {
-                            String startLevelPath =
-                                RocksDBUtils.getLevelPath(nodes, nodes.length - 1, nodes.length);
-                            byte[] startKey = RocksDBUtils.toRocksDBKey(startLevelPath, type);
-                            String endLevelPath =
-                                RocksDBUtils.getLevelPath(nodes, nodes.length - 1, MAX_PATH_DEPTH);
-                            byte[] endKey = RocksDBUtils.toRocksDBKey(endLevelPath, type);
+                            String startPath =
+                                RocksDBUtils.getLevelPathPrefix(
+                                    nodes, nodes.length - 1, nodes.length);
+                            byte[] startKey = RocksDBUtils.toRocksDBKey(startPath, type);
+                            String endPath =
+                                RocksDBUtils.getLevelPathPrefix(
+                                    nodes, nodes.length - 1, MAX_PATH_DEPTH);
+                            byte[] endKey = RocksDBUtils.toRocksDBKey(endPath, type);
                             if (type == NODE_TYPE_MEASUREMENT) {
                               readWriteHandler.deleteNodeByPrefix(
                                   readWriteHandler.getCFHByName(TABLE_NAME_TAGS), startKey, endKey);
@@ -822,12 +840,20 @@ public class MRocksDBManager implements IMetaManager {
                             logger.error("delete storage error {}", path.getFullPath(), e);
                           }
                         });
+                if (getAllTimeseriesCount(path.concatNode(MULTI_LEVEL_PATH_WILDCARD)) <= 0) {
+                  readWriteHandler.deleteNode(path.getNodes(), RocksDBMNodeType.STORAGE_GROUP);
+                } else {
+                  throw new MetadataException(
+                      String.format(
+                          "New timeseries created after sg deleted, won't delete storage node: %s",
+                          path.getFullPath()));
+                }
+              } catch (RocksDBException | MetadataException | InterruptedException e) {
+                throw new RuntimeException(e);
               } finally {
                 storageGroupDeletingFlagMap.put(path.getFullPath(), false);
               }
             });
-    // TODO: trigger engine update
-    // TODO: tag invert index update
   }
 
   @Override
@@ -969,7 +995,7 @@ public class MRocksDBManager implements IMetaManager {
             x -> {
               if (op.apply(x)) {
                 if (isPrefixMatch) {
-                  for (int i = level; i < maxLevel; i++) {
+                  for (int i = level; i < MAX_PATH_DEPTH; i++) {
                     // x is not leaf node
                     String nextLevel = RocksDBUtils.getNextLevelOfPath(x, i);
                     children.addAll(readWriteHandler.getAllByPrefix(nextLevel));
