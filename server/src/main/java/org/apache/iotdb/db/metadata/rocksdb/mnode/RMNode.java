@@ -7,6 +7,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.rocksdb.RocksDBReadWriteHandler;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.util.Map;
@@ -15,6 +16,8 @@ import java.util.Objects;
 public abstract class RMNode implements IMNode {
   /** from root to this node, only be set when used once for InternalMNode */
   protected String fullPath;
+
+  protected RocksDBReadWriteHandler readWriteHandler;
 
   /** Constructor of MNode. */
   public RMNode(String fullPath) {
