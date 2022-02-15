@@ -28,7 +28,10 @@ public class REntityMNode extends RMNode implements IEntityMNode {
   }
 
   @Override
-  public void deleteAliasChild(String alias) {}
+  public void deleteAliasChild(String alias) {
+    // Don't do any update in the MNode related class, it won't persistent in memory or on disk
+    throw new UnsupportedOperationException();
+  }
 
   @Override
   public Map<String, IMeasurementMNode> getAliasChildren() {
