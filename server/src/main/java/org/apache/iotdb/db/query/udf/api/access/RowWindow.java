@@ -73,9 +73,10 @@ public interface RowWindow {
    * The window start time for the i-th window (i starts at 0) can be calculated as {@code
    * displayWindowBegin + i * slidingStep}.
    *
+   * @return the start time of the window
+   * @since 0.13.0
    * @see SlidingSizeWindowAccessStrategy
    * @see SlidingTimeWindowAccessStrategy
-   * @return the start time of the window
    */
   long windowStartTime();
 
@@ -89,12 +90,13 @@ public interface RowWindow {
    * SlidingTimeWindowAccessStrategy#getTimeInterval()} and slidingStep {@link
    * SlidingTimeWindowAccessStrategy#getSlidingStep()}. <br>
    * The window end time for the i-th window (i starts at 0) can be calculated as {@code
-   * displayWindowBegin + timeInterval + i * slidingStep - 1} or {@code windowStartTime() +
+   * displayWindowBegin + i * slidingStep + timeInterval - 1} or {@code windowStartTime(i) +
    * timeInterval - 1}.
    *
+   * @return the end time of the window
+   * @since 0.13.0
    * @see SlidingSizeWindowAccessStrategy
    * @see SlidingTimeWindowAccessStrategy
-   * @return the end time of the window
    */
   long windowEndTime();
 }
