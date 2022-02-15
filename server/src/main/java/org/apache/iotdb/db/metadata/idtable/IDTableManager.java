@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.idtable;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -79,10 +78,8 @@ public class IDTableManager {
    */
   public synchronized IDTable getIDTable(PartialPath devicePath) {
     try {
-      IStorageGroupMNode storageGroupMNode =
-          IoTDB.metaManager.getStorageGroupNodeByPath(devicePath);
       return idTableMap.computeIfAbsent(
-          storageGroupMNode.getFullPath(),
+          IoTDB.metaManager.getBelongedStorageGroup(devicePath).getFullPath(),
           storageGroupPath ->
               new IDTableHashmapImpl(
                   SystemFileFactory.INSTANCE.getFile(

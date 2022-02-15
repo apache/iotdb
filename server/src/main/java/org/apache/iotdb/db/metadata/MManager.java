@@ -904,7 +904,11 @@ public class MManager {
   }
 
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
-    getStorageGroupNodeByStorageGroupPath(storageGroup).setDataTTL(dataTTL);
+    IStorageGroupMNode storageGroupMNode =
+        mtree.getStorageGroupNodeByStorageGroupPath(storageGroup);
+    storageGroupMNode.setDataTTL(dataTTL);
+    mtree.updateMNode(storageGroupMNode);
+    mtree.unPinMNode(storageGroupMNode);
     if (!isRecovering) {
       logWriter.setTTL(storageGroup, dataTTL);
     }
@@ -1202,10 +1206,9 @@ public class MManager {
   public Map<PartialPath, Long> getStorageGroupsTTL() {
     Map<PartialPath, Long> storageGroupsTTL = new HashMap<>();
     try {
-      List<PartialPath> storageGroups = this.getAllStorageGroupPaths();
-      for (PartialPath storageGroup : storageGroups) {
-        long ttl = getStorageGroupNodeByStorageGroupPath(storageGroup).getDataTTL();
-        storageGroupsTTL.put(storageGroup, ttl);
+      List<IStorageGroupMNode> storageGroupMNodes = mtree.getAllStorageGroupNodes();
+      for (IStorageGroupMNode node : storageGroupMNodes) {
+        storageGroupsTTL.put(node.getPartialPath(), node.getDataTTL());
       }
     } catch (MetadataException e) {
       logger.error("get storage groups ttl failed.", e);
@@ -1461,16 +1464,6 @@ public class MManager {
   // endregion
 
   // region Interfaces and methods for MNode query
-  /**
-   * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
-   * device], return the MNode of root.sg Get storage group node by path. If storage group is not
-   * set, StorageGroupNotSetException will be thrown
-   */
-  public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
-      throws MetadataException {
-    return mtree.getStorageGroupNodeByStorageGroupPath(path);
-  }
-
   /** Get storage group node by path. the give path don't need to be storage group path. */
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
     ensureStorageGroup(path);
@@ -2470,6 +2463,17 @@ public class MManager {
       // Cannot get deviceId from MManager, return the input deviceId
     }
     return device;
+  }
+
+  /**
+   * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
+   * device], return the MNode of root.sg Get storage group node by path. If storage group is not
+   * set, StorageGroupNotSetException will be thrown
+   */
+  @TestOnly
+  public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
+      throws MetadataException {
+    return mtree.getStorageGroupNodeByStorageGroupPath(path);
   }
 
   /**
