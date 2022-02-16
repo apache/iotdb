@@ -43,10 +43,8 @@ Usages of string literals:
 
 There are several ways to include quote characters within a string:
 
- - A `'` inside a string quoted with `'` may be written as `''`.
- - A `"` inside a string quoted with `"` may be written as `""`.
  - Precede the quote character by an escape character (\\).
- - `'` inside a string quoted with `"` needs no special treatment and need not be doubled or escaped. In the same way, `"` inside a string quoted with `'` needs no special treatment. (but escaping still works)
+ - `'` inside a string quoted with `"` needs no special treatment and need not be doubled or escaped. In the same way, `"` inside a string quoted with `'` needs no special treatment.
 
 The following examples demonstrate how quoting and escaping work:
 ```js
@@ -118,12 +116,6 @@ ab!  // invalid
 `"ab"`  // parsed as "ab"
 ```
 
-Identifier quote characters can be included within an identifier if you quote the identifier. If the character to be included within the identifier is the same as that used to quote the identifier itself, then you need to double the character.
-```sql
-`a``b`  // parsed as a`b
-`a\`b`  // parsed as a`b
-```
-
 ## Node Names in Path
 
 We call the part of a path divided by `.` as a `node`. 
@@ -158,19 +150,6 @@ CREATE TIMESERIES root.a.b.`s1.s2`.c WITH DATATYPE=INT32, ENCODING=RLE
 
 CREATE TIMESERIES root.a.b."s1.s2".c WITH DATATYPE=INT32, ENCODING=RLE
 // root.a.b."s1.s2".c will be parsed as Path[root, a, b, "s1.s2", c]
-```
-
-Note: When escaping the path separator (`.`) with quotes, you must ensure that the path is not ambiguous.
-
-```sql
-CREATE TIMESERIES root.sg."s1\".\"s2" WITH DATATYPE=INT32, ENCODING=RLE
-// invalid! ambiguity with root.sg."s1"."s2"
-
-CREATE TIMESERIES root.sg.`"a`.`"` WITH DATATYPE=INT32, ENCODING=RLE
-// invalid! ambiguity with root.sg."a."
-
-CREATE TIMESERIES root.sg.`"ab`.`cd"` WITH DATATYPE=INT32, ENCODING=RLE
-// invalid! ambiguity with root.sg."ab.cd"
 ```
 
 # Keywords and Reserved Words

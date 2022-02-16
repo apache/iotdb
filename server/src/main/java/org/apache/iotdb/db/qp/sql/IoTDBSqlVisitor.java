@@ -2220,13 +2220,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   /** function for parsing node name. */
   public String parseNodeName(IoTDBSqlParser.NodeNameContext ctx) {
-    if (ctx.QUTOED_ID_WITHOUT_DOT() != null) {
-      return parseStringWithQuotesInNodeName(ctx.QUTOED_ID_WITHOUT_DOT().getText());
-    } else if (ctx.STRING_LITERAL() != null) {
-      return parseStringWithQuotesInNodeName(ctx.STRING_LITERAL().getText());
-    } else {
-      return ctx.getText();
+    String src = ctx.getText();
+    if (2 <= src.length() && src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
+      return src.substring(1, src.length() - 1);
     }
+    return src;
   }
 
   /** function for parsing node name used in expr. */
@@ -2832,6 +2830,36 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         || queryOp instanceof AggregationQueryOperator
         || queryOp instanceof UDTFQueryOperator
         || queryOp instanceof UDAFQueryOperator;
+  }
+
+  private String parseStringLiteral(String src) {
+    if (2 <= src.length()) {
+      if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
+        String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+        return unescapeString.length() == 0 ? "" : unescapeString.replace("\"\"", "\"");
+      }
+      if (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'') {
+        String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+        return unescapeString.length() == 0 ? "" : unescapeString.replace("''", "'");
+      }
+    }
+    return src;
+  }
+
+  private String parseNodeName(String src) {
+    if (2 <= src.length()) {
+      if (src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
+        String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+        return unescapeString.replace("``", "`");
+      }
+      if (src.charAt(0) == '"' && src.charAt(src.length() - 1) == '"') {
+        return parseStringWithQuotesInNodeName(src, '"');
+      }
+      if (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'') {
+        return parseStringWithQuotesInNodeName(src, '\'');
+      }
+    }
+    return src;
   }
 
   private String parseStringWithQuotes(String src) {

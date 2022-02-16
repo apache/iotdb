@@ -957,19 +957,19 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\'. | '""' | ~('"'| '\\') )* '"'
+    : '"' ('\\' . | ~'"' )*? '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ('\\'. | '\'\'' | ~('\'' | '\\'))* '\''
+    : '\'' ('\\' . | ~'\'' )*? '\''
     ;
 
 fragment BQUOTA_STRING
-    : '`' ( '\\'. | '``' | ~('`'|'\\'))* '`'
+    : '`' ('\\' . | ~'`' )*? '`'
     ;
 
 fragment BQUOTA_STRING_WITHOUT_DOT
-    : '`' ( '\\'. | '``' | ~('`'|'\\'|'.'))* '`'
+    : '`' ('\\' . | ~('`'|'.') )*? '`'
     ;
 
 // Characters and write it this way for case sensitivity
