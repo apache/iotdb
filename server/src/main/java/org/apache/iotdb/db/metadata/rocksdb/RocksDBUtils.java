@@ -7,6 +7,13 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.primitives.Bytes;
+import org.apache.commons.lang3.ArrayUtils;
+import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.RocksDB;
+import org.rocksdb.RocksIterator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -14,12 +21,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.apache.commons.lang3.ArrayUtils;
-import org.rocksdb.ColumnFamilyHandle;
-import org.rocksdb.RocksDB;
-import org.rocksdb.RocksIterator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ALIAS;
@@ -121,7 +122,8 @@ public class RocksDBUtils {
   }
 
   public static List<PartialPath> convertToPartialPath(Collection<String> paths, int level) {
-    return paths.parallelStream()
+    return paths
+        .parallelStream()
         .map(x -> getPartialPathFromInnerPath(x, level))
         .collect(Collectors.toList());
   }

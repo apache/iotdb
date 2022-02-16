@@ -14,8 +14,9 @@ public class RStorageGroupMNode extends RMNode implements IStorageGroupMNode {
    *
    * @param fullPath
    */
-  public RStorageGroupMNode(String fullPath) {
+  public RStorageGroupMNode(String fullPath, long dataTTL) {
     super(fullPath);
+    this.dataTTL = dataTTL;
   }
 
   @Override
