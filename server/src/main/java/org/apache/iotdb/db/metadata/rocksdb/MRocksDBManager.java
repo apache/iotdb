@@ -33,16 +33,14 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.IMetaManager;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.rocksdb.mnode.REntityMNode;
 import org.apache.iotdb.db.metadata.rocksdb.mnode.RMeasurementMNode;
+import org.apache.iotdb.db.metadata.rocksdb.mnode.RStorageGroupMNode;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -82,6 +80,14 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.google.common.util.concurrent.Striped;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.rocksdb.Holder;
+import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
+import org.rocksdb.WriteBatch;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -97,17 +103,20 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
-import org.apache.commons.lang3.StringUtils;
-import org.rocksdb.Holder;
-import org.rocksdb.RocksDBException;
-import org.rocksdb.RocksIterator;
-import org.rocksdb.WriteBatch;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_NODE_VALUE;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_ALIGNED;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_SET_TTL;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -990,7 +999,8 @@ public class MRocksDBManager implements IMetaManager {
       return;
     }
     Set<String> children = ConcurrentHashMap.newKeySet();
-    seeds.parallelStream()
+    seeds
+        .parallelStream()
         .forEach(
             x -> {
               if (op.apply(x)) {
@@ -1114,7 +1124,8 @@ public class MRocksDBManager implements IMetaManager {
       String prefix =
           builder.append(RockDBConstants.ROOT).append(PATH_SEPARATOR).append(upperLevel).toString();
       Set<String> parentPaths = readWriteHandler.getAllByPrefix(prefix);
-      parentPaths.parallelStream()
+      parentPaths
+          .parallelStream()
           .forEach(
               x -> {
                 String targetPrefix = RocksDBUtils.getNextLevelOfPath(x, upperLevel);
@@ -1508,7 +1519,7 @@ public class MRocksDBManager implements IMetaManager {
     String innerName =
         RocksDBUtils.convertPartialPathToInner(
             path.getFullPath(), path.getNodeLength(), NODE_TYPE_SG);
-    byte[] value = new byte[0];
+    byte[] value;
     try {
       value = readWriteHandler.get(null, innerName.getBytes());
     } catch (RocksDBException e) {
@@ -1522,7 +1533,7 @@ public class MRocksDBManager implements IMetaManager {
     if (ttl == null) {
       ttl = 0L;
     }
-    return new StorageGroupEntityMNode(null, path.getFullPath(), (Long) ttl);
+    return new RStorageGroupMNode(path.getFullPath(), (Long) ttl);
   }
 
   /** Get storage group node by path. the give path don't need to be storage group path. */
@@ -1554,7 +1565,7 @@ public class MRocksDBManager implements IMetaManager {
     if (ttl == null) {
       ttl = 0L;
     }
-    return new StorageGroupMNode(null, path.getFullPath(), (Long) ttl);
+    return new RStorageGroupMNode(path.getFullPath(), (Long) ttl);
   }
 
   /** Get all storage group MNodes */
@@ -1572,8 +1583,8 @@ public class MRocksDBManager implements IMetaManager {
         ttl = 0L;
       }
       result.add(
-          new StorageGroupMNode(
-              null, RocksDBUtils.getPathByInnerName(new String(iterator.key())), (Long) ttl));
+          new RStorageGroupMNode(
+              RocksDBUtils.getPathByInnerName(new String(iterator.key())), (Long) ttl));
     }
     return result;
   }
@@ -1601,7 +1612,7 @@ public class MRocksDBManager implements IMetaManager {
       throw new StorageGroupNotSetException(
           String.format("Cannot find the storage group by %s.", path.getFullPath()));
     }
-    return new EntityMNode(null, path.getFullPath());
+    return new REntityMNode(path.getFullPath());
   }
 
   /**
@@ -1636,8 +1647,7 @@ public class MRocksDBManager implements IMetaManager {
         logger.warn("path not exist: {}", key);
         throw new MetadataException("key not exist");
       }
-      IMeasurementMNode node = new MeasurementMNode(null, fullPath.getFullPath(), null, null);
-      return node;
+      return new RMeasurementMNode(fullPath.getFullPath());
     } catch (RocksDBException e) {
       throw new MetadataException(e);
     }
