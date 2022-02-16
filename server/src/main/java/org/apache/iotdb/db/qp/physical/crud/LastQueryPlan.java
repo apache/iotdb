@@ -29,9 +29,6 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGt;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGtEq;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.apache.thrift.TException;
 
@@ -80,16 +77,12 @@ public class LastQueryPlan extends RawDataQueryPlan {
     if (isValidExpression(expression)) {
       super.setExpression(expression);
     } else {
-      throw new QueryProcessException("Only '>' and '>=' are supported in LAST query");
+      throw new QueryProcessException("Only time filters are supported in LAST query");
     }
   }
 
   // Only > and >= are supported in time filter
   private boolean isValidExpression(IExpression expression) {
-    if (expression instanceof GlobalTimeExpression) {
-      Filter filter = ((GlobalTimeExpression) expression).getFilter();
-      return filter instanceof TimeGtEq || filter instanceof TimeGt;
-    }
-    return false;
+    return expression instanceof GlobalTimeExpression;
   }
 }

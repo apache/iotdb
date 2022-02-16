@@ -1052,13 +1052,13 @@ public class LocalQueryExecutor {
       expression = new GlobalTimeExpression(filter);
     }
 
-    List<Pair<Boolean, TimeValuePair>> timeValuePairs =
+    List<TimeValuePair> timeValuePairs =
         LastQueryExecutor.calculateLastPairForSeriesLocally(
             seriesPaths, dataTypes, queryContext, expression, request.getDeviceMeasurements());
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    for (Pair<Boolean, TimeValuePair> timeValuePair : timeValuePairs) {
-      SerializeUtils.serializeTVPair(timeValuePair.right, dataOutputStream);
+    for (TimeValuePair timeValuePair : timeValuePairs) {
+      SerializeUtils.serializeTVPair(timeValuePair, dataOutputStream);
     }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
