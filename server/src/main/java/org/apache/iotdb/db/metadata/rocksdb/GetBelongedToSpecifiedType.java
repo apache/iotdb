@@ -1,16 +1,15 @@
-package org.apache.iotdb.db.metadata.rocksdb.mnode;
+package org.apache.iotdb.db.metadata.rocksdb;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.rocksdb.RocksDBReadWriteHandler;
-import org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
+
+import org.rocksdb.RocksDBException;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
-import org.rocksdb.RocksDBException;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
