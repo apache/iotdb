@@ -722,15 +722,11 @@ public class TSServiceImpl implements TSIService.Iface {
         }
       } catch (Exception e) {
         LOGGER.error("Error occurred when executing executeBatchStatement: ", e);
-        TSStatus status = tryCatchQueryException(e);
-        if (status != null) {
-          result.add(status);
+        TSStatus status = onQueryException(e, "executing " + statement);
+        if (status.getCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
           isAllSuccessful = false;
-        } else {
-          result.add(
-              onNPEOrUnexpectedException(
-                  e, "executing " + statement, TSStatusCode.INTERNAL_SERVER_ERROR));
         }
+        result.add(status);
       }
     }
     Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
@@ -1972,26 +1968,20 @@ public class TSServiceImpl implements TSIService.Iface {
     }
 
     if (e instanceof QueryTimeoutRuntimeException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.TIME_OUT, rootCause.getMessage());
     } else if (e instanceof ParseCancellationException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_PARSING_SQL_ERROR, e);
       return RpcUtils.getStatus(
           TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + rootCause.getMessage());
     } else if (e instanceof SQLParserException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_CHECK_METADATA_ERROR, e);
       return RpcUtils.getStatus(
           TSStatusCode.METADATA_ERROR, INFO_CHECK_METADATA_ERROR + rootCause.getMessage());
     } else if (e instanceof QueryProcessException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
       return RpcUtils.getStatus(
           TSStatusCode.QUERY_PROCESS_ERROR, INFO_QUERY_PROCESS_ERROR + rootCause.getMessage());
     } else if (e instanceof QueryInBatchStatementException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_NOT_ALLOWED_IN_BATCH_ERROR, e);
       return RpcUtils.getStatus(
           TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + rootCause.getMessage());
     } else if (e instanceof IoTDBException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
       return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), rootCause.getMessage());
     }
     return null;
