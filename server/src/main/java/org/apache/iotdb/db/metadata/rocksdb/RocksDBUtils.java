@@ -1,20 +1,12 @@
 package org.apache.iotdb.db.metadata.rocksdb;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.primitives.Bytes;
-import org.apache.commons.lang3.ArrayUtils;
-import org.rocksdb.ColumnFamilyHandle;
-import org.rocksdb.RocksDB;
-import org.rocksdb.RocksIterator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -22,11 +14,37 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.ArrayUtils;
+import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.RocksDB;
+import org.rocksdb.RocksIterator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ALIAS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ATTRIBUTES;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_TTL;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_VERSION;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_FLAG;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ESCAPE_PATH_SEPARATOR;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_ALIAS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_ATTRIBUTES;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_SET_TTL;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ALIAS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_INTERNAL;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.PATH_SEPARATOR;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT_CHAR;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT_STRING;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
 
 public class RocksDBUtils {
 
@@ -103,8 +121,7 @@ public class RocksDBUtils {
   }
 
   public static List<PartialPath> convertToPartialPath(Collection<String> paths, int level) {
-    return paths
-        .parallelStream()
+    return paths.parallelStream()
         .map(x -> getPartialPathFromInnerPath(x, level))
         .collect(Collectors.toList());
   }
@@ -321,7 +338,7 @@ public class RocksDBUtils {
 
   public static String convertPartialPathToInnerByNodes(String[] nodes, int level, char nodeType) {
     StringBuilder stringBuilder = new StringBuilder();
-    stringBuilder.append(nodeType).append(TsFileConstant.PATH_ROOT);
+    stringBuilder.append(nodeType).append(ROOT);
     for (String str : nodes) {
       stringBuilder.append(SPLIT_FLAG).append(level).append(str);
     }
