@@ -55,8 +55,14 @@ public class RawDataQueryPlan extends QueryPlan {
   }
 
   public void setExpression(IExpression expression) throws QueryProcessException {
+    setExpressionAndUpdateDeviceMeasurements(expression, true);
+  }
+
+  public void setExpressionAndUpdateDeviceMeasurements(IExpression expression, boolean update) {
     this.expression = expression;
-    updateDeviceMeasurementsUsingExpression(expression);
+    if (update) {
+      updateDeviceMeasurementsUsingExpression(expression);
+    }
   }
 
   public void updateDeviceMeasurementsUsingExpression(IExpression expression) {

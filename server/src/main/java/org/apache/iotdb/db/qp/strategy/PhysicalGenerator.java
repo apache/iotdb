@@ -580,7 +580,8 @@ public class PhysicalGenerator {
             pathTSDataTypeHashMap.put(filterPaths.get(i), seriesTypes.get(i));
           }
           IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
-          ((RawDataQueryPlan) queryPlan).setExpression(expression);
+          ((RawDataQueryPlan) queryPlan)
+              .setExpressionAndUpdateDeviceMeasurements(expression, false);
         } catch (MetadataException e) {
           throw new LogicalOptimizeException(e.getMessage());
         }
