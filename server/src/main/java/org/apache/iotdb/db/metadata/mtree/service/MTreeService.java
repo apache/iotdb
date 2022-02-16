@@ -59,6 +59,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -471,7 +472,7 @@ public class MTreeService implements Serializable {
       // update upper template
       upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
     }
-    unPinPath(cur);
+    unPinPath(cur.getParent());
     return cur;
   }
 
@@ -1560,6 +1561,20 @@ public class MTreeService implements Serializable {
       }
     } finally {
       iterator.close();
+    }
+  }
+
+  public void checkIsTemplateCompatibleWithChild(IMNode node, Template template)
+      throws MetadataException {
+    for (String measurementPath : template.getSchemaMap().keySet()) {
+      String directNodeName = MetaUtils.splitPathToDetachedPath(measurementPath)[0];
+      if (store.hasChild(node, directNodeName)) {
+        throw new MetadataException(
+            "Node name "
+                + directNodeName
+                + " in template has conflict with node's child "
+                + (node.getFullPath() + "." + directNodeName));
+      }
     }
   }
 

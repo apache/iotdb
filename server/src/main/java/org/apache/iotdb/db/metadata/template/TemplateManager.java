@@ -24,7 +24,6 @@ import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
@@ -149,24 +148,12 @@ public class TemplateManager {
     return templateMap.keySet();
   }
 
-  public void checkIsTemplateAndMNodeCompatible(Template template, IMNode node)
-      throws MetadataException {
+  public void checkIsTemplateCompatible(Template template, IMNode node) throws MetadataException {
     if (node.getSchemaTemplate() != null) {
       if (node.getSchemaTemplate().equals(template)) {
         throw new DuplicatedTemplateException(template.getName());
       } else {
         throw new MetadataException("Specified node already has template");
-      }
-    }
-
-    for (String measurementPath : template.getSchemaMap().keySet()) {
-      String directNodeName = MetaUtils.splitPathToDetachedPath(measurementPath)[0];
-      if (node.hasChild(directNodeName)) {
-        throw new MetadataException(
-            "Node name "
-                + directNodeName
-                + " in template has conflict with node's child "
-                + (node.getFullPath() + "." + directNodeName));
       }
     }
   }

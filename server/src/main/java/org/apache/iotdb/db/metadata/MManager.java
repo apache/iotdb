@@ -2337,7 +2337,8 @@ public class MManager {
       IMNode node = getDeviceNodeWithAutoCreate(path);
 
       try {
-        templateManager.checkIsTemplateAndMNodeCompatible(template, node);
+        templateManager.checkIsTemplateCompatible(template, node);
+        mtree.checkIsTemplateCompatibleWithChild(node, template);
         node.setSchemaTemplate(template);
         mtree.updateMNode(node);
       } finally {
