@@ -113,7 +113,7 @@ public class LastQueryExecutor {
         calculateLastPairForSeries(selectedSeries, dataTypes, context, expression, lastQueryPlan);
 
     for (int i = 0; i < lastPairList.size(); i++) {
-      if (lastPairList.get(i) != null) {
+      if (lastPairList.get(i) != null && lastPairList.get(i).getValue() != null) {
         TimeValuePair lastTimeValuePair = lastPairList.get(i);
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
 
