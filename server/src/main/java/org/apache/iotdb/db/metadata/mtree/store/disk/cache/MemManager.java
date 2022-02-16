@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 public class MemManager implements IMemManager {
 
-  private int capacity = 5;
+  private int capacity =
+      IoTDBDescriptor.getInstance().getConfig().getCachedMetadataSizeInPersistentMode();
 
   private int size;
 

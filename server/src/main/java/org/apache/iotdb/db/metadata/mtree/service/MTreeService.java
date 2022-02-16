@@ -55,6 +55,7 @@ import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MeasurementG
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -135,7 +136,12 @@ public class MTreeService implements Serializable {
   public MTreeService() {}
 
   public void init() throws IOException {
-    store = new CachedMTreeStore();
+    if (IoTDBDescriptor.getInstance().getConfig().isEnablePersistentSchema()) {
+      store = new CachedMTreeStore();
+    } else {
+      store = new MemMTreeStore();
+    }
+
     store.init();
     this.root = store.getRoot();
   }

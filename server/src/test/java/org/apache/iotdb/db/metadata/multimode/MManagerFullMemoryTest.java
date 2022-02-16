@@ -18,7 +18,15 @@
  */
 package org.apache.iotdb.db.metadata.multimode;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
 import org.junit.Ignore;
 
 @Ignore
-public class MManagerFullMemoryTest extends MManagerDiskModeTest {}
+public class MManagerFullMemoryTest extends MManagerDiskModeTest {
+
+  @Override
+  protected void setMemSize() {
+    IoTDBDescriptor.getInstance().getConfig().setCachedMetadataSizeInPersistentMode(10000);
+  }
+}

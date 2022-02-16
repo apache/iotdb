@@ -798,6 +798,12 @@ public class IoTDBConfig {
    */
   private boolean enableIDTableLogFile = false;
 
+  /** whether to use persistent schema mode */
+  private boolean enablePersistentSchema = false;
+
+  /** the memory used for metadata cache when using persistent schema */
+  private int cachedMetadataSizeInPersistentMode = 50000;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -2494,5 +2500,21 @@ public class IoTDBConfig {
 
   public void setEnableIDTableLogFile(boolean enableIDTableLogFile) {
     this.enableIDTableLogFile = enableIDTableLogFile;
+  }
+
+  public boolean isEnablePersistentSchema() {
+    return enablePersistentSchema;
+  }
+
+  public void setEnablePersistentSchema(boolean enablePersistentSchema) {
+    this.enablePersistentSchema = enablePersistentSchema;
+  }
+
+  public int getCachedMetadataSizeInPersistentMode() {
+    return cachedMetadataSizeInPersistentMode;
+  }
+
+  public void setCachedMetadataSizeInPersistentMode(int cachedMetadataSizeInPersistentMode) {
+    this.cachedMetadataSizeInPersistentMode = cachedMetadataSizeInPersistentMode;
   }
 }

@@ -83,6 +83,8 @@ public abstract class MManagerBasicTestCase {
     EnvironmentUtils.envSetUp();
   }
 
+  protected abstract void setConfig();
+
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();

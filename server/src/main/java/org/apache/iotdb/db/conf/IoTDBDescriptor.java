@@ -704,6 +704,17 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "enable_id_table_log_file", String.valueOf(conf.isEnableIDTableLogFile()))));
 
+      conf.setEnablePersistentSchema(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_persistent_schema", String.valueOf(conf.isEnablePersistentSchema()))));
+
+      conf.setCachedMetadataSizeInPersistentMode(
+          Integer.parseInt(
+              properties.getProperty(
+                  "cached_metadata_size_in_persistent_mode",
+                  String.valueOf(conf.getCachedMetadataSizeInPersistentMode()))));
+
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
         conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
