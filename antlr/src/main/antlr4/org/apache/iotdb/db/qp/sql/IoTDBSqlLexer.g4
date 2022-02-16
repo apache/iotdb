@@ -930,8 +930,8 @@ ID
     : NAME_CHAR+
     ;
 
-QUTOED_ID_WITHOUT_DOT
-    : BQUOTA_STRING_WITHOUT_DOT
+QUTOED_ID_IN_NODE_NAME
+    : BQUOTA_STRING_IN_NODE_NAME
     ;
 
 QUTOED_ID
@@ -957,19 +957,19 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ('\\' . | ~'"' )*? '"'
+    : '"' ( '\\'. | ~('"'| '\\') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ('\\' . | ~'\'' )*? '\''
+    : '\'' ( '\\'. | ~('\''| '\\') )* '\''
     ;
 
 fragment BQUOTA_STRING
-    : '`' ('\\' . | ~'`' )*? '`'
+    : '`' ( '\\'. | ~('`'| '\\') )* '`'
     ;
 
-fragment BQUOTA_STRING_WITHOUT_DOT
-    : '`' ('\\' . | ~('`'|'.') )*? '`'
+fragment BQUOTA_STRING_IN_NODE_NAME
+    : '`' ( '\\' ~('.') | ~('`'|'\\'|'.'|'\''|'"'))* '`'
     ;
 
 // Characters and write it this way for case sensitivity
