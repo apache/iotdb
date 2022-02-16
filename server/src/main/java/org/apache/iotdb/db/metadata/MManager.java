@@ -608,16 +608,17 @@ public class MManager {
         // the cached mNode may be replaced by new entityMNode in mtree
         mNodeCache.invalidate(path.getDevicePath());
 
-      // update tag index
+        // update tag index
 
-      if (offset != -1 && isRecovering) {
-        // the timeseries has already been created and now system is recovering, using the tag info
-        // in tagFile to recover index directly
-        tagManager.recoverIndex(offset, leafMNode);
-      } else if (plan.getTags() != null) {
-        // tag key, tag value
-        tagManager.addIndex(plan.getTags(), leafMNode);
-      }
+        if (offset != -1 && isRecovering) {
+          // the timeseries has already been created and now system is recovering, using the tag
+          // info
+          // in tagFile to recover index directly
+          tagManager.recoverIndex(offset, leafMNode);
+        } else if (plan.getTags() != null) {
+          // tag key, tag value
+          tagManager.addIndex(plan.getTags(), leafMNode);
+        }
 
         // update statistics and schemaDataTypeNumMap
         totalSeriesNumber.addAndGet(1);
