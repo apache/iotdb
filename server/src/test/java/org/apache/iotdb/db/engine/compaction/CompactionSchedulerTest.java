@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -47,7 +46,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -59,26 +57,32 @@ import static org.junit.Assert.fail;
 
 public class CompactionSchedulerTest {
   private static final Logger logger = LoggerFactory.getLogger(CompactionSchedulerTest.class);
-  static final String COMPACTION_TEST_SG = "root.compactionTest";
+  static final String COMPACTION_TEST_SG = "root.compactionSchedulerTest-";
+  private static final boolean oldEnableInnerSeqCompaction =
+      IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
+  private static final boolean oldEnableInnerUnseqCompaction =
+      IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
+  private static final boolean oldEnableCrossCompaction =
+      IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
   static final long MAX_WAITING_TIME = 60_000;
   static final long SCHEDULE_AGAIN_TIME = 30_000;
   static final String[] fullPaths =
       new String[] {
-        COMPACTION_TEST_SG + ".device0.sensor0",
-        COMPACTION_TEST_SG + ".device0.sensor1",
-        COMPACTION_TEST_SG + ".device0.sensor2",
-        COMPACTION_TEST_SG + ".device0.sensor3",
-        COMPACTION_TEST_SG + ".device0.sensor4",
-        COMPACTION_TEST_SG + ".device0.sensor5",
-        COMPACTION_TEST_SG + ".device0.sensor6",
-        COMPACTION_TEST_SG + ".device0.sensor7",
-        COMPACTION_TEST_SG + ".device0.sensor8",
-        COMPACTION_TEST_SG + ".device0.sensor9",
-        COMPACTION_TEST_SG + ".device1.sensor0",
-        COMPACTION_TEST_SG + ".device1.sensor1",
-        COMPACTION_TEST_SG + ".device1.sensor2",
-        COMPACTION_TEST_SG + ".device1.sensor3",
-        COMPACTION_TEST_SG + ".device1.sensor4",
+        ".device0.sensor0",
+        ".device0.sensor1",
+        ".device0.sensor2",
+        ".device0.sensor3",
+        ".device0.sensor4",
+        ".device0.sensor5",
+        ".device0.sensor6",
+        ".device0.sensor7",
+        ".device0.sensor8",
+        ".device0.sensor9",
+        ".device1.sensor0",
+        ".device1.sensor1",
+        ".device1.sensor2",
+        ".device1.sensor3",
+        ".device1.sensor4",
       };
 
   @Before
@@ -86,25 +90,14 @@ public class CompactionSchedulerTest {
     CompactionClearUtils.clearAllCompactionFiles();
     EnvironmentUtils.cleanAllDir();
     IoTDB.metaManager.init();
-    try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
-    } catch (Exception e) {
-      logger.error("exception occurs", e);
-    }
-    for (String fullPath : fullPaths) {
-      PartialPath path = new PartialPath(fullPath);
-      IoTDB.metaManager.createTimeseries(
-          path,
-          TSDataType.INT64,
-          TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap());
-    }
     File basicOutputDir = new File(TestConstant.BASE_OUTPUT_PATH);
     IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.INNER_CROSS);
     if (!basicOutputDir.exists()) {
       assertTrue(basicOutputDir.mkdirs());
     }
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
     CompactionTaskManager.getInstance().start();
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
@@ -125,6 +118,15 @@ public class CompactionSchedulerTest {
     EnvironmentUtils.cleanAllDir();
     CompactionClearUtils.deleteEmptyDir(new File("target"));
     CompactionTaskManager.getInstance().stop();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableSeqSpaceCompaction(oldEnableInnerSeqCompaction);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableUnseqSpaceCompaction(oldEnableInnerUnseqCompaction);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableCrossSpaceCompaction(oldEnableCrossCompaction);
   }
 
   /**
@@ -132,7 +134,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=100
    */
   @Test
-  public void test1() throws IOException, IllegalPathException, InterruptedException {
+  public void test1() throws IOException, MetadataException, InterruptedException {
     logger.warn("Running test1");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -150,30 +152,44 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
+    String sgName = COMPACTION_TEST_SG + "test1";
+    try {
+      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
+    }
     try {
       CompactionTaskManager.getInstance().restart();
-
-      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      Set<String> fullPath = new HashSet<>();
+      for (String device : fullPaths) {
+        fullPath.add(sgName + device);
+        PartialPath path = new PartialPath(sgName + device);
+        IoTDB.metaManager.createTimeseries(
+            path,
+            TSDataType.INT64,
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
       }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -253,7 +269,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=100
    */
   @Test
-  public void test2() throws IOException, IllegalPathException, InterruptedException {
+  public void test2() throws IOException, MetadataException, InterruptedException {
     logger.warn("Running test2");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -271,30 +287,44 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setCrossCompactionMemoryBudget(2 * 1024 * 1024L * 1024L);
-
+    String sgName = COMPACTION_TEST_SG + "test2";
+    try {
+      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
+    }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      Set<String> fullPath = new HashSet<>();
+      for (String device : fullPaths) {
+        fullPath.add(sgName + device);
+        PartialPath path = new PartialPath(sgName + device);
+        IoTDB.metaManager.createTimeseries(
+            path,
+            TSDataType.INT64,
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
       }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -341,7 +371,7 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      //      assertEquals(100, tsFileManager.getTsFileList(true).size());
       tsFileManager.setAllowCompaction(false);
       stopCompactionTaskManager();
     } finally {
@@ -365,7 +395,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=100
    */
   @Test
-  public void test3() throws IOException, IllegalPathException, InterruptedException {
+  public void test3() throws IOException, MetadataException, InterruptedException {
     logger.warn("Running test3");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -379,30 +409,44 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+    String sgName = COMPACTION_TEST_SG + "test3";
     try {
-
+      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
+    }
+    try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      Set<String> fullPath = new HashSet<>();
+      for (String device : fullPaths) {
+        fullPath.add(sgName + device);
+        PartialPath path = new PartialPath(sgName + device);
+        IoTDB.metaManager.createTimeseries(
+            path,
+            TSDataType.INT64,
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
       }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -423,7 +467,7 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(false).size());
+      assertEquals(0, tsFileManager.getTsFileList(false).size());
       totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 0) {
         try {
@@ -459,7 +503,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=100
    */
   @Test
-  public void test4() throws IOException, IllegalPathException, InterruptedException {
+  public void test4() throws IOException, MetadataException, InterruptedException {
     logger.warn("Running test4");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -476,29 +520,44 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
+    String sgName = COMPACTION_TEST_SG + "test4";
+    try {
+      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
+    }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      Set<String> fullPath = new HashSet<>();
+      for (String device : fullPaths) {
+        fullPath.add(sgName + device);
+        PartialPath path = new PartialPath(sgName + device);
+        IoTDB.metaManager.createTimeseries(
+            path,
+            TSDataType.INT64,
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
       }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -541,7 +600,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
    */
   @Test
-  public void test5() throws IOException, IllegalPathException, InterruptedException {
+  public void test5() throws IOException, MetadataException, InterruptedException {
     logger.warn("Running test5");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -556,30 +615,44 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+    String sgName = COMPACTION_TEST_SG + "test5";
+    try {
+      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
+    }
     try {
       CompactionTaskManager.getInstance().restart();
-
-      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      Set<String> fullPath = new HashSet<>();
+      for (String device : fullPaths) {
+        fullPath.add(sgName + device);
+        PartialPath path = new PartialPath(sgName + device);
+        IoTDB.metaManager.createTimeseries(
+            path,
+            TSDataType.INT64,
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
       }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -654,7 +727,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
    */
   @Test
-  public void test6() throws IOException, IllegalPathException, InterruptedException {
+  public void test6() throws IOException, MetadataException, InterruptedException {
     logger.warn("Running test6");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -669,39 +742,55 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
-
+    String sgName = COMPACTION_TEST_SG + "test6";
+    try {
+      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
+    }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      Set<String> fullPath = new HashSet<>();
+      for (String device : fullPaths) {
+        fullPath.add(sgName + device);
+        PartialPath path = new PartialPath(sgName + device);
+        IoTDB.metaManager.createTimeseries(
+            path,
+            TSDataType.INT64,
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
       }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
       }
 
+      assertEquals(100, tsFileManager.getTsFileList(true).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
       CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
       long totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 1) {
+        assertEquals(100, tsFileManager.getTsFileList(true).size());
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -719,6 +808,7 @@ public class CompactionSchedulerTest {
       CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
       totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 0) {
+        assertEquals(100, tsFileManager.getTsFileList(true).size());
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -755,7 +845,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
    */
   @Test
-  public void test7() throws IOException, IllegalPathException, InterruptedException {
+  public void test7() throws IOException, MetadataException, InterruptedException {
     logger.warn("Running test7");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -769,30 +859,44 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
-
+    String sgName = COMPACTION_TEST_SG + "test7";
+    try {
+      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
+    }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      Set<String> fullPath = new HashSet<>();
+      for (String device : fullPaths) {
+        fullPath.add(sgName + device);
+        PartialPath path = new PartialPath(sgName + device);
+        IoTDB.metaManager.createTimeseries(
+            path,
+            TSDataType.INT64,
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
       }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -854,7 +958,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
    */
   @Test
-  public void test8() throws IOException, IllegalPathException, InterruptedException {
+  public void test8() throws IOException, MetadataException, InterruptedException {
     logger.warn("Running test8");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -868,30 +972,46 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+    String sgName = COMPACTION_TEST_SG + "test8";
+    try {
+      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
+    }
     try {
       CompactionTaskManager.getInstance().restart();
-
-      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      Set<String> fullPath = new HashSet<>();
+      for (String device : fullPaths) {
+        fullPath.add(sgName + device);
+        PartialPath path = new PartialPath(sgName + device);
+        IoTDB.metaManager.createTimeseries(
+            path,
+            TSDataType.INT64,
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
       }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -937,7 +1057,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
    */
   @Test
-  public void test9() throws IOException, IllegalPathException, InterruptedException {
+  public void test9() throws IOException, MetadataException, InterruptedException {
     logger.warn("Running test9");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -951,30 +1071,46 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+    String sgName = COMPACTION_TEST_SG + "test9";
+    try {
+      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
+    }
     try {
       CompactionTaskManager.getInstance().restart();
-
-      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      Set<String> fullPath = new HashSet<>();
+      for (String device : fullPaths) {
+        fullPath.add(sgName + device);
+        PartialPath path = new PartialPath(sgName + device);
+        IoTDB.metaManager.createTimeseries(
+            path,
+            TSDataType.INT64,
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
       }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1033,7 +1169,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
    */
   @Test
-  public void test10() throws IOException, IllegalPathException, InterruptedException {
+  public void test10() throws IOException, MetadataException, InterruptedException {
     logger.warn("Running test10");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -1050,30 +1186,46 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+    String sgName = COMPACTION_TEST_SG + "test10";
+    try {
+      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
+    }
     try {
       CompactionTaskManager.getInstance().restart();
-
-      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      Set<String> fullPath = new HashSet<>();
+      for (String device : fullPaths) {
+        fullPath.add(sgName + device);
+        PartialPath path = new PartialPath(sgName + device);
+        IoTDB.metaManager.createTimeseries(
+            path,
+            TSDataType.INT64,
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
       }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1139,7 +1291,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
    */
   @Test
-  public void test11() throws IOException, IllegalPathException, InterruptedException {
+  public void test11() throws IOException, MetadataException, InterruptedException {
     logger.warn("Running test11");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -1153,30 +1305,46 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+    String sgName = COMPACTION_TEST_SG + "test11";
+    try {
+      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
+    }
     try {
       CompactionTaskManager.getInstance().restart();
-
-      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      Set<String> fullPath = new HashSet<>();
+      for (String device : fullPaths) {
+        fullPath.add(sgName + device);
+        PartialPath path = new PartialPath(sgName + device);
+        IoTDB.metaManager.createTimeseries(
+            path,
+            TSDataType.INT64,
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
       }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1199,7 +1367,6 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
-      //      assertEquals(100, tsFileManager.getTsFileList(false).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
       CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
       totalWaitingTime = 0;
@@ -1240,7 +1407,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
    */
   @Test
-  public void test12() throws IOException, IllegalPathException, InterruptedException {
+  public void test12() throws IOException, MetadataException, InterruptedException {
     logger.warn("Running test12");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -1254,30 +1421,46 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+    String sgName = COMPACTION_TEST_SG + "test12";
+    try {
+      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
+    }
     try {
       CompactionTaskManager.getInstance().restart();
-
-      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      Set<String> fullPath = new HashSet<>();
+      for (String device : fullPaths) {
+        fullPath.add(sgName + device);
+        PartialPath path = new PartialPath(sgName + device);
+        IoTDB.metaManager.createTimeseries(
+            path,
+            TSDataType.INT64,
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
       }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1343,7 +1526,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=2
    */
   @Test
-  public void test14() throws IOException, IllegalPathException, InterruptedException {
+  public void test14() throws IOException, MetadataException, InterruptedException {
     logger.warn("Running test14");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -1357,41 +1540,61 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+    String sgName = COMPACTION_TEST_SG + "test13";
+    try {
+      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
+    }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      Set<String> fullPath = new HashSet<>();
+      for (String device : fullPaths) {
+        fullPath.add(sgName + device);
+        PartialPath path = new PartialPath(sgName + device);
+        IoTDB.metaManager.createTimeseries(
+            path,
+            TSDataType.INT64,
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
       }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
       }
 
+      assertEquals(100, tsFileManager.getTsFileList(true).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
       CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      assertEquals(100, tsFileManager.getTsFileList(true).size());
       long totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 99) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
+          assertEquals(100, tsFileManager.getTsFileList(true).size());
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
           CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
           if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -1409,6 +1612,7 @@ public class CompactionSchedulerTest {
       while (tsFileManager.getTsFileList(false).size() > 98) {
         try {
           Thread.sleep(100);
+          assertEquals(100, tsFileManager.getTsFileList(true).size());
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
           CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
@@ -1443,7 +1647,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=2
    */
   @Test
-  public void test15() throws IOException, IllegalPathException, InterruptedException {
+  public void test15() throws IOException, MetadataException, InterruptedException {
     logger.warn("Running test15");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -1457,30 +1661,46 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+    String sgName = COMPACTION_TEST_SG + "test14";
+    try {
+      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
+    }
     try {
       CompactionTaskManager.getInstance().restart();
-
-      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      Set<String> fullPath = new HashSet<>();
+      for (String device : fullPaths) {
+        fullPath.add(sgName + device);
+        PartialPath path = new PartialPath(sgName + device);
+        IoTDB.metaManager.createTimeseries(
+            path,
+            TSDataType.INT64,
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
       }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1503,7 +1723,6 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(false).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
       CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
       totalWaitingTime = 0;
@@ -1521,7 +1740,20 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(false).size());
+      while (tsFileManager.getTsFileList(false).size() > 0) {
+        try {
+          Thread.sleep(100);
+          totalWaitingTime += 100;
+          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
       tsFileManager.setAllowCompaction(false);
       stopCompactionTaskManager();
     } finally {
@@ -1544,7 +1776,7 @@ public class CompactionSchedulerTest {
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=2
    */
   @Test
-  public void test16() throws IOException, IllegalPathException, InterruptedException {
+  public void test16() throws IOException, MetadataException, InterruptedException {
     logger.warn("Running test16");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -1558,30 +1790,46 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+    String sgName = COMPACTION_TEST_SG + "test16";
+    try {
+      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
+    }
     try {
       CompactionTaskManager.getInstance().restart();
-
-      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      Set<String> fullPath = new HashSet<>();
+      for (String device : fullPaths) {
+        fullPath.add(sgName + device);
+        PartialPath path = new PartialPath(sgName + device);
+        IoTDB.metaManager.createTimeseries(
+            path,
+            TSDataType.INT64,
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
       }
       for (int i = 0; i < 100; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, COMPACTION_TEST_SG);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);

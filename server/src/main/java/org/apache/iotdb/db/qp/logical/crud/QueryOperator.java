@@ -39,8 +39,10 @@ import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -200,11 +202,6 @@ public class QueryOperator extends Operator {
     rawDataQueryPlan.setResultColumns(selectComponent.getResultColumns());
     rawDataQueryPlan.setEnableTracing(enableTracing);
 
-    // transform filter operator to expression
-    if (whereComponent != null) {
-      transformFilterOperatorToExpression(generator, rawDataQueryPlan);
-    }
-
     if (queryPlan instanceof QueryIndexPlan) {
       ((QueryIndexPlan) queryPlan).setIndexType(indexType);
       ((QueryIndexPlan) queryPlan).setProps(props);
@@ -219,22 +216,41 @@ public class QueryOperator extends Operator {
 
     convertSpecialClauseValues(rawDataQueryPlan);
 
+    // transform filter operator to expression
+    IExpression expression = transformFilterOperatorToExpression();
+    expression = optimizeExpression(expression, (RawDataQueryPlan) queryPlan);
+    if (expression != null) {
+      ((RawDataQueryPlan) queryPlan).setExpression(expression);
+    }
+
     return rawDataQueryPlan;
   }
 
-  protected void transformFilterOperatorToExpression(
-      PhysicalGenerator generator, RawDataQueryPlan rawDataQueryPlan) throws QueryProcessException {
+  protected IExpression transformFilterOperatorToExpression() throws QueryProcessException {
+    if (whereComponent == null) {
+      return null;
+    }
     FilterOperator filterOperator = whereComponent.getFilterOperator();
     List<PartialPath> filterPaths = new ArrayList<>(filterOperator.getPathSet());
     HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
     for (PartialPath filterPath : filterPaths) {
-      rawDataQueryPlan.addFilterPathInDeviceToMeasurements(filterPath);
       pathTSDataTypeHashMap.put(
           filterPath,
           SQLConstant.isReservedPath(filterPath) ? TSDataType.INT64 : filterPath.getSeriesType());
     }
-    IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
-    rawDataQueryPlan.setExpression(expression);
+    return filterOperator.transformToExpression(pathTSDataTypeHashMap);
+  }
+
+  protected IExpression optimizeExpression(IExpression expression, RawDataQueryPlan queryPlan)
+      throws QueryProcessException {
+    try {
+      return expression == null
+          ? null
+          : ExpressionOptimizer.getInstance()
+              .optimize(expression, new ArrayList<>(queryPlan.getDeduplicatedPaths()));
+    } catch (QueryFilterOptimizationException e) {
+      throw new QueryProcessException(e.getMessage());
+    }
   }
 
   protected AlignByDevicePlan generateAlignByDevicePlan(PhysicalGenerator generator)

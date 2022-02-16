@@ -61,7 +61,7 @@ public class IoTDBNewTsFileCompactionIT {
   public void setUp() throws Exception {
     preMaxNumberOfPointsInPage =
         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-    storageGroupPath = new PartialPath("root.sg1");
+    storageGroupPath = new PartialPath("root.newTsFileCompaction");
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(1);
     originCompactionFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
@@ -76,7 +76,7 @@ public class IoTDBNewTsFileCompactionIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      statement.execute("SET STORAGE GROUP TO root.sg1");
+      statement.execute("SET STORAGE GROUP TO root.newTsFileCompaction");
     }
   }
 
@@ -112,22 +112,23 @@ public class IoTDBNewTsFileCompactionIT {
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
 
       // first file
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
       statement.execute("FLUSH");
 
       // second file
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
       assertTrue(waitForMergeFinish());
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.newTsFileCompaction.d1")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          float s1 = resultSet.getFloat("root.sg1.d1.s1");
+          float s1 = resultSet.getFloat("root.newTsFileCompaction.d1.s1");
           assertEquals(Long.parseLong(retArray[cnt][0]), time);
           assertEquals(Float.parseFloat(retArray[cnt][1]), s1, FLOAT_DELTA);
           cnt++;
@@ -166,23 +167,24 @@ public class IoTDBNewTsFileCompactionIT {
 
       // first file
       // two chunks
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       statement.execute("FLUSH");
 
       // second file
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
       assertTrue(waitForMergeFinish());
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.newTsFileCompaction.d1")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          float s1 = resultSet.getFloat("root.sg1.d1.s1");
+          float s1 = resultSet.getFloat("root.newTsFileCompaction.d1.s1");
           assertEquals(Long.parseLong(retArray[cnt][0]), time);
           assertEquals(Float.parseFloat(retArray[cnt][1]), s1, FLOAT_DELTA);
           cnt++;
@@ -220,23 +222,24 @@ public class IoTDBNewTsFileCompactionIT {
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
 
       // first file
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       statement.execute("FLUSH");
 
       // second file
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
       assertTrue(waitForMergeFinish());
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.newTsFileCompaction.d1")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          float s1 = resultSet.getFloat("root.sg1.d1.s1");
+          float s1 = resultSet.getFloat("root.newTsFileCompaction.d1.s1");
           assertEquals(Long.parseLong(retArray[cnt][0]), time);
           assertEquals(Float.parseFloat(retArray[cnt][1]), s1, FLOAT_DELTA);
           cnt++;
@@ -277,26 +280,27 @@ public class IoTDBNewTsFileCompactionIT {
 
       // first file
       // one chunk with two pages
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       // another chunk with two pages
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(4, 4)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(4, 4)");
       statement.execute("FLUSH");
 
       // second file
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(5, 5)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(5, 5)");
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
       assertTrue(waitForMergeFinish());
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.newTsFileCompaction.d1")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          float s1 = resultSet.getFloat("root.sg1.d1.s1");
+          float s1 = resultSet.getFloat("root.newTsFileCompaction.d1.s1");
           assertEquals(Long.parseLong(retArray[cnt][0]), time);
           assertEquals(Float.parseFloat(retArray[cnt][1]), s1, FLOAT_DELTA);
           cnt++;
@@ -334,24 +338,25 @@ public class IoTDBNewTsFileCompactionIT {
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
 
       // first file
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
       statement.execute("FLUSH");
 
       // second file
       // two pages for one chunk
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
       assertTrue(waitForMergeFinish());
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.newTsFileCompaction.d1")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          float s1 = resultSet.getFloat("root.sg1.d1.s1");
+          float s1 = resultSet.getFloat("root.newTsFileCompaction.d1.s1");
           assertEquals(Long.parseLong(retArray[cnt][0]), time);
           assertEquals(Float.parseFloat(retArray[cnt][1]), s1, FLOAT_DELTA);
           cnt++;
@@ -391,15 +396,15 @@ public class IoTDBNewTsFileCompactionIT {
 
       // first file
       // two chunks
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       statement.execute("FLUSH");
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
       // second file
       // two pages for one chunk
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(4, 4)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(4, 4)");
 
       statement.execute("FLUSH");
 
@@ -407,11 +412,12 @@ public class IoTDBNewTsFileCompactionIT {
       assertTrue(waitForMergeFinish());
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.newTsFileCompaction.d1")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          float s1 = resultSet.getFloat("root.sg1.d1.s1");
+          float s1 = resultSet.getFloat("root.newTsFileCompaction.d1.s1");
           assertEquals(Long.parseLong(retArray[cnt][0]), time);
           assertEquals(Float.parseFloat(retArray[cnt][1]), s1, FLOAT_DELTA);
           cnt++;
@@ -450,24 +456,25 @@ public class IoTDBNewTsFileCompactionIT {
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
 
       // first file
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       statement.execute("FLUSH");
 
       // second file
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(4, 4)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(4, 4)");
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
       assertTrue(waitForMergeFinish());
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.newTsFileCompaction.d1")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          float s1 = resultSet.getFloat("root.sg1.d1.s1");
+          float s1 = resultSet.getFloat("root.newTsFileCompaction.d1.s1");
           assertEquals(Long.parseLong(retArray[cnt][0]), time);
           assertEquals(Float.parseFloat(retArray[cnt][1]), s1, FLOAT_DELTA);
           cnt++;
@@ -509,28 +516,29 @@ public class IoTDBNewTsFileCompactionIT {
 
       // first file
       // one chunk with two pages
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       // another chunk with two pages
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(4, 4)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(4, 4)");
       statement.execute("FLUSH");
 
       // second file
       // two pages for one chunk
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(5, 5)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(6, 6)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(5, 5)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(6, 6)");
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
       assertTrue(waitForMergeFinish());
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.newTsFileCompaction.d1")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          float s1 = resultSet.getFloat("root.sg1.d1.s1");
+          float s1 = resultSet.getFloat("root.newTsFileCompaction.d1.s1");
           assertEquals(Long.parseLong(retArray[cnt][0]), time);
           assertEquals(Float.parseFloat(retArray[cnt][1]), s1, FLOAT_DELTA);
           cnt++;
@@ -568,25 +576,26 @@ public class IoTDBNewTsFileCompactionIT {
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
 
       // first file
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
       statement.execute("FLUSH");
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(1);
       // second file
       // two pages for one chunk
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
       assertTrue(waitForMergeFinish());
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.newTsFileCompaction.d1")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          float s1 = resultSet.getFloat("root.sg1.d1.s1");
+          float s1 = resultSet.getFloat("root.newTsFileCompaction.d1.s1");
           assertEquals(Long.parseLong(retArray[cnt][0]), time);
           assertEquals(Float.parseFloat(retArray[cnt][1]), s1, FLOAT_DELTA);
           cnt++;
@@ -626,25 +635,26 @@ public class IoTDBNewTsFileCompactionIT {
 
       // first file
       // two chunks
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       statement.execute("FLUSH");
 
       // second file
       // two pages for one chunk
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(4, 4)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(4, 4)");
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
       assertTrue(waitForMergeFinish());
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.newTsFileCompaction.d1")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          float s1 = resultSet.getFloat("root.sg1.d1.s1");
+          float s1 = resultSet.getFloat("root.newTsFileCompaction.d1.s1");
           assertEquals(Long.parseLong(retArray[cnt][0]), time);
           assertEquals(Float.parseFloat(retArray[cnt][1]), s1, FLOAT_DELTA);
           cnt++;
@@ -653,9 +663,10 @@ public class IoTDBNewTsFileCompactionIT {
       assertEquals(retArray.length, cnt);
 
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT count(s1) FROM root.sg1.d1 where time < 4")) {
+          statement.executeQuery(
+              "SELECT count(s1) FROM root.newTsFileCompaction.d1 where time < 4")) {
         assertTrue(resultSet.next());
-        assertEquals(3L, resultSet.getLong("count(root.sg1.d1.s1)"));
+        assertEquals(3L, resultSet.getLong("count(root.newTsFileCompaction.d1.s1)"));
       }
     } catch (StorageEngineException | InterruptedException e) {
       e.printStackTrace();
@@ -688,25 +699,26 @@ public class IoTDBNewTsFileCompactionIT {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
       // first file
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       statement.execute("FLUSH");
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(1);
       // second file
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(4, 4)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(4, 4)");
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
       assertTrue(waitForMergeFinish());
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.newTsFileCompaction.d1")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          float s1 = resultSet.getFloat("root.sg1.d1.s1");
+          float s1 = resultSet.getFloat("root.newTsFileCompaction.d1.s1");
           assertEquals(Long.parseLong(retArray[cnt][0]), time);
           assertEquals(Float.parseFloat(retArray[cnt][1]), s1, FLOAT_DELTA);
           cnt++;
@@ -747,29 +759,30 @@ public class IoTDBNewTsFileCompactionIT {
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
       // first file
       // one chunk with two pages
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       // another chunk with two pages
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(4, 4)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(4, 4)");
       statement.execute("FLUSH");
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(1);
       // second file
       // two pages for one chunk
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(5, 5)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(6, 6)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(5, 5)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(6, 6)");
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
       assertTrue(waitForMergeFinish());
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.newTsFileCompaction.d1")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          float s1 = resultSet.getFloat("root.sg1.d1.s1");
+          float s1 = resultSet.getFloat("root.newTsFileCompaction.d1.s1");
           assertEquals(Long.parseLong(retArray[cnt][0]), time);
           assertEquals(Float.parseFloat(retArray[cnt][1]), s1, FLOAT_DELTA);
           cnt++;
@@ -809,28 +822,29 @@ public class IoTDBNewTsFileCompactionIT {
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
 
       // first file
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
       statement.execute("FLUSH");
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
       // second file
       // one chunk with two pages
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
       // another chunk with two pages
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(4, 4)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(5, 5)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(4, 4)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(5, 5)");
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
       assertTrue(waitForMergeFinish());
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.newTsFileCompaction.d1")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          float s1 = resultSet.getFloat("root.sg1.d1.s1");
+          float s1 = resultSet.getFloat("root.newTsFileCompaction.d1.s1");
           assertEquals(Long.parseLong(retArray[cnt][0]), time);
           assertEquals(Float.parseFloat(retArray[cnt][1]), s1, FLOAT_DELTA);
           cnt++;
@@ -872,29 +886,30 @@ public class IoTDBNewTsFileCompactionIT {
 
       // first file
       // two chunks
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       statement.execute("FLUSH");
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
       // second file
       // one chunk with two pages
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(4, 4)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(4, 4)");
       // another chunk with two pages
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(5, 5)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(6, 6)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(5, 5)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(6, 6)");
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
       assertTrue(waitForMergeFinish());
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.newTsFileCompaction.d1")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          float s1 = resultSet.getFloat("root.sg1.d1.s1");
+          float s1 = resultSet.getFloat("root.newTsFileCompaction.d1.s1");
           assertEquals(Long.parseLong(retArray[cnt][0]), time);
           assertEquals(Float.parseFloat(retArray[cnt][1]), s1, FLOAT_DELTA);
           cnt++;
@@ -936,29 +951,30 @@ public class IoTDBNewTsFileCompactionIT {
 
       // first file
       // two pages for one chunk
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       statement.execute("FLUSH");
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
       // second file
       // one chunk with two pages
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(4, 4)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(4, 4)");
       // another chunk with two pages
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(5, 5)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(6, 6)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(5, 5)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(6, 6)");
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
       assertTrue(waitForMergeFinish());
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.newTsFileCompaction.d1")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          float s1 = resultSet.getFloat("root.sg1.d1.s1");
+          float s1 = resultSet.getFloat("root.newTsFileCompaction.d1.s1");
           assertEquals(Long.parseLong(retArray[cnt][0]), time);
           assertEquals(Float.parseFloat(retArray[cnt][1]), s1, FLOAT_DELTA);
           cnt++;
@@ -1001,31 +1017,32 @@ public class IoTDBNewTsFileCompactionIT {
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
       // first file
       // one chunk with two pages
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       // another chunk with two pages
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(4, 4)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(4, 4)");
       statement.execute("FLUSH");
 
       // second file
       // one chunk with two pages
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(5, 5)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(6, 6)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(5, 5)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(6, 6)");
       // another chunk with two pages
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(7, 7)");
-      statement.execute("INSERT INTO root.sg1.d1(time,s1) values(8, 8)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(7, 7)");
+      statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(8, 8)");
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
       assertTrue(waitForMergeFinish());
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.newTsFileCompaction.d1")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
-          float s1 = resultSet.getFloat("root.sg1.d1.s1");
+          float s1 = resultSet.getFloat("root.newTsFileCompaction.d1.s1");
           assertEquals(Long.parseLong(retArray[cnt][0]), time);
           assertEquals(Float.parseFloat(retArray[cnt][1]), s1, FLOAT_DELTA);
           cnt++;

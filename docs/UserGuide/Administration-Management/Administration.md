@@ -108,6 +108,27 @@ IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, tr
 Msg: The statement is executed successfully.
 ```
 
+### Revoker User Privilege
+
+After granting user privileges, we could use `REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>` to revoke the granted user privileges. For example:
+
+```
+REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
+REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
+INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
+```
+
+The execution result is as follows:
+
+```
+REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
+Msg: The statement is executed successfully.
+REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
+Msg: The statement is executed successfully.
+INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
+Msg: 602: No permissions for this operation INSERT
+```
+
 ### SQL Statements
 
 Here are all related SQL statements:

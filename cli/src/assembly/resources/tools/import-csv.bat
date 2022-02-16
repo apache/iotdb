@@ -42,12 +42,13 @@ set CLASSPATH=%IOTDB_HOME%\lib\*
 REM -----------------------------------------------------------------------------
 
 "%JAVA_HOME%\bin\java" -DIOTDB_HOME=%IOTDB_HOME% %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %*
-
+set ret_code=%ERRORLEVEL%
 goto finally
 
 
 :err
 echo JAVA_HOME environment variable must be set!
+set ret_code=1
 pause
 
 
@@ -55,3 +56,5 @@ pause
 :finally
 
 ENDLOCAL
+
+EXIT %ret_code%

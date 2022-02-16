@@ -42,7 +42,7 @@ public class RewriteCrossSpaceCompactionLogAnalyzer {
   private boolean isSeq = false;
   private boolean isFirstMagicStringExisted = false;
 
-  boolean isAllTargetFilesExisted = false;
+  boolean isEndMagicStringExisted = false;
 
   public RewriteCrossSpaceCompactionLogAnalyzer(File logFile) {
     this.logFile = logFile;
@@ -61,7 +61,7 @@ public class RewriteCrossSpaceCompactionLogAnalyzer {
             if (magicCount == 0) {
               isFirstMagicStringExisted = true;
             } else {
-              isAllTargetFilesExisted = true;
+              isEndMagicStringExisted = true;
             }
             magicCount++;
             break;
@@ -100,8 +100,8 @@ public class RewriteCrossSpaceCompactionLogAnalyzer {
     return targetFileInfos;
   }
 
-  public boolean isAllTargetFilesExisted() {
-    return isAllTargetFilesExisted;
+  public boolean isEndMagicStringExisted() {
+    return isEndMagicStringExisted;
   }
 
   public boolean isFirstMagicStringExisted() {

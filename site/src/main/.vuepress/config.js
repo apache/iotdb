@@ -17,6 +17,11 @@
  */
 
 var config = {
+    plugins: [
+        ['@vuepress/plugin-html-redirect', {
+          countdown: 0,
+        }],
+      ],
     head: [
 		['link', { rel: 'icon', href: '/favicon.ico' }],
 		["meta", {name: "Description", content: "Apache IoTDB: Time Series Database for IoT"}],
@@ -90,7 +95,7 @@ var config = {
 				  },
 				  {
 					text: 'Design',
-					link: '/SystemDesign/Architecture/Architecture'
+					link: 'https://cwiki.apache.org/confluence/display/IOTDB/System+Design'
 				  },
 				  {
 					text: 'Download',
@@ -589,7 +594,8 @@ var config = {
 							['System-Tools/MLogParser-Tool','MLogParser Tool'],
 							['System-Tools/NodeTool','Node Tool'],
 							['System-Tools/Query-History-Visualization-Tool','Query History Visualization Tool'],
-							['System-Tools/Watermark-Tool','Watermark Tool']
+							['System-Tools/Watermark-Tool','Watermark Tool'],
+							['System-Tools/TsFile-Split-Tool','TsFile Split Tool']
 						]
 					},
 					{
@@ -679,7 +685,7 @@ var config = {
 					},
 					{
 						title: 'Syntax Conventions',
-						sidebarDepth: 1,
+						sidebarDepth: 2,
 						children: [
 							['Reference/Syntax-Conventions','Syntax Conventions'],
 						]
@@ -704,6 +710,7 @@ var config = {
 							['Operate-Metadata/Storage-Group','Storage Group'],
 							['Operate-Metadata/Node','Node'],
 							['Operate-Metadata/Timeseries','Timeseries'],
+							['Operate-Metadata/Template','Schema Template'],
 							['Operate-Metadata/TTL','TTL'],
 							['Operate-Metadata/Auto-Create-MetaData','Auto Create Metadata']
 						]
@@ -863,6 +870,7 @@ var config = {
 							['Operate-Metadata/Storage-Group','Storage Group'],
 							['Operate-Metadata/Node','Node'],
 							['Operate-Metadata/Timeseries','Timeseries'],
+							['Operate-Metadata/Template','Schema Template'],
 							['Operate-Metadata/TTL','TTL'],
 							['Operate-Metadata/Auto-Create-MetaData','Auto Create Metadata']
 						]
@@ -958,89 +966,6 @@ var config = {
 						]
 					},
 				],
-				'/SystemDesign/': [
-					{
-						title: 'System design',
-						collapsable: false,
-					},
-					{
-						title: 'Architecture',
-						children: [
-							['Architecture/Architecture','Architecture']
-						]
-					},
-					{
-						title: 'TsFile',
-						children: [
-							['TsFile/TsFile','TsFile'],
-							['TsFile/Format','Format'],
-							['TsFile/Write','Write'],
-							['TsFile/Read','Read']
-						]
-					},
-					{
-						title: 'QueryEngine',
-						children: [
-							['QueryEngine/QueryEngine','QueryEngine'],
-							['QueryEngine/Planner','Planner'],
-							['QueryEngine/PlanExecutor','PlanExecutor'],
-							['QueryEngine/ResultSetConstruction','ResultSetConstruction']
-						]
-					},
-					{
-						title: 'SchemaManager',
-						children: [
-							['SchemaManager/SchemaManager','SchemaManager'],
-						]
-					},
-					{
-						title: 'StorageEngine',
-						children: [
-							['StorageEngine/StorageEngine','StorageEngine'],
-							['StorageEngine/WAL','WAL'],
-							['StorageEngine/FlushManager','FlushManager'],
-							['StorageEngine/MergeManager','MergeManager'],
-							['StorageEngine/DataPartition','DataPartition'],
-							['StorageEngine/DataManipulation','DataManipulation'],
-							['StorageEngine/Recover','Recover']
-						]
-					},
-					{
-						title: 'DataQuery',
-						children: [
-							['DataQuery/DataQuery','DataQuery'],
-							['DataQuery/QueryFundamentals','QueryFundamentals'],
-							['DataQuery/SeriesReader','SeriesReader'],
-							['DataQuery/RawDataQuery','RawDataQuery'],
-							['DataQuery/AggregationQuery','AggregationQuery'],
-							['DataQuery/GroupByQuery','GroupByQuery'],
-							['DataQuery/LastQuery','LastQuery'],
-							['DataQuery/AlignByDeviceQuery','AlignByDeviceQuery'],
-							['DataQuery/FillFunction','FillFunction'],
-							['DataQuery/GroupByFillQuery', 'GroupByFillQuery']
-						]
-					},
-					{
-						title: 'Tools',
-						children: [
-							['Tools/Sync','Sync']
-						]
-					},
-					{
-						title: 'Connector',
-						children: [
-							['Connector/Hive-TsFile','Hive-TsFile'],
-							['Connector/Spark-TsFile','Spark-TsFile'],
-							['Connector/Spark-IOTDB','Spark-IOTDB']
-						]
-					},
-					{
-						title: 'Client',
-						children: [
-							['Client/RPC','RPC']
-						]
-					},
-				],
 			}
 		  },
 		  '/zh/': {
@@ -1075,7 +1000,7 @@ var config = {
 				  },
 				  	{
 					text: '系统设计',
-					link: '/zh/SystemDesign/Architecture/Architecture'
+					link: 'https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=177051872'
 				  },
 				  {
 					text: '下载',
@@ -1562,6 +1487,7 @@ var config = {
 							['System-Tools/NodeTool','节点工具'],
 							['System-Tools/Query-History-Visualization-Tool','查询历史可视化工具'],
 							['System-Tools/Watermark-Tool','水印工具'],
+							['System-Tools/TsFile-Split-Tool','TsFile 拆分工具']
 						]
 					},
 					{
@@ -1670,6 +1596,7 @@ var config = {
 							['Operate-Metadata/Storage-Group','存储组操作'],
 							['Operate-Metadata/Node','节点操作'],
 							['Operate-Metadata/Timeseries','时间序列操作'],
+							['Operate-Metadata/Template','元数据模板'],
 							['Operate-Metadata/TTL','TTL'],
 							['Operate-Metadata/Auto-Create-MetaData','自动创建元数据']
 						]
@@ -1831,6 +1758,7 @@ var config = {
 							['Operate-Metadata/Storage-Group','存储组操作'],
 							['Operate-Metadata/Node','节点操作'],
 							['Operate-Metadata/Timeseries','时间序列操作'],
+							['Operate-Metadata/Template','元数据模板'],
 							['Operate-Metadata/TTL','TTL'],
 							['Operate-Metadata/Auto-Create-MetaData','自动创建元数据']
 						]
@@ -1925,92 +1853,6 @@ var config = {
 							['Reference/TSDB-Comparison','时间序列数据库比较']
 						]
 					}
-				],
-				'/zh/SystemDesign/': [
-					{
-						title: '系统设计',
-						collapsable: false,
-					},
-					{
-						title: '应用概览',
-						children: [
-							['Architecture/Architecture','应用概览']
-						]
-					},
-					{
-						title: 'TsFile',
-						children: [
-							['TsFile/TsFile','TsFile'],
-							['TsFile/Format','格式'],
-							['TsFile/Write','写流程'],
-							['TsFile/Read','读流程']
-						]
-					},
-					{
-						title: '查询引擎',
-						children: [
-							['QueryEngine/QueryEngine','查询引擎'],
-							['QueryEngine/Planner','执行计划生成器'],
-							['QueryEngine/PlanExecutor','计划执行器'],
-							['QueryEngine/ResultSetConstruction','结果集构造']
-						]
-					},
-					{
-						title: '元数据管理',
-						children: [
-							['SchemaManager/SchemaManager','元数据管理']
-						]
-					},
-					{
-						title: '存储引擎',
-						children: [
-							['StorageEngine/FileLists','磁盘文件汇总'],
-							['StorageEngine/StorageEngine','存储引擎'],
-							['StorageEngine/WAL','写前日志'],
-							['StorageEngine/FlushManager','FlushManager'],
-							['StorageEngine/MergeManager','文件合并机制'],
-							['StorageEngine/DataPartition','数据分区'],
-							['StorageEngine/DataManipulation','数据增删改'],
-							['StorageEngine/Recover','重启恢复'],
-							['StorageEngine/Compaction','文件合并']
-						]
-					},
-					{
-						title: '数据查询',
-						children: [
-							['DataQuery/DataQuery','数据查询'],
-							['DataQuery/QueryFundamentals','查询基础介绍'],
-							['DataQuery/SeriesReader','查询基础组件'],
-							['DataQuery/RawDataQuery','原始数据查询'],
-							['DataQuery/AggregationQuery','聚合查询'],
-							['DataQuery/GroupByQuery','降采样查询'],
-							['DataQuery/LastQuery','最近时间戳 Last 查询'],
-							['DataQuery/AlignByDeviceQuery','按设备对齐查询'],
-							['DataQuery/FillFunction','空值填充'],
-							['DataQuery/GroupByFillQuery', '降采样补空值查询'],
-							['DataQuery/OrderByTimeQuery', '按时间倒序查询']
-						]
-					},
-					{
-						title: '工具',
-						children: [
-							['Tools/Sync','同步工具']
-						]
-					},
-					{
-						title: '连接器',
-						children: [
-							['Connector/Hive-TsFile','Hive-TsFile'],
-							['Connector/Spark-TsFile','Spark-TsFile'],
-							['Connector/Spark-IOTDB','Spark-IOTDB']
-						]
-					},
-					{
-						title: '客户端',
-						children: [
-							['Client/RPC','RPC']
-						]
-					},
 				],
 			}
 		  }

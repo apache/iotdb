@@ -481,6 +481,24 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 100000 |
 |Effective|After restarting system|
 
+* mlog\_buffer\_size
+
+|Name| mlog\_buffer\_size |
+|:---:|:---|
+|Description| size of log buffer in each metadata operation plan(in byte) |
+|Type|Int32|
+|Default| 1048576 |
+|Effective|After restart system|
+
+* force\_mlog\_period\_in\_ms
+
+|Name| force\_mlog\_period\_in\_ms |
+|:---:|:---|
+|Description| The cycle when metadata log is periodically forced to be written to disk(in milliseconds). If force_mlog_period_in_ms = 0 it means force metadata log to be written to disk after each refreshment|
+|Type| Int64 |
+|Default| 0 |
+|Effective|After restart system|
+
 * flush\_wal\_threshold
 
 |Name| flush\_wal\_threshold |
@@ -832,15 +850,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 30 |
 |Effective|After restart system|
 
-* max\_open\_file\_num\_in\_cross\_space\_compaction
-
-|Name| max\_open\_file\_num\_in\_cross\_space\_compaction |
-|:---:|:---|
-|Description| Max open file num in a cross compaction |
-|Type| Int32 |
-|Default| 100 |
-|Effective|After restart system|
-
 * cross\_compaction\_file\_selection\_time\_budget
 
 |Name| cross\_compaction\_file\_selection\_time\_budget |
@@ -892,7 +901,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| The write rate of all compaction tasks in MB/s |
 |Type| Int32 |
-|Default| 8 |
+|Default| 30 |
 |Effective|After restart system|
 
 ### Insertion
@@ -1131,4 +1140,3 @@ sbin\start-server.bat printgc
 
 GC log is stored at `IOTDB_HOME/logs/gc.log`.
 There will be at most 10 gc.log.* files and each one can reach to 10MB.
-

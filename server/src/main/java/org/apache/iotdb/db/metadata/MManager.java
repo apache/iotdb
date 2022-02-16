@@ -263,6 +263,17 @@ public class MManager {
           MTREE_SNAPSHOT_THREAD_CHECK_TIME,
           TimeUnit.SECONDS);
     }
+
+    if (config.getSyncMlogPeriodInMs() != 0) {
+      timedForceMLogThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
+
+      timedForceMLogThread.scheduleAtFixedRate(
+          this::forceMlog,
+          config.getSyncMlogPeriodInMs(),
+          config.getSyncMlogPeriodInMs(),
+          TimeUnit.MILLISECONDS);
+    }
   }
 
   // Because the writer will be used later and should not be closed here.
@@ -345,6 +356,14 @@ public class MManager {
             },
             Tag.NAME.toString(),
             "storageGroup");
+  }
+
+  private void forceMlog() {
+    try {
+      logWriter.force();
+    } catch (IOException e) {
+      logger.error("Cannot force mlog to the storage device", e);
+    }
   }
 
   /** @return line number of the logFile */
@@ -589,14 +608,16 @@ public class MManager {
         // the cached mNode may be replaced by new entityMNode in mtree
         mNodeCache.invalidate(path.getDevicePath());
 
-        // update tag index
-        if (offset != -1) {
-          // offset != -1 means the timeseries has already been created and now system is recovering
-          tagManager.recoverIndex(offset, leafMNode);
-        } else if (plan.getTags() != null) {
-          // tag key, tag value
-          tagManager.addIndex(plan.getTags(), leafMNode);
-        }
+      // update tag index
+
+      if (offset != -1 && isRecovering) {
+        // the timeseries has already been created and now system is recovering, using the tag info
+        // in tagFile to recover index directly
+        tagManager.recoverIndex(offset, leafMNode);
+      } else if (plan.getTags() != null) {
+        // tag key, tag value
+        tagManager.addIndex(plan.getTags(), leafMNode);
+      }
 
         // update statistics and schemaDataTypeNumMap
         totalSeriesNumber.addAndGet(1);

@@ -2214,6 +2214,14 @@ public abstract class MManagerBasicTestCase {
     manager.getSeriesSchemasAndReadLockDevice(insertPlan);
     assertTrue(manager.isPathExist(deviceId.concatNode("\"a+b\"")));
 
+    insertPlan = getInsertPlan("\"a.b\"");
+    manager.getSeriesSchemasAndReadLockDevice(insertPlan);
+    assertTrue(manager.isPathExist(deviceId.concatNode("\"a.b\"")));
+
+    insertPlan = getInsertPlan("\"a“（Φ）”b\"");
+    manager.getSeriesSchemasAndReadLockDevice(insertPlan);
+    assertTrue(manager.isPathExist(deviceId.concatNode("\"a“（Φ）”b\"")));
+
     String[] illegalMeasurementIds = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
     for (String measurementId : illegalMeasurementIds) {
       insertPlan = getInsertPlan(measurementId);
@@ -2382,5 +2390,38 @@ public abstract class MManagerBasicTestCase {
     assertEquals(1, results.size());
     resultTag = results.get(0).getTag();
     assertEquals("newValue", resultTag.get("description"));
+  }
+
+  @Test
+  public void testTagCreationViaMLogPlanDuringMetadataSync() throws Exception {
+    MManager manager = IoTDB.metaManager;
+
+    PartialPath path = new PartialPath("root.sg.d.s");
+    Map<String, String> tags = new HashMap<>();
+    tags.put("type", "test");
+    CreateTimeSeriesPlan plan =
+        new CreateTimeSeriesPlan(
+            path,
+            TSDataType.valueOf("INT32"),
+            TSEncoding.valueOf("RLE"),
+            compressionType,
+            null,
+            tags,
+            null,
+            null);
+    // mock that the plan has already been executed on sender and receiver will redo this plan
+    plan.setTagOffset(10);
+
+    manager.operation(plan);
+
+    ShowTimeSeriesPlan showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(new PartialPath("root.sg.d.s"), true, "type", "test", 0, 0, false);
+    List<ShowTimeSeriesResult> results =
+        manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+    assertEquals(1, results.size());
+    Map<String, String> resultTag = results.get(0).getTag();
+    assertEquals("test", resultTag.get("type"));
+
+    assertEquals(0, manager.getMeasurementMNode(path).getOffset());
   }
 }

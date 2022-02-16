@@ -207,19 +207,20 @@ Class MeasurementNode extends Node {
 }
 ```
 
-通过这种方式创建元数据模板的代码示例如下：
+通过上述类的实例描述模板时，Template 内应当仅能包含单层的 MeasurementNode，具体可以参见如下示例：
 
 ```java
 MeasurementNode nodeX = new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 MeasurementNode nodeY = new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 MeasurementNode nodeSpeed = new MeasurementNode("speed", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
 
-Template template = new Template("templateExample");
+// This is the template we suggest to implement
+Template flatTemplate = new Template("flatTemplate");
 template.addToTemplate(nodeX);
 template.addToTemplate(nodeY);
 template.addToTemplate(nodeSpeed);
 
-createSchemaTemplate(template);
+createSchemaTemplate(flatTemplate);
 ```
 
 * 在创建概念元数据模板以后，还可以通过以下接口增加或删除模板内的物理量。请注意，已经挂载的模板不能删除内部的物理量。
@@ -254,7 +255,7 @@ public void addUnalignedMeasurementsIntemplate(String templateName,
                                 TSEncoding[] encodings,
                                 CompressionType[] compressors);
 
-// 从指定模板中删除一个节点及其子树
+// 从指定模板中删除一个节点
 public void deleteNodeInTemplate(String templateName, String path);
 ```
 

@@ -38,6 +38,7 @@ public class IoTDBConstant {
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
+  public static final String COMPACTION_LOGGER_NAME = "COMPACTION";
 
   public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
 
@@ -106,6 +107,8 @@ public class IoTDBConstant {
   public static final String COLUMN_CONTINUOUS_QUERY_BOUNDARY = "boundary";
   public static final String COLUMN_CONTINUOUS_QUERY_TARGET_PATH = "target path";
   public static final String COLUMN_CONTINUOUS_QUERY_QUERY_SQL = "query sql";
+
+  public static final String COLUMN_SCHEMA_TEMPLATE = "template name";
 
   public static final String FUNCTION_TYPE_NATIVE = "native";
   public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";

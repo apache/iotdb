@@ -2052,6 +2052,15 @@ public class Session {
   /**
    * Construct Template at session and create it at server.
    *
+   * <p>The template instance constructed within session is SUGGESTED to be a flat measurement
+   * template, which has no internal nodes inside a template.
+   *
+   * <p>For example, template(s1, s2, s3) is a flat measurement template, while template2(GPS.x,
+   * GPS.y, s1) is not.
+   *
+   * <p>Tree-structured template, which is contrary to flat measurement template, may not be
+   * supported in further version of IoTDB
+   *
    * @see Template
    */
   public void createSchemaTemplate(Template template)

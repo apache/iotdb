@@ -47,14 +47,15 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.BOOLEAN;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
@@ -85,6 +86,8 @@ public class ImportCsv extends AbstractCsvTool {
 
   private static String timeColumn = "Time";
   private static String deviceColumn = "Device";
+
+  private static final int BATCH_SIZE = 10000;
 
   /**
    * create the commandline options.
@@ -167,24 +170,24 @@ public class ImportCsv extends AbstractCsvTool {
     HelpFormatter hf = new HelpFormatter();
     hf.setOptionComparator(null);
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
-    CommandLine commandLine;
+    CommandLine commandLine = null;
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
       System.out.println("Too few params input, please check the following hint.");
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-      return;
+      System.exit(CODE_ERROR);
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (org.apache.commons.cli.ParseException e) {
       System.out.println("Parse error: " + e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-      return;
+      System.exit(CODE_ERROR);
     }
     if (commandLine.hasOption(HELP_ARGS)) {
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-      return;
+      System.exit(CODE_ERROR);
     }
 
     try {
@@ -192,16 +195,20 @@ public class ImportCsv extends AbstractCsvTool {
       String filename = commandLine.getOptionValue(FILE_ARGS);
       if (filename == null) {
         hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-        return;
+        System.exit(CODE_ERROR);
       }
       parseSpecialParams(commandLine);
     } catch (ArgsErrorException e) {
       System.out.println("Args error: " + e.getMessage());
+      System.exit(CODE_ERROR);
     } catch (Exception e) {
       System.out.println("Encounter an error, because: " + e.getMessage());
+      System.exit(CODE_ERROR);
     }
 
-    importFromTargetPath(host, Integer.valueOf(port), username, password, targetPath, timeZoneID);
+    System.exit(
+        importFromTargetPath(
+            host, Integer.parseInt(port), username, password, targetPath, timeZoneID));
   }
 
   /**
@@ -214,13 +221,14 @@ public class ImportCsv extends AbstractCsvTool {
    * @param password
    * @param targetPath a CSV file or a directory including CSV files
    * @param timeZone
+   * @return the status code
    * @throws IoTDBConnectionException
    */
-  public static void importFromTargetPath(
+  public static int importFromTargetPath(
       String host, int port, String username, String password, String targetPath, String timeZone)
       throws IoTDBConnectionException {
     try {
-      session = new Session(host, Integer.valueOf(port), username, password, false);
+      session = new Session(host, port, username, password, false);
       session.open(false);
       timeZoneID = timeZone;
       setTimeZone();
@@ -231,7 +239,7 @@ public class ImportCsv extends AbstractCsvTool {
       } else if (file.isDirectory()) {
         File[] files = file.listFiles();
         if (files == null) {
-          return;
+          return CODE_OK;
         }
 
         for (File subFile : files) {
@@ -241,14 +249,17 @@ public class ImportCsv extends AbstractCsvTool {
         }
       } else {
         System.out.println("File not found!");
+        return CODE_ERROR;
       }
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       System.out.println("Encounter an error when connecting to server, because " + e.getMessage());
+      return CODE_ERROR;
     } finally {
       if (session != null) {
         session.close();
       }
     }
+    return CODE_OK;
   }
 
   /**
@@ -261,17 +272,13 @@ public class ImportCsv extends AbstractCsvTool {
       try {
         CSVParser csvRecords = readCsvFile(file.getAbsolutePath());
         List<String> headerNames = csvRecords.getHeaderNames();
-        List<CSVRecord> records = csvRecords.getRecords();
+        Stream<CSVRecord> records = csvRecords.stream();
         if (headerNames.isEmpty()) {
           System.out.println("Empty file!");
           return;
         }
         if (!timeColumn.equalsIgnoreCase(headerNames.get(0))) {
           System.out.println("No headers!");
-          return;
-        }
-        if (records.isEmpty()) {
-          System.out.println("No records!");
           return;
         }
         String failedFilePath = null;
@@ -301,7 +308,7 @@ public class ImportCsv extends AbstractCsvTool {
    * @param failedFilePath the directory to save the failed files
    */
   private static void writeDataAlignedByTime(
-      List<String> headerNames, List<CSVRecord> records, String failedFilePath) {
+      List<String> headerNames, Stream<CSVRecord> records, String failedFilePath) {
     HashMap<String, List<String>> deviceAndMeasurementNames = new HashMap<>();
     HashMap<String, TSDataType> headerTypeMap = new HashMap<>();
     HashMap<String, String> headerNameMap = new HashMap<>();
@@ -315,100 +322,100 @@ public class ImportCsv extends AbstractCsvTool {
       e.printStackTrace();
     }
 
-    SimpleDateFormat timeFormatter = formatterInit(records.get(0).get(timeColumn));
+    List<String> deviceIds = new ArrayList<>();
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<TSDataType>> typesList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+
+    AtomicReference<SimpleDateFormat> timeFormatter = new AtomicReference<>(null);
+    AtomicReference<Boolean> hasStarted = new AtomicReference<>(false);
 
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
 
-    for (Map.Entry<String, List<String>> entry : deviceAndMeasurementNames.entrySet()) {
-      String deviceId = entry.getKey();
-      List<Long> times = new ArrayList<>();
-      List<String> measurementNames = entry.getValue();
-      List<List<TSDataType>> typesList = new ArrayList<>();
-      List<List<Object>> valuesList = new ArrayList<>();
-      List<List<String>> measurementsList = new ArrayList<>();
+    records.forEach(
+        record -> {
+          if (!hasStarted.get()) {
+            hasStarted.set(true);
+            timeFormatter.set(formatterInit(record.get(0)));
+          } else if ((record.getRecordNumber() - 1) % BATCH_SIZE == 0) {
+            writeAndEmptyDataSet(deviceIds, times, typesList, valuesList, measurementsList, 3);
+          }
 
-      final int BATCH_SIZE = 1000;
-      AtomicInteger recordSize = new AtomicInteger();
-      records.stream()
-          .forEach(
-              record -> {
-                ArrayList<TSDataType> types = new ArrayList<>();
-                ArrayList<Object> values = new ArrayList<>();
-                ArrayList<String> measurements = new ArrayList<>();
-                AtomicReference<Boolean> isFail = new AtomicReference<>(false);
-                measurementNames.stream()
-                    .forEach(
-                        measurementName -> {
-                          String header = deviceId + "." + measurementName;
-                          String value = record.get(header);
-                          if (!"".equals(value)) {
-                            TSDataType type;
-                            if (!headerTypeMap.containsKey(headerNameMap.get(header))) {
-                              type = typeInfer(value);
-                              if (type != null) {
-                                headerTypeMap.put(header, type);
-                              } else {
-                                System.out.println(
-                                    String.format(
-                                        "Line '%s', column '%s': '%s' unknown type",
-                                        (records.indexOf(record) + 1), header, value));
-                                isFail.set(true);
-                              }
-                            }
-                            type = headerTypeMap.get(headerNameMap.get(header));
-                            if (type != null) {
-                              Object valueTransed = typeTrans(value, type);
-                              if (valueTransed == null) {
-                                isFail.set(true);
-                                System.out.println(
-                                    String.format(
-                                        "Line '%s', column '%s': '%s' can't convert to '%s'",
-                                        (records.indexOf(record) + 1), header, value, type));
-                              } else {
-                                measurements.add(
-                                    headerNameMap.get(header).replace(deviceId + '.', ""));
-                                types.add(type);
-                                values.add(valueTransed);
-                              }
-                            }
-                          }
-                        });
-                if (isFail.get()) {
-                  failedRecords.add(record.stream().collect(Collectors.toList()));
-                }
-                if (!measurements.isEmpty()) {
-                  try {
-                    if (timeFormatter == null) {
-                      try {
-                        times.add(Long.valueOf(record.get(timeColumn)));
-                      } catch (Exception e) {
-                        System.out.println(
-                            "Meet error when insert csv because the format of time is not supported");
-                        System.exit(0);
-                      }
-                    } else {
-                      times.add(timeFormatter.parse(record.get(timeColumn)).getTime());
-                    }
-                  } catch (ParseException e) {
-                    e.printStackTrace();
-                  }
-                  typesList.add(types);
-                  valuesList.add(values);
-                  measurementsList.add(measurements);
-                  recordSize.getAndIncrement();
-                  if (recordSize.get() >= BATCH_SIZE) {
-                    writeAndEmptyDataSet(
-                        deviceId, times, typesList, valuesList, measurementsList, 3);
-                    recordSize.set(0);
+          boolean isFail = false;
+
+          for (String deviceId : deviceAndMeasurementNames.keySet()) {
+            ArrayList<TSDataType> types = new ArrayList<>();
+            ArrayList<Object> values = new ArrayList<>();
+            ArrayList<String> measurements = new ArrayList<>();
+
+            List<String> measurementNames = deviceAndMeasurementNames.get(deviceId);
+            for (String measurement : measurementNames) {
+              String header = deviceId + "." + measurement;
+              String value = record.get(header);
+              if (!"".equals(value)) {
+                TSDataType type;
+                if (!headerTypeMap.containsKey(headerNameMap.get(header))) {
+                  type = typeInfer(value);
+                  if (type != null) {
+                    headerTypeMap.put(header, type);
+                  } else {
+                    System.out.printf(
+                        "Line '%s', column '%s': '%s' unknown type%n",
+                        record.getRecordNumber(), header, value);
+                    isFail = true;
                   }
                 }
-              });
-      writeAndEmptyDataSet(deviceId, times, typesList, valuesList, measurementsList, 3);
+                type = headerTypeMap.get(headerNameMap.get(header));
+                if (type != null) {
+                  Object valueTrans = typeTrans(value, type);
+                  if (valueTrans == null) {
+                    isFail = true;
+                    System.out.printf(
+                        "Line '%s', column '%s': '%s' can't convert to '%s'%n",
+                        record.getRecordNumber(), header, value, type);
+                  } else {
+                    measurements.add(headerNameMap.get(header).replace(deviceId + '.', ""));
+                    types.add(type);
+                    values.add(valueTrans);
+                  }
+                }
+              }
+            }
+            if (!measurements.isEmpty()) {
+              if (timeFormatter.get() == null) {
+                times.add(Long.valueOf(record.get(timeColumn)));
+              } else {
+                try {
+                  times.add(timeFormatter.get().parse(record.get(timeColumn)).getTime());
+                } catch (ParseException e) {
+                  System.out.println(
+                      "Meet error when insert csv because the format of time is not supported");
+                  System.exit(0);
+                }
+              }
+              deviceIds.add(deviceId);
+              typesList.add(types);
+              valuesList.add(values);
+              measurementsList.add(measurements);
+            }
+          }
+          if (isFail) {
+            failedRecords.add(record.stream().collect(Collectors.toList()));
+          }
+        });
+    if (!deviceIds.isEmpty()) {
+      writeAndEmptyDataSet(deviceIds, times, typesList, valuesList, measurementsList, 3);
     }
+
     if (!failedRecords.isEmpty()) {
       writeCsvFile(headerNames, failedRecords, failedFilePath);
     }
-    System.out.println("Import completely!");
+    if (hasStarted.get()) {
+      System.out.println("Import completely!");
+    } else {
+      System.out.println("No records!");
+    }
   }
 
   /**
@@ -419,115 +426,115 @@ public class ImportCsv extends AbstractCsvTool {
    * @param failedFilePath the directory to save the failed files
    */
   private static void writeDataAlignedByDevice(
-      List<String> headerNames, List<CSVRecord> records, String failedFilePath) {
+      List<String> headerNames, Stream<CSVRecord> records, String failedFilePath) {
     HashMap<String, TSDataType> headerTypeMap = new HashMap<>();
     HashMap<String, String> headerNameMap = new HashMap<>();
     parseHeaders(headerNames, null, headerTypeMap, headerNameMap);
-    Set<String> devices =
-        records.stream().map(record -> record.get(deviceColumn)).collect(Collectors.toSet());
-    String devicesStr = StringUtils.join(devices, ",");
-    try {
-      queryType(devicesStr, headerTypeMap, "Device");
-    } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
-    }
 
-    SimpleDateFormat timeFormatter = formatterInit(records.get(0).get(timeColumn));
-    Set<String> measurementNames = headerNameMap.keySet();
+    AtomicReference<SimpleDateFormat> timeFormatter = new AtomicReference<>(null);
+    AtomicReference<String> deviceName = new AtomicReference<>(null);
+
+    HashSet<String> typeQueriedDevice = new HashSet<>();
+
+    // the data that interface need
+    List<Long> times = new ArrayList<>();
+    List<List<TSDataType>> typesList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
 
-    devices.stream()
-        .forEach(
-            device -> {
-              List<Long> times = new ArrayList<>();
+    records.forEach(
+        record -> {
+          // only run in first record
+          if (deviceName.get() == null) {
+            deviceName.set(record.get(1));
+            timeFormatter.set(formatterInit(record.get(0)));
+          } else if (!Objects.equals(deviceName.get(), record.get(1))) {
+            // if device changed
+            writeAndEmptyDataSet(
+                deviceName.get(), times, typesList, valuesList, measurementsList, 3);
+            deviceName.set(record.get(1));
+          } else if (record.getRecordNumber() - 1 % BATCH_SIZE == 0 && times.size() != 0) {
+            // insert a batch
+            writeAndEmptyDataSet(
+                deviceName.get(), times, typesList, valuesList, measurementsList, 3);
+          }
 
-              List<List<TSDataType>> typesList = new ArrayList<>();
-              List<List<Object>> valuesList = new ArrayList<>();
-              List<List<String>> measurementsList = new ArrayList<>();
+          // the data of the record
+          ArrayList<TSDataType> types = new ArrayList<>();
+          ArrayList<Object> values = new ArrayList<>();
+          ArrayList<String> measurements = new ArrayList<>();
 
-              final int BATCH_SIZE = 1000;
-              AtomicInteger recordSize = new AtomicInteger();
-              records.stream()
-                  .filter(record -> record.get(deviceColumn).equals(device))
-                  .forEach(
-                      record -> {
-                        ArrayList<TSDataType> types = new ArrayList<>();
-                        ArrayList<Object> values = new ArrayList<>();
-                        ArrayList<String> measurements = new ArrayList<>();
+          AtomicReference<Boolean> isFail = new AtomicReference<>(false);
 
-                        AtomicReference<Boolean> isFail = new AtomicReference<>(false);
-
-                        measurementNames.stream()
-                            .forEach(
-                                measurement -> {
-                                  String value = record.get(measurement);
-                                  if (!"".equals(value)) {
-                                    TSDataType type;
-                                    if (!headerTypeMap.containsKey(
-                                        headerNameMap.get(measurement))) {
-                                      type = typeInfer(value);
-                                      if (type != null) {
-                                        headerTypeMap.put(measurement, type);
-                                      } else {
-                                        System.out.println(
-                                            String.format(
-                                                "Line '%s', column '%s': '%s' unknown type",
-                                                (records.indexOf(record) + 1), measurement, value));
-                                        isFail.set(true);
-                                      }
-                                    }
-                                    type = headerTypeMap.get(headerNameMap.get(measurement));
-                                    if (type != null) {
-                                      Object valueTransed = typeTrans(value, type);
-                                      if (valueTransed == null) {
-                                        isFail.set(true);
-                                        System.out.println(
-                                            String.format(
-                                                "Line '%s', column '%s': '%s' can't convert to '%s'",
-                                                (records.indexOf(record) + 1),
-                                                measurement,
-                                                value,
-                                                type));
-                                      } else {
-                                        values.add(valueTransed);
-                                        measurements.add(headerNameMap.get(measurement));
-                                        types.add(type);
-                                      }
-                                    }
-                                  }
-                                });
-                        if (isFail.get()) {
-                          failedRecords.add(record.stream().collect(Collectors.toList()));
-                        }
-                        if (!measurements.isEmpty()) {
-                          try {
-                            if (timeFormatter == null) {
-                              try {
-                                times.add(Long.valueOf(record.get(timeColumn)));
-                              } catch (Exception e) {
-                                System.out.println(
-                                    "Meet error when insert csv because the format of time is not supported");
-                                System.exit(0);
-                              }
-                            } else {
-                              times.add(timeFormatter.parse(record.get(timeColumn)).getTime());
-                            }
-                          } catch (ParseException e) {
-                            e.printStackTrace();
-                          }
-                          typesList.add(types);
-                          valuesList.add(values);
-                          measurementsList.add(measurements);
-                          recordSize.getAndIncrement();
-                          if (recordSize.get() >= BATCH_SIZE) {
-                            writeAndEmptyDataSet(
-                                device, times, typesList, valuesList, measurementsList, 3);
-                            recordSize.set(0);
-                          }
-                        }
-                      });
-              writeAndEmptyDataSet(device, times, typesList, valuesList, measurementsList, 3);
-            });
+          // read data from record
+          for (String measurement : headerNameMap.keySet()) {
+            String value = record.get(measurement);
+            if (!"".equals(value)) {
+              TSDataType type;
+              if (!headerTypeMap.containsKey(headerNameMap.get(measurement))) {
+                boolean hasResult = false;
+                // query the data type in iotdb
+                if (!typeQueriedDevice.contains(deviceName.get())) {
+                  try {
+                    hasResult = queryType(deviceName.get(), headerTypeMap, "Device");
+                    typeQueriedDevice.add(deviceName.get());
+                  } catch (IoTDBConnectionException e) {
+                    e.printStackTrace();
+                  }
+                }
+                if (!hasResult) {
+                  type = typeInfer(value);
+                  if (type != null) {
+                    headerTypeMap.put(measurement, type);
+                  } else {
+                    System.out.printf(
+                        "Line '%s', column '%s': '%s' unknown type%n",
+                        record.getRecordNumber(), measurement, value);
+                    isFail.set(true);
+                  }
+                }
+              }
+              type = headerTypeMap.get(headerNameMap.get(measurement));
+              if (type != null) {
+                Object valueTrans = typeTrans(value, type);
+                if (valueTrans == null) {
+                  isFail.set(true);
+                  System.out.printf(
+                      "Line '%s', column '%s': '%s' can't convert to '%s'%n",
+                      record.getRecordNumber(), headerNameMap.get(measurement), value, type);
+                } else {
+                  values.add(valueTrans);
+                  measurements.add(headerNameMap.get(measurement));
+                  types.add(type);
+                }
+              }
+            }
+          }
+          if (isFail.get()) {
+            failedRecords.add(record.stream().collect(Collectors.toList()));
+          }
+          if (!measurements.isEmpty()) {
+            if (timeFormatter.get() == null) {
+              times.add(Long.valueOf(record.get(timeColumn)));
+            } else {
+              try {
+                times.add(timeFormatter.get().parse(record.get(timeColumn)).getTime());
+              } catch (ParseException e) {
+                System.out.println(
+                    "Meet error when insert csv because the format of time is not supported");
+                System.exit(0);
+              }
+            }
+            typesList.add(types);
+            valuesList.add(values);
+            measurementsList.add(measurements);
+          }
+        });
+    if (times.size() != 0) {
+      writeAndEmptyDataSet(deviceName.get(), times, typesList, valuesList, measurementsList, 3);
+    }
     if (!failedRecords.isEmpty()) {
       writeCsvFile(headerNames, failedRecords, failedFilePath);
     }
@@ -549,19 +556,47 @@ public class ImportCsv extends AbstractCsvTool {
             device, times, measurementsList, typesList, valuesList);
       }
     } catch (IoTDBConnectionException e) {
-      try {
-        session.open();
-      } catch (IoTDBConnectionException ex) {
-        System.out.println("Meet error when insert csv because " + e.getMessage());
-      }
       if (retryTime > 0) {
+        try {
+          session.open();
+        } catch (IoTDBConnectionException ex) {
+          System.out.println("Meet error when insert csv because " + e.getMessage());
+        }
         writeAndEmptyDataSet(device, times, typesList, valuesList, measurementsList, --retryTime);
-      } else {
-        return;
       }
     } catch (StatementExecutionException e) {
       System.out.println("Meet error when insert csv because " + e.getMessage());
     } finally {
+      times.clear();
+      typesList.clear();
+      valuesList.clear();
+      measurementsList.clear();
+    }
+  }
+
+  private static void writeAndEmptyDataSet(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      List<List<String>> measurementsList,
+      int retryTime) {
+    try {
+      session.insertAlignedRecords(deviceIds, times, measurementsList, typesList, valuesList);
+    } catch (IoTDBConnectionException e) {
+      if (retryTime > 0) {
+        try {
+          session.open();
+        } catch (IoTDBConnectionException ex) {
+          System.out.println("Meet error when insert csv because " + e.getMessage());
+        }
+        writeAndEmptyDataSet(
+            deviceIds, times, typesList, valuesList, measurementsList, --retryTime);
+      }
+    } catch (StatementExecutionException e) {
+      System.out.println("Meet error when insert csv because " + e.getMessage());
+    } finally {
+      deviceIds.clear();
       times.clear();
       typesList.clear();
       valuesList.clear();
@@ -577,11 +612,13 @@ public class ImportCsv extends AbstractCsvTool {
    * @throws IOException
    */
   private static CSVParser readCsvFile(String path) throws IOException {
-    return CSVFormat.EXCEL
-        .withFirstRecordAsHeader()
-        .withQuote('`')
-        .withEscape('\\')
-        .withIgnoreEmptyLines()
+    return CSVFormat.Builder.create(CSVFormat.DEFAULT)
+        .setHeader()
+        .setSkipHeaderRecord(true)
+        .setQuote('`')
+        .setEscape('\\')
+        .setIgnoreEmptyLines(true)
+        .build()
         .parse(new InputStreamReader(new FileInputStream(path)));
   }
 
@@ -640,7 +677,7 @@ public class ImportCsv extends AbstractCsvTool {
    * @throws IoTDBConnectionException
    * @throws StatementExecutionException
    */
-  private static void queryType(
+  private static boolean queryType(
       String deviceNames, HashMap<String, TSDataType> headerTypeMap, String alignedType)
       throws IoTDBConnectionException {
     String sql = "select * from " + deviceNames + " limit 1";
@@ -650,18 +687,23 @@ public class ImportCsv extends AbstractCsvTool {
     } catch (StatementExecutionException e) {
       System.out.println(
           "Meet error when query the type of timeseries because the IoTDB v0.13 don't support that the path contains any purely digital path.");
-      return;
+      return false;
     }
     List<String> columnNames = sessionDataSet.getColumnNames();
     List<String> columnTypes = sessionDataSet.getColumnTypes();
-    for (int i = 1; i < columnNames.size(); i++) {
-      if (alignedType == "Time") {
-        headerTypeMap.put(columnNames.get(i), getType(columnTypes.get(i)));
-      } else if (alignedType == "Device") {
-        String[] split = columnNames.get(i).split("\\.");
-        String measurement = split[split.length - 1];
-        headerTypeMap.put(measurement, getType(columnTypes.get(i)));
+    if (columnNames.size() == 1) {
+      return false;
+    } else {
+      for (int i = 1; i < columnNames.size(); i++) {
+        if (Objects.equals(alignedType, "Time")) {
+          headerTypeMap.put(columnNames.get(i), getType(columnTypes.get(i)));
+        } else if (Objects.equals(alignedType, "Device")) {
+          String[] split = columnNames.get(i).split("\\.");
+          String measurement = split[split.length - 1];
+          headerTypeMap.put(measurement, getType(columnTypes.get(i)));
+        }
       }
+      return true;
     }
   }
 
@@ -682,7 +724,7 @@ public class ImportCsv extends AbstractCsvTool {
     for (String timeFormat : STRING_TIME_FORMAT) {
       SimpleDateFormat format = new SimpleDateFormat(timeFormat);
       try {
-        format.parse(time).getTime();
+        format.parse(time);
         return format;
       } catch (java.text.ParseException ignored) {
         // do nothing
@@ -724,10 +766,13 @@ public class ImportCsv extends AbstractCsvTool {
    * @return
    */
   private static TSDataType typeInfer(String value) {
-    if (value.contains("\"")) return TEXT;
-    else if (value.equals("true") || value.equals("false")) return BOOLEAN;
-    else if (value.equals("NaN")) return DOUBLE;
-    else if (!value.contains(".")) {
+    if (value.contains("\"")) {
+      return TEXT;
+    } else if (value.equals("true") || value.equals("false")) {
+      return BOOLEAN;
+    } else if (value.equals("NaN")) {
+      return DOUBLE;
+    } else if (!value.contains(".")) {
       try {
         Integer.valueOf(value);
         return INT32;
@@ -753,9 +798,10 @@ public class ImportCsv extends AbstractCsvTool {
     try {
       switch (type) {
         case TEXT:
-          if (value.startsWith("\"") && value.endsWith("\""))
+          if (value.startsWith("\"") && value.endsWith("\"")) {
             return value.substring(1, value.length() - 1);
-          else return null;
+          }
+          return null;
         case BOOLEAN:
           if (!"true".equals(value) && !"false".equals(value)) {
             return null;
