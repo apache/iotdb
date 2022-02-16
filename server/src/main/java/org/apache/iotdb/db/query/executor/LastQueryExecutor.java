@@ -227,7 +227,7 @@ public class LastQueryExecutor {
         // 1. the last value cache doesn't exist
         // 2. the value is not null
         // 3. last value cache is enabled
-        // 3. the filter is gt (greater than) or ge (greater than or equal to)
+        // 4. the filter is gt (greater than) or ge (greater than or equal to)
         if (!cachedLastPairs.get(i).left
             && cachedLastPairs.get(i).right.getValue() != null
             && CACHE_ENABLED
