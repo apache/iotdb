@@ -588,6 +588,7 @@ public class TSServiceImpl implements TSIService.Iface {
         if (status.getCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
           isAllSuccessful = false;
         }
+        result.add(status);
       }
     }
     addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
