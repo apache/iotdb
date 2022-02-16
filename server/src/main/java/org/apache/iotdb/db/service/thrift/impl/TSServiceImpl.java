@@ -157,7 +157,6 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNonQueryException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.tryCatchQueryException;
 
 /** Thrift RPC implementation at server side. */
 public class TSServiceImpl implements TSIService.Iface {
@@ -584,16 +583,10 @@ public class TSServiceImpl implements TSIService.Iface {
         }
       } catch (Exception e) {
         LOGGER.error("Error occurred when executing executeBatchStatement: ", e);
-        TSStatus status = tryCatchQueryException(e);
-        if (status != null) {
-          result.add(status);
+        TSStatus status =
+            onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT);
+        if (status.getCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
           isAllSuccessful = false;
-        } else {
-          result.add(
-              onNPEOrUnexpectedException(
-                  e,
-                  "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT,
-                  TSStatusCode.INTERNAL_SERVER_ERROR));
         }
       }
     }
