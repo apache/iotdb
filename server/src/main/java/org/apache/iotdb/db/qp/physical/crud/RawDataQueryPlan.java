@@ -23,7 +23,9 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,7 +55,26 @@ public class RawDataQueryPlan extends QueryPlan {
   }
 
   public void setExpression(IExpression expression) throws QueryProcessException {
+    setExpressionAndUpdateDeviceMeasurements(expression, true);
+  }
+
+  public void setExpressionAndUpdateDeviceMeasurements(IExpression expression, boolean update) {
     this.expression = expression;
+    if (update) {
+      updateDeviceMeasurementsUsingExpression(expression);
+    }
+  }
+
+  public void updateDeviceMeasurementsUsingExpression(IExpression expression) {
+    if (expression instanceof SingleSeriesExpression) {
+      Path path = ((SingleSeriesExpression) expression).getSeriesPath();
+      deviceToMeasurements
+          .computeIfAbsent(path.getDevice(), key -> new HashSet<>())
+          .add(path.getMeasurement());
+    } else if (expression instanceof IBinaryExpression) {
+      updateDeviceMeasurementsUsingExpression(((IBinaryExpression) expression).getLeft());
+      updateDeviceMeasurementsUsingExpression(((IBinaryExpression) expression).getRight());
+    }
   }
 
   public List<PartialPath> getDeduplicatedPaths() {
