@@ -33,7 +33,7 @@ select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <
 
 which means: Query and return the last data points of timeseries prefixPath.path.
 
-Only time filter with '>' or '>=' is supported in \<WhereClause\>. Any other filters given in the \<WhereClause\> will give an exception.
+Only time filter is supported in \<WhereClause\>. Any other filters given in the \<WhereClause\> will give an exception.
 
 The result will be returned in a four column table format.
 
