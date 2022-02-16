@@ -45,6 +45,8 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.operator.Gt;
+import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -221,11 +223,15 @@ public class LastQueryExecutor {
     for (int i = 0; i < cachedLastPairs.size(); i++) {
       if (cachedLastPairs.get(i).right == null) {
         cachedLastPairs.get(i).right = readerList.get(index++).readLastPoint();
-        // Update the cache only when the last value cache doesn't exist and the value to cache is
-        // not null.
+        // Update the cache only when,
+        // 1. the last value cache doesn't exist
+        // 2. the value is not null
+        // 3. last value cache is enabled
+        // 3. the filter is gt (greater than) or ge (greater than or equal to)
         if (!cachedLastPairs.get(i).left
             && cachedLastPairs.get(i).right.getValue() != null
-            && CACHE_ENABLED) {
+            && CACHE_ENABLED
+            && ((filter instanceof GtEq) || (filter instanceof Gt))) {
           cacheAccessors.get(i).write(cachedLastPairs.get(i).right);
           if (context.isDebug()) {
             DEBUG_LOGGER.info(
