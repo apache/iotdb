@@ -31,7 +31,7 @@ select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <
 
 其含义是：查询时间序列 prefixPath.path 中最近时间戳的数据。
 
-`whereClause` 中当前只支持时间过滤条件，任何其他过滤条件都将会返回异常。
+`whereClause` 中当前只支持时间过滤条件，任何其他过滤条件都将会返回异常。当缓存的最新点不满足过滤条件时，IoTDB 需要从存储中获取结果，此时性能将会有所下降。
 
 结果集为四列的结构：
 

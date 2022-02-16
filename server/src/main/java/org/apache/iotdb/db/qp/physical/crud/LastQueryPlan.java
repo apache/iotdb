@@ -81,7 +81,6 @@ public class LastQueryPlan extends RawDataQueryPlan {
     }
   }
 
-  // Only > and >= are supported in time filter
   private boolean isValidExpression(IExpression expression) {
     return expression instanceof GlobalTimeExpression;
   }

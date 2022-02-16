@@ -33,7 +33,7 @@ select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <
 
 which means: Query and return the last data points of timeseries prefixPath.path.
 
-Only time filter is supported in \<WhereClause\>. Any other filters given in the \<WhereClause\> will give an exception.
+Only time filter is supported in \<WhereClause\>. Any other filters given in the \<WhereClause\> will give an exception. When the cached most recent data point does not satisfy the criterion specified by the filter, IoTDB will have to get the result from the external storage, which may cause a decrease in performance.
 
 The result will be returned in a four column table format.
 
@@ -41,7 +41,7 @@ The result will be returned in a four column table format.
 | Time | timeseries | value | dataType |
 ```
 
-**Note:** The `value` colum will always return the value as `string` and thus also has `TSDataType.TEXT`. Therefore the colum `dataType` is returned also which contains the _real_ type how the value should be interpreted.
+**Note:** The `value` colum will always return the value as `string` and thus also has `TSDataType.TEXT`. Therefore, the column `dataType` is returned also which contains the _real_ type how the value should be interpreted.
 
 **Example 1:** get the last point of root.ln.wf01.wt01.status:
 
