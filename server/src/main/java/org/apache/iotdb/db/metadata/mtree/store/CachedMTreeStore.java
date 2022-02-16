@@ -215,6 +215,11 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
+  @Override
+  public void pin(IMNode node) {
+    pinMNodeInMemory(node);
+  }
+
   private void pinMNodeInMemory(IMNode node) {
     if (!cacheStrategy.isPinned(node)) {
       if (cacheStrategy.isCached(node)) {
@@ -231,6 +236,9 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public void unPin(IMNode node) {
+    if (!cacheStrategy.isCached(node)) {
+      return;
+    }
     readLock.lock();
     try {
       if (!cacheStrategy.isPinned(node)) {

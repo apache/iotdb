@@ -936,6 +936,7 @@ public class MManager {
     boolean shouldSetStorageGroup;
     try {
       node = mNodeCache.get(path);
+      mtree.pinMNode(node);
       return node;
     } catch (Exception e) {
       if (e.getCause() instanceof MetadataException) {
@@ -1483,7 +1484,7 @@ public class MManager {
    */
   protected IMeasurementMNode getMeasurementMNode(IMNode deviceMNode, String measurementName)
       throws PathAlreadyExistException {
-    IMNode result = deviceMNode.getChild(measurementName);
+    IMNode result = mtree.getChildFromPinnedMNode(deviceMNode, measurementName);
     if (result == null) {
       return null;
     }
@@ -1976,80 +1977,92 @@ public class MManager {
         // Without allowing overlap of template and MTree, this block run only once
         String[] mountedPathNodes = Arrays.copyOfRange(fullPath.getNodes(), 0, index + 1);
         IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
-        if (!mountedNode.isUseTemplate()) {
-          setUsingSchemaTemplate(mountedNode);
+        try {
+          if (!mountedNode.isUseTemplate()) {
+            setUsingSchemaTemplate(mountedNode);
+          }
+        } finally {
+          mtree.pinMNode(mountedNode);
         }
         mountedNodeFound = true;
       }
     }
     // get logical device node, may be in template. will be multiple if overlap is allowed.
     IMNode deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
-
-    // check insert non-aligned InsertPlan for aligned timeseries
-    if (deviceMNode.isEntity()) {
-      if (plan.isAligned()) {
-        if (!deviceMNode.getAsEntityMNode().isAligned()) {
-          throw new MetadataException(
-              String.format(
-                  "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
-                  plan.getDevicePath()));
-        }
-      } else {
-        if (deviceMNode.getAsEntityMNode().isAligned()) {
-          throw new MetadataException(
-              String.format(
-                  "Timeseries under path [%s] is aligned , please set InsertPlan.isAligned() = true",
-                  plan.getDevicePath()));
+    try {
+      // check insert non-aligned InsertPlan for aligned timeseries
+      if (deviceMNode.isEntity()) {
+        if (plan.isAligned()) {
+          if (!deviceMNode.getAsEntityMNode().isAligned()) {
+            throw new MetadataException(
+                String.format(
+                    "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
+                    plan.getDevicePath()));
+          }
+        } else {
+          if (deviceMNode.getAsEntityMNode().isAligned()) {
+            throw new MetadataException(
+                String.format(
+                    "Timeseries under path [%s] is aligned , please set InsertPlan.isAligned() = true",
+                    plan.getDevicePath()));
+          }
         }
       }
-    }
 
-    // 2. get schema of each measurement
-    IMeasurementMNode measurementMNode;
-    for (int i = 0; i < measurementList.length; i++) {
-      try {
-        // get MeasurementMNode, auto create if absent
-        Pair<IMNode, IMeasurementMNode> pair =
-            getMeasurementMNodeForInsertPlan(plan, i, deviceMNode);
-        deviceMNode = pair.left;
-        measurementMNode = pair.right;
+      // 2. get schema of each measurement
+      IMeasurementMNode measurementMNode;
+      for (int i = 0; i < measurementList.length; i++) {
+        try {
+          // get MeasurementMNode, auto create if absent
+          Pair<IMNode, IMeasurementMNode> pair =
+              getMeasurementMNodeForInsertPlan(plan, i, deviceMNode);
+          deviceMNode = pair.left;
+          measurementMNode = pair.right;
 
-        // check type is match
-        if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-          try {
-            checkDataTypeMatch(plan, i, measurementMNode.getSchema().getType());
-          } catch (DataTypeMismatchException mismatchException) {
-            if (!config.isEnablePartialInsert()) {
-              throw mismatchException;
-            } else {
-              // mark failed measurement
-              plan.markFailedMeasurementInsertion(i, mismatchException);
-              continue;
+          // check type is match
+          if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
+            try {
+              checkDataTypeMatch(plan, i, measurementMNode.getSchema().getType());
+            } catch (DataTypeMismatchException mismatchException) {
+              if (!config.isEnablePartialInsert()) {
+                throw mismatchException;
+              } else {
+                // mark failed measurement
+                plan.markFailedMeasurementInsertion(i, mismatchException);
+                continue;
+              }
             }
+            measurementMNodes[i] = measurementMNode;
+            // set measurementName instead of alias
+            measurementList[i] = measurementMNode.getName();
           }
-          measurementMNodes[i] = measurementMNode;
-          // set measurementName instead of alias
-          measurementList[i] = measurementMNode.getName();
+        } catch (MetadataException e) {
+          if (IoTDB.isClusterMode()) {
+            logger.debug(
+                "meet error when check {}.{}, message: {}",
+                devicePath,
+                measurementList[i],
+                e.getMessage());
+          } else {
+            logger.warn(
+                "meet error when check {}.{}, message: {}",
+                devicePath,
+                measurementList[i],
+                e.getMessage());
+          }
+          if (config.isEnablePartialInsert()) {
+            // mark failed measurement
+            plan.markFailedMeasurementInsertion(i, e);
+          } else {
+            throw e;
+          }
         }
-      } catch (MetadataException e) {
-        if (IoTDB.isClusterMode()) {
-          logger.debug(
-              "meet error when check {}.{}, message: {}",
-              devicePath,
-              measurementList[i],
-              e.getMessage());
-        } else {
-          logger.warn(
-              "meet error when check {}.{}, message: {}",
-              devicePath,
-              measurementList[i],
-              e.getMessage());
-        }
-        if (config.isEnablePartialInsert()) {
-          // mark failed measurement
-          plan.markFailedMeasurementInsertion(i, e);
-        } else {
-          throw e;
+      }
+    } finally {
+      mtree.pinMNode(deviceMNode);
+      for (IMeasurementMNode measurementMNode : measurementMNodes) {
+        if (measurementMNode != null) {
+          mtree.unPinMNode(measurementMNode);
         }
       }
     }
@@ -2081,7 +2094,8 @@ public class MManager {
           }
           // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
           deviceMNode = mtree.getNodeByPath(devicePath);
-          measurementMNode = deviceMNode.getChild(measurement).getAsMeasurementMNode();
+          mtree.pinMNode(deviceMNode);
+          measurementMNode = getMeasurementMNode(deviceMNode, measurement);
         } else {
           throw new MetadataException(
               String.format(
@@ -2322,9 +2336,13 @@ public class MManager {
 
       IMNode node = getDeviceNodeWithAutoCreate(path);
 
-      templateManager.checkIsTemplateAndMNodeCompatible(template, node);
-
-      node.setSchemaTemplate(template);
+      try {
+        templateManager.checkIsTemplateAndMNodeCompatible(template, node);
+        node.setSchemaTemplate(template);
+        mtree.updateMNode(node);
+      } finally {
+        mtree.unPinMNode(node);
+      }
 
       // write wal
       if (!isRecovering) {
@@ -2359,17 +2377,18 @@ public class MManager {
   }
 
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
+    IMNode node;
+    // the order of SetUsingSchemaTemplatePlan and AutoCreateDeviceMNodePlan cannot be guaranteed
+    // when writing concurrently, so we need a auto-create mechanism here
     try {
-      setUsingSchemaTemplate(getDeviceNode(plan.getPrefixPath()));
-    } catch (PathNotExistException e) {
-      // the order of SetUsingSchemaTemplatePlan and AutoCreateDeviceMNodePlan cannot be guaranteed
-      // when writing concurrently, so we need a auto-create mechanism here
-      try {
-        getDeviceNodeWithAutoCreate(plan.getPrefixPath());
-      } catch (IOException ioException) {
-        throw new MetadataException(ioException);
-      }
-      setUsingSchemaTemplate(getDeviceNode(plan.getPrefixPath()));
+      node = getDeviceNodeWithAutoCreate(plan.getPrefixPath());
+    } catch (IOException ioException) {
+      throw new MetadataException(ioException);
+    }
+    try {
+      node = setUsingSchemaTemplate(node);
+    } finally {
+      mtree.unPinMNode(node);
     }
   }
 
@@ -2393,6 +2412,7 @@ public class MManager {
                   : node.getUpperTemplate().isDirectAligned());
     }
     mountedMNode.setUseTemplate(true);
+    mtree.updateMNode(mountedMNode);
 
     if (node != mountedMNode) {
       mNodeCache.invalidate(mountedMNode.getPartialPath());

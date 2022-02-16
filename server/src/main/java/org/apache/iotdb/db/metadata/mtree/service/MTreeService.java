@@ -1367,7 +1367,10 @@ public class MTreeService implements Serializable {
       unPinPath(cur);
       throw new StorageGroupNotSetException(path.getFullPath());
     }
-    unPinPath(cur.getParent());
+
+    if (!isInTemplate) {
+      unPinPath(cur.getParent());
+    }
     return cur;
   }
 
@@ -1786,6 +1789,10 @@ public class MTreeService implements Serializable {
   // endregion
 
   // region Interfaces and Implementation for Pin/UnPin MNode or Path
+  public void pinMNode(IMNode node) {
+    store.pin(node);
+  }
+
   public void unPinPath(IMNode node) {
     while (node.getParent() != null) {
       store.unPin(node);
@@ -1799,6 +1806,10 @@ public class MTreeService implements Serializable {
 
   public void updateMNode(IMNode node) {
     store.updateMNode(node);
+  }
+
+  public IMNode getChildFromPinnedMNode(IMNode parent, String measurement) {
+    return store.getChild(parent, measurement);
   }
 
   // endregion

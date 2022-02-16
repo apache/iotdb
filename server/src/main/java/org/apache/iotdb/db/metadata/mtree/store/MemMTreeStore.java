@@ -158,6 +158,9 @@ public class MemMTreeStore implements IMTreeStore {
   public void updateMNode(IMNode node) {}
 
   @Override
+  public void pin(IMNode node) {}
+
+  @Override
   public void unPin(IMNode node) {}
 
   @Override
