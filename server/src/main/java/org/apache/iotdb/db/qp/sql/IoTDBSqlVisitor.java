@@ -606,8 +606,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.RENAME() != null) {
       alterTimeSeriesOperator.setAlterType(AlterType.RENAME);
       alterMap.put(
-          parseStringLiteral(ctx.beforeName.getText()),
-          parseStringLiteral(ctx.currentName.getText()));
+          parseIdentifier(ctx.beforeName.getText()), parseIdentifier(ctx.currentName.getText()));
     } else if (ctx.SET() != null) {
       // set
       alterTimeSeriesOperator.setAlterType(AlterType.SET);
@@ -616,7 +615,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       // drop
       alterTimeSeriesOperator.setAlterType(AlterType.DROP);
       for (IoTDBSqlParser.IdentifierContext dropId : ctx.identifier()) {
-        alterMap.put(parseStringLiteral(dropId.getText()), null);
+        alterMap.put(parseIdentifier(dropId.getText()), null);
       }
     } else if (ctx.TAGS() != null) {
       // add tag
@@ -758,7 +757,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitSetSchemaTemplate(IoTDBSqlParser.SetSchemaTemplateContext ctx) {
     SetTemplateOperator operator = new SetTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_SET);
     operator.setPrefixPath(parsePrefixPath(ctx.prefixPath()));
-    operator.setTemplateName(ctx.templateName.getText());
+    operator.setTemplateName(parseIdentifier(ctx.templateName.getText()));
     return operator;
   }
 
@@ -769,7 +768,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     UnsetTemplateOperator operator =
         new UnsetTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_UNSET);
     operator.setPrefixPath(parsePrefixPath(ctx.prefixPath()));
-    operator.setTemplateName(ctx.templateName.getText());
+    operator.setTemplateName(parseIdentifier(ctx.templateName.getText()));
     return operator;
   }
 
