@@ -2316,7 +2316,7 @@ public class MManager {
 
       IMNode node = getDeviceNodeWithAutoCreate(path);
 
-      templateManager.checkIsTemplateAndMNodeCompatible(template, node);
+      templateManager.checkTemplateCompatible(template, node);
 
       node.setSchemaTemplate(template);
 

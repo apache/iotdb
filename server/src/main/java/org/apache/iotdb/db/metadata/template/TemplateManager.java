@@ -149,8 +149,7 @@ public class TemplateManager {
     return templateMap.keySet();
   }
 
-  public void checkIsTemplateAndMNodeCompatible(Template template, IMNode node)
-      throws MetadataException {
+  public void checkTemplateCompatible(Template template, IMNode node) throws MetadataException {
     if (node.getSchemaTemplate() != null) {
       if (node.getSchemaTemplate().equals(template)) {
         throw new DuplicatedTemplateException(template.getName());
@@ -159,6 +158,7 @@ public class TemplateManager {
       }
     }
 
+    // check overlap
     for (String measurementPath : template.getSchemaMap().keySet()) {
       String directNodeName = MetaUtils.splitPathToDetachedPath(measurementPath)[0];
       if (node.hasChild(directNodeName)) {
@@ -167,6 +167,18 @@ public class TemplateManager {
                 + directNodeName
                 + " in template has conflict with node's child "
                 + (node.getFullPath() + "." + directNodeName));
+      }
+    }
+
+    // check alignment
+    if (node.isEntity() && (node.getAsEntityMNode().isAligned() != template.isDirectAligned())) {
+      for (IMNode dNode : template.getDirectNodes()) {
+        if (dNode.isMeasurement()) {
+          throw new MetadataException(
+              "Template and mounted node has different alignment: "
+                  + template.getName()
+                  + dNode.getFullPath());
+        }
       }
     }
   }
