@@ -22,14 +22,15 @@ import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.itbase.category.RemoteTest;
+import org.apache.iotdb.jdbc.IoTDBConnection;
 
+import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -81,8 +82,11 @@ public class IoTDBDatetimeFormatIT {
       1641945723400L,
       1642032123400L
     };
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (IoTDBConnection connection = (IoTDBConnection) EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+
+      connection.setTimeZone("+08:00");
+
       for (int i = 0; i < datetimeStrings.length; i++) {
         String insertSql =
             String.format(
@@ -100,7 +104,7 @@ public class IoTDBDatetimeFormatIT {
         cnt++;
       }
       Assert.assertEquals(timestamps.length, cnt);
-    } catch (SQLException e) {
+    } catch (SQLException | TException e) {
       e.printStackTrace();
       fail();
     }
