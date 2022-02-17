@@ -24,11 +24,13 @@ public class GetBelongedToSpecifiedType {
   private char nodeType;
 
   public GetBelongedToSpecifiedType(
-      PartialPath partialPath, RocksDBReadWriteHandler readWriteHandler, char nodeType) {
+      PartialPath partialPath, RocksDBReadWriteHandler readWriteHandler, char nodeType)
+      throws RocksDBException, IllegalPathException {
     this.nodes = partialPath.getNodes();
     this.readWriteHandler = readWriteHandler;
     this.fullPath = partialPath.getFullPath();
     this.nodeType = nodeType;
+    traverse();
   }
 
   private void traverse() throws RocksDBException, IllegalPathException {
@@ -48,7 +50,11 @@ public class GetBelongedToSpecifiedType {
     }
   }
 
-  protected void processNameMatch(int idx) throws RocksDBException, IllegalPathException {
+  public Set<PartialPath> getAllResult() {
+    return allResult;
+  }
+
+  private void processNameMatch(int idx) throws RocksDBException, IllegalPathException {
     contextNodes.add(nodes[idx]);
     String innerName =
         RocksDBUtils.convertPartialPathToInnerByNodes(
@@ -59,7 +65,7 @@ public class GetBelongedToSpecifiedType {
     }
   }
 
-  protected void processOneLevelWildcard(int idx) throws IllegalPathException {
+  private void processOneLevelWildcard(int idx) throws IllegalPathException {
     // The current node name contains wildcards, all possible values queried from the previous node
     String innerName =
         RocksDBUtils.convertPartialPathToInnerByNodes(
@@ -80,5 +86,13 @@ public class GetBelongedToSpecifiedType {
     }
   }
 
-  protected void processMultiLevelWildcard(int idx) {}
+  private void processMultiLevelWildcard(int idx) {
+    // The current node name contains wildcards, all possible values queried from the previous node
+    String innerName =
+        RocksDBUtils.convertPartialPathToInnerByNodes(
+            contextNodes.toArray(new String[0]), contextNodes.size(), nodeType);
+    // prefixed match
+    Set<String> matchedResult = readWriteHandler.getAllByPrefix(innerName);
+    String lastNodeName = nodes[idx - 1];
+  }
 }

@@ -1256,7 +1256,13 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
       throws MetadataException {
-    return null;
+    GetBelongedToSpecifiedType type;
+    try {
+      type = new GetBelongedToSpecifiedType(pathPattern, readWriteHandler, NODE_TYPE_SG);
+      return new ArrayList<>(type.getAllResult());
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
+    }
   }
 
   /**
@@ -1323,7 +1329,13 @@ public class MRocksDBManager implements IMetaManager {
    */
   @Override
   public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
-    return null;
+    GetBelongedToSpecifiedType type;
+    try {
+      type = new GetBelongedToSpecifiedType(timeseries, readWriteHandler, NODE_TYPE_ENTITY);
+      return type.getAllResult();
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
+    }
   }
 
   /**
