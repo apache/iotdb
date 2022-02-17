@@ -76,13 +76,17 @@ public class CacheStrategy implements ICacheStrategy {
 
   private void addNodeToBuffer(IMNode node) {
     IMNode parent = node.getParent();
-    CacheEntry cacheEntry = parent.getCacheEntry();
-    while (parent != null && nodeCache.containsKey(cacheEntry)) {
-      // the ancestors of volatile node should not stay in nodeCache in which the node will be
-      // evicted
-      nodeCache.remove(cacheEntry);
-      parent = parent.getParent();
+    CacheEntry cacheEntry;
+    while (parent != null) {
       cacheEntry = parent.getCacheEntry();
+      if (nodeCache.containsKey(cacheEntry)) {
+        // the ancestors of volatile node should not stay in nodeCache in which the node will be
+        // evicted
+        nodeCache.remove(cacheEntry);
+        parent = parent.getParent();
+      } else {
+        break;
+      }
     }
     parent = node.getParent();
     cacheEntry = parent.getCacheEntry();
@@ -98,7 +102,7 @@ public class CacheStrategy implements ICacheStrategy {
   public void updateCacheStatusAfterPersist(IMNode node) {
     IMNode tmp = node;
     while (tmp.getParent() != null && !nodeCache.containsKey(tmp.getCacheEntry())) {
-      nodeCache.put(node.getCacheEntry(), node);
+      nodeCache.put(tmp.getCacheEntry(), tmp);
       tmp = tmp.getParent();
     }
     ICachedMNodeContainer container = getCachedMNodeContainer(node);
