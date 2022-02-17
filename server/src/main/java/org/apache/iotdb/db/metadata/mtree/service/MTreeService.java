@@ -635,7 +635,7 @@ public class MTreeService implements Serializable {
           }
         } else {
           if (child.isMeasurement()) {
-            unPinPath(cur);
+            unPinPath(child);
             return i == nodeNames.length - 1;
           }
         }

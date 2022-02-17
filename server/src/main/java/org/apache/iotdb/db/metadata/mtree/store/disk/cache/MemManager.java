@@ -26,9 +26,9 @@ public class MemManager implements IMemManager {
   private int capacity =
       IoTDBDescriptor.getInstance().getConfig().getCachedMetadataSizeInPersistentMode();
 
-  private int size;
+  private volatile int size;
 
-  private int pinnedSize;
+  private volatile int pinnedSize;
 
   @Override
   public void initCapacity(int capacity) {

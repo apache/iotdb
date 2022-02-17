@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNodeIterator;
@@ -38,7 +39,6 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -55,7 +55,8 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private IMNode root;
 
-  private ExecutorService flushTask = Executors.newFixedThreadPool(1);
+  private ExecutorService flushTask =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("MTreeFlushThread");;
   private boolean hasFlushTask = false;
 
   private ReadWriteLock readWriteLock = new ReentrantReadWriteLock(); // default writer preferential

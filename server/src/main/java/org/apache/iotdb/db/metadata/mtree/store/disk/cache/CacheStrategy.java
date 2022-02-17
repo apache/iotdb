@@ -32,9 +32,9 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContaine
 
 public class CacheStrategy implements ICacheStrategy {
 
-  Map<CacheEntry, IMNode> nodeCache = new ConcurrentHashMap<>();
+  private volatile Map<CacheEntry, IMNode> nodeCache = new ConcurrentHashMap<>();
 
-  Map<CacheEntry, IMNode> nodeBuffer = new ConcurrentHashMap<>();
+  private volatile Map<CacheEntry, IMNode> nodeBuffer = new ConcurrentHashMap<>();
 
   @Override
   public boolean isCached(IMNode node) {
