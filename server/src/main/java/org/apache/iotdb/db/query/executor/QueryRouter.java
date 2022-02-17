@@ -222,9 +222,11 @@ public class QueryRouter implements IQueryRouter {
       throws StorageEngineException, QueryProcessException {
 
     GroupByFillDataSet dataSet = new GroupByFillDataSet(context, groupByFillPlan);
-    groupByFillPlan.initFillRange();
 
     GroupByEngineDataSet engineDataSet;
+    // reset queryStartTime and queryEndTime for init GroupByEngineDataSet
+    groupByFillPlan.setQueryStartTime(groupByFillPlan.getStartTime());
+    groupByFillPlan.setQueryEndTime(groupByFillPlan.getEndTime());
     if (groupByFillPlan.getExpression().getType() == ExpressionType.GLOBAL_TIME) {
       engineDataSet = getGroupByWithoutValueFilterDataSet(context, groupByFillPlan);
       ((GroupByWithoutValueFilterDataSet) engineDataSet).initGroupBy(context, groupByFillPlan);
