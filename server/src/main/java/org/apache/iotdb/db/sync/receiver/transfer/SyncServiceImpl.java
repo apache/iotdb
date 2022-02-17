@@ -300,7 +300,8 @@ public class SyncServiceImpl implements SyncService.Iface {
               continue;
             }
             if (plan.getOperatorType() != Operator.OperatorType.CREATE_CONTINUOUS_QUERY
-                && plan.getOperatorType() != Operator.OperatorType.DROP_CONTINUOUS_QUERY) {
+                && plan.getOperatorType() != Operator.OperatorType.DROP_CONTINUOUS_QUERY
+                && plan.getOperatorType() != Operator.OperatorType.CHANGE_TAG_OFFSET) {
               IoTDB.metaManager.operation(plan);
             }
           } catch (Exception e) {
