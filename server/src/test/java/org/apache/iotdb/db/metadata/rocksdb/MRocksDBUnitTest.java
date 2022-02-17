@@ -165,10 +165,12 @@ public class MRocksDBUnitTest {
     mRocksDBManager.createTimeseries(
         path, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, null);
 
-    PartialPath path2 = new PartialPath("root.tt.sg.dd.m2");
+    PartialPath path2 = new PartialPath("root.tt.sg.ddd.m2");
     mRocksDBManager.createTimeseries(
         path2, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, "ma");
     mRocksDBManager.printScanAllKeys();
+
+    Assert.assertEquals(2, mRocksDBManager.getTotalSeriesNumber());
 
     Assert.assertEquals(
         1,
@@ -179,8 +181,17 @@ public class MRocksDBUnitTest {
     Assert.assertEquals(
         1, mRocksDBManager.getAllTimeseriesCount(new PartialPath("root.tt.sg.dd.m1")));
     Assert.assertEquals(2, mRocksDBManager.getAllTimeseriesCount(new PartialPath("root"), true));
+
+    Assert.assertEquals(0, mRocksDBManager.getDevicesNum(new PartialPath("root.inner1.inner2")));
+    Assert.assertEquals(
+        0, mRocksDBManager.getDevicesNum(new PartialPath("root.inner1.inner2"), true));
+    Assert.assertEquals(2, mRocksDBManager.getDevicesNum(new PartialPath("root.tt.sg"), true));
+    Assert.assertEquals(1, mRocksDBManager.getDevicesNum(new PartialPath("root.tt.sg.dd"), true));
+
     // todo wildcard
 
+    Assert.assertEquals(
+        2, mRocksDBManager.getNodesCountInGivenLevel(new PartialPath("root.tt.sg"), 3, false));
   }
 
   @After
