@@ -42,7 +42,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -106,7 +105,6 @@ public class IoTDBConfigCheck {
       String.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
 
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
-  private static final String[] OLD_VERSIONS = {"0.10", "0.11", "0.12"};
 
   public static IoTDBConfigCheck getInstance() {
     return IoTDBConfigCheckHolder.INSTANCE;
@@ -224,7 +222,9 @@ public class IoTDBConfigCheck {
     }
     // check whether upgrading from old versions
     String versionString = properties.getProperty(IOTDB_VERSION_STRING);
-    if (Arrays.stream(OLD_VERSIONS).anyMatch(versionString::startsWith)) {
+    if (versionString.startsWith("0.12")) {
+      checkWALNotExists();
+    } else if (versionString.startsWith("0.10") || versionString.startsWith("0.11")) {
       logger.info(
           "Upgrading IoTDB from {} to {}, checking files...", versionString, IoTDBConstant.VERSION);
       checkUnClosedTsFileV2();
@@ -357,6 +357,12 @@ public class IoTDBConfigCheck {
 
   /** ensure all TsFiles are closed when starting 0.12 */
   private void checkUnClosedTsFileV2() {
+    checkWALNotExists();
+    checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllSequenceFileFolders());
+    checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+  }
+
+  private void checkWALNotExists() {
     if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()
         && SystemFileFactory.INSTANCE.getFile(WAL_DIR).list().length != 0) {
       logger.error(
@@ -366,8 +372,6 @@ public class IoTDBConfigCheck {
           IoTDBConstant.VERSION);
       System.exit(-1);
     }
-    checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllSequenceFileFolders());
-    checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
   }
 
   private void checkUnClosedTsFileV2InFolders(List<String> folders) {
