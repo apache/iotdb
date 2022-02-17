@@ -351,7 +351,9 @@ public class TsFilePipe implements Pipe {
         //         pipeLog.removePipeData(data.getSerialNumber);
         //        data.sendToTransport();
         //        Thread.sleep(1000);
-        //        pipeLog.removePipeData(data.getSerialNumber());
+        //        pipeDataDeque.addFirst(data);
+        //        commit(data.getSerialNumber());
+        //        System.out.println(data);
       }
     } catch (Exception e) {
       logger.error(String.format("TsFile pipe %s stops transportng data, because %s.", name, e));
@@ -384,7 +386,7 @@ public class TsFilePipe implements Pipe {
     while (!pipeDataDeque.isEmpty() && pipeDataDeque.peek().getSerialNumber() <= serialNumber) {
       PipeData data = pipeDataDeque.poll();
       try {
-        pipeLog.removePipeData(pipeDataDeque.poll().getSerialNumber());
+        pipeLog.removePipeData(data);
       } catch (IOException e) {
         logger.warn(
             String.format(

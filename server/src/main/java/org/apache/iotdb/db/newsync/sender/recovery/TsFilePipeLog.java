@@ -221,9 +221,19 @@ public class TsFilePipeLog {
   }
 
   /** remove pipe log data */
-  public void removePipeData(long serialNumber) throws IOException {
+  public void removePipeData(PipeData pipeData) throws IOException {
+    long serialNumber = pipeData.getSerialNumber();
     serializeRemoveSerialNumber(serialNumber);
 
+    // delete tsfile
+    if (PipeData.Type.TSFILE.equals(pipeData.getType())) {
+      List<File> tsFiles = ((TsFilePipeData) pipeData).getTsFiles();
+      for (File file : tsFiles) {
+        Files.deleteIfExists(file.toPath());
+      }
+    }
+
+    // delete pipe log
     if (serialNumber >= 0) {
       if (historyOutputStream != null) {
         removeHistoryPipeLog();
@@ -261,31 +271,11 @@ public class TsFilePipeLog {
 
   private void removeRealTimePipeLog(long serialNumber) throws IOException {
     File realTimePipeLog = new File(pipeLogDir, SenderConf.getRealTimePipeLogName(serialNumber));
-    removeTsFile(realTimePipeLog);
     try {
       Files.delete(realTimePipeLog.toPath());
     } catch (NoSuchFileException e) {
       logger.warn(
           String.format("delete real time pipe log in %s error, %s", realTimePipeLog.getPath(), e));
-    }
-  }
-
-  private void removeTsFile(File realTimePipeLog) {
-    try {
-      List<PipeData> pipeData = TsFilePipeLogAnalyzer.parseFile(realTimePipeLog);
-      List<File> tsFiles;
-      for (PipeData data : pipeData)
-        if (PipeData.Type.TSFILE.equals(data.getType())) {
-          tsFiles = ((TsFilePipeData) data).getTsFiles();
-          for (File file : tsFiles) {
-            Files.deleteIfExists(file.toPath());
-          }
-        }
-    } catch (IOException e) {
-      logger.warn(
-          String.format(
-              "Can not parse pipe log %s, the tsfiles in this pipe log will not be deleted, because %s",
-              realTimePipeLog.getPath(), e));
     }
   }
 
