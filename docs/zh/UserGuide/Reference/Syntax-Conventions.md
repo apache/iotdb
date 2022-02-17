@@ -87,7 +87,6 @@
 
 `NULL`值表示没有数据。`NULL`对大小写不敏感。
 
-
 ## 标识符
 
 在 IoTDB 中，触发器名称、UDF函数名、元数据模板名称、用户与角色名等被称为标识符。
@@ -183,6 +182,15 @@ select `0` from root.sg.d  -- 对时间序列 root.sg.d.0 进行查询
 select `0` + 0 from root.sg.d -- 表达式，对时间序列 root.sg.d.0 的每一个查询结果加 0
 select myudf(`'a'`, 'x') from root.sg.d -- 表达式，调用函数 myudf，第一个参数为时间序列 root.sg.d.'a'，第二个参数为字符串常量 'x'
 ```
+
+>
+> 总结：反斜杠（\）的使用场景
+> - 在字符串常量中，出现双引号或单引号时，要使用反斜杠进行转义。如："str\\"ing" 解析为 str"ing、'str\\'ing' 解析为 str'ing。
+> - 在标识符中，出现反引号时，要使用反斜杠进行转义。如：\`na\\\`me\` 解析为 na\`me
+> - 在路径节点名中，出现双引号或单引号时，要使用反斜杠进行转义。注意，为了避免歧义，反斜杠会被系统视为节点名的一部分。
+> 
+>   如：root.sg1.d1."a\"b" 解析为 Path[root, sg1, d1, "a\\"b"]、root.sg1.d1.'a\'b' 解析为 Path[root, sg1, d1, 'a\\'b']、root.sg1.d1.\`a\"b\` 解析为 Path[root, sg1, d1, a\\"b]、root.sg1.d1.\`a\'b\` 解析为 Path[root, sg1, d1, a\\'b]。
+> 
 
 ## 了解更多
 

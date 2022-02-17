@@ -185,6 +185,15 @@ select `0` + 0 from root.sg.d -- valid expression, add number 0 to each point of
 select myudf(`'a'`, 'x') from root.sg.d -- valid expression, call function myudf with timeseries root.sg.d.'a' as the 1st parameter, and a string constant 'x' as the 2nd parameter
 ```
 
+>
+> Summary: Backslash (\) usage scenarios
+> - In string literals, double or single quote should be escaped with a backslash. e.g. "str\\"ing" is parsed as str"ing, 'str\\'ing' is parsed as str'ing
+> - In an identifier, backtick should be escaped with a backslash. e.g. \`na\\\`me\` is parsed as na\`me
+> - In path node names, double or single quote should be escaped with a backslash. To avoid ambiguity, backslashes are recognized as part of the node name.
+>
+>   e.g. root.sg1.d1."a\"b" is parsed as Path[root, sg1, d1, "a\\"b"], root.sg1.d1.'a\'b' is parsed as Path[ root, sg1, d1, 'a\\'b'], root.sg1.d1.\`a\"b\` is parsed as Path[root, sg1, d1, a\\"b], root.sg1.d1.\`a\'b\` is parsed as Path[root, sg1, d1, a\\'b]
+>
+
 ## Learn More
 
 Please read the lexical and grammar description files in our code repository:
