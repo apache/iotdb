@@ -1,7 +1,8 @@
 package org.apache.iotdb.db.qp.utils;
 
-import com.sun.management.OperatingSystemMXBean;
 import org.apache.iotdb.db.query.dataset.ShowNowResult;
+
+import com.sun.management.OperatingSystemMXBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import oshi.SystemInfo;
