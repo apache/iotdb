@@ -969,7 +969,7 @@ fragment BQUOTA_STRING
     ;
 
 fragment BQUOTA_STRING_IN_NODE_NAME
-    : '`' ( '\\' ~('.') | ~('`'|'\\'|'.'|'\''|'"'))* '`'
+    : '`' ( '\\' ('`'|'\\'|'\''|'"') | ~('`'|'\\'|'.'|'\''|'"'))* '`'
     ;
 
 // Characters and write it this way for case sensitivity
