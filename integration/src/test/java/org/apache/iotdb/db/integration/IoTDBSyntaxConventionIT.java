@@ -58,24 +58,20 @@ public class IoTDBSyntaxConventionIT {
       "'string'",
       "'\"string\"'",
       "'\"\"string\"\"'",
-      "'str''ing'",
       "'\\'string'",
       "\"string\"",
       "\"'string'\"",
       "\"''string''\"",
-      "\"str\"\"ing\"",
       "\"\\\"string\""
     };
     String[] resultData = {
       "string",
       "\"string\"",
       "\"\"string\"\"",
-      "str'ing",
       "'string",
       "string",
       "'string'",
       "''string''",
-      "str\"ing",
       "\"string"
     };
 
@@ -98,7 +94,7 @@ public class IoTDBSyntaxConventionIT {
         Assert.assertEquals(resultData[cnt], resultSet.getString("root.sg1.d1.s1"));
         cnt++;
       }
-      Assert.assertEquals(10, cnt);
+      Assert.assertEquals(8, cnt);
 
       for (int i = 0; i < insertData.length; i++) {
         String querySql = String.format("SELECT s1 FROM root.sg1.d1 WHERE s1 = %s", insertData[i]);
@@ -251,7 +247,10 @@ public class IoTDBSyntaxConventionIT {
       "\"a.\"",
       "\".a\"",
       "'a.'",
-      "'.a'"
+      "'.a'",
+      "`\\\"a`",
+      "`a\\\"`",
+      "\"a\\\".\\\"b\""
     };
     String[] selectNodeNames = {
       "`select`",
@@ -266,7 +265,10 @@ public class IoTDBSyntaxConventionIT {
       "`\"a.\"`",
       "`\".a\"`",
       "`'a.'`",
-      "`'.a'`"
+      "`'.a'`",
+      "`\\\"a`",
+      "`a\\\"`",
+      "`\"a\\\".\\\"b\"`"
     };
     String[] resultNodeNames = {
       "select",
@@ -281,7 +283,10 @@ public class IoTDBSyntaxConventionIT {
       "\"a.\"",
       "\".a\"",
       "'a.'",
-      "'.a'"
+      "'.a'",
+      "\\\"a",
+      "a\\\"",
+      "\"a\\\".\\\"b\""
     };
     String[] resultTimeseries = {
       "root.sg1.d1.select",
@@ -296,7 +301,10 @@ public class IoTDBSyntaxConventionIT {
       "root.sg1.d1.\"a.\"",
       "root.sg1.d1.\".a\"",
       "root.sg1.d1.'a.'",
-      "root.sg1.d1.'.a'"
+      "root.sg1.d1.'.a'",
+      "root.sg1.d1.\\\"a",
+      "root.sg1.d1.a\\\"",
+      "root.sg1.d1.\"a\\\".\\\"b\""
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -351,38 +359,37 @@ public class IoTDBSyntaxConventionIT {
       try {
         statement.execute("CREATE TIMESERIES root.sg.d1.`\"a`.s1 TEXT");
         fail();
-      } catch (SQLException e) {
-        Assert.assertTrue(e.getMessage().contains("Illegal name of time series"));
+      } catch (SQLException ignored) {
       }
       try {
-        statement.execute("CREATE TIMESERIES root.sg1.d1.\"a\"\".\"\"b\" TEXT");
+        statement.execute("CREATE TIMESERIES root.sg.d1.`a\"`.s1 TEXT");
         fail();
-      } catch (SQLException e) {
-        Assert.assertTrue(e.getMessage().contains("Ambiguity name of time series"));
+      } catch (SQLException ignored) {
       }
       try {
-        statement.execute("CREATE TIMESERIES root.sg1.d1.\"a\"\".b\" TEXT");
+        statement.execute("CREATE TIMESERIES root.sg.d1.`'a`.s1 TEXT");
         fail();
-      } catch (SQLException e) {
-        Assert.assertTrue(e.getMessage().contains("Ambiguity name of time series"));
+      } catch (SQLException ignored) {
       }
       try {
-        statement.execute("CREATE TIMESERIES root.sg1.d1.'a\\'.\\'b' TEXT");
+        statement.execute("CREATE TIMESERIES root.sg.d1.`a'`.s1 TEXT");
         fail();
-      } catch (SQLException e) {
-        Assert.assertTrue(e.getMessage().contains("Ambiguity name of time series"));
+      } catch (SQLException ignored) {
+      }
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.\"a\".b\" TEXT");
+        fail();
+      } catch (SQLException ignored) {
       }
       try {
         statement.execute("CREATE TIMESERIES root.sg.`\"a`.`\"` TEXT");
         fail();
-      } catch (SQLException e) {
-        Assert.assertTrue(e.getMessage().contains("Ambiguity name of time series"));
+      } catch (SQLException ignored) {
       }
       try {
         statement.execute("CREATE TIMESERIES root.sg.`\"ab`.`cd\"` TEXT");
         fail();
-      } catch (SQLException e) {
-        Assert.assertTrue(e.getMessage().contains("Ambiguity name of time series"));
+      } catch (SQLException ignored) {
       }
     } catch (Exception e) {
       e.printStackTrace();

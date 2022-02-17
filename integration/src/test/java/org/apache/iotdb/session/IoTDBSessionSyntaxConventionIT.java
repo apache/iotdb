@@ -72,6 +72,14 @@ public class IoTDBSessionSyntaxConventionIT {
       Assert.assertTrue(e.getMessage().contains("is not a legal path"));
     }
 
+    try {
+      session.createTimeseries(
+          "root.sg.d1.a\".s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains("is not a legal path"));
+    }
+
     final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
     assertFalse(dataSet.hasNext());
 
@@ -114,6 +122,7 @@ public class IoTDBSessionSyntaxConventionIT {
     measurements.add("'a>b'");
     measurements.add("a“（Φ）”b");
     measurements.add("a>b");
+    measurements.add("\\\"a");
 
     values.clear();
     for (int i = 0; i < measurements.size(); i++) {
@@ -130,6 +139,7 @@ public class IoTDBSessionSyntaxConventionIT {
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.'a>b'"));
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`a“（Φ）”b`"));
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`a>b`"));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`\\\"a`"));
 
     session.close();
   }
