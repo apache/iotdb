@@ -1570,9 +1570,9 @@ public class Session {
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
     try {
-      getSessionConnection(tablet.prefixPath).insertTablet(request);
+      getSessionConnection(tablet.deviceId).insertTablet(request);
     } catch (RedirectException e) {
-      handleRedirection(tablet.prefixPath, e.getEndPoint());
+      handleRedirection(tablet.deviceId, e.getEndPoint());
     }
   }
 
@@ -1617,7 +1617,7 @@ public class Session {
       request.addToTypes(measurementSchema.getType().ordinal());
     }
 
-    request.setPrefixPath(tablet.prefixPath);
+    request.setPrefixPath(tablet.deviceId);
     request.setIsAligned(tablet.isAligned());
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
     request.setValues(SessionUtils.getValueBuffer(tablet));
@@ -1724,7 +1724,7 @@ public class Session {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
     }
-    request.addToPrefixPaths(tablet.prefixPath);
+    request.addToPrefixPaths(tablet.deviceId);
     List<String> measurements = new ArrayList<>();
     List<Integer> dataTypes = new ArrayList<>();
 
