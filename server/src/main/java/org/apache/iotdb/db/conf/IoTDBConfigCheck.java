@@ -222,13 +222,20 @@ public class IoTDBConfigCheck {
   }
 
   private void checkWALNotExists() {
-    if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()
-        && SystemFileFactory.INSTANCE.getFile(WAL_DIR).list().length != 0) {
-      logger.error(
-          "WAL detected, please stop insertion and run 'SET SYSTEM TO READONLY', then run 'flush' on IoTDB {} before upgrading to {}.",
-          properties.getProperty(IOTDB_VERSION_STRING),
-          IoTDBConstant.VERSION);
-      System.exit(-1);
+    if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()) {
+      File[] sgWALs = SystemFileFactory.INSTANCE.getFile(WAL_DIR).listFiles();
+      if (sgWALs != null) {
+        for (File sgWAL : sgWALs) {
+          // make sure wal directory of each sg is empty
+          if (sgWAL.isDirectory() && sgWAL.list().length != 0) {
+            logger.error(
+                "WAL detected, please stop insertion and run 'SET SYSTEM TO READONLY', then run 'flush' on IoTDB {} before upgrading to {}.",
+                properties.getProperty(IOTDB_VERSION_STRING),
+                IoTDBConstant.VERSION);
+            System.exit(-1);
+          }
+        }
+      }
     }
   }
 
