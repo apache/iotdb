@@ -220,9 +220,11 @@ public class IoTDBConfigCheck {
               + " Please upgrade to v0.10 first");
       System.exit(-1);
     }
-    // check whether upgrading from v0.10 or v0.11 to v0.12
+    // check whether upgrading from old versions
     String versionString = properties.getProperty(IOTDB_VERSION_STRING);
-    if (versionString.startsWith("0.10") || versionString.startsWith("0.11")) {
+    if (versionString.startsWith("0.12")) {
+      checkWALNotExists();
+    } else if (versionString.startsWith("0.10") || versionString.startsWith("0.11")) {
       logger.info(
           "Upgrading IoTDB from {} to {}, checking files...", versionString, IoTDBConstant.VERSION);
       checkUnClosedTsFileV2();
@@ -355,17 +357,20 @@ public class IoTDBConfigCheck {
 
   /** ensure all TsFiles are closed when starting 0.12 */
   private void checkUnClosedTsFileV2() {
+    checkWALNotExists();
+    checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllSequenceFileFolders());
+    checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+  }
+
+  private void checkWALNotExists() {
     if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()
         && SystemFileFactory.INSTANCE.getFile(WAL_DIR).list().length != 0) {
       logger.error(
-          "WAL detected, please stop insertion, then run 'flush' "
-              + "on IoTDB {} before upgrading to {}",
+          "WAL detected, please stop insertion and run 'SET SYSTEM TO READONLY', then run 'flush' on IoTDB {} before upgrading to {}.",
           properties.getProperty(IOTDB_VERSION_STRING),
           IoTDBConstant.VERSION);
       System.exit(-1);
     }
-    checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllSequenceFileFolders());
-    checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
   }
 
   private void checkUnClosedTsFileV2InFolders(List<String> folders) {
