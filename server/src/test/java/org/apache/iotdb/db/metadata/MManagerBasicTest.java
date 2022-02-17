@@ -31,6 +31,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -1734,6 +1735,13 @@ public class MManagerBasicTest {
       manager.setSchemaTemplate(new SetTemplatePlan("treeTemplate", "root.tree.d0"));
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.tree.d0")));
+
+      try {
+        manager.setUsingSchemaTemplate(new ActivateTemplatePlan(new PartialPath("root.non.existed.path")));
+        fail();
+      } catch (MetadataException e) {
+        assertEquals("Path [root.non.existed.path] has not been set any template.", e.getMessage());
+      }
 
       manager.createTimeseries(
           new PartialPath("root.laptop.d2.s1"),

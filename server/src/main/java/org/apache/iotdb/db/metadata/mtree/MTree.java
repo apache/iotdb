@@ -1557,13 +1557,13 @@ public class MTree implements Serializable {
    * set to Entity.
    *
    * <p>Check route 3: If template has direct measurement and mounted node is Entity,
-   *
+   * <ul>
    * <p>route 3.1: mounted node has no measurement child, then its alignment will be set as the
    * template.
    *
    * <p>route 3.2: mounted node has measurement child, then alignment of it and template should be
    * identical, otherwise cast a exception.
-   *
+   * </ul>
    * @return return the node competent to be mounted.
    */
   public IMNode checkTemplateAlignmentWithMountedNode(IMNode mountedNode, Template template)
@@ -1816,6 +1816,28 @@ public class MTree implements Serializable {
       }
     }
     return false;
+  }
+
+  /**
+   * Get template name on give path if any node of it has been set a template
+   * @return null if no template has been set on path
+   */
+  public String getTemplateOnPath(PartialPath path) throws IllegalPathException{
+    String[] pathNodes = path.getNodes();
+    if (!pathNodes[0].equals(IoTDBConstant.PATH_ROOT)) {
+      throw new IllegalPathException(path.toString());
+    }
+    IMNode cur = root;
+    for (int i = 1; i < pathNodes.length; i++) {
+      if (cur.isMeasurement() || !cur.hasChild(pathNodes[i])) {
+        return null;
+      }
+      if (cur.getSchemaTemplate() != null) {
+        return cur.getSchemaTemplate().getName();
+      }
+      cur = cur.getChild(pathNodes[i]);
+    }
+    return null;
   }
 
   // endregion
