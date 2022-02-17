@@ -1447,12 +1447,12 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public List<ShowNowResult> showNow(ShowNowPlan plan, QueryContext context) throws MetadataException {
+  public List<ShowNowResult> showNow(ShowNowPlan plan, QueryContext context)
+      throws MetadataException {
     ConcurrentSkipListSet<ShowNowResult> resultSet = new ConcurrentSkipListSet<>();
     ExecutorService pool =
         new ThreadPoolExecutor(
-            THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0, TimeUnit.SECONDS,
-                new LinkedBlockingDeque<>());
+            THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
     List<PartitionGroup> globalGroups;
     metaGroupMember.getPartitionTable();
     try {
@@ -1470,17 +1470,16 @@ public class CMManager extends MManager {
     List<Future<Void>> futureList = new ArrayList<>();
     for (PartitionGroup group : globalGroups) {
       futureList.add(
-              pool.submit(
-                      () -> {
-                        try{
-                          showNow(group, plan, resultSet, context);
-                        } catch (Exception e){
-                          logger.error("\"****************Cannot get show now result of {} from {}\", plan, node");
-                        }
-                        return null;
-                      }
-              )
-      );
+          pool.submit(
+              () -> {
+                try {
+                  showNow(group, plan, resultSet, context);
+                } catch (Exception e) {
+                  logger.error(
+                      "\"****************Cannot get show now result of {} from {}\", plan, node");
+                }
+                return null;
+              }));
     }
     waitForThreadPool(futureList, pool, "showNow()");
     List<ShowNowResult> showNowResults = applyShowNow(resultSet);
@@ -1649,8 +1648,6 @@ public class CMManager extends MManager {
     }
     return showDevicesResults;
   }
-
-
 
   private void showTimeseries(
       PartitionGroup group,
@@ -1886,8 +1883,8 @@ public class CMManager extends MManager {
       try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
           DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
         SyncDataClient syncDataClient =
-                ClusterIoTDB.getInstance()
-                        .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         plan.serialize(dataOutputStream);
         try {
           resultBinary = syncDataClient.getShowNow(group.getHeader());
@@ -1900,4 +1897,3 @@ public class CMManager extends MManager {
     return resultBinary;
   }
 }
-

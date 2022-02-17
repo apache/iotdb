@@ -1287,7 +1287,7 @@ public class MManager {
   }
 
   public List<ShowNowResult> showNow(ShowNowPlan showNowPlan, QueryContext context)
-          throws MetadataException{
+      throws MetadataException {
     return new ShowNowUtils().getShowNowResults();
   }
 

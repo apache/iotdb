@@ -734,8 +734,10 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public void getShowNow(RaftNode header, AsyncMethodCallback<ByteBuffer> resultHandler) throws TException {
-    DataAsyncService service = DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "show now");
+  public void getShowNow(RaftNode header, AsyncMethodCallback<ByteBuffer> resultHandler)
+      throws TException {
+    DataAsyncService service =
+        DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "show now");
     service.getShowNow(header, resultHandler);
   }
 

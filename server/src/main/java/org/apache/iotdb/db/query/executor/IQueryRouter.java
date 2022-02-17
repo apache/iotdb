@@ -75,6 +75,5 @@ public interface IQueryRouter {
       throws StorageEngineException, QueryProcessException, IOException, InterruptedException;
 
   /** Execute show now() query */
-  QueryDataSet showNowQuery(ShowNowPlan showNowPlan, QueryContext context)
-      throws MetadataException;
+  QueryDataSet showNowQuery(ShowNowPlan showNowPlan, QueryContext context) throws MetadataException;
 }

@@ -56,7 +56,7 @@ public class PartitionUtils {
             && ((LoadConfigurationPlan) plan)
                 .getLoadConfigurationPlanType()
                 .equals(LoadConfigurationPlanType.LOCAL))
-            || plan instanceof ShowNowPlan;
+        || plan instanceof ShowNowPlan;
   }
 
   /**

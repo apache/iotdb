@@ -272,7 +272,8 @@ public class QueryRouter implements IQueryRouter {
   }
 
   @Override
-  public QueryDataSet showNowQuery(ShowNowPlan showNowPlan, QueryContext context) throws MetadataException {
+  public QueryDataSet showNowQuery(ShowNowPlan showNowPlan, QueryContext context)
+      throws MetadataException {
     ShowNowQueryExecutor showNowQueryExecutor = getShowNowQueryExecutor(showNowPlan);
     return showNowQueryExecutor.execute(context, showNowPlan);
   }

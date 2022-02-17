@@ -7,13 +7,12 @@ import org.apache.iotdb.db.query.dataset.ShowNowDataSet;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class ShowNowQueryExecutor {
-    public ShowNowQueryExecutor() {
-    }
+  public ShowNowQueryExecutor() {}
 
-    public ShowNowQueryExecutor(ShowNowPlan showNowPlan) {
-    }
+  public ShowNowQueryExecutor(ShowNowPlan showNowPlan) {}
 
-    public QueryDataSet execute(QueryContext context, ShowNowPlan showNowPlan) throws MetadataException {
-        return new ShowNowDataSet(showNowPlan, context);
-    }
+  public QueryDataSet execute(QueryContext context, ShowNowPlan showNowPlan)
+      throws MetadataException {
+    return new ShowNowDataSet(showNowPlan, context);
+  }
 }

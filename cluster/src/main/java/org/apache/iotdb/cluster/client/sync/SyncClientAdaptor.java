@@ -523,7 +523,7 @@ public class SyncClientAdaptor {
   }
 
   public static ByteBuffer getAllShowNow(AsyncDataClient client, RaftNode header, ShowNowPlan plan)
-          throws IOException, TException, InterruptedException {
+      throws IOException, TException, InterruptedException {
     ShowNowHandler handler = new ShowNowHandler();
     AtomicReference<ByteBuffer> response = new AtomicReference<>(null);
     handler.setResponse(response);
@@ -531,7 +531,6 @@ public class SyncClientAdaptor {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     plan.serialize(dataOutputStream);
-
     client.getShowNow(header, handler);
     synchronized (response) {
       if (response.get() == null) {

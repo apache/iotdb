@@ -626,9 +626,9 @@ public class LocalQueryExecutor {
   }
 
   public ByteBuffer getShowNow() throws CheckConsistencyException, IOException, MetadataException {
-    List<ShowNowResult> showNow  = new ShowNowUtils().getShowNowResults();
+    List<ShowNowResult> showNow = new ShowNowUtils().getShowNowResults();
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try(DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
+    try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
       dataOutputStream.writeInt(showNow.size());
       for (ShowNowResult result : showNow) {
         result.serialize(outputStream);
