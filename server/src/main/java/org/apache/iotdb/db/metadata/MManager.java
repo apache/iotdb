@@ -2116,7 +2116,7 @@ public class MManager {
           }
           // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
           deviceMNode = mtree.getNodeByPath(devicePath);
-          mtree.pinMNode(deviceMNode);
+          mtree.unPinMNode(deviceMNode);
           measurementMNode = getMeasurementMNode(deviceMNode, measurement);
         } else {
           throw new MetadataException(
