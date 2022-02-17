@@ -176,6 +176,7 @@ public class SchemaFileTest {
       cnt++;
     }
     System.out.println(cnt);
+    sf.close();
   }
 
   @Test
