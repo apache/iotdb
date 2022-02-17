@@ -1830,14 +1830,19 @@ public class MTree implements Serializable {
       throw new IllegalPathException(path.toString());
     }
     IMNode cur = root;
+
+    if (cur.getSchemaTemplate() != null) {
+      return cur.getSchemaTemplate().getName();
+    }
+
     for (int i = 1; i < pathNodes.length; i++) {
       if (cur.isMeasurement() || !cur.hasChild(pathNodes[i])) {
         return null;
       }
+      cur = cur.getChild(pathNodes[i]);
       if (cur.getSchemaTemplate() != null) {
         return cur.getSchemaTemplate().getName();
       }
-      cur = cur.getChild(pathNodes[i]);
     }
     return null;
   }
