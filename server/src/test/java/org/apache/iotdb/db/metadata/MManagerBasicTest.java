@@ -1737,7 +1737,8 @@ public class MManagerBasicTest {
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.tree.d0")));
 
       try {
-        manager.setUsingSchemaTemplate(new ActivateTemplatePlan(new PartialPath("root.non.existed.path")));
+        manager.setUsingSchemaTemplate(
+            new ActivateTemplatePlan(new PartialPath("root.non.existed.path")));
         fail();
       } catch (MetadataException e) {
         assertEquals("Path [root.non.existed.path] has not been set any template.", e.getMessage());
