@@ -1299,6 +1299,64 @@ public class MManagerBasicTest {
             null,
             null));
 
+    manager.createTimeseries(
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.tree.sg1.dn.sn"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null));
+
+    manager.createTimeseries(
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.tree.sg2.dn.sn"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null));
+
+    manager.createTimeseries(
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.tree.sg3.dn.sn"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null));
+
+    try {
+      SetTemplatePlan planErr = new SetTemplatePlan("treeTemplate", "root.tree.*");
+      fail();
+    } catch (IllegalPathException e) {
+      assertEquals(
+          "root.tree.* is not a legal path, because template cannot be set on a path with wildcard.",
+          e.getMessage());
+    }
+
+    SetTemplatePlan planEx1 = new SetTemplatePlan("treeTemplate", "root.tree.sg1");
+    SetTemplatePlan planEx2 = new SetTemplatePlan("treeTemplate", "root.tree.sg2");
+    SetTemplatePlan planEx3 = new SetTemplatePlan("treeTemplate", "root.tree.sg3");
+    manager.setSchemaTemplate(planEx1);
+    manager.setSchemaTemplate(planEx2);
+    manager.setSchemaTemplate(planEx3);
+
+    try {
+      manager.unsetSchemaTemplate(new UnsetTemplatePlan("root.tree.*", "treeTemplate"));
+      fail();
+    } catch (IllegalPathException e) {
+      assertEquals(
+          "root.tree.* is not a legal path, because template cannot be unset on a path with wildcard.",
+          e.getMessage());
+    }
+
     manager.setSchemaTemplate(setSchemaTemplatePlan2);
     manager.unsetSchemaTemplate(new UnsetTemplatePlan("root.tree.sg0", "treeTemplate"));
     try {
