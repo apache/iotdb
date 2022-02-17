@@ -61,8 +61,8 @@ public class ShowNowDataSet extends ShowDataSet{
             updateRecord(record, result.getIp());
             updateRecord(record, result.getSystemTime());
             updateRecord(record, result.getCpuLoad());
-            updateRecord(record, result.getTotalMemroySize());
-            updateRecord(record, result.getFreeMemroySize());
+            updateRecord(record, result.getTotalMemorySize());
+            updateRecord(record, result.getFreeMemorySize());
             records.add(record);
             putRecord(record);
         }
@@ -78,8 +78,8 @@ public class ShowNowDataSet extends ShowDataSet{
             updateRecord(record, result.getIp());
             updateRecord(record, result.getSystemTime());
             updateRecord(record, result.getCpuLoad());
-            updateRecord(record, result.getTotalMemroySize());
-            updateRecord(record, result.getFreeMemroySize());
+            updateRecord(record, result.getTotalMemorySize());
+            updateRecord(record, result.getFreeMemorySize());
             records.add(record);
             putRecord(record);
         }

@@ -11,15 +11,15 @@ public class ShowNowResult extends ShowResult{
     private String ip;
     private String systemTime;
     private String cpuLoad;
-    private String totalMemroySize;
-    private String freeMemroySize;
+    private String totalMemorySize;
+    private String freeMemorySize;
 
-    public ShowNowResult(String ip, String systemTime, String cpuLoad, String totalMemroySize, String freeMemroySize) {
+    public ShowNowResult(String ip, String systemTime, String cpuLoad, String totalMemorySize, String freeMemorySize) {
         this.ip = ip;
         this.systemTime = systemTime;
         this.cpuLoad = cpuLoad;
-        this.totalMemroySize = totalMemroySize;
-        this.freeMemroySize = freeMemroySize;
+        this.totalMemorySize = totalMemorySize;
+        this.freeMemorySize = freeMemorySize;
     }
 
     public ShowNowResult() {
@@ -38,12 +38,12 @@ public class ShowNowResult extends ShowResult{
         return cpuLoad;
     }
 
-    public String getTotalMemroySize() {
-        return totalMemroySize;
+    public String getTotalMemorySize() {
+        return totalMemorySize;
     }
 
-    public String getFreeMemroySize() {
-        return freeMemroySize;
+    public String getFreeMemorySize() {
+        return freeMemorySize;
     }
 
     public void setIp(String ip) {
@@ -58,20 +58,20 @@ public class ShowNowResult extends ShowResult{
         this.cpuLoad = cpuLoad;
     }
 
-    public void setTotalMemroySize(String totalMemroySize) {
-        this.totalMemroySize = totalMemroySize;
+    public void setTotalMemorySize(String totalMemorySize) {
+        this.totalMemorySize = totalMemorySize;
     }
 
-    public void setFreeMemroySize(String freeMemroySize) {
-        this.freeMemroySize = freeMemroySize;
+    public void setFreeMemorySize(String freeMemorySize) {
+        this.freeMemorySize = freeMemorySize;
     }
 
     public void serialize(OutputStream outputStream) throws IOException {
         ReadWriteIOUtils.write(ip, outputStream);
         ReadWriteIOUtils.write(systemTime, outputStream);
         ReadWriteIOUtils.write(cpuLoad, outputStream);
-        ReadWriteIOUtils.write(totalMemroySize, outputStream);
-        ReadWriteIOUtils.write(freeMemroySize, outputStream);
+        ReadWriteIOUtils.write(totalMemorySize, outputStream);
+        ReadWriteIOUtils.write(freeMemorySize, outputStream);
     }
 
     public static ShowNowResult deserialize(ByteBuffer buffer) {
@@ -80,8 +80,8 @@ public class ShowNowResult extends ShowResult{
         result.ip = ReadWriteIOUtils.readString(buffer);
         result.systemTime = ReadWriteIOUtils.readString(buffer);
         result.cpuLoad = ReadWriteIOUtils.readString(buffer);
-        result.totalMemroySize = ReadWriteIOUtils.readString(buffer);
-        result.freeMemroySize = ReadWriteIOUtils.readString(buffer);
+        result.totalMemorySize = ReadWriteIOUtils.readString(buffer);
+        result.freeMemorySize = ReadWriteIOUtils.readString(buffer);
         return result;
     }
 
@@ -91,8 +91,8 @@ public class ShowNowResult extends ShowResult{
                 "ip='" + ip + '\'' +
                 ", systemTime='" + systemTime + '\'' +
                 ", cpuLoad='" + cpuLoad + '\'' +
-                ", totalMemroySize='" + totalMemroySize + '\'' +
-                ", freeMemroySize='" + freeMemroySize + '\'' +
+                ", totalMemorySize='" + totalMemorySize + '\'' +
+                ", freeMemorySize='" + freeMemorySize + '\'' +
                 '}';
     }
 
@@ -108,13 +108,13 @@ public class ShowNowResult extends ShowResult{
         return Objects.equals(ip, that.ip)
                 && Objects.equals(systemTime, that.systemTime)
                 && Objects.equals(cpuLoad, that.cpuLoad)
-                && Objects.equals(totalMemroySize, that.totalMemroySize)
-                && Objects.equals(freeMemroySize, that.freeMemroySize);
+                && Objects.equals(totalMemorySize, that.totalMemorySize)
+                && Objects.equals(freeMemorySize, that.freeMemorySize);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(ip, systemTime, cpuLoad, totalMemroySize, freeMemroySize);
+        return Objects.hash(ip, systemTime, cpuLoad, totalMemorySize, freeMemorySize);
     }
 
     @Override
