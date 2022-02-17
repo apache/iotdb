@@ -49,7 +49,7 @@
 
 ## 使用
 
-目前，用户可以通过 Session 编程接口或 IoTDB-SQL 来使用元数据模板，包括模板的创建、修改、挂载与卸载等。Session 编程接口的详细文档可参见[此处](../API/Programming-Java-Native-API.md)，IoTDB-SQL 的详细文档可参加[此处](../IoTDB-SQL-Language/DDL-Data-Definitioin-Language.md)。下文将以 Session 中使用方法为例，进行简要介绍。
+目前，用户可以通过 Session 编程接口或 IoTDB-SQL 来使用元数据模板，包括模板的创建、修改、挂载与卸载等。Session 编程接口的详细文档可参见[此处](../API/Programming-Java-Native-API.md)，IoTDB-SQL 的详细文档可参加[此处](../Operate-Metadata/Template.md)。下文将以 Session 中使用方法为例，进行简要介绍。
 
 
 * 创建元数据模板
