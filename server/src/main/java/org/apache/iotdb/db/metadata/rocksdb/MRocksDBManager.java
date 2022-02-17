@@ -985,7 +985,7 @@ public class MRocksDBManager implements IMetaManager {
   private boolean isMatched(PartialPath pathPattern, String prefixedKey) {
     // path = root.a.bbb
     String path = RocksDBUtils.getPathByInnerName(prefixedKey);
-    if (path.length() <= pathPattern.getNodeLength()) {
+    if (path.length() <= pathPattern.getFullPath().length()) {
       return true;
     } else {
       String fullPath = pathPattern.getFullPath() + RockDBConstants.PATH_SEPARATOR;
@@ -1067,7 +1067,14 @@ public class MRocksDBManager implements IMetaManager {
       throws MetadataException {
     String innerNameByLevel =
         RocksDBUtils.getLevelPath(pathPattern.getNodes(), pathPattern.getNodeLength() - 1, level);
-    return readWriteHandler.getKeyByPrefix(innerNameByLevel).size();
+    for (RocksDBMNodeType type : RocksDBMNodeType.values()) {
+      String getKeyByInnerNameLevel = type.value + innerNameByLevel;
+      int queryResult = readWriteHandler.getKeyByPrefix(getKeyByInnerNameLevel).size();
+      if (queryResult != 0) {
+        return queryResult;
+      }
+    }
+    return 0;
   }
 
   /**
