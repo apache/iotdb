@@ -396,4 +396,73 @@ public class IoTDBSyntaxConventionIT {
       fail();
     }
   }
+
+  @Test
+  public void testIdentifier() {
+    String[] createIdentifiers = {
+      "id",
+      "ID",
+      "id0",
+      "_id",
+      "0id",
+      "233",
+      "`ab!`",
+      "`\"ab\"`",
+      "`\\\"ac\\\"`",
+      "`'ab'`",
+      "`a.b`",
+      "`a\\`b`"
+    };
+    String[] resultIdentifiers = {
+      "id", "ID", "id0", "_id", "0id", "233", "ab!", "\"ab\"", "\"ac\"", "'ab'", "a.b", "a`b"
+    };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int i = 0; i < createIdentifiers.length; i++) {
+        String createTemplateSql =
+            String.format(
+                "create schema template %s (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
+                createIdentifiers[i]);
+        System.out.println("CREATE TEMPLATE: " + createTemplateSql);
+        statement.execute(createTemplateSql);
+      }
+
+      boolean hasResult = statement.execute("SHOW TEMPLATES");
+      Assert.assertTrue(hasResult);
+      Set<String> expectedResult = new HashSet<>(Arrays.asList(resultIdentifiers));
+
+      ResultSet resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        Assert.assertTrue(expectedResult.contains(resultSet.getString("template name")));
+        expectedResult.remove(resultSet.getString("template name"));
+      }
+      Assert.assertEquals(0, expectedResult.size());
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testIllegaltIdentifier() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.execute(
+            "create schema template ab! (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
+        fail();
+      } catch (SQLException ignored) {
+      }
+      try {
+        statement.execute(
+            "create schema template `a`b` (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
+        fail();
+      } catch (SQLException ignored) {
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
 }

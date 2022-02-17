@@ -51,12 +51,12 @@ The following examples demonstrate how quoting and escaping work:
 'string'  // string
 '"string"'  // "string"
 '""string""'  // ""string""
-'str''ing'  // str'ing
+'str\'ing'  // str'ing
 '\'string'  // 'string
 "string" // string
 "'string'"  // 'string'
 "''string''"  // ''string''
-"str""ing"  // str"ing
+"str\"ing"  // str"ing
 "\"string"  // "string
 ```
 
@@ -114,6 +114,8 @@ _id  // parsed as _id
 ab!  // invalid
 `ab!`  // parsed as ab!
 `"ab"`  // parsed as "ab"
+`a`b`  // invalid
+`a\`b`  // parsed as a`b
 ```
 
 ## Node Names in Path
@@ -124,6 +126,7 @@ The constraints of node names are almost the same as the identifiers, but you sh
 
 - `root` is a reserved word, and it is only allowed to appear at the beginning layer of the time series. If `root` appears in other layers, it cannot be parsed and an error will be reported.
 - Character `.` is not permitted in unquoted or quoted node names. If you must do it (even if it is not recommended), you can enclose it within either single quote (`'`) or double quote (`"`). In this case, quotes are recognized as part of the node name to avoid ambiguity.
+- Among the node name enclosed in the reverse quota, single quotes and double quotes need to use a backslash to escape.
 - In particular, if the system is deployed on a Windows machine, the storage group layer name will be **case-insensitive**. For example, creating both `root.ln` and `root.LN` at the same time is not allowed.
 
 Examples:
@@ -150,6 +153,14 @@ CREATE TIMESERIES root.a.b.`s1.s2`.c WITH DATATYPE=INT32, ENCODING=RLE
 
 CREATE TIMESERIES root.a.b."s1.s2".c WITH DATATYPE=INT32, ENCODING=RLE
 // root.a.b."s1.s2".c will be parsed as Path[root, a, b, "s1.s2", c]
+```
+
+```sql
+CREATE TIMESERIES root.a.b.`s1"s2`.c WITH DATATYPE=INT32, ENCODING=RLE
+// invalid!
+
+CREATE TIMESERIES root.a.b.`s1\"s2`.c WITH DATATYPE=INT32, ENCODING=RLE
+// root.a.b.`s1\"s2`.c be parsed as Path[root, a, b, s1\"s2, c]
 ```
 
 # Keywords and Reserved Words

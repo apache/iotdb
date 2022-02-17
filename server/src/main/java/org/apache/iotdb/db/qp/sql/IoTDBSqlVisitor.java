@@ -310,7 +310,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitCreateSchemaTemplate(IoTDBSqlParser.CreateSchemaTemplateContext ctx) {
     CreateTemplateOperator createTemplateOperator =
         new CreateTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_CREATE);
-    createTemplateOperator.setName(ctx.templateName.getText());
+    createTemplateOperator.setName(parseIdentifier(ctx.templateName.getText()));
     if (ctx.ALIGNED() != null) {
       // aligned
       List<String> measurements = new ArrayList<>();
@@ -2822,13 +2822,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private String parseIdentifier(String src) {
     if (2 <= src.length() && src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
-      return src.substring(1, src.length() - 1);
+      return StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
     }
     return src;
   }
 
   private String parseNodeName(String src) {
-    return parseIdentifier(src);
+    if (2 <= src.length() && src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
+      return src.substring(1, src.length() - 1);
+    }
+    return src;
   }
 
   /** function for parsing file path used by LOAD statement. */

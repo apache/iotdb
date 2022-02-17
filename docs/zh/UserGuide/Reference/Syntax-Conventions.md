@@ -52,12 +52,12 @@
 'string'  // string
 '"string"'  // "string"
 '""string""'  // ""string""
-'str''ing'  // str'ing
+'str\'ing'  // str'ing
 '\'string'  // 'string
 "string" // string
 "'string'"  // 'string'
 "''string''"  // ''string''
-"str""ing"  // str"ing
+"str\"ing"  // str"ing
 "\"string"  // "string
 ```
 
@@ -114,9 +114,9 @@ _id  // 合法，被解析为 _id
 ab!  // 不合法，包含不被允许的特殊字符
 `ab!`  // 合法，被解析为 ab!
 `"ab"`  // 合法，被解析为 "ab"
+`a`b`  // 不合法，反引号应使用反斜杠进行转义
+`a\`b`  // 合法，被解析为 a`b
 ```
-
-
 
 ## 路径节点名
 
@@ -125,7 +125,8 @@ ab!  // 不合法，包含不被允许的特殊字符
 路径节点名的约束与标识符基本一致，但要额外注意以下几点：
 
 - `root` 只允许出现时间序列的开头，若其他层级出现 `root`，则无法解析，提示报错。
-- 无论是否使用反引号引用，路径分隔符（`.`）都不能出现在路径节点名中。如果一定要出现 `.` （不推荐！），需要用单引号或双引号括起。在这种情况下，为避免引发歧义，引号被系统视为节点名的一部分。
+- 无论是否使用反引号引用，路径分隔符（`.`）都不能出现在路径节点名中。 如果路径节点名中一定要出现 `.` （不推荐！），需要用单引号或双引号括起。在这种情况下，为避免引发歧义，引号被系统视为节点名的一部分。
+- 在反引号括起的路径节点名中，单引号和双引号需要使用反斜杠进行转义。
 - 特别地，如果系统在 Windows 系统上部署，那么存储组层级名称是**大小写不敏感**的。例如，同时创建 `root.ln` 和 `root.LN` 是不被允许的。
 
 示例如下：
@@ -152,6 +153,14 @@ CREATE TIMESERIES root.a.b.`s1.s2`.c WITH DATATYPE=INT32, ENCODING=RLE
 
 CREATE TIMESERIES root.a.b."s1.s2".c WITH DATATYPE=INT32, ENCODING=RLE
 // root.a.b."s1.s2".c 将被解析为 Path[root, a, b, "s1.s2", c]
+```
+
+```sql
+CREATE TIMESERIES root.a.b.`s1"s2`.c WITH DATATYPE=INT32, ENCODING=RLE
+// 解析失败！
+
+CREATE TIMESERIES root.a.b.`s1\"s2`.c WITH DATATYPE=INT32, ENCODING=RLE
+// root.a.b.`s1\"s2`.c 将被解析为 Path[root, a, b, s1\"s2, c]
 ```
 
 ## 关键字和保留字
