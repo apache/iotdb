@@ -37,6 +37,8 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -65,6 +67,8 @@ import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT64;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
 
 public class ImportCsv extends AbstractCsvTool {
+
+  private static Logger logger = LoggerFactory.getLogger(ImportCsv.class);
 
   private static final String FILE_ARGS = "f";
   private static final String FILE_NAME = "file or folder";
@@ -360,9 +364,15 @@ public class ImportCsv extends AbstractCsvTool {
                   if (type != null) {
                     headerTypeMap.put(header, type);
                   } else {
-                    System.out.printf(
-                        "Line '%s', column '%s': '%s' unknown type%n",
-                        record.getRecordNumber(), header, value);
+                    logger.error(
+                        new StringBuilder("Line '")
+                            .append(record.getRecordNumber())
+                            .append("', column '")
+                            .append(header)
+                            .append("': '")
+                            .append(value)
+                            .append("' unknown type")
+                            .toString());
                     isFail = true;
                   }
                 }
@@ -371,9 +381,16 @@ public class ImportCsv extends AbstractCsvTool {
                   Object valueTrans = typeTrans(value, type);
                   if (valueTrans == null) {
                     isFail = true;
-                    System.out.printf(
-                        "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                        record.getRecordNumber(), header, value, type);
+                    logger.error(
+                        new StringBuilder("Line '")
+                            .append(record.getRecordNumber())
+                            .append("', column '")
+                            .append(header)
+                            .append("': '")
+                            .append(value)
+                            .append("' can't convert to '")
+                            .append(type)
+                            .toString());
                   } else {
                     measurements.add(headerNameMap.get(header).replace(deviceId + '.', ""));
                     types.add(type);
@@ -489,9 +506,15 @@ public class ImportCsv extends AbstractCsvTool {
                   if (type != null) {
                     headerTypeMap.put(measurement, type);
                   } else {
-                    System.out.printf(
-                        "Line '%s', column '%s': '%s' unknown type%n",
-                        record.getRecordNumber(), measurement, value);
+                    logger.error(
+                        new StringBuilder("Line '")
+                            .append(record.getRecordNumber())
+                            .append("', column '")
+                            .append(measurement)
+                            .append("': '")
+                            .append(value)
+                            .append("' unknown type")
+                            .toString());
                     isFail.set(true);
                   }
                 }
@@ -501,9 +524,17 @@ public class ImportCsv extends AbstractCsvTool {
                 Object valueTrans = typeTrans(value, type);
                 if (valueTrans == null) {
                   isFail.set(true);
-                  System.out.printf(
-                      "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                      record.getRecordNumber(), headerNameMap.get(measurement), value, type);
+                  logger.error(
+                      new StringBuilder("Line '")
+                          .append(record.getRecordNumber())
+                          .append("', column '")
+                          .append(headerNameMap.get(measurement))
+                          .append("': '")
+                          .append(value)
+                          .append("' can't convert to '")
+                          .append(type)
+                          .append("'")
+                          .toString());
                 } else {
                   values.add(valueTrans);
                   measurements.add(headerNameMap.get(measurement));
