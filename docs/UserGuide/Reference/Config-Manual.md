@@ -490,13 +490,13 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 1048576 |
 |Effective|After restart system|
 
-* force\_mlog\_period\_in\_ms
+* sync\_mlog\_period\_in\_ms
 
-|Name| force\_mlog\_period\_in\_ms |
+|Name| sync\_mlog\_period\_in\_ms |
 |:---:|:---|
 |Description| The cycle when metadata log is periodically forced to be written to disk(in milliseconds). If force_mlog_period_in_ms = 0 it means force metadata log to be written to disk after each refreshment|
 |Type| Int64 |
-|Default| 0 |
+|Default| 100 |
 |Effective|After restart system|
 
 * flush\_wal\_threshold

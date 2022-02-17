@@ -412,13 +412,13 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 1048576 |
 |改后生效方式|触发生效|
 
-* force\_mlog\_period\_in\_ms
+* sync\_mlog\_period\_in\_ms
 
-|名字| force\_mlog\_period\_in\_ms |
+|名字| sync\_mlog\_period\_in\_ms |
 |:---:|:---|
 |描述| mlog定期刷新到磁盘的周期，单位毫秒。如果该参数为0，则表示每次对元数据的更新操作都会被立即写到磁盘上。|
 |类型| Int64 |
-|默认值| 0 |
+|默认值| 100 |
 |改后生效方式|重启服务生效|
 
 * memtable\_size\_threshold
