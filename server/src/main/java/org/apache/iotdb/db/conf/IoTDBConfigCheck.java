@@ -366,8 +366,7 @@ public class IoTDBConfigCheck {
     if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()
         && SystemFileFactory.INSTANCE.getFile(WAL_DIR).list().length != 0) {
       logger.error(
-          "WAL detected, please stop insertion and run 'SET SYSTEM TO READONLY', then run 'flush' on IoTDB {} before upgrading to {}. "
-              + "After flushing successfully, please run 'SET SYSTEM TO WRITABLE'.",
+          "WAL detected, please stop insertion and run 'SET SYSTEM TO READONLY', then run 'flush' on IoTDB {} before upgrading to {}.",
           properties.getProperty(IOTDB_VERSION_STRING),
           IoTDBConstant.VERSION);
       System.exit(-1);
