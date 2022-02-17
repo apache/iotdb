@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -105,6 +106,7 @@ public class IoTDBConfigCheck {
       String.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
 
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
+  private static final String[] OLD_VERSIONS = {"0.10", "0.11", "0.12"};
 
   public static IoTDBConfigCheck getInstance() {
     return IoTDBConfigCheckHolder.INSTANCE;
@@ -220,9 +222,9 @@ public class IoTDBConfigCheck {
               + " Please upgrade to v0.10 first");
       System.exit(-1);
     }
-    // check whether upgrading from v0.10 or v0.11 to v0.12
+    // check whether upgrading from old versions
     String versionString = properties.getProperty(IOTDB_VERSION_STRING);
-    if (versionString.startsWith("0.10") || versionString.startsWith("0.11")) {
+    if (Arrays.stream(OLD_VERSIONS).anyMatch(versionString::startsWith)) {
       logger.info(
           "Upgrading IoTDB from {} to {}, checking files...", versionString, IoTDBConstant.VERSION);
       checkUnClosedTsFileV2();
@@ -358,8 +360,8 @@ public class IoTDBConfigCheck {
     if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()
         && SystemFileFactory.INSTANCE.getFile(WAL_DIR).list().length != 0) {
       logger.error(
-          "WAL detected, please stop insertion, then run 'flush' "
-              + "on IoTDB {} before upgrading to {}",
+          "WAL detected, please stop insertion and run 'SET SYSTEM TO READONLY', then run 'flush' on IoTDB {} before upgrading to {}. "
+              + "After flushing successfully, please run 'SET SYSTEM TO WRITABLE'.",
           properties.getProperty(IOTDB_VERSION_STRING),
           IoTDBConstant.VERSION);
       System.exit(-1);
