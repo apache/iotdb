@@ -243,7 +243,12 @@ public class IoTDBConfigCheck {
     }
 
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
-      systemProperties.forEach((k, v) -> properties.setProperty(k, v));
+      systemProperties.forEach(
+          (k, v) -> {
+            if (!properties.containsKey(k)) {
+              properties.setProperty(k, v);
+            }
+          });
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
 
       // upgrade finished, delete old system.properties file
