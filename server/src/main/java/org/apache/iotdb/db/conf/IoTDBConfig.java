@@ -189,7 +189,7 @@ public class IoTDBConfig {
    * The cycle when metadata log is periodically forced to be written to disk(in milliseconds) If
    * set this parameter to 0 it means call channel.force(true) after every each operation
    */
-  private long syncMlogPeriodInMs = 0;
+  private long syncMlogPeriodInMs = 100;
 
   /** default base dir, stores all IoTDB runtime files */
   private static final String DEFAULT_BASE_DIR = "data";
