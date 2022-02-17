@@ -158,6 +158,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     this.clientVersion = clientVersion;
   }
 
+  @Override
+  public Operator visitShowNow(IoTDBSqlParser.ShowNowContext ctx) {
+    return new ShowNowOperator(SQLConstant.TOK_SHOW_NOW);
+  }
+
   /** 1. Top Level Description */
   @Override
   public Operator visitSingleStatement(IoTDBSqlParser.SingleStatementContext ctx) {
@@ -946,6 +951,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   // Show Measurements In Schema Template
 
+  @Override
   public Operator visitShowNodesInSchemaTemplate(
       IoTDBSqlParser.ShowNodesInSchemaTemplateContext ctx) {
     String templateName = parseStringWithQuotes(ctx.templateName.getText());
@@ -955,6 +961,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   // Show Paths Set Schema Template
 
+  @Override
   public Operator visitShowPathsSetSchemaTemplate(
       IoTDBSqlParser.ShowPathsSetSchemaTemplateContext ctx) {
     String templateName = parseStringWithQuotes(ctx.templateName.getText());
@@ -964,6 +971,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   // Show Paths Using Schema Template
 
+  @Override
   public Operator visitShowPathsUsingSchemaTemplate(
       IoTDBSqlParser.ShowPathsUsingSchemaTemplateContext ctx) {
     String templateName = parseStringWithQuotes(ctx.templateName.getText());

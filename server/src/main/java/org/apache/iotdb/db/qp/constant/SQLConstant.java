@@ -198,6 +198,7 @@ public class SQLConstant {
   public static final int TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING = 122;
 
   public static final int TOK_SHOW_QUERY_RESOURCE = 123;
+  public static final int TOK_SHOW_NOW = 124;
 
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 
@@ -285,6 +286,7 @@ public class SQLConstant {
     tokenNames.put(TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING, "TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING");
 
     tokenNames.put(TOK_SHOW_QUERY_RESOURCE, "TOK_SHOW_QUERY_RESOURCE");
+    tokenNames.put(TOK_SHOW_NOW, "TOK_SHOW_NOW");
   }
 
   public static boolean isReservedPath(PartialPath pathStr) {

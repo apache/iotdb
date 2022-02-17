@@ -40,21 +40,13 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
-import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelPathHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.GetDevicesHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.GetTimeseriesSchemaHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.PullMeasurementSchemaHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.*;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowNowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -528,5 +520,24 @@ public class SyncClientAdaptor {
 
     client.onSnapshotApplied(header, slots, handler);
     return handler.getResult(ClusterConstant.getWriteOperationTimeoutMS());
+  }
+
+  public static ByteBuffer getAllShowNow(AsyncDataClient client, RaftNode header, ShowNowPlan plan)
+          throws IOException, TException, InterruptedException {
+    ShowNowHandler handler = new ShowNowHandler();
+    AtomicReference<ByteBuffer> response = new AtomicReference<>(null);
+    handler.setResponse(response);
+    handler.setContact(client.getNode());
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    plan.serialize(dataOutputStream);
+
+    client.getShowNow(header, handler);
+    synchronized (response) {
+      if (response.get() == null) {
+        response.wait(ClusterConstant.getReadOperationTimeoutMS());
+      }
+    }
+    return response.get();
   }
 }

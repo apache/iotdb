@@ -475,6 +475,8 @@ service TSDataService extends RaftService {
   binary peekNextNotNullValue(1: RaftNode header, 2: long executorId, 3: long startTime, 4: long
   endTime)
 
+  binary getShowNow(1: RaftNode header)
+
 }
 
 service TSMetaService extends RaftService {

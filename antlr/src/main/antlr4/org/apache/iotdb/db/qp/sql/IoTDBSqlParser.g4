@@ -21,7 +21,6 @@ parser grammar IoTDBSqlParser;
 
 options { tokenVocab=IoTDBSqlLexer; }
 
-
 /**
  * 1. Top Level Description
  */
@@ -45,7 +44,7 @@ ddlStatement
     | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
-    | countStorageGroup | countDevices | countTimeseries | countNodes
+    | countStorageGroup | countDevices | countTimeseries | countNodes | showNow
     ;
 
 dmlStatement
@@ -283,6 +282,15 @@ showTTL
 // Show All TTL
 showAllTTL
     : SHOW ALL TTL
+    ;
+
+// Show NOW
+showNow
+    : SHOW timeClause
+    ;
+
+timeClause
+    : NOW LR_BRACKET RR_BRACKET
     ;
 
 // Show Schema Template

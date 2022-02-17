@@ -455,4 +455,13 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       throw new TException(e);
     }
   }
+
+  @Override
+  public ByteBuffer getShowNow(RaftNode header) throws TException {
+    try {
+      return dataGroupMember.getLocalQueryExecutor().getShowNow();
+    } catch (CheckConsistencyException | IOException | MetadataException e) {
+      throw new TException(e);
+    }
+  }
 }
