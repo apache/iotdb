@@ -415,7 +415,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| The cycle when metadata log is periodically forced to be written to disk(in milliseconds). If force_mlog_period_in_ms = 0 it means force metadata log to be written to disk after each refreshment|
 |Type| Int64 |
-|Default| 0 |
+|Default| 100 |
 |Effective|After restart system|
 
 * flush\_wal\_threshold
