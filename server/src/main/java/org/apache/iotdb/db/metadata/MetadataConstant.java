@@ -40,6 +40,8 @@ public class MetadataConstant {
       MTREE_PREFIX + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot.bin";
   public static final String MTREE_SNAPSHOT_TMP =
       MTREE_PREFIX + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot.bin.tmp";
+  public static final String SCHEMA_FILE_DIR = "pst";
+  public static final String SCHEMA_FILE_SUFFIX = "pst";
 
   public static final PartialPath ALL_MATCH_PATTERN = new PartialPath(new String[] {"root", "**"});
 

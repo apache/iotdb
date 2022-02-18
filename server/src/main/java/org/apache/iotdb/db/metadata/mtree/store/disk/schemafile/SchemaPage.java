@@ -64,12 +64,21 @@ public class SchemaPage implements ISchemaPage {
   /**
    * This method will init page header for a blank page buffer.
    *
-   * <p>Page Header Structure: 1 short (2 bytes): pageSpareOffset, spare offset 1 short (2 bytes):
-   * segNum, amount of the segment 1 short (2 bytes): last deleted segment offset 1 boolean (1
-   * bytes): delete flag
+   * <p><b>Page Header Structure:</b></p>
+   * <ul>
+   * <li>1 short (2 bytes): pageSpareOffset, spare offset</li>
+   * <li>1 short (2 bytes): segNum, amount of the segment</li>
+   * <li>1 short (2 bytes): last deleted segment offset</li>
+   * <li>1 boolean (1 bytes): delete flag </li>
+   * </ul>
+   * <b>Page Structure: </b>
+   * </ul>
+   * <li>fixed length: Page Header
+   * <li>var length: Segment
+   * <br>... spare space ...
+   * <li>var length: Segment Offset List, a sorted list of Short, length at 2*segNum
+   * </ul>
    *
-   * <p>Page Structure: fixed length: Page Header var length: Segment ... spare space ... var
-   * length: Segment Offset List, a sorted list of Short, length at 2*segNum
    */
   public SchemaPage(ByteBuffer buffer, int index, boolean override) {
     buffer.clear();

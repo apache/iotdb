@@ -31,6 +31,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.Segment;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -51,7 +52,7 @@ public class SchemaFileTest {
 
   @Before
   public void setUp() {
-    // EnvironmentUtils.envSetUp();
+    EnvironmentUtils.envSetUp();
   }
 
   @After
@@ -61,7 +62,7 @@ public class SchemaFileTest {
 
   @Test
   public void essentialTestSchemaFile() throws IOException, MetadataException {
-    ISchemaFile sf = new SchemaFile("root.test.vRoot1", true);
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1", 10000L);
 
     IMNode root = virtualTriangleMTree(5, "root.test");
     IMNode int0 = root.getChild("int0");
@@ -119,7 +120,7 @@ public class SchemaFileTest {
 
     sf.close();
 
-    ISchemaFile nsf = new SchemaFile("root.test.vRoot1");
+    ISchemaFile nsf = SchemaFile.loadSchemaFile("root.test.vRoot1");
     Assert.assertEquals(
         "alas99999", nsf.getChildNode(int0, "mint1").getAsMeasurementMNode().getAlias());
     Assert.assertEquals(
@@ -135,14 +136,15 @@ public class SchemaFileTest {
 
   @Test
   public void inspectFile() throws MetadataException, IOException {
-    ISchemaFile sf = new SchemaFile("root.test.vRoot1");
+    essentialTestSchemaFile();
+    ISchemaFile sf = SchemaFile.loadSchemaFile("root.test.vRoot1");
     System.out.println(((SchemaFile) sf).inspect());
     sf.close();
   }
 
   @Test
   public void testReadFromFlat() throws MetadataException, IOException {
-    ISchemaFile sf = new SchemaFile("root.test.vRoot1", true);
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1", 11111L);
 
     Iterator<IMNode> ite = getTreeBFT(getFlatTree(10, "aa"));
     while (ite.hasNext()) {
@@ -165,7 +167,7 @@ public class SchemaFileTest {
 
     IMNode node = new InternalMNode(null, "test");
     ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(196608L);
-    ISchemaFile sf = new SchemaFile("root.test.vRoot1");
+    ISchemaFile sf = SchemaFile.loadSchemaFile("root.test.vRoot1");
 
     printSF(sf);
 
@@ -175,12 +177,13 @@ public class SchemaFileTest {
       System.out.println(res.next().getName());
       cnt++;
     }
+    sf.close();
     System.out.println(cnt);
   }
 
   @Test
   public void testVerticalTree() throws MetadataException, IOException {
-    ISchemaFile sf = new SchemaFile("root.sgvt.vt", true);
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.sgvt.vt", 11_111L);
     IMNode root = getVerticalTree(100, "VT");
     Iterator<IMNode> ite = getTreeBFT(root);
     while (ite.hasNext()) {
@@ -208,7 +211,7 @@ public class SchemaFileTest {
             .size());
     sf.close();
 
-    ISchemaFile nsf = new SchemaFile("root.sgvt.vt");
+    ISchemaFile nsf = SchemaFile.loadSchemaFile("root.sgvt.vt");
 
     ICachedMNodeContainer.getCachedMNodeContainer(vt1).getNewChildBuffer().clear();
     ICachedMNodeContainer.getCachedMNodeContainer(vt4).getNewChildBuffer().clear();
@@ -223,7 +226,7 @@ public class SchemaFileTest {
     nsf.writeMNode(vt4);
 
     nsf.close();
-    nsf = new SchemaFile("root.sgvt.vt");
+    nsf = SchemaFile.loadSchemaFile("root.sgvt.vt");
 
     Iterator<IMNode> vt1Children = nsf.getChildren(vt1);
     Iterator<IMNode> vt4Children = nsf.getChildren(vt4);
@@ -248,6 +251,8 @@ public class SchemaFileTest {
     }
     nsf.writeMNode(vt1);
     nsf.writeMNode(vt4);
+
+    Assert.assertEquals(11111L, nsf.init().getAsStorageGroupMNode().getDataTTL());
 
     printSF(nsf);
   }

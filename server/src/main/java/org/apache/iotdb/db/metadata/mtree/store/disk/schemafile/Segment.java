@@ -48,17 +48,23 @@ public class Segment implements ISegment {
   List<Pair<String, Short>> keyAddressList;
 
   /**
-   * Init SlottedFile with a buffer, which contains all information about this segment
-   *
-   * <p>For a page no more than 16 kib, a signed short is enough to index all bytes inside a
-   * segment. Segment Structure: 25 byte: header 1 short: length, segment length 1 short: freeAddr,
-   * start offset of records 1 short: recordNum, amount of records in this segment 1 short:
-   * pairLength, length of key-address in bytes 1 long (8 bytes): prevSegIndex, previous segment
-   * index 1 long (8 bytes): nextSegIndex, next segment index 1 bit: delFlag, delete flag (--- check
-   * sum, parent record address, max/min record key may be contained further ---)
-   *
-   * <p>var length: key-address pairs, begin at 25 bytes offset, length of pairLength ... empty
-   * space ... var length: records
+   * Init Segment with a buffer, which contains all information about this segment
+   * <p>
+   * For a page no more than 16 kib, a signed short is enough to index all bytes inside a segment.
+   * <p>
+   * <b>Segment Structure:</b>
+   * <li>25 byte: header
+   * <li>1 short: length, segment length
+   * <li>1 short: freeAddr, start offset of records
+   * <li>1 short: recordNum, amount of records in this segment
+   * <li>1 short: pairLength, length of key-address in bytes
+   * <li>1 long (8 bytes): prevSegIndex, previous segment index
+   * <li>1 long (8 bytes): nextSegIndex, next segment index
+   * <li>1 bit: delFlag, delete flag
+   * <br>(--- checksum, parent record address, max/min record key may be contained further ---)
+   * <li>var length: key-address pairs, begin at 25 bytes offset, length of pairLength
+   * <br>... empty space ...
+   * <li>var length: records
    */
   public Segment(ByteBuffer buffer, boolean override) {
     this.buffer = buffer;
