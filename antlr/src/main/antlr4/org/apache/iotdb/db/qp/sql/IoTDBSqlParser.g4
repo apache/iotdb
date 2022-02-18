@@ -286,11 +286,7 @@ showAllTTL
 
 // Show NOW
 showNow
-    : SHOW timeClause
-    ;
-
-timeClause
-    : NOW LR_BRACKET RR_BRACKET
+    : SHOW NOW LR_BRACKET RR_BRACKET
     ;
 
 // Show Schema Template

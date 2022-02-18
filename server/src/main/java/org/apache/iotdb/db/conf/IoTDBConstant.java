@@ -186,7 +186,7 @@ public class IoTDBConstant {
   public static final String CPU_LOAD = "CpuLoad";
   public static final String TOTAL_MEMORYSIZE = "TotalMemorySize";
   public static final String FREE_MEMORYSIZE = "FreeMemorySize";
-  public static final String IP_ADDRESS = "ip_address";
+  public static final String IP_ADDRESS = "IpAddress";
 
   // client version number
   public enum ClientVersion {
