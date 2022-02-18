@@ -43,7 +43,17 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_VERSION;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_FLAG;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ROOT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.PATH_SEPARATOR;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
 
 public class RocksDBReadWriteHandler {
 
@@ -60,6 +70,8 @@ public class RocksDBReadWriteHandler {
 
   private RocksDB rocksDB;
 
+  private static RocksDBReadWriteHandler readWriteHandler;
+
   ConcurrentMap<String, ColumnFamilyHandle> columnFamilyHandleMap = new ConcurrentHashMap<>();
   List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>();
   List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>();
@@ -68,7 +80,7 @@ public class RocksDBReadWriteHandler {
     RocksDB.loadLibrary();
   }
 
-  public RocksDBReadWriteHandler() throws RocksDBException {
+  private RocksDBReadWriteHandler() throws RocksDBException {
     Options options = new Options();
     options.setCreateIfMissing(true);
     options.setAllowMmapReads(true);
@@ -531,5 +543,12 @@ public class RocksDBReadWriteHandler {
   @TestOnly
   public void close() {
     rocksDB.close();
+  }
+
+  public static RocksDBReadWriteHandler getInstance() throws RocksDBException {
+    if (readWriteHandler != null) {
+      return readWriteHandler;
+    }
+    return new RocksDBReadWriteHandler();
   }
 }

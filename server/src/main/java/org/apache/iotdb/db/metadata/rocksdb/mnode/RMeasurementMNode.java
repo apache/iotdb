@@ -154,7 +154,7 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   // unsupported exceptions
   @Override
   public long getOffset() {
-    return 0;
+    throw new UnsupportedOperationException();
   }
 
   @Override

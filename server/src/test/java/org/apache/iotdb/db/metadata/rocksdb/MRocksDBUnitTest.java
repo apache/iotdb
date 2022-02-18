@@ -170,18 +170,22 @@ public class MRocksDBUnitTest {
         path2, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, "ma");
     mRocksDBManager.printScanAllKeys();
 
+    // test total series number
     Assert.assertEquals(2, mRocksDBManager.getTotalSeriesNumber());
 
+    // test storage group number
     Assert.assertEquals(
         1,
         mRocksDBManager.getStorageGroupNum(new PartialPath("root.inner1.inner2.inner3.sg"), false));
     Assert.assertEquals(2, mRocksDBManager.getStorageGroupNum(new PartialPath("root.inner"), true));
     Assert.assertEquals(6, mRocksDBManager.getStorageGroupNum(new PartialPath("root"), true));
 
+    // test all timeseries number
     Assert.assertEquals(
         1, mRocksDBManager.getAllTimeseriesCount(new PartialPath("root.tt.sg.dd.m1")));
     Assert.assertEquals(2, mRocksDBManager.getAllTimeseriesCount(new PartialPath("root"), true));
 
+    // test device number
     Assert.assertEquals(0, mRocksDBManager.getDevicesNum(new PartialPath("root.inner1.inner2")));
     Assert.assertEquals(
         0, mRocksDBManager.getDevicesNum(new PartialPath("root.inner1.inner2"), true));
@@ -190,6 +194,7 @@ public class MRocksDBUnitTest {
 
     // todo wildcard
 
+    // test nodes count in given level
     Assert.assertEquals(
         2, mRocksDBManager.getNodesCountInGivenLevel(new PartialPath("root.tt.sg"), 3, false));
   }
