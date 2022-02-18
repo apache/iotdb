@@ -267,6 +267,7 @@ public class IoTDBSyncReceiverCollectorIT {
 
     // 7. stop collector, check release thread pool
     collector.stopCollect();
+    Thread.sleep(1000);
     for (Thread t : Thread.getAllStackTraces().keySet()) {
       if (t.getName().contains(ThreadName.SYNC_RECEIVER_COLLECTOR.getName())) {
         Assert.fail();
@@ -474,6 +475,7 @@ public class IoTDBSyncReceiverCollectorIT {
 
     // 7. stop collector, check release thread pool
     collector.stopCollect();
+    Thread.sleep(1000);
     for (Thread t : Thread.getAllStackTraces().keySet()) {
       if (t.getName().contains(ThreadName.SYNC_RECEIVER_COLLECTOR.getName())) {
         Assert.fail();
