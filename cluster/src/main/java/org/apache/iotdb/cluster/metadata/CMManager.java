@@ -73,7 +73,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
-import org.apache.iotdb.db.query.dataset.ShowNowResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -1501,15 +1500,6 @@ public class CMManager extends MManager {
         applyShowTimeseriesLimitOffset(handler.getResult(), limit, offset);
     logger.debug("Show {} has {} results", plan.getPath(), showTimeSeriesResults.size());
     return showTimeSeriesResults;
-  }
-
-  private List<ShowNowResult> applyShowNow(ConcurrentSkipListSet<ShowNowResult> resultSet) {
-    List<ShowNowResult> showNowResults = new ArrayList<>();
-    Iterator<ShowNowResult> iterator = resultSet.iterator();
-    while (iterator.hasNext()) {
-      showNowResults.add(iterator.next());
-    }
-    return showNowResults;
   }
 
   private List<ShowTimeSeriesResult> applyShowTimeseriesLimitOffset(
