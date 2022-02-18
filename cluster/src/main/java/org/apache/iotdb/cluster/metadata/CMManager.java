@@ -29,7 +29,6 @@ import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -65,7 +64,13 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.sys.*;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowNowResult;
@@ -1447,115 +1452,6 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public List<ShowNowResult> showNow(ShowNowPlan plan, QueryContext context)
-      throws MetadataException {
-    ConcurrentSkipListSet<ShowNowResult> resultSet = new ConcurrentSkipListSet<>();
-    ExecutorService pool =
-        new ThreadPoolExecutor(
-            THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
-    List<PartitionGroup> globalGroups;
-    metaGroupMember.getPartitionTable();
-    try {
-      globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
-      PartitionGroup partitionGroup =
-          metaGroupMember.getPartitionTable().partitionByPathTime(plan.getPath(), 0);
-      PartitionTable partitionTable = metaGroupMember.getPartitionTable();
-      List<Node> nodeList = partitionTable.getAllNodes();
-      globalGroups.add(partitionGroup);
-    } catch (MetadataException e) {
-      // if the path location is not find, obtain the path location from all groups.
-      globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
-    }
-    List<Node> nodeList = metaGroupMember.getPartitionTable().getAllNodes();
-    List<Future<Void>> futureList = new ArrayList<>();
-    for (PartitionGroup group : globalGroups) {
-      futureList.add(
-          pool.submit(
-              () -> {
-                try {
-                  showNow(group, plan, resultSet, context);
-                } catch (Exception e) {
-                  logger.error(
-                      "\"****************Cannot get show now result of {} from {}\", plan, node");
-                }
-                return null;
-              }));
-    }
-    waitForThreadPool(futureList, pool, "showNow()");
-    List<ShowNowResult> showNowResults = applyShowNow(resultSet);
-    return showNowResults;
-  }
-
-  private void showNow(
-      PartitionGroup group, ShowNowPlan plan, Set<ShowNowResult> resultSet, QueryContext context)
-      throws CheckConsistencyException, MetadataException {
-    if (group.contains(metaGroupMember.getThisNode())) {
-      showLocalNow(group, plan, resultSet, context);
-    } else {
-      showRemoteNow(group, plan, resultSet, context);
-    }
-  }
-
-  private void showLocalNow(
-      PartitionGroup group, ShowNowPlan plan, Set<ShowNowResult> resultSet, QueryContext context)
-      throws CheckConsistencyException {
-    RaftNode header = group.getHeader();
-    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
-    localDataMember.syncLeaderWithConsistencyCheck(false);
-    try {
-      List<ShowNowResult> localResult = null;
-      try {
-        localResult = super.showNow(plan, context);
-      } catch (Exception e) {
-        e.printStackTrace();
-        logger.error("********CMManager showLocalNow");
-      }
-      try {
-        if (localResult != null) {
-          resultSet.addAll(localResult);
-        }
-      } catch (Exception e) {
-        logger.error("******************** showLocalNow 1665");
-        e.printStackTrace();
-      }
-      logger.debug("Fetched local now {} schemas from {}", localResult.size(), group);
-    } catch (Exception e) {
-      logger.error("Cannot execute show now plan  {} from {} locally.", plan, group);
-      throw e;
-    }
-  }
-
-  private void showRemoteNow(
-      PartitionGroup group, ShowNowPlan plan, Set<ShowNowResult> resultSet, QueryContext context) {
-    ByteBuffer resultBinary = null;
-    for (Node node : group) {
-      try {
-        resultBinary = showNow(node, group, plan);
-        if (resultBinary != null) {
-          break;
-        }
-      } catch (IOException e) {
-        logger.error(LOG_FAIL_CONNECT, node, e);
-      } catch (TException e) {
-        logger.error("Error occurs when getting  now in node {}.", node, e);
-      } catch (InterruptedException e) {
-        logger.error("Interrupted when getting  now in node {}.", node, e);
-        Thread.currentThread().interrupt();
-      }
-    }
-    resultSet.add(ShowNowResult.deserialize(resultBinary));
-    if (resultBinary != null) {
-      int size = resultBinary.getInt();
-      logger.debug("Fetched remote now {} schemas  from {}", size, group);
-      for (int i = 0; i < size; i++) {
-        resultSet.add(ShowNowResult.deserialize(resultBinary));
-      }
-    } else {
-      logger.error("Failed to execute show now {} in group: {}.", plan, group);
-    }
-  }
-
-  @Override
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
     ExecutorService pool =
@@ -1868,32 +1764,5 @@ public class CMManager extends MManager {
       }
       return super.getBelongedStorageGroup(path);
     }
-  }
-
-  private ByteBuffer showNow(Node node, PartitionGroup group, ShowNowPlan plan)
-      throws IOException, TException, InterruptedException {
-    ByteBuffer resultBinary = null;
-
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client =
-          ClusterIoTDB.getInstance()
-              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-      resultBinary = SyncClientAdaptor.getAllShowNow(client, group.getHeader(), plan);
-    } else {
-      try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-        SyncDataClient syncDataClient =
-            ClusterIoTDB.getInstance()
-                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-        plan.serialize(dataOutputStream);
-        try {
-          resultBinary = syncDataClient.getShowNow(group.getHeader());
-        } catch (TException e) {
-          // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
-        }
-      }
-    }
-    return resultBinary;
   }
 }
