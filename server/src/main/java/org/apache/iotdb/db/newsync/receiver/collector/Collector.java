@@ -161,7 +161,12 @@ public class Collector {
             DataOutputStream outputStream =
                 new DataOutputStream(new FileOutputStream(recordFile, true));
             while (!pipeDataQueue.isEnd()) {
-              PipeData pipeData = pipeDataQueue.take();
+              PipeData pipeData = null;
+              try {
+                pipeData = pipeDataQueue.take();
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
               int currentIndex = pipeDataQueue.getAndIncreaseIndex();
               if (currentIndex < nextIndex) {
                 continue;
@@ -195,8 +200,6 @@ public class Collector {
         }
       } catch (IOException e) {
         logger.error(e.getMessage());
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
       }
     }
   }
