@@ -7,8 +7,15 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.rocksdb.RockDBConstants;
+import org.apache.iotdb.db.metadata.rocksdb.RocksDBMNodeType;
 import org.apache.iotdb.db.metadata.rocksdb.RocksDBReadWriteHandler;
+import org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils;
 import org.apache.iotdb.db.metadata.template.Template;
+
+import org.rocksdb.RocksDBException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Objects;
@@ -19,9 +26,20 @@ public abstract class RMNode implements IMNode {
 
   protected RocksDBReadWriteHandler readWriteHandler;
 
+  protected IMNode parent;
+
+  protected IMNode child;
+
+  private static final Logger logger = LoggerFactory.getLogger(RMNode.class);
+
   /** Constructor of MNode. */
   public RMNode(String fullPath) {
     this.fullPath = fullPath.intern();
+    try {
+      readWriteHandler = RocksDBReadWriteHandler.getInstance();
+    } catch (RocksDBException e) {
+      logger.error("create RocksDBReadWriteHandler fail", e);
+    }
   }
 
   @Override
@@ -36,13 +54,37 @@ public abstract class RMNode implements IMNode {
 
   @Override
   public IMNode getParent() {
-    // TODO: query from RocksDB and return parent
-    return null;
+    if (parent != null) {
+      return parent;
+    }
+    String parentName = fullPath.substring(0, fullPath.lastIndexOf(RockDBConstants.PATH_SEPARATOR));
+    byte[] value = null;
+    for (RocksDBMNodeType type : RocksDBMNodeType.values()) {
+      String parentInnerName =
+          RocksDBUtils.convertPartialPathToInner(
+              parentName, RocksDBUtils.getLevelByPartialPath(parentName), type.getValue());
+      try {
+        value = readWriteHandler.get(null, (type + parentInnerName).getBytes());
+      } catch (RocksDBException e) {
+        logger.error("Failed to get parent node.", e);
+      }
+      if (value != null) {
+        switch (type.getValue()) {
+          case RockDBConstants.NODE_TYPE_SG:
+            parent = new RStorageGroupMNode(parentName, value);
+          case RockDBConstants.NODE_TYPE_INTERNAL:
+            parent = new RInternalMNode(parentName);
+          case RockDBConstants.NODE_TYPE_ENTITY:
+            parent = new REntityMNode(parentName);
+        }
+      }
+    }
+    return parent;
   }
 
   @Override
   public void setParent(IMNode parent) {
-    // Do noting
+    this.parent = parent;
   }
 
   @Override

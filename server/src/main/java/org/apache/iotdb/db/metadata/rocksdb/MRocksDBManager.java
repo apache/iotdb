@@ -175,7 +175,7 @@ public class MRocksDBManager implements IMetaManager {
 
   public MRocksDBManager() throws MetadataException {
     try {
-      readWriteHandler = new RocksDBReadWriteHandler();
+      readWriteHandler = RocksDBReadWriteHandler.getInstance();
     } catch (RocksDBException e) {
       logger.error("create RocksDBReadWriteHandler fail", e);
       throw new MetadataException(e);
