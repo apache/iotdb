@@ -44,7 +44,7 @@ ddlStatement
     | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
-    | countStorageGroup | countDevices | countTimeseries | countNodes | showNow
+    | countStorageGroup | countDevices | countTimeseries | countNodes
     ;
 
 dmlStatement
@@ -284,11 +284,6 @@ showAllTTL
     : SHOW ALL TTL
     ;
 
-// Show NOW
-showNow
-    : SHOW NOW LR_BRACKET RR_BRACKET
-    ;
-
 // Show Schema Template
 showSchemaTemplates
     : SHOW SCHEMA? TEMPLATES
@@ -337,6 +332,11 @@ countNodes
 // Select Statement
 selectStatement
     : TRACING? selectClause intoClause? fromClause whereClause? specialClause?
+    | SHOW nowClause
+    ;
+
+nowClause
+    : NOW LR_BRACKET RR_BRACKET
     ;
 
 intoClause

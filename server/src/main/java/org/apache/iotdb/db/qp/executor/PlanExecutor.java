@@ -699,7 +699,7 @@ public class PlanExecutor implements IPlanExecutor {
       case PATHS_USING_SCHEMA_TEMPLATE:
         return processShowPathsUsingSchemaTemplate((ShowPathsUsingTemplatePlan) showPlan);
       case NOW:
-        return processShowNow((ShowNowPlan) showPlan, context);
+        return queryRouter.showNowQuery((ShowNowPlan) showPlan, context);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }

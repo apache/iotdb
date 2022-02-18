@@ -158,11 +158,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     this.clientVersion = clientVersion;
   }
 
-  @Override
-  public Operator visitShowNow(IoTDBSqlParser.ShowNowContext ctx) {
-    return new ShowNowOperator(SQLConstant.TOK_SHOW_NOW);
-  }
-
   /** 1. Top Level Description */
   @Override
   public Operator visitSingleStatement(IoTDBSqlParser.SingleStatementContext ctx) {
@@ -1038,6 +1033,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitSelectStatement(IoTDBSqlParser.SelectStatementContext ctx) {
+    if (ctx.showNowClause() != null) {
+      return new ShowNowOperator(SQLConstant.TOK_SHOW_NOW);
+    }
     // 1. Visit special clause first to initialize different query operator
     if (ctx.specialClause() != null) {
       queryOp = (QueryOperator) visit(ctx.specialClause());
@@ -1131,6 +1129,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
 
     return intoPath;
+  }
+
+  @Override
+  public Operator visitShowNowClause(IoTDBSqlParser.ShowNowClauseContext ctx) {
+    return new ShowNowOperator(SQLConstant.TOK_SHOW_NOW);
   }
 
   @Override
