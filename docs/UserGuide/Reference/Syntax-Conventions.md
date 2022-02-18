@@ -163,7 +163,7 @@ CREATE TIMESERIES root.a.b.`s1\"s2`.c WITH DATATYPE=INT32, ENCODING=RLE
 // root.a.b.`s1\"s2`.c be parsed as Path[root, a, b, s1\"s2, c]
 ```
 
-# Keywords and Reserved Words
+## Keywords and Reserved Words
 
 Keywords are words that have significance in SQL require special treatment for use as identifiers and node names, and need to be escaped with backticks.
 Certain keywords, such as TIME and ROOT, are reserved and cannot use as identifiers and node names (even after escaping).
@@ -185,14 +185,33 @@ select `0` + 0 from root.sg.d -- valid expression, add number 0 to each point of
 select myudf(`'a'`, 'x') from root.sg.d -- valid expression, call function myudf with timeseries root.sg.d.'a' as the 1st parameter, and a string constant 'x' as the 2nd parameter
 ```
 
->
-> Summary: Backslash (\) usage scenarios
-> - In string literals, double or single quote should be escaped with a backslash. e.g. "str\\"ing" is parsed as str"ing, 'str\\'ing' is parsed as str'ing
-> - In an identifier, backtick should be escaped with a backslash. e.g. \`na\\\`me\` is parsed as na\`me
-> - In path node names, double or single quote should be escaped with a backslash. To avoid ambiguity, backslashes are recognized as part of the node name.
->
->   e.g. root.sg1.d1."a\"b" is parsed as Path[root, sg1, d1, "a\\"b"], root.sg1.d1.'a\'b' is parsed as Path[ root, sg1, d1, 'a\\'b'], root.sg1.d1.\`a\"b\` is parsed as Path[root, sg1, d1, a\\"b], root.sg1.d1.\`a\'b\` is parsed as Path[root, sg1, d1, a\\'b]
->
+## Quote Symbol
+
+### Double quotes ("), single quotes (')
+
+Double quotes and single quotes are used in the following scenarios:
+
+1. String literals are represented by strings enclosed in single or double quotes.
+2. If you want to use the path separator (`.`) in the path node name, you need to enclose the node name in single or double quotes. In this case, to avoid ambiguity, the quotes are treated as part of the node name by the system.
+
+### Backticks (\`)
+
+Backticks are used in the following scenarios:
+
+1. When using special characters in an identifier, the identifier needs to be enclosed in backticks.
+2. When using special characters other than path separators in the path node name, the path node name needs to be enclosed in backticks. In this case, the backticks are not considered part of the node name by the system.
+
+### Backslash (\\)
+
+backslashes are used in the following scenarios:
+
+- In string literals, double or single quote should be escaped with a backslash.
+  - e.g. "str\\"ing" is parsed as str"ing, 'str\\'ing' is parsed as str'ing.
+- In an identifier, backtick should be escaped with a backslash.
+  - e.g. \`na\\\`me\` is parsed as na\`me.
+- In path node names, double or single quote should be escaped with a backslash. To avoid ambiguity, backslashes are recognized as part of the node name.
+  - e.g. root.sg1.d1."a\\"b" is parsed as Path[root, sg1, d1, "a\\"b"], root.sg1.d1.'a\\'b' is parsed as Path[ root, sg1, d1, 'a\\'b'], root.sg1.d1.\`a\\"b\` is parsed as Path[root, sg1, d1, a\\"b], root.sg1.d1.\`a\\'b\` is parsed as Path[root, sg1, d1, a\\'b].
+  
 
 ## Learn More
 
