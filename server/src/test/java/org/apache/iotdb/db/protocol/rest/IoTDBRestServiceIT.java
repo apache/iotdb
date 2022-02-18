@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.protocol.rest;
 
+import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.service.RPCService;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -77,8 +79,20 @@ public class IoTDBRestServiceIT {
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(200, response.getStatusLine().getStatusCode());
       assertEquals(200, Integer.parseInt(result.get("code").toString()));
-    } catch (IOException e) {
+
+      // Shutdown RPCService to test
+      RPCService.getInstance().stop();
+      response = httpClient.execute(httpGet);
+      responseEntity = response.getEntity();
+      message = EntityUtils.toString(responseEntity, "utf-8");
+      result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(503, response.getStatusLine().getStatusCode());
+      assertEquals(500, Integer.parseInt(result.get("code").toString()));
+      RPCService.getInstance().start();
+
+    } catch (IOException | StartupException e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
