@@ -438,7 +438,7 @@ public class VirtualStorageGroupManager {
   public void stopSchedulerPool() {
     for (StorageGroupProcessor vsg : this.virtualStorageGroupProcessor) {
       if (vsg != null) {
-        ThreadUtils.stopThreadPool(vsg.getWALTrimScheduleTask(), ThreadName.WAL_TRIM);
+        ThreadUtils.stopThreadPool(vsg.getWALTrimScheduleTask(), ThreadName.WAL_TRIM.getName());
       }
     }
   }
