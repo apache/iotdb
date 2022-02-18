@@ -77,7 +77,8 @@ public abstract class PipeData {
         return SchemaPipeData.deserialize(stream);
       default:
         logger.error("Deserialize PipeData error because Unknown type {}.", type);
-        return null;
+        throw new UnsupportedOperationException(
+            "Deserialize PipeData error because Unknown type " + type);
     }
   }
 

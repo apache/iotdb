@@ -21,7 +21,6 @@ package org.apache.iotdb.db.newsync.receiver.manager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.newsync.receiver.recovery.ReceiverLog;
 import org.apache.iotdb.db.newsync.receiver.recovery.ReceiverLogAnalyzer;
-import org.apache.iotdb.db.service.ServiceType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,16 +38,10 @@ public class ReceiverManager {
   private ReceiverLog log;
 
   public void init() throws StartupException {
-    try {
-      log = new ReceiverLog();
-    } catch (IOException e) {
-      logger.error(e.getMessage());
-      throw new StartupException(
-          ServiceType.RECEIVER_SERVICE.getName(), "cannot create receiver log");
-    }
     ReceiverLogAnalyzer.scan();
     pipeInfoMap = ReceiverLogAnalyzer.getPipeInfoMap();
     pipeServerEnable = ReceiverLogAnalyzer.isPipeServerEnable();
+    log = new ReceiverLog();
   }
 
   public void close() throws IOException {
@@ -66,9 +59,7 @@ public class ReceiverManager {
   }
 
   public void createPipe(String pipeName, String remoteIp, long createTime) throws IOException {
-    if (log != null) {
-      log.createPipe(pipeName, remoteIp, createTime);
-    }
+    log.createPipe(pipeName, remoteIp, createTime);
     if (!pipeInfoMap.containsKey(pipeName)) {
       pipeInfoMap.put(pipeName, new HashMap<>());
     }
@@ -78,23 +69,17 @@ public class ReceiverManager {
   }
 
   public void startPipe(String pipeName, String remoteIp) throws IOException {
-    if (log != null) {
-      log.startPipe(pipeName, remoteIp);
-    }
+    log.startPipe(pipeName, remoteIp);
     pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.RUNNING);
   }
 
   public void stopPipe(String pipeName, String remoteIp) throws IOException {
-    if (log != null) {
-      log.stopPipe(pipeName, remoteIp);
-    }
+    log.stopPipe(pipeName, remoteIp);
     pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.PAUSE);
   }
 
   public void dropPipe(String pipeName, String remoteIp) throws IOException {
-    if (log != null) {
-      log.dropPipe(pipeName, remoteIp);
-    }
+    log.dropPipe(pipeName, remoteIp);
     pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.DROP);
   }
 

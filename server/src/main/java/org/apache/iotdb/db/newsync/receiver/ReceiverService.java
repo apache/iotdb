@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.newsync.receiver.collector.Collector;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
+import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
 import org.apache.iotdb.db.newsync.receiver.manager.ReceiverManager;
 import org.apache.iotdb.db.newsync.utils.SyncPathUtil;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
@@ -35,6 +36,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +58,15 @@ public class ReceiverService implements IService {
     try {
       receiverManager.startServer();
       collector.startCollect();
-      // TODO: start socket and collector
+      // recover started pipe
+      List<PipeInfo> pipeInfos = receiverManager.getAllPipeInfos();
+      for (PipeInfo pipeInfo : pipeInfos) {
+        if (pipeInfo.getStatus().equals(PipeStatus.RUNNING)) {
+          collector.startPipe(
+              pipeInfo.getPipeName(), pipeInfo.getRemoteIp(), pipeInfo.getCreateTime());
+        }
+      }
+      // TODO: start socket
     } catch (IOException e) {
       logger.error(e.getMessage());
       return false;
@@ -100,6 +110,8 @@ public class ReceiverService implements IService {
   public void dropPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverManager.dropPipe(pipeName, remoteIp);
     collector.stopPipe(pipeName, remoteIp, createTime);
+    File dir = new File(SyncPathUtil.getReceiverPipeDir(pipeName, remoteIp, createTime));
+    FileUtils.deleteDirectory(dir);
   }
 
   private void createDir(String pipeName, String remoteIp, long createTime) {
