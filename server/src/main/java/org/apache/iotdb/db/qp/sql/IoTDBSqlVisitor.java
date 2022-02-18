@@ -1035,27 +1035,28 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitSelectStatement(IoTDBSqlParser.SelectStatementContext ctx) {
     if (ctx.showNowClause() != null) {
       return new ShowNowOperator(SQLConstant.TOK_SHOW_NOW);
-    }
-    // 1. Visit special clause first to initialize different query operator
-    if (ctx.specialClause() != null) {
-      queryOp = (QueryOperator) visit(ctx.specialClause());
-    }
-    // 2. There is no special clause in query statement.
-    if (queryOp == null) {
-      queryOp = new QueryOperator();
-    }
-    // 3. Visit select, from, where in sequence
-    parseSelectClause(ctx.selectClause());
-    parseFromClause(ctx.fromClause());
-    if (ctx.whereClause() != null) {
-      WhereComponent whereComponent = parseWhereClause(ctx.whereClause());
-      if (whereComponent != null) {
-        queryOp.setWhereComponent(whereComponent);
+    } else {
+      // 1. Visit special clause first to initialize different query operator
+      if (ctx.specialClause() != null) {
+        queryOp = (QueryOperator) visit(ctx.specialClause());
       }
+      // 2. There is no special clause in query statement.
+      if (queryOp == null) {
+        queryOp = new QueryOperator();
+      }
+      // 3. Visit select, from, where in sequence
+      parseSelectClause(ctx.selectClause());
+      parseFromClause(ctx.fromClause());
+      if (ctx.whereClause() != null) {
+        WhereComponent whereComponent = parseWhereClause(ctx.whereClause());
+        if (whereComponent != null) {
+          queryOp.setWhereComponent(whereComponent);
+        }
+      }
+      queryOp.setEnableTracing(ctx.TRACING() != null);
+      // 4. Check whether it's a select-into clause
+      return ctx.intoClause() == null ? queryOp : parseAndConstructSelectIntoOperator(ctx);
     }
-    queryOp.setEnableTracing(ctx.TRACING() != null);
-    // 4. Check whether it's a select-into clause
-    return ctx.intoClause() == null ? queryOp : parseAndConstructSelectIntoOperator(ctx);
   }
 
   private SelectIntoOperator parseAndConstructSelectIntoOperator(
