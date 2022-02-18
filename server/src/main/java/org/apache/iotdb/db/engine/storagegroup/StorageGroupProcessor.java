@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -268,6 +269,8 @@ public class StorageGroupProcessor {
 
   private volatile boolean compacting = false;
 
+  private ScheduledExecutorService walTrimScheduleTask;
+
   /**
    * get the direct byte buffer from pool, each fetch contains two ByteBuffer, return null if fetch
    * fails
@@ -399,10 +402,12 @@ public class StorageGroupProcessor {
     // recover tsfiles
     recover();
     // start trim task at last
-    ScheduledExecutorService executorService =
+    walTrimScheduleTask =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            String.format("WAL-trimTask-%s/%s", logicalStorageGroupName, virtualStorageGroupId));
-    executorService.scheduleWithFixedDelay(
+            String.format(
+                "%s-%s/%s",
+                ThreadName.WAL_TRIM.getName(), logicalStorageGroupName, virtualStorageGroupId));
+    walTrimScheduleTask.scheduleWithFixedDelay(
         this::trimTask,
         config.getWalPoolTrimIntervalInMS(),
         config.getWalPoolTrimIntervalInMS(),
@@ -3066,5 +3071,9 @@ public class StorageGroupProcessor {
 
   public String getInsertWriteLockHolder() {
     return insertWriteLockHolder;
+  }
+
+  public ScheduledExecutorService getWALTrimScheduleTask() {
+    return walTrimScheduleTask;
   }
 }

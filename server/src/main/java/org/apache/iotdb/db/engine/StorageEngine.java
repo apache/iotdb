@@ -32,7 +32,15 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartiti
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualStorageGroupManager;
-import org.apache.iotdb.db.exception.*;
+import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.ShutdownException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
+import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -50,6 +58,7 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -377,11 +386,16 @@ public class StorageEngine implements IService {
 
   @Override
   public void stop() {
+    for (VirtualStorageGroupManager storageGroupManager : processorMap.values()) {
+      storageGroupManager.stopSchedulerPool();
+    }
     syncCloseAllProcessor();
-    stopTimedService(ttlCheckThread, "TTlCheckThread");
-    stopTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
-    stopTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
-    stopTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
+    ThreadUtils.stopThreadPool(ttlCheckThread, "TTlCheckThread");
+    ThreadUtils.stopThreadPool(
+        seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
+    ThreadUtils.stopThreadPool(
+        unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
+    ThreadUtils.stopThreadPool(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
     recoveryThreadPool.shutdownNow();
     if (!recoverAllSgThreadPool.isShutdown()) {
       recoverAllSgThreadPool.shutdownNow();
@@ -400,23 +414,12 @@ public class StorageEngine implements IService {
     this.reset();
   }
 
-  private void stopTimedService(ScheduledExecutorService pool, String poolName) {
-    if (pool != null) {
-      pool.shutdownNow();
-      try {
-        pool.awaitTermination(60, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        logger.warn("{} still doesn't exit after 60s", poolName);
-        Thread.currentThread().interrupt();
-        throw new StorageEngineFailureException(
-            String.format("StorageEngine failed to stop because of %s.", poolName), e);
-      }
-    }
-  }
-
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
     try {
+      for (VirtualStorageGroupManager storageGroupManager : processorMap.values()) {
+        storageGroupManager.stopSchedulerPool();
+      }
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
       throw new ShutdownException(e);
