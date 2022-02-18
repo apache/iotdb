@@ -1132,11 +1132,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   @Override
-  public Operator visitShowNowClause(IoTDBSqlParser.ShowNowClauseContext ctx) {
-    return new ShowNowOperator(SQLConstant.TOK_SHOW_NOW);
-  }
-
-  @Override
   public Operator visitSpecialLimitStatement(IoTDBSqlParser.SpecialLimitStatementContext ctx) {
     return visit(ctx.specialLimit());
   }
