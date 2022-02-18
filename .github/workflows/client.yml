@@ -85,8 +85,8 @@ jobs:
         run: choco install boost-msvc-14.2
       - name: Install Boost
         run: cd C:\local\boost_1_74_0 ; `
-          & bootstrap.bat ; `
-          & b2.exe
+          .\bootstrap.bat ; `
+          & .\b2.exe
       - name: Install OpenSSL
         run:  choco install openssl
       - name: Add Flex and Bison Path and OpenSSL
