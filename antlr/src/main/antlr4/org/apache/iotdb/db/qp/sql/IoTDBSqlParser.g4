@@ -332,11 +332,11 @@ countNodes
 // Select Statement
 selectStatement
     : TRACING? selectClause intoClause? fromClause whereClause? specialClause?
-    | SHOW nowClause
+    | showNowClause
     ;
 
-nowClause
-    : NOW LR_BRACKET RR_BRACKET
+showNowClause
+    : SHOW NOW LR_BRACKET RR_BRACKET
     ;
 
 intoClause
