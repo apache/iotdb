@@ -22,6 +22,7 @@ import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.itbase.category.RemoteTest;
+import org.apache.iotdb.jdbc.Config;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -30,6 +31,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -704,6 +707,34 @@ public class IoTDBQueryDemoIT {
 
     } catch (SQLException throwables) {
       throwables.printStackTrace();
+    }
+  }
+
+  @Test
+  public void nowClusterTest() throws ClassNotFoundException {
+    for (int i = 6667; i <= 6671; i += 2) {
+      try (Connection connection =
+              DriverManager.getConnection(
+                  Config.IOTDB_URL_PREFIX + "127.0.0.1:" + i + "/", "root", "root");
+          Statement statement = connection.createStatement()) {
+        boolean execute = statement.execute("show now()");
+        Assert.assertTrue(execute);
+        PreparedStatement ps;
+        try (ResultSet resultSet = statement.getResultSet()) {
+          ResultSetMetaData metaData = resultSet.getMetaData();
+          Assert.assertEquals(5, metaData.getColumnCount());
+          Assert.assertEquals("IpAddress", metaData.getColumnName(1));
+          Assert.assertEquals("SystemTime", metaData.getColumnName(2));
+          Assert.assertEquals("CpuLoad", metaData.getColumnName(3));
+          Assert.assertEquals("TotalMemorySize", metaData.getColumnName(4));
+          Assert.assertEquals("FreeMemorySize", metaData.getColumnName(5));
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
     }
   }
 }
