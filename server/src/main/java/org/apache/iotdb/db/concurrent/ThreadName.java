@@ -37,6 +37,8 @@ public enum ThreadName {
   COMPACTION_SERVICE("Compaction"),
   WAL_DAEMON("WAL-Sync"),
   WAL_FORCE_DAEMON("WAL-Force"),
+  WAL_TRIM("WAL-trimTask"),
+  WAL_FLUSH("WAL-Flush"),
   INDEX_SERVICE("Index"),
   SYNC_CLIENT("Sync-Client"),
   SYNC_SERVER("Sync"),
