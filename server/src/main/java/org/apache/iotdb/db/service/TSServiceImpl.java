@@ -147,7 +147,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -749,8 +748,7 @@ public class TSServiceImpl implements TSIService.Iface {
               statement, sessionManager.getZoneId(req.getSessionId()), req.fetchSize);
 
       if (physicalPlan.isQuery()) {
-        Future<TSExecuteStatementResp> resp = submitQueryTask(physicalPlan, req);
-        return resp.get();
+        return submitQueryTask(physicalPlan, req);
       } else {
         return executeUpdateStatement(physicalPlan, req.getSessionId());
       }
@@ -779,8 +777,7 @@ public class TSServiceImpl implements TSIService.Iface {
               statement, sessionManager.getZoneId(req.sessionId), req.fetchSize);
 
       if (physicalPlan.isQuery()) {
-        Future<TSExecuteStatementResp> resp = submitQueryTask(physicalPlan, req);
-        return resp.get();
+        return submitQueryTask(physicalPlan, req);
       } else {
         return RpcUtils.getTSExecuteStatementResp(
             TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
@@ -833,8 +830,8 @@ public class TSServiceImpl implements TSIService.Iface {
     }
   }
 
-  private Future<TSExecuteStatementResp> submitQueryTask(
-      PhysicalPlan physicalPlan, TSExecuteStatementReq req) {
+  private TSExecuteStatementResp submitQueryTask(
+      PhysicalPlan physicalPlan, TSExecuteStatementReq req) throws Exception {
     QueryTask queryTask =
         new QueryTask(
             physicalPlan,
@@ -844,11 +841,11 @@ public class TSServiceImpl implements TSIService.Iface {
             req.timeout,
             req.fetchSize,
             req.enableRedirectQuery);
-    Future<TSExecuteStatementResp> resp;
+    TSExecuteStatementResp resp;
     if (physicalPlan instanceof ShowQueryProcesslistPlan) {
-      resp = Executors.newFixedThreadPool(1).submit(queryTask);
+      resp = queryTask.call();
     } else {
-      resp = QueryTaskManager.getInstance().submit(queryTask);
+      resp = QueryTaskManager.getInstance().submit(queryTask).get();
     }
     return resp;
   }
