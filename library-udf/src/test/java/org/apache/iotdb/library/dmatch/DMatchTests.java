@@ -70,25 +70,49 @@ public class DMatchTests {
         CompressionType.UNCOMPRESSED,
         null);
     IoTDB.metaManager.createTimeseries(
-        new PartialPath("root.vehicle.d2.s1"),
+        new PartialPath("root.vehicle.d1.s3"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
     IoTDB.metaManager.createTimeseries(
-        new PartialPath("root.vehicle.d2.s2"),
+        new PartialPath("root.vehicle.d1.s4"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
     IoTDB.metaManager.createTimeseries(
-        new PartialPath("root.vehicle.d1.s3"),
+        new PartialPath("root.vehicle.d1.s5"),
         TSDataType.INT32,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
     IoTDB.metaManager.createTimeseries(
-        new PartialPath("root.vehicle.d1.s4"),
+        new PartialPath("root.vehicle.d1.s6"),
+        TSDataType.INT64,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d1.s7"),
+        TSDataType.FLOAT,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d1.s8"),
+        TSDataType.DOUBLE,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d2.s1"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d2.s2"),
         TSDataType.INT64,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
@@ -105,6 +129,102 @@ public class DMatchTests {
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d2.s5"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d2.s6"),
+        TSDataType.INT64,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d2.s7"),
+        TSDataType.FLOAT,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d2.s8"),
+        TSDataType.DOUBLE,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d3.s1"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d3.s2"),
+        TSDataType.INT64,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d3.s3"),
+        TSDataType.FLOAT,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d3.s4"),
+        TSDataType.DOUBLE,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d4.s1"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d4.s2"),
+        TSDataType.INT64,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d4.s3"),
+        TSDataType.FLOAT,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d4.s4"),
+        TSDataType.DOUBLE,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d4.s5"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d4.s6"),
+        TSDataType.INT64,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d4.s7"),
+        TSDataType.FLOAT,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d4.s8"),
+        TSDataType.DOUBLE,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
   }
 
   private static void generateData() {
@@ -114,124 +234,155 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s1,s3) values(%d,%d,%d)", 100, 100, 101));
+              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              100, 100, 100, 100, 100, 101, 101, 101, 101));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s1,s3) values(%d,%d,%d)", 200, 102, 101));
+              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              200, 102, 102, 102, 102, 101, 101, 101, 101));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s1,s3) values(%d,%d,%d)", 300, 104, 102));
+              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              300, 104, 104, 104, 104, 102, 102, 102, 102));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s1,s3) values(%d,%d,%d)", 400, 126, 102));
+              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              400, 126, 126, 126, 126, 102, 102, 102, 102));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s1,s3) values(%d,%d,%d)", 500, 108, 103));
+              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              500, 108, 108, 108, 108, 103, 103, 103, 103));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s1,s3) values(%d,%d,%d)", 600, 112, 104));
+              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              600, 112, 112, 112, 112, 104, 104, 104, 104));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s1,s3) values(%d,%d,%d)", 700, 114, 104));
+              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              700, 114, 114, 114, 114, 104, 104, 104, 104));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s1,s3) values(%d,%d,%d)", 800, 112, 104));
+              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              800, 116, 116, 116, 116, 105, 105, 105, 105));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s1,s3) values(%d,%d,%d)", 900, 118, 105));
+              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              900, 118, 118, 118, 118, 105, 105, 105, 105));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s1,s3) values(%d,%d,%d)", 1000, 100, 106));
+              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              1000, 100, 100, 100, 100, 106, 106, 106, 106));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s1,s3) values(%d,%d,%d)", 100, 100, 101));
+              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              1100, 124, 124, 124, 124, 108, 108, 108, 108));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s1,s3) values(%d,%d,%d)", 200, 102, 101));
+              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              1200, 126, 126, 126, 126, 108, 108, 108, 108));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s1,s3) values(%d,%d,%d)", 300, 104, 102));
+              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              1300, 116, 116, 116, 116, 105, 105, 105, 105));
+
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s1,s3) values(%d,%d,%d)", 400, 126, 102));
+              "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              100, 1, 1, 1, 1, 2, 2, 2, 2));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s1,s3) values(%d,%d,%d)", 500, 108, 103));
+              "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              200, 1, 1, 1, 1, 2, 2, 2, 2));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s1,s3) values(%d,%d,%d)", 600, 112, 104));
+              "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              300, 1, 1, 1, 1, 2, 2, 2, 2));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s1,s3) values(%d,%d,%d)", 700, 114, 104));
+              "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              400, 1, 1, 1, 1, 2, 2, 2, 2));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s1,s3) values(%d,%d,%d)", 800, 112, 104));
+              "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              500, 1, 1, 1, 1, 2, 2, 2, 2));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s1,s3) values(%d,%d,%d)", 900, 118, 105));
+              "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              600, 1, 1, 1, 1, 2, 2, 2, 2));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s1,s3) values(%d,%d,%d)", 1000, 100, 106));
+              "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              700, 1, 1, 1, 1, 2, 2, 2, 2));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s2,s4) values(%d,%d,%d)", 100, 100, 101));
+              "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              800, 1, 1, 1, 1, 2, 2, 2, 2));
+
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s2,s4) values(%d,%d,%d)", 200, 102, 101));
+              "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
+              100, 1, 1, 1, 1));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s2,s4) values(%d,%d,%d)", 300, 104, 102));
+              "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
+              200, 2, 2, 2, 2));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s2,s4) values(%d,%d,%d)", 400, 126, 102));
+              "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
+              300, 3, 3, 3, 3));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s2,s4) values(%d,%d,%d)", 500, 108, 103));
+              "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
+              400, 2, 2, 2, 2));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s2,s4) values(%d,%d,%d)", 600, 112, 104));
+              "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
+              500, 1, 1, 1, 1));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s2,s4) values(%d,%d,%d)", 700, 114, 104));
+              "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
+              600, 1, 1, 1, 1));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s2,s4) values(%d,%d,%d)", 800, 112, 104));
+              "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
+              700, 1, 1, 1, 1));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s2,s4) values(%d,%d,%d)", 900, 118, 105));
+              "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
+              800, 2, 2, 2, 2));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s2,s4) values(%d,%d,%d)", 1000, 100, 106));
+              "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
+              900, 3, 3, 3, 3));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s2,s4) values(%d,%d,%d)", 100, 100, 101));
+              "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
+              1000, 2, 2, 2, 2));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s2,s4) values(%d,%d,%d)", 200, 102, 101));
+              "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
+              1100, 1, 1, 1, 1));
+
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s2,s4) values(%d,%d,%d)", 300, 104, 102));
+              "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              100, 0, 0, 0, 0, 6, 6, 6, 6));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s2,s4) values(%d,%d,%d)", 400, 126, 102));
+              "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              200, 2, 2, 2, 2, 7, 7, 7, 7));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s2,s4) values(%d,%d,%d)", 500, 108, 103));
+              "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              300, 3, 3, 3, 3, 0, 0, 0, 0));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s2,s4) values(%d,%d,%d)", 600, 112, 104));
+              "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              400, 4, 4, 4, 4, 9, 9, 9, 9));
       statement.execute(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s2,s4) values(%d,%d,%d)", 700, 114, 104));
-      statement.execute(
-          String.format(
-              "insert into root.vehicle.d2(timestamp,s2,s4) values(%d,%d,%d)", 800, 112, 104));
-      statement.execute(
-          String.format(
-              "insert into root.vehicle.d2(timestamp,s2,s4) values(%d,%d,%d)", 900, 118, 105));
-      statement.execute(
-          String.format(
-              "insert into root.vehicle.d2(timestamp,s2,s4) values(%d,%d,%d)", 1000, 100, 106));
+              "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
+              500, 5, 5, 5, 5, 10, 10, 10, 10));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -263,13 +414,12 @@ public class DMatchTests {
 
   @Test
   public void testCov1() {
-    String sqlStr = "select cov(d1.s1,d1.s3) from root.vehicle";
+    String sqlStr = "select cov(d1.s1,d1.s5) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength, 1);
+      String result1 = resultSet.getString(1);
+      Assert.assertEquals("12.291666666666666", result1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -277,13 +427,12 @@ public class DMatchTests {
 
   @Test
   public void testCov2() {
-    String sqlStr = "select cov(d1.s2,d1.s4) from root.vehicle";
+    String sqlStr = "select cov(d1.s2,d1.s6) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength, 1);
+      String result1 = resultSet.getString(1);
+      Assert.assertEquals("12.291666666666666", result1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -291,13 +440,12 @@ public class DMatchTests {
 
   @Test
   public void testCov3() {
-    String sqlStr = "select cov(d2.s1,d2.s3) from root.vehicle";
+    String sqlStr = "select cov(d1.s3,d1.s7) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength, 1);
+      String result1 = resultSet.getString(1);
+      Assert.assertEquals("12.291666666666666", result1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -305,13 +453,12 @@ public class DMatchTests {
 
   @Test
   public void testCov4() {
-    String sqlStr = "select cov(d2.s2,d2.s4) from root.vehicle";
+    String sqlStr = "select cov(d1.s4,d1.s8) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength, 1);
+      String result1 = resultSet.getString(1);
+      Assert.assertEquals("12.291666666666666", result1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -319,15 +466,12 @@ public class DMatchTests {
 
   @Test
   public void testDtw1() {
-    String sqlStr = "select dtw(d1.s1,d1.s3) from root.vehicle";
+    String sqlStr = "select dtw(d2.s1,d2.s5) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= 0.0D;
+      String result1 = resultSet.getString(1);
+      Assert.assertEquals("8.0", result1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -335,15 +479,12 @@ public class DMatchTests {
 
   @Test
   public void testDtw2() {
-    String sqlStr = "select dtw(d1.s2,d1.s4) from root.vehicle";
+    String sqlStr = "select dtw(d2.s2,d2.s6) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= 0.0D;
+      String result1 = resultSet.getString(1);
+      Assert.assertEquals("12.291666666666666", result1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -351,15 +492,12 @@ public class DMatchTests {
 
   @Test
   public void testDtw3() {
-    String sqlStr = "select dtw(d2.s1,d2.s3) from root.vehicle";
+    String sqlStr = "select dtw(d2.s3,d2.s7) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= 0.0D;
+      String result1 = resultSet.getString(1);
+      Assert.assertEquals("12.291666666666666", result1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -367,15 +505,12 @@ public class DMatchTests {
 
   @Test
   public void testDtw4() {
-    String sqlStr = "select dtw(d2.s2,d2.s4) from root.vehicle";
+    String sqlStr = "select dtw(d2.s4,d2.s8) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      assert resultSetLength == 1;
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= 0.0D;
+      String result1 = resultSet.getString(1);
+      Assert.assertEquals("12.291666666666666", result1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -383,12 +518,12 @@ public class DMatchTests {
 
   @Test
   public void testPearson1() {
-    String sqlStr = "select pearson(d1.s1,d1.s3) from root.vehicle";
+    String sqlStr = "select pearson(d1.s1,d1.s5) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      String result1 = resultSet.getString(1);
+      Assert.assertEquals("0.5630881927754872", result1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -396,12 +531,12 @@ public class DMatchTests {
 
   @Test
   public void testPearson2() {
-    String sqlStr = "select pearson(d1.s2,d1.s4) from root.vehicle";
+    String sqlStr = "select pearson(d1.s2,d1.s6) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      String result1 = resultSet.getString(1);
+      Assert.assertEquals("0.5630881927754872", result1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -409,12 +544,12 @@ public class DMatchTests {
 
   @Test
   public void testPearson3() {
-    String sqlStr = "select pearson(d2.s1,d2.s3) from root.vehicle";
+    String sqlStr = "select pearson(d1.s3,d1.s7) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      String result1 = resultSet.getString(1);
+      Assert.assertEquals("0.5630881927754872", result1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -422,12 +557,12 @@ public class DMatchTests {
 
   @Test
   public void testPearson4() {
-    String sqlStr = "select pearson(d2.s2,d2.s4) from root.vehicle";
+    String sqlStr = "select pearson(d1.s4,d1.s8) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      String result1 = resultSet.getString(1);
+      Assert.assertEquals("0.5630881927754872", result1);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -439,9 +574,11 @@ public class DMatchTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength, 1);
+      String result1 = resultSet.getString(1);
+      resultSet.next();
+      String result2 = resultSet.getString(1);
+      Assert.assertEquals("0.0", result1);
+      Assert.assertEquals("0.0", result2);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -453,9 +590,11 @@ public class DMatchTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength, 1);
+      String result1 = resultSet.getString(1);
+      resultSet.next();
+      String result2 = resultSet.getString(1);
+      Assert.assertEquals("0.0", result1);
+      Assert.assertEquals("0.0", result2);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -467,9 +606,11 @@ public class DMatchTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength, 1);
+      String result1 = resultSet.getString(1);
+      resultSet.next();
+      String result2 = resultSet.getString(1);
+      Assert.assertEquals("0.0", result1);
+      Assert.assertEquals("0.0", result2);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -481,9 +622,11 @@ public class DMatchTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength, 1);
+      String result1 = resultSet.getString(1);
+      resultSet.next();
+      String result2 = resultSet.getString(1);
+      Assert.assertEquals("0.0", result1);
+      Assert.assertEquals("0.0", result2);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -491,13 +634,36 @@ public class DMatchTests {
 
   @Test
   public void testXCorr1() {
-    String sqlStr = "select xcorr(d1.s1,d1.s3) from root.vehicle";
+    String sqlStr = "select xcorr(d4.s1,d4.s5) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength, 19);
+      String result1 = resultSet.getString(1);
+      resultSet.next();
+      String result2 = resultSet.getString(1);
+      resultSet.next();
+      String result3 = resultSet.getString(1);
+      resultSet.next();
+      String result4 = resultSet.getString(1);
+      resultSet.next();
+      String result5 = resultSet.getString(1);
+      resultSet.next();
+      String result6 = resultSet.getString(1);
+      resultSet.next();
+      String result7 = resultSet.getString(1);
+      resultSet.next();
+      String result8 = resultSet.getString(1);
+      resultSet.next();
+      String result9 = resultSet.getString(1);
+      Assert.assertEquals("0.0", result1);
+      Assert.assertEquals("4.0", result2);
+      Assert.assertEquals("9.6", result3);
+      Assert.assertEquals("13.4", result4);
+      Assert.assertEquals("20.0", result5);
+      Assert.assertEquals("15.6", result6);
+      Assert.assertEquals("9.2", result7);
+      Assert.assertEquals("11.8", result8);
+      Assert.assertEquals("6.0", result9);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -505,13 +671,36 @@ public class DMatchTests {
 
   @Test
   public void testXCorr2() {
-    String sqlStr = "select xcorr(d1.s2, d1.s4) from root.vehicle";
+    String sqlStr = "select xcorr(d4.s2, d4.s6) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength, 19);
+      String result1 = resultSet.getString(1);
+      resultSet.next();
+      String result2 = resultSet.getString(1);
+      resultSet.next();
+      String result3 = resultSet.getString(1);
+      resultSet.next();
+      String result4 = resultSet.getString(1);
+      resultSet.next();
+      String result5 = resultSet.getString(1);
+      resultSet.next();
+      String result6 = resultSet.getString(1);
+      resultSet.next();
+      String result7 = resultSet.getString(1);
+      resultSet.next();
+      String result8 = resultSet.getString(1);
+      resultSet.next();
+      String result9 = resultSet.getString(1);
+      Assert.assertEquals("0.0", result1);
+      Assert.assertEquals("4.0", result2);
+      Assert.assertEquals("9.6", result3);
+      Assert.assertEquals("13.4", result4);
+      Assert.assertEquals("20.0", result5);
+      Assert.assertEquals("15.6", result6);
+      Assert.assertEquals("9.2", result7);
+      Assert.assertEquals("11.8", result8);
+      Assert.assertEquals("6.0", result9);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -519,13 +708,36 @@ public class DMatchTests {
 
   @Test
   public void testXCorr3() {
-    String sqlStr = "select xcorr(d2.s1, d2.s3) from root.vehicle";
+    String sqlStr = "select xcorr(d4.s3, d4.s7) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength, 19);
+      String result1 = resultSet.getString(1);
+      resultSet.next();
+      String result2 = resultSet.getString(1);
+      resultSet.next();
+      String result3 = resultSet.getString(1);
+      resultSet.next();
+      String result4 = resultSet.getString(1);
+      resultSet.next();
+      String result5 = resultSet.getString(1);
+      resultSet.next();
+      String result6 = resultSet.getString(1);
+      resultSet.next();
+      String result7 = resultSet.getString(1);
+      resultSet.next();
+      String result8 = resultSet.getString(1);
+      resultSet.next();
+      String result9 = resultSet.getString(1);
+      Assert.assertEquals("0.0", result1);
+      Assert.assertEquals("4.0", result2);
+      Assert.assertEquals("9.6", result3);
+      Assert.assertEquals("13.4", result4);
+      Assert.assertEquals("20.0", result5);
+      Assert.assertEquals("15.6", result6);
+      Assert.assertEquals("9.2", result7);
+      Assert.assertEquals("11.8", result8);
+      Assert.assertEquals("6.0", result9);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -533,13 +745,36 @@ public class DMatchTests {
 
   @Test
   public void testXCorr4() {
-    String sqlStr = "select xcorr(d2.s2,d2.s4) from root.vehicle";
+    String sqlStr = "select xcorr(d4.s4,d4.s8) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength = resultSet.getRow();
-      Assert.assertEquals(resultSetLength, 19);
+      String result1 = resultSet.getString(1);
+      resultSet.next();
+      String result2 = resultSet.getString(1);
+      resultSet.next();
+      String result3 = resultSet.getString(1);
+      resultSet.next();
+      String result4 = resultSet.getString(1);
+      resultSet.next();
+      String result5 = resultSet.getString(1);
+      resultSet.next();
+      String result6 = resultSet.getString(1);
+      resultSet.next();
+      String result7 = resultSet.getString(1);
+      resultSet.next();
+      String result8 = resultSet.getString(1);
+      resultSet.next();
+      String result9 = resultSet.getString(1);
+      Assert.assertEquals("0.0", result1);
+      Assert.assertEquals("4.0", result2);
+      Assert.assertEquals("9.6", result3);
+      Assert.assertEquals("13.4", result4);
+      Assert.assertEquals("20.0", result5);
+      Assert.assertEquals("15.6", result6);
+      Assert.assertEquals("9.2", result7);
+      Assert.assertEquals("11.8", result8);
+      Assert.assertEquals("6.0", result9);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
