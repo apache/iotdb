@@ -165,6 +165,7 @@ public class Collector {
               try {
                 pipeData = pipeDataQueue.take();
               } catch (InterruptedException e) {
+                outputStream.close();
                 Thread.currentThread().interrupt();
               }
               int currentIndex = pipeDataQueue.getAndIncreaseIndex();
