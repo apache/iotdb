@@ -142,6 +142,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
@@ -621,19 +622,7 @@ public class TSServiceImpl implements TSIService.Iface {
                   SESSION_MANAGER.getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
-        Future<TSExecuteStatementResp> resp =
-            QueryTaskManager.getInstance()
-                .submit(
-                    new QueryTask(
-                        physicalPlan,
-                        startTime,
-                        req.sessionId,
-                        req.statement,
-                        req.statementId,
-                        req.timeout,
-                        req.fetchSize,
-                        req.jdbcQuery,
-                        req.enableRedirectQuery));
+        Future<TSExecuteStatementResp> resp = submitQueryTask(physicalPlan, startTime, req);
         return resp.get();
       } else {
         return executeUpdateStatement(
@@ -673,19 +662,7 @@ public class TSServiceImpl implements TSIService.Iface {
                   SESSION_MANAGER.getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
-        Future<TSExecuteStatementResp> resp =
-            QueryTaskManager.getInstance()
-                .submit(
-                    new QueryTask(
-                        physicalPlan,
-                        startTime,
-                        req.sessionId,
-                        req.statement,
-                        req.statementId,
-                        req.timeout,
-                        req.fetchSize,
-                        req.jdbcQuery,
-                        req.enableRedirectQuery));
+        Future<TSExecuteStatementResp> resp = submitQueryTask(physicalPlan, startTime, req);
         return resp.get();
       } else {
         return RpcUtils.getTSExecuteStatementResp(
@@ -794,6 +771,28 @@ public class TSServiceImpl implements TSIService.Iface {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, OperationType.EXECUTE_LAST_DATA_QUERY));
     }
+  }
+
+  private Future<TSExecuteStatementResp> submitQueryTask(
+      PhysicalPlan physicalPlan, long startTime, TSExecuteStatementReq req) {
+    QueryTask queryTask =
+        new QueryTask(
+            physicalPlan,
+            startTime,
+            req.sessionId,
+            req.statement,
+            req.statementId,
+            req.timeout,
+            req.fetchSize,
+            req.jdbcQuery,
+            req.enableRedirectQuery);
+    Future<TSExecuteStatementResp> resp;
+    if (physicalPlan instanceof ShowQueryProcesslistPlan) {
+      resp = Executors.newFixedThreadPool(1).submit(queryTask);
+    } else {
+      resp = QueryTaskManager.getInstance().submit(queryTask);
+    }
+    return resp;
   }
 
   private TSExecuteStatementResp executeQueryPlan(
