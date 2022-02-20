@@ -10,10 +10,12 @@ on:
     branches:
       - master
       - "rel/*"
+      - "new_*"
   pull_request:
     branches:
       - master
       - "rel/*"
+      - "new_*"
   # allow manually run the action:
   workflow_dispatch:
 
