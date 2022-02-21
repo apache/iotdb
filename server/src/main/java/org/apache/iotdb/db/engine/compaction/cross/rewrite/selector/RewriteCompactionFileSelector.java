@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMerg
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.utils.MergeUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -221,8 +220,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   /**
    * To avoid redundant data in seq files, cross space compaction should select all the seq files
    * which have overlap with unseq files whether they are compacting or not. Therefore, before
-   * adding task into the queue, cross space compaction task should be check whether source seq
-   * files are being compacted or not to speed up compaction.
+   * adding task into the queue, cross space compaction task should check whether source seq files
+   * are being compacted or not to speed up compaction.
    */
   private boolean checkIsSeqFilesValid() {
     for (Integer seqIdx : tmpSelectedSeqFiles) {

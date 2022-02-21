@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.concurrent.threadpool.WrappedScheduledExecutorService;
@@ -36,14 +37,11 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
-
-import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -72,8 +70,6 @@ public class CompactionTaskManager implements IService {
   // <logicalStorageGroupName,futureSet>, it is used to terminate all compaction tasks under the
   // logicalStorageGroup
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
-  private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
-      new ConcurrentHashMap<>();
   private List<AbstractCompactionTask> runningCompactionTaskList = new ArrayList<>();
 
   // The thread pool that periodically fetches and executes the compaction task from
@@ -246,7 +242,7 @@ public class CompactionTaskManager implements IService {
         }
 
         if (task != null && task.checkValidAndSetMerging()) {
-          submitTask(task.getFullStorageGroupName(), task.getTimePartition(), task);
+          submitTask(task);
           runningCompactionTaskList.add(task);
 
           // add metrics
@@ -323,15 +319,10 @@ public class CompactionTaskManager implements IService {
    *
    * @throws RejectedExecutionException
    */
-  public synchronized void submitTask(
-      String fullStorageGroupName, long timePartition, Callable<Void> compactionMergeTask)
+  public synchronized void submitTask(Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
     if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
-      Future<Void> future = taskExecutionPool.submit(compactionMergeTask);
-      compactionTaskFutures
-          .computeIfAbsent(fullStorageGroupName, k -> new ConcurrentHashMap<>())
-          .computeIfAbsent(timePartition, k -> new HashSet<>())
-          .add(future);
+      taskExecutionPool.submit(compactionMergeTask);
       return;
     }
     logger.warn(
