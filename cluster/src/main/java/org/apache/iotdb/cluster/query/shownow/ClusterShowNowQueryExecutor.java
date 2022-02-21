@@ -108,7 +108,6 @@ public class ClusterShowNowQueryExecutor extends ShowNowQueryExecutor {
       try {
         localResult = new ShowNowUtils().getShowNowResults();
       } catch (Exception e) {
-        e.printStackTrace();
         logger.error("ClusterShowNowQueryExecutor showLocalNow");
       }
       resultSet.addAll(localResult);

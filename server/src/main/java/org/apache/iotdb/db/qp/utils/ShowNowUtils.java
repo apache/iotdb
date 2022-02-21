@@ -50,7 +50,7 @@ public class ShowNowUtils {
     try {
       ipAddress = InetAddress.getLocalHost().getHostAddress();
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Failed to get ipAddress from local");
     }
     try {
       OperatingSystemMXBean osmxb =
@@ -66,7 +66,7 @@ public class ShowNowUtils {
       systemTime = df.format(System.currentTimeMillis());
       cpuLoad = new DecimalFormat("#.##").format(processor.getSystemCpuLoad() * 100) + "%";
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Failed to get system information");
     }
     List<ShowNowResult> showNowResults = new LinkedList<>();
     showNowResults.add(
