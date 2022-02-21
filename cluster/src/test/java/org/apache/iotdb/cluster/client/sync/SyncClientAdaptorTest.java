@@ -246,10 +246,12 @@ public class SyncClientAdaptorTest {
               boolean withAlias,
               AsyncMethodCallback<GetAllPathsResult> resultHandler) {
             List<Byte> dataTypes = new ArrayList<>();
+            List<Boolean> underAlignedEntity = new ArrayList<>();
             for (int i = 0; i < path.size(); i++) {
               dataTypes.add(TSDataType.DOUBLE.serialize());
+              underAlignedEntity.add(false);
             }
-            resultHandler.onComplete(new GetAllPathsResult(path, dataTypes));
+            resultHandler.onComplete(new GetAllPathsResult(path, dataTypes, underAlignedEntity));
           }
 
           @Override

@@ -266,6 +266,7 @@ struct GetAllPathsResult {
   1: required list<string> paths
   2: required list<byte> dataTypes
   3: optional list<string> aliasList
+  4: required list<bool> underAlignedEntity
 }
 
 
