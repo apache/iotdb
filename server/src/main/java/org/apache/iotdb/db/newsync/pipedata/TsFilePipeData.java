@@ -21,6 +21,8 @@ package org.apache.iotdb.db.newsync.pipedata;
 
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.newsync.receiver.load.ILoader;
+import org.apache.iotdb.db.newsync.receiver.load.TsFileLoader;
 import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -34,15 +36,12 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class TsFilePipeData extends PipeData {
   private static final Logger logger = LoggerFactory.getLogger(TsFilePipeData.class);
 
   private String tsFilePath;
-
-  public TsFilePipeData(long serialNumber) {
-    super(serialNumber);
-  }
 
   public TsFilePipeData(String tsFilePath, long serialNumber) {
     super(serialNumber);
@@ -55,13 +54,19 @@ public class TsFilePipeData extends PipeData {
   }
 
   @Override
-  public long serializeImpl(DataOutputStream stream) throws IOException {
-    return ReadWriteIOUtils.write(tsFilePath, stream);
+  public long serialize(DataOutputStream stream) throws IOException {
+    return super.serialize(stream) + ReadWriteIOUtils.write(tsFilePath, stream);
+  }
+
+  public static TsFilePipeData deserialize(DataInputStream stream) throws IOException {
+    long serialNumber = stream.readLong();
+    String tsFilePath = ReadWriteIOUtils.readString(stream);
+    return new TsFilePipeData(tsFilePath, serialNumber);
   }
 
   @Override
-  public void deserializeImpl(DataInputStream stream) throws IOException {
-    this.tsFilePath = ReadWriteIOUtils.readString(stream);
+  public ILoader createLoader() {
+    return new TsFileLoader(new File(tsFilePath));
   }
 
   @Override
@@ -124,5 +129,19 @@ public class TsFilePipeData extends PipeData {
         + tsFilePath
         + '\''
         + '}';
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    TsFilePipeData pipeData = (TsFilePipeData) o;
+    return Objects.equals(tsFilePath, pipeData.tsFilePath)
+        && Objects.equals(serialNumber, pipeData.serialNumber);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(tsFilePath, serialNumber);
   }
 }

@@ -31,11 +31,9 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
@@ -48,12 +46,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.sql.*;
 import java.util.*;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class})
 public class IoTDBSyncReceiverLoaderIT {
@@ -76,7 +70,7 @@ public class IoTDBSyncReceiverLoaderIT {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
-    WriteUtil.insertData();
+    SyncTestUtil.insertData();
     EnvironmentUtils.shutdownDaemon();
     File srcDir = new File(IoTDBDescriptor.getInstance().getConfig().getDataDirs()[0]);
     FileUtils.moveDirectory(srcDir, tmpDir);
@@ -155,7 +149,7 @@ public class IoTDBSyncReceiverLoaderIT {
     }
 
     // 3. test for TsFileLoader
-    List<File> tsFiles = getTsFilePaths(tmpDir);
+    List<File> tsFiles = SyncTestUtil.getTsFilePaths(tmpDir);
     for (File tsfile : tsFiles) {
       ILoader tsFileLoader = new TsFileLoader(tsfile);
       try {
@@ -192,7 +186,7 @@ public class IoTDBSyncReceiverLoaderIT {
     String[] columnNames1 = {
       "root.vehicle.d0.s0", "root.vehicle.d0.s1", "root.vehicle.d1.s3", "root.vehicle.d1.s2"
     };
-    checkResult(sql1, columnNames1, retArray1);
+    SyncTestUtil.checkResult(sql1, columnNames1, retArray1);
     // 5.2 check aligned timeseries
     String sql2 = "select * from root.sg1.d1";
     String[] retArray2 =
@@ -210,97 +204,6 @@ public class IoTDBSyncReceiverLoaderIT {
     String[] columnNames2 = {
       "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5",
     };
-    checkResult(sql2, columnNames2, retArray2);
-  }
-
-  private void checkResult(String sql, String[] columnNames, String[] retArray)
-      throws ClassNotFoundException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute(sql);
-      Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      Map<String, Integer> map = new HashMap<>();
-      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-        map.put(resultSetMetaData.getColumnName(i), i);
-      }
-      assertEquals(columnNames.length + 1, resultSetMetaData.getColumnCount());
-      int cnt = 0;
-      while (resultSet.next()) {
-        StringBuilder builder = new StringBuilder();
-        builder.append(resultSet.getString(1));
-        for (String columnName : columnNames) {
-          int index = map.get(columnName);
-          builder.append(",").append(resultSet.getString(index));
-        }
-        assertEquals(retArray[cnt], builder.toString());
-        cnt++;
-      }
-      assertEquals(retArray.length, cnt);
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  /**
-   * scan parentDir and return all TsFile sorted by load sequence
-   *
-   * @param parentDir folder to scan
-   */
-  private List<File> getTsFilePaths(File parentDir) {
-    List<File> res = new ArrayList<>();
-    if (!parentDir.exists()) {
-      Assert.fail();
-      return res;
-    }
-    scanDir(res, parentDir);
-    Collections.sort(
-        res,
-        new Comparator<File>() {
-          @Override
-          public int compare(File f1, File f2) {
-            int diffSg =
-                f1.getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getName()
-                    .compareTo(f2.getParentFile().getParentFile().getParentFile().getName());
-            if (diffSg != 0) {
-              return diffSg;
-            } else {
-              return (int)
-                  (FilePathUtils.splitAndGetTsFileVersion(f1.getName())
-                      - FilePathUtils.splitAndGetTsFileVersion(f2.getName()));
-            }
-          }
-        });
-    return res;
-  }
-
-  private void scanDir(List<File> tsFiles, File parentDir) {
-    if (!parentDir.exists()) {
-      Assert.fail();
-      return;
-    }
-    File fa[] = parentDir.listFiles();
-    for (int i = 0; i < fa.length; i++) {
-      File fs = fa[i];
-      if (fs.isDirectory()) {
-        scanDir(tsFiles, fs);
-      } else if (fs.getName().endsWith(".resource")) {
-        // only add tsfile that has been flushed
-        tsFiles.add(new File(fs.getAbsolutePath().substring(0, fs.getAbsolutePath().length() - 9)));
-        try {
-          FileUtils.delete(fs);
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-      }
-    }
+    SyncTestUtil.checkResult(sql2, columnNames2, retArray2);
   }
 }

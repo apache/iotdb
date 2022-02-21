@@ -20,21 +20,20 @@
 package org.apache.iotdb.db.newsync.pipedata;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.newsync.receiver.load.ILoader;
+import org.apache.iotdb.db.newsync.receiver.load.SchemaLoader;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class SchemaPipeData extends PipeData {
   private static final int SERIALIZE_BUFFER_SIZE = 1024;
 
   private PhysicalPlan plan;
-
-  public SchemaPipeData(long serialNumber) {
-    super(serialNumber);
-  }
 
   public SchemaPipeData(PhysicalPlan plan, long serialNumber) {
     super(serialNumber);
@@ -47,11 +46,13 @@ public class SchemaPipeData extends PipeData {
   }
 
   @Override
-  public long serializeImpl(DataOutputStream stream) throws IOException {
+  public long serialize(DataOutputStream stream) throws IOException {
+    long serializeSize = super.serialize(stream);
     byte[] bytes = getBytes();
     stream.writeInt(bytes.length);
     stream.write(bytes);
-    return Integer.BYTES + bytes.length;
+    serializeSize += (Integer.BYTES + bytes.length);
+    return serializeSize;
   }
 
   private byte[] getBytes() {
@@ -63,11 +64,18 @@ public class SchemaPipeData extends PipeData {
     return bytes;
   }
 
-  @Override
-  public void deserializeImpl(DataInputStream stream) throws IOException, IllegalPathException {
+  public static SchemaPipeData deserialize(DataInputStream stream)
+      throws IOException, IllegalPathException {
+    long serialNumber = stream.readLong();
     byte[] bytes = new byte[stream.readInt()];
     stream.read(bytes);
-    this.plan = PhysicalPlan.Factory.create(ByteBuffer.wrap(bytes));
+    PhysicalPlan plan = PhysicalPlan.Factory.create(ByteBuffer.wrap(bytes));
+    return new SchemaPipeData(plan, serialNumber);
+  }
+
+  @Override
+  public ILoader createLoader() {
+    return new SchemaLoader(plan);
   }
 
   @Override
@@ -79,5 +87,18 @@ public class SchemaPipeData extends PipeData {
   @Override
   public String toString() {
     return "SchemaPipeData{" + "serialNumber=" + serialNumber + ", plan=" + plan + '}';
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SchemaPipeData that = (SchemaPipeData) o;
+    return Objects.equals(plan, that.plan) && Objects.equals(serialNumber, that.serialNumber);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(plan, serialNumber);
   }
 }

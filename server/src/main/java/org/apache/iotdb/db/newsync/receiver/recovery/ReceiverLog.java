@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.newsync.receiver.recovery;
 
-import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
-import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
+import org.apache.iotdb.db.newsync.utils.SyncConstant;
+import org.apache.iotdb.db.newsync.utils.SyncPathUtil;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -30,8 +30,8 @@ import java.io.IOException;
 public class ReceiverLog {
   private BufferedWriter bw;
 
-  public ReceiverLog() throws IOException {
-    File logFile = new File(SenderConf.sysDir, SyncConstant.RECEIVER_LOG_NAME);
+  public void init() throws IOException {
+    File logFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_LOG_NAME);
     if (!logFile.getParentFile().exists()) {
       logFile.getParentFile().mkdirs();
     }
@@ -39,12 +39,18 @@ public class ReceiverLog {
   }
 
   public void startPipeServer() throws IOException {
+    if (bw == null) {
+      init();
+    }
     bw.write("on");
     bw.newLine();
     bw.flush();
   }
 
   public void stopPipeServer() throws IOException {
+    if (bw == null) {
+      init();
+    }
     bw.write("off");
     bw.newLine();
     bw.flush();
@@ -68,12 +74,18 @@ public class ReceiverLog {
 
   private void writeLog(String pipeName, String remoteIp, PipeStatus status, long time)
       throws IOException {
+    if (bw == null) {
+      init();
+    }
     bw.write(String.format("%s,%s,%s,%d", pipeName, remoteIp, status, time));
     bw.newLine();
     bw.flush();
   }
 
   private void writeLog(String pipeName, String remoteIp, PipeStatus status) throws IOException {
+    if (bw == null) {
+      init();
+    }
     bw.write(String.format("%s,%s,%s", pipeName, remoteIp, status));
     bw.newLine();
     bw.flush();

@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.newsync.receiver.recovery;
 
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
-import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
+import org.apache.iotdb.db.newsync.utils.SyncConstant;
+import org.apache.iotdb.db.newsync.utils.SyncPathUtil;
 import org.apache.iotdb.db.service.ServiceType;
 
 import org.slf4j.Logger;
@@ -43,7 +43,7 @@ public class ReceiverLogAnalyzer {
     logger.info("Start to recover all sync state for sync receiver.");
     pipeInfoMap = new HashMap<>();
     pipeServerEnable = false;
-    File logFile = new File(SenderConf.sysDir, SyncConstant.RECEIVER_LOG_NAME);
+    File logFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_LOG_NAME);
     try (BufferedReader loadReader = new BufferedReader(new FileReader(logFile))) {
       String line;
       int lineNum = 0;

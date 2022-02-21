@@ -22,7 +22,9 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.newsync.receiver.collector.Collector;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
+import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
 import org.apache.iotdb.db.newsync.receiver.manager.ReceiverManager;
+import org.apache.iotdb.db.newsync.utils.SyncPathUtil;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -34,10 +36,12 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -53,7 +57,16 @@ public class ReceiverService implements IService {
   public boolean startPipeServer() {
     try {
       receiverManager.startServer();
-      // TODO: start socket and collector
+      collector.startCollect();
+      // recover started pipe
+      List<PipeInfo> pipeInfos = receiverManager.getAllPipeInfos();
+      for (PipeInfo pipeInfo : pipeInfos) {
+        if (pipeInfo.getStatus().equals(PipeStatus.RUNNING)) {
+          collector.startPipe(
+              pipeInfo.getPipeName(), pipeInfo.getRemoteIp(), pipeInfo.getCreateTime());
+        }
+      }
+      // TODO: start socket
     } catch (IOException e) {
       logger.error(e.getMessage());
       return false;
@@ -65,6 +78,7 @@ public class ReceiverService implements IService {
   public boolean stopPipeServer() {
     try {
       receiverManager.stopServer();
+      collector.stopCollect();
       // TODO: stop socket and collector
     } catch (IOException e) {
       logger.error(e.getMessage());
@@ -74,23 +88,41 @@ public class ReceiverService implements IService {
   }
 
   /** create and start a new pipe named pipeName */
-  public void createPipe(String pipeName, String remoteIp, long startTime) throws IOException {
-    receiverManager.createPipe(pipeName, remoteIp, startTime);
+  public void createPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+    createDir(pipeName, remoteIp, createTime);
+    receiverManager.createPipe(pipeName, remoteIp, createTime);
+    collector.startPipe(pipeName, remoteIp, createTime);
   }
 
   /** start an existed pipe named pipeName */
-  public void startPipe(String pipeName, String remoteIp) throws IOException {
+  public void startPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverManager.startPipe(pipeName, remoteIp);
+    collector.startPipe(pipeName, remoteIp, createTime);
   }
 
   /** stop an existed pipe named pipeName */
-  public void stopPipe(String pipeName, String remoteIp) throws IOException {
+  public void stopPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverManager.stopPipe(pipeName, remoteIp);
+    collector.stopPipe(pipeName, remoteIp, createTime);
   }
 
   /** drop an existed pipe named pipeName */
-  public void dropPipe(String pipeName, String remoteIp) throws IOException {
+  public void dropPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverManager.dropPipe(pipeName, remoteIp);
+    collector.stopPipe(pipeName, remoteIp, createTime);
+    File dir = new File(SyncPathUtil.getReceiverPipeDir(pipeName, remoteIp, createTime));
+    FileUtils.deleteDirectory(dir);
+  }
+
+  private void createDir(String pipeName, String remoteIp, long createTime) {
+    File f = new File(SyncPathUtil.getReceiverFileDataDir(pipeName, remoteIp, createTime));
+    if (!f.exists()) {
+      f.mkdirs();
+    }
+    f = new File(SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime));
+    if (!f.exists()) {
+      f.mkdirs();
+    }
   }
 
   /**
