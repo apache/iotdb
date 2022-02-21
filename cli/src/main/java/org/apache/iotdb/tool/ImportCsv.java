@@ -365,14 +365,10 @@ public class ImportCsv extends AbstractCsvTool {
                     headerTypeMap.put(header, type);
                   } else {
                     logger.error(
-                        new StringBuilder("Line '")
-                            .append(record.getRecordNumber())
-                            .append("', column '")
-                            .append(header)
-                            .append("': '")
-                            .append(value)
-                            .append("' unknown type")
-                            .toString());
+                        "Line {}, column {}: {} unknown type",
+                        record.getRecordNumber(),
+                        header,
+                        value);
                     isFail = true;
                   }
                 }
@@ -382,15 +378,11 @@ public class ImportCsv extends AbstractCsvTool {
                   if (valueTrans == null) {
                     isFail = true;
                     logger.error(
-                        new StringBuilder("Line '")
-                            .append(record.getRecordNumber())
-                            .append("', column '")
-                            .append(header)
-                            .append("': '")
-                            .append(value)
-                            .append("' can't convert to '")
-                            .append(type)
-                            .toString());
+                        "Line {}, column {}: {} can't convert to {}",
+                        record.getRecordNumber(),
+                        header,
+                        value,
+                        type);
                   } else {
                     measurements.add(headerNameMap.get(header).replace(deviceId + '.', ""));
                     types.add(type);
@@ -507,14 +499,10 @@ public class ImportCsv extends AbstractCsvTool {
                     headerTypeMap.put(measurement, type);
                   } else {
                     logger.error(
-                        new StringBuilder("Line '")
-                            .append(record.getRecordNumber())
-                            .append("', column '")
-                            .append(measurement)
-                            .append("': '")
-                            .append(value)
-                            .append("' unknown type")
-                            .toString());
+                        "Line {}, column {}: {} unknown type",
+                        record.getRecordNumber(),
+                        measurement,
+                        value);
                     isFail.set(true);
                   }
                 }
@@ -525,16 +513,11 @@ public class ImportCsv extends AbstractCsvTool {
                 if (valueTrans == null) {
                   isFail.set(true);
                   logger.error(
-                      new StringBuilder("Line '")
-                          .append(record.getRecordNumber())
-                          .append("', column '")
-                          .append(headerNameMap.get(measurement))
-                          .append("': '")
-                          .append(value)
-                          .append("' can't convert to '")
-                          .append(type)
-                          .append("'")
-                          .toString());
+                      "Line {}, column {}: {} can't convert to {}",
+                      record.getRecordNumber(),
+                      headerNameMap.get(measurement),
+                      value,
+                      type);
                 } else {
                   values.add(valueTrans);
                   measurements.add(headerNameMap.get(measurement));
