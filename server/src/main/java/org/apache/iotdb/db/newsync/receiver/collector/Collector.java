@@ -34,6 +34,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -47,7 +48,7 @@ public class Collector {
   private Map<String, Future> taskFutures;
 
   public Collector() {
-    taskFutures = new HashMap<>();
+    taskFutures = new ConcurrentHashMap<>();
   }
 
   public void startCollect() {
