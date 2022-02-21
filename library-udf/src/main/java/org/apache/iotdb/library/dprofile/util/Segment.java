@@ -28,7 +28,7 @@ import java.util.Collections;
 
 /** Util for segment. */
 public class Segment {
-  private static double calculate_error(double[] y1, double[] y2) {
+  private static double calculate_error(double[] y1, double[] y2) throws Exception {
     double[] y = ArrayUtils.addAll(y1, y2);
     int l = y.length;
     double[] x = new double[l];
@@ -39,7 +39,7 @@ public class Segment {
     return linearFit.getMAbsE();
   }
 
-  public static ArrayList<double[]> bottom_up(double[] value, double max_error) {
+  public static ArrayList<double[]> bottom_up(double[] value, double max_error) throws Exception {
     ArrayList<double[]> seg_ts = new ArrayList<>();
     if (value.length <= 3) {
       ArrayList<double[]> ret = new ArrayList<>();
@@ -79,7 +79,8 @@ public class Segment {
   }
 
   private static double[] best_line(
-      double max_error, double[] input_df, double[] w, int start_idx, double upper_bound) {
+      double max_error, double[] input_df, double[] w, int start_idx, double upper_bound)
+      throws Exception {
     double error = 0.0;
     int idx = start_idx + w.length;
     double[] S_prev = w.clone();
@@ -104,7 +105,7 @@ public class Segment {
     return S_prev;
   }
 
-  public static double[] approximated_segment(double[] in_seq) {
+  public static double[] approximated_segment(double[] in_seq) throws Exception {
     if (in_seq.length <= 2) {
       return in_seq;
     }
