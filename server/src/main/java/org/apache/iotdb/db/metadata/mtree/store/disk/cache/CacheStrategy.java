@@ -178,7 +178,7 @@ public class CacheStrategy implements ICacheStrategy {
   }
 
   @Override
-  public List<IMNode> evict() {
+  public synchronized List<IMNode> evict() {
     IMNode node = null;
     List<IMNode> evictedMNodes = new ArrayList<>();
     for (CacheEntry cacheEntry : nodeCache.keySet()) {
