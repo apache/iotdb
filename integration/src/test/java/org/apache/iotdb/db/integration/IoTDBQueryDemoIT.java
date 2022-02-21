@@ -712,29 +712,27 @@ public class IoTDBQueryDemoIT {
 
   @Test
   public void nowClusterTest() throws ClassNotFoundException {
-    for (int i = 6667; i <= 6671; i += 2) {
-      try (Connection connection =
-              DriverManager.getConnection(
-                  Config.IOTDB_URL_PREFIX + "127.0.0.1:" + i + "/", "root", "root");
-          Statement statement = connection.createStatement()) {
-        boolean execute = statement.execute("show now()");
-        Assert.assertTrue(execute);
-        PreparedStatement ps;
-        try (ResultSet resultSet = statement.getResultSet()) {
-          ResultSetMetaData metaData = resultSet.getMetaData();
-          Assert.assertEquals(5, metaData.getColumnCount());
-          Assert.assertEquals("IpAddress", metaData.getColumnName(1));
-          Assert.assertEquals("SystemTime", metaData.getColumnName(2));
-          Assert.assertEquals("CpuLoad", metaData.getColumnName(3));
-          Assert.assertEquals("TotalMemorySize", metaData.getColumnName(4));
-          Assert.assertEquals("FreeMemorySize", metaData.getColumnName(5));
-        } catch (Exception e) {
-          e.printStackTrace();
-        }
-
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6669/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean execute = statement.execute("show now()");
+      Assert.assertTrue(execute);
+      PreparedStatement ps;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        Assert.assertEquals(5, metaData.getColumnCount());
+        Assert.assertEquals("IpAddress", metaData.getColumnName(1));
+        Assert.assertEquals("SystemTime", metaData.getColumnName(2));
+        Assert.assertEquals("CpuLoad", metaData.getColumnName(3));
+        Assert.assertEquals("TotalMemorySize", metaData.getColumnName(4));
+        Assert.assertEquals("FreeMemorySize", metaData.getColumnName(5));
       } catch (Exception e) {
         e.printStackTrace();
       }
+
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 }
