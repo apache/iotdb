@@ -2004,7 +2004,7 @@ public class MManager {
             setUsingSchemaTemplate(mountedNode);
           }
         } finally {
-          mtree.pinMNode(mountedNode);
+          mtree.unPinMNode(mountedNode);
         }
         mountedNodeFound = true;
       }
