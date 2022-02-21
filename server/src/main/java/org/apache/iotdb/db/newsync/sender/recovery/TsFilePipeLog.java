@@ -147,6 +147,7 @@ public class TsFilePipeLog {
   public void addHistoryPipeData(PipeData pipeData) throws IOException {
     getHistoryOutputStream();
     pipeData.serialize(historyOutputStream);
+    historyOutputStream.flush();
   }
 
   private void getHistoryOutputStream() throws IOException {
@@ -165,6 +166,7 @@ public class TsFilePipeLog {
   public synchronized void addRealTimePipeData(PipeData pipeData) throws IOException {
     getRealTimeOutputStream(pipeData.getSerialNumber());
     currentPipeLogSize += pipeData.serialize(realTimeOutputStream);
+    realTimeOutputStream.flush();
   }
 
   private void getRealTimeOutputStream(long serialNumber) throws IOException {
