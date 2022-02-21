@@ -635,7 +635,7 @@ public class MTreeService implements Serializable {
           }
         } else {
           if (child.isMeasurement()) {
-            unPinPath(cur);
+            unPinPath(child);
             return i == nodeNames.length - 1;
           }
         }
@@ -1692,10 +1692,10 @@ public class MTreeService implements Serializable {
             throw new TemplateImcompatibeException(
                 measurementPath.getFullPath(), upperTemplate.getName(), fullPathNodes[index]);
           }
+        } else {
+          // no matched child, no template, need to create device node as logical device path
+          return fullPathNodes.length - 1;
         }
-
-        // no matched child, no template, need to create device node as logical device path
-        return fullPathNodes.length - 1;
       } else {
         // has child on MTree
         cur = child;

@@ -80,6 +80,7 @@ public abstract class MManagerBasicTestCase {
   @Before
   public void setUp() {
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    setConfig();
     EnvironmentUtils.envSetUp();
   }
 
