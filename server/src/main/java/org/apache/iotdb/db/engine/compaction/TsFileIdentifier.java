@@ -36,16 +36,18 @@ public class TsFileIdentifier {
   private final boolean sequence;
   private final String filename;
   public static final String INFO_SEPARATOR = " ";
+  // Notice: Do not change the offset of info
   public static final int FILE_NAME_OFFSET_IN_PATH = 1;
   public static final int TIME_PARTITION_OFFSET_IN_PATH = 2;
   public static final int VIRTUAL_SG_OFFSET_IN_PATH = 3;
   public static final int LOGICAL_SG_OFFSET_IN_PATH = 4;
   public static final int SEQUENCE_OFFSET_IN_PATH = 5;
+
   public static final int LOGICAL_SG_OFFSET_IN_LOG = 0;
   public static final int VIRTUAL_SG_OFFSET_IN_LOG = 1;
   public static final int TIME_PARTITION_OFFSET_IN_LOG = 2;
-  public static final int SEQUENCE_OFFSET_IN_LOG = 4;
   public static final int FILE_NAME_OFFSET_IN_LOG = 3;
+  public static final int SEQUENCE_OFFSET_IN_LOG = 4;
 
   private TsFileIdentifier(
       String logicalStorageGroupName,
