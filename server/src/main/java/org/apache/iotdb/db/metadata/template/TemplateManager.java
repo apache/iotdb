@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
@@ -175,9 +176,10 @@ public class TemplateManager {
       for (IMNode dNode : template.getDirectNodes()) {
         if (dNode.isMeasurement()) {
           throw new MetadataException(
-              "Template and mounted node has different alignment: "
-                  + template.getName()
-                  + dNode.getFullPath());
+              String.format(
+                  "Template[%s] and mounted node[%s] has different alignment.",
+                  template.getName(),
+                  node.getFullPath() + IoTDBConstant.PATH_SEPARATOR + dNode.getFullPath()));
         }
       }
     }
