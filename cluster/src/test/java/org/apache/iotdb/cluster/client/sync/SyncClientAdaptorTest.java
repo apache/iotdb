@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -60,6 +61,8 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -195,9 +198,7 @@ public class SyncClientAdaptorTest {
 
           @Override
           public void getAllMeasurementSchema(
-              RaftNode header,
-              ByteBuffer planBinary,
-              AsyncMethodCallback<ByteBuffer> resultHandler) {
+              MeasurementSchemaRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
             resultHandler.onComplete(getAllMeasurementSchemaResult);
           }
 
@@ -382,12 +383,21 @@ public class SyncClientAdaptorTest {
     assertEquals(
         new HashSet<>(Arrays.asList("1", "2", "3")),
         SyncClientAdaptor.getNextChildren(dataClient, TestUtils.getRaftNode(0, 0), "root"));
+
+    MeasurementSchemaRequest request;
+    try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+      new ShowTimeSeriesPlan(new PartialPath("root")).serialize(dataOutputStream);
+      request =
+          new MeasurementSchemaRequest(
+              0,
+              TestUtils.getRaftNode(0, 0),
+              TestUtils.getNode(1),
+              ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+    }
     assertEquals(
         getAllMeasurementSchemaResult,
-        SyncClientAdaptor.getAllMeasurementSchema(
-            dataClient,
-            TestUtils.getRaftNode(0, 0),
-            new ShowTimeSeriesPlan(new PartialPath("root"))));
+        SyncClientAdaptor.getAllMeasurementSchema(dataClient, request));
     assertEquals(
         measurementSchemas,
         SyncClientAdaptor.pullMeasurementSchema(dataClient, new PullSchemaRequest()));
