@@ -450,7 +450,8 @@ public class TemplateTest {
       fail();
     } catch (Exception e) {
       assertEquals(
-          "Template[templateDA] and mounted node[root.laptop.d1.vs0] has different alignment.", e.getMessage());
+          "Template[templateDA] and mounted node[root.laptop.d1.vs0] has different alignment.",
+          e.getMessage());
     }
   }
 
