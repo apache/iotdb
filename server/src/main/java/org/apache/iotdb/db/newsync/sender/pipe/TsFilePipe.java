@@ -384,7 +384,7 @@ public class TsFilePipe implements Pipe {
     while (!pipeDataDeque.isEmpty() && pipeDataDeque.peek().getSerialNumber() <= serialNumber) {
       PipeData data = pipeDataDeque.poll();
       try {
-        pipeLog.removePipeData(pipeDataDeque.poll().getSerialNumber());
+        pipeLog.removePipeData(data);
       } catch (IOException e) {
         logger.warn(
             String.format(
