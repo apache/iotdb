@@ -31,27 +31,27 @@ public class MemManager implements IMemManager {
   private volatile int pinnedSize;
 
   @Override
-  public void initCapacity(int capacity) {
+  public synchronized void initCapacity(int capacity) {
     this.capacity = capacity;
   }
 
   @Override
-  public boolean isEmpty() {
+  public synchronized boolean isEmpty() {
     return size == 0;
   }
 
   @Override
-  public boolean isExceedThreshold() {
+  public synchronized boolean isExceedThreshold() {
     return !isEmpty() && size + pinnedSize > capacity * 0.6;
   }
 
   @Override
-  public boolean isExceedCapacity() {
+  public synchronized boolean isExceedCapacity() {
     return size + pinnedSize > capacity;
   }
 
   @Override
-  public boolean requestMemResource(IMNode node) {
+  public synchronized boolean requestMemResource(IMNode node) {
     if (size < capacity - pinnedSize) {
       size++;
       return true;
@@ -60,29 +60,29 @@ public class MemManager implements IMemManager {
   }
 
   @Override
-  public void releaseMemResource(IMNode node) {
+  public synchronized void releaseMemResource(IMNode node) {
     size--;
   }
 
   @Override
-  public void requestPinnedMemResource(IMNode node) {
+  public synchronized void requestPinnedMemResource(IMNode node) {
     pinnedSize++;
   }
 
   @Override
-  public void upgradeMemResource(IMNode node) {
+  public synchronized void upgradeMemResource(IMNode node) {
     pinnedSize++;
     size--;
   }
 
   @Override
-  public void releasePinnedMemResource(IMNode node) {
+  public synchronized void releasePinnedMemResource(IMNode node) {
     pinnedSize--;
     size++;
   }
 
   @Override
-  public void clear() {
+  public synchronized void clear() {
     size = 0;
   }
 }
