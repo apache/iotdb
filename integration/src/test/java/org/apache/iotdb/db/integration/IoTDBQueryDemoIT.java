@@ -714,7 +714,7 @@ public class IoTDBQueryDemoIT {
   public void nowClusterTest() throws ClassNotFoundException {
     try (Connection connection =
             DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6669/", "root", "root");
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean execute = statement.execute("show now()");
       Assert.assertTrue(execute);
