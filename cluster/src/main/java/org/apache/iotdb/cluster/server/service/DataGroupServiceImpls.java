@@ -715,6 +715,11 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
+  public ByteBuffer getShowNow(RaftNode header) throws TException {
+    return DataGroupEngine.getInstance().getDataSyncService(header).getShowNow(header);
+  }
+
+  @Override
   public void peekNextNotNullValue(
       RaftNode header,
       long executorId,
@@ -726,6 +731,14 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
         DataGroupEngine.getInstance()
             .getDataSyncService(header)
             .peekNextNotNullValue(header, executorId, startTime, endTime));
+  }
+
+  @Override
+  public void getShowNow(RaftNode header, AsyncMethodCallback<ByteBuffer> resultHandler)
+      throws TException {
+    DataAsyncService service =
+        DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "show now");
+    service.getShowNow(header, resultHandler);
   }
 
   @Override

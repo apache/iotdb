@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.query.fill.ClusterFillExecutor;
 import org.apache.iotdb.cluster.query.groupby.ClusterGroupByNoVFilterDataSet;
 import org.apache.iotdb.cluster.query.groupby.ClusterGroupByVFilterDataSet;
 import org.apache.iotdb.cluster.query.last.ClusterLastQueryExecutor;
+import org.apache.iotdb.cluster.query.shownow.ClusterShowNowQueryExecutor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowNowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
@@ -41,6 +43,7 @@ import org.apache.iotdb.db.query.executor.FillQueryExecutor;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.query.executor.RawDataQueryExecutor;
+import org.apache.iotdb.db.query.executor.ShowNowQueryExecutor;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -105,5 +108,10 @@ public class ClusterQueryRouter extends QueryRouter {
           ? clusterUDTFQueryExecutor.executeWithValueFilterNonAlign(context)
           : clusterUDTFQueryExecutor.executeWithoutValueFilterNonAlign(context);
     }
+  }
+
+  @Override
+  protected ShowNowQueryExecutor getShowNowQueryExecutor(ShowNowPlan showNowPlan) {
+    return new ClusterShowNowQueryExecutor(showNowPlan, metaGroupMember);
   }
 }

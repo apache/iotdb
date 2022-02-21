@@ -50,11 +50,13 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.utils.ShowNowUtils;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
+import org.apache.iotdb.db.query.dataset.ShowNowResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.dataset.groupby.LocalGroupByExecutor;
@@ -617,6 +619,18 @@ public class LocalQueryExecutor {
     try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
       dataOutputStream.writeInt(allTimeseriesSchema.size());
       for (ShowTimeSeriesResult result : allTimeseriesSchema) {
+        result.serialize(outputStream);
+      }
+    }
+    return ByteBuffer.wrap(outputStream.toByteArray());
+  }
+
+  public ByteBuffer getShowNow() throws CheckConsistencyException, IOException, MetadataException {
+    List<ShowNowResult> showNow = new ShowNowUtils().getShowNowResults();
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
+      dataOutputStream.writeInt(showNow.size());
+      for (ShowNowResult result : showNow) {
         result.serialize(outputStream);
       }
     }

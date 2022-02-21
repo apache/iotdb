@@ -494,4 +494,14 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       resultHandler.onError(e);
     }
   }
+
+  @Override
+  public void getShowNow(RaftNode header, AsyncMethodCallback<ByteBuffer> resultHandler)
+      throws TException {
+    try {
+      resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().getShowNow());
+    } catch (CheckConsistencyException | IOException | MetadataException e) {
+      resultHandler.onError(e);
+    }
+  }
 }

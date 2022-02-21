@@ -21,7 +21,6 @@ parser grammar IoTDBSqlParser;
 
 options { tokenVocab=IoTDBSqlLexer; }
 
-
 /**
  * 1. Top Level Description
  */
@@ -333,6 +332,11 @@ countNodes
 // Select Statement
 selectStatement
     : TRACING? selectClause intoClause? fromClause whereClause? specialClause?
+    | showNowClause
+    ;
+
+showNowClause
+    : SHOW NOW LR_BRACKET RR_BRACKET
     ;
 
 intoClause

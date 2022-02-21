@@ -15,21 +15,17 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
+package org.apache.iotdb.db.qp.logical.sys;
 
-package org.apache.iotdb.cluster.query;
+public class ShowNowOperator extends ShowOperator {
+  public ShowNowOperator(int tokenIntType) {
+    super(tokenIntType, OperatorType.SHOW);
+  }
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-
-public class ClusterPlanner extends Planner {
-
-  @Override
-  protected PhysicalPlan generatePhysicalPlanFromOperator(Operator operator)
-      throws QueryProcessException {
-    // from logical operator to physical plan
-    return new ClusterPhysicalGenerator().transformToPhysicalPlan(operator);
+  public ShowNowOperator(int tokenIntType, OperatorType operatorType) {
+    super(tokenIntType);
+    this.operatorType = operatorType;
   }
 }

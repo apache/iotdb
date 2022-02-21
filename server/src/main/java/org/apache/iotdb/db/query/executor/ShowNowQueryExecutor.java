@@ -15,21 +15,23 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
+package org.apache.iotdb.db.query.executor;
 
-package org.apache.iotdb.cluster.query;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.qp.physical.sys.ShowNowPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowNowDataSet;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+public class ShowNowQueryExecutor {
+  public ShowNowQueryExecutor() {}
 
-public class ClusterPlanner extends Planner {
+  public ShowNowQueryExecutor(ShowNowPlan showNowPlan) {}
 
-  @Override
-  protected PhysicalPlan generatePhysicalPlanFromOperator(Operator operator)
-      throws QueryProcessException {
-    // from logical operator to physical plan
-    return new ClusterPhysicalGenerator().transformToPhysicalPlan(operator);
+  public QueryDataSet execute(QueryContext context, ShowNowPlan showNowPlan)
+      throws MetadataException {
+    return new ShowNowDataSet(showNowPlan, context);
   }
 }

@@ -67,6 +67,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowNowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
@@ -487,6 +488,9 @@ public abstract class PhysicalPlan {
         case SET_SYSTEM_MODE:
           plan = new SetSystemModePlan();
           break;
+        case SHOW_NOW:
+          plan = new ShowNowPlan();
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -557,7 +561,8 @@ public abstract class PhysicalPlan {
     UNSET_TEMPLATE,
     APPEND_TEMPLATE,
     PRUNE_TEMPLATE,
-    DROP_TEMPLATE
+    DROP_TEMPLATE,
+    SHOW_NOW
   }
 
   public long getIndex() {

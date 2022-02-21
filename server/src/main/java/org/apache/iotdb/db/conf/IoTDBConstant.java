@@ -181,6 +181,13 @@ public class IoTDBConstant {
   // cross space compaction
   public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX = ".cross";
 
+  // show now
+  public static final String SYSTEM_TIME = "SystemTime";
+  public static final String CPU_LOAD = "CpuLoad";
+  public static final String TOTAL_MEMORYSIZE = "TotalMemorySize";
+  public static final String FREE_MEMORYSIZE = "FreeMemorySize";
+  public static final String IP_ADDRESS = "IpAddress";
+
   // client version number
   public enum ClientVersion {
     V_0_12,
