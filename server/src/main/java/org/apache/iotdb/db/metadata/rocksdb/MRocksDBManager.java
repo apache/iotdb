@@ -322,9 +322,9 @@ public class MRocksDBManager implements IMetaManager {
         null);
   }
 
-  private void createTimeSeries(
+  protected void createTimeSeries(
       PartialPath path,
-      MeasurementSchema schema,
+      IMeasurementSchema schema,
       String alias,
       Map<String, String> tags,
       Map<String, String> attributes)
@@ -357,7 +357,7 @@ public class MRocksDBManager implements IMetaManager {
       String nodes[],
       int start,
       int end,
-      MeasurementSchema schema,
+      IMeasurementSchema schema,
       String alias,
       Map<String, String> tags,
       Map<String, String> attributes,
@@ -432,7 +432,7 @@ public class MRocksDBManager implements IMetaManager {
   private void createTimeSeriesNode(
       String[] nodes,
       String levelPath,
-      MeasurementSchema schema,
+      IMeasurementSchema schema,
       String alias,
       Map<String, String> tags,
       Map<String, String> attributes)
