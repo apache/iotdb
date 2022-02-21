@@ -53,8 +53,9 @@ public class SFManager {
 
   // region Interfaces
 
-  public void init() throws MetadataException {
+  public IMNode init() throws MetadataException, IOException {
     loadSchemaFiles();
+    return getUpperMTree();
   }
 
   public void writeMNode(IMNode node) throws MetadataException, IOException{
@@ -66,7 +67,7 @@ public class SFManager {
       if (loadSchemaFileInst(sgName) == null) {
         initNewSchemaFile(sgName, sgNode.getAsStorageGroupMNode().getDataTTL());
       }
-      appendUpperTree(sgNode.getPartialPath().getNodes());
+      appendStorageGroupNode(sgNode);
     }
 
     schemaFiles.get(sgName).writeMNode(node);
@@ -76,7 +77,7 @@ public class SFManager {
     if (node.isStorageGroup()) {
       // delete entire corresponding file
       removeSchemaFile(node.getFullPath());
-      pruneUpperTree(node.getPartialPath().getNodes());
+      pruneStorageGroupNode(node);
     } else {
       // delete inside a schema file
       loadAndUpdateUpperTree(node);
@@ -89,13 +90,19 @@ public class SFManager {
       file.close();
     }
     schemaFiles.clear();
+    root = new InternalMNode(null, MetadataConstant.ROOT);
   }
 
-  public void close(String sgName) throws MetadataException, IOException{
-    if (schemaFiles.containsKey(sgName)) {
-      schemaFiles.get(sgName).close();
-      schemaFiles.remove(sgName);
+  public void close(IMNode sgNode) throws MetadataException, IOException{
+    if (!sgNode.isStorageGroup()) {
+      throw new MetadataException(String.format("Node [%s] is not a storage group node, cannot close schema file either.", sgNode.getFullPath()));
     }
+
+    if (schemaFiles.containsKey(sgNode.getName())) {
+      schemaFiles.get(sgNode.getName()).close();
+      schemaFiles.remove(sgNode.getName());
+    }
+    pruneStorageGroupNode(sgNode);
   }
 
   public void sync() throws MetadataException, IOException {
@@ -136,7 +143,7 @@ public class SFManager {
       if (loadSchemaFileInst(sgName) == null) {
         throw new SchemaFileNotExists(getFilePath(sgName));
       }
-      appendUpperTree(sgNode.getPartialPath().getNodes());
+      appendStorageGroupNode(sgNode);
     }
   }
 
@@ -165,7 +172,7 @@ public class SFManager {
     return rRoot;
   }
 
-  private void loadSchemaFiles() throws MetadataException {
+  private void loadSchemaFiles() throws MetadataException, IOException {
     File dir = new File(fileDirs);
     if (!dir.isDirectory()) {
       throw new MetadataException("Invalid path for Schema File directory.");
@@ -204,30 +211,11 @@ public class SFManager {
     Files.delete(Paths.get(file.toURI()));
   }
 
-  private void restoreStorageGroup(String[] nodes) throws MetadataException{
+  private void restoreStorageGroup(String[] nodes) throws MetadataException, IOException{
     String sgName = String.join(IoTDBConstant.PATH_SEPARATOR + "", nodes);
-    if (!nodes[0].equals(root.getName())) {
-      throw new MetadataException("Schema File with invalid name: " + sgName);
-    }
-    IMNode cur = root;
-    for (int i = 1; i < nodes.length - 1; i++) {
-      if (cur.isStorageGroup()) {
-        throw new MetadataException(String.format("Path [%s] cannot be a prefix and a storage group at same time.", sgName));
-      }
-      if (!cur.hasChild(nodes[i])) {
-        cur.addChild(new InternalMNode(cur, nodes[i]));
-      }
-      cur = cur.getChild(nodes[i]);
-    }
-    try {
-      ISchemaFile fileInst = SchemaFile.loadSchemaFile(sgName);
-      IMNode sgNode = fileInst.init();
-      sgNode.setParent(cur);
-      cur.addChild(sgNode);
-      schemaFiles.put(sgName, fileInst);
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
+    ISchemaFile fileInst = SchemaFile.loadSchemaFile(sgName);
+    appendStorageGroupNode(nodes, fileInst.init().getAsStorageGroupMNode().getDataTTL());
+    schemaFiles.put(sgName, fileInst);
   }
 
   private IMNode getStorageGroupNode(IMNode node) throws MetadataException{
@@ -241,12 +229,53 @@ public class SFManager {
     return cur;
   }
 
-  private void appendUpperTree(String[] pathNodes) {
-
+  /**
+   * Append corresponding storage node into upper tree, which is member of the class
+   * @param sgNode It is a node from MTree rather than the tree inside this class
+   */
+  private void appendStorageGroupNode(IMNode sgNode) throws MetadataException {
+    appendStorageGroupNode(sgNode.getPartialPath().getNodes(), sgNode.getAsStorageGroupMNode().getDataTTL());
   }
 
-  private void pruneUpperTree(String[] pathNodes) {
+  private void appendStorageGroupNode(String[] nodes, long dataTTL) throws MetadataException {
+    if (!nodes[0].equals(root.getName())) {
+      throw new MetadataException("Schema File with invalid name: " + String.join(IoTDBConstant.PATH_SEPARATOR + "", nodes));
+    }
 
+    IMNode cur = root;
+
+    for (int i = 1; i < nodes.length - 1; i++) {
+      if (!cur.hasChild(nodes[i])) {
+        cur.addChild(new InternalMNode(cur, nodes[i]));
+      }
+      cur = cur.getChild(nodes[i]);
+      if (cur.isStorageGroup()) {
+        throw new MetadataException(String.format("Path [%s] cannot be a prefix and a storage group at same time.", cur.getFullPath()));
+      }
+    }
+    cur.addChild(new StorageGroupMNode(cur, nodes[nodes.length-1], dataTTL));
+  }
+
+  /**
+   * Delete target storage group node, and remove all non-child node as well
+   * @param sgNode target storage group node from outer MTree.
+   */
+  private void pruneStorageGroupNode(IMNode sgNode) throws MetadataException{
+    String[] nodes = sgNode.getPartialPath().getNodes();
+    IMNode cur = root;
+    for (int i = 1; i < nodes.length; i++) {
+      if (!cur.hasChild(nodes[i])) {
+        throw new MetadataException(String.format("Path does not exists for schema files.", sgNode.getFullPath()));
+      }
+      cur = cur.getChild(nodes[i]);
+    }
+    IMNode par = cur.getParent();
+    par.deleteChild(cur.getName());
+    while (par != root && par.getChildren().size() == 0) {
+      cur = par;
+      par.deleteChild(cur.getName());
+      par = par.getParent();
+    }
   }
 
   private String getFilePath(String sgName) {
