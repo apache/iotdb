@@ -60,7 +60,7 @@ import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
 public class MergeResource {
 
   private List<TsFileResource> seqFiles;
-  private List<TsFileResource> unseqFiles;
+  private List<TsFileResource> unseqFiles = new ArrayList<>();
 
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
@@ -74,23 +74,36 @@ public class MergeResource {
   private boolean cacheDeviceMeta = false;
 
   public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    this.seqFiles = seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
-    this.unseqFiles = unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
-  }
-
-  /** If returns true, it means to participate in the merge */
-  private boolean filterResource(TsFileResource res) {
-    return res.getTsFile().exists()
-        && !res.isDeleted()
-        && (!res.isClosed() || res.stillLives(timeLowerBound))
-        && !res.isMerging();
+    this.seqFiles = seqFiles.stream().filter(this::filterSeqResource).collect(Collectors.toList());
+    filterUnseqResource(unseqFiles);
   }
 
   public MergeResource(
       Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long timeLowerBound) {
     this.timeLowerBound = timeLowerBound;
-    this.seqFiles = seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
-    this.unseqFiles = unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
+    this.seqFiles = seqFiles.stream().filter(this::filterSeqResource).collect(Collectors.toList());
+    filterUnseqResource(unseqFiles);
+  }
+
+  /** Fitler the seq files into the compaction. Seq files should be not deleted or over ttl. */
+  private boolean filterSeqResource(TsFileResource res) {
+    return !res.isDeleted() && res.stillLives(timeLowerBound);
+  }
+
+  /**
+   * Filter the unseq files into the compaction. Unseq files should be not deleted or over ttl. To
+   * ensure that the compaction is correct, return as soon as it encounters the file being compacted
+   * or not closed. Therefore, a cross space compaction can only be performed serially under a time
+   * partition in a VSG.
+   */
+  private void filterUnseqResource(List<TsFileResource> unseqResources) {
+    for (TsFileResource resource : unseqResources) {
+      if (resource.isMerging() || !resource.isClosed()) {
+        return;
+      } else if (!resource.isDeleted() && resource.stillLives(timeLowerBound)) {
+        this.unseqFiles.add(resource);
+      }
+    }
   }
 
   public void clear() throws IOException {

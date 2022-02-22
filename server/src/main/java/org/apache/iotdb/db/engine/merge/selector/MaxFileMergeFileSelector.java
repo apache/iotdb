@@ -155,12 +155,10 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
       if (seqSelectedNum != resource.getSeqFiles().size()) {
         selectOverlappedSeqFiles(unseqFile);
       }
-      boolean isClosed = checkChoosable(unseqFile);
-      if (!isClosed) {
+      boolean isSeqFilesValid = checkIsSeqFilesValid();
+      if (!isSeqFilesValid) {
         tmpSelectedSeqFiles.clear();
-        unseqIndex++;
-        timeConsumption = System.currentTimeMillis() - startTime;
-        continue;
+        break;
       }
 
       tempMaxSeqFileCost = maxSeqFileCost;
@@ -190,8 +188,10 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
       maxSeqFileCost = tempMaxSeqFileCost;
 
       for (Integer seqIdx : tmpSelectedSeqFiles) {
-        seqSelected[seqIdx] = true;
-        seqSelectedNum++;
+        if (!seqSelected[seqIdx]) {
+          seqSelectedNum++;
+          seqSelected[seqIdx] = true;
+        }
       }
       totalCost += newCost;
       logger.debug(
@@ -206,21 +206,31 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
     return false;
   }
 
-  private boolean checkChoosable(TsFileResource unseqFile) {
-    boolean choosable = unseqFile.isClosed() && !unseqFile.isMerging();
-    if (!choosable) {
-      return false;
-    }
+  /**
+   * To avoid unseq data in seq files, cross space compaction should select all the seq files which
+   * have overlap with unseq files whether they are compacting or not. Therefore, before adding task
+   * into the queue, cross space compaction task should check whether source seq files are being
+   * compacted or not to speed up compaction.
+   */
+  private boolean checkIsSeqFilesValid() {
     for (Integer seqIdx : tmpSelectedSeqFiles) {
-      if (!resource.getSeqFiles().get(seqIdx).isClosed()
-          || resource.getSeqFiles().get(seqIdx).isMerging()) {
-        choosable = false;
-        break;
+      if (resource.getSeqFiles().get(seqIdx).isMerging()
+          || !resource.getSeqFiles().get(seqIdx).isClosed()) {
+        return false;
       }
     }
-    return choosable;
+    return true;
   }
 
+  /**
+   * Put the index of the seqFile that has an overlap with the specific unseqFile and has not been
+   * selected by the file selector of the compaction task into the tmpSelectedSeqFiles list. To
+   * determine whether overlap exists is to traverse each device ChunkGroup in unseqFiles, and
+   * determine whether it overlaps with the same device ChunkGroup of each seqFile that are not
+   * selected by the compaction task, if so, select this seqFile.
+   *
+   * @param unseqFile the tsFileResource of unseqFile to be compacted
+   */
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
     int tmpSelectedNum = 0;
     for (String deviceId : unseqFile.getDevices()) {
@@ -230,20 +240,33 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
       boolean noMoreOverlap = false;
       for (int i = 0; i < resource.getSeqFiles().size() && !noMoreOverlap; i++) {
         TsFileResource seqFile = resource.getSeqFiles().get(i);
-        if (seqSelected[i] || !seqFile.getDevices().contains(deviceId)) {
+        if (!seqFile.getDevices().contains(deviceId)) {
           continue;
         }
-        // the open file's endTime is Long.MIN_VALUE, this will make the file be filtered below
-        long seqEndTime = seqFile.isClosed() ? seqFile.getEndTime(deviceId) : Long.MAX_VALUE;
-        if (unseqEndTime <= seqEndTime) {
-          // the unseqFile overlaps current seqFile
+
+        long seqEndTime = seqFile.getEndTime(deviceId);
+        long seqStartTime = seqFile.getStartTime(deviceId);
+        if (unseqEndTime < seqStartTime) {
+          // Suppose the time range in unseq file is 10-20, seq file is 30-40. If this unseq file
+          // has no overlapped seq files, then select this seq file. Otherwise, skip this seq file.
+          // There is no more overlap later.
+          if (tmpSelectedSeqFiles.size() == 0) {
+            tmpSelectedSeqFiles.add(i);
+          }
+          noMoreOverlap = true;
+        } else if (!seqFile.isClosed()) {
+          // we cannot make sure whether unclosed file has overlap or not, so we just add it.
           tmpSelectedSeqFiles.add(i);
           tmpSelectedNum++;
-          // the device of the unseqFile can not merge with later seqFiles
+        } else if (unseqEndTime <= seqEndTime) {
+          // if time range in unseq file is 10-20, seq file is 15-25, then select this seq file and
+          // there is no more overlap later.
+          tmpSelectedSeqFiles.add(i);
+          tmpSelectedNum++;
           noMoreOverlap = true;
         } else if (unseqStartTime <= seqEndTime) {
-          // the device of the unseqFile may merge with later seqFiles
-          // and the unseqFile overlaps current seqFile
+          // if time range in unseq file is 10-20, seq file is 0-15, then select this seq file and
+          // there may be overlap later.
           tmpSelectedSeqFiles.add(i);
           tmpSelectedNum++;
         }

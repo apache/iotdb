@@ -603,9 +603,12 @@ public class TsFileResource {
     isMerging = merging;
   }
 
-  /** check if any of the device lives over the given time bound */
+  /**
+   * check if any of the device lives over the given time bound. If the file is not closed, then
+   * return true.
+   */
   public boolean stillLives(long timeLowerBound) {
-    return timeIndex.stillLives(timeLowerBound);
+    return !isClosed() || timeIndex.stillLives(timeLowerBound);
   }
 
   public boolean isSatisfied(
