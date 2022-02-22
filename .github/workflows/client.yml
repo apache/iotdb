@@ -83,15 +83,8 @@ jobs:
         run: mkdir D:\a\cpp ; `
           Invoke-WebRequest https://github.com/lexxmark/winflexbison/releases/download/v2.5.24/win_flex_bison-2.5.24.zip -OutFile D:\a\cpp\win_flex_bison.zip ; `
           [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp", "User") ; `
-      - name: Download Boost
-        run: mkdir D:\a\boost ; `
-          Invoke-WebRequest https://sourceforge.net/projects/boost/files/boost-binaries/1.78.0/boost_1_78_0-msvc-14.3-64.exe -OutFile D:\a\boost\boost_1_78_0-msvc-14.3-64.exe ; `
-          cd D:\a\boost ; `
-          .\boost_1_78_0-msvc-14.3-64.exe
       - name: Install Boost
-        run: cd C:\local\boost_1_78_0 ; `
-          .\bootstrap.bat ; `
-          .\b2.exe
+        run: vcpkg install boost
       - name: Install OpenSSL
         run:  choco install openssl
       - name: Add Flex and Bison Path and OpenSSL
