@@ -81,6 +81,38 @@ struct TSCreateDatabaseReq{
   2: required string database
 }
 
+// WritePoints()
+// write points in influxdb
+struct TSQueryReq{
+  // The session to execute the statement against
+  1: required i64 sessionId
+
+  2: required string command
+  3: required string database
+}
+
+// WritePoints()
+// write points in influxdb
+struct TSQueryRsp{
+  1: required list<QueryResult> results
+
+  2: required string error
+}
+
+struct QueryResult{
+  1: required list<Series> series
+
+  2: required string error
+}
+
+struct Series {
+  1: required string name
+  2: required map<string,string> tags
+  3: required list<string> columns
+
+  4: required list<list<binary>> error
+}
+
 service InfluxDBService {
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -89,4 +121,6 @@ service InfluxDBService {
   TSStatus writePoints(1:TSWritePointsReq req);
 
   TSStatus createDatabase(1:TSCreateDatabaseReq req);
+
+  TSQueryRsp query(1:TSQueryReq req);
 }
