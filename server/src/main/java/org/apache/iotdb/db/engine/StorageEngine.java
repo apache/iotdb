@@ -377,12 +377,8 @@ public class StorageEngine implements IService {
         unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(tsFileTimedCloseCheckThread, ThreadName.TIMED_CLOSE_TSFILE);
     recoveryThreadPool.shutdownNow();
-    try {
-      for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
-        this.releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroup);
-      }
-    } catch (IllegalPathException e) {
-      logger.error("get storage groups fail", e);
+    for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
+      this.releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroup);
     }
     processorMap.clear();
   }
@@ -840,13 +836,8 @@ public class StorageEngine implements IService {
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
     syncCloseAllProcessor();
-    try {
-      for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
-        this.deleteAllDataFilesInOneStorageGroup(storageGroup);
-      }
-    } catch (IllegalPathException e) {
-      logger.error("get all storage group paths fail", e);
-      return false;
+    for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
+      this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
     return true;
   }

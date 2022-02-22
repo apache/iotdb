@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -47,9 +48,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class FileSnapshotTest extends DataSnapshotTest {
 
@@ -80,21 +79,21 @@ public class FileSnapshotTest extends DataSnapshotTest {
 
   @Test
   public void testInstallSingle()
-      throws IOException, SnapshotInstallationException, IllegalPathException,
-          StorageEngineException, WriteProcessException {
+      throws IOException, SnapshotInstallationException, MetadataException, StorageEngineException,
+          WriteProcessException {
     testInstallSingle(false);
   }
 
   @Test
   public void testInstallSingleWithFailure()
-      throws IOException, SnapshotInstallationException, IllegalPathException,
-          StorageEngineException, WriteProcessException {
+      throws IOException, SnapshotInstallationException, MetadataException, StorageEngineException,
+          WriteProcessException {
     testInstallSingle(true);
   }
 
   public void testInstallSingle(boolean addNetFailure)
-      throws IOException, SnapshotInstallationException, IllegalPathException,
-          StorageEngineException, WriteProcessException {
+      throws IOException, SnapshotInstallationException, MetadataException, StorageEngineException,
+          WriteProcessException {
     this.addNetFailure = addNetFailure;
 
     FileSnapshot snapshot = new FileSnapshot();
@@ -134,8 +133,8 @@ public class FileSnapshotTest extends DataSnapshotTest {
 
   @Test
   public void testInstallSync()
-      throws IOException, SnapshotInstallationException, IllegalPathException,
-          StorageEngineException, WriteProcessException {
+      throws IOException, SnapshotInstallationException, MetadataException, StorageEngineException,
+          WriteProcessException {
     boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(false);
 
@@ -180,8 +179,8 @@ public class FileSnapshotTest extends DataSnapshotTest {
 
   @Test
   public void testInstallWithModFile()
-      throws IOException, SnapshotInstallationException, IllegalPathException,
-          StorageEngineException, WriteProcessException {
+      throws IOException, SnapshotInstallationException, MetadataException, StorageEngineException,
+          WriteProcessException {
     FileSnapshot snapshot = new FileSnapshot();
     List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
     List<TsFileResource> tsFileResources = TestUtils.prepareTsFileResources(0, 10, 10, 10, true);
@@ -262,8 +261,8 @@ public class FileSnapshotTest extends DataSnapshotTest {
 
   @Test
   public void testInstallPartial()
-      throws IOException, SnapshotInstallationException, IllegalPathException,
-          StorageEngineException, WriteProcessException, LoadFileException {
+      throws IOException, SnapshotInstallationException, MetadataException, StorageEngineException,
+          WriteProcessException, LoadFileException {
     // dataGroupMember already have some of the files
     FileSnapshot snapshot = new FileSnapshot();
     List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();

@@ -88,7 +88,6 @@ import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -141,16 +140,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.cluster.server.NodeCharacter.ELECTOR;
-import static org.apache.iotdb.cluster.server.NodeCharacter.FOLLOWER;
-import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
+import static org.apache.iotdb.cluster.server.NodeCharacter.*;
 import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class MetaGroupMemberTest extends BaseMember {
 
@@ -244,9 +236,7 @@ public class MetaGroupMemberTest extends BaseMember {
             try {
               planExecutor.processNonQuery(plan);
               return StatusUtils.OK;
-            } catch (QueryProcessException
-                | StorageGroupNotSetException
-                | StorageEngineException e) {
+            } catch (QueryProcessException | MetadataException | StorageEngineException e) {
               return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
             }
           }
@@ -498,9 +488,8 @@ public class MetaGroupMemberTest extends BaseMember {
                               resultHandler.onComplete(StatusUtils.OK);
                             } catch (IOException
                                 | QueryProcessException
-                                | StorageGroupNotSetException
-                                | StorageEngineException
-                                | IllegalPathException e) {
+                                | MetadataException
+                                | StorageEngineException e) {
                               resultHandler.onError(e);
                             }
                           })
@@ -591,7 +580,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
   @Test
   public void testClosePartition()
-      throws QueryProcessException, StorageEngineException, StorageGroupNotSetException,
+      throws QueryProcessException, StorageEngineException, MetadataException,
           IllegalPathException {
     System.out.println("Start testClosePartition()");
     // the operation is accepted
@@ -839,7 +828,7 @@ public class MetaGroupMemberTest extends BaseMember {
   }
 
   @Test
-  public void testProcessNonQuery() throws IllegalPathException {
+  public void testProcessNonQuery() throws MetadataException {
     System.out.println("Start testProcessNonQuery()");
     mockDataClusterServer = true;
     // as a leader
@@ -876,7 +865,7 @@ public class MetaGroupMemberTest extends BaseMember {
   }
 
   @Test
-  public void testProcessNonQueryAsFollower() throws IllegalPathException, QueryProcessException {
+  public void testProcessNonQueryAsFollower() throws MetadataException, QueryProcessException {
     System.out.println("Start testProcessNonQuery()");
     mockDataClusterServer = true;
 
@@ -941,8 +930,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
   @Test
   public void testGetReaderByTimestamp()
-      throws QueryProcessException, StorageEngineException, IOException,
-          StorageGroupNotSetException, IllegalPathException {
+      throws QueryProcessException, StorageEngineException, IOException, MetadataException {
     System.out.println("Start testGetReaderByTimestamp()");
     ClusterConstant.setReadOperationTimeoutMS(10000);
     mockDataClusterServer = true;
@@ -1006,8 +994,8 @@ public class MetaGroupMemberTest extends BaseMember {
 
   @Test
   public void testGetReader()
-      throws QueryProcessException, StorageEngineException, IOException,
-          StorageGroupNotSetException, IllegalPathException, EmptyIntervalException {
+      throws QueryProcessException, StorageEngineException, IOException, MetadataException,
+          EmptyIntervalException {
     System.out.println("Start testGetReader()");
     mockDataClusterServer = true;
     InsertRowPlan insertPlan = new InsertRowPlan();

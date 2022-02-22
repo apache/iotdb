@@ -40,7 +40,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -68,9 +67,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class PullSnapshotTaskTest extends DataSnapshotTest {
 
@@ -227,7 +224,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
   }
 
   @Test
-  public void testAsync() throws IllegalPathException, StorageEngineException {
+  public void testAsync() throws MetadataException, StorageEngineException {
     boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     try {
@@ -238,13 +235,13 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
   }
 
   @Test
-  public void testReadOnly() throws StorageEngineException, IllegalPathException {
+  public void testReadOnly() throws StorageEngineException, MetadataException {
     testNormal(true);
     assertTrue(targetMember.isReadOnly());
   }
 
   @Test
-  public void testSync() throws IllegalPathException, StorageEngineException {
+  public void testSync() throws MetadataException, StorageEngineException {
     boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(false);
     try {
@@ -255,7 +252,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
   }
 
   @Test
-  public void testWithRetry() throws StorageEngineException, IllegalPathException {
+  public void testWithRetry() throws StorageEngineException, MetadataException {
     boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     int pullSnapshotRetryIntervalMs =
         ClusterDescriptor.getInstance().getConfig().getPullSnapshotRetryIntervalMs();
@@ -273,7 +270,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
   }
 
   private void testNormal(boolean requiresReadOnly)
-      throws IllegalPathException, StorageEngineException {
+      throws MetadataException, StorageEngineException {
     PartitionGroup partitionGroup = new PartitionGroup();
     partitionGroup.add(TestUtils.getNode(1));
     List<Integer> slots = new ArrayList<>();

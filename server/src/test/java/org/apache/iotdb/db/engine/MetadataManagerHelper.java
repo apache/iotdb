@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine;
 
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.IMetaManager;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -31,7 +31,7 @@ import java.util.Collections;
 public class MetadataManagerHelper {
 
   public static void initMetadata() {
-    MManager mmanager = IoTDB.metaManager;
+    IMetaManager mmanager = IoTDB.metaManager;
     mmanager.init();
     try {
       mmanager.setStorageGroup(new PartialPath("root.vehicle.d0"));

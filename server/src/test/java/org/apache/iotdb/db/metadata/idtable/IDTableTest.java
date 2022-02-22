@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.IMetaManager;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -51,11 +51,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class IDTableTest {
 
@@ -66,6 +62,8 @@ public class IDTableTest {
   private String originalDeviceIDTransformationMethod = null;
 
   private boolean isEnableIDTableLogFile = false;
+
+  private IMetaManager manager;
 
   @Before
   public void before() {
@@ -80,6 +78,7 @@ public class IDTableTest {
     IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(true);
     EnvironmentUtils.envSetUp();
+    manager = IoTDB.metaManager;
   }
 
   @After
@@ -94,7 +93,7 @@ public class IDTableTest {
 
   @Test
   public void testCreateAlignedTimeseriesAndInsert() {
-    MManager manager = IoTDB.metaManager;
+    IMetaManager manager = IoTDB.metaManager;
 
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
@@ -173,8 +172,6 @@ public class IDTableTest {
 
   @Test
   public void testCreateAlignedTimeseriesAndInsertNotAlignedData() {
-    MManager manager = IoTDB.metaManager;
-
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       CreateAlignedTimeSeriesPlan plan =
@@ -236,7 +233,6 @@ public class IDTableTest {
 
   @Test
   public void testCreateTimeseriesAndInsert() {
-    MManager manager = IoTDB.metaManager;
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createTimeseries(
@@ -291,7 +287,6 @@ public class IDTableTest {
 
   @Test
   public void testCreateTimeseriesAndInsertWithAlignedData() {
-    MManager manager = IoTDB.metaManager;
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createTimeseries(
@@ -344,7 +339,6 @@ public class IDTableTest {
 
   @Test
   public void testInsertAndAutoCreate() {
-    MManager manager = IoTDB.metaManager;
     try {
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
@@ -428,7 +422,6 @@ public class IDTableTest {
 
   @Test
   public void testAlignedInsertAndAutoCreate() {
-    MManager manager = IoTDB.metaManager;
     try {
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
@@ -513,7 +506,6 @@ public class IDTableTest {
 
   @Test
   public void testTriggerAndInsert() {
-    MManager manager = IoTDB.metaManager;
     try {
       long time = 1L;
 
@@ -590,7 +582,6 @@ public class IDTableTest {
 
   @Test
   public void testFlushTimeAndLastCache() {
-    MManager manager = IoTDB.metaManager;
     try {
       long time = 1L;
 

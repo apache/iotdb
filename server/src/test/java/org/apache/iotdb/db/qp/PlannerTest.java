@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.IMetaManager;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -60,7 +60,7 @@ public class PlannerTest {
 
   private CompressionType compressionType =
       TSFileDescriptor.getInstance().getConfig().getCompressor();
-  private MManager mManager = IoTDB.metaManager;
+  private IMetaManager mManager = IoTDB.metaManager;
   private Planner processor = new Planner();
 
   static {
