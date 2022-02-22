@@ -22,7 +22,6 @@ import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.Time
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -60,7 +59,7 @@ public interface IPlanExecutor {
    * @param plan Physical Non-Query Plan
    */
   boolean processNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException;
+      throws QueryProcessException, MetadataException, StorageEngineException;
 
   /**
    * execute update command and return whether the operator is successful.

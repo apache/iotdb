@@ -33,7 +33,9 @@ import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.IMetaManager;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.rocksdb.MRocksDBManager;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
@@ -58,7 +60,7 @@ public class IoTDB implements IoTDBMBean {
   private final String mbeanName =
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
   private static final RegisterManager registerManager = new RegisterManager();
-  public static MManager metaManager = MManager.getInstance();
+  public static IMetaManager metaManager;
   public static ServiceProvider serviceProvider;
   private static boolean clusterMode = false;
 
@@ -74,6 +76,14 @@ public class IoTDB implements IoTDBMBean {
       logger.error("meet error when doing start checking", e);
       System.exit(1);
     }
+
+    try {
+      metaManager = new MRocksDBManager();
+    } catch (Exception e) {
+      logger.error("create meta manager fail", e);
+      System.exit(1);
+    }
+
     IoTDB daemon = IoTDB.getInstance();
     daemon.active();
   }

@@ -22,8 +22,7 @@ package org.apache.iotdb.db.metrics.dropwizard.reporter;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metrics.metricsUtils;
@@ -214,10 +213,9 @@ public class IoTDBReporter extends ScheduledReporter {
                   new ArrayList<>(Arrays.asList(value))),
               false);
       serviceProvider.executeNonQuery(insertRowPlan);
-    } catch (IllegalPathException
+    } catch (MetadataException
         | IoTDBConnectionException
         | QueryProcessException
-        | StorageGroupNotSetException
         | StorageEngineException e) {
       LOGGER.error("illegal insertRowPlan,reason:" + e.getMessage());
     }

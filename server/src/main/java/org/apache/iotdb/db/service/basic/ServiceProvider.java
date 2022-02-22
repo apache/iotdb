@@ -29,7 +29,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
@@ -97,7 +96,7 @@ public abstract class ServiceProvider {
       long queryId, boolean debug, long startTime, String statement, long timeout);
 
   public abstract boolean executeNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException;
+      throws QueryProcessException, MetadataException, StorageEngineException;
 
   /**
    * Check whether current user has logged in.
