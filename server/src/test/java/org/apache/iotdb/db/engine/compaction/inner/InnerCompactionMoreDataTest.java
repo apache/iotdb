@@ -191,7 +191,7 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
     super.setUp();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
-    tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
+    tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
   }
 
   @After

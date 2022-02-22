@@ -380,9 +380,7 @@ public class VirtualStorageGroupProcessor {
     this.fileFlushPolicy = fileFlushPolicy;
 
     storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, virtualStorageGroupId);
-    this.tsFileManager =
-        new TsFileManager(
-            logicalStorageGroupName, virtualStorageGroupId, storageGroupSysDir.getPath());
+    this.tsFileManager = new TsFileManager(logicalStorageGroupName, virtualStorageGroupId);
     if (storageGroupSysDir.mkdirs()) {
       logger.info(
           "Storage Group system Directory {} doesn't exist, create it",

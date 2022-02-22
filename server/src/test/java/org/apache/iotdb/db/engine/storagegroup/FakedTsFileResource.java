@@ -85,4 +85,9 @@ public class FakedTsFileResource extends TsFileResource {
 
     return false;
   }
+
+  @Override
+  public long getTimePartition() {
+    return 0;
+  }
 }

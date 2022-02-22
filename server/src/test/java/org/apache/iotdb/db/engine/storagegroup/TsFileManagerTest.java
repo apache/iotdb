@@ -51,7 +51,7 @@ public class TsFileManagerTest {
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
-    tsFileManager = new TsFileManager("test", "0", tempSGDir.getAbsolutePath());
+    tsFileManager = new TsFileManager("test", "0");
     seqResources = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
       TsFileResource resource = generateTsFileResource(i);

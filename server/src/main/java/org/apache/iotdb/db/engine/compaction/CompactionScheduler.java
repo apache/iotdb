@@ -49,7 +49,6 @@ public class CompactionScheduler {
     tryToSubmitCrossSpaceCompactionTask(
         tsFileManager.getStorageGroupName(),
         tsFileManager.getVirtualStorageGroup(),
-        tsFileManager.getStorageGroupDir(),
         timePartition,
         tsFileManager,
         new CrossSpaceCompactionTaskFactory());
@@ -97,7 +96,6 @@ public class CompactionScheduler {
   private static void tryToSubmitCrossSpaceCompactionTask(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
-      String storageGroupDir,
       long timePartition,
       TsFileManager tsFileManager,
       CrossSpaceCompactionTaskFactory taskFactory) {
@@ -110,7 +108,6 @@ public class CompactionScheduler {
             .getCompactionSelector(
                 logicalStorageGroupName,
                 virtualStorageGroupName,
-                storageGroupDir,
                 timePartition,
                 tsFileManager,
                 taskFactory);

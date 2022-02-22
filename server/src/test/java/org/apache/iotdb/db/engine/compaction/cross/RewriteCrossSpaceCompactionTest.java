@@ -215,8 +215,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    TsFileManager tsFileManager =
-        new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     RewriteCrossSpaceCompactionTask rewriteCrossSpaceCompactionTask =
@@ -452,8 +451,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    TsFileManager tsFileManager =
-        new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     RewriteCrossSpaceCompactionTask rewriteCrossSpaceCompactionTask =

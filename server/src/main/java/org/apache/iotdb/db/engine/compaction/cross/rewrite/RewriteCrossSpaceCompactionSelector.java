@@ -48,17 +48,11 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
   public RewriteCrossSpaceCompactionSelector(
       String logicalStorageGroupName,
       String virtualStorageGroupId,
-      String storageGroupDir,
       long timePartition,
       TsFileManager tsFileManager,
       CrossSpaceCompactionTaskFactory taskFactory) {
     super(
-        logicalStorageGroupName,
-        virtualStorageGroupId,
-        storageGroupDir,
-        timePartition,
-        tsFileManager,
-        taskFactory);
+        logicalStorageGroupName, virtualStorageGroupId, timePartition, tsFileManager, taskFactory);
   }
 
   /**

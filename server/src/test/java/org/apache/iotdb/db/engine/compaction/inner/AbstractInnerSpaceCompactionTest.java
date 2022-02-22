@@ -132,7 +132,7 @@ public abstract class AbstractInnerSpaceCompactionTest {
     IoTDB.metaManager.init();
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
-    tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
+    tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
   }
 
   void prepareSeries() throws MetadataException {

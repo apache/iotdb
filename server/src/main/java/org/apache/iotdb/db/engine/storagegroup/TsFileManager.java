@@ -45,7 +45,6 @@ public class TsFileManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileManager.class);
   private String storageGroupName;
   private String virtualStorageGroup;
-  private String storageGroupDir;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
   private final ReadWriteLock resourceListLock = new ReentrantReadWriteLock();
@@ -60,10 +59,8 @@ public class TsFileManager {
 
   private boolean allowCompaction = true;
 
-  public TsFileManager(
-      String storageGroupName, String virtualStorageGroup, String storageGroupDir) {
+  public TsFileManager(String storageGroupName, String virtualStorageGroup) {
     this.storageGroupName = storageGroupName;
-    this.storageGroupDir = storageGroupDir;
     this.virtualStorageGroup = virtualStorageGroup;
   }
 
@@ -327,14 +324,6 @@ public class TsFileManager {
 
   public String getStorageGroupName() {
     return storageGroupName;
-  }
-
-  public String getStorageGroupDir() {
-    return storageGroupDir;
-  }
-
-  public void setStorageGroupDir(String storageGroupDir) {
-    this.storageGroupDir = storageGroupDir;
   }
 
   public Set<Long> getTimePartitions() {

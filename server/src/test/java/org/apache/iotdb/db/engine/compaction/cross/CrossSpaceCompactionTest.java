@@ -429,10 +429,7 @@ public class CrossSpaceCompactionTest {
                     COMPACTION_TEST_SG,
                     "0",
                     0,
-                    new TsFileManager(
-                        "root.compactionTest",
-                        "0",
-                        "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
+                    new TsFileManager("root.compactionTest", "0"),
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles());
             compactionTask.call();
@@ -732,10 +729,7 @@ public class CrossSpaceCompactionTest {
                     COMPACTION_TEST_SG,
                     "0",
                     0,
-                    new TsFileManager(
-                        "root.compactionTest",
-                        "0",
-                        "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
+                    new TsFileManager("root.compactionTest", "0"),
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles());
             compactionTask.call();
@@ -1034,10 +1028,7 @@ public class CrossSpaceCompactionTest {
                     COMPACTION_TEST_SG,
                     "0",
                     0,
-                    new TsFileManager(
-                        "root.compactionTest",
-                        "0",
-                        "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
+                    new TsFileManager("root.compactionTest", "0"),
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles());
             compactionTask.call();

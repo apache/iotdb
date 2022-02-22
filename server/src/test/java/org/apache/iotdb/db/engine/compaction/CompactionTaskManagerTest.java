@@ -54,8 +54,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
   @Test
   public void testRepeatedSubmitBeforeExecution() throws Exception {
     logger.warn("testRepeatedSubmitBeforeExecution");
-    TsFileManager tsFileManager =
-        new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
+    TsFileManager tsFileManager = new TsFileManager("root.compactionTest", "0");
     tsFileManager.addAll(seqResources, true);
     SizeTieredCompactionTask task1 =
         new SizeTieredCompactionTask(
@@ -93,8 +92,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
   @Test
   public void testRepeatedSubmitWhenExecuting() throws Exception {
     logger.warn("testRepeatedSubmitWhenExecuting");
-    TsFileManager tsFileManager =
-        new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
+    TsFileManager tsFileManager = new TsFileManager("root.compactionTest", "0");
     tsFileManager.addAll(seqResources, true);
     SizeTieredCompactionTask task1 =
         new SizeTieredCompactionTask(
@@ -130,8 +128,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
   @Test
   public void testRepeatedSubmitAfterExecution() throws Exception {
     logger.warn("testRepeatedSubmitAfterExecution");
-    TsFileManager tsFileManager =
-        new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
+    TsFileManager tsFileManager = new TsFileManager("root.compactionTest", "0");
     tsFileManager.addAll(seqResources, true);
     SizeTieredCompactionTask task1 =
         new SizeTieredCompactionTask(
@@ -167,8 +164,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
   @Test
   public void testRemoveSelfFromRunningList() throws Exception {
     logger.warn("testRemoveSelfFromRunningList");
-    TsFileManager tsFileManager =
-        new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
+    TsFileManager tsFileManager = new TsFileManager("root.compactionTest", "0");
     tsFileManager.addAll(seqResources, true);
     SizeTieredCompactionTask task1 =
         new SizeTieredCompactionTask(

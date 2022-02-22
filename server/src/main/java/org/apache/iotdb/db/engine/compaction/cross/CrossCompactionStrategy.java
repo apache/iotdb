@@ -81,7 +81,6 @@ public enum CrossCompactionStrategy {
   public AbstractCrossSpaceCompactionSelector getCompactionSelector(
       String logicalStorageGroupName,
       String virtualGroupId,
-      String storageGroupDir,
       long timePartition,
       TsFileManager tsFileManager,
       CrossSpaceCompactionTaskFactory taskFactory) {
@@ -89,12 +88,7 @@ public enum CrossCompactionStrategy {
       case REWRITE_COMPACTION:
       default:
         return new RewriteCrossSpaceCompactionSelector(
-            logicalStorageGroupName,
-            virtualGroupId,
-            storageGroupDir,
-            timePartition,
-            tsFileManager,
-            taskFactory);
+            logicalStorageGroupName, virtualGroupId, timePartition, tsFileManager, taskFactory);
     }
   }
 }

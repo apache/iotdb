@@ -86,7 +86,9 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
     try {
       selectSandwichTask(taskPriorityQueue);
-      selectTieredTask(taskPriorityQueue);
+      if (taskPriorityQueue.size() == 0) {
+        selectTieredTask(taskPriorityQueue);
+      }
       while (taskPriorityQueue.size() > 0) {
         createAndSubmitTask(taskPriorityQueue.poll().left);
       }
@@ -190,6 +192,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     LinkedList<List<TsFileResource>> tempTaskList = new LinkedList<>();
     List<List<TsFileResource>> sandwichTaskList = new ArrayList<>();
     boolean isSandwich = false;
+    long minTiered = searchMinFileTiered();
     for (int i = 0; i < tsFileResources.size(); ++i) {
       TsFileResource tsFileResource = tsFileResources.get(i);
       int tieredOfCurrentFile = getTieredOfResource(tsFileResource);
@@ -197,34 +200,45 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         selectedTsFileResources.add(tsFileResource);
         selectedTsFileSize += tsFileResource.getTsFileSize();
       } else if (tieredOfCurrentFile > currentTiered && selectedTsFileResources.size() > 0) {
-        if (tempTaskList.size() == 0) {
-          if (selectedTsFileResources.size() == 1) {
-            // if only one file is selected, selected the next high tiered
-            // and compact them together
-            selectedTsFileResources.add(tsFileResource);
-            selectedTsFileSize += tsFileResource.getTsFileSize();
-            isSandwich = true;
-          } else {
-            // if there are more than one files, compact these files
-            sandwichTaskList.add(new ArrayList<>(selectedTsFileResources));
-            selectedTsFileSize = 0L;
-            selectedTsFileResources.clear();
-          }
-          continue;
+        if (isSandwich) {
+          sandwichTaskList.add(new ArrayList<>(selectedTsFileResources));
+          isSandwich = false;
+          selectedTsFileResources.clear();
+          selectedTsFileSize = 0;
+        } else if (currentTiered != minTiered) {
+          selectedTsFileResources.clear();
+          selectedTsFileSize = 0L;
+          selectedTsFileResources.add(tsFileResource);
+          selectedTsFileSize += tsFileResource.getTsFileSize();
         } else {
-          List<TsFileResource> lastTask = tempTaskList.getLast();
-          TsFileResource lastResourceInLastTask = lastTask.get(lastTask.size() - 1);
-          if (getTieredOfResource(lastResourceInLastTask) == tieredOfCurrentFile
-              && tsFileResources.indexOf(lastResourceInLastTask)
-                  == tsFileResources.indexOf(selectedTsFileResources.get(0))) {
-            lastTask.addAll(selectedTsFileResources);
-            sandwichTaskList.add(lastTask);
-            selectedTsFileResources.clear();
-            selectedTsFileSize = 0;
+          if (tempTaskList.size() == 0) {
+            if (selectedTsFileResources.size() == 1) {
+              // if only one file is selected, selected the next high tiered
+              // and compact them together
+              selectedTsFileResources.add(tsFileResource);
+              selectedTsFileSize += tsFileResource.getTsFileSize();
+              isSandwich = true;
+            } else {
+              // if there are more than one files, compact these files
+              sandwichTaskList.add(new ArrayList<>(selectedTsFileResources));
+              selectedTsFileSize = 0L;
+              selectedTsFileResources.clear();
+            }
           } else {
-            selectedTsFileResources.add(tsFileResource);
-            selectedTsFileSize += tsFileResource.getTsFileSize();
-            isSandwich = true;
+            List<TsFileResource> lastTask = tempTaskList.getLast();
+            TsFileResource lastResourceInLastTask = lastTask.get(lastTask.size() - 1);
+            if (getTieredOfResource(lastResourceInLastTask) == tieredOfCurrentFile
+                && tsFileResources.indexOf(lastResourceInLastTask)
+                    == tsFileResources.indexOf(selectedTsFileResources.get(0))) {
+              lastTask.addAll(selectedTsFileResources);
+              sandwichTaskList.add(lastTask);
+              selectedTsFileResources.clear();
+              selectedTsFileSize = 0;
+            } else {
+              selectedTsFileResources.add(tsFileResource);
+              selectedTsFileSize += tsFileResource.getTsFileSize();
+              isSandwich = true;
+            }
           }
         }
       } else if (tieredOfCurrentFile == currentTiered) {
@@ -234,6 +248,8 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         // meet a file in lower tiered
         selectedTsFileSize = 0L;
         selectedTsFileResources.clear();
+        selectedTsFileResources.add(tsFileResource);
+        selectedTsFileSize += tsFileResource.getTsFileSize();
       }
       currentTiered = tieredOfCurrentFile;
       if ((selectedTsFileResources.size() >= config.getMaxCompactionCandidateFileNum()
@@ -256,6 +272,20 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
       }
       taskPriorityQueue.add(new Pair<>(sandwichTask, totalSize));
     }
+  }
+
+  private int searchMinFileTiered() throws IOException {
+    int minTiered = Integer.MAX_VALUE;
+    Iterator<TsFileResource> iterator = tsFileResources.iterator();
+    while (iterator.hasNext()) {
+      TsFileResource currentFile = iterator.next();
+      TsFileNameGenerator.TsFileName currentName =
+          TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
+      if (currentName.getInnerCompactionCnt() < minTiered) {
+        minTiered = currentName.getInnerCompactionCnt();
+      }
+    }
+    return minTiered;
   }
 
   private int getTieredOfResource(TsFileResource resource) throws IOException {

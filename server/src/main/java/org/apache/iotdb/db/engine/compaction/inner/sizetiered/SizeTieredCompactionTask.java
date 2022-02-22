@@ -239,10 +239,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       TsFileResource resource = selectedTsFileResourceList.get(i);
       resource.readLock();
       isHoldingReadLock[i] = true;
-      if (resource.isCompacting()
-          || !resource.isClosed()
-          || !resource.getTsFile().exists()
-          || resource.isDeleted()) {
+      if (resource.isCompacting() || !resource.isClosed() || resource.isDeleted()) {
         // this source file cannot be compacted
         // release the lock of locked files, and return
         releaseFileLocksAndResetMergingStatus(false);

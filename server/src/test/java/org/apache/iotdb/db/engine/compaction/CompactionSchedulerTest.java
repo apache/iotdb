@@ -160,7 +160,7 @@ public class CompactionSchedulerTest {
     }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
@@ -295,7 +295,7 @@ public class CompactionSchedulerTest {
     }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
@@ -417,7 +417,7 @@ public class CompactionSchedulerTest {
     }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
@@ -528,7 +528,7 @@ public class CompactionSchedulerTest {
     }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
@@ -623,7 +623,7 @@ public class CompactionSchedulerTest {
     }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
@@ -750,7 +750,7 @@ public class CompactionSchedulerTest {
     }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
@@ -867,7 +867,7 @@ public class CompactionSchedulerTest {
     }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
@@ -980,7 +980,7 @@ public class CompactionSchedulerTest {
     }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
@@ -1079,7 +1079,7 @@ public class CompactionSchedulerTest {
     }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
@@ -1194,7 +1194,7 @@ public class CompactionSchedulerTest {
     }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
@@ -1313,7 +1313,7 @@ public class CompactionSchedulerTest {
     }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
@@ -1429,7 +1429,7 @@ public class CompactionSchedulerTest {
     }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
@@ -1548,7 +1548,7 @@ public class CompactionSchedulerTest {
     }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
@@ -1669,7 +1669,7 @@ public class CompactionSchedulerTest {
     }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
@@ -1798,7 +1798,7 @@ public class CompactionSchedulerTest {
     }
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
         fullPath.add(sgName + device);

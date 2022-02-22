@@ -51,15 +51,24 @@ public class FakedInnerSpaceCompactionTask extends SizeTieredCompactionTask {
 
   @Override
   protected void doCompaction() throws IOException {
+    tsFileManager.writeLock("test");
     try {
       TsFileNameGenerator.TsFileName name =
           TsFileNameGenerator.getTsFileName(
               selectedTsFileResourceList.get(0).getTsFile().getName());
+      int maxCompactionCnt = -1;
+      for (TsFileResource selectedResource : selectedTsFileResourceList) {
+        TsFileNameGenerator.TsFileName currentName =
+            TsFileNameGenerator.getTsFileName(selectedResource.getTsFile().getName());
+        if (currentName.getInnerCompactionCnt() > maxCompactionCnt) {
+          maxCompactionCnt = currentName.getInnerCompactionCnt();
+        }
+      }
       String newName =
           TsFileNameGenerator.generateNewTsFileName(
               name.getTime(),
               name.getVersion(),
-              name.getInnerCompactionCnt() + 1,
+              maxCompactionCnt + 1,
               name.getCrossCompactionCnt());
       FakedTsFileResource targetTsFileResource = new FakedTsFileResource(0, newName);
       long targetFileSize = 0;
@@ -73,6 +82,7 @@ public class FakedInnerSpaceCompactionTask extends SizeTieredCompactionTask {
       }
     } finally {
       CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
+      tsFileManager.writeUnlock();
     }
   }
 

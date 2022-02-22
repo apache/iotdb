@@ -89,7 +89,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     registerTimeseriesInMManger(3, 5, false);
     createFiles(2, 5, 5, 50, 600, 800, 50, 50, false, true);
     registerTimeseriesInMManger(5, 5, false);
-    TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
+    TsFileManager tsFileManager = new TsFileManager("testSG", "0");
     tsFileManager.addAll(seqResources, true);
 
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
@@ -111,7 +111,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
     createFiles(2, 3, 5, 50, 250, 250, 50, 50, false, true);
     seqResources.get(0).setCompacting(true);
-    TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
+    TsFileManager tsFileManager = new TsFileManager("testSG", "0");
     tsFileManager.addAll(seqResources, true);
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
         "testSG", "0", 0L, tsFileManager, true, new FakedInnerSpaceCompactionTaskFactory());
