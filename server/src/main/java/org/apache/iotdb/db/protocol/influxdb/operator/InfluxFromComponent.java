@@ -16,14 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.protocol.influxdb.expression.unary;
 
-import org.apache.iotdb.db.query.expression.Expression;
+package org.apache.iotdb.db.protocol.influxdb.operator;
 
-public class NegationExpression
-    extends org.apache.iotdb.db.query.expression.unary.NegationExpression {
+import java.util.ArrayList;
+import java.util.List;
 
-  public NegationExpression(Expression expression) {
-    super(expression);
+public class InfluxFromComponent extends org.apache.iotdb.db.qp.logical.crud.FromComponent {
+
+  private final List<String> nameList = new ArrayList<>();
+
+  public InfluxFromComponent() {}
+
+  public void addNodeName(String name) {
+    nameList.add(name);
+  }
+
+  public List<String> getNodeName() {
+    return nameList;
   }
 }

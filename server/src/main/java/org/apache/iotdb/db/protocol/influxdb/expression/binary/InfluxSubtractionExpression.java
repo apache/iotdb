@@ -21,10 +21,10 @@ package org.apache.iotdb.db.protocol.influxdb.expression.binary;
 
 import org.apache.iotdb.db.query.expression.Expression;
 
-public class MultiplicationExpression
-    extends org.apache.iotdb.db.query.expression.binary.MultiplicationExpression {
+public class InfluxSubtractionExpression
+    extends org.apache.iotdb.db.query.expression.binary.SubtractionExpression {
 
-  public MultiplicationExpression(Expression leftExpression, Expression rightExpression) {
+  public InfluxSubtractionExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);
   }
 }

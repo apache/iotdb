@@ -17,22 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.protocol.influxdb.operator;
+package org.apache.iotdb.db.protocol.influxdb.expression.binary;
 
-import java.util.ArrayList;
-import java.util.List;
+import org.apache.iotdb.db.query.expression.Expression;
 
-public class FromComponent extends org.apache.iotdb.db.qp.logical.crud.FromComponent {
+public class InfluxAdditionExpression
+    extends org.apache.iotdb.db.query.expression.binary.AdditionExpression {
 
-  private final List<String> nameList = new ArrayList<>();
-
-  public FromComponent() {}
-
-  public void addNodeName(String name) {
-    nameList.add(name);
-  }
-
-  public List<String> getNodeName() {
-    return nameList;
+  public InfluxAdditionExpression(Expression leftExpression, Expression rightExpression) {
+    super(leftExpression, rightExpression);
   }
 }

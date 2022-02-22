@@ -20,37 +20,37 @@ package org.apache.iotdb.db.protocol.influxdb.operator;
 
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 
-public class QueryOperator extends Operator {
+public class InfluxQueryOperator extends InfluxOperator {
 
-  protected SelectComponent selectComponent;
-  protected FromComponent fromComponent;
-  protected WhereComponent whereComponent;
+  protected InfluxSelectComponent influxSelectComponent;
+  protected InfluxFromComponent influxFromComponent;
+  protected InfluxWhereComponent influxWhereComponent;
 
-  public QueryOperator() {
+  public InfluxQueryOperator() {
     super(SQLConstant.TOK_QUERY);
   }
 
-  public SelectComponent getSelectComponent() {
-    return selectComponent;
+  public InfluxSelectComponent getSelectComponent() {
+    return influxSelectComponent;
   }
 
-  public void setSelectComponent(SelectComponent selectComponent) {
-    this.selectComponent = selectComponent;
+  public void setSelectComponent(InfluxSelectComponent influxSelectComponent) {
+    this.influxSelectComponent = influxSelectComponent;
   }
 
-  public FromComponent getFromComponent() {
-    return fromComponent;
+  public InfluxFromComponent getFromComponent() {
+    return influxFromComponent;
   }
 
-  public void setFromComponent(FromComponent fromComponent) {
-    this.fromComponent = fromComponent;
+  public void setFromComponent(InfluxFromComponent influxFromComponent) {
+    this.influxFromComponent = influxFromComponent;
   }
 
-  public WhereComponent getWhereComponent() {
-    return whereComponent;
+  public InfluxWhereComponent getWhereComponent() {
+    return influxWhereComponent;
   }
 
-  public void setWhereComponent(WhereComponent whereComponent) {
-    this.whereComponent = whereComponent;
+  public void setWhereComponent(InfluxWhereComponent influxWhereComponent) {
+    this.influxWhereComponent = influxWhereComponent;
   }
 }

@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.protocol.influxdb.operator;
 
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.constant.FilterConstant;
 
-public class WhereComponent extends org.apache.iotdb.db.qp.logical.crud.WhereComponent {
-  public WhereComponent(FilterOperator filterOperator) {
-    super(filterOperator);
+public class InfluxFunctionOperatorInflux extends InfluxFilterOperator {
+
+  public InfluxFunctionOperatorInflux(FilterConstant.FilterType filterType) {
+    super(filterType);
   }
 }

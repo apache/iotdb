@@ -24,7 +24,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /** this class contains several constants used in SQL. */
-public class SQLConstant {
+public class InfluxSQLConstant {
 
   public static final String STAR = "*";
   public static final String RESERVED_TIME = "time";
@@ -46,7 +46,7 @@ public class SQLConstant {
   private static final Set<String> NATIVE_SELECTOR_FUNCTION_NAMES =
       new HashSet<>(Arrays.asList(MIN, MAX, FIRST, LAST));
 
-  private SQLConstant() {
+  private InfluxSQLConstant() {
     // forbidding instantiation
   }
 

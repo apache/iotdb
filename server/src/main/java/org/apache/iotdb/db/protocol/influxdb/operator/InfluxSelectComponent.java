@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.operator;
 
-import org.apache.iotdb.db.protocol.influxdb.constant.SQLConstant;
-import org.apache.iotdb.db.protocol.influxdb.expression.ResultColumn;
-import org.apache.iotdb.db.protocol.influxdb.expression.unary.FunctionExpression;
-import org.apache.iotdb.db.protocol.influxdb.expression.unary.NodeExpression;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
+import org.apache.iotdb.db.protocol.influxdb.expression.InfluxResultColumn;
+import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxFunctionExpression;
+import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxNodeExpression;
 import org.apache.iotdb.db.query.expression.Expression;
 
 import java.time.ZoneId;
@@ -29,9 +29,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** this class maintains information from select clause. */
-public final class SelectComponent extends org.apache.iotdb.db.qp.logical.crud.SelectComponent {
+public final class InfluxSelectComponent
+    extends org.apache.iotdb.db.qp.logical.crud.SelectComponent {
 
-  private List<ResultColumn> influxResultColumns = new ArrayList<>();
+  private List<InfluxResultColumn> influxInfluxResultColumns = new ArrayList<>();
 
   private boolean hasAggregationFunction = false;
   private boolean hasSelectorFunction = false;
@@ -40,22 +41,22 @@ public final class SelectComponent extends org.apache.iotdb.db.qp.logical.crud.S
   private boolean hasFunction = false;
   private boolean hasCommonQuery = false;
 
-  public SelectComponent() {
+  public InfluxSelectComponent() {
     super((ZoneId) null);
   }
 
-  public void addResultColumn(ResultColumn resultColumn) {
-    Expression expression = resultColumn.getExpression();
-    if (expression instanceof FunctionExpression) {
-      String functionName = ((FunctionExpression) expression).getFunctionName();
-      if (SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase())) {
+  public void addResultColumn(InfluxResultColumn influxResultColumn) {
+    Expression expression = influxResultColumn.getExpression();
+    if (expression instanceof InfluxFunctionExpression) {
+      String functionName = ((InfluxFunctionExpression) expression).getFunctionName();
+      if (InfluxSQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase())) {
         if (hasFunction) {
           hasMoreFunction = true;
         } else {
           hasFunction = true;
         }
       }
-      if (SQLConstant.getNativeSelectorFunctionNames().contains(functionName.toLowerCase())) {
+      if (InfluxSQLConstant.getNativeSelectorFunctionNames().contains(functionName.toLowerCase())) {
         if (hasSelectorFunction) {
           hasMoreSelectorFunction = true;
         } else {
@@ -65,18 +66,18 @@ public final class SelectComponent extends org.apache.iotdb.db.qp.logical.crud.S
         hasAggregationFunction = true;
       }
     }
-    if (expression instanceof NodeExpression) {
+    if (expression instanceof InfluxNodeExpression) {
       hasCommonQuery = true;
     }
-    influxResultColumns.add(resultColumn);
+    influxInfluxResultColumns.add(influxResultColumn);
   }
 
-  public List<ResultColumn> getInfluxResultColumns() {
-    return influxResultColumns;
+  public List<InfluxResultColumn> getInfluxResultColumns() {
+    return influxInfluxResultColumns;
   }
 
-  public void setInfluxResultColumns(List<ResultColumn> resultColumns) {
-    this.influxResultColumns = resultColumns;
+  public void setInfluxResultColumns(List<InfluxResultColumn> influxResultColumns) {
+    this.influxInfluxResultColumns = influxResultColumns;
   }
 
   public boolean isHasAggregationFunction() {

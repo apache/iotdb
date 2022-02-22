@@ -17,22 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.protocol.influxdb.expression.binary;
+package org.apache.iotdb.db.protocol.influxdb.operator;
 
-import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 
-public abstract class BinaryExpression
-    extends org.apache.iotdb.db.query.expression.binary.BinaryExpression {
+public class InfluxFilterOperator extends org.apache.iotdb.db.qp.logical.crud.FilterOperator {
 
-  protected BinaryExpression(Expression leftExpression, Expression rightExpression) {
-    super(leftExpression, rightExpression);
+  String keyName;
+
+  public InfluxFilterOperator() {
+    super();
   }
 
-  public Expression getLeftExpression() {
-    return leftExpression;
+  public InfluxFilterOperator(FilterType filterType) {
+    super(filterType);
   }
 
-  public Expression getRightExpression() {
-    return rightExpression;
+  public String getKeyName() {
+    return keyName;
+  }
+
+  public void setKeyName(String keyName) {
+    this.keyName = keyName;
+  }
+
+  public int compareTo(InfluxFilterOperator o) {
+    return 0;
   }
 }

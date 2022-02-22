@@ -16,32 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.protocol.influxdb.expression.unary;
 
-package org.apache.iotdb.db.protocol.influxdb.operator;
+import org.apache.iotdb.db.query.expression.Expression;
 
-import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
+public class InfluxNegationExpression
+    extends org.apache.iotdb.db.query.expression.unary.NegationExpression {
 
-public class FilterOperator extends org.apache.iotdb.db.qp.logical.crud.FilterOperator {
-
-  String keyName;
-
-  public FilterOperator() {
-    super();
-  }
-
-  public FilterOperator(FilterType filterType) {
-    super(filterType);
-  }
-
-  public String getKeyName() {
-    return keyName;
-  }
-
-  public void setKeyName(String keyName) {
-    this.keyName = keyName;
-  }
-
-  public int compareTo(FilterOperator o) {
-    return 0;
+  public InfluxNegationExpression(Expression expression) {
+    super(expression);
   }
 }

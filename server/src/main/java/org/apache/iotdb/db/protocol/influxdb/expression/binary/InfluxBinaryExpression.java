@@ -16,12 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.protocol.influxdb.expression.unary;
 
-public class FunctionExpression
-    extends org.apache.iotdb.db.query.expression.unary.FunctionExpression {
+package org.apache.iotdb.db.protocol.influxdb.expression.binary;
 
-  public FunctionExpression(String functionName) {
-    super(functionName);
+import org.apache.iotdb.db.query.expression.Expression;
+
+public abstract class InfluxBinaryExpression
+    extends org.apache.iotdb.db.query.expression.binary.BinaryExpression {
+
+  protected InfluxBinaryExpression(Expression leftExpression, Expression rightExpression) {
+    super(leftExpression, rightExpression);
+  }
+
+  public Expression getLeftExpression() {
+    return leftExpression;
+  }
+
+  public Expression getRightExpression() {
+    return rightExpression;
   }
 }

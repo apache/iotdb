@@ -37,11 +37,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class NodeExpression extends Expression {
+public class InfluxNodeExpression extends Expression {
 
   protected String name;
 
-  public NodeExpression(String name) {
+  public InfluxNodeExpression(String name) {
     this.name = name;
   }
 

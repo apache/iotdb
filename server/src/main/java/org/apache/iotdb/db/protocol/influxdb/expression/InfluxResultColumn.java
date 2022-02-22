@@ -16,14 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.protocol.influxdb.expression.binary;
+package org.apache.iotdb.db.protocol.influxdb.expression;
 
 import org.apache.iotdb.db.query.expression.Expression;
 
-public class ModuloExpression extends org.apache.iotdb.db.query.expression.binary.ModuloExpression {
+public class InfluxResultColumn extends org.apache.iotdb.db.query.expression.ResultColumn {
 
-  public ModuloExpression(Expression leftExpression, Expression rightExpression) {
-    super(leftExpression, rightExpression);
+  public InfluxResultColumn(Expression expression) {
+    super(expression);
+  }
+
+  public InfluxResultColumn(Expression expression, String alias) {
+    super(expression, alias);
   }
 }

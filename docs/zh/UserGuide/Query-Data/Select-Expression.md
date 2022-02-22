@@ -27,10 +27,10 @@
 
 ```sql
 selectClause
-    : SELECT resultColumn (',' resultColumn)*
+    : SELECT influxResultColumn (',' influxResultColumn)*
     ;
 
-resultColumn
+influxResultColumn
     : selectExpr (AS alias)?
     ;
 
@@ -356,10 +356,10 @@ IoTDB支持嵌套表达式，由于聚合查询和时间序列查询不能在一
 
 ```sql
 selectClause
-    : SELECT resultColumn (',' resultColumn)*
+    : SELECT influxResultColumn (',' influxResultColumn)*
     ;
 
-resultColumn
+influxResultColumn
     : expression (AS ID)?
     ;
 

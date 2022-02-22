@@ -16,11 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.protocol.influxdb.operator;
 
-/** This class is a superclass of all operator. */
-public abstract class Operator extends org.apache.iotdb.db.qp.logical.Operator {
-  protected Operator(int tokenIntType) {
-    super(tokenIntType);
+import org.apache.iotdb.db.qp.constant.FilterConstant;
+
+public class InfluxBasicFunctionOperatorInflux extends InfluxFunctionOperatorInflux {
+
+  protected String value;
+
+  public InfluxBasicFunctionOperatorInflux(
+      FilterConstant.FilterType filterType, String keyName, String value) {
+    super(filterType);
+    this.keyName = keyName;
+    this.value = value;
+  }
+
+  public String getValue() {
+    return value;
+  }
+
+  public void setValue(String value) {
+    this.value = value;
   }
 }

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.sql;
 
-import org.apache.iotdb.db.protocol.influxdb.operator.Operator;
+import org.apache.iotdb.db.protocol.influxdb.operator.InfluxOperator;
 import org.apache.iotdb.db.qp.strategy.SQLParseError;
 
 import org.antlr.v4.runtime.CharStream;
@@ -32,7 +32,7 @@ public class InfluxDBLogicalGenerator {
 
   private InfluxDBLogicalGenerator() {}
 
-  public static Operator generate(String sql) throws ParseCancellationException {
+  public static InfluxOperator generate(String sql) throws ParseCancellationException {
     InfluxDBSqlVisitor influxDBSqlVisitor = new InfluxDBSqlVisitor();
     CharStream charStream1 = CharStreams.fromString(sql);
     InfluxDBSqlLexer lexer1 = new InfluxDBSqlLexer(charStream1);

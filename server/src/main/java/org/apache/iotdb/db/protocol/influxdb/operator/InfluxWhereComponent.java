@@ -17,14 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.protocol.influxdb.expression.binary;
+package org.apache.iotdb.db.protocol.influxdb.operator;
 
-import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 
-public class SubtractionExpression
-    extends org.apache.iotdb.db.query.expression.binary.SubtractionExpression {
-
-  public SubtractionExpression(Expression leftExpression, Expression rightExpression) {
-    super(leftExpression, rightExpression);
+public class InfluxWhereComponent extends org.apache.iotdb.db.qp.logical.crud.WhereComponent {
+  public InfluxWhereComponent(FilterOperator filterOperator) {
+    super(filterOperator);
   }
 }

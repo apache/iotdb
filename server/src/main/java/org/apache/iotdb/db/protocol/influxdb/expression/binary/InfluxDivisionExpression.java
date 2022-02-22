@@ -17,13 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.protocol.influxdb.operator;
+package org.apache.iotdb.db.protocol.influxdb.expression.binary;
 
-import org.apache.iotdb.db.qp.constant.FilterConstant;
+import org.apache.iotdb.db.query.expression.Expression;
 
-public class FunctionOperator extends FilterOperator {
+public class InfluxDivisionExpression
+    extends org.apache.iotdb.db.query.expression.binary.DivisionExpression {
 
-  public FunctionOperator(FilterConstant.FilterType filterType) {
-    super(filterType);
+  public InfluxDivisionExpression(Expression leftExpression, Expression rightExpression) {
+    super(leftExpression, rightExpression);
   }
 }
