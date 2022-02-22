@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
 
@@ -84,17 +85,23 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
     try {
-      int maxLevel = searchMaxFileLevel();
-      for (int currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
-        if (!selectLevelTask(currentLevel, taskPriorityQueue)) {
-          break;
-        }
-      }
+      selectSandwichTask(taskPriorityQueue);
+      selectTieredTask(taskPriorityQueue);
       while (taskPriorityQueue.size() > 0) {
         createAndSubmitTask(taskPriorityQueue.poll().left);
       }
     } catch (Exception e) {
       LOGGER.error("Exception occurs while selecting files", e);
+    }
+  }
+
+  private void selectTieredTask(PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue)
+      throws IOException {
+    int maxTiered = searchMaxFileLevel();
+    for (int currentTiered = 0; currentTiered <= maxTiered; currentTiered++) {
+      if (!selectTieredTask(currentTiered, taskPriorityQueue)) {
+        break;
+      }
     }
   }
 
@@ -112,7 +119,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
    * @return return whether to continue the search to higher levels
    * @throws IOException
    */
-  private boolean selectLevelTask(
+  private boolean selectTieredTask(
       int level, PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue)
       throws IOException {
     boolean shouldContinueToSearch = true;
@@ -121,9 +128,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     long targetCompactionFileSize = config.getTargetCompactionFileSize();
 
     for (TsFileResource currentFile : tsFileResources) {
-      TsFileNameGenerator.TsFileName currentName =
-          TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
-      if (currentName.getInnerCompactionCnt() != level || currentFile.isCompactionCandidate()) {
+      if (getTieredOfResource(currentFile) != level || currentFile.isCompactionCandidate()) {
         selectedFileList.clear();
         selectedFileSize = 0L;
         continue;
@@ -163,6 +168,59 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
       }
     }
     return maxLevel;
+  }
+
+  /**
+   * After selecting tiered task, there could be some files of low tiered which are surrounded by
+   * some higher, and those files in low tiered cannot meet the terms of choice in tiered selection,
+   * and we call those files a sandwich structure.
+   *
+   * <p>|--1--| |--0--| |--1--| |--0--| |--1--| |--0--| |--1--|
+   *
+   * <p>Like above, the files in 0-tiered cannot be selected by tiered selector. So this function is
+   * used to select the files with sandwich structure.
+   *
+   * @param taskPriorityQueue
+   */
+  private void selectSandwichTask(PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue)
+      throws IOException {
+    int currentTiered = -1;
+    List<TsFileResource> selectedTsFileResources = new ArrayList<>();
+    long selectedTsFileSize = 0L;
+    LinkedList<List<TsFileResource>> tempTaskList = new LinkedList<>();
+    List<List<TsFileResource>> sandwichTaskList = new ArrayList<>();
+    boolean isSandwich = false;
+    for (int i = 0; i < tsFileResources.size(); ++i) {
+      TsFileResource tsFileResource = tsFileResources.get(i);
+      int tieredOfCurrentFile = getTieredOfResource(tsFileResource);
+      if (currentTiered == -1) {
+        currentTiered = tieredOfCurrentFile;
+        selectedTsFileResources.add(tsFileResource);
+      } else if (tieredOfCurrentFile > currentTiered) {
+        if (tempTaskList.size() == 0) {
+          if (selectedTsFileResources.size() == 1) {
+            selectedTsFileResources.add(tsFileResource);
+            selectedTsFileSize += tsFileResource.getTsFileSize();
+            isSandwich = true;
+          } else {
+            sandwichTaskList.add(new ArrayList<>(selectedTsFileResources));
+          }
+        }
+      } else if (tieredOfCurrentFile == currentTiered) {
+        selectedTsFileResources.add(tsFileResource);
+        selectedTsFileSize += tsFileResource.getTsFileSize();
+      } else {
+        currentTiered = tieredOfCurrentFile;
+        selectedTsFileSize = 0L;
+        selectedTsFileResources.clear();
+      }
+    }
+  }
+
+  private int getTieredOfResource(TsFileResource resource) throws IOException {
+    TsFileNameGenerator.TsFileName currentName =
+        TsFileNameGenerator.getTsFileName(resource.getTsFile().getName());
+    return currentName.getInnerCompactionCnt();
   }
 
   private boolean createAndSubmitTask(List<TsFileResource> selectedFileList)
