@@ -26,9 +26,10 @@ import org.apache.iotdb.db.metadata.rocksdb.RocksDBMNodeType;
 import org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils;
 import org.apache.iotdb.db.metadata.template.Template;
 
+import org.rocksdb.RocksDBException;
+
 import java.io.IOException;
 import java.util.Map;
-import org.rocksdb.RocksDBException;
 
 public class RInternalMNode extends RMNode {
 
