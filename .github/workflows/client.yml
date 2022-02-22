@@ -64,7 +64,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        os: [windows-2019]
+        os: [windows-latest]
     runs-on: ${{ matrix.os}}
 
     steps:
@@ -86,7 +86,7 @@ jobs:
       - name: Download Boost
         run: mkdir D:\a\boost ; `
           Invoke-WebRequest https://sourceforge.net/projects/boost/files/boost-binaries/1.78.0/boost_1_78_0-msvc-14.3-64.exe -OutFile D:\a\boost\boost_1_78_0-msvc-14.3-64.exe ; `
-          D:\a\boost ; `
+          cd D:\a\boost ; `
           .\boost_1_78_0-msvc-14.3-64.exe
       - name: Install Boost
         run: cd C:\local\boost_1_78_0 ; `
