@@ -26,21 +26,11 @@ import org.apache.iotdb.db.metadata.rocksdb.RocksDBMNodeType;
 import org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils;
 import org.apache.iotdb.db.metadata.template.Template;
 
-import org.rocksdb.RocksDBException;
-
 import java.io.IOException;
 import java.util.Map;
+import org.rocksdb.RocksDBException;
 
 public class RInternalMNode extends RMNode {
-
-  /**
-   * use in Measurement Node so it's protected suppress warnings reason: volatile for double
-   * synchronized check
-   *
-   * <p>This will be a ConcurrentHashMap instance
-   */
-  @SuppressWarnings("squid:S3077")
-  protected transient volatile Map<String, IMNode> children = null;
 
   // schema template
   protected Template schemaTemplate = null;
@@ -206,15 +196,7 @@ public class RInternalMNode extends RMNode {
    */
   @Override
   public Template getUpperTemplate() {
-    IMNode cur = this;
-    while (cur != null) {
-      if (cur.getSchemaTemplate() != null) {
-        return cur.getSchemaTemplate();
-      }
-      cur = cur.getParent();
-    }
-
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override

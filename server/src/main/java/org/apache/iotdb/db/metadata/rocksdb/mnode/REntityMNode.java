@@ -21,17 +21,12 @@ package org.apache.iotdb.db.metadata.rocksdb.mnode;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class REntityMNode extends RInternalMNode implements IEntityMNode {
-
-  private transient volatile Map<String, IMeasurementMNode> aliasChildren = null;
 
   private volatile boolean isAligned = false;
 
@@ -44,38 +39,11 @@ public class REntityMNode extends RInternalMNode implements IEntityMNode {
     super(fullPath);
   }
 
-  /** check whether the MNode has a child with the name */
-  @Override
-  public boolean hasChild(String name) {
-    return (children != null && children.containsKey(name))
-        || (aliasChildren != null && aliasChildren.containsKey(name));
-  }
-
-  /** get the child with the name */
-  @Override
-  public IMNode getChild(String name) {
-    IMNode child = null;
-    if (children != null) {
-      child = children.get(name);
-    }
-    if (child != null) {
-      return child;
-    }
-    return aliasChildren == null ? null : aliasChildren.get(name);
-  }
-
   @Override
   public boolean addAlias(String alias, IMeasurementMNode child) {
-    if (aliasChildren == null) {
-      // double check, alias children volatile
-      synchronized (this) {
-        if (aliasChildren == null) {
-          aliasChildren = new ConcurrentHashMap<>();
-        }
-      }
-    }
 
-    return aliasChildren.computeIfAbsent(alias, aliasName -> child) == child;
+    // todo add alias
+    return true;
   }
 
   @Override
@@ -86,15 +54,12 @@ public class REntityMNode extends RInternalMNode implements IEntityMNode {
 
   @Override
   public Map<String, IMeasurementMNode> getAliasChildren() {
-    if (aliasChildren == null) {
-      return Collections.emptyMap();
-    }
-    return aliasChildren;
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void setAliasChildren(Map<String, IMeasurementMNode> aliasChildren) {
-    this.aliasChildren = aliasChildren;
+    throw new UnsupportedOperationException();
   }
 
   @Override
