@@ -20,8 +20,7 @@
 package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.protocol.influxdb.dto.IoTDBPoint;
@@ -103,9 +102,8 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
           executeCode = tsStatus.getCode();
         }
         tsStatusList.add(tsStatus);
-      } catch (StorageGroupNotSetException
+      } catch (MetadataException
           | StorageEngineException
-          | IllegalPathException
           | IoTDBConnectionException
           | QueryProcessException e) {
         throw new InfluxDBException(e.getMessage());
@@ -123,10 +121,7 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
       SetStorageGroupPlan setStorageGroupPlan =
           new SetStorageGroupPlan(new PartialPath("root." + req.getDatabase()));
       return executeNonQueryPlan(setStorageGroupPlan, req.getSessionId());
-    } catch (IllegalPathException
-        | QueryProcessException
-        | StorageGroupNotSetException
-        | StorageEngineException e) {
+    } catch (MetadataException | QueryProcessException | StorageEngineException e) {
       if (e instanceof QueryProcessException && e.getErrorCode() == 300) {
         return RpcUtils.getInfluxDBStatus(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), "Execute successfully");
@@ -149,7 +144,7 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
   }
 
   private TSStatus executeNonQueryPlan(PhysicalPlan plan, long sessionId)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, MetadataException, StorageEngineException {
     org.apache.iotdb.service.rpc.thrift.TSStatus status =
         serviceProvider.checkAuthority(plan, sessionId);
     if (status == null) {
