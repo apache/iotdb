@@ -524,7 +524,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     for (int i = 0; i < seqResources.size(); i++) {
       seqResources.get(i).resetModFile();
       Assert.assertTrue(seqResources.get(i).getModFile().exists());
-      Assert.assertEquals(2, seqResources.get(i).getModFile().getModifications().size());
+      Assert.assertEquals(1, seqResources.get(i).getModFile().getModifications().size());
     }
 
     // mods file of the target file should not exist

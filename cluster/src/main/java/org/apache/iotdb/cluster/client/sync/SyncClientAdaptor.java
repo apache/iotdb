@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -55,7 +56,6 @@ import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -216,18 +216,13 @@ public class SyncClientAdaptor {
   }
 
   public static ByteBuffer getAllMeasurementSchema(
-      AsyncDataClient client, RaftNode header, ShowTimeSeriesPlan plan)
+      AsyncDataClient client, MeasurementSchemaRequest request)
       throws IOException, InterruptedException, TException {
     GetTimeseriesSchemaHandler handler = new GetTimeseriesSchemaHandler();
     AtomicReference<ByteBuffer> response = new AtomicReference<>(null);
     handler.setResponse(response);
     handler.setContact(client.getNode());
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    plan.serialize(dataOutputStream);
-
-    client.getAllMeasurementSchema(
-        header, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()), handler);
+    client.getAllMeasurementSchema(request, handler);
     synchronized (response) {
       if (response.get() == null) {
         response.wait(ClusterConstant.getReadOperationTimeoutMS());

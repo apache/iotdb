@@ -59,12 +59,13 @@ echo %PARAMETERS% | findstr /c:"-h ">nul && (set PARAMETERS=%PARAMETERS%) || (se
 echo %PARAMETERS%
 
 "%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %PARAMETERS%
-
+set ret_code=%ERRORLEVEL%
 goto finally
 
 
 :err
 echo JAVA_HOME environment variable must be set!
+set ret_code=1
 pause
 
 
@@ -72,3 +73,5 @@ pause
 :finally
 
 ENDLOCAL
+
+EXIT %ret_code%

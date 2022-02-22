@@ -260,6 +260,17 @@ public class MManager {
           MTREE_SNAPSHOT_THREAD_CHECK_TIME,
           TimeUnit.SECONDS);
     }
+
+    if (config.getSyncMlogPeriodInMs() != 0) {
+      timedForceMLogThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
+
+      timedForceMLogThread.scheduleAtFixedRate(
+          this::forceMlog,
+          config.getSyncMlogPeriodInMs(),
+          config.getSyncMlogPeriodInMs(),
+          TimeUnit.MILLISECONDS);
+    }
   }
 
   // Because the writer will be used later and should not be closed here.
@@ -342,6 +353,14 @@ public class MManager {
             },
             Tag.NAME.toString(),
             "storageGroup");
+  }
+
+  private void forceMlog() {
+    try {
+      logWriter.force();
+    } catch (IOException e) {
+      logger.error("Cannot force mlog to the storage device", e);
+    }
   }
 
   /** @return line number of the logFile */
@@ -587,8 +606,9 @@ public class MManager {
 
       // update tag index
 
-      if (offset != -1) {
-        // offset != -1 means the timeseries has already been created and now system is recovering
+      if (offset != -1 && isRecovering) {
+        // the timeseries has already been created and now system is recovering, using the tag info
+        // in tagFile to recover index directly
         tagManager.recoverIndex(offset, leafMNode);
       } else if (plan.getTags() != null) {
         // tag key, tag value
@@ -2296,7 +2316,7 @@ public class MManager {
 
       IMNode node = getDeviceNodeWithAutoCreate(path);
 
-      templateManager.checkIsTemplateAndMNodeCompatible(template, node);
+      templateManager.checkTemplateCompatible(template, node);
 
       node.setSchemaTemplate(template);
 
@@ -2333,6 +2353,13 @@ public class MManager {
   }
 
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
+    // check whether any template has been set on designated path
+    if (mtree.getTemplateOnPath(plan.getPrefixPath()) == null) {
+      throw new MetadataException(
+          String.format(
+              "Path [%s] has not been set any template.", plan.getPrefixPath().toString()));
+    }
+
     try {
       setUsingSchemaTemplate(getDeviceNode(plan.getPrefixPath()));
     } catch (PathNotExistException e) {
@@ -2348,6 +2375,12 @@ public class MManager {
   }
 
   IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
+    // check whether any template has been set on designated path
+    if (node.getUpperTemplate() == null) {
+      throw new MetadataException(
+          String.format("Path [%s] has not been set any template.", node.getFullPath()));
+    }
+
     // this operation may change mtree structure and node type
     // invoke mnode.setUseTemplate is invalid
 

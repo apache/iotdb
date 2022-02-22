@@ -20,7 +20,9 @@ package org.apache.iotdb.cli;
 
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
@@ -66,7 +68,7 @@ public class StartClientScriptIT extends AbstractScript {
             "root",
             "-pw",
             "root");
-    testOutput(builder, output);
+    testOutput(builder, output, 1);
 
     final String[] output2 = {"Msg: The statement is executed successfully."};
     ProcessBuilder builder2 =
@@ -78,7 +80,7 @@ public class StartClientScriptIT extends AbstractScript {
             "0",
             "-e",
             "\"flush\"");
-    testOutput(builder2, output2);
+    testOutput(builder2, output2, 0);
 
     final String[] output3 = {
       "IoTDB> error format of max print row count, it should be an integer number"
@@ -90,7 +92,7 @@ public class StartClientScriptIT extends AbstractScript {
             dir + File.separator + "sbin" + File.separator + "start-cli.bat",
             "-maxPRC",
             "-1111111111111111111111111111");
-    testOutput(builder3, output3);
+    testOutput(builder3, output3, 1);
   }
 
   @Override
@@ -111,7 +113,7 @@ public class StartClientScriptIT extends AbstractScript {
             "root",
             "-pw",
             "root");
-    testOutput(builder, output);
+    testOutput(builder, output, 1);
 
     final String[] output2 = {"Msg: The statement is executed successfully."};
     ProcessBuilder builder2 =
@@ -122,7 +124,7 @@ public class StartClientScriptIT extends AbstractScript {
             "0",
             "-e",
             "\"flush\"");
-    testOutput(builder2, output2);
+    testOutput(builder2, output2, 0);
 
     final String[] output3 = {
       "IoTDB> error format of max print row count, it should be an integer number"
@@ -133,6 +135,6 @@ public class StartClientScriptIT extends AbstractScript {
             dir + File.separator + "sbin" + File.separator + "start-cli.sh",
             "-maxPRC",
             "-1111111111111111111111111111");
-    testOutput(builder3, output3);
+    testOutput(builder3, output3, 1);
   }
 }

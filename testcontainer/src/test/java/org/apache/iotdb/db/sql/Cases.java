@@ -689,7 +689,7 @@ public abstract class Cases {
         tablet.addValue("s3", rowIndex, 3L);
       }
       session.insertTablet(tablet);
-      tablet.setPrefixPath(String.format("root.sg%s.d4", i));
+      tablet.setDeviceId(String.format("root.sg%s.d4", i));
       tabletMap.put(String.format("root.sg%s.d4", i), tablet);
     }
 
@@ -728,7 +728,7 @@ public abstract class Cases {
         tablet.addValue("s3", rowIndex, 3L);
       }
       session.insertTablet(tablet);
-      tablet.setPrefixPath(String.format("root.sg%s.d4", i));
+      tablet.setDeviceId(String.format("root.sg%s.d4", i));
       tabletMap.put(String.format("root.sg%s.d4", i), tablet);
     }
 

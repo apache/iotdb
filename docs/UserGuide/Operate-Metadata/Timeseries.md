@@ -130,39 +130,6 @@ Total line number = 4
 It costs 0.004s
 ```
 
-* SHOW TIMESERIES (<`PathPattern`>)? WhereClause
- 
-  returns all the timeseries information that satisfy the where condition and match the pathPattern. SQL statements are as follows:
-
-```
-ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
-ALTER timeseries root.ln.wf02.wt02.status ADD TAGS description=test1
-show timeseries root.ln.** where unit=c
-show timeseries root.ln.** where description contains 'test1'
-```
-
-The results are shown below respectly:
-
-```
-+--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
-|                timeseries|alias|storage group|dataType|encoding|compression|        tags|attributes|
-+--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
-|root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|{"unit":"c"}|      null|
-+--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
-Total line number = 1
-It costs 0.005s
-
-+------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
-|              timeseries|alias|storage group|dataType|encoding|compression|                   tags|attributes|
-+------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
-|root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|{"description":"test1"}|      null|
-+------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
-Total line number = 1
-It costs 0.004s
-```
-
-> Notice that, we only support one condition in the where clause. Either it's an equal filter or it is an `contains` filter. In both case, the property in the where condition must be a tag.
-
 * SHOW TIMESERIES LIMIT INT OFFSET INT
 
   returns all the timeseries information start from the offset and limit the number of series returned. For example,
@@ -257,6 +224,12 @@ It costs 0.002s
 ## Tag and Attribute Management
 
 We can also add an alias, extra tag and attribute information while creating one timeseries.
+
+The differences between tag and attribute are:
+
+* Tag could be used to query the path of timeseries, we will maintain an inverted index in memory on the tag: Tag -> Timeseries
+* Attribute could only be queried by timeseries path : Timeseries -> Attribute
+
 The SQL statements for creating timeseries with extra tag and attribute information are extended as follows:
 
 ```
@@ -266,8 +239,6 @@ create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=R
 The `temprature` in the brackets is an alias for the sensor `s1`. So we can use `temprature` to replace `s1` anywhere.
 
 > IoTDB also supports [using AS function](../Reference/DML-Data-Manipulation-Language.md) to set alias. The difference between the two is: the alias set by the AS function is used to replace the whole time series name, temporary and not bound with the time series; while the alias mentioned above is only used as the alias of the sensor, which is bound with it and can be used equivalent to the original sensor name.
-
-The only difference between tag and attribute is that we will maintain an inverted index on the tag, so we can use tag property in the show timeseries where clause which you can see in the following `Show Timeseries` section.
 
 > Notice that the size of the extra tag and attribute information shouldn't exceed the `tag_attribute_total_size`.
 
@@ -298,3 +269,38 @@ ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
 ```
 ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag3=v3, tag4=v4) ATTRIBUTES(attr3=v3, attr4=v4)
 ```
+* show timeseries using tags
+```
+SHOW TIMESERIES (<`PathPattern`>)? WhereClause
+```
+
+  returns all the timeseries information that satisfy the where condition and match the pathPattern. SQL statements are as follows:
+
+```
+ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
+ALTER timeseries root.ln.wf02.wt02.status ADD TAGS description=test1
+show timeseries root.ln.** where unit=c
+show timeseries root.ln.** where description contains 'test1'
+```
+
+The results are shown below respectly:
+
+```
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+|                timeseries|alias|storage group|dataType|encoding|compression|        tags|attributes|
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+|root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|{"unit":"c"}|      null|
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+Total line number = 1
+It costs 0.005s
+
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+|              timeseries|alias|storage group|dataType|encoding|compression|                   tags|attributes|
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+|root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|{"description":"test1"}|      null|
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+Total line number = 1
+It costs 0.004s
+```
+
+> Notice that, we only support one condition in the where clause. Either it's an equal filter or it is an `contains` filter. In both case, the property in the where condition must be a tag.

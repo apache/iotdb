@@ -218,7 +218,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       CreateAlignedTimeSeriesOperator createAlignedTimeSeriesOperator) {
     for (int i = 0; i < ctx.nodeNameWithoutWildcard().size(); i++) {
       createAlignedTimeSeriesOperator.addMeasurement(
-          parseNodeNameWithoutWildcard(ctx.nodeNameWithoutWildcard(i)));
+          parseNodeName(ctx.nodeNameWithoutWildcard(i).getText()));
       parseAttributeClauses(ctx.attributeClauses(i), createAlignedTimeSeriesOperator);
     }
   }
@@ -227,7 +227,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       IoTDBSqlParser.AttributeClausesContext ctx,
       CreateTimeSeriesOperator createTimeSeriesOperator) {
     if (ctx.alias() != null) {
-      createTimeSeriesOperator.setAlias(parseNodeNameCanInExpr(ctx.alias().nodeNameCanInExpr()));
+      createTimeSeriesOperator.setAlias(parseNodeName(ctx.alias().nodeNameCanInExpr().getText()));
     }
     final String dataType = ctx.dataType.getText().toUpperCase();
     final TSDataType tsDataType = TSDataType.valueOf(dataType);
@@ -253,8 +253,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       props = new HashMap<>(properties.size());
       for (IoTDBSqlParser.PropertyClauseContext property : properties) {
         props.put(
-            parseStringWithQuotes(property.identifier().getText()).toLowerCase(),
-            parseStringWithQuotes(property.propertyValue().getText().toLowerCase()));
+            parseIdentifier(property.identifier().getText()).toLowerCase(),
+            parseStringLiteral(property.propertyValue().getText().toLowerCase()));
       }
     }
     createTimeSeriesOperator.setCompressor(compressor);
@@ -310,7 +310,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitCreateSchemaTemplate(IoTDBSqlParser.CreateSchemaTemplateContext ctx) {
     CreateTemplateOperator createTemplateOperator =
         new CreateTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_CREATE);
-    createTemplateOperator.setName(ctx.templateName.getText());
+    createTemplateOperator.setName(parseIdentifier(ctx.templateName.getText()));
     if (ctx.ALIGNED() != null) {
       // aligned
       List<String> measurements = new ArrayList<>();
@@ -319,8 +319,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       List<CompressionType> compressors = new ArrayList<>();
       for (IoTDBSqlParser.TemplateMeasurementClauseContext templateClauseContext :
           ctx.templateMeasurementClause()) {
-        measurements.add(
-            parseNodeNameWithoutWildcard(templateClauseContext.nodeNameWithoutWildcard()));
+        measurements.add(parseNodeName(templateClauseContext.nodeNameWithoutWildcard().getText()));
         parseAttributeClause(
             templateClauseContext.attributeClauses(), dataTypes, encodings, compressors);
       }
@@ -346,7 +345,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     List<TSEncoding> encodings = new ArrayList<>();
     List<CompressionType> compressors = new ArrayList<>();
     // single template measurement
-    measurements.add(parseNodeNameWithoutWildcard(ctx.nodeNameWithoutWildcard()));
+    measurements.add(parseNodeName(ctx.nodeNameWithoutWildcard().getText()));
     parseAttributeClause(ctx.attributeClauses(), dataTypes, encodings, compressors);
     createTemplateOperator.addMeasurements(measurements);
     createTemplateOperator.addDataTypes(dataTypes);
@@ -411,8 +410,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitCreateFunction(IoTDBSqlParser.CreateFunctionContext ctx) {
     CreateFunctionOperator createFunctionOperator =
         new CreateFunctionOperator(SQLConstant.TOK_FUNCTION_CREATE);
-    createFunctionOperator.setUdfName(parseStringWithQuotes(ctx.udfName.getText()));
-    createFunctionOperator.setClassName(parseStringWithQuotes(ctx.className.getText()));
+    createFunctionOperator.setUdfName(parseIdentifier(ctx.udfName.getText()));
+    createFunctionOperator.setClassName(parseStringLiteral(ctx.className.getText()));
     return createFunctionOperator;
   }
 
@@ -422,19 +421,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitCreateTrigger(IoTDBSqlParser.CreateTriggerContext ctx) {
     CreateTriggerOperator createTriggerOperator =
         new CreateTriggerOperator(SQLConstant.TOK_TRIGGER_CREATE);
-    createTriggerOperator.setTriggerName(parseStringWithQuotes(ctx.triggerName.getText()));
+    createTriggerOperator.setTriggerName(parseIdentifier(ctx.triggerName.getText()));
     createTriggerOperator.setEvent(
         ctx.triggerEventClause().BEFORE() != null
             ? TriggerEvent.BEFORE_INSERT
             : TriggerEvent.AFTER_INSERT);
     createTriggerOperator.setFullPath(parseFullPath(ctx.fullPath()));
-    createTriggerOperator.setClassName(parseStringWithQuotes(ctx.className.getText()));
+    createTriggerOperator.setClassName(parseStringLiteral(ctx.className.getText()));
     if (ctx.triggerAttributeClause() != null) {
       for (IoTDBSqlParser.TriggerAttributeContext triggerAttributeContext :
           ctx.triggerAttributeClause().triggerAttribute()) {
         createTriggerOperator.addAttribute(
-            parseStringWithQuotes(triggerAttributeContext.key.getText()),
-            parseStringWithQuotes(triggerAttributeContext.value.getText()));
+            parseStringLiteral(triggerAttributeContext.key.getText()),
+            parseStringLiteral(triggerAttributeContext.value.getText()));
       }
     }
     return createTriggerOperator;
@@ -450,7 +449,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     createContinuousQueryOperator.setQuerySql(ctx.getText());
 
     createContinuousQueryOperator.setContinuousQueryName(
-        parseStringWithQuotes(ctx.continuousQueryName.getText()));
+        parseIdentifier(ctx.continuousQueryName.getText()));
 
     if (ctx.resampleClause() != null) {
       parseResampleClause(ctx.resampleClause(), createContinuousQueryOperator);
@@ -607,8 +606,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.RENAME() != null) {
       alterTimeSeriesOperator.setAlterType(AlterType.RENAME);
       alterMap.put(
-          parseStringWithQuotes(ctx.beforeName.getText()),
-          parseStringWithQuotes(ctx.currentName.getText()));
+          parseIdentifier(ctx.beforeName.getText()), parseIdentifier(ctx.currentName.getText()));
     } else if (ctx.SET() != null) {
       // set
       alterTimeSeriesOperator.setAlterType(AlterType.SET);
@@ -617,7 +615,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       // drop
       alterTimeSeriesOperator.setAlterType(AlterType.DROP);
       for (IoTDBSqlParser.IdentifierContext dropId : ctx.identifier()) {
-        alterMap.put(parseStringWithQuotes(dropId.getText()), null);
+        alterMap.put(parseIdentifier(dropId.getText()), null);
       }
     } else if (ctx.TAGS() != null) {
       // add tag
@@ -646,7 +644,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public void parseAliasClause(
       IoTDBSqlParser.AliasClauseContext ctx, AlterTimeSeriesOperator alterTimeSeriesOperator) {
     if (alterTimeSeriesOperator != null && ctx.identifier() != null) {
-      alterTimeSeriesOperator.setAlias(parseStringWithQuotes(ctx.identifier().getText()));
+      alterTimeSeriesOperator.setAlias(parseIdentifier(ctx.identifier().getText()));
     }
   }
 
@@ -701,7 +699,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitDropFunction(IoTDBSqlParser.DropFunctionContext ctx) {
     DropFunctionOperator dropFunctionOperator =
         new DropFunctionOperator(SQLConstant.TOK_FUNCTION_DROP);
-    dropFunctionOperator.setUdfName(parseStringWithQuotes(ctx.udfName.getText()));
+    dropFunctionOperator.setUdfName(parseIdentifier(ctx.udfName.getText()));
     return dropFunctionOperator;
   }
 
@@ -710,7 +708,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitDropTrigger(IoTDBSqlParser.DropTriggerContext ctx) {
     DropTriggerOperator dropTriggerOperator = new DropTriggerOperator(SQLConstant.TOK_TRIGGER_DROP);
-    dropTriggerOperator.setTriggerName(parseStringWithQuotes(ctx.triggerName.getText()));
+    dropTriggerOperator.setTriggerName(parseIdentifier(ctx.triggerName.getText()));
     return dropTriggerOperator;
   }
 
@@ -721,7 +719,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     DropContinuousQueryOperator dropContinuousQueryOperator =
         new DropContinuousQueryOperator(SQLConstant.TOK_CONTINUOUS_QUERY_DROP);
     dropContinuousQueryOperator.setContinuousQueryName(
-        parseStringWithQuotes(ctx.continuousQueryName.getText()));
+        parseIdentifier(ctx.continuousQueryName.getText()));
     return dropContinuousQueryOperator;
   }
 
@@ -731,7 +729,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitDropSchemaTemplate(IoTDBSqlParser.DropSchemaTemplateContext ctx) {
     DropTemplateOperator dropTemplateOperator =
         new DropTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_DROP);
-    dropTemplateOperator.setTemplateName(parseStringWithQuotes((ctx.templateName.getText())));
+    dropTemplateOperator.setTemplateName(parseIdentifier((ctx.templateName.getText())));
     return dropTemplateOperator;
   }
 
@@ -759,7 +757,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitSetSchemaTemplate(IoTDBSqlParser.SetSchemaTemplateContext ctx) {
     SetTemplateOperator operator = new SetTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_SET);
     operator.setPrefixPath(parsePrefixPath(ctx.prefixPath()));
-    operator.setTemplateName(ctx.templateName.getText());
+    operator.setTemplateName(parseIdentifier(ctx.templateName.getText()));
     return operator;
   }
 
@@ -770,7 +768,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     UnsetTemplateOperator operator =
         new UnsetTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_UNSET);
     operator.setPrefixPath(parsePrefixPath(ctx.prefixPath()));
-    operator.setTemplateName(ctx.templateName.getText());
+    operator.setTemplateName(parseIdentifier(ctx.templateName.getText()));
     return operator;
   }
 
@@ -780,7 +778,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitStartTrigger(IoTDBSqlParser.StartTriggerContext ctx) {
     StartTriggerOperator startTriggerOperator =
         new StartTriggerOperator(SQLConstant.TOK_TRIGGER_START);
-    startTriggerOperator.setTriggerName(parseStringWithQuotes(ctx.triggerName.getText()));
+    startTriggerOperator.setTriggerName(parseIdentifier(ctx.triggerName.getText()));
     return startTriggerOperator;
   }
 
@@ -789,7 +787,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitStopTrigger(IoTDBSqlParser.StopTriggerContext ctx) {
     StopTriggerOperator stopTriggerOperator = new StopTriggerOperator(SQLConstant.TOK_TRIGGER_STOP);
-    stopTriggerOperator.setTriggerName(parseStringWithQuotes(ctx.triggerName.getText()));
+    stopTriggerOperator.setTriggerName(parseIdentifier(ctx.triggerName.getText()));
     return stopTriggerOperator;
   }
 
@@ -861,13 +859,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.containsExpression() != null) {
       operator.setContains(true);
       propertyValueContext = ctx.containsExpression().propertyValue();
-      operator.setKey(parseStringWithQuotes(ctx.containsExpression().identifier().getText()));
+      operator.setKey(parseIdentifier(ctx.containsExpression().identifier().getText()));
     } else {
       operator.setContains(false);
       propertyValueContext = ctx.propertyClause().propertyValue();
-      operator.setKey(parseStringWithQuotes(ctx.propertyClause().identifier().getText()));
+      operator.setKey(parseIdentifier(ctx.propertyClause().identifier().getText()));
     }
-    operator.setValue(parseStringWithQuotes(propertyValueContext.getText()));
+    operator.setValue(parseStringLiteral(propertyValueContext.getText()));
   }
 
   // Show Child Paths
@@ -948,7 +946,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   public Operator visitShowNodesInSchemaTemplate(
       IoTDBSqlParser.ShowNodesInSchemaTemplateContext ctx) {
-    String templateName = parseStringWithQuotes(ctx.templateName.getText());
+    String templateName = parseIdentifier(ctx.templateName.getText());
     return new ShowNodesInTemplateOperator(
         SQLConstant.TOK_SCHEMA_TEMPLATE_SHOW_NODES, templateName);
   }
@@ -957,7 +955,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   public Operator visitShowPathsSetSchemaTemplate(
       IoTDBSqlParser.ShowPathsSetSchemaTemplateContext ctx) {
-    String templateName = parseStringWithQuotes(ctx.templateName.getText());
+    String templateName = parseIdentifier(ctx.templateName.getText());
     return new ShowPathsSetTemplateOperator(
         SQLConstant.TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET, templateName);
   }
@@ -966,7 +964,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   public Operator visitShowPathsUsingSchemaTemplate(
       IoTDBSqlParser.ShowPathsUsingSchemaTemplateContext ctx) {
-    String templateName = parseStringWithQuotes(ctx.templateName.getText());
+    String templateName = parseIdentifier(ctx.templateName.getText());
     return new ShowPathsUsingTemplateOperator(
         SQLConstant.TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING, templateName);
   }
@@ -1116,7 +1114,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
       for (int i = 1; i <= nodeNameWithoutStars.size(); ++i) {
         intoPathNodes[levelLimitOfSourcePrefixPath + i] =
-            parseNodeNameWithoutWildcard(nodeNameWithoutStars.get(i - 1));
+            parseNodeName(nodeNameWithoutStars.get(i - 1).getText());
       }
 
       intoPath = new PartialPath(intoPathNodes);
@@ -1607,7 +1605,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     List<String> measurementList = new ArrayList<>();
     for (IoTDBSqlParser.NodeNameWithoutWildcardContext measurementName :
         ctx.nodeNameWithoutWildcard()) {
-      measurementList.add(parseNodeNameWithoutWildcard(measurementName));
+      measurementList.add(parseNodeName(measurementName.getText()));
     }
     insertOp.setMeasurementList(measurementList.toArray(new String[0]));
     return (ctx.TIME() == null && ctx.TIMESTAMP() == null);
@@ -1718,7 +1716,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_CREATE, AuthorOperator.AuthorType.CREATE_USER);
     authorOperator.setUserName(ctx.userName.getText());
-    authorOperator.setPassWord(parseStringWithQuotes(ctx.password.getText()));
+    authorOperator.setPassWord(parseStringLiteral(ctx.password.getText()));
     return authorOperator;
   }
 
@@ -1740,7 +1738,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         new AuthorOperator(
             SQLConstant.TOK_AUTHOR_UPDATE_USER, AuthorOperator.AuthorType.UPDATE_USER);
     authorOperator.setUserName(ctx.userName.getText());
-    authorOperator.setNewPassword(parseStringWithQuotes(ctx.password.getText()));
+    authorOperator.setNewPassword(parseStringLiteral(ctx.password.getText()));
     return authorOperator;
   }
 
@@ -1973,7 +1971,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       settleOperator.setIsSgPath(true);
     } else {
       // TsFile Path
-      String tsFilePath = parseStringWithQuotes(ctx.tsFilePath.getText());
+      String tsFilePath = parseStringLiteral(ctx.tsFilePath.getText());
       settleOperator.setTsFilePath(tsFilePath);
       settleOperator.setIsSgPath(false);
     }
@@ -2050,7 +2048,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     List<IoTDBSqlParser.UsernameWithRootContext> usernameList = ctx.usernameWithRoot();
     List<String> users = new ArrayList<>();
     for (IoTDBSqlParser.UsernameWithRootContext username : usernameList) {
-      users.add(parseStringWithQuotes(username.getText()));
+      users.add(username.getText());
     }
     return new DataAuthOperator(SQLConstant.TOK_GRANT_WATERMARK_EMBEDDING, users);
   }
@@ -2063,7 +2061,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     List<IoTDBSqlParser.UsernameWithRootContext> usernameList = ctx.usernameWithRoot();
     List<String> users = new ArrayList<>();
     for (IoTDBSqlParser.UsernameWithRootContext username : usernameList) {
-      users.add(parseStringWithQuotes(username.getText()));
+      users.add(username.getText());
     }
     return new DataAuthOperator(SQLConstant.TOK_REVOKE_WATERMARK_EMBEDDING, users);
   }
@@ -2169,7 +2167,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
     for (IoTDBSqlParser.NodeNameWithoutWildcardContext nodeNameWithoutStar : nodeNamesWithoutStar) {
       i++;
-      path[i] = parseNodeNameWithoutWildcard(nodeNameWithoutStar);
+      path[i] = parseNodeName(nodeNameWithoutStar.getText());
     }
     return new PartialPath(path);
   }
@@ -2197,7 +2195,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     List<IoTDBSqlParser.NodeNameCanInExprContext> nodeNames = ctx.nodeNameCanInExpr();
     String[] path = new String[nodeNames.size()];
     for (int i = 0; i < nodeNames.size(); i++) {
-      path[i] = parseNodeNameCanInExpr(nodeNames.get(i));
+      path[i] = parseNodeName(nodeNames.get(i).getText());
     }
     return new PartialPath(path);
   }
@@ -2210,35 +2208,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   /** function for parsing node name. */
   public String parseNodeName(IoTDBSqlParser.NodeNameContext ctx) {
-    if (ctx.QUTOED_ID_WITHOUT_DOT() != null) {
-      return parseStringWithQuotes(ctx.QUTOED_ID_WITHOUT_DOT().getText());
-    } else if (ctx.STRING_LITERAL() != null) {
-      return parseStringWithQuotesInNodeName(ctx.STRING_LITERAL().getText());
-    } else {
-      return ctx.getText();
+    String src = ctx.getText();
+    if (2 <= src.length() && src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
+      return src.substring(1, src.length() - 1);
     }
-  }
-
-  /** function for parsing node name used in expr. */
-  public String parseNodeNameCanInExpr(IoTDBSqlParser.NodeNameCanInExprContext ctx) {
-    if (ctx.QUTOED_ID_WITHOUT_DOT() != null) {
-      return parseStringWithQuotes(ctx.QUTOED_ID_WITHOUT_DOT().getText());
-    } else if (ctx.QUTOED_ID() != null) {
-      return parseStringWithQuotes(ctx.QUTOED_ID().getText());
-    } else {
-      return ctx.getText();
-    }
-  }
-
-  /** function for parsing node name without wildcard. */
-  public String parseNodeNameWithoutWildcard(IoTDBSqlParser.NodeNameWithoutWildcardContext ctx) {
-    if (ctx.QUTOED_ID_WITHOUT_DOT() != null) {
-      return parseStringWithQuotes(ctx.QUTOED_ID_WITHOUT_DOT().getText());
-    } else if (ctx.STRING_LITERAL() != null) {
-      return parseStringWithQuotesInNodeName(ctx.STRING_LITERAL().getText());
-    } else {
-      return ctx.getText();
-    }
+    return src;
   }
 
   /** function for parsing datetime literal. */
@@ -2380,7 +2354,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
                 TSDataType.BOOLEAN, constantContext.BOOLEAN_LITERAL().getText());
           } else if (constantContext.STRING_LITERAL() != null) {
             String text = constantContext.STRING_LITERAL().getText();
-            return new ConstantOperand(TSDataType.TEXT, parseStringWithQuotes(text));
+            return new ConstantOperand(TSDataType.TEXT, parseStringLiteral(text));
           } else if (constantContext.INTEGER_LITERAL() != null) {
             return new ConstantOperand(
                 TSDataType.INT64, constantContext.INTEGER_LITERAL().getText());
@@ -2404,7 +2378,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private Expression parseFunctionExpression(IoTDBSqlParser.ExpressionContext functionClause) {
     FunctionExpression functionExpression =
-        new FunctionExpression(parseStringWithQuotes(functionClause.functionName().getText()));
+        new FunctionExpression(parseIdentifier(functionClause.functionName().getText()));
 
     // expressions
     boolean hasNonPureConstantSubExpression = false;
@@ -2428,8 +2402,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     for (IoTDBSqlParser.FunctionAttributeContext functionAttribute :
         functionClause.functionAttribute()) {
       functionExpression.addAttribute(
-          parseStringWithQuotes(functionAttribute.functionAttributeKey.getText()),
-          parseStringWithQuotes(functionAttribute.functionAttributeValue.getText()));
+          parseStringLiteral(functionAttribute.functionAttributeKey.getText()),
+          parseStringLiteral(functionAttribute.functionAttributeValue.getText()));
     }
 
     return functionExpression;
@@ -2539,7 +2513,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           new BasicFunctionOperator(
               FilterConstant.lexerToFilterType.get(ctx.comparisonOperator().type.getType()),
               path,
-              parseStringWithQuotes(ctx.constant().getText()));
+              parseStringLiteral(ctx.constant().getText()));
     }
     return basic;
   }
@@ -2673,7 +2647,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         expression,
         resultColumnContext.AS() == null
             ? null
-            : parseStringWithQuotes(resultColumnContext.identifier().getText()));
+            : parseIdentifier(resultColumnContext.identifier().getText()));
   }
 
   // From Clause
@@ -2824,42 +2798,39 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         || queryOp instanceof UDAFQueryOperator;
   }
 
-  private String parseStringWithQuotes(String src) {
+  private String parseStringLiteral(String src) {
     if (2 <= src.length()) {
-      if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
+      if ((src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"')
+          || (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
         String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-        return unescapeString.length() == 0 ? "" : unescapeString.replace("\"\"", "\"");
-      }
-      if (src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
-        String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-        return unescapeString.length() == 0 ? "" : unescapeString.replace("``", "`");
-      }
-      if (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'') {
-        String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-        return unescapeString.length() == 0 ? "" : unescapeString.replace("''", "'");
-      }
-    }
-    return src;
-  }
-
-  private String parseStringWithQuotesInNodeName(String src) {
-    if (2 <= src.length()) {
-      if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
-        String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-        return unescapeString.length() == 0
-            ? "\"\""
-            : "\"" + unescapeString.replace("\"\"", "\"") + "\"";
-      }
-      if (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'') {
-        String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-        return unescapeString.length() == 0 ? "''" : "'" + unescapeString.replace("''", "'") + "'";
+        return unescapeString.length() == 0 ? "" : unescapeString;
       }
     }
     return src;
   }
 
   private String parseStringLiteralInInsertValue(String src) {
-    return parseStringWithQuotesInNodeName(src);
+    if (2 <= src.length()) {
+      if ((src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"')
+          || (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
+        return StringEscapeUtils.unescapeJava(src);
+      }
+    }
+    return src;
+  }
+
+  private String parseIdentifier(String src) {
+    if (2 <= src.length() && src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
+      return StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+    }
+    return src;
+  }
+
+  private String parseNodeName(String src) {
+    if (2 <= src.length() && src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
+      return src.substring(1, src.length() - 1);
+    }
+    return src;
   }
 
   /** function for parsing file path used by LOAD statement. */
@@ -2890,8 +2861,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.propertyClause(0) != null) {
       for (IoTDBSqlParser.PropertyClauseContext property : tagsList) {
         String value;
-        value = parseStringWithQuotes(property.propertyValue().getText());
-        alterMap.put(parseStringWithQuotes(property.identifier().getText()), value);
+        value = parseStringLiteral(property.propertyValue().getText());
+        alterMap.put(parseIdentifier(property.identifier().getText()), value);
       }
     }
   }
@@ -2903,8 +2874,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (property3 != null) {
       for (IoTDBSqlParser.PropertyClauseContext property : property2) {
         tags.put(
-            parseStringWithQuotes(property.identifier().getText()),
-            parseStringWithQuotes(property.propertyValue().getText()));
+            parseIdentifier(property.identifier().getText()),
+            parseStringLiteral(property.propertyValue().getText()));
       }
     }
     return tags;
