@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -106,7 +107,7 @@ public class DataLogApplier extends BaseApplier {
   }
 
   public void applyPhysicalPlan(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, MetadataException, StorageEngineException {
     if (plan instanceof DeletePlan) {
       ((DeletePlan) plan).setPartitionFilter(dataGroupMember.getTimePartitionFilter());
     } else if (plan instanceof DeleteTimeSeriesPlan) {
@@ -124,7 +125,7 @@ public class DataLogApplier extends BaseApplier {
   }
 
   private void applyInsert(InsertMultiTabletPlan plan)
-      throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
+      throws MetadataException, QueryProcessException, StorageEngineException {
     boolean hasSync = false;
     for (InsertTabletPlan insertTabletPlan : plan.getInsertTabletPlanList()) {
       try {
@@ -146,7 +147,7 @@ public class DataLogApplier extends BaseApplier {
   }
 
   private void applyInsert(InsertRowsPlan plan)
-      throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
+      throws MetadataException, QueryProcessException, StorageEngineException {
     boolean hasSync = false;
     for (InsertRowPlan insertRowPlan : plan.getInsertRowPlanList()) {
       try {
@@ -168,7 +169,7 @@ public class DataLogApplier extends BaseApplier {
   }
 
   private void applyInsert(InsertPlan plan)
-      throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
+      throws MetadataException, QueryProcessException, StorageEngineException {
     try {
       IoTDB.metaManager.getBelongedStorageGroup(plan.getDevicePath());
     } catch (StorageGroupNotSetException e) {

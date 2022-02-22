@@ -1613,6 +1613,7 @@ public class MManager implements IMetaManager {
     mtree.getMeasurementMNode(path).setOffset(offset);
   }
 
+  @Override
   public void changeAlias(PartialPath path, String alias) throws MetadataException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(path);
     if (leafMNode.getAlias() != null) {

@@ -41,6 +41,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rocksdb.mnode.REntityMNode;
 import org.apache.iotdb.db.metadata.rocksdb.mnode.RMeasurementMNode;
 import org.apache.iotdb.db.metadata.rocksdb.mnode.RStorageGroupMNode;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -1278,12 +1279,16 @@ public class MRocksDBManager implements IMetaManager {
 
   /** Get all storage group paths */
   @Override
-  public List<PartialPath> getAllStorageGroupPaths() throws IllegalPathException {
+  public List<PartialPath> getAllStorageGroupPaths() {
     List<PartialPath> allStorageGroupPath = new ArrayList<>();
     Set<String> allStorageGroupInnerName =
         readWriteHandler.getKeyByPrefix(String.valueOf(NODE_TYPE_SG));
     for (String str : allStorageGroupInnerName) {
-      allStorageGroupPath.add(new PartialPath(RocksDBUtils.getPathByInnerName(str)));
+      try {
+        allStorageGroupPath.add(new PartialPath(RocksDBUtils.getPathByInnerName(str)));
+      } catch (IllegalPathException e) {
+        throw new RuntimeException(e);
+      }
     }
     return allStorageGroupPath;
   }
@@ -1294,7 +1299,7 @@ public class MRocksDBManager implements IMetaManager {
    * @return key-> storageGroupPath, value->ttl
    */
   @Override
-  public Map<PartialPath, Long> getStorageGroupsTTL() throws IllegalPathException {
+  public Map<PartialPath, Long> getStorageGroupsTTL() {
     Map<PartialPath, Long> allStorageGroupAndTTL = new HashMap<>();
     RocksIterator iterator = readWriteHandler.iterator(null);
 
@@ -1309,7 +1314,12 @@ public class MRocksDBManager implements IMetaManager {
       if (ttl == null) {
         ttl = 0L;
       }
-      allStorageGroupAndTTL.put(new PartialPath(RocksDBUtils.getPathByInnerName(key)), (Long) ttl);
+      try {
+        allStorageGroupAndTTL.put(
+            new PartialPath(RocksDBUtils.getPathByInnerName(key)), (Long) ttl);
+      } catch (IllegalPathException e) {
+        throw new RuntimeException(e);
+      }
     }
     return allStorageGroupAndTTL;
   }
@@ -1664,6 +1674,7 @@ public class MRocksDBManager implements IMetaManager {
   // endregion
 
   // region Interfaces for alias and tag/attribute operations
+  @Override
   public void changeAlias(PartialPath path, String alias) throws MetadataException, IOException {
     upsertTagsAndAttributes(alias, null, null, path);
   }
@@ -2172,6 +2183,28 @@ public class MRocksDBManager implements IMetaManager {
   @TestOnly
   public void close() {
     readWriteHandler.close();
+  }
+
+  @TestOnly
+  public String getDeviceId(PartialPath devicePath) {
+    String device = null;
+    try {
+      IMNode deviceNode = getDeviceNode(devicePath);
+      device = deviceNode.getFullPath();
+    } catch (MetadataException | NullPointerException e) {
+      // Cannot get deviceId from MManager, return the input deviceId
+    }
+    return device;
+  }
+
+  @TestOnly
+  public Template getTemplate(String templateName) {
+    throw new UnsupportedOperationException();
+  }
+
+  @TestOnly
+  public void flushAllMlogForTest() {
+    throw new UnsupportedOperationException();
   }
   // end region
 }

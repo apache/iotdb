@@ -41,9 +41,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class MManagerImproveTest {
 
@@ -56,7 +54,7 @@ public class MManagerImproveTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    mManager = IoTDB.metaManager;
+    mManager = (MManager) IoTDB.metaManager;
     mManager.setStorageGroup(new PartialPath("root.t1.v2"));
 
     for (int j = 0; j < DEVICE_NUM; j++) {
@@ -74,7 +72,7 @@ public class MManagerImproveTest {
 
   @Test
   public void checkSetUp() throws IllegalPathException {
-    mManager = IoTDB.metaManager;
+    mManager = (MManager) IoTDB.metaManager;
 
     assertTrue(mManager.isPathExist(new PartialPath("root.t1.v2.d3.s5")));
     assertFalse(mManager.isPathExist(new PartialPath("root.t1.v2.d9.s" + TIMESERIES_NUM)));
@@ -83,7 +81,7 @@ public class MManagerImproveTest {
 
   @Test
   public void analyseTimeCost() throws MetadataException {
-    mManager = IoTDB.metaManager;
+    mManager = (MManager) IoTDB.metaManager;
 
     long string_combine, path_exist, list_init, check_filelevel, get_seriestype;
     string_combine = path_exist = list_init = check_filelevel = get_seriestype = 0;
@@ -153,7 +151,7 @@ public class MManagerImproveTest {
 
   @Test
   public void improveTest() throws MetadataException {
-    mManager = IoTDB.metaManager;
+    mManager = (MManager) IoTDB.metaManager;
 
     String[] deviceIdList = new String[DEVICE_NUM];
     for (int i = 0; i < DEVICE_NUM; i++) {

@@ -50,7 +50,7 @@ public class MManagerAdvancedTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    mmanager = IoTDB.metaManager;
+    mmanager = (MManager) IoTDB.metaManager;
 
     mmanager.setStorageGroup(new PartialPath("root.vehicle.d0"));
     mmanager.setStorageGroup(new PartialPath("root.vehicle.d1"));

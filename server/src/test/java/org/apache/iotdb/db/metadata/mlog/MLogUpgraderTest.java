@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.mlog;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.IMetaManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.logfile.MLogTxtWriter;
 import org.apache.iotdb.db.metadata.logfile.MLogUpgrader;
@@ -69,7 +69,7 @@ public class MLogUpgraderTest {
 
   @Test
   public void testUpgrade() throws IOException, MetadataException {
-    MManager manager = IoTDB.metaManager;
+    IMetaManager manager = IoTDB.metaManager;
     manager.clear();
 
     String schemaDir = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
