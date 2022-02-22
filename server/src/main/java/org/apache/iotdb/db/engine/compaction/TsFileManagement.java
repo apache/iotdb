@@ -228,14 +228,6 @@ public abstract class TsFileManagement {
         return false;
       }
 
-      if (unSeqMergeList.size() > maxOpenFileNumInEachUnseqCompaction) {
-        logger.info(
-            "{} too much unseq files to be merged, reduce it to {}",
-            storageGroupName,
-            maxOpenFileNumInEachUnseqCompaction);
-        unSeqMergeList = unSeqMergeList.subList(0, maxOpenFileNumInEachUnseqCompaction);
-      }
-
       long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
       long timeLowerBound = System.currentTimeMillis() - dataTTL;
       MergeResource mergeResource = new MergeResource(seqMergeList, unSeqMergeList, timeLowerBound);
