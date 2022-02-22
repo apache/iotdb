@@ -909,6 +909,7 @@ public class StorageEngine implements IService {
     VirtualStorageGroupManager virtualStorageGroupManager = processorMap.remove(storageGroupPath);
     virtualStorageGroupManager.deleteStorageGroupSystemFolder(
         systemDir + File.pathSeparator + storageGroupPath);
+    virtualStorageGroupManager.stopSchedulerPool();
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
