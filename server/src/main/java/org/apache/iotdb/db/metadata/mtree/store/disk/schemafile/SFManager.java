@@ -23,21 +23,23 @@ import java.util.Map;
 
 /**
  * Schema File Manager enables upper class operates persistent schema files ignoring specific file.
- * <p>
- * This class implements these functions:
- * <li> scan target directory, recover MTree above storage group
- * <li> extract storage group, choose corresponding file
+ *
+ * <p>This class implements these functions:
+ * <li>scan target directory, recover MTree above storage group
+ * <li>extract storage group, choose corresponding file
  */
 public class SFManager {
 
-  public static String fileDirs = IoTDBDescriptor.getInstance().getConfig().getSchemaDir() + File.separator + MetadataConstant.SCHEMA_FILE_DIR;
+  public static String fileDirs =
+      IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+          + File.separator
+          + MetadataConstant.SCHEMA_FILE_DIR;
 
   Map<String, ISchemaFile> schemaFiles;
   IMNode root;
 
   private static class SFManagerHolder {
-    private SFManagerHolder() {
-    }
+    private SFManagerHolder() {}
 
     private static final SFManager Instance = new SFManager();
   }
@@ -58,7 +60,7 @@ public class SFManager {
     return getUpperMTree();
   }
 
-  public void writeMNode(IMNode node) throws MetadataException, IOException{
+  public void writeMNode(IMNode node) throws MetadataException, IOException {
     IMNode sgNode = getStorageGroupNode(node);
     String sgName = sgNode.getFullPath();
 
@@ -85,17 +87,20 @@ public class SFManager {
     }
   }
 
-  public void close() throws MetadataException, IOException{
-    for (ISchemaFile file: schemaFiles.values()) {
+  public void close() throws MetadataException, IOException {
+    for (ISchemaFile file : schemaFiles.values()) {
       file.close();
     }
     schemaFiles.clear();
     root = new InternalMNode(null, MetadataConstant.ROOT);
   }
 
-  public void close(IMNode sgNode) throws MetadataException, IOException{
+  public void close(IMNode sgNode) throws MetadataException, IOException {
     if (!sgNode.isStorageGroup()) {
-      throw new MetadataException(String.format("Node [%s] is not a storage group node, cannot close schema file either.", sgNode.getFullPath()));
+      throw new MetadataException(
+          String.format(
+              "Node [%s] is not a storage group node, cannot close schema file either.",
+              sgNode.getFullPath()));
     }
 
     if (schemaFiles.containsKey(sgNode.getName())) {
@@ -106,7 +111,7 @@ public class SFManager {
   }
 
   public void sync() throws MetadataException, IOException {
-    for (ISchemaFile file: schemaFiles.values()) {
+    for (ISchemaFile file : schemaFiles.values()) {
       file.sync();
     }
   }
@@ -118,21 +123,23 @@ public class SFManager {
   }
 
   public void clear() throws MetadataException, IOException {
-    for (ISchemaFile file: schemaFiles.values()) {
+    for (ISchemaFile file : schemaFiles.values()) {
       file.clear();
     }
   }
 
-  public IMNode getChildNode(IMNode parent, String childName) throws MetadataException, IOException{
+  public IMNode getChildNode(IMNode parent, String childName)
+      throws MetadataException, IOException {
     loadAndUpdateUpperTree(parent);
-    return schemaFiles.get(getStorageGroupNode(parent).getName()).getChildNode(parent, childName);
+    return schemaFiles
+        .get(getStorageGroupNode(parent).getFullPath())
+        .getChildNode(parent, childName);
   }
 
   public Iterator<IMNode> getChildren(IMNode parent) throws MetadataException, IOException {
     loadAndUpdateUpperTree(parent);
-    return schemaFiles.get(getStorageGroupNode(parent).getName()).getChildren(parent);
+    return schemaFiles.get(getStorageGroupNode(parent).getFullPath()).getChildren(parent);
   }
-
 
   // endregion
 
@@ -157,10 +164,12 @@ public class SFManager {
     while (stack.size() != 0) {
       rCur = stack.pop();
       cur = stack.pop();
-      for(IMNode node : cur.getChildren().values()) {
+      for (IMNode node : cur.getChildren().values()) {
         if (node.isStorageGroup()) {
           // on an upper tree, storage group node has no child
-          rNode = new StorageGroupMNode(rCur, node.getName(), node.getAsStorageGroupMNode().getDataTTL());
+          rNode =
+              new StorageGroupMNode(
+                  rCur, node.getName(), node.getAsStorageGroupMNode().getDataTTL());
         } else {
           rNode = new InternalMNode(rCur, node.getName());
           stack.push(node);
@@ -175,7 +184,10 @@ public class SFManager {
   private void loadSchemaFiles() throws MetadataException, IOException {
     File dir = new File(fileDirs);
     if (!dir.isDirectory()) {
-      throw new MetadataException("Invalid path for Schema File directory.");
+      if (dir.exists()) {
+        throw new MetadataException("Invalid path for Schema File directory.");
+      }
+      dir.mkdirs();
     }
 
     File[] files = dir.listFiles();
@@ -187,7 +199,7 @@ public class SFManager {
     }
   }
 
-  private ISchemaFile loadSchemaFileInst(String sgName) throws MetadataException, IOException{
+  private ISchemaFile loadSchemaFileInst(String sgName) throws MetadataException, IOException {
     try {
       ISchemaFile file = SchemaFile.loadSchemaFile(sgName);
       schemaFiles.put(sgName, file);
@@ -197,12 +209,13 @@ public class SFManager {
     }
   }
 
-  private ISchemaFile initNewSchemaFile(String sgName, long dataTTL) throws MetadataException, IOException{
+  private ISchemaFile initNewSchemaFile(String sgName, long dataTTL)
+      throws MetadataException, IOException {
     schemaFiles.put(sgName, SchemaFile.initSchemaFile(sgName, dataTTL));
     return schemaFiles.get(sgName);
   }
 
-  private void removeSchemaFile(String sgName) throws MetadataException, IOException{
+  private void removeSchemaFile(String sgName) throws MetadataException, IOException {
     if (schemaFiles.containsKey(sgName)) {
       schemaFiles.get(sgName).close();
       schemaFiles.remove(sgName);
@@ -211,14 +224,14 @@ public class SFManager {
     Files.delete(Paths.get(file.toURI()));
   }
 
-  private void restoreStorageGroup(String[] nodes) throws MetadataException, IOException{
+  private void restoreStorageGroup(String[] nodes) throws MetadataException, IOException {
     String sgName = String.join(IoTDBConstant.PATH_SEPARATOR + "", nodes);
     ISchemaFile fileInst = SchemaFile.loadSchemaFile(sgName);
     appendStorageGroupNode(nodes, fileInst.init().getAsStorageGroupMNode().getDataTTL());
     schemaFiles.put(sgName, fileInst);
   }
 
-  private IMNode getStorageGroupNode(IMNode node) throws MetadataException{
+  private IMNode getStorageGroupNode(IMNode node) throws MetadataException {
     IMNode cur = node;
     while (cur != null && !cur.isStorageGroup()) {
       cur = cur.getParent();
@@ -231,15 +244,19 @@ public class SFManager {
 
   /**
    * Append corresponding storage node into upper tree, which is member of the class
+   *
    * @param sgNode It is a node from MTree rather than the tree inside this class
    */
   private void appendStorageGroupNode(IMNode sgNode) throws MetadataException {
-    appendStorageGroupNode(sgNode.getPartialPath().getNodes(), sgNode.getAsStorageGroupMNode().getDataTTL());
+    appendStorageGroupNode(
+        sgNode.getPartialPath().getNodes(), sgNode.getAsStorageGroupMNode().getDataTTL());
   }
 
   private void appendStorageGroupNode(String[] nodes, long dataTTL) throws MetadataException {
     if (!nodes[0].equals(root.getName())) {
-      throw new MetadataException("Schema File with invalid name: " + String.join(IoTDBConstant.PATH_SEPARATOR + "", nodes));
+      throw new MetadataException(
+          "Schema File with invalid name: "
+              + String.join(IoTDBConstant.PATH_SEPARATOR + "", nodes));
     }
 
     IMNode cur = root;
@@ -250,22 +267,27 @@ public class SFManager {
       }
       cur = cur.getChild(nodes[i]);
       if (cur.isStorageGroup()) {
-        throw new MetadataException(String.format("Path [%s] cannot be a prefix and a storage group at same time.", cur.getFullPath()));
+        throw new MetadataException(
+            String.format(
+                "Path [%s] cannot be a prefix and a storage group at same time.",
+                cur.getFullPath()));
       }
     }
-    cur.addChild(new StorageGroupMNode(cur, nodes[nodes.length-1], dataTTL));
+    cur.addChild(new StorageGroupMNode(cur, nodes[nodes.length - 1], dataTTL));
   }
 
   /**
    * Delete target storage group node, and remove all non-child node as well
+   *
    * @param sgNode target storage group node from outer MTree.
    */
-  private void pruneStorageGroupNode(IMNode sgNode) throws MetadataException{
+  private void pruneStorageGroupNode(IMNode sgNode) throws MetadataException {
     String[] nodes = sgNode.getPartialPath().getNodes();
     IMNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
-        throw new MetadataException(String.format("Path does not exists for schema files.", sgNode.getFullPath()));
+        throw new MetadataException(
+            String.format("Path does not exists for schema files.", sgNode.getFullPath()));
       }
       cur = cur.getChild(nodes[i]);
     }
@@ -279,8 +301,10 @@ public class SFManager {
   }
 
   private String getFilePath(String sgName) {
-    return fileDirs + File.pathSeparator + sgName + IoTDBConstant.PATH_SEPARATOR + MetadataConstant.SCHEMA_FILE_SUFFIX;
+    return fileDirs
+        + File.pathSeparator
+        + sgName
+        + IoTDBConstant.PATH_SEPARATOR
+        + MetadataConstant.SCHEMA_FILE_SUFFIX;
   }
-
-
 }

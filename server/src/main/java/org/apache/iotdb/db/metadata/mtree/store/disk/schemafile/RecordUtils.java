@@ -52,18 +52,23 @@ public class RecordUtils {
   }
 
   /**
-   * Internal/Entity MNode Record Structure (in bytes):
-   * <br>(fixed length record)
+   * Internal/Entity MNode Record Structure (in bytes): <br>
+   * (fixed length record)
+   *
    * <ul>
-   * <li>1 byte: nodeType, 0 for internal, 1 for entity, 4 for measurement
-   * <li>1 short (2 bytes): recLen, length of record (remove it may reduce space overhead while a bit slower)
-   * <li>1 long (8 bytes): glbIndex, combined index to its children records
-   * <li>1 byte: templateIndex, index for template
+   *   <li>1 byte: nodeType, 0 for internal, 1 for entity, 4 for measurement
+   *   <li>1 short (2 bytes): recLen, length of record (remove it may reduce space overhead while a
+   *       bit slower)
+   *   <li>1 long (8 bytes): glbIndex, combined index to its children records
+   *   <li>1 byte: templateIndex, index for template
    * </ul>
+   *
    * -- bitwise flags --
+   *
    * <ul>
-   * <li>1 bit: usingTemplate, whether using template 1 bit: isAligned
+   *   <li>1 bit: usingTemplate, whether using template 1 bit: isAligned
    * </ul>
+   *
    * @param node
    * @return
    */
@@ -93,15 +98,18 @@ public class RecordUtils {
 
   /**
    * TODO: properties and tags unhandled yet
-   * <p>Measurement MNode Record Structure:
-   * <br>(var length record, with length member)
+   *
+   * <p>Measurement MNode Record Structure: <br>
+   * (var length record, with length member)
+   *
    * <ul>
-   * <li>1 byte: nodeType, as above
-   * <li>1 short (2 bytes): recLength, length of whole record
-   * <li>1 long (8 bytes): tagIndex, related to tag module
-   * <li>1 long (8 bytes): schemaBytes, including datatype/compressionType/encoding and so on
-   * <li>var length string (4+var_length bytes): alias
+   *   <li>1 byte: nodeType, as above
+   *   <li>1 short (2 bytes): recLength, length of whole record
+   *   <li>1 long (8 bytes): tagIndex, related to tag module
+   *   <li>1 long (8 bytes): schemaBytes, including datatype/compressionType/encoding and so on
+   *   <li>var length string (4+var_length bytes): alias
    * </ul>
+   *
    * <p>It doesn't use MeasurementSchema.serializeTo for duplication of measurementId
    */
   private static ByteBuffer measurement2Buffer(IMeasurementMNode node) {
