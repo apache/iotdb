@@ -559,8 +559,8 @@ public class MergeTaskTest extends MergeTest {
   }
 
   /**
-   * merge 3 seqFile and 1 unseqFile seqFile1: d1.s1:0-100 d1.s2:0-100 seqFile2: d1.s1:100-200
-   * seqFile3: d2.s1:0-100 unseqFile1: d1.s3:0-100
+   * merge 3 seqFile and 1 unseqFile seqFile1: d0.s0:0-100 d0.s1:0-100 seqFile2: d0.s0:100-200
+   * seqFile3: d1.s0:0-100 unseqFile1: d0.s2:0-100
    */
   @Test
   public void testMergeWithSeqFileMissSomeSensorAndDevice() throws Exception {
@@ -583,6 +583,7 @@ public class MergeTaskTest extends MergeTest {
     seqTsFile1Data.put(new Pair<>(deviceIds[0], measurementSchemas[0]), new Pair<>(0L, 100L));
     seqTsFile1Data.put(new Pair<>(deviceIds[0], measurementSchemas[1]), new Pair<>(0L, 100L));
     prepareFileWithSensorAndTime(seqTsFile1, seqTsFile1Data);
+    seqTsFile1.setClosed(true);
     testSeqResources.add(seqTsFile1);
 
     file =
@@ -600,6 +601,7 @@ public class MergeTaskTest extends MergeTest {
     Map<Pair<String, MeasurementSchema>, Pair<Long, Long>> seqTsFileData2 = new HashMap<>();
     seqTsFileData2.put(new Pair<>(deviceIds[0], measurementSchemas[0]), new Pair<>(100L, 200L));
     prepareFileWithSensorAndTime(seqTsFile2, seqTsFileData2);
+    seqTsFile2.setClosed(true);
     testSeqResources.add(seqTsFile2);
 
     file =
@@ -617,6 +619,7 @@ public class MergeTaskTest extends MergeTest {
     Map<Pair<String, MeasurementSchema>, Pair<Long, Long>> seqTsFileData3 = new HashMap<>();
     seqTsFileData3.put(new Pair<>(deviceIds[1], measurementSchemas[0]), new Pair<>(0L, 100L));
     prepareFileWithSensorAndTime(seqTsFile3, seqTsFileData3);
+    seqTsFile3.setClosed(true);
     testSeqResources.add(seqTsFile3);
 
     file =
@@ -634,6 +637,7 @@ public class MergeTaskTest extends MergeTest {
     Map<Pair<String, MeasurementSchema>, Pair<Long, Long>> unseqTsFileData = new HashMap<>();
     unseqTsFileData.put(new Pair<>(deviceIds[0], measurementSchemas[2]), new Pair<>(0L, 100L));
     prepareFileWithSensorAndTime(unseqTsFile, unseqTsFileData);
+    unseqTsFile.setClosed(true);
     testUnseqResources.add(unseqTsFile);
 
     MergeTask mergeTask =
