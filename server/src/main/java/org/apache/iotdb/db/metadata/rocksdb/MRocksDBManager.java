@@ -1550,7 +1550,7 @@ public class MRocksDBManager implements IMetaManager {
     }
     Object ttl = RocksDBUtils.parseNodeValue(value, RockDBConstants.FLAG_SET_TTL);
     if (ttl == null) {
-      ttl = 0L;
+      ttl = config.getDefaultTTL();
     }
     return new RStorageGroupMNode(path.getFullPath(), (Long) ttl);
   }
@@ -1558,6 +1558,7 @@ public class MRocksDBManager implements IMetaManager {
   /** Get storage group node by path. the give path don't need to be storage group path. */
   @Override
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
+    ensureStorageGroup(path, Integer.MAX_VALUE);
     String[] nodes = path.getNodes();
     byte[] innerPathName;
     int i;
@@ -1582,7 +1583,7 @@ public class MRocksDBManager implements IMetaManager {
 
     Object ttl = RocksDBUtils.parseNodeValue(value, RockDBConstants.FLAG_SET_TTL);
     if (ttl == null) {
-      ttl = 0L;
+      ttl = config.getDefaultTTL();
     }
     return new RStorageGroupMNode(path.getFullPath(), (Long) ttl);
   }
@@ -1599,7 +1600,7 @@ public class MRocksDBManager implements IMetaManager {
       }
       Object ttl = RocksDBUtils.parseNodeValue(iterator.value(), FLAG_SET_TTL);
       if (ttl == null) {
-        ttl = 0L;
+        ttl = config.getDefaultTTL();
       }
       result.add(
           new RStorageGroupMNode(
