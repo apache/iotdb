@@ -55,8 +55,16 @@ public class GroupByTimeFillPlan extends GroupByTimePlan {
     this.fillTypes = fillTypes;
   }
 
+  public void setQueryStartTime(long queryStartTime) {
+    this.queryStartTime = queryStartTime;
+  }
+
   public long getQueryStartTime() {
     return queryStartTime;
+  }
+
+  public void setQueryEndTime(long queryEndTime) {
+    this.queryEndTime = queryEndTime;
   }
 
   public long getQueryEndTime() {

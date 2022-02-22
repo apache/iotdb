@@ -31,16 +31,17 @@ public class FakedTsFileResource extends TsFileResource {
   private String fakeTsfileName;
 
   public FakedTsFileResource(long tsFileSize, String name) {
+    this.timeIndex = new FileTimeIndex();
     this.tsFileSize = tsFileSize;
     super.closed = true;
-    super.isMerging = false;
+    super.isCompacting = false;
     fakeTsfileName = name;
   }
 
   public FakedTsFileResource(long tsFileSize, boolean isClosed, boolean isMerging, String name) {
     this.tsFileSize = tsFileSize;
     super.closed = isClosed;
-    super.isMerging = isMerging;
+    super.isCompacting = isMerging;
     fakeTsfileName = name;
   }
 
@@ -65,7 +66,7 @@ public class FakedTsFileResource extends TsFileResource {
     StringBuilder builder = new StringBuilder();
     builder.append(tsFileSize).append(",");
     builder.append(closed).append(",");
-    builder.append(isMerging);
+    builder.append(isCompacting);
     return builder.toString();
   }
 

@@ -44,6 +44,7 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.CollectorTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
@@ -104,6 +105,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
@@ -1518,7 +1520,7 @@ public class MTree implements Serializable {
 
   // endregion
 
-  // region Interfaces and Implementation for Template check
+  // region Interfaces and Implementation for Template check and query
   /**
    * check whether there is template on given path and the subTree has template return true,
    * otherwise false
@@ -1556,11 +1558,12 @@ public class MTree implements Serializable {
    *
    * <p>Check route 3: If template has direct measurement and mounted node is Entity,
    *
-   * <p>route 3.1: mounted node has no measurement child, then its alignment will be set as the
-   * template.
-   *
-   * <p>route 3.2: mounted node has measurement child, then alignment of it and template should be
-   * identical, otherwise cast a exception.
+   * <ul>
+   *   <p>route 3.1: mounted node has no measurement child, then its alignment will be set as the
+   *   template.
+   *   <p>route 3.2: mounted node has measurement child, then alignment of it and template should be
+   *   identical, otherwise cast a exception.
+   * </ul>
    *
    * @return return the node competent to be mounted.
    */
@@ -1713,6 +1716,135 @@ public class MTree implements Serializable {
     }
     // all nodes on path exist in MTree, device node should be the penultimate one
     return fullPathNodes.length - 1;
+  }
+
+  public List<String> getPathsSetOnTemplate(String templateName) throws MetadataException {
+    List<String> resSet = new ArrayList<>();
+    CollectorTraverser<Set<String>> setTemplatePaths =
+        new CollectorTraverser<Set<String>>(
+            root, root.getPartialPath().concatNode(MULTI_LEVEL_PATH_WILDCARD)) {
+          @Override
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            // will never get here, implement for placeholder
+            return false;
+          }
+
+          @Override
+          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            // shall not traverse nodes inside template
+            if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
+              return true;
+            }
+
+            // if node not set template, go on traversing
+            if (node.getUpperTemplate() != null) {
+              // if set template, and equals to target or target for all, add to result
+              if (templateName.equals("")
+                  || templateName.equals(node.getUpperTemplate().getName())) {
+                resSet.add(node.getFullPath());
+              }
+              // descendants of the node cannot set another template, exit from this branch
+              return true;
+            }
+            return false;
+          }
+        };
+    setTemplatePaths.traverse();
+    return resSet;
+  }
+
+  public List<String> getPathsUsingTemplate(String templateName) throws MetadataException {
+    List<String> result = new ArrayList<>();
+
+    CollectorTraverser<Set<String>> usingTemplatePaths =
+        new CollectorTraverser<Set<String>>(
+            root, root.getPartialPath().concatNode(MULTI_LEVEL_PATH_WILDCARD)) {
+          @Override
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            // will never get here, implement for placeholder
+            return false;
+          }
+
+          @Override
+          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            // shall not traverse nodes inside template
+            if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
+              return true;
+            }
+
+            if (node.getUpperTemplate() != null) {
+              // this node and its descendants are set other template, exit from this branch
+              if (!templateName.equals("")
+                  && !templateName.equals(node.getUpperTemplate().getName())) {
+                return true;
+              }
+
+              // descendants of this node may be using template too
+              if (node.isUseTemplate()) {
+                result.add(node.getFullPath());
+              }
+            }
+            return false;
+          }
+        };
+
+    usingTemplatePaths.traverse();
+    return result;
+  }
+
+  public boolean isTemplateSetOnMTree(String templateName) {
+    // check whether template has been set
+    Deque<IMNode> nodeStack = new ArrayDeque<>();
+    nodeStack.push(root);
+
+    // DFT traverse on MTree
+    while (nodeStack.size() != 0) {
+      IMNode curNode = nodeStack.pop();
+      if (curNode.getUpperTemplate() != null) {
+        if (curNode.getUpperTemplate().getName().equals(templateName)) {
+          return true;
+        }
+        // curNode set to other templates, cut this branch
+      }
+
+      // no template on curNode, push children to stack
+      for (IMNode child : curNode.getChildren().values()) {
+        nodeStack.push(child);
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Get template name on give path if any node of it has been set a template
+   *
+   * @return null if no template has been set on path
+   */
+  public String getTemplateOnPath(PartialPath path) throws IllegalPathException {
+    String[] pathNodes = path.getNodes();
+    if (!pathNodes[0].equals(IoTDBConstant.PATH_ROOT)) {
+      throw new IllegalPathException(path.toString());
+    }
+    IMNode cur = root;
+
+    if (cur.getSchemaTemplate() != null) {
+      return cur.getSchemaTemplate().getName();
+    }
+
+    for (int i = 1; i < pathNodes.length; i++) {
+      if (cur.isMeasurement() || !cur.hasChild(pathNodes[i])) {
+        return null;
+      }
+      cur = cur.getChild(pathNodes[i]);
+      if (cur.getSchemaTemplate() != null) {
+        return cur.getSchemaTemplate().getName();
+      }
+    }
+    return null;
   }
 
   // endregion

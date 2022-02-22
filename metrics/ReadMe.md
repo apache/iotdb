@@ -32,6 +32,8 @@ Metric Module
 - [1. Design](#1-design)
   - [1.1. Over all Design for acquisition System](#11-over-all-design-for-acquisition-system)
   - [1.2. Class diagram](#12-class-diagram)
+    - [1.2.1. Metric Related Class Diagram](#121-metric-related-class-diagram)
+    - [1.2.2. Metric Framework Class Diagram](#122-metric-framework-class-diagram)
 - [2. Test Report](#2-test-report)
   - [2.1. Test Environment](#21-test-environment)
   - [2.2. Test Metrics](#22-test-metrics)
@@ -66,7 +68,12 @@ Metric Module
 ![](https://cwiki.apache.org/confluence/download/attachments/184616789/image2021-11-3_10-49-3.png?version=1&modificationDate=1635907745000&api=v2)
 
 ## 1.2. Class diagram
-![](https://cwiki.apache.org/confluence/download/attachments/184616789/image2021-11-3_10-53-25.png?version=1&modificationDate=1635908006000&api=v2)
+
+### 1.2.1. Metric Related Class Diagram
+![](https://cwiki.apache.org/confluence/download/attachments/184616789/image2022-1-17_16-24-44.png?version=1&modificationDate=1642407890014&api=v2)
+
+### 1.2.2. Metric Framework Class Diagram
+![](https://cwiki.apache.org/confluence/download/attachments/184616789/image2022-1-17_16-31-10.png?version=1&modificationDate=1642408273144&api=v2)
 
 # 2. Test Report
 We implemented the monitoring framework using Dropwizard and Micrometer respectively, and tested the results as follows:

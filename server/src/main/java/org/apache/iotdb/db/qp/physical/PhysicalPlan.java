@@ -53,6 +53,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -70,6 +71,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.qp.utils.EmptyOutputStream;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -138,6 +140,10 @@ public abstract class PhysicalPlan {
     return operatorType;
   }
 
+  public String getOperatorName() {
+    return operatorType.toString();
+  }
+
   public void setOperatorType(Operator.OperatorType operatorType) {
     this.operatorType = operatorType;
   }
@@ -191,7 +197,7 @@ public abstract class PhysicalPlan {
    *
    * @param buffer
    */
-  public void serialize(ByteBuffer buffer) {
+  public final void serialize(ByteBuffer buffer) {
     buffer.mark();
     try {
       serializeImpl(buffer);
@@ -439,6 +445,12 @@ public abstract class PhysicalPlan {
         case PRUNE_TEMPLATE:
           plan = new PruneTemplatePlan();
           break;
+        case DROP_TEMPLATE:
+          plan = new DropTemplatePlan();
+          break;
+        case UNSET_TEMPLATE:
+          plan = new UnsetTemplatePlan();
+          break;
         case SET_TEMPLATE:
           plan = new SetTemplatePlan();
           break;
@@ -544,7 +556,8 @@ public abstract class PhysicalPlan {
     SET_SYSTEM_MODE,
     UNSET_TEMPLATE,
     APPEND_TEMPLATE,
-    PRUNE_TEMPLATE
+    PRUNE_TEMPLATE,
+    DROP_TEMPLATE
   }
 
   public long getIndex() {

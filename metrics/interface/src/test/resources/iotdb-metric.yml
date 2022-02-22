@@ -36,7 +36,9 @@ pushPeriodInSecond: 5
 ########################################################
 #                                                      #
 # if the reporter is prometheus,                       #
-# then the following must be set                       #
+# then the following must be set.                      #
+# if you use dropwizard, all below                     #
+# should be the config of pushgateway                  #
 #                                                      #
 ########################################################
 prometheusReporterConfig:

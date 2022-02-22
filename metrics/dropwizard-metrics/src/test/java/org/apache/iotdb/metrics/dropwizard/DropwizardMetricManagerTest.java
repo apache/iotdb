@@ -174,6 +174,11 @@ public class DropwizardMetricManagerTest {
     metricManager.timer(2L, TimeUnit.MINUTES, "timer_mark", "tag1", "tag2");
     metricManager.timer(4L, TimeUnit.MINUTES, "timer_" + "mark", "tag1", "tag2");
     metricManager.timer(6L, TimeUnit.MINUTES, "timer_mark", "tag1", "tag2");
+    try {
+      Thread.sleep(1000);
+    } catch (Exception e) {
+      // do nothing
+    }
     metricManager.timer(8L, TimeUnit.MINUTES, "timer_mark", "tag1", "tag2");
     metricManager.timer(10L, TimeUnit.MINUTES, "timer_mark", "tag1", "tag2");
     assertEquals(5, timer.getImmutableRate().getCount());

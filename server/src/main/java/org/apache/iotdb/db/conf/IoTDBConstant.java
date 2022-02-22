@@ -38,6 +38,7 @@ public class IoTDBConstant {
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
+  public static final String COMPACTION_LOGGER_NAME = "COMPACTION";
 
   public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
 
@@ -107,6 +108,8 @@ public class IoTDBConstant {
   public static final String COLUMN_CONTINUOUS_QUERY_TARGET_PATH = "target path";
   public static final String COLUMN_CONTINUOUS_QUERY_QUERY_SQL = "query sql";
 
+  public static final String COLUMN_SCHEMA_TEMPLATE = "template name";
+
   public static final String FUNCTION_TYPE_NATIVE = "native";
   public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
   public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
@@ -172,8 +175,11 @@ public class IoTDBConstant {
   public static final int FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX = 3;
   public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
 
-  // compaction
-  public static final String COMPACTION_TMP_FILE_SUFFIX = ".target";
+  // inner space compaction
+  public static final String INNER_COMPACTION_TMP_FILE_SUFFIX = ".inner";
+
+  // cross space compaction
+  public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX = ".cross";
 
   // client version number
   public enum ClientVersion {

@@ -31,6 +31,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -479,7 +480,7 @@ public class MManagerBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          manager.getMatchedDevices(new PartialPath("root.**")).stream()
+          manager.getMatchedDevices(new PartialPath("root.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
@@ -492,7 +493,7 @@ public class MManagerBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          manager.getMatchedDevices(new PartialPath("root.**")).stream()
+          manager.getMatchedDevices(new PartialPath("root.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
@@ -506,7 +507,7 @@ public class MManagerBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          recoverManager.getMatchedDevices(new PartialPath("root.**")).stream()
+          recoverManager.getMatchedDevices(new PartialPath("root.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
@@ -745,7 +746,7 @@ public class MManagerBasicTest {
       // usual condition
       assertEquals(
           devices,
-          manager.getMatchedDevices(new PartialPath("root.laptop.**")).stream()
+          manager.getMatchedDevices(new PartialPath("root.laptop.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
       manager.setStorageGroup(new PartialPath("root.vehicle"));
@@ -759,7 +760,7 @@ public class MManagerBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          manager.getMatchedDevices(new PartialPath("root.**")).stream()
+          manager.getMatchedDevices(new PartialPath("root.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
     } catch (MetadataException e) {
@@ -894,13 +895,14 @@ public class MManagerBasicTest {
 
     Set<String> allSchema = new HashSet<>();
     for (IMeasurementSchema schema : node.getSchemaTemplate().getSchemaMap().values()) {
-      allSchema.add("root.sg1.d1" + TsFileConstant.PATH_SEPARATOR + schema.getMeasurementId());
+      allSchema.add(
+          "root.sg1.d1.vector" + TsFileConstant.PATH_SEPARATOR + schema.getMeasurementId());
     }
     for (MeasurementPath measurementPath :
-        manager.getMeasurementPaths(new PartialPath("root.sg1.d1.**"))) {
+        manager.getMeasurementPaths(new PartialPath("root.sg1.**"))) {
       allSchema.remove(measurementPath.toString());
     }
-
+    allSchema.remove("root.sg1.d1.vector.s11");
     assertTrue(allSchema.isEmpty());
 
     IMeasurementMNode mNode = manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s11"));
@@ -1297,6 +1299,64 @@ public class MManagerBasicTest {
             null,
             null,
             null));
+
+    manager.createTimeseries(
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.tree.sg1.dn.sn"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null));
+
+    manager.createTimeseries(
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.tree.sg2.dn.sn"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null));
+
+    manager.createTimeseries(
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.tree.sg3.dn.sn"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null));
+
+    try {
+      SetTemplatePlan planErr = new SetTemplatePlan("treeTemplate", "root.tree.*");
+      fail();
+    } catch (IllegalPathException e) {
+      assertEquals(
+          "root.tree.* is not a legal path, because template cannot be set on a path with wildcard.",
+          e.getMessage());
+    }
+
+    SetTemplatePlan planEx1 = new SetTemplatePlan("treeTemplate", "root.tree.sg1");
+    SetTemplatePlan planEx2 = new SetTemplatePlan("treeTemplate", "root.tree.sg2");
+    SetTemplatePlan planEx3 = new SetTemplatePlan("treeTemplate", "root.tree.sg3");
+    manager.setSchemaTemplate(planEx1);
+    manager.setSchemaTemplate(planEx2);
+    manager.setSchemaTemplate(planEx3);
+
+    try {
+      manager.unsetSchemaTemplate(new UnsetTemplatePlan("root.tree.*", "treeTemplate"));
+      fail();
+    } catch (IllegalPathException e) {
+      assertEquals(
+          "root.tree.* is not a legal path, because template cannot be unset on a path with wildcard.",
+          e.getMessage());
+    }
 
     manager.setSchemaTemplate(setSchemaTemplatePlan2);
     manager.unsetSchemaTemplate(new UnsetTemplatePlan("root.tree.sg0", "treeTemplate"));
@@ -1733,6 +1793,14 @@ public class MManagerBasicTest {
       manager.setSchemaTemplate(new SetTemplatePlan("treeTemplate", "root.tree.d0"));
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.tree.d0")));
+
+      try {
+        manager.setUsingSchemaTemplate(
+            new ActivateTemplatePlan(new PartialPath("root.non.existed.path")));
+        fail();
+      } catch (MetadataException e) {
+        assertEquals("Path [root.non.existed.path] has not been set any template.", e.getMessage());
+      }
 
       manager.createTimeseries(
           new PartialPath("root.laptop.d2.s1"),
@@ -2211,6 +2279,14 @@ public class MManagerBasicTest {
     manager.getSeriesSchemasAndReadLockDevice(insertPlan);
     assertTrue(manager.isPathExist(deviceId.concatNode("\"a+b\"")));
 
+    insertPlan = getInsertPlan("\"a.b\"");
+    manager.getSeriesSchemasAndReadLockDevice(insertPlan);
+    assertTrue(manager.isPathExist(deviceId.concatNode("\"a.b\"")));
+
+    insertPlan = getInsertPlan("\"a“（Φ）”b\"");
+    manager.getSeriesSchemasAndReadLockDevice(insertPlan);
+    assertTrue(manager.isPathExist(deviceId.concatNode("\"a“（Φ）”b\"")));
+
     String[] illegalMeasurementIds = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
     for (String measurementId : illegalMeasurementIds) {
       insertPlan = getInsertPlan(measurementId);
@@ -2379,5 +2455,38 @@ public class MManagerBasicTest {
     assertEquals(1, results.size());
     resultTag = results.get(0).getTag();
     assertEquals("newValue", resultTag.get("description"));
+  }
+
+  @Test
+  public void testTagCreationViaMLogPlanDuringMetadataSync() throws Exception {
+    MManager manager = IoTDB.metaManager;
+
+    PartialPath path = new PartialPath("root.sg.d.s");
+    Map<String, String> tags = new HashMap<>();
+    tags.put("type", "test");
+    CreateTimeSeriesPlan plan =
+        new CreateTimeSeriesPlan(
+            path,
+            TSDataType.valueOf("INT32"),
+            TSEncoding.valueOf("RLE"),
+            compressionType,
+            null,
+            tags,
+            null,
+            null);
+    // mock that the plan has already been executed on sender and receiver will redo this plan
+    plan.setTagOffset(10);
+
+    manager.operation(plan);
+
+    ShowTimeSeriesPlan showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(new PartialPath("root.sg.d.s"), true, "type", "test", 0, 0, false);
+    List<ShowTimeSeriesResult> results =
+        manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+    assertEquals(1, results.size());
+    Map<String, String> resultTag = results.get(0).getTag();
+    assertEquals("test", resultTag.get("type"));
+
+    assertEquals(0, manager.getMeasurementMNode(path).getOffset());
   }
 }

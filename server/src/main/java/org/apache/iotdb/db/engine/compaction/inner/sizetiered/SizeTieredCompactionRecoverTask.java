@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUti
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
@@ -40,7 +41,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   protected File compactionLogFile;
   protected String dataDir;
   protected String logicalStorageGroupName;
@@ -53,13 +55,13 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
       File compactionLogFile,
       String dataDir,
       boolean sequence,
-      AtomicInteger currentTaskNum) {
+      AtomicInteger currentTaskNum,
+      TsFileManager tsFileManager) {
     super(
         logicalStorageGroupName,
         virtualStorageGroup,
         timePartition,
-        null,
-        null,
+        tsFileManager,
         new ArrayList<>(),
         sequence,
         currentTaskNum);
@@ -86,11 +88,13 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
   public void doCompaction() {
     boolean handleSuccess = true;
     LOGGER.info(
-        "{} [Compaction][Recover] compaction log is {}", fullStorageGroupName, compactionLogFile);
+        "{} [Compaction][Recover] inner space compaction log is {}",
+        fullStorageGroupName,
+        compactionLogFile);
     try {
       if (compactionLogFile.exists()) {
         LOGGER.info(
-            "{}-{} [Compaction][Recover] compaction log file {} exists, start to recover it",
+            "{}-{} [Compaction][Recover] inner space compaction log file {} exists, start to recover it",
             logicalStorageGroupName,
             virtualStorageGroup,
             compactionLogFile);
@@ -128,7 +132,8 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
                   targetFileIdentifier
                       .getFilePath()
                       .replace(
-                          IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
+                          IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+                          TsFileConstant.TSFILE_SUFFIX));
           TsFileResource targetResource;
           if (tmpTargetFile != null) {
             targetResource = new TsFileResource(tmpTargetFile);
@@ -141,7 +146,12 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
           }
           handleSuccess =
               InnerSpaceCompactionExceptionHandler.handleWhenAllSourceFilesExist(
-                  fullStorageGroupName, targetResource, sourceResources);
+                  fullStorageGroupName,
+                  targetResource,
+                  sourceResources,
+                  tsFileResourceList,
+                  tsFileManager,
+                  true);
         } else {
           handleSuccess = handleWithoutAllSourceFilesExist(sourceFileIdentifiers);
         }

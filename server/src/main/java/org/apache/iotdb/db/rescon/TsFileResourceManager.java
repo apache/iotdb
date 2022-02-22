@@ -60,19 +60,23 @@ public class TsFileResourceManager {
    * memory cost is larger than threshold, degradation is triggered.
    */
   public synchronized void registerSealedTsFileResource(TsFileResource tsFileResource) {
-    sealedTsFileResources.add(tsFileResource);
-    totalTimeIndexMemCost += tsFileResource.calculateRamSize();
-    chooseTsFileResourceToDegrade();
+    if (!sealedTsFileResources.contains(tsFileResource)) {
+      sealedTsFileResources.add(tsFileResource);
+      totalTimeIndexMemCost += tsFileResource.calculateRamSize();
+      chooseTsFileResourceToDegrade();
+    }
   }
 
   /** delete the TsFileResource in PriorityQueue when the source file is deleted */
   public synchronized void removeTsFileResource(TsFileResource tsFileResource) {
-    sealedTsFileResources.remove(tsFileResource);
-    if (TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType())
-        == TimeIndexLevel.FILE_TIME_INDEX) {
-      totalTimeIndexMemCost -= tsFileResource.calculateRamSize();
-    } else {
-      totalTimeIndexMemCost -= tsFileResource.getRamSize();
+    if (sealedTsFileResources.contains(tsFileResource)) {
+      sealedTsFileResources.remove(tsFileResource);
+      if (TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType())
+          == TimeIndexLevel.FILE_TIME_INDEX) {
+        totalTimeIndexMemCost -= tsFileResource.calculateRamSize();
+      } else {
+        totalTimeIndexMemCost -= tsFileResource.getRamSize();
+      }
     }
   }
 
@@ -95,6 +99,7 @@ public class TsFileResourceManager {
         throw new RuntimeException("Can't degrade any more");
       }
       long memoryReduce = tsFileResource.degradeTimeIndex();
+      logger.info("Degrade tsfile resource {}", tsFileResource.getTsFilePath());
       releaseTimeIndexMemCost(memoryReduce);
       // add the polled tsFileResource to the priority queue
       sealedTsFileResources.add(tsFileResource);

@@ -55,7 +55,6 @@ import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -73,6 +72,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
@@ -260,6 +260,17 @@ public class MManager {
           MTREE_SNAPSHOT_THREAD_CHECK_TIME,
           TimeUnit.SECONDS);
     }
+
+    if (config.getSyncMlogPeriodInMs() != 0) {
+      timedForceMLogThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
+
+      timedForceMLogThread.scheduleAtFixedRate(
+          this::forceMlog,
+          config.getSyncMlogPeriodInMs(),
+          config.getSyncMlogPeriodInMs(),
+          TimeUnit.MILLISECONDS);
+    }
   }
 
   // Because the writer will be used later and should not be closed here.
@@ -342,6 +353,14 @@ public class MManager {
             },
             Tag.NAME.toString(),
             "storageGroup");
+  }
+
+  private void forceMlog() {
+    try {
+      logWriter.force();
+    } catch (IOException e) {
+      logger.error("Cannot force mlog to the storage device", e);
+    }
   }
 
   /** @return line number of the logFile */
@@ -483,6 +502,18 @@ public class MManager {
         CreateTemplatePlan createTemplatePlan = (CreateTemplatePlan) plan;
         createSchemaTemplate(createTemplatePlan);
         break;
+      case DROP_TEMPLATE:
+        DropTemplatePlan dropTemplatePlan = (DropTemplatePlan) plan;
+        dropSchemaTemplate(dropTemplatePlan);
+        break;
+      case APPEND_TEMPLATE:
+        AppendTemplatePlan appendTemplatePlan = (AppendTemplatePlan) plan;
+        appendSchemaTemplate(appendTemplatePlan);
+        break;
+      case PRUNE_TEMPLATE:
+        PruneTemplatePlan pruneTemplatePlan = (PruneTemplatePlan) plan;
+        pruneSchemaTemplate(pruneTemplatePlan);
+        break;
       case SET_TEMPLATE:
         SetTemplatePlan setTemplatePlan = (SetTemplatePlan) plan;
         setSchemaTemplate(setTemplatePlan);
@@ -575,8 +606,9 @@ public class MManager {
 
       // update tag index
 
-      if (offset != -1) {
-        // offset != -1 means the timeseries has already been created and now system is recovering
+      if (offset != -1 && isRecovering) {
+        // the timeseries has already been created and now system is recovering, using the tag info
+        // in tagFile to recover index directly
         tagManager.recoverIndex(offset, leafMNode);
       } else if (plan.getTags() != null) {
         // tag key, tag value
@@ -606,8 +638,8 @@ public class MManager {
       throw new MetadataException(e);
     }
 
-    // update id table
-    if (config.isEnableIDTable()) {
+    // update id table if not in recovering or disable id table log file
+    if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPath().getDevicePath());
       idTable.createTimeseries(plan);
     }
@@ -701,8 +733,8 @@ public class MManager {
       throw new MetadataException(e);
     }
 
-    // update id table
-    if (config.isEnableIDTable()) {
+    // update id table if not in recovering or disable id table log file
+    if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
       idTable.createAlignedTimeseries(plan);
     }
@@ -746,9 +778,6 @@ public class MManager {
         // PathNotExistException.
         throw new PathNotExistException(pathPattern.getFullPath());
       }
-
-      // Monitor storage group seriesPath is not allowed to be deleted
-      allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_ARRAY));
 
       Set<String> failedNames = new HashSet<>();
       for (PartialPath p : allTimeseries) {
@@ -1214,22 +1243,12 @@ public class MManager {
    * to match prefix path. All timeseries start with the matched prefix path will be collected.
    *
    * @param pathPattern the pattern of the target devices.
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path.
    * @return A HashSet instance which stores devices paths matching the given path pattern.
    */
   public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getDevices(pathPattern, isPrefixMatch);
-  }
-
-  /**
-   * Get all device paths matching the path pattern.
-   *
-   * @param pathPattern the pattern of the target devices.
-   * @return A HashSet instance which stores devices paths matching the given path pattern.
-   */
-  public Set<PartialPath> getMatchedDevices(PartialPath pathPattern) throws MetadataException {
-    return getMatchedDevices(pathPattern, false);
   }
 
   /**
@@ -2233,6 +2252,59 @@ public class MManager {
     return templateManager.getTemplate(templateName).getMeasurementsUnderPath(path);
   }
 
+  public List<Pair<String, IMeasurementSchema>> getSchemasInTemplate(
+      String templateName, String path) throws MetadataException {
+    Set<Map.Entry<String, IMeasurementSchema>> rawSchemas =
+        templateManager.getTemplate(templateName).getSchemaMap().entrySet();
+    return rawSchemas.stream()
+        .filter(e -> e.getKey().startsWith(path))
+        .collect(
+            ArrayList::new,
+            (res, elem) -> res.add(new Pair<>(elem.getKey(), elem.getValue())),
+            ArrayList::addAll);
+  }
+
+  public Set<String> getAllTemplates() {
+    return templateManager.getAllTemplateName();
+  }
+
+  /**
+   * Get all paths set designated template
+   *
+   * @param templateName designated template name, blank string for any template exists
+   * @return paths set
+   */
+  public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
+    return new HashSet<>(mtree.getPathsSetOnTemplate(templateName));
+  }
+
+  public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
+    return new HashSet<>(mtree.getPathsUsingTemplate(templateName));
+  }
+
+  public void dropSchemaTemplate(DropTemplatePlan plan) throws MetadataException {
+    try {
+      String templateName = plan.getName();
+      // check whether template exists
+      if (!templateManager.getAllTemplateName().contains(templateName)) {
+        throw new UndefinedTemplateException(templateName);
+      }
+
+      if (mtree.isTemplateSetOnMTree(templateName)) {
+        throw new MetadataException(
+            String.format(
+                "Template [%s] has been set on MTree, cannot be dropped now.", templateName));
+      }
+
+      templateManager.dropSchemaTemplate(plan);
+      if (!isRecovering) {
+        logWriter.dropSchemaTemplate(plan);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+  }
+
   public synchronized void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
     // get mnode and update template should be atomic
     Template template = templateManager.getTemplate(plan.getTemplateName());
@@ -2244,7 +2316,7 @@ public class MManager {
 
       IMNode node = getDeviceNodeWithAutoCreate(path);
 
-      templateManager.checkIsTemplateAndMNodeCompatible(template, node);
+      templateManager.checkTemplateCompatible(template, node);
 
       node.setSchemaTemplate(template);
 
@@ -2281,6 +2353,13 @@ public class MManager {
   }
 
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
+    // check whether any template has been set on designated path
+    if (mtree.getTemplateOnPath(plan.getPrefixPath()) == null) {
+      throw new MetadataException(
+          String.format(
+              "Path [%s] has not been set any template.", plan.getPrefixPath().toString()));
+    }
+
     try {
       setUsingSchemaTemplate(getDeviceNode(plan.getPrefixPath()));
     } catch (PathNotExistException e) {
@@ -2296,6 +2375,12 @@ public class MManager {
   }
 
   IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
+    // check whether any template has been set on designated path
+    if (node.getUpperTemplate() == null) {
+      throw new MetadataException(
+          String.format("Path [%s] has not been set any template.", node.getFullPath()));
+    }
+
     // this operation may change mtree structure and node type
     // invoke mnode.setUseTemplate is invalid
 
