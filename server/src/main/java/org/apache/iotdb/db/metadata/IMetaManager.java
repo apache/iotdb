@@ -28,6 +28,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
@@ -46,6 +47,7 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -210,9 +212,9 @@ public interface IMetaManager {
   List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
-  List<PartialPath> getAllStorageGroupPaths() throws IllegalPathException;
+  List<PartialPath> getAllStorageGroupPaths();
 
-  Map<PartialPath, Long> getStorageGroupsTTL() throws IllegalPathException;
+  Map<PartialPath, Long> getStorageGroupsTTL();
   // endregion
 
   // region Interfaces for Entity/Device info Query
@@ -294,6 +296,8 @@ public interface IMetaManager {
 
   void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException;
+
+  void changeAlias(PartialPath path, String hello) throws MetadataException, IOException;
   // endregion
 
   // region Interfaces only for Cluster module usage
@@ -369,5 +373,14 @@ public interface IMetaManager {
   void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException;
 
   void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException;
+  // endregion
+
+  // region test only interfaces
+  String getDeviceId(PartialPath devicePath);
+
+  Template getTemplate(String templateName) throws MetadataException;
+
+  @TestOnly
+  public void flushAllMlogForTest() throws IOException;
   // endregion
 }

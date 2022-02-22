@@ -35,7 +35,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -301,7 +301,7 @@ public class TestUtils {
   }
 
   public static void prepareData()
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException,
+      throws QueryProcessException, MetadataException, StorageEngineException,
           IllegalPathException {
     InsertRowPlan insertPlan = new InsertRowPlan();
     // data for raw data query and aggregation

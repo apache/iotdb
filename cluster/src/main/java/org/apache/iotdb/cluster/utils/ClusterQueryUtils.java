@@ -19,13 +19,8 @@
 
 package org.apache.iotdb.cluster.utils;
 
-import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -33,24 +28,12 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-
 public class ClusterQueryUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterQueryUtils.class);
 
   private ClusterQueryUtils() {
     // util class
-  }
-
-  public static void checkPathExistence(PartialPath path) throws QueryProcessException {
-    if (!IoTDB.metaManager.isPathExist(path)) {
-      try {
-        MetaPuller.getInstance().pullTimeSeriesSchemas(Collections.singletonList(path), null);
-      } catch (MetadataException e) {
-        throw new QueryProcessException(e);
-      }
-    }
   }
 
   /**

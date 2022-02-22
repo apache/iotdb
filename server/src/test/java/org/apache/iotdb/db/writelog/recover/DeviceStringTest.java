@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.IMetaManager;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -59,7 +59,7 @@ public class DeviceStringTest {
   private String logNodePrefix = TestConstant.OUTPUT_DATA_DIR.concat("testNode/0");
   private Schema schema;
   private TsFileResource resource;
-  private MManager mManager = IoTDB.metaManager;
+  private IMetaManager mManager = IoTDB.metaManager;
 
   @Before
   public void setup() throws IOException, WriteProcessException, MetadataException {

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.IMetaManager;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
@@ -36,7 +36,7 @@ import java.util.List;
 public class SchemaUtilsTest {
   @Test
   public void registerTimeseriesTest() throws MetadataException {
-    MManager mmanager = IoTDB.metaManager;
+    IMetaManager mmanager = IoTDB.metaManager;
     mmanager.init();
 
     String tsPath = "root.sg.d1.s1";

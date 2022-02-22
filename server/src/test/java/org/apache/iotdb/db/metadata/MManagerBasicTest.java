@@ -71,12 +71,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class MManagerBasicTest {
 
@@ -95,7 +90,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testAddPathAndExist() throws IllegalPathException {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     assertTrue(manager.isPathExist(new PartialPath("root")));
 
     assertFalse(manager.isPathExist(new PartialPath("root.laptop")));
@@ -296,7 +291,7 @@ public class MManagerBasicTest {
    */
   @Test
   public void testDeleteNonExistentTimeseries() {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     try {
       manager.deleteTimeseries(new PartialPath("root.non.existent"));
       fail();
@@ -311,7 +306,7 @@ public class MManagerBasicTest {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Test
   public void testCreateAlignedTimeseries() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
     } catch (MetadataException e) {
@@ -392,7 +387,7 @@ public class MManagerBasicTest {
   @Test
   @SuppressWarnings("squid:S5783")
   public void testGetAllTimeseriesCount() {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
 
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
@@ -456,7 +451,7 @@ public class MManagerBasicTest {
   @Test
   public void testSetStorageGroupAndExist() {
 
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
 
     try {
       assertFalse(manager.isStorageGroup(new PartialPath("root")));
@@ -482,7 +477,7 @@ public class MManagerBasicTest {
   @Test
   public void testRecover() throws Exception {
 
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
 
     try {
 
@@ -553,7 +548,7 @@ public class MManagerBasicTest {
   @Test
   public void testGetAllFileNamesByPath() {
 
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     try {
       manager.setStorageGroup(new PartialPath("root.laptop.d1"));
       manager.setStorageGroup(new PartialPath("root.laptop.d2"));
@@ -587,7 +582,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testCheckStorageExistOfPath() {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
 
     try {
       assertTrue(manager.getMeasurementPaths(new PartialPath("root")).isEmpty());
@@ -629,7 +624,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testShowChildNodesWithGivenPrefix() {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createTimeseries(
@@ -704,7 +699,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testSetStorageGroupWithIllegalName() {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     try {
       PartialPath path1 = new PartialPath("root.laptop\n");
       try {
@@ -729,7 +724,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testCreateTimeseriesWithIllegalName() {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     try {
       PartialPath path1 = new PartialPath("root.laptop.d1\n.s1");
       try {
@@ -756,7 +751,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testGetDevicesWithGivenPrefix() {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
 
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
@@ -803,7 +798,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testGetChildNodePathInNextLevel() {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     String[] res =
         new String[] {
           "[root.laptop, root.vehicle]",
@@ -910,7 +905,7 @@ public class MManagerBasicTest {
   public void testTemplate() throws MetadataException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     manager.createSchemaTemplate(plan);
 
     // set device template
@@ -1032,7 +1027,7 @@ public class MManagerBasicTest {
   public void testTemplateInnerTree() {
     CreateTemplatePlan plan = getTreeTemplatePlan();
     Template template;
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
 
     try {
       manager.createSchemaTemplate(plan);
@@ -1192,7 +1187,7 @@ public class MManagerBasicTest {
             compressionTypes);
     SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg.1");
     UnsetTemplatePlan unsetTemplatePlan = new UnsetTemplatePlan("root.sg.1", "template1");
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     manager.createSchemaTemplate(createTemplatePlan);
 
     // path does not exist test
@@ -1222,7 +1217,7 @@ public class MManagerBasicTest {
   @Test
   public void testTemplateAndTimeSeriesCompatibility() throws MetadataException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     manager.createSchemaTemplate(plan);
     manager.createSchemaTemplate(getTreeTemplatePlan());
 
@@ -1298,7 +1293,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testTemplateAndNodePathCompatibility() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     CreateTemplatePlan plan = getCreateTemplatePlan();
     manager.createSchemaTemplate(plan);
     manager.createSchemaTemplate(getTreeTemplatePlan());
@@ -1499,7 +1494,7 @@ public class MManagerBasicTest {
 
     SetTemplatePlan setPlan5 = new SetTemplatePlan("template2", "root.sg1.d1");
 
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
 
     manager.createSchemaTemplate(plan1);
     manager.createSchemaTemplate(plan2);
@@ -1539,7 +1534,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testShowTimeseries() {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     try {
       manager.createTimeseries(
           new PartialPath("root.laptop.d1.s0"),
@@ -1609,7 +1604,7 @@ public class MManagerBasicTest {
             encodingList,
             compressionTypes);
     CreateTemplatePlan treePlan = getTreeTemplatePlan();
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     try {
       manager.createSchemaTemplate(plan);
       manager.createSchemaTemplate(treePlan);
@@ -1694,7 +1689,7 @@ public class MManagerBasicTest {
 
   @Test
   public void minimumTestForWildcardInTemplate() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     CreateTemplatePlan treePlan = getTreeTemplatePlan();
     manager.createSchemaTemplate(treePlan);
 
@@ -1741,7 +1736,7 @@ public class MManagerBasicTest {
             dataTypeList,
             encodingList,
             compressionTypes);
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     try {
       manager.createSchemaTemplate(plan);
       manager.createSchemaTemplate(getTreeTemplatePlan());
@@ -1814,7 +1809,7 @@ public class MManagerBasicTest {
             dataTypeList,
             encodingList,
             compressionTypes);
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
 
     try {
       manager.createSchemaTemplate(plan);
@@ -1879,7 +1874,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testTotalSeriesNumber() throws Exception {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
 
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
@@ -1935,7 +1930,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testStorageGroupNameWithHyphen() throws IllegalPathException {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     assertTrue(manager.isPathExist(new PartialPath("root")));
 
     assertFalse(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
@@ -1952,7 +1947,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testCreateAlignedTimeseriesAndInsertWithMismatchDataType() {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createAlignedTimeSeries(
@@ -1999,7 +1994,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testCreateAlignedTimeseriesAndInsertWithNotAlignedData() {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createAlignedTimeSeries(
@@ -2068,7 +2063,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testCreateTimeseriesAndInsertWithMismatchDataType() {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createTimeseries(
@@ -2105,7 +2100,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testCreateTimeseriesAndInsertWithAlignedData() {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createTimeseries(
@@ -2174,7 +2169,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testCreateAlignedTimeseriesWithIllegalNames() throws Exception {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     manager.setStorageGroup(new PartialPath("root.laptop"));
     PartialPath deviceId = new PartialPath("root.laptop.d1");
     String[] measurementIds = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
@@ -2292,7 +2287,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testAutoCreateAlignedTimeseriesWhileInsert() {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
 
     try {
       long time = 1L;
@@ -2337,7 +2332,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testGetStorageGroupNodeByPath() {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     PartialPath partialPath = null;
 
     try {
@@ -2374,7 +2369,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testMeasurementIdWhileInsert() throws Exception {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
 
     PartialPath deviceId = new PartialPath("root.sg.d");
     InsertPlan insertPlan;
@@ -2416,7 +2411,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testTemplateSchemaNameCheckWhileCreate() {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     String[] illegalSchemaNames = {"a+b", "time", "timestamp", "TIME", "TIMESTAMP"};
     for (String schemaName : illegalSchemaNames) {
       CreateTemplatePlan plan = getCreateTemplatePlan(schemaName);
@@ -2450,7 +2445,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testDeviceNodeAfterAutoCreateTimeseriesFailure() throws Exception {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
 
     PartialPath sg1 = new PartialPath("root.a.sg");
     manager.setStorageGroup(sg1);
@@ -2475,7 +2470,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testTimeseriesDeletionWithEntityUsingTemplate() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     manager.setStorageGroup(new PartialPath("root.sg"));
 
     CreateTemplatePlan plan = getCreateTemplatePlan("s1");
@@ -2504,7 +2499,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testTagIndexRecovery() throws Exception {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
     PartialPath path = new PartialPath("root.sg.d.s");
     Map<String, String> tags = new HashMap<>();
     tags.put("description", "oldValue");
@@ -2563,7 +2558,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testTagCreationViaMLogPlanDuringMetadataSync() throws Exception {
-    MManager manager = IoTDB.metaManager;
+    MManager manager = (MManager) IoTDB.metaManager;
 
     PartialPath path = new PartialPath("root.sg.d.s");
     Map<String, String> tags = new HashMap<>();

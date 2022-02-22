@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -326,8 +325,7 @@ public class QueryAlignedTimeseriesWithIDTableTest {
   }
 
   private void insertDataInDisk()
-      throws IllegalPathException, QueryProcessException, StorageGroupNotSetException,
-          StorageEngineException {
+      throws MetadataException, QueryProcessException, StorageEngineException {
     long[] times = new long[] {10L, 11L, 12L, 13L};
     List<Integer> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE.ordinal());

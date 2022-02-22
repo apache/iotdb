@@ -71,7 +71,7 @@ abstract class BaseApplier implements LogApplier {
    * @throws StorageEngineException
    */
   void applyPhysicalPlan(PhysicalPlan plan, DataGroupMember dataGroupMember)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, MetadataException, StorageEngineException {
     if (plan instanceof InsertPlan) {
       processPlanWithTolerance((InsertPlan) plan, dataGroupMember);
     } else if (plan != null && !plan.isQuery()) {
@@ -96,7 +96,7 @@ abstract class BaseApplier implements LogApplier {
 
   private void handleBatchProcessException(
       BatchProcessException e, InsertPlan plan, DataGroupMember dataGroupMember)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, MetadataException, StorageEngineException {
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePartition()) {
       TSStatus[] failingStatus = e.getFailingStatus();
       for (int i = 0; i < failingStatus.length; i++) {
@@ -136,7 +136,7 @@ abstract class BaseApplier implements LogApplier {
   }
 
   private void handleBatchProcessException(BatchProcessException e, PhysicalPlan plan)
-      throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
+      throws QueryProcessException, StorageEngineException, MetadataException {
     TSStatus[] failingStatus = e.getFailingStatus();
     boolean needThrow = false;
     for (int i = 0; i < failingStatus.length; i++) {
@@ -180,7 +180,7 @@ abstract class BaseApplier implements LogApplier {
   }
 
   private void executeAfterSync(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, MetadataException, StorageEngineException {
     try {
       metaGroupMember.syncLeaderWithConsistencyCheck(true);
     } catch (CheckConsistencyException ce) {
@@ -198,7 +198,7 @@ abstract class BaseApplier implements LogApplier {
    * @throws StorageEngineException
    */
   private void processPlanWithTolerance(InsertPlan plan, DataGroupMember dataGroupMember)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, MetadataException, StorageEngineException {
     try {
       getQueryExecutor().processNonQuery(plan);
     } catch (BatchProcessException e) {
