@@ -311,6 +311,12 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     }
   }
 
+  /**
+   * 5 source seq files: [11,11] [12,12] [13,13] [14,14] [15,15]<br>
+   * 10 source unseq files: [0,0] [1,1] ... [9,9]<br>
+   * selected seq file index: 1<br>
+   * selected unseq file index: 1 ~ 10
+   */
   @Test
   public void testUnseqFilesOverlappedWithOneSeqFile()
       throws IOException, WriteProcessException, MergeException {
@@ -368,6 +374,12 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     Assert.assertEquals(10, result[1].size());
   }
 
+  /**
+   * 5 source seq files: [11,11] [12,12] [13,13] [14,14] [15,15]<br>
+   * 1 source unseq files: [0 ~ 9]<br>
+   * selected seq file index: 1<br>
+   * selected unseq file index: 1
+   */
   @Test
   public void testOneUnseqFileOverlappedWithOneSeqFile()
       throws IOException, WriteProcessException, MergeException {
@@ -425,6 +437,12 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     Assert.assertEquals(1, result[1].size());
   }
 
+  /**
+   * 5 source seq files: [11,11] [12,12] [13,13] [14,14] [15,15]<br>
+   * 2 source unseq files: [7~9] [10~13]<br>
+   * selected seq file index: 1 2 3 <br>
+   * selected unseq file index: 1 2
+   */
   @Test
   public void testUnseqFilesOverlapped() throws IOException, WriteProcessException, MergeException {
     List<TsFileResource> seqList = new ArrayList<>();
@@ -482,6 +500,12 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     Assert.assertEquals(2, result[1].size());
   }
 
+  /**
+   * 5 source seq files: [11,11] [12,12] [13,13] [14,14] [15,15]<br>
+   * 4 source unseq files: [7~9] [10~13] [14~16] [17~18]<br>
+   * selected seq file index: 1 2 3 4 5<br>
+   * selected unseq file index: 1 2 3 4
+   */
   @Test
   public void testAllUnseqFilesOverlapped()
       throws IOException, WriteProcessException, MergeException {
