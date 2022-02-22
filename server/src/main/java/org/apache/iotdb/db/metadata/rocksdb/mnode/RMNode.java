@@ -1,5 +1,24 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.metadata.rocksdb.mnode;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -11,13 +30,11 @@ import org.apache.iotdb.db.metadata.rocksdb.RockDBConstants;
 import org.apache.iotdb.db.metadata.rocksdb.RocksDBMNodeType;
 import org.apache.iotdb.db.metadata.rocksdb.RocksDBReadWriteHandler;
 import org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils;
-import org.apache.iotdb.db.metadata.template.Template;
 
 import org.rocksdb.RocksDBException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
 import java.util.Objects;
 
 public abstract class RMNode implements IMNode {
@@ -28,13 +45,14 @@ public abstract class RMNode implements IMNode {
 
   protected IMNode parent;
 
-  protected IMNode child;
+  protected String name;
 
-  private static final Logger logger = LoggerFactory.getLogger(RMNode.class);
+  protected static final Logger logger = LoggerFactory.getLogger(RMNode.class);
 
   /** Constructor of MNode. */
   public RMNode(String fullPath) {
     this.fullPath = fullPath.intern();
+    this.name = fullPath.substring(fullPath.lastIndexOf(RockDBConstants.PATH_SEPARATOR) + 1);
     try {
       readWriteHandler = RocksDBReadWriteHandler.getInstance();
     } catch (RocksDBException e) {
@@ -44,12 +62,12 @@ public abstract class RMNode implements IMNode {
 
   @Override
   public String getName() {
-    return fullPath;
+    return name;
   }
 
   @Override
   public void setName(String name) {
-    // Do noting
+    this.name = name;
   }
 
   @Override
@@ -58,11 +76,17 @@ public abstract class RMNode implements IMNode {
       return parent;
     }
     String parentName = fullPath.substring(0, fullPath.lastIndexOf(RockDBConstants.PATH_SEPARATOR));
+    parent = getNodeBySpecifiedPath(parentName);
+    return parent;
+  }
+
+  protected IMNode getNodeBySpecifiedPath(String keyName) {
     byte[] value = null;
+    IMNode node;
+    int nodeNameMaxLevel = RocksDBUtils.getLevelByPartialPath(keyName);
     for (RocksDBMNodeType type : RocksDBMNodeType.values()) {
       String parentInnerName =
-          RocksDBUtils.convertPartialPathToInner(
-              parentName, RocksDBUtils.getLevelByPartialPath(parentName), type.getValue());
+          RocksDBUtils.convertPartialPathToInner(keyName, nodeNameMaxLevel, type.getValue());
       try {
         value = readWriteHandler.get(null, (type + parentInnerName).getBytes());
       } catch (RocksDBException e) {
@@ -71,40 +95,26 @@ public abstract class RMNode implements IMNode {
       if (value != null) {
         switch (type.getValue()) {
           case RockDBConstants.NODE_TYPE_SG:
-            parent = new RStorageGroupMNode(parentName, value);
+            node = new RStorageGroupMNode(keyName, value);
+            return node;
           case RockDBConstants.NODE_TYPE_INTERNAL:
-            parent = new RInternalMNode(parentName);
+            node = new RInternalMNode(keyName);
+            return node;
           case RockDBConstants.NODE_TYPE_ENTITY:
-            parent = new REntityMNode(parentName);
+            node = new REntityMNode(keyName);
+            return node;
+          case RockDBConstants.NODE_TYPE_MEASUREMENT:
+            node = new RMeasurementMNode(keyName, value);
+            return node;
         }
       }
     }
-    return parent;
+    return null;
   }
 
   @Override
   public void setParent(IMNode parent) {
     this.parent = parent;
-  }
-
-  @Override
-  public boolean hasChild(String name) {
-    // TODO: query to find if has children
-    return false;
-  }
-
-  @Override
-  public IMNode getChild(String name) {
-    if (!hasChild(name)) {
-      return null;
-    }
-    // TODO: query by types
-    return null;
-  }
-
-  @Override
-  public Map<String, IMNode> getChildren() {
-    return null;
   }
 
   /**
@@ -129,17 +139,36 @@ public abstract class RMNode implements IMNode {
 
   @Override
   public void setFullPath(String fullPath) {
-    new UnsupportedOperationException();
+    this.fullPath = fullPath;
   }
 
   @Override
   public boolean isEmptyInternal() {
-    // TODO: implement it
-    return false;
+    return !IoTDBConstant.PATH_ROOT.equals(name)
+        && !isStorageGroup()
+        && !isMeasurement()
+        && getSchemaTemplate() == null
+        && !isUseTemplate()
+        && getChildren().size() == 0;
   }
 
   @Override
   public boolean isUseTemplate() {
+    return false;
+  }
+
+  @Override
+  public boolean isStorageGroup() {
+    return false;
+  }
+
+  @Override
+  public boolean isEntity() {
+    return false;
+  }
+
+  @Override
+  public boolean isMeasurement() {
     return false;
   }
 
@@ -189,53 +218,8 @@ public abstract class RMNode implements IMNode {
 
   @Override
   public String toString() {
-    return this.fullPath;
+    return this.getName();
   }
 
-  // unsupported exception
-  @Override
-  public void addChild(String name, IMNode child) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public IMNode addChild(IMNode child) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void deleteChild(String name) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void replaceChild(String oldChildName, IMNode newChildNode) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setChildren(Map<String, IMNode> children) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setUseTemplate(boolean useTemplate) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public Template getUpperTemplate() {
-    return null;
-  }
-
-  @Override
-  public Template getSchemaTemplate() {
-    return null;
-  }
-
-  @Override
-  public void setSchemaTemplate(Template schemaTemplate) {
-    throw new UnsupportedOperationException();
-  }
   // end
 }
