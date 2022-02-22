@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.metadata.rocksdb.mnode;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
@@ -9,6 +27,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.rocksdb.RockDBConstants;
 import org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -43,6 +62,24 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   }
 
   @Override
+  public void addChild(String name, IMNode child) {
+    // Do nothing
+  }
+
+  @Override
+  public IMNode addChild(IMNode child) {
+    return null;
+  }
+
+  @Override
+  public void setChildren(Map<String, IMNode> children) {
+    // Do nothing
+  }
+
+  @Override
+  public void replaceChild(String oldChildName, IMNode newChildNode) {}
+
+  @Override
   public boolean hasChild(String name) {
     return false;
   }
@@ -70,6 +107,11 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   @Override
   public boolean isMeasurement() {
     return true;
+  }
+
+  @Override
+  public Template getUpperTemplate() {
+    return null;
   }
 
   @Override
@@ -131,6 +173,11 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
     }
   }
 
+  @Override
+  public void deleteChild(String name) {
+    // Do nothing
+  }
+
   public Map<String, String> getTags() {
     return tags;
   }
@@ -171,6 +218,18 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   public void setTriggerExecutor(TriggerExecutor triggerExecutor) {
     throw new UnsupportedOperationException();
   }
+
+  @Override
+  public void setSchemaTemplate(Template schemaTemplate) {}
+
+  @Override
+  public Template getSchemaTemplate() {
+    throw new RuntimeException(
+        String.format("current node %s is a MeasurementMNode, can not get Device Template", name));
+  }
+
+  @Override
+  public void setUseTemplate(boolean useTemplate) {}
 
   @Override
   public ILastCacheContainer getLastCacheContainer() {
