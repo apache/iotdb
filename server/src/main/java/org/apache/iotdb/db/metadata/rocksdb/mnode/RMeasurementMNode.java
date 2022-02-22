@@ -62,64 +62,18 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   }
 
   @Override
-  public void addChild(String name, IMNode child) {
-    // Do nothing
+  public IEntityMNode getParent() {
+    if (parent == null) {
+      return null;
+    }
+    return parent.getAsEntityMNode();
   }
-
-  @Override
-  public IMNode addChild(IMNode child) {
-    return null;
-  }
-
-  @Override
-  public void setChildren(Map<String, IMNode> children) {
-    // Do nothing
-  }
-
-  @Override
-  public void replaceChild(String oldChildName, IMNode newChildNode) {}
-
-  @Override
-  public boolean hasChild(String name) {
-    return false;
-  }
-
-  @Override
-  public IMNode getChild(String name) {
-    return null;
-  }
-
-  @Override
-  public Map<String, IMNode> getChildren() {
-    return null;
-  }
-
-  @Override
-  public boolean isStorageGroup() {
-    return false;
-  }
-
-  @Override
-  public boolean isEntity() {
-    return false;
-  }
-
-  @Override
-  public boolean isMeasurement() {
-    return true;
-  }
-
-  @Override
-  public Template getUpperTemplate() {
-    return null;
-  }
-
-  @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {}
 
   @Override
   public MeasurementPath getMeasurementPath() {
-    return null;
+    MeasurementPath result = new MeasurementPath(super.getPartialPath(), schema);
+    result.setUnderAlignedEntity(getParent().isAligned());
+    return result;
   }
 
   @Override
@@ -130,6 +84,17 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   @Override
   public TSDataType getDataType(String measurementId) {
     return schema.getType();
+  }
+
+  // unsupported exceptions
+  @Override
+  public long getOffset() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setOffset(long offset) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -143,8 +108,28 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   }
 
   @Override
-  public IEntityMNode getParent() {
-    return null;
+  public TriggerExecutor getTriggerExecutor() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setTriggerExecutor(TriggerExecutor triggerExecutor) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ILastCacheContainer getLastCacheContainer() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void serializeTo(MLogWriter logWriter) throws IOException {
+    throw new UnsupportedOperationException();
   }
 
   private void deserialize(byte[] value) {
@@ -174,8 +159,65 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   }
 
   @Override
+  public boolean hasChild(String name) {
+    return false;
+  }
+
+  @Override
+  public IMNode getChild(String name) {
+    throw new RuntimeException(
+        String.format(
+            "current node %s is a MeasurementMNode, can not get child %s", super.name, name));
+  }
+
+  @Override
+  public void addChild(String name, IMNode child) {
+    // Do nothing
+  }
+
+  @Override
+  public IMNode addChild(IMNode child) {
+    return null;
+  }
+
+  @Override
   public void deleteChild(String name) {
     // Do nothing
+  }
+
+  @Override
+  public void replaceChild(String oldChildName, IMNode newChildNode) {}
+
+  @Override
+  public Map<String, IMNode> getChildren() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setChildren(Map<String, IMNode> children) {
+    // Do nothing
+  }
+
+  @Override
+  public Template getUpperTemplate() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setSchemaTemplate(Template schemaTemplate) {}
+
+  @Override
+  public Template getSchemaTemplate() {
+    throw new RuntimeException(
+        String.format("current node %s is a MeasurementMNode, can not get Device Template", name));
+  }
+
+  @Override
+  public void setUseTemplate(boolean useTemplate) {}
+
+  @Override
+  public boolean isMeasurement() {
+    return true;
   }
 
   public Map<String, String> getTags() {
@@ -196,48 +238,5 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
 
   public byte[] getRocksDBValue() throws IOException {
     return RocksDBUtils.buildMeasurementNodeValue(schema, alias, tags, attributes);
-  }
-
-  // unsupported exceptions
-  @Override
-  public long getOffset() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setOffset(long offset) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public TriggerExecutor getTriggerExecutor() {
-    return null;
-  }
-
-  @Override
-  public void setTriggerExecutor(TriggerExecutor triggerExecutor) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setSchemaTemplate(Template schemaTemplate) {}
-
-  @Override
-  public Template getSchemaTemplate() {
-    throw new RuntimeException(
-        String.format("current node %s is a MeasurementMNode, can not get Device Template", name));
-  }
-
-  @Override
-  public void setUseTemplate(boolean useTemplate) {}
-
-  @Override
-  public ILastCacheContainer getLastCacheContainer() {
-    return null;
-  }
-
-  @Override
-  public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {
-    throw new UnsupportedOperationException();
   }
 }
