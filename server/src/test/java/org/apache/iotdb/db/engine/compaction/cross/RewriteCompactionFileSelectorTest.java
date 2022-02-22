@@ -146,9 +146,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
-    assertEquals(2, result.length);
-    assertEquals(5, result[0].size());
-    assertEquals(1, result[1].size());
+    assertEquals(0, result.length);
     resource.clear();
   }
 
