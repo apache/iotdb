@@ -851,10 +851,8 @@ public class MManager {
       return storageGroupPath;
     }
 
-    while (mtree.isEmptyInternalMNode(node)) {
-      mNodeCache.invalidate(node.getPartialPath());
-      node = node.getParent();
-    }
+    mNodeCache.invalidate(node.getPartialPath());
+
     totalSeriesNumber.addAndGet(-1);
     if (!allowToCreateNewSeries
         && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {

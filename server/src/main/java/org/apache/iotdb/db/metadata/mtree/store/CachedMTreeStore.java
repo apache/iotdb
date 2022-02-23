@@ -353,7 +353,6 @@ public class CachedMTreeStore implements IMTreeStore {
         this.parent = parent;
         bufferIterator = getCachedMNodeContainer(parent).getChildrenBufferIterator();
         this.iterator = file.getChildren(parent);
-        readNext();
       } catch (Throwable e) {
         readLock.unlock();
         throw e;
@@ -374,7 +373,9 @@ public class CachedMTreeStore implements IMTreeStore {
     @Override
     public IMNode next() {
       if (nextNode == null) {
-        throw new NoSuchElementException();
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
       }
       IMNode result = nextNode;
       nextNode = null;
@@ -425,7 +426,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
       if (iterator.hasNext()) {
         node = iterator.next();
-        // node in buffer won't be evicted
+        // node in buffer won't be evicted during Iteration
         pinMNodeInMemory(node);
         cacheStrategy.updateCacheStatusAfterMemoryRead(node);
       }
@@ -439,11 +440,14 @@ public class CachedMTreeStore implements IMTreeStore {
 
     @Override
     public void close() {
-      if (nextNode != null) {
-        unPin(nextNode);
-        nextNode = null;
+      try {
+        if (nextNode != null) {
+          unPin(nextNode);
+          nextNode = null;
+        }
+      } finally {
+        readLock.unlock();
       }
-      readLock.unlock();
     }
   }
 }
