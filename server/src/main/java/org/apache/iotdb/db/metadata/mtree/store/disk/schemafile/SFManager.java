@@ -4,6 +4,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.SchemaFileNotExists;
+import org.apache.iotdb.db.exception.metadata.SegmentNotFoundException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
@@ -22,11 +23,12 @@ import java.util.Iterator;
 import java.util.Map;
 
 /**
- * Schema File Manager enables upper class operates persistent schema files ignoring specific file.
+ * SFManager(Schema File Manager) enables MTreeStore operates MNodes on disk ignoring specific file.
  *
- * <p>This class implements these functions:
- * <li>scan target directory, recover MTree above storage group
- * <li>extract storage group, choose corresponding file
+ * <p>This class mainly implements these functions:
+ * <li>Scan target directory, recover MTree above storage group
+ * <li>Extract storage group, choose corresponding file and operate on it
+ * <li>Maintain nodes above storage group on MTree
  */
 public class SFManager {
 
@@ -35,6 +37,7 @@ public class SFManager {
           + File.separator
           + MetadataConstant.SCHEMA_FILE_DIR;
 
+  // key for the path from root to sgNode
   Map<String, ISchemaFile> schemaFiles;
   IMNode root;
 
@@ -55,11 +58,22 @@ public class SFManager {
 
   // region Interfaces
 
+  /**
+   * Load all schema files under target directory, return the recovered tree.
+   *
+   * @return a deep copy tree corresponding to files.
+   */
   public IMNode init() throws MetadataException, IOException {
     loadSchemaFiles();
     return getUpperMTree();
   }
 
+  /**
+   * Get storage group name of the parameter node, write the node with non-negative segment address
+   * into corresponding file.
+   *
+   * @param node cannot be a MeasurementMNode
+   */
   public void writeMNode(IMNode node) throws MetadataException, IOException {
     IMNode sgNode = getStorageGroupNode(node);
     String sgName = sgNode.getFullPath();
@@ -75,6 +89,12 @@ public class SFManager {
     schemaFiles.get(sgName).writeMNode(node);
   }
 
+  /**
+   * If a storage group node, remove corresponding file and prune upper tree, otherwise remove
+   * record of the node as well as segment of it if not measurement.
+   *
+   * @param node arbitrary instance implements IMNode
+   */
   public void delete(IMNode node) throws MetadataException, IOException {
     if (node.isStorageGroup()) {
       // delete entire corresponding file
@@ -83,10 +103,11 @@ public class SFManager {
     } else {
       // delete inside a schema file
       loadAndUpdateUpperTree(node);
-      schemaFiles.get(getStorageGroupNode(node).getName()).delete(node);
+      schemaFiles.get(getStorageGroupNode(node).getFullPath()).delete(node);
     }
   }
 
+  /** Close corresponding files and get a new upper tree. */
   public void close() throws MetadataException, IOException {
     for (ISchemaFile file : schemaFiles.values()) {
       file.close();
@@ -95,6 +116,7 @@ public class SFManager {
     root = new InternalMNode(null, MetadataConstant.ROOT);
   }
 
+  /** Close corresponding schema file of the sgNode. */
   public void close(IMNode sgNode) throws MetadataException, IOException {
     if (!sgNode.isStorageGroup()) {
       throw new MetadataException(
@@ -103,9 +125,9 @@ public class SFManager {
               sgNode.getFullPath()));
     }
 
-    if (schemaFiles.containsKey(sgNode.getName())) {
-      schemaFiles.get(sgNode.getName()).close();
-      schemaFiles.remove(sgNode.getName());
+    if (schemaFiles.containsKey(sgNode.getFullPath())) {
+      schemaFiles.get(sgNode.getFullPath()).close();
+      schemaFiles.remove(sgNode.getFullPath());
     }
     pruneStorageGroupNode(sgNode);
   }
@@ -138,7 +160,14 @@ public class SFManager {
 
   public Iterator<IMNode> getChildren(IMNode parent) throws MetadataException, IOException {
     loadAndUpdateUpperTree(parent);
-    return schemaFiles.get(getStorageGroupNode(parent).getFullPath()).getChildren(parent);
+    try {
+      return schemaFiles.get(getStorageGroupNode(parent).getFullPath()).getChildren(parent);
+    } catch (SegmentNotFoundException e) {
+      // throw wrapped exception since class above SFManager shall not perceive page or segment
+      // inside schema file
+      throw new MetadataException(
+          String.format("Node [%s] does not exists in schema file.", parent.getFullPath()));
+    }
   }
 
   // endregion
@@ -302,7 +331,7 @@ public class SFManager {
 
   private String getFilePath(String sgName) {
     return fileDirs
-        + File.pathSeparator
+        + File.separator
         + sgName
         + IoTDBConstant.PATH_SEPARATOR
         + MetadataConstant.SCHEMA_FILE_SUFFIX;

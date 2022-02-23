@@ -314,7 +314,7 @@ public class SchemaFile implements ISchemaFile {
 
   @Override
   public void delete(IMNode node) throws IOException, MetadataException {
-    long recSegAddr = node.getParent() == null ? ROOT_INDEX : getNodeAddress(node);
+    long recSegAddr = node.getParent() == null ? ROOT_INDEX : getNodeAddress(node.getParent());
     recSegAddr = getTargetSegmentAddress(recSegAddr, node.getName());
     getPageInstance(getPageIndex(recSegAddr)).removeRecord(getSegIndex(recSegAddr), node.getName());
 
@@ -355,7 +355,7 @@ public class SchemaFile implements ISchemaFile {
     return new Iterator<IMNode>() {
       long nextSeg = page.getNextSegAddress(segId);
       long prevSeg = page.getPrevSegAddress(segId);
-      Queue<IMNode> children = page.getChildren(segId);
+      final Queue<IMNode> children = page.getChildren(segId);
 
       @Override
       public boolean hasNext() {

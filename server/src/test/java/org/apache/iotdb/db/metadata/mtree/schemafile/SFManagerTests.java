@@ -28,6 +28,9 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 public class SFManagerTests {
 
   @Before
@@ -106,6 +109,74 @@ public class SFManagerTests {
     }
 
     sfManager.close();
+  }
+
+  @Test
+  public void testDelete() throws MetadataException, IOException {
+    IMNode root = getAnUpperTree();
+    Iterable<IMNode> iteSG = getIterable(preOrderTraverse(root));
+    Set<IMNode> sgNodes = new HashSet<>();
+
+    int seed = 0;
+    for (IMNode node : iteSG) {
+      if (node.isStorageGroup()) {
+        sgNodes.add(node);
+        fillLowerTree(node, "sed" + seed);
+      }
+      seed++;
+    }
+
+    SFManager sfManager = SFManager.getInstance();
+    sfManager.init();
+
+    for (IMNode sgNode : sgNodes) {
+      Iterable<IMNode> iteSeries = getIterable(preOrderTraverseSeries(sgNode));
+      for (IMNode node : iteSeries) {
+        if (!node.isMeasurement()) {
+          sfManager.writeMNode(node);
+        }
+      }
+    }
+
+    IMNode delSgNode = (IMNode) sgNodes.toArray()[0];
+    IMNode delGPSNode = (IMNode) sgNodes.toArray()[1];
+    IMNode delXNode = (IMNode) sgNodes.toArray()[2];
+
+    sfManager.delete(delSgNode);
+    try {
+      sfManager.getChildren(delSgNode);
+      fail();
+    } catch (MetadataException e) {
+      assertEquals(
+          "Schema file [target/tmp/system/schema/pst/root.ph.pre.sg3.pst] not exists.",
+          e.getMessage());
+    }
+
+    sfManager.delete(delGPSNode.getChild("GPS"));
+    try {
+      sfManager.getChildNode(delGPSNode, "GPS");
+      fail();
+    } catch (MetadataException e) {
+      assertEquals("Node [root.sg1] has no child named [GPS].", e.getMessage());
+    }
+    try {
+      sfManager.getChildren(delGPSNode.getChild("GPS"));
+      fail();
+    } catch (MetadataException e) {
+      assertEquals("Node [root.sg1.GPS] does not exists in schema file.", e.getMessage());
+    }
+
+    sfManager.delete(delXNode.getChild("GPS").getChild("x"));
+    try {
+      sfManager.getChildNode(delXNode.getChild("GPS"), "x");
+      fail();
+    } catch (MetadataException e) {
+      assertEquals("Node [root.kv1.sg2.GPS] has no child named [x].", e.getMessage());
+    }
+    Iterable<IMNode> res = getIterable(sfManager.getChildren(delXNode.getChild("GPS")));
+    for (IMNode rNode : res) {
+      assertEquals("y", rNode.getName());
+    }
   }
 
   // region Tools to build a tree
