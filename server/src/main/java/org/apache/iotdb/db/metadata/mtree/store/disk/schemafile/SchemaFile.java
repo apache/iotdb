@@ -25,7 +25,6 @@ import org.apache.iotdb.db.exception.metadata.SchemaFileNotExists;
 import org.apache.iotdb.db.exception.metadata.SchemaPageOverflowException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
@@ -60,7 +59,10 @@ public class SchemaFile implements ISchemaFile {
   public static int FILE_HEADER_SIZE = 256; // size of file header in bytes
 
   // folder to store .pmt files
-  public static String FILE_FOLDER = IoTDBDescriptor.getInstance().getConfig().getSchemaDir() + File.separator + MetadataConstant.SCHEMA_FILE_DIR;
+  public static String FILE_FOLDER =
+      IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+          + File.separator
+          + MetadataConstant.SCHEMA_FILE_DIR;
 
   public static int PAGE_LENGTH = 16 * 1024; // 16 kib for default
   public static short PAGE_HEADER_SIZE = 16;
@@ -92,9 +94,15 @@ public class SchemaFile implements ISchemaFile {
   File pmtFile;
   FileChannel channel;
 
-  private SchemaFile(String sgName, boolean override, long ttl) throws IOException, MetadataException {
+  private SchemaFile(String sgName, boolean override, long ttl)
+      throws IOException, MetadataException {
     this.storageGroupName = sgName;
-    filePath = SchemaFile.FILE_FOLDER + File.separator + sgName + IoTDBConstant.PATH_SEPARATOR + MetadataConstant.SCHEMA_FILE_SUFFIX;
+    filePath =
+        SchemaFile.FILE_FOLDER
+            + File.separator
+            + sgName
+            + IoTDBConstant.PATH_SEPARATOR
+            + MetadataConstant.SCHEMA_FILE_SUFFIX;
 
     pmtFile = new File(filePath);
     if (!pmtFile.exists() && !override) {
@@ -102,7 +110,8 @@ public class SchemaFile implements ISchemaFile {
     }
 
     if (pmtFile.exists() && override) {
-      logger.warn(String.format("Schema File [%s] will be overwritten since already exists.", filePath));
+      logger.warn(
+          String.format("Schema File [%s] will be overwritten since already exists.", filePath));
       Files.delete(Paths.get(pmtFile.toURI()));
     }
 
@@ -115,11 +124,12 @@ public class SchemaFile implements ISchemaFile {
     channel = new RandomAccessFile(pmtFile, "rw").getChannel();
     headerContent = ByteBuffer.allocate(SchemaFile.FILE_HEADER_SIZE);
     pageInstCache = new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true);
-    dataTTL = ttl;  // will be overwritten if to init
+    dataTTL = ttl; // will be overwritten if to init
     initFileHeader();
   }
 
-  public static ISchemaFile initSchemaFile(String sgName, long dataTTL) throws IOException, MetadataException {
+  public static ISchemaFile initSchemaFile(String sgName, long dataTTL)
+      throws IOException, MetadataException {
     return new SchemaFile(sgName, true, dataTTL);
   }
 
@@ -132,7 +142,8 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public IMNode init() throws MetadataException {
     String[] sgPathNodes = MetaUtils.splitPathToDetachedPath(storageGroupName);
-    return setNodeAddress(new StorageGroupMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
+    return setNodeAddress(
+        new StorageGroupMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
   }
 
   @Override
@@ -149,6 +160,7 @@ public class SchemaFile implements ISchemaFile {
         curPage = getRootPage();
         pageIndex = curPage.getPageIndex();
         curSegIdx = 0;
+        setNodeAddress(node, 0L);
       } else {
         throw new MetadataException("Cannot store a node without segment address except for root.");
       }
@@ -302,7 +314,7 @@ public class SchemaFile implements ISchemaFile {
 
   @Override
   public void delete(IMNode node) throws IOException, MetadataException {
-    long recSegAddr = node.getParent() == null ? ROOT_INDEX : getNodeAddress(node);
+    long recSegAddr = node.getParent() == null ? ROOT_INDEX : getNodeAddress(node.getParent());
     recSegAddr = getTargetSegmentAddress(recSegAddr, node.getName());
     getPageInstance(getPageIndex(recSegAddr)).removeRecord(getSegIndex(recSegAddr), node.getName());
 
@@ -343,7 +355,7 @@ public class SchemaFile implements ISchemaFile {
     return new Iterator<IMNode>() {
       long nextSeg = page.getNextSegAddress(segId);
       long prevSeg = page.getPrevSegAddress(segId);
-      Queue<IMNode> children = page.getChildren(segId);
+      final Queue<IMNode> children = page.getChildren(segId);
 
       @Override
       public boolean hasNext() {
@@ -435,17 +447,20 @@ public class SchemaFile implements ISchemaFile {
 
   /**
    * This method initiate file header buffer, with an empty file if meant to init.
-   * <p>
-   * <b>File Header Structure:</b>
+   *
+   * <p><b>File Header Structure:</b>
+   *
    * <ul>
    *   <li>1 int (4 bytes): last page index
    *   <li>var length: root(SG) node info
-   *   <ul>
-   *     <li><s>a. var length string (less than 200 bytes): path to root(SG) node</s>
-   *     <li>a. 1 long (8 bytes): dataTTL
-   *     <li>b. fixed length buffer (13 bytes): internal or entity node buffer [not implemented yet]
-   *   </ul>
+   *       <ul>
+   *         <li><s>a. var length string (less than 200 bytes): path to root(SG) node</s>
+   *         <li>a. 1 long (8 bytes): dataTTL
+   *         <li>b. fixed length buffer (13 bytes): internal or entity node buffer [not implemented
+   *             yet]
+   *       </ul>
    * </ul>
+   *
    * ... (Expected to extend for optimization) ...
    */
   private void initFileHeader() throws IOException, MetadataException {
