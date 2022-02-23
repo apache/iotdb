@@ -41,29 +41,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ALIAS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ATTRIBUTES;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_TAGS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_TTL;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_VERSION;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_FLAG;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ESCAPE_PATH_SEPARATOR;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_ALIAS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_ATTRIBUTES;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_TAGS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_SET_TTL;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ALIAS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_INTERNAL;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.PATH_SEPARATOR;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT_CHAR;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT_STRING;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
 
 public class RocksDBUtils {
 
@@ -234,11 +212,13 @@ public class RocksDBUtils {
     }
 
     int index = -1;
+    boolean typeExist = false;
     ByteBuffer byteBuffer = ByteBuffer.wrap(data);
     // skip the version flag and node type flag
     ReadWriteIOUtils.readBytes(byteBuffer, 2);
     while (byteBuffer.hasRemaining()) {
       byte blockType = ReadWriteIOUtils.readByte(byteBuffer);
+      index = byteBuffer.position();
       switch (blockType) {
         case DATA_BLOCK_TYPE_TTL:
           ReadWriteIOUtils.readLong(byteBuffer);
@@ -261,23 +241,23 @@ public class RocksDBUtils {
       }
       // got the data we need,don't need to read any more
       if (type == blockType) {
-        index = byteBuffer.arrayOffset();
+        typeExist = true;
         break;
       }
     }
-    return index;
+    return typeExist ? index : -1;
   }
 
   public static byte[] updateTTL(byte[] origin, long ttl) {
     int index = indexOfDataBlockType(origin, DATA_BLOCK_TYPE_TTL);
-    if (index == -1) {
+    if (index < 1) {
       byte[] ttlBlock = new byte[Long.BYTES + 1];
       ttlBlock[0] = DATA_BLOCK_TYPE_TTL;
       BytesUtils.longToBytes(ttl, ttlBlock, 1);
       origin[1] = (byte) (origin[1] | FLAG_SET_TTL);
       return BytesUtils.concatByteArray(origin, ttlBlock);
     } else {
-      BytesUtils.longToBytes(ttl, origin, index + 1);
+      BytesUtils.longToBytes(ttl, origin, index);
       return origin;
     }
   }
