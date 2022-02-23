@@ -190,7 +190,7 @@ else
             IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xlog:gc=info,heap*=info,age*=info,safepoint=info,promotion*=info:file=${IOTDB_HOME}/logs/gc.log:time,uptime,pid,tid,level:filecount=10,filesize=10485760"
         fi
     fi
-    # Add argLine for Java 16 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default] (https://openjdk.java.net/jeps/396)
+    # Add argLine for Java 11 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default] (https://openjdk.java.net/jeps/396)
     illegal_access_params="--illegal-access=permit"
     illegal_access_params="$illegal_access_params --add-opens=java.base/java.util.concurrent=ALL-UNNAMED"
     illegal_access_params="$illegal_access_params --add-opens=java.base/java.lang=ALL-UNNAMED"
