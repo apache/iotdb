@@ -254,19 +254,19 @@ public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<InfluxOpera
 
   private static InfluxFilterOperator parseBasicFunctionOperator(
       InfluxDBSqlParser.PredicateContext ctx, String keyName) {
-    InfluxBasicFunctionOperatorInflux basic;
+    InfluxBasicFunctionOperator basic;
     if (ctx.constant().dateExpression() != null) {
       if (!keyName.equals(SQLConstant.RESERVED_TIME)) {
         throw new IllegalArgumentException("Date can only be used to time");
       }
       basic =
-          new InfluxBasicFunctionOperatorInflux(
+          new InfluxBasicFunctionOperator(
               FilterConstant.lexerToFilterType.get(ctx.comparisonOperator().type.getType()),
               keyName,
               Long.toString(parseDateExpression(ctx.constant().dateExpression())));
     } else {
       basic =
-          new InfluxBasicFunctionOperatorInflux(
+          new InfluxBasicFunctionOperator(
               FilterConstant.lexerToFilterType.get(ctx.comparisonOperator().type.getType()),
               keyName,
               ctx.constant().getText());
