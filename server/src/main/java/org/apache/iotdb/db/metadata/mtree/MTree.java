@@ -59,6 +59,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -1626,6 +1627,44 @@ public class MTree implements Serializable {
       }
       checkTemplateInUseOnLowerNode(child);
     }
+  }
+
+  /**
+   * Check that each node set with tarTemplate and its descendants have overlapping nodes with
+   * appending measurements
+   */
+  public boolean isTemplateAppendable(String tarTemplate, List<String> appendMeasurements)
+      throws MetadataException {
+    List<String> setPaths = getPathsSetOnTemplate(tarTemplate);
+    if (setPaths.size() == 0) {
+      return true;
+    }
+    Deque<IMNode> setNodes = new ArrayDeque<>();
+    for (String path : setPaths) {
+      setNodes.add(getNodeByPath(new PartialPath(path)));
+    }
+
+    // since overlap of template and MTree is not allowed, it is sufficient to check on the first
+    // node
+    Set<String> overlapSet = new HashSet<>();
+    for (String path : appendMeasurements) {
+      overlapSet.add(MetaUtils.splitPathToDetachedPath(path)[0]);
+    }
+
+    while (setNodes.size() != 0) {
+      IMNode cur = setNodes.pop();
+      if (cur.getChildren().size() != 0) {
+        for (IMNode child : cur.getChildren().values()) {
+          if (overlapSet.contains(child.getName())) {
+            return false;
+          }
+          if (!child.isMeasurement()) {
+            setNodes.push(child);
+          }
+        }
+      }
+    }
+    return true;
   }
 
   /**

@@ -25,11 +25,14 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -38,6 +41,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
@@ -229,6 +233,167 @@ public class TemplateUT {
     session.dropSchemaTemplate("template1");
 
     session.createSchemaTemplate(temp1);
+  }
+
+  @Test
+  public void testUpdateTemplate()
+      throws StatementExecutionException, IoTDBConnectionException, IOException {
+    Template temp1 = getTemplate("template1");
+    session.createSchemaTemplate(temp1);
+
+    session.deleteNodeInTemplate("template1", "x");
+    session.deleteNodeInTemplate("template1", "y");
+
+    session.setSchemaTemplate("template1", "root.sg.v1");
+
+    session.addAlignedMeasurementsInTemplate(
+        "template1",
+        Collections.singletonList("append"),
+        Collections.singletonList(TSDataType.INT64),
+        Collections.singletonList(TSEncoding.RLE),
+        Collections.singletonList(CompressionType.UNCOMPRESSED));
+
+    try {
+      session.deleteNodeInTemplate("template1", "append");
+      fail();
+    } catch (StatementExecutionException e) {
+      assertEquals(
+          "303: Template [template1] cannot be pruned since had been set before.", e.getMessage());
+    }
+
+    session.close();
+
+    try {
+      EnvironmentUtils.restartDaemon();
+    } catch (Exception e) {
+      Assert.fail();
+    }
+
+    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
+    session.open();
+
+    session.insertAlignedRecord(
+        "root.sg.v1",
+        110L,
+        Collections.singletonList("x"),
+        Collections.singletonList(TSDataType.TEXT),
+        Collections.singletonList("valueX"));
+
+    try {
+      session.insertAlignedRecord(
+          "root.sg.v1",
+          110L,
+          Collections.singletonList("append"),
+          Collections.singletonList(TSDataType.TEXT),
+          Collections.singletonList("aaa"));
+      fail();
+    } catch (StatementExecutionException e) {
+      assertEquals(313, e.getStatusCode());
+    }
+
+    try {
+      session.addAlignedMeasurementsInTemplate(
+          "template1",
+          Collections.singletonList("append"),
+          Collections.singletonList(TSDataType.TEXT),
+          Collections.singletonList(TSEncoding.PLAIN),
+          Collections.singletonList(CompressionType.UNCOMPRESSED));
+      fail();
+    } catch (StatementExecutionException e) {
+      assertEquals("315: Path duplicated: append is not a legal path", e.getMessage());
+    }
+
+    try {
+      session.addAlignedMeasurementsInTemplate(
+          "template1",
+          Collections.singletonList("x"),
+          Collections.singletonList(TSDataType.TEXT),
+          Collections.singletonList(TSEncoding.PLAIN),
+          Collections.singletonList(CompressionType.UNCOMPRESSED));
+      fail();
+    } catch (StatementExecutionException e) {
+      assertEquals(
+          "303: Template [template1] cannot be appended for overlapping of new measurement and MTree",
+          e.getMessage());
+    }
+
+    try {
+      session.addUnalignedMeasurementsInTemplate(
+          "template1",
+          Collections.singletonList("y"),
+          Collections.singletonList(TSDataType.TEXT),
+          Collections.singletonList(TSEncoding.PLAIN),
+          Collections.singletonList(CompressionType.UNCOMPRESSED));
+      fail();
+    } catch (StatementExecutionException e) {
+      assertEquals(
+          "315: y is not a legal path, because path already exists and aligned", e.getMessage());
+    }
+
+    session.addAlignedMeasurementsInTemplate(
+        "template1",
+        Collections.singletonList("y"),
+        Collections.singletonList(TSDataType.TEXT),
+        Collections.singletonList(TSEncoding.PLAIN),
+        Collections.singletonList(CompressionType.UNCOMPRESSED));
+
+    session.insertAlignedRecord(
+        "root.sg.v1",
+        110L,
+        Collections.singletonList("y"),
+        Collections.singletonList(TSDataType.TEXT),
+        Collections.singletonList("valueY"));
+
+    session.insertAlignedRecord(
+        "root.sg.v1",
+        110L,
+        Collections.singletonList("append"),
+        Collections.singletonList(TSDataType.INT64),
+        Collections.singletonList(12345L));
+
+    SessionDataSet res =
+        session.executeRawDataQuery(Collections.singletonList("root.sg.v1.*"), 0L, 999L);
+    while (res.hasNext()) {
+      RowRecord rec = res.next();
+      // correspond to x, y, append
+      assertEquals(3, rec.getFields().size());
+    }
+
+    session.insertAlignedRecord(
+        "root.sg.v1.d0",
+        110L,
+        Collections.singletonList("append"),
+        Collections.singletonList(TSDataType.INT64),
+        Collections.singletonList(12345L));
+
+    res = session.executeRawDataQuery(Collections.singletonList("root.sg.v1.d0.*"), 0L, 999L);
+    while (res.hasNext()) {
+      RowRecord rec = res.next();
+      // x is not inside template
+      assertEquals(2, rec.getFields().size());
+    }
+  }
+
+  @Test
+  public void testQueryBasic() throws Exception {
+    session.insertAlignedRecord(
+        "root.sg.v1",
+        110L,
+        Collections.singletonList("y"),
+        Collections.singletonList(TSDataType.TEXT),
+        Collections.singletonList("testY"));
+    session.insertAlignedRecord(
+        "root.sg.v1",
+        110L,
+        Collections.singletonList("x"),
+        Collections.singletonList(TSDataType.TEXT),
+        Collections.singletonList("testY"));
+    SessionDataSet res =
+        session.executeRawDataQuery(Collections.singletonList("root.sg.v1.*"), 0L, 999L);
+    while (res.hasNext()) {
+      RowRecord rec = res.next();
+      assertEquals("", rec.getFields());
+    }
   }
 
   private Template getTemplate(String name) throws StatementExecutionException {
