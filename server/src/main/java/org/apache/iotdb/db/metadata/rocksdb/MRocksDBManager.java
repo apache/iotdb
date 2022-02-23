@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -47,8 +48,11 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
@@ -68,6 +72,7 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -221,6 +226,9 @@ public class MRocksDBManager implements IMetaManager {
         changeAlias(changeAliasPlan.getPath(), changeAliasPlan.getAlias());
         break;
       case AUTO_CREATE_DEVICE_MNODE:
+        AutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan = (AutoCreateDeviceMNodePlan) plan;
+        autoCreateDeviceMNode(autoCreateDeviceMNodePlan);
+        break;
       case CHANGE_TAG_OFFSET:
       case CREATE_TEMPLATE:
       case DROP_TEMPLATE:
@@ -1612,27 +1620,17 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
-    byte[] innerPathName;
-    int i;
-    boolean isDevice = false;
-    for (i = nodes.length; i > 0; i--) {
-      String[] copy = Arrays.copyOf(nodes, i);
-      innerPathName =
-          RocksDBUtils.toEntityNodeKey(RocksDBUtils.getLevelPath(copy, copy.length - 1));
-      try {
-        isDevice = readWriteHandler.keyExist(innerPathName);
-      } catch (RocksDBException e) {
-        throw new MetadataException(e);
+    String levelPath = RocksDBUtils.getLevelPath(nodes, nodes.length - 1);
+    Holder<byte[]> holder = new Holder<>();
+    try {
+      if (readWriteHandler.keyExistByType(levelPath, RocksDBMNodeType.ENTITY, holder)) {
+        return new REntityMNode(path.getFullPath(), holder.getValue());
+      } else {
+        throw new PathNotExistException(path.getFullPath());
       }
-      if (isDevice) {
-        break;
-      }
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
     }
-    if (!isDevice) {
-      throw new StorageGroupNotSetException(
-          String.format("Cannot find the storage group by %s.", path.getFullPath()));
-    }
-    return new REntityMNode(path.getFullPath());
   }
 
   /**
@@ -1661,13 +1659,13 @@ public class MRocksDBManager implements IMetaManager {
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     String[] nodes = fullPath.getNodes();
     String key = RocksDBUtils.getLevelPath(nodes, nodes.length - 1);
+    IMeasurementMNode node = null;
     try {
-      byte[] value = readWriteHandler.get(null, key.getBytes());
-      if (value == null) {
-        logger.warn("path not exist: {}", key);
-        throw new MetadataException("key not exist");
+      Holder<byte[]> holder = new Holder<>();
+      if (readWriteHandler.keyExistByType(key, RocksDBMNodeType.MEASUREMENT, holder)) {
+        node = new RMeasurementMNode(fullPath.getFullPath(), holder.getValue());
       }
-      return new RMeasurementMNode(fullPath.getFullPath());
+      return node;
     } catch (RocksDBException e) {
       throw new MetadataException(e);
     }
@@ -2092,7 +2090,159 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
-    return null;
+    // devicePath is a logical path which is parent of measurement, whether in template or not
+    PartialPath devicePath = plan.getDevicePath();
+    String[] measurementList = plan.getMeasurements();
+    IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
+
+    IMNode deviceMNode = getDeviceNodeWithAutoCreate(devicePath, plan.isAligned());
+
+    // check insert non-aligned InsertPlan for aligned timeseries
+    if (deviceMNode.isEntity()) {
+      if (plan.isAligned() && deviceMNode.getAsEntityMNode().isAligned()) {
+        throw new MetadataException(
+            String.format(
+                "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
+                plan.getDevicePath()));
+      }
+
+      if (!plan.isAligned() && deviceMNode.getAsEntityMNode().isAligned()) {
+        throw new MetadataException(
+            String.format(
+                "Timeseries under path [%s] is aligned , please set InsertPlan.isAligned() = true",
+                plan.getDevicePath()));
+      }
+    }
+
+    // get node for each measurement
+    Map<Integer, IMeasurementMNode> nodeMap = new HashMap<>();
+    Map<Integer, PartialPath> missingNodeIndex = new HashMap<>();
+    for (int i = 0; i < measurementList.length; i++) {
+      PartialPath path = new PartialPath(devicePath.getFullPath(), measurementList[i]);
+      IMeasurementMNode node = getMeasurementMNode(path);
+      if (node == null) {
+        missingNodeIndex.put(i, path);
+      } else {
+        nodeMap.put(i, node);
+      }
+    }
+
+    // create missing nodes
+    if (!missingNodeIndex.isEmpty()) {
+      if (!config.isAutoCreateSchemaEnabled()) {
+        throw new PathNotExistException(devicePath + PATH_SEPARATOR);
+      }
+
+      if (!(plan instanceof InsertRowPlan) && !(plan instanceof InsertTabletPlan)) {
+        throw new MetadataException(
+            String.format(
+                "Only support insertRow and insertTablet, plan is [%s]", plan.getOperatorType()));
+      }
+
+      if (plan.isAligned()) {
+        List<String> measurements = new ArrayList<>();
+        List<TSDataType> dataTypes = new ArrayList<>();
+        for (Integer index : missingNodeIndex.keySet()) {
+          measurements.add(measurementList[index]);
+          dataTypes.add(plan.getDataTypes()[index]);
+        }
+        createAlignedTimeSeries(devicePath, measurements, dataTypes, null, null);
+      } else {
+        for (Map.Entry<Integer, PartialPath> entry : missingNodeIndex.entrySet()) {
+          IMeasurementSchema schema =
+              new MeasurementSchema(
+                  entry.getValue().getMeasurement(), plan.getDataTypes()[entry.getKey()]);
+          createTimeSeries(entry.getValue(), schema, null, null, null);
+        }
+      }
+
+      // get the latest node
+      for (Entry<Integer, PartialPath> entry : missingNodeIndex.entrySet()) {
+        nodeMap.put(entry.getKey(), getMeasurementMNode(entry.getValue()));
+      }
+    }
+
+    // check datatype
+    for (int i = 0; i < measurementList.length; i++) {
+      try {
+        // check type is match
+        if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
+          try {
+            MetaUtils.checkDataTypeMatch(plan, i, nodeMap.get(i).getSchema().getType());
+          } catch (DataTypeMismatchException mismatchException) {
+            logger.warn(
+                "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
+                measurementList[i],
+                plan.getDataTypes()[i],
+                nodeMap.get(i).getSchema().getType());
+            if (!config.isEnablePartialInsert()) {
+              throw mismatchException;
+            } else {
+              // mark failed measurement
+              plan.markFailedMeasurementInsertion(i, mismatchException);
+              continue;
+            }
+          }
+          measurementMNodes[i] = nodeMap.get(i);
+          // set measurementName instead of alias
+          measurementList[i] = nodeMap.get(i).getName();
+        }
+      } catch (MetadataException e) {
+        if (IoTDB.isClusterMode()) {
+          logger.debug(
+              "meet error when check {}.{}, message: {}",
+              devicePath,
+              measurementList[i],
+              e.getMessage());
+        } else {
+          logger.warn(
+              "meet error when check {}.{}, message: {}",
+              devicePath,
+              measurementList[i],
+              e.getMessage());
+        }
+        if (config.isEnablePartialInsert()) {
+          // mark failed measurement
+          plan.markFailedMeasurementInsertion(i, e);
+        } else {
+          throw e;
+        }
+      }
+    }
+    return deviceMNode;
+  }
+
+  /**
+   * get device node, if the storage group is not set, create it when autoCreateSchema is true
+   *
+   * <p>(we develop this method as we need to get the node's lock after we get the lock.writeLock())
+   *
+   * @param devicePath path
+   */
+  protected IMNode getDeviceNodeWithAutoCreate(PartialPath devicePath, boolean aligned)
+      throws MetadataException {
+    IMNode node;
+    try {
+      node = getDeviceNode(devicePath);
+      return node;
+    } catch (PathNotExistException e) {
+      int sgIndex = ensureStorageGroup(devicePath, devicePath.getNodeLength() - 1);
+      if (!config.isAutoCreateSchemaEnabled()) {
+        throw new PathNotExistException(devicePath.getFullPath());
+      }
+      try {
+        createEntityRecursively(
+            devicePath.getNodes(), devicePath.getNodeLength(), sgIndex, aligned, new Stack<>());
+        node = getDeviceNode(devicePath);
+      } catch (RocksDBException | InterruptedException ex) {
+        throw new MetadataException(ex);
+      }
+    }
+    return node;
+  }
+
+  private void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) {
+    throw new UnsupportedOperationException();
   }
   // endregion
 
