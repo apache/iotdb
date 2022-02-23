@@ -18,7 +18,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Arrays;
@@ -148,11 +147,7 @@ public class SFManagerTests {
       sfManager.getChildren(delSgNode);
       fail();
     } catch (MetadataException e) {
-      assertEquals(
-          String.format(
-              "Schema file [target%stmp%ssystem%sschema%spst%sroot.ph.pre.sg3.pst] not exists.",
-              File.separator, File.separator, File.separator, File.separator, File.separator),
-          e.getMessage());
+      assertEquals("Schema file [root.ph.pre.sg3.pst] not exists.", e.getMessage());
     }
 
     sfManager.delete(delGPSNode.getChild("GPS"));
