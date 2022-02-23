@@ -164,6 +164,7 @@ fi
 
 version_arr=(${JVM_VERSION//./ })
 
+illegal_access_params=""
 #GC log path has to be defined here because it needs to access IOTDB_HOME
 if [ "${version_arr[0]}" = "1" ] ; then
     # Java 8
@@ -176,7 +177,6 @@ if [ "${version_arr[0]}" = "1" ] ; then
             IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/logs/gc.log  -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M"
         fi
     fi
-    illegal_access_params=""
 else
     #JDK 11 and others
     MAJOR_VERSION=${version_arr[0]}
@@ -191,18 +191,12 @@ else
         fi
     fi
     # Add argLine for Java 11 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default] (https://openjdk.java.net/jeps/396)
-    illegal_access_params="--illegal-access=permit"
     illegal_access_params="$illegal_access_params --add-opens=java.base/java.util.concurrent=ALL-UNNAMED"
     illegal_access_params="$illegal_access_params --add-opens=java.base/java.lang=ALL-UNNAMED"
     illegal_access_params="$illegal_access_params --add-opens=java.base/java.util=ALL-UNNAMED"
     illegal_access_params="$illegal_access_params --add-opens=java.base/java.nio=ALL-UNNAMED"
     illegal_access_params="$illegal_access_params --add-opens=java.base/java.io=ALL-UNNAMED"
     illegal_access_params="$illegal_access_params --add-opens=java.base/java.net=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED"
 fi
 
 

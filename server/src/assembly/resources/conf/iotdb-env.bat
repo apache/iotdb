@@ -134,18 +134,12 @@ IF "%1" equ "printgc" (
 IF "%JAVA_VERSION%" == "8" (
     set ILLEGAL_ACCESS_PARAMS=
 ) ELSE (
-    set ILLEGAL_ACCESS_PARAMS=--illegal-access=permit^
-     --add-opens=java.base/java.util.concurrent=ALL-UNNAMED^
+    set ILLEGAL_ACCESS_PARAMS=--add-opens=java.base/java.util.concurrent=ALL-UNNAMED^
      --add-opens=java.base/java.lang=ALL-UNNAMED^
      --add-opens=java.base/java.util=ALL-UNNAMED^
      --add-opens=java.base/java.nio=ALL-UNNAMED^
      --add-opens=java.base/java.io=ALL-UNNAMED^
-     --add-opens=java.base/java.net=ALL-UNNAMED^
-     --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED^
-     --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED^
-     --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED^
-     --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED^
-     --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+     --add-opens=java.base/java.net=ALL-UNNAMED
 )
 
 echo Maximum memory allocation pool = %MAX_HEAP_SIZE%, initial memory allocation pool = %HEAP_NEWSIZE%
