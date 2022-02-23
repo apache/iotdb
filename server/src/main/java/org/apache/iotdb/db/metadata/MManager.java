@@ -90,7 +90,6 @@ import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -2086,8 +2085,13 @@ public class MManager implements IMetaManager {
         // check type is match
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
           try {
-            checkDataTypeMatch(plan, i, measurementMNode.getSchema().getType());
+            MetaUtils.checkDataTypeMatch(plan, i, measurementMNode.getSchema().getType());
           } catch (DataTypeMismatchException mismatchException) {
+            logger.warn(
+                "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
+                measurementList[i],
+                plan.getDataTypes()[i],
+                measurementMNode.getSchema().getType());
             if (!config.isEnablePartialInsert()) {
               throw mismatchException;
             } else {
@@ -2159,47 +2163,6 @@ public class MManager implements IMetaManager {
       }
     }
     return new Pair<>(deviceMNode, measurementMNode);
-  }
-
-  private void checkDataTypeMatch(InsertPlan plan, int loc, TSDataType dataType)
-      throws MetadataException {
-    TSDataType insertDataType;
-    if (plan instanceof InsertRowPlan) {
-      if (!((InsertRowPlan) plan).isNeedInferType()) {
-        // only when InsertRowPlan's values is object[], we should check type
-        insertDataType = getTypeInLoc(plan, loc);
-      } else {
-        insertDataType = dataType;
-      }
-    } else {
-      insertDataType = getTypeInLoc(plan, loc);
-    }
-    if (dataType != insertDataType) {
-      String measurement = plan.getMeasurements()[loc];
-      logger.warn(
-          "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
-          measurement,
-          insertDataType,
-          dataType);
-      throw new DataTypeMismatchException(measurement, insertDataType, dataType);
-    }
-  }
-
-  /** get dataType of plan, in loc measurements only support InsertRowPlan and InsertTabletPlan */
-  private TSDataType getTypeInLoc(InsertPlan plan, int loc) throws MetadataException {
-    TSDataType dataType;
-    if (plan instanceof InsertRowPlan) {
-      InsertRowPlan tPlan = (InsertRowPlan) plan;
-      dataType =
-          TypeInferenceUtils.getPredictedDataType(tPlan.getValues()[loc], tPlan.isNeedInferType());
-    } else if (plan instanceof InsertTabletPlan) {
-      dataType = (plan).getDataTypes()[loc];
-    } else {
-      throw new MetadataException(
-          String.format(
-              "Only support insert and insertTablet, plan is [%s]", plan.getOperatorType()));
-    }
-    return dataType;
   }
 
   private IMeasurementMNode findMeasurementInTemplate(IMNode deviceMNode, String measurement)
