@@ -39,14 +39,14 @@ mvn clean scala:compile compile install
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>spark-iotdb-connector</artifactId>
-      <version>0.12.4</version>
+      <version>0.12.5</version>
     </dependency>
 ```
 
 #### Spark-shell用户指南
 
 ```
-spark-shell --jars spark-iotdb-connector-0.12.4.jar,iotdb-jdbc-0.12.4-jar-with-dependencies.jar
+spark-shell --jars spark-iotdb-connector-0.12.5.jar,iotdb-jdbc-0.12.5-jar-with-dependencies.jar
 
 import org.apache.iotdb.spark.db._
 

@@ -41,7 +41,7 @@ mvn clean scala:compile compile install
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>spark-iotdb-connector</artifactId>
-      <version>0.12.4</version>
+      <version>0.12.5</version>
     </dependency>
 ```
 

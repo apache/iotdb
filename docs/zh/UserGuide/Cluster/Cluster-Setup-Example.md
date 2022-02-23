@@ -278,19 +278,19 @@ cd cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/
 下载发布版本:
 
 ```
-curl -O https://downloads.apache.org/iotdb/0.12.4/apache-iotdb-0.12.4-cluster-bin.zip
+curl -O https://downloads.apache.org/iotdb/0.12.5/apache-iotdb-0.12.5-cluster-bin.zip
 ```
 
 解压压缩包:
 
 ```
-unzip apache-iotdb-0.12.4-cluster-bin.zip
+unzip apache-iotdb-0.12.5-cluster-bin.zip
 ```
 
 进入IoTDB集群根目录:
 
 ```
-cd apache-iotdb-0.12.4-cluster-bin
+cd apache-iotdb-0.12.5-cluster-bin
 ```
 
 设置 default\_replica\_num = 3: 配置文件中默认为3，无需修改

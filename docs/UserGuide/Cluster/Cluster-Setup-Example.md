@@ -272,19 +272,19 @@ cd cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/
 
 Download the release version:
 ```
-curl -O https://downloads.apache.org/iotdb/0.12.4/apache-iotdb-0.12.4-cluster-bin.zip
+curl -O https://downloads.apache.org/iotdb/0.12.5/apache-iotdb-0.12.5-cluster-bin.zip
 ```
 
 Unzip the package:
 
 ```
-unzip apache-iotdb-0.12.4-cluster-bin.zip
+unzip apache-iotdb-0.12.5-cluster-bin.zip
 ```
 
 Enter IoTDB cluster root directory:
 
 ```
-cd apache-iotdb-0.12.4-cluster-bin
+cd apache-iotdb-0.12.5-cluster-bin
 ```
 
 Set default\_replica\_num = 3: default value of this configuration item is 3
