@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
@@ -2088,6 +2089,27 @@ public class SessionPool {
     }
     // never go here
     return null;
+  }
+
+  /** Transmit insert record request for double write */
+  public boolean doubleWriteTransmit(ByteBuffer buffer)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.doubleWriteTransmit(buffer);
+        putBack(session);
+        return true;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+
+    return false;
   }
 
   public int getMaxSize() {

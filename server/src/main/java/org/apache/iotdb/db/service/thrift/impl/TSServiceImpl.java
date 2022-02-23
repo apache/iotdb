@@ -25,6 +25,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
+import org.apache.iotdb.db.doublewrite.DoubleWriteProtectorService;
+import org.apache.iotdb.db.doublewrite.DoubleWriteTask;
 import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
 import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
@@ -89,6 +91,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteDoubleWriteReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
@@ -119,6 +122,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -131,6 +135,8 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
@@ -141,8 +147,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.service.basic.ServiceProvider.AUDIT_LOGGER;
@@ -301,9 +316,66 @@ public class TSServiceImpl implements TSIService.Iface {
 
   protected final ServiceProvider serviceProvider;
 
+  // Double write module, temporary use
+  private static final int MAX_PHYSICALPLAN_SIZE = 16 * 1024 * 1024;
+  private final ByteArrayOutputStream doubleWriteByteStream;
+  private final DataOutputStream doubleWriteSerializeStream;
+  private final SessionPool doubleWriteSessionPool;
+  private final ExecutorService doubleWriteTaskThreadPool;
+  private final DoubleWriteProtectorService doubleWriteProtectorService;
+
   public TSServiceImpl() {
     super();
     serviceProvider = IoTDB.serviceProvider;
+
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    if (config.isEnableDoubleWrite()) {
+      /* Open double write */
+
+      // create SessionPool for double write
+      doubleWriteSessionPool =
+          new SessionPool(
+              config.getSecondaryAddress(),
+              config.getSecondaryPort(),
+              config.getSecondaryUser(),
+              config.getSecondaryPassword(),
+              5);
+
+      // create DoubleWriteProtectorService
+      Lock firstLogLock = new ReentrantLock();
+      Condition firstLogCondition = firstLogLock.newCondition();
+      doubleWriteProtectorService =
+          new DoubleWriteProtectorService(firstLogLock, firstLogCondition, doubleWriteSessionPool);
+      new Thread(doubleWriteProtectorService).start();
+      try {
+        firstLogLock.lock();
+        firstLogCondition.await();
+        firstLogLock.unlock();
+      } catch (InterruptedException e) {
+        LOGGER.error("There is an exception during start DoubleWrite", e);
+      }
+
+      // create DoubleWriteTaskThreadPool
+      doubleWriteTaskThreadPool =
+          new ThreadPoolExecutor(
+              config.getDoubleWriteTaskCorePoolSize(),
+              config.getDoubleWriteTaskMaxPoolSize(),
+              config.getDoubleWriteTaskKeepAliveTime(),
+              TimeUnit.HOURS,
+              new ArrayBlockingQueue<>(config.getDoubleWriteTaskMaxPoolSize()),
+              Executors.defaultThreadFactory(),
+              new ThreadPoolExecutor.DiscardOldestPolicy());
+
+      // For serialize PhysicalPlan
+      doubleWriteByteStream = new ByteArrayOutputStream(MAX_PHYSICALPLAN_SIZE);
+      doubleWriteSerializeStream = new DataOutputStream(doubleWriteByteStream);
+    } else {
+      doubleWriteSessionPool = null;
+      doubleWriteTaskThreadPool = null;
+      doubleWriteByteStream = null;
+      doubleWriteSerializeStream = null;
+      doubleWriteProtectorService = null;
+    }
   }
 
   @Override
@@ -617,13 +689,21 @@ public class TSServiceImpl implements TSIService.Iface {
       if (physicalPlan.isQuery()) {
         return submitQueryTask(physicalPlan, startTime, req);
       } else {
-        return executeUpdateStatement(
-            statement,
-            req.statementId,
-            physicalPlan,
-            req.fetchSize,
-            req.timeout,
-            req.getSessionId());
+        TSExecuteStatementResp resp =
+            executeUpdateStatement(
+                statement,
+                req.statementId,
+                physicalPlan,
+                req.fetchSize,
+                req.timeout,
+                req.getSessionId());
+
+        if (doubleWriteTaskThreadPool != null) {
+          // double write
+          transmitDoubleWrite(physicalPlan);
+        }
+
+        return resp;
       }
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
@@ -1483,7 +1563,18 @@ public class TSServiceImpl implements TSIService.Iface {
               req.values,
               req.isAligned);
       TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
-      return status != null ? status : executeNonQueryPlan(plan);
+
+      if (status != null) {
+        return status;
+      }
+
+      status = executeNonQueryPlan(plan);
+      if (doubleWriteTaskThreadPool != null) {
+        // double write
+        transmitDoubleWrite(plan);
+      }
+
+      return status;
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_RECORD, e.getErrorCode());
     } catch (Exception e) {
@@ -1514,7 +1605,18 @@ public class TSServiceImpl implements TSIService.Iface {
       plan.setNeedInferType(true);
       plan.setAligned(req.isAligned);
       TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
-      return status != null ? status : executeNonQueryPlan(plan);
+
+      if (status != null) {
+        return status;
+      }
+
+      status = executeNonQueryPlan(plan);
+      if (doubleWriteTaskThreadPool != null) {
+        // double write
+        transmitDoubleWrite(plan);
+      }
+
+      return status;
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_STRING_RECORD, e.getErrorCode());
     } catch (Exception e) {
@@ -1570,7 +1672,17 @@ public class TSServiceImpl implements TSIService.Iface {
       insertTabletPlan.setAligned(req.isAligned);
       TSStatus status = serviceProvider.checkAuthority(insertTabletPlan, req.getSessionId());
 
-      return status != null ? status : executeNonQueryPlan(insertTabletPlan);
+      if (status != null) {
+        return status;
+      }
+
+      status = executeNonQueryPlan(insertTabletPlan);
+      if (doubleWriteTaskThreadPool != null) {
+        // double write
+        transmitDoubleWrite(insertTabletPlan);
+      }
+
+      return status;
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_TABLET, e.getErrorCode());
     } catch (Exception e) {
@@ -2054,6 +2166,31 @@ public class TSServiceImpl implements TSIService.Iface {
     DropTemplatePlan plan = new DropTemplatePlan(req.templateName);
     TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
+  }
+
+  @Override
+  public TSStatus executeDoubleWrite(TSExecuteDoubleWriteReq req) {
+    PhysicalPlan physicalPlan = null;
+    try {
+      physicalPlan = PhysicalPlan.Factory.create(req.physicalPlan);
+    } catch (IllegalPathException | IOException e) {
+      LOGGER.error("double write deserialization failed.", e);
+    }
+    return executeNonQueryPlan(physicalPlan);
+  }
+
+  private void transmitDoubleWrite(PhysicalPlan physicalPlan)
+      throws IOException, InterruptedException, ExecutionException {
+    // serialize physical plan
+    physicalPlan.serialize(doubleWriteSerializeStream);
+    ByteBuffer buffer = ByteBuffer.wrap(doubleWriteByteStream.toByteArray());
+    doubleWriteByteStream.reset();
+
+    // create and wait DoubleWriteTask
+    DoubleWriteTask doubleWriteTask =
+        new DoubleWriteTask(doubleWriteProtectorService, buffer, doubleWriteSessionPool);
+    Future<?> future = doubleWriteTaskThreadPool.submit(doubleWriteTask);
+    future.get();
   }
 
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {

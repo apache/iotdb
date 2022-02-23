@@ -776,6 +776,77 @@ public class IoTDBDescriptor {
               "iotdb_server_encrypt_decrypt_provider_parameter",
               conf.getEncryptDecryptProviderParameter()));
 
+      // set DoubleWrite config
+      conf.setEnableDoubleWrite(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_double_write", String.valueOf(conf.isEnableDoubleWrite()))));
+
+      conf.setSecondaryAddress(
+          properties.getProperty("secondary_address", conf.getSecondaryAddress()));
+
+      conf.setSecondaryPort(
+          Integer.parseInt(
+              properties.getProperty("secondary_port", String.valueOf(conf.getSecondaryPort()))));
+
+      conf.setSecondaryUser(properties.getProperty("secondary_user", conf.getSecondaryUser()));
+
+      conf.setSecondaryPassword(
+          properties.getProperty("secondary_password", conf.getSecondaryPassword()));
+
+      conf.setDoubleWriteSessionConcurrencySize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_session_concurrency_size",
+                  String.valueOf(conf.getDoubleWriteSessionConcurrencySize()))));
+
+      conf.setDoubleWriteTaskCorePoolSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_task_core_pool_size",
+                  String.valueOf(conf.getDoubleWriteTaskCorePoolSize()))));
+
+      conf.setDoubleWriteTaskMaxPoolSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_task_max_pool_size",
+                  String.valueOf(conf.getDoubleWriteTaskMaxPoolSize()))));
+
+      conf.setDoubleWriteTaskKeepAliveTime(
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_task_keep_alive_time",
+                  String.valueOf(conf.getDoubleWriteTaskKeepAliveTime()))));
+
+      conf.setDoubleWriteMaxLogSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_max_log_size", String.valueOf(conf.getDoubleWriteMaxLogSize()))));
+
+      conf.setDoubleWriteProtectorCorePoolSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_protector_core_pool_size",
+                  String.valueOf(conf.getDoubleWriteProtectorCorePoolSize()))));
+
+      conf.setDoubleWriteProtectorMaxPoolSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_protector_max_pool_size",
+                  String.valueOf(conf.getDoubleWriteProtectorMaxPoolSize()))));
+
+      conf.setDoubleWriteProtectorMaxWaitingTime(
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_protector_max_waiting_time",
+                  String.valueOf(conf.getDoubleWriteProtectorMaxWaitingTime()))));
+
+      conf.setDoubleWriteProtectorKeepAliveTime(
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_protector_keep_alive_time",
+                  String.valueOf(conf.getDoubleWriteProtectorKeepAliveTime()))));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()
