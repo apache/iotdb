@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.merge.recover;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,8 +74,8 @@ public class MergeLogAnalyzer {
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
       currLine = bufferedReader.readLine();
       if (currLine != null) {
+        status = Status.All_SOURCE_FILES_EXIST;
         analyzeSeqFiles(bufferedReader);
-
         analyzeUnseqFiles(bufferedReader);
       }
     }
@@ -119,7 +118,7 @@ public class MergeLogAnalyzer {
           (System.currentTimeMillis() - startTime));
     }
     if (!allSourceFileExists) {
-      status = Status.MERGE_END;
+      status = Status.SOME_SOURCE_FILES_LOST;
     }
     resource.setSeqFiles(mergeSeqFiles);
   }
@@ -128,7 +127,6 @@ public class MergeLogAnalyzer {
     if (!STR_UNSEQ_FILES.equals(currLine)) {
       return;
     }
-    status = Status.MERGE_START;
     long startTime = System.currentTimeMillis();
     List<TsFileResource> mergeUnseqFiles = new ArrayList<>();
     boolean allSourceFileExists = true;
@@ -158,7 +156,7 @@ public class MergeLogAnalyzer {
           (System.currentTimeMillis() - startTime));
     }
     if (!allSourceFileExists) {
-      status = Status.MERGE_END;
+      status = Status.SOME_SOURCE_FILES_LOST;
     }
     resource.setUnseqFiles(mergeUnseqFiles);
   }
@@ -166,9 +164,9 @@ public class MergeLogAnalyzer {
   public enum Status {
     // almost nothing has been done
     NONE,
-    // at least the files and timeseries to be merged are known
-    MERGE_START,
-    // all the merge files are merged with the origin files and the task is almost done
-    MERGE_END
+    // all source files exist
+    All_SOURCE_FILES_EXIST,
+    // some source files lost
+    SOME_SOURCE_FILES_LOST
   }
 }

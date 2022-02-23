@@ -24,13 +24,15 @@ import org.apache.iotdb.db.engine.merge.recover.MergeLogAnalyzer.Status;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.modifyTsFileNameUnseqMergCnt;
 
 /**
  * RecoverMergeTask is an extension of MergeTask, which resumes the last merge progress by scanning
@@ -68,8 +70,11 @@ public class RecoverMergeTask extends MergeTask {
       case NONE:
         logFile.delete();
         break;
-      case MERGE_START:
-        resumeAfterFilesLogged();
+      case All_SOURCE_FILES_EXIST:
+        handleWhenAllSourceFilesExist();
+        break;
+      case SOME_SOURCE_FILES_LOST:
+        handleWhenSomeSourceFilesLost();
         break;
       default:
         throw new UnsupportedOperationException(taskName + " found unrecognized status " + status);
@@ -80,7 +85,31 @@ public class RecoverMergeTask extends MergeTask {
     }
   }
 
-  private void resumeAfterFilesLogged() throws IOException {
+  private void handleWhenAllSourceFilesExist() throws IOException {
     cleanUp(false);
+  }
+
+  private void handleWhenSomeSourceFilesLost() throws IOException {
+    for (TsFileResource sourceSeqResource : resource.getSeqFiles()) {
+      File targetFile = modifyTsFileNameUnseqMergCnt(sourceSeqResource.getTsFile());
+      File targetFileResource = new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
+      File tmpTargetFile = new File(sourceSeqResource.getTsFilePath() + MERGE_SUFFIX);
+      // move to target file and target resource file
+      if (!targetFileResource.exists()) {
+        if (!targetFile.exists()) {
+          // move target file
+          FSFactoryProducer.getFSFactory().moveFile(tmpTargetFile, targetFile);
+        }
+        // move target resource file
+        FSFactoryProducer.getFSFactory()
+            .moveFile(
+                new File(sourceSeqResource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX),
+                targetFileResource);
+      }
+
+      // delete source seq file
+      sourceSeqResource.remove();
+    }
+    cleanUp(true);
   }
 }
