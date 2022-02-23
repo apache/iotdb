@@ -150,6 +150,29 @@ Shell >./standalone.sh
 
 ![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/pwd.png?raw=true)
 
+8、To create a role, click Roles on the left menu and then click the Add Role button to add a role
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role1.png?raw=true)
+
+9、 Enter `iotdb_admin` in the Role Name and click the save button. Tip: `iotdb_admin` here cannot be any other name, otherwise even after successful login, you will not have permission to use iotdb's query, insert, create storage group, add users, roles and other functions
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role2.png?raw=true)
+
+10、Click the User menu on the left and click the Edit button in the user list to add the `iotdb_admin` role we just created for this user
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role3.png?raw=true)
+
+11、 Select Role Mappings, select the `iotdb_admin` role in Available Role and click the Add selected button to add the role
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role4.png?raw=true)
+
+12. If the `iotdb_admin` role is in Assigned Roles and the `Success Role mappings updated` prompt appears, it proves that the role was added successfully
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role5.png?raw=true)
+
+
+Tip: If the user role is adjusted, you need to regenerate the token and log in to iotdb again to take effect
+
 The above steps provide a way for keycloak to log into iotdb. For more ways, please refer to keycloak configuration
 
 If OIDC is enabled on server side then no username / passwort is needed but a valid Access Token from the OIDC Provider.
