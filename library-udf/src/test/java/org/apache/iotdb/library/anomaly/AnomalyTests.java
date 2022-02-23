@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.library.anomaly;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.integration.env.ConfigFactory;
 import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -35,7 +35,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -43,6 +42,13 @@ import java.sql.Statement;
 import static org.junit.Assert.fail;
 
 public class AnomalyTests {
+  private static final float oldUdfCollectorMemoryBudgetInMB =
+      IoTDBDescriptor.getInstance().getConfig().getUdfCollectorMemoryBudgetInMB();
+  private static final float oldUdfTransformerMemoryBudgetInMB =
+      IoTDBDescriptor.getInstance().getConfig().getUdfTransformerMemoryBudgetInMB();
+  private static final float oldUdfReaderMemoryBudgetInMB =
+      IoTDBDescriptor.getInstance().getConfig().getUdfReaderMemoryBudgetInMB();
+
   @BeforeClass
   public static void setUp() throws Exception {
     ConfigFactory.getConfig()
@@ -204,326 +210,321 @@ public class AnomalyTests {
   }
 
   private static void generateData() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               100, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               200, 2, 2, 2, 2));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               300, -2, -2, -2, -2));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               400, -1, -1, -1, -1));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               500, 10, 10, 10, 10));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               600, 1, 1, 1, 1));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               700, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               800, 2, 2, 2, 2));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               900, -1, -1, -1, -1));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1000, 1, 1, 1, 1));
-
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               100, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               200, 50, 50, 50, 50));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               300, 100, 100, 100, 100));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               400, 150, 150, 150, 150));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               500, 200, 200, 200, 200));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               600, 200, 200, 200, 200));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               700, 200, 200, 200, 200));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               800, 200, 200, 200, 200));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               900, 200, 200, 200, 200));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1000, 200, 200, 200, 200));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1100, 150, 150, 150, 150));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1200, 100, 100, 100, 100));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1300, 50, 50, 50, 50));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1400, 0, 0, 0, 0));
-
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
               100, 0, 0, 0, 0, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
               200, 0, 0, 0, 0, 1, 1, 1, 1));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
               300, 1, 1, 1, 1, 1, 1, 1, 1));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
               400, 1, 1, 1, 1, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
               500, 0, 0, 0, 0, -1, -1, -1, -1));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
               600, -1, -1, -1, -1, -1, -1, -1, -1));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
               700, -1, -1, -1, -1, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
               800, 2, 2, 2, 2, 2, 2, 2, 2));
-
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               100, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               200, 1, 1, 1, 1));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               300, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               400, 1, 1, 1, 1));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               500, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               600, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               700, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               800, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               900, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1000, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1100, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1200, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1300, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1400, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1500, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1600, 1, 1, 1, 1));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1700, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1800, 1, 1, 1, 1));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1900, 0, 0, 0, 0));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               2000, 1, 1, 1, 1));
-
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               100, 2002, 2002, 2002, 2002));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               200, 1946, 1946, 1946, 1946));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               300, 1958, 1958, 1958, 1958));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               400, 2012, 2012, 2012, 2012));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               500, 2051, 2051, 2051, 2051));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               600, 1898, 1898, 1898, 1898));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               700, 2014, 2014, 2014, 2014));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               800, 2052, 2052, 2052, 2052));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               900, 1935, 1935, 1935, 1935));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1000, 1901, 1901, 1901, 1901));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1100, 1972, 1972, 1972, 1972));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1200, 1969, 1969, 1969, 1969));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1300, 1984, 1984, 1984, 1984));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1400, 2018, 2018, 2018, 2018));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1500, 1484, 1484, 1484, 1484));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1600, 1055, 1055, 1055, 1055));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1700, 1050, 1050, 1050, 1050));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1800, 1023, 1023, 1023, 1023));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               1900, 1056, 1056, 1056, 1056));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               2000, 978, 978, 978, 978));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               2100, 1050, 1050, 1050, 1050));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               2200, 1123, 1123, 1123, 1123));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               2300, 1150, 1150, 1150, 1150));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               2400, 1034, 1034, 1034, 1034));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               2500, 950, 950, 950, 950));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d6(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               2600, 1059, 1059, 1059, 1059));
+      statement.executeBatch();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -549,9 +550,9 @@ public class AnomalyTests {
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterClass();
     ConfigFactory.getConfig()
-        .setUdfCollectorMemoryBudgetInMB(100)
-        .setUdfTransformerMemoryBudgetInMB(100)
-        .setUdfReaderMemoryBudgetInMB(100);
+        .setUdfCollectorMemoryBudgetInMB(oldUdfCollectorMemoryBudgetInMB)
+        .setUdfTransformerMemoryBudgetInMB(oldUdfTransformerMemoryBudgetInMB)
+        .setUdfReaderMemoryBudgetInMB(oldUdfReaderMemoryBudgetInMB);
   }
 
   @Test
@@ -560,8 +561,10 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       Assert.assertEquals("10.0", result1);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -573,8 +576,10 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       Assert.assertEquals("10.0", result1);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -586,8 +591,10 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       Assert.assertEquals("10.0", result1);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -599,8 +606,10 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       Assert.assertEquals("10.0", result1);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -612,6 +621,7 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -623,6 +633,7 @@ public class AnomalyTests {
       Assert.assertEquals("50.0", result2);
       Assert.assertEquals("50.0", result3);
       Assert.assertEquals("0.0", result4);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -634,6 +645,7 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -645,6 +657,7 @@ public class AnomalyTests {
       Assert.assertEquals("50.0", result2);
       Assert.assertEquals("50.0", result3);
       Assert.assertEquals("0.0", result4);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -656,6 +669,7 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -667,6 +681,7 @@ public class AnomalyTests {
       Assert.assertEquals("50.0", result2);
       Assert.assertEquals("50.0", result3);
       Assert.assertEquals("0.0", result4);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -678,6 +693,7 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -689,6 +705,7 @@ public class AnomalyTests {
       Assert.assertEquals("50.0", result2);
       Assert.assertEquals("50.0", result3);
       Assert.assertEquals("0.0", result4);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -700,6 +717,7 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -759,6 +777,7 @@ public class AnomalyTests {
       Assert.assertEquals("false", result18);
       Assert.assertEquals("false", result19);
       Assert.assertEquals("false", result20);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -770,6 +789,7 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -829,6 +849,7 @@ public class AnomalyTests {
       Assert.assertEquals("false", result18);
       Assert.assertEquals("false", result19);
       Assert.assertEquals("false", result20);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -840,6 +861,7 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -899,6 +921,7 @@ public class AnomalyTests {
       Assert.assertEquals("false", result18);
       Assert.assertEquals("false", result19);
       Assert.assertEquals("false", result20);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -910,6 +933,7 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -969,6 +993,7 @@ public class AnomalyTests {
       Assert.assertEquals("false", result18);
       Assert.assertEquals("false", result19);
       Assert.assertEquals("false", result20);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -980,6 +1005,7 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -1003,6 +1029,7 @@ public class AnomalyTests {
       Assert.assertEquals("2.371440975708148", result6);
       Assert.assertEquals("2.73518261244453", result7);
       Assert.assertEquals("1.7561416374270742", result8);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -1014,6 +1041,7 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -1037,6 +1065,7 @@ public class AnomalyTests {
       Assert.assertEquals("2.371440975708148", result6);
       Assert.assertEquals("2.73518261244453", result7);
       Assert.assertEquals("1.7561416374270742", result8);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -1048,6 +1077,7 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -1071,6 +1101,7 @@ public class AnomalyTests {
       Assert.assertEquals("2.371440975708148", result6);
       Assert.assertEquals("2.73518261244453", result7);
       Assert.assertEquals("1.7561416374270742", result8);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -1082,6 +1113,7 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -1105,6 +1137,7 @@ public class AnomalyTests {
       Assert.assertEquals("2.371440975708148", result6);
       Assert.assertEquals("2.73518261244453", result7);
       Assert.assertEquals("1.7561416374270742", result8);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -1117,8 +1150,10 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       Assert.assertEquals("10.0", result1);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -1131,8 +1166,10 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       Assert.assertEquals("10.0", result1);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -1145,8 +1182,10 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       Assert.assertEquals("10.0", result1);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -1159,8 +1198,10 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       Assert.assertEquals("10.0", result1);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -1172,6 +1213,7 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -1240,6 +1282,7 @@ public class AnomalyTests {
       Assert.assertEquals("1134.0", result21);
       Assert.assertEquals("950.0", result22);
       Assert.assertEquals("1059.0", result23);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -1251,6 +1294,7 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -1319,6 +1363,7 @@ public class AnomalyTests {
       Assert.assertEquals("1134.0", result21);
       Assert.assertEquals("950.0", result22);
       Assert.assertEquals("1059.0", result23);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -1330,6 +1375,7 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -1398,6 +1444,7 @@ public class AnomalyTests {
       Assert.assertEquals("1134.0", result21);
       Assert.assertEquals("950.0", result22);
       Assert.assertEquals("1059.0", result23);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -1409,6 +1456,7 @@ public class AnomalyTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -1477,6 +1525,7 @@ public class AnomalyTests {
       Assert.assertEquals("1134.0", result21);
       Assert.assertEquals("950.0", result22);
       Assert.assertEquals("1059.0", result23);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
