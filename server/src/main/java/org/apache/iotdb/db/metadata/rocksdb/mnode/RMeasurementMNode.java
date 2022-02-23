@@ -109,7 +109,7 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
 
   @Override
   public TriggerExecutor getTriggerExecutor() {
-    throw new UnsupportedOperationException();
+    return null;
   }
 
   @Override
