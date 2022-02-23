@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.rocksdb.mnode;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.rocksdb.RockDBConstants;
@@ -42,8 +43,8 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
   public RStorageGroupMNode(String fullPath, byte[] value) {
     super(fullPath);
     Object ttl = RocksDBUtils.parseNodeValue(value, RockDBConstants.FLAG_SET_TTL);
-    if (ttl == null) {
-      ttl = 0L;
+    if (ttl != null) {
+      ttl = IoTDBDescriptor.getInstance().getConfig().getDefaultTTL();
     }
     this.dataTTL = (long) ttl;
   }

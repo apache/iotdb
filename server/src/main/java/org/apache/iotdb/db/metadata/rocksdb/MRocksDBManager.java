@@ -1566,34 +1566,32 @@ public class MRocksDBManager implements IMetaManager {
   /** Get storage group node by path. the give path don't need to be storage group path. */
   @Override
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
-    ensureStorageGroup(path, Integer.MAX_VALUE);
-    String[] nodes = path.getNodes();
-    byte[] innerPathName;
-    int i;
-    byte[] value = null;
-    for (i = nodes.length; i > 0; i--) {
-      String[] copy = Arrays.copyOf(nodes, i);
-      innerPathName =
-          RocksDBUtils.toStorageNodeKey(RocksDBUtils.getLevelPath(copy, copy.length - 1));
-      try {
-        value = readWriteHandler.get(null, innerPathName);
-      } catch (RocksDBException e) {
-        throw new MetadataException(e);
+    IStorageGroupMNode node = null;
+    try {
+      String[] nodes = path.getNodes();
+      for (int i = 1; i < nodes.length; i++) {
+        String levelPath = RocksDBUtils.getLevelPath(nodes, i);
+        Holder<byte[]> holder = new Holder<>();
+        if (readWriteHandler.keyExistByType(levelPath, RocksDBMNodeType.STORAGE_GROUP, holder)) {
+          Object ttl = RocksDBUtils.parseNodeValue(holder.getValue(), RockDBConstants.FLAG_SET_TTL);
+          if (ttl == null) {
+            ttl = config.getDefaultTTL();
+          }
+          node =
+              new RStorageGroupMNode(
+                  MetaUtils.getStorageGroupPathByLevel(path, i).getFullPath(), (Long) ttl);
+          break;
+        }
       }
-      if (value != null) {
-        break;
-      }
-    }
-    if (value == null) {
-      throw new StorageGroupNotSetException(
-          String.format("Cannot find the storage group by %s.", path.getFullPath()));
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
     }
 
-    Object ttl = RocksDBUtils.parseNodeValue(value, RockDBConstants.FLAG_SET_TTL);
-    if (ttl == null) {
-      ttl = config.getDefaultTTL();
+    if (node == null) {
+      throw new StorageGroupNotSetException(path.getFullPath());
     }
-    return new RStorageGroupMNode(path.getFullPath(), (Long) ttl);
+
+    return node;
   }
 
   /** Get all storage group MNodes */
