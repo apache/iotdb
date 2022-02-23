@@ -69,7 +69,9 @@ public class CacheStrategy implements ICacheStrategy {
     if (!cacheEntry.isVolatile()) {
       cacheEntry.setVolatile(true);
       getBelongedContainer(node).updateMNode(node.getName());
-      nodeCache.remove(cacheEntry);
+      synchronized (node) {
+        nodeCache.remove(cacheEntry);
+      }
       addNodeToBuffer(node);
     }
   }
@@ -80,10 +82,16 @@ public class CacheStrategy implements ICacheStrategy {
     while (parent != null) {
       cacheEntry = parent.getCacheEntry();
       if (nodeCache.containsKey(cacheEntry)) {
-        // the ancestors of volatile node should not stay in nodeCache in which the node will be
-        // evicted
-        nodeCache.remove(cacheEntry);
-        parent = parent.getParent();
+        synchronized (parent) {
+          if (nodeCache.containsKey(cacheEntry)) {
+            // the ancestors of volatile node should not stay in nodeCache in which the node will be
+            // evicted
+            nodeCache.remove(cacheEntry);
+            parent = parent.getParent();
+          } else {
+            break;
+          }
+        }
       } else {
         break;
       }
@@ -184,14 +192,18 @@ public class CacheStrategy implements ICacheStrategy {
     for (CacheEntry cacheEntry : nodeCache.keySet()) {
       if (!cacheEntry.isPinned()) {
         node = nodeCache.get(cacheEntry);
-        break;
+        synchronized (node) {
+          if (!cacheEntry.isPinned() && nodeCache.containsKey(cacheEntry)) {
+            getBelongedContainer(node).evictMNode(node.getName());
+            nodeCache.remove(node.getCacheEntry());
+            node.setCacheEntry(null);
+            evictedMNodes.add(node);
+            break;
+          }
+        }
       }
     }
     if (node != null) {
-      getBelongedContainer(node).evictMNode(node.getName());
-      nodeCache.remove(node.getCacheEntry());
-      node.setCacheEntry(null);
-      evictedMNodes.add(node);
       collectEvictedMNodes(node, evictedMNodes);
     }
     return evictedMNodes;

@@ -96,21 +96,22 @@ public class CachedMTreeStore implements IMTreeStore {
   public IMNode getChild(IMNode parent, String name) {
     readLock.lock();
     try {
-      IMNode node = parent.getChild(name);
-      if (node == null) {
-        if (!getCachedMNodeContainer(parent).isVolatile()) {
-          node = file.getChildNode(parent, name);
-          if (node != null) {
-            node.setParent(parent);
-            pinMNodeInMemory(node);
-            cacheStrategy.updateCacheStatusAfterDiskRead(node);
+      IMNode node = null;
+      synchronized (parent) {
+        node = parent.getChild(name);
+        if (node == null || !cacheStrategy.isCached(node)) {
+          node = loadChildFromDisk(parent, name);
+        } else {
+          synchronized (node) {
+            if (cacheStrategy.isCached(node)) {
+              pinMNodeInMemory(node);
+              cacheStrategy.updateCacheStatusAfterMemoryRead(node);
+            } else {
+              node = loadChildFromDisk(parent, name);
+            }
           }
         }
-      } else {
-        pinMNodeInMemory(node);
-        cacheStrategy.updateCacheStatusAfterMemoryRead(node);
       }
-
       if (node != null && node.isMeasurement()) {
         processAlias(parent.getAsEntityMNode(), node.getAsMeasurementMNode());
       }
@@ -119,6 +120,19 @@ public class CachedMTreeStore implements IMTreeStore {
     } finally {
       readLock.unlock();
     }
+  }
+
+  private IMNode loadChildFromDisk(IMNode parent, String name) {
+    IMNode node = null;
+    if (!getCachedMNodeContainer(parent).isVolatile()) {
+      node = file.getChildNode(parent, name);
+      if (node != null) {
+        node.setParent(parent);
+        pinMNodeInMemory(node);
+        cacheStrategy.updateCacheStatusAfterDiskRead(node);
+      }
+    }
+    return node;
   }
 
   private void processAlias(IEntityMNode parent, IMeasurementMNode node) {
@@ -331,7 +345,6 @@ public class CachedMTreeStore implements IMTreeStore {
     Iterator<IMNode> iterator;
     Iterator<IMNode> bufferIterator;
     boolean isIteratingDisk = true;
-    boolean loadedFromDisk = true;
     IMNode nextNode;
 
     CachedMNodeIterator(IMNode parent) {
@@ -363,15 +376,6 @@ public class CachedMTreeStore implements IMTreeStore {
       if (nextNode == null) {
         throw new NoSuchElementException();
       }
-      if (loadedFromDisk) {
-        nextNode.setParent(parent);
-      }
-      pinMNodeInMemory(nextNode);
-      if (loadedFromDisk) {
-        cacheStrategy.updateCacheStatusAfterDiskRead(nextNode);
-      } else {
-        cacheStrategy.updateCacheStatusAfterMemoryRead(nextNode);
-      }
       IMNode result = nextNode;
       nextNode = null;
       return result;
@@ -393,14 +397,26 @@ public class CachedMTreeStore implements IMTreeStore {
           }
         }
         if (node != null) {
-          if (parent.hasChild(node.getName())) {
-            // this branch means the node load from disk is in cache, thus use the instance in cache
-            node = parent.getChild(node.getName());
-            loadedFromDisk = false;
-          } else {
-            loadedFromDisk = true;
+          synchronized (parent) {
+            if (parent.hasChild(node.getName())) {
+              // this branch means the node load from disk is in cache, thus use the instance in
+              // cache
+              node = parent.getChild(node.getName());
+              synchronized (node) {
+                if (cacheStrategy.isCached(node)) {
+                  pinMNodeInMemory(node);
+                  cacheStrategy.updateCacheStatusAfterMemoryRead(node);
+                } else {
+                  node = loadChildFromDisk(parent, node.getName());
+                }
+              }
+            } else {
+              node.setParent(parent);
+              pinMNodeInMemory(node);
+              cacheStrategy.updateCacheStatusAfterDiskRead(node);
+            }
+            nextNode = node;
           }
-          nextNode = node;
           return;
         } else {
           startIteratingBuffer();
@@ -409,6 +425,9 @@ public class CachedMTreeStore implements IMTreeStore {
 
       if (iterator.hasNext()) {
         node = iterator.next();
+        // node in buffer won't be evicted
+        pinMNodeInMemory(node);
+        cacheStrategy.updateCacheStatusAfterMemoryRead(node);
       }
       nextNode = node;
     }
@@ -416,11 +435,14 @@ public class CachedMTreeStore implements IMTreeStore {
     private void startIteratingBuffer() {
       iterator = bufferIterator;
       isIteratingDisk = false;
-      loadedFromDisk = false;
     }
 
     @Override
     public void close() {
+      if (nextNode != null) {
+        unPin(nextNode);
+        nextNode = null;
+      }
       readLock.unlock();
     }
   }
