@@ -47,15 +47,15 @@ selectExpr
 
 From this syntax definition, `selectExpr` can contain:
 
-- suffix of time series path
+- suffix of time series path 
 - function
-  - Built-in aggregation functions, see [Aggregate Query](./Aggregate-Query.md) for details.
-  - Time series generation function
-  - User-defined functions, see [UDF](../Process-Data/UDF-User-Defined-Function.md) for details.
+   - Built-in aggregation functions, see [Aggregate Query](./Aggregate-Query.md) for details.
+   - Time series generation function
+   - User-defined functions, see [UDF](../Process-Data/UDF-User-Defined-Function.md) for details.
 - expressions
-  - Arithmetic operation expressions
-  - Time series generating nested expressions
-  - Aggregate query nested expressions
+   - Arithmetic operation expressions
+   - Time series generating nested expressions
+   - Aggregate query nested expressions
 - Numeric constants (could be used in expressions only)
 
 ## Arithmetic Query
@@ -301,8 +301,8 @@ The IoTDB currently supports 6 data types, including INT32, INT64 ,FLOAT, DOUBLE
 | CAST          | `type`: the type of the output data point, it can only be INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | Determined by the required attribute  `type` | Converts data to the type specified by the `type` argument. |
 
 #### Notes
-1. The value of type BOOLEAN is `true`, when data is converted to BOOLEAN if INT32 and INT64 are not 0, FLOAT and DOUBLE are not 0.0, TEXT is not empty string or "false", otherwise `false`.
-2. The value of type INT32, INT64, FLOAT, DOUBLE are 1 or 1.0 and TEXT is "true", when BOOLEAN data is true, otherwise 0, 0.0 or "false".
+1. The value of type BOOLEAN is `true`, when data is converted to BOOLEAN if INT32 and INT64 are not 0, FLOAT and DOUBLE are not 0.0, TEXT is not empty string or "false", otherwise `false`.    
+2. The value of type INT32, INT64, FLOAT, DOUBLE are 1 or 1.0 and TEXT is "true", when BOOLEAN data is true, otherwise 0, 0.0 or "false".  
 3. When TEXT is converted to INT32, INT64, or FLOAT, the TEXT is first converted to DOUBLE and then to the corresponding type, which may cause loss of precision. It will skip directly if the data can not be converted.
 
 #### Syntax
@@ -345,7 +345,7 @@ Known Implementation UDF Libraries:
 
 ## Nested Expressions
 
-IoTDB supports the calculation of arbitrary nested expressions. Since time series query and aggregation query can not be used in a query statement at the same time, we divide nested expressions into two types, which are nested expressions with time series query and nested expressions with aggregation query.
+IoTDB supports the calculation of arbitrary nested expressions. Since time series query and aggregation query can not be used in a query statement at the same time, we divide nested expressions into two types, which are nested expressions with time series query and nested expressions with aggregation query. 
 
 The following is the syntax definition of the `select` clause:
 
@@ -479,7 +479,7 @@ It costs 0.014s
 
 ##### Explanation
 
-- Only when the left operand and the right operand under a certain timestamp are not `null`, the nested expressions will have an output value. Otherwise this row will not be included in the result.
+- Only when the left operand and the right operand under a certain timestamp are not `null`, the nested expressions will have an output value. Otherwise this row will not be included in the result. 
   - In Result1 of the Example part, the value of time series `root.sg.a` at time 40 is 4, while the value of time series `root.sg.b` is `null`. So at time 40, the value of nested expressions `(a + b) * 2 + sin(a)` is `null`. So in Result2, this row is not included in the result.
 - If one operand in the nested expressions can be translated into multiple time series (For example, `*`), the result of each time series will be included in the result (Cartesian product). Please refer to Input3, Input4 and corresponding Result3 and Result4 in Example.
 
@@ -592,7 +592,7 @@ It costs 0.012s
 
 ## Use Alias
 
-Since the unique data model of IoTDB, lots of additional information like device will be carried before each sensor. Sometimes, we want to query just one specific device, then these prefix information show frequently will be redundant in this situation, influencing the analysis of result set. At this time, we can use `AS` function provided by IoTDB, assign an alias to time series selected in query.
+Since the unique data model of IoTDB, lots of additional information like device will be carried before each sensor. Sometimes, we want to query just one specific device, then these prefix information show frequently will be redundant in this situation, influencing the analysis of result set. At this time, we can use `AS` function provided by IoTDB, assign an alias to time series selected in query.  
 
 For example：
 
