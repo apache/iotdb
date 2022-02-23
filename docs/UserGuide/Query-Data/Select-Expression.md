@@ -27,10 +27,10 @@ A selection expression (`selectExpr`) is a component of a SELECT clause, each `s
 
 ```sql
 selectClause
-    : SELECT influxResultColumn (',' influxResultColumn)*
+    : SELECT resultColumn (',' resultColumn)*
     ;
 
-influxResultColumn
+resultColumn
     : selectExpr (AS alias)?
     ;
 
@@ -351,10 +351,10 @@ The following is the syntax definition of the `select` clause:
 
 ```sql
 selectClause
-    : SELECT influxResultColumn (',' influxResultColumn)*
+    : SELECT resultColumn (',' resultColumn)*
     ;
 
-influxResultColumn
+resultColumn
     : expression (AS ID)?
     ;
 

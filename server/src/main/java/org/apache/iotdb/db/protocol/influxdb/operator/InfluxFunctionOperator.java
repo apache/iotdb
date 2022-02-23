@@ -21,9 +21,9 @@ package org.apache.iotdb.db.protocol.influxdb.operator;
 
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 
-public class InfluxFunctionOperatorInflux extends InfluxFilterOperator {
+public class InfluxFunctionOperator extends InfluxFilterOperator {
 
-  public InfluxFunctionOperatorInflux(FilterConstant.FilterType filterType) {
+  public InfluxFunctionOperator(FilterConstant.FilterType filterType) {
     super(filterType);
   }
 }

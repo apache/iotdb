@@ -59,8 +59,8 @@ public class InfluxDBLogicalGeneratorTest {
         (InfluxFilterOperator) influxWhereComponent.getFilterOperator();
     assertEquals(filterOperator.getFilterType().toString(), "KW_AND");
     assertEquals(filterOperator.getChildren().size(), 2);
-    InfluxBasicFunctionOperatorInflux basicFunctionOperator =
-        (InfluxBasicFunctionOperatorInflux) filterOperator.getChildren().get(0);
+    InfluxBasicFunctionOperator basicFunctionOperator =
+        (InfluxBasicFunctionOperator) filterOperator.getChildren().get(0);
     assertEquals(basicFunctionOperator.getValue(), "1");
     assertEquals(basicFunctionOperator.getKeyName(), "a");
     assertNull(basicFunctionOperator.getFilterType());
