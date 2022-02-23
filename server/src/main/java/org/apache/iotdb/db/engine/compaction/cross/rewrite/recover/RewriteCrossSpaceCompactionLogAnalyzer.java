@@ -25,6 +25,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.InvalidPropertiesFormatException;
 import java.util.List;
 
 import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.MAGIC_STRING;
@@ -51,36 +52,72 @@ public class RewriteCrossSpaceCompactionLogAnalyzer {
   /** @return analyze (source file list, target file) */
   public void analyze() throws IOException {
     String currLine;
-    boolean isTargetFile = true;
-    List<File> mergeTmpFile = new ArrayList<>();
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
-      int magicCount = 0;
-      while ((currLine = bufferedReader.readLine()) != null) {
+      if ((currLine = bufferedReader.readLine()) != null) {
         switch (currLine) {
           case MAGIC_STRING:
-            if (magicCount == 0) {
-              isFirstMagicStringExisted = true;
-            } else {
-              isEndMagicStringExisted = true;
-            }
-            magicCount++;
-            break;
-          case STR_TARGET_FILES:
-            isTargetFile = true;
+            // compaction log of version 0.13
+            isFirstMagicStringExisted = true;
+            analyzeLog(bufferedReader);
             break;
           case STR_SEQ_FILES:
-          case STR_UNSEQ_FILES:
-            isTargetFile = false;
+            // compaction log of version < 0.13
+            analyzeOldLog(bufferedReader);
             break;
           default:
-            analyzeFilePath(isTargetFile, currLine);
-            break;
+            throw new InvalidPropertiesFormatException();
         }
       }
     }
   }
 
-  void analyzeFilePath(boolean isTargetFile, String filePath) {
+  /** Analyze cross space compaction log of version 0.13. */
+  private void analyzeLog(BufferedReader bufferedReader) throws IOException {
+    String currLine;
+    boolean isTargetFile = false;
+    while ((currLine = bufferedReader.readLine()) != null) {
+      switch (currLine) {
+        case MAGIC_STRING:
+          isEndMagicStringExisted = true;
+          break;
+        case STR_TARGET_FILES:
+          isTargetFile = true;
+          break;
+        case STR_SEQ_FILES:
+        case STR_UNSEQ_FILES:
+          isTargetFile = false;
+          break;
+        default:
+          analyzeFilePath(isTargetFile, currLine);
+          break;
+      }
+    }
+  }
+
+  /** Analyze cross space compaction log of previous version (<0.13). */
+  private void analyzeOldLog(BufferedReader bufferedReader) throws IOException {
+    String currLine;
+    boolean isTargetFile = false;
+    while ((currLine = bufferedReader.readLine()) != null) {
+      switch (currLine) {
+        case MAGIC_STRING:
+          isEndMagicStringExisted = true;
+          break;
+        case STR_TARGET_FILES:
+          isTargetFile = true;
+          break;
+        case STR_SEQ_FILES:
+        case STR_UNSEQ_FILES:
+          isTargetFile = false;
+          break;
+        default:
+          analyzeFilePath(isTargetFile, currLine);
+          break;
+      }
+    }
+  }
+
+  private void analyzeFilePath(boolean isTargetFile, String filePath) {
     if (isTargetFile) {
       targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromInfoString(filePath));
     } else {
