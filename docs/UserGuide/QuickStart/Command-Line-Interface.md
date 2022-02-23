@@ -195,7 +195,7 @@ curl -X POST "https://{your-keycloack-server}/auth/realms/{your-realm}/protocol/
  -d "username={username}" \
  -d "password={password}" \
  -d 'grant_type=password' \
- -d "client_id=iotdb"
+ -d "client_id=iotdb-client"
 ```
 The response looks something like
 
