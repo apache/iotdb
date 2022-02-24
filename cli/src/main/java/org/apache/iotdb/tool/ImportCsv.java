@@ -455,7 +455,7 @@ public class ImportCsv extends AbstractCsvTool {
             writeAndEmptyDataSet(
                 deviceName.get(), times, typesList, valuesList, measurementsList, 3);
             deviceName.set(record.get(1));
-          } else if (times.size() >= BATCH_SIZE && times.size() != 0) {
+          } else if (times.size() >= BATCH_SIZE) {
             // insert a batch
             writeAndEmptyDataSet(
                 deviceName.get(), times, typesList, valuesList, measurementsList, 3);
