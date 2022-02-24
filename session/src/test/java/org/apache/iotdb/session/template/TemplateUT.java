@@ -374,28 +374,6 @@ public class TemplateUT {
     }
   }
 
-  @Test
-  public void testQueryBasic() throws Exception {
-    session.insertAlignedRecord(
-        "root.sg.v1",
-        110L,
-        Collections.singletonList("y"),
-        Collections.singletonList(TSDataType.TEXT),
-        Collections.singletonList("testY"));
-    session.insertAlignedRecord(
-        "root.sg.v1",
-        110L,
-        Collections.singletonList("x"),
-        Collections.singletonList(TSDataType.TEXT),
-        Collections.singletonList("testY"));
-    SessionDataSet res =
-        session.executeRawDataQuery(Collections.singletonList("root.sg.v1.*"), 0L, 999L);
-    while (res.hasNext()) {
-      RowRecord rec = res.next();
-      assertEquals("", rec.getFields());
-    }
-  }
-
   private Template getTemplate(String name) throws StatementExecutionException {
     Template sessionTemplate = new Template(name, true);
     TemplateNode iNodeGPS = new InternalNode("GPS", false);

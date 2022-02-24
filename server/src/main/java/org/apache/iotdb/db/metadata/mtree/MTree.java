@@ -1838,9 +1838,9 @@ public class MTree implements Serializable {
   public boolean isTemplateSetOnMTree(String templateName) {
     // check whether template has been set
     Deque<IMNode> nodeStack = new ArrayDeque<>();
-    nodeStack.push(root);
+    nodeStack.add(root);
 
-    // DFT traverse on MTree
+    // BFT traverse on MTree
     while (nodeStack.size() != 0) {
       IMNode curNode = nodeStack.pop();
       if (curNode.getUpperTemplate() != null) {
@@ -1848,11 +1848,9 @@ public class MTree implements Serializable {
           return true;
         }
         // curNode set to other templates, cut this branch
-      }
-
-      // no template on curNode, push children to stack
-      for (IMNode child : curNode.getChildren().values()) {
-        nodeStack.push(child);
+      } else {
+        // no template on curNode, push children to stack
+        nodeStack.addAll(curNode.getChildren().values());
       }
     }
     return false;
