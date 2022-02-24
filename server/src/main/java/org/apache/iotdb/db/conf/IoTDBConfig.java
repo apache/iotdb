@@ -824,11 +824,11 @@ public class IoTDBConfig {
   private int doubleWriteTaskKeepAliveTime = 1;
 
   // The max size per file in double write persistence. Default is 64MB
-  private int doubleWriteMaxLogSize = 67108864;
+  private int doubleWriteMaxLogSize = 1073741824;
   // The core pool size of protector. i.e. The maximum number of running protector
   private int doubleWriteProtectorCorePoolSize = 5;
   // The max pool size of protector. i.e. The maximum number of cached protector
-  private int doubleWriteProtectorMaxPoolSize = 1024;
+  private int doubleWriteProtectorMaxPoolSize = 64;
   // The max waiting time when a DoubleWriteLogFile is created. i.e. When timeout,
   // the DoubleWriteProtector will begin to transmit whether the DoubleWriteLogFile is reached its
   // max size
