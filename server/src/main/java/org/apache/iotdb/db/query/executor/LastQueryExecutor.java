@@ -204,7 +204,7 @@ public class LastQueryExecutor {
         // 2. the actual last value is not null
         // 3. last value cache is enabled
         // 4. the filter is gt (greater than) or ge (greater than or equal to)
-        if (lastPairs.get(i) == null
+        if (lastPairs.get(nonCachedIndices.get(i)) == null
             && nonCachedLastPairs.get(i) != null
             && ((filter instanceof GtEq) || (filter instanceof Gt))) {
           cacheAccessors.get(nonCachedIndices.get(i)).write(nonCachedLastPairs.get(i));
