@@ -37,7 +37,10 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -52,7 +55,7 @@ import java.util.List;
 import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.modifyTsFileNameUnseqMergCnt;
 
-public class MergeRecoverTest {
+public class MergeRecoverTest extends MergeTest {
   private List<TsFileResource> sourceSeqFiles = new ArrayList<>();
   private List<TsFileResource> sourceUnseqFiles = new ArrayList<>();
   private List<TsFileResource> tmpSourceSeqFiles = new ArrayList<>();
@@ -72,14 +75,15 @@ public class MergeRecoverTest {
           .getTsFileManagement("root.sg1", "0", TestConstant.SEQUENCE_DATA_DIR);
 
   @Before
-  public void setUp() throws IOException, IllegalPathException {
+  public void setUp() throws IOException, MetadataException, WriteProcessException {
+    IoTDB.metaManager.init();
     Assert.assertTrue(seqDataDir.mkdirs());
     Assert.assertTrue(unseqDataDir.mkdirs());
+    prepareSeries();
     createFiles();
     tsFileManagement.addAll(sourceSeqFiles, true);
     tsFileManagement.addAll(sourceUnseqFiles, false);
     tsFileManagement.mergingModification = mergingModsFile;
-    IoTDB.metaManager.init();
     MergeManager.getINSTANCE().start();
   }
 
@@ -138,22 +142,27 @@ public class MergeRecoverTest {
   /**
    * source seq file index: 1~10 <br>
    * source unseq file index: 11~15 <br>
-   * deleted file: 1.tsfile, 1.tsfile.resource, 2.tsfile existed target file: 1.tsfile,
-   * 1.tsfile.resource, 2.tsfile
+   * deleted file: 1.tsfile, 1.tsfile.resource, 2.tsfile <br>
+   * existed target file: 1.tsfile, 1.tsfile.resource, 2.tsfile
    */
   @Test
   public void testRecoverWithSomeSourceFilesLostAndSomeTargetFilesExist()
       throws IOException, MetadataException {
-    sourceSeqFiles.get(0).getTsFile().delete();
     File targetFile = modifyTsFileNameUnseqMergCnt(sourceSeqFiles.get(0).getTsFile());
-    Assert.assertTrue(targetFile.createNewFile());
+    FSFactoryProducer.getFSFactory().moveFile(sourceSeqFiles.get(0).getTsFile(), targetFile);
     FSFactoryProducer.getFSFactory()
         .moveFile(
             new File(sourceSeqFiles.get(0).getTsFilePath() + TsFileResource.RESOURCE_SUFFIX),
             new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX));
-    sourceSeqFiles.get(1).getTsFile().delete();
     targetFile = modifyTsFileNameUnseqMergCnt(sourceSeqFiles.get(1).getTsFile());
-    Assert.assertTrue(targetFile.createNewFile());
+    FSFactoryProducer.getFSFactory().moveFile(sourceSeqFiles.get(1).getTsFile(), targetFile);
+    // sg recover will serialize resouce file
+    TsFileResource targetTsFileResouce = new TsFileResource(targetFile);
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFile.getAbsolutePath())) {
+      FileLoaderUtils.updateTsFileResource(reader, targetTsFileResouce);
+    }
+    targetTsFileResouce.serialize();
+
     RecoverMergeTask recoverMergeTask =
         new RecoverMergeTask(
             tsFileManagement,
@@ -297,7 +306,6 @@ public class MergeRecoverTest {
           new File(seqResource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
       Assert.assertFalse(new File(seqResource.getTsFilePath() + MergeTask.MERGE_SUFFIX).exists());
       Assert.assertTrue(seqResource.getModFile().exists());
-      Assert.assertEquals(4, seqResource.getModFile().getModifications().size());
       File targetFile = modifyTsFileNameUnseqMergCnt(seqResource.getTsFile());
       Assert.assertFalse(targetFile.exists());
       Assert.assertFalse(new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX).exists());
@@ -315,7 +323,7 @@ public class MergeRecoverTest {
     Assert.assertFalse(logFile.exists());
   }
 
-  private void createFiles() throws IOException, IllegalPathException {
+  private void createFiles() throws IOException, IllegalPathException, WriteProcessException {
     // create source seq files
     for (int i = 0; i < seqFileNum; i++) {
       File file =
@@ -344,6 +352,8 @@ public class MergeRecoverTest {
       deletion = new Deletion(new PartialPath("root.sg1.d1", "s0"), 1, 200, 300);
       tsFileResource.getModFile().write(deletion);
       tsFileResource.getModFile().close();
+
+      prepareFile(tsFileResource, i * 10, 10, i * 10);
     }
 
     // create source unseq files
@@ -374,6 +384,8 @@ public class MergeRecoverTest {
       deletion = new Deletion(new PartialPath("root.sg1.d1", "s0"), 1, 200, 300);
       tsFileResource.getModFile().write(deletion);
       tsFileResource.getModFile().close();
+
+      prepareFile(tsFileResource, i * 10, 5, i * 10);
     }
 
     // create .merge files
@@ -391,6 +403,8 @@ public class MergeRecoverTest {
                       + ".tsfile"
                       + MergeTask.MERGE_SUFFIX));
       Assert.assertTrue(file.createNewFile());
+      TsFileResource tsFileResource = new TsFileResource(file);
+      prepareFile(tsFileResource, i * 10, 10, i * 10);
     }
 
     // create merging mods file

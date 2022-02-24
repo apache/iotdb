@@ -23,17 +23,17 @@ import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogAnalyzer;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogAnalyzer.Status;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
-import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.modifyTsFileNameUnseqMergCnt;
 
@@ -97,8 +97,6 @@ public class RecoverMergeTask extends MergeTask {
 
   private void handleWhenAllSourceFilesExist() throws IOException {
     cleanUp(false);
-    appendNewModificationToOldModsFile(resource.getSeqFiles());
-    appendNewModificationToOldModsFile(resource.getUnseqFiles());
     tsFileManagement.removeMergingModification();
   }
 
@@ -108,17 +106,16 @@ public class RecoverMergeTask extends MergeTask {
       File targetFileResource = new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
       File tmpTargetFile = new File(sourceSeqResource.getTsFilePath() + MERGE_SUFFIX);
       // move to target file and target resource file
-      if (!targetFileResource.exists()) {
-        if (!targetFile.exists()) {
-          // move target file
-          FSFactoryProducer.getFSFactory().moveFile(tmpTargetFile, targetFile);
-        }
-        // move target resource file
-        FSFactoryProducer.getFSFactory()
-            .moveFile(
-                new File(sourceSeqResource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX),
-                targetFileResource);
+      if (!targetFile.exists()) {
+        // move target file
+        FSFactoryProducer.getFSFactory().moveFile(tmpTargetFile, targetFile);
       }
+      // serialize target resource file
+      TsFileResource targetTsFileResouce = new TsFileResource(targetFile);
+      try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFile.getAbsolutePath())) {
+        FileLoaderUtils.updateTsFileResource(reader, targetTsFileResouce);
+      }
+      targetTsFileResouce.serialize();
 
       // delete source seq file
       sourceSeqResource.remove();
@@ -132,20 +129,5 @@ public class RecoverMergeTask extends MergeTask {
       sourceSeqResource.setFile(targetFile);
     }
     cleanUp(true);
-  }
-
-  private void appendNewModificationToOldModsFile(List<TsFileResource> fileResources)
-      throws IOException {
-    for (TsFileResource fileResource : fileResources) {
-      if (tsFileManagement.mergingModification != null) {
-        for (Modification modification : tsFileManagement.mergingModification.getModifications()) {
-          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
-          // change after compaction
-          modification.setFileOffset(Long.MAX_VALUE);
-          fileResource.getModFile().write(modification);
-        }
-        fileResource.getModFile().close();
-      }
-    }
   }
 }
