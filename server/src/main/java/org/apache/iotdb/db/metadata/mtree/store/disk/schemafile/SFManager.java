@@ -178,7 +178,8 @@ public class SFManager implements ISchemaFileManager {
     String sgName = sgNode.getFullPath();
     if (!schemaFiles.containsKey(sgName)) {
       if (loadSchemaFileInst(sgName) == null) {
-        throw new SchemaFileNotExists(getFilePath(sgName));
+        throw new SchemaFileNotExists(
+            sgName + IoTDBConstant.PATH_SEPARATOR + MetadataConstant.SCHEMA_FILE_SUFFIX);
       }
       appendStorageGroupNode(sgNode);
     }
