@@ -103,9 +103,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Queue;
 import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
@@ -341,7 +343,7 @@ public class MRocksDBManager implements IMetaManager {
     // sg check and create
     String[] nodes = path.getNodes();
     SchemaUtils.checkDataTypeWithEncoding(schema.getType(), schema.getEncodingType());
-    int sgIndex = ensureStorageGroup(path, path.getNodeLength() - 2);
+    int sgIndex = ensureStorageGroup(path, path.getNodeLength() - 1);
 
     try {
       createTimeSeriesRecursively(
@@ -859,7 +861,7 @@ public class MRocksDBManager implements IMetaManager {
               } catch (RocksDBException | MetadataException | InterruptedException e) {
                 throw new RuntimeException(e);
               } finally {
-                storageGroupDeletingFlagMap.put(path.getFullPath(), false);
+                storageGroupDeletingFlagMap.remove(path.getFullPath());
               }
             });
   }
@@ -940,6 +942,91 @@ public class MRocksDBManager implements IMetaManager {
       throws MetadataException {
 
     return getKeyNumByPrefix(pathPattern, NODE_TYPE_MEASUREMENT, isPrefixMatch).size();
+  }
+
+  public void traverseByPatternPath(PartialPath pathPattern) {
+    String[] nodes = pathPattern.getNodes();
+
+    int startIndex = 0;
+    List<String[]> scanKeys = new ArrayList<>();
+
+    int indexOfPrefix = indexOfFirstWildcard(nodes, startIndex);
+    if (indexOfPrefix >= nodes.length) {
+      System.out.println("matched key: " + pathPattern.getFullPath());
+      return;
+    }
+
+    startIndex = indexOfPrefix;
+    String[] seedPath = ArrayUtils.subarray(nodes, 0, indexOfPrefix);
+    scanKeys.add(seedPath);
+
+    while (!scanKeys.isEmpty()) {
+      int firstNonWildcardIndex = indexOfFirstNonWildcard(nodes, startIndex);
+      int nextFirstWildcardIndex = indexOfFirstWildcard(nodes, firstNonWildcardIndex);
+      startIndex = nextFirstWildcardIndex;
+      int level = nextFirstWildcardIndex - 1;
+
+      boolean lastIteration = nextFirstWildcardIndex >= nodes.length;
+
+      Queue<String[]> tempNodes = new ConcurrentLinkedQueue<>();
+      byte[] suffixToMatch =
+          RocksDBUtils.getSuffixOfLevelPath(
+              ArrayUtils.subarray(nodes, firstNonWildcardIndex, nextFirstWildcardIndex), level);
+
+      scanKeys
+          .parallelStream()
+          .forEach(
+              prefixNodes -> {
+                String levelPrefix =
+                    RocksDBUtils.getLevelPathPrefix(prefixNodes, prefixNodes.length - 1, level);
+                Arrays.stream(ALL_NODE_TYPE_ARRAY)
+                    .parallel()
+                    .forEach(
+                        x -> {
+                          byte[] startKey = RocksDBUtils.toRocksDBKey(levelPrefix, x);
+                          RocksIterator iterator = readWriteHandler.iterator(null);
+                          iterator.seek(startKey);
+                          while (iterator.isValid()) {
+                            if (!RocksDBUtils.prefixMatch(iterator.key(), startKey)) {
+                              break;
+                            }
+                            if (RocksDBUtils.suffixMatch(iterator.key(), suffixToMatch)) {
+                              if (lastIteration) {
+                                System.out.println("matched key: " + new String(iterator.key()));
+                              } else {
+                                tempNodes.add(RocksDBUtils.toMetaNodes(iterator.key()));
+                              }
+                            }
+                            iterator.next();
+                          }
+                        });
+              });
+      scanKeys.clear();
+      scanKeys.addAll(tempNodes);
+      tempNodes.clear();
+    }
+  }
+
+  private int indexOfFirstNonWildcard(String[] nodes, int start) {
+    int index = start;
+    for (; index < nodes.length; index++) {
+      if (!ONE_LEVEL_PATH_WILDCARD.equals(nodes[index])
+          && !MULTI_LEVEL_PATH_WILDCARD.equals(nodes[index])) {
+        break;
+      }
+    }
+    return index;
+  }
+
+  private int indexOfFirstWildcard(String[] nodes, int start) {
+    int index = start;
+    for (; index < nodes.length; index++) {
+      if (ONE_LEVEL_PATH_WILDCARD.equals(nodes[index])
+          || MULTI_LEVEL_PATH_WILDCARD.equals(nodes[index])) {
+        break;
+      }
+    }
+    return index;
   }
 
   private Map<String, byte[]> getKeyNumByPrefix(
@@ -1213,17 +1300,12 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public boolean checkStorageGroupByPath(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
-    // ignore the first element: "root"
-    for (int i = 1; i < nodes.length; i++) {
-      String key = RocksDBUtils.getLevelPath(nodes, i);
-      byte[] value;
-      try {
-        if ((value = readWriteHandler.get(null, key.getBytes())) != null) {
-          return value.length > 0 && value[0] == NODE_TYPE_SG;
-        }
-      } catch (RocksDBException e) {
-        throw new MetadataException(e);
+    try {
+      if (indexOfSgNode(nodes) > 0) {
+        return true;
       }
+    } catch (RocksDBException e) {
+      throw new MetadataException(e);
     }
     return false;
   }

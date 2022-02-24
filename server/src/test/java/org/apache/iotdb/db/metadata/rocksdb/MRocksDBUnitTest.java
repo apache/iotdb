@@ -199,6 +199,26 @@ public class MRocksDBUnitTest {
         2, mRocksDBManager.getNodesCountInGivenLevel(new PartialPath("root.tt.sg"), 3, false));
   }
 
+  @Test
+  public void testPathPatternMatch() throws MetadataException, IOException {
+    List<PartialPath> timeseries = new ArrayList<>();
+    timeseries.add(new PartialPath("root.sg.d1.m1"));
+    timeseries.add(new PartialPath("root.sg.d1.m2"));
+    timeseries.add(new PartialPath("root.sg.d2.m1"));
+    timeseries.add(new PartialPath("root.sg.d2.m2"));
+    timeseries.add(new PartialPath("root.sg1.d1.m1"));
+    timeseries.add(new PartialPath("root.sg1.d1.m2"));
+    timeseries.add(new PartialPath("root.sg1.d2.m1"));
+    timeseries.add(new PartialPath("root.sg1.d2.m2"));
+
+    for (PartialPath path : timeseries) {
+      mRocksDBManager.createTimeseries(
+          path, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, null);
+    }
+
+    mRocksDBManager.traverseByPatternPath(new PartialPath("root.sg.d1.*"));
+  }
+
   @After
   public void clean() {
     mRocksDBManager.close();
