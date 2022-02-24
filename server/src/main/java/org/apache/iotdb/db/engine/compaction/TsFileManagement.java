@@ -82,8 +82,6 @@ public abstract class TsFileManagement {
   protected boolean isMergeExecutedInCurrentTask = false;
 
   protected boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig().isForceFullMerge();
-  private final int maxOpenFileNumInEachUnseqCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getMaxSelectUnseqFileNumInEachUnseqCompaction();
 
   protected ReentrantLock compactionSelectionLock = new ReentrantLock();
 
@@ -387,7 +385,7 @@ public abstract class TsFileManagement {
     }
   }
 
-  private void removeMergingModification() {
+  public void removeMergingModification() {
     try {
       if (mergingModification != null) {
         mergingModification.remove();

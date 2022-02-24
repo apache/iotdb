@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.merge.recover;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,7 +103,9 @@ public class MergeLogAnalyzer {
           mergeSeqFiles.add(seqFile);
           // remove to speed-up next iteration
           iterator.remove();
-          currentFileFound = true;
+          if (seqFile.getTsFile().exists()) {
+            currentFileFound = true;
+          }
           break;
         }
       }
@@ -140,7 +143,9 @@ public class MergeLogAnalyzer {
           mergeUnseqFiles.add(unseqFile);
           // remove to speed-up next iteration
           iterator.remove();
-          currentFileFound = true;
+          if (unseqFile.getTsFile().exists()) {
+            currentFileFound = true;
+          }
           break;
         }
       }

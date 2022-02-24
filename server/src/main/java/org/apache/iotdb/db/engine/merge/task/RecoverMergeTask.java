@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.engine.merge.task;
 
+import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogAnalyzer;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogAnalyzer.Status;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +36,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.modifyTsFileNameUnseqMergCnt;
 
 /**
@@ -43,17 +48,32 @@ public class RecoverMergeTask extends MergeTask {
   private static final Logger logger = LoggerFactory.getLogger(RecoverMergeTask.class);
 
   private MergeLogAnalyzer analyzer;
+  private TsFileManagement tsFileManagement;
 
   public RecoverMergeTask(
-      List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles,
+      TsFileManagement tsfileManagement,
       String storageGroupSysDir,
       MergeCallback callback,
       String taskName,
       boolean fullMerge,
       String storageGroupName) {
     super(
-        seqFiles, unseqFiles, storageGroupSysDir, callback, taskName, fullMerge, storageGroupName);
+        tsfileManagement.getTsFileList(true),
+        tsfileManagement.getTsFileList(false),
+        storageGroupSysDir,
+        callback,
+        taskName,
+        fullMerge,
+        storageGroupName);
+    this.tsFileManagement = tsfileManagement;
+    ModificationFile mergingModsFile =
+        new ModificationFile(
+            resource.getSeqFiles().get(0).getTsFile().getParent()
+                + File.separator
+                + MERGING_MODIFICATION_FILE_NAME);
+    if (mergingModsFile.exists()) {
+      tsfileManagement.mergingModification = mergingModsFile;
+    }
   }
 
   public void recoverMerge() throws IOException, MetadataException {
@@ -87,6 +107,9 @@ public class RecoverMergeTask extends MergeTask {
 
   private void handleWhenAllSourceFilesExist() throws IOException {
     cleanUp(false);
+    appendNewModificationToOldModsFile(resource.getSeqFiles());
+    appendNewModificationToOldModsFile(resource.getUnseqFiles());
+    tsFileManagement.removeMergingModification();
   }
 
   private void handleWhenSomeSourceFilesLost() throws IOException {
@@ -109,7 +132,30 @@ public class RecoverMergeTask extends MergeTask {
 
       // delete source seq file
       sourceSeqResource.remove();
+
+      // delete merge file
+      File mergeFile = new File(sourceSeqResource.getTsFilePath() + MERGE_SUFFIX);
+      if (mergeFile.exists()) {
+        mergeFile.delete();
+      }
+
+      sourceSeqResource.setFile(targetFile);
     }
     cleanUp(true);
+  }
+
+  private void appendNewModificationToOldModsFile(List<TsFileResource> fileResources)
+      throws IOException {
+    for (TsFileResource fileResource : fileResources) {
+      if (tsFileManagement.mergingModification != null) {
+        for (Modification modification : tsFileManagement.mergingModification.getModifications()) {
+          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+          // change after compaction
+          modification.setFileOffset(Long.MAX_VALUE);
+          fileResource.getModFile().write(modification);
+        }
+        fileResource.getModFile().close();
+      }
+    }
   }
 }
