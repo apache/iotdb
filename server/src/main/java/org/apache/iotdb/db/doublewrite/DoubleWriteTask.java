@@ -49,6 +49,7 @@ public class DoubleWriteTask implements Runnable {
   public void run() {
     boolean transmitStatus = false;
     try {
+      physicalPlanBuffer.position(0);
       transmitStatus = doubleWriteSessionPool.doubleWriteTransmit(physicalPlanBuffer);
     } catch (StatementExecutionException e) {
       LOGGER.error("double write can't transmit: ", e);
@@ -59,6 +60,8 @@ public class DoubleWriteTask implements Runnable {
     // serialize the PhysicalPlan if transition failed
     if (!transmitStatus) {
       try {
+        // must set buffer position to limit() before serialization
+        physicalPlanBuffer.position(physicalPlanBuffer.limit());
         protectorService.acquireLogWriter().write(physicalPlanBuffer);
         protectorService.releaseLogWriter();
       } catch (IOException e) {

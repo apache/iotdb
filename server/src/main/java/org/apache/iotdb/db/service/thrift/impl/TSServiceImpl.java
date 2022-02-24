@@ -2172,6 +2172,8 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus executeDoubleWrite(TSExecuteDoubleWriteReq req) {
     PhysicalPlan physicalPlan = null;
     try {
+      ByteBuffer planBuffer = req.physicalPlan;
+      planBuffer.position(0);
       physicalPlan = PhysicalPlan.Factory.create(req.physicalPlan);
     } catch (IllegalPathException | IOException e) {
       LOGGER.error("double write deserialization failed.", e);

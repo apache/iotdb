@@ -20,8 +20,8 @@ package org.apache.iotdb.db.doublewrite;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.doublewrite.log.DoubleWriteLogWriter;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.writelog.io.LogWriter;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import org.slf4j.Logger;
@@ -51,7 +51,7 @@ public class DoubleWriteProtectorService implements Runnable {
   private static final String logFileName = "DBLog";
   private int logFileID;
   private File logFile;
-  private DoubleWriteLogWriter logWriter;
+  private LogWriter logWriter;
   private final int maxLogFileSize;
   private final int maxLogFileCount;
   private final int maxWaitingTime;
@@ -99,6 +99,7 @@ public class DoubleWriteProtectorService implements Runnable {
 
     firstLogLock.lock();
     // create first DoubleWriteLog
+    logWriterLock.lock();
     createNewLogFile();
     firstLogCondition.signal();
     firstLogLock.unlock();
@@ -166,27 +167,36 @@ public class DoubleWriteProtectorService implements Runnable {
     logFile =
         SystemFileFactory.INSTANCE.getFile(logFileDir + File.separator + logFileName + slotID);
     try {
-      if (logFile.createNewFile()) {
-        logWriterLock.lock();
-        if (logWriter != null) {
-          logWriter.close();
-        }
-        logWriter = new DoubleWriteLogWriter(logFile);
-        logWriterLock.unlock();
+      while (true) {
+        if (logFile.createNewFile()) {
+          logWriter = new LogWriter(logFile, false);
+          logWriterLock.unlock();
 
-        LOGGER.info(
-            "DoubleWriteProtectorService create double write log file {}.", logFile.getPath());
-      } else {
-        LOGGER.error(
-            "DoubleWriteProtectorService create double write log file {} failed.",
-            logFile.getPath());
+          LOGGER.info(
+              "DoubleWriteProtectorService create double write log file {}.", logFile.getPath());
+          break;
+        } else {
+          LOGGER.error(
+              "DoubleWriteProtectorService create double write log file {} failed.",
+              logFile.getPath());
+          TimeUnit.SECONDS.sleep(1);
+        }
       }
-    } catch (IOException e) {
+    } catch (IOException | InterruptedException e) {
       LOGGER.error("DoubleWriteProtectorService can't create new log file", e);
     }
   }
 
   private void switchLogFile() {
+    logWriterLock.lock();
+    // close old DoubleWriteLogWriter
+    if (logWriter != null) {
+      try {
+        logWriter.close();
+      } catch (IOException e) {
+        LOGGER.error("close DoubleWriteLog writer error", e);
+      }
+    }
     // create a protector for last DoubleWriteLog
     protectorThreadPool.execute(
         new DoubleWriteProtector(
@@ -200,7 +210,7 @@ public class DoubleWriteProtectorService implements Runnable {
    * Note that DoubleWriteLogWriter in DoubleWriteProtectorService is not concurrency save. Make
    * sure that there is at most one DoubleWriteTask uses this DoubleWriteLogWriter.
    */
-  public DoubleWriteLogWriter acquireLogWriter() {
+  public LogWriter acquireLogWriter() {
     logWriterLock.lock();
     return logWriter;
   }
