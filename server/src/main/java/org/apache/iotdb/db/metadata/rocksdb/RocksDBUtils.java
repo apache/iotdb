@@ -89,12 +89,11 @@ public class RocksDBUtils {
 
   public static String getLevelPathPrefix(String[] nodes, int end, int level) {
     StringBuilder builder = new StringBuilder();
-    builder.append(ROOT);
     char depth = (char) (ZERO + level);
+    builder.append(ROOT).append(PATH_SEPARATOR).append(depth);
     for (int i = 1; i <= end; i++) {
-      builder.append(PATH_SEPARATOR).append(depth).append(nodes[i]);
+      builder.append(nodes[i]).append(PATH_SEPARATOR).append(depth);
     }
-    builder.append(PATH_SEPARATOR);
     return builder.toString();
   }
 
@@ -353,6 +352,54 @@ public class RocksDBUtils {
       }
     }
     return levelCount;
+  }
+
+  public static byte[] getSuffixOfLevelPath(String[] nodes, int level) {
+    StringBuilder stringBuilder = new StringBuilder();
+    for (String str : nodes) {
+      stringBuilder.append(PATH_SEPARATOR).append(level).append(str);
+    }
+    return stringBuilder.toString().getBytes();
+  }
+
+  public static boolean suffixMatch(byte[] key, byte[] suffix) {
+    if (key.length < suffix.length) {
+      return false;
+    }
+
+    for (int i = key.length - 1, j = suffix.length - 1; i >= 0 && j >= 0; ) {
+      if ((key[i] ^ suffix[j]) != 0) {
+        return false;
+      }
+      i--;
+      j--;
+    }
+    return true;
+  }
+
+  public static boolean prefixMatch(byte[] key, byte[] prefix) {
+    if (key.length < prefix.length) {
+      return false;
+    }
+
+    for (int i = 0, j = 0; i < key.length && j < prefix.length; ) {
+      if ((key[i] ^ prefix[j]) != 0) {
+        return false;
+      }
+      i++;
+      j++;
+    }
+    return true;
+  }
+
+  public static String[] toMetaNodes(byte[] rocksdbKey) {
+    String rawKey = new String(BytesUtils.subBytes(rocksdbKey, 1, rocksdbKey.length - 1));
+    String[] nodes = rawKey.split(ESCAPE_PATH_SEPARATOR);
+    nodes[0] = ROOT_STRING;
+    for (int i = 1; i < nodes.length; i++) {
+      nodes[i] = nodes[i].substring(1);
+    }
+    return nodes;
   }
 
   /**
