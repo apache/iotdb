@@ -317,9 +317,6 @@ public class TSServiceImpl implements TSIService.Iface {
   protected final ServiceProvider serviceProvider;
 
   // Double write module, temporary use
-  private static final int MAX_PHYSICALPLAN_SIZE = 16 * 1024 * 1024;
-  private final ByteArrayOutputStream doubleWriteByteStream;
-  private final DataOutputStream doubleWriteSerializeStream;
   private final SessionPool doubleWriteSessionPool;
   private final ExecutorService doubleWriteTaskThreadPool;
   private final DoubleWriteProtectorService doubleWriteProtectorService;
@@ -365,15 +362,9 @@ public class TSServiceImpl implements TSIService.Iface {
               new ArrayBlockingQueue<>(config.getDoubleWriteTaskMaxPoolSize()),
               Executors.defaultThreadFactory(),
               new ThreadPoolExecutor.DiscardOldestPolicy());
-
-      // For serialize PhysicalPlan
-      doubleWriteByteStream = new ByteArrayOutputStream(MAX_PHYSICALPLAN_SIZE);
-      doubleWriteSerializeStream = new DataOutputStream(doubleWriteByteStream);
     } else {
       doubleWriteSessionPool = null;
       doubleWriteTaskThreadPool = null;
-      doubleWriteByteStream = null;
-      doubleWriteSerializeStream = null;
       doubleWriteProtectorService = null;
     }
   }
@@ -2182,11 +2173,13 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   private void transmitDoubleWrite(PhysicalPlan physicalPlan)
-      throws IOException, InterruptedException, ExecutionException {
+      throws InterruptedException, ExecutionException, IOException {
     // serialize physical plan
+    int size = physicalPlan.getSerializedSize();
+    ByteArrayOutputStream doubleWriteByteStream = new ByteArrayOutputStream(size);
+    DataOutputStream doubleWriteSerializeStream = new DataOutputStream(doubleWriteByteStream);
     physicalPlan.serialize(doubleWriteSerializeStream);
     ByteBuffer buffer = ByteBuffer.wrap(doubleWriteByteStream.toByteArray());
-    doubleWriteByteStream.reset();
 
     // create and wait DoubleWriteTask
     DoubleWriteTask doubleWriteTask =
