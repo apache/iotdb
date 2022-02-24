@@ -184,6 +184,7 @@ public class MManager {
 
   private boolean isRecovering;
   private boolean initialized;
+  private boolean isClearing;
   private boolean allowToCreateNewSeries = true;
 
   private AtomicLong totalSeriesNumber = new AtomicLong();
@@ -243,7 +244,11 @@ public class MManager {
         Caffeine.newBuilder()
             .maximumSize(cacheSize)
             .removalListener(
-                (PartialPath path, IMNode node, RemovalCause cause) -> mtree.unPinMNode(node))
+                (PartialPath path, IMNode node, RemovalCause cause) -> {
+                  if (!isClearing) {
+                    mtree.unPinMNode(node);
+                  }
+                })
             .build(
                 new com.github.benmanes.caffeine.cache.CacheLoader<PartialPath, IMNode>() {
                   @Override
@@ -437,12 +442,13 @@ public class MManager {
 
   /** function for clearing MTree */
   public synchronized void clear() {
+    isClearing = true;
     try {
-      if (this.mtree != null) {
-        this.mtree.clear();
-      }
       if (this.mNodeCache != null) {
         this.mNodeCache.invalidateAll();
+      }
+      if (this.mtree != null) {
+        this.mtree.clear();
       }
       this.totalSeriesNumber.set(0);
       this.templateManager.clear();
@@ -463,6 +469,7 @@ public class MManager {
     } catch (IOException e) {
       logger.error("Cannot close metadata log writer, because:", e);
     }
+    isClearing = false;
   }
 
   public void operation(PhysicalPlan plan) throws IOException, MetadataException {

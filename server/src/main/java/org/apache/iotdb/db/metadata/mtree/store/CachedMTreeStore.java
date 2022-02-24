@@ -61,8 +61,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private IMNode root;
 
-  private ExecutorService flushTask =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("MTreeFlushThread");;
+  private ExecutorService flushTask;
   private boolean hasFlushTask = false;
 
   private ReadWriteLock readWriteLock = new ReentrantReadWriteLock(); // default writer preferential
@@ -75,6 +74,7 @@ public class CachedMTreeStore implements IMTreeStore {
     file = new MockSFManager();
     root = file.init();
     cacheStrategy.pinMNode(root);
+    flushTask = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("MTreeFlushThread");
   }
 
   @Override
@@ -295,22 +295,21 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public void clear() {
-    writeLock.lock();
-    try {
-      root = null;
-      cacheStrategy.clear();
-      memManager.clear();
-      if (file != null) {
-        try {
-          file.close();
-        } catch (MetadataException | IOException e) {
-          logger.error(String.format("Error occurred during SchemaFile clear, %s", e.getMessage()));
-        }
-      }
-      file = null;
-    } finally {
-      writeLock.unlock();
+    if (flushTask != null) {
+      flushTask.shutdown();
+      flushTask = null;
     }
+    root = null;
+    cacheStrategy.clear();
+    memManager.clear();
+    if (file != null) {
+      try {
+        file.close();
+      } catch (MetadataException | IOException e) {
+        logger.error(String.format("Error occurred during SchemaFile clear, %s", e.getMessage()));
+      }
+    }
+    file = null;
   }
 
   private void tryExecuteMemoryRelease() {
