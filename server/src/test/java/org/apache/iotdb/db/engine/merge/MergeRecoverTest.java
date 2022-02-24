@@ -78,6 +78,7 @@ public class MergeRecoverTest {
     createFiles();
     tsFileManagement.addAll(sourceSeqFiles, true);
     tsFileManagement.addAll(sourceUnseqFiles, false);
+    tsFileManagement.mergingModification = mergingModsFile;
     IoTDB.metaManager.init();
     MergeManager.getINSTANCE().start();
   }

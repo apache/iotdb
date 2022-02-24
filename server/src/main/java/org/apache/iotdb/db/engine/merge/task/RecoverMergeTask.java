@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.merge.recover.MergeLogAnalyzer;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogAnalyzer.Status;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -36,7 +35,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.modifyTsFileNameUnseqMergCnt;
 
 /**
@@ -66,14 +64,6 @@ public class RecoverMergeTask extends MergeTask {
         fullMerge,
         storageGroupName);
     this.tsFileManagement = tsfileManagement;
-    ModificationFile mergingModsFile =
-        new ModificationFile(
-            resource.getSeqFiles().get(0).getTsFile().getParent()
-                + File.separator
-                + MERGING_MODIFICATION_FILE_NAME);
-    if (mergingModsFile.exists()) {
-      tsfileManagement.mergingModification = mergingModsFile;
-    }
   }
 
   public void recoverMerge() throws IOException, MetadataException {
