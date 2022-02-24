@@ -74,7 +74,7 @@ public abstract class MTreeTestCase {
       MTreeService root = new MTreeService();
       root.init();
       return root;
-    } catch (IOException e) {
+    } catch (MetadataException | IOException e) {
       fail();
     }
     return null;
@@ -370,7 +370,7 @@ public abstract class MTreeTestCase {
   }
 
   @Test
-  public void testSetStorageGroup() throws IllegalPathException {
+  public void testSetStorageGroup() throws MetadataException {
     // set storage group first
     MTreeService root = getNewMTree();
     try {
