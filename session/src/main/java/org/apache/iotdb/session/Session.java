@@ -1605,7 +1605,6 @@ public class Session {
     } catch (RedirectException e) {
       handleRedirection(tablet.deviceId, e.getEndPoint());
     }
-    insertTablet(tablet, sorted);
   }
 
   private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted, boolean isAligned)
