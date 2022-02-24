@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -34,11 +37,21 @@ public class SetTemplatePlan extends PhysicalPlan {
   String prefixPath;
 
   public SetTemplatePlan() {
-    super(false, OperatorType.SET_TEMPLATE);
+    super(OperatorType.SET_TEMPLATE);
   }
 
-  public SetTemplatePlan(String templateName, String prefixPath) {
-    super(false, OperatorType.SET_TEMPLATE);
+  public SetTemplatePlan(String templateName, String prefixPath) throws IllegalPathException {
+    super(OperatorType.SET_TEMPLATE);
+
+    String[] pathNodes = MetaUtils.splitPathToDetachedPath(prefixPath);
+    for (String s : pathNodes) {
+      if (s.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+          || s.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+        throw new IllegalPathException(
+            prefixPath, "template cannot be set on a path with wildcard.");
+      }
+    }
+
     this.templateName = templateName;
     this.prefixPath = prefixPath;
   }

@@ -32,7 +32,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.thrift.TException;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class AggregationPlan extends RawDataQueryPlan {
 
@@ -56,11 +60,11 @@ public class AggregationPlan extends RawDataQueryPlan {
   @Override
   public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery)
       throws TException, MetadataException {
+    TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
     if (isGroupByLevel()) {
       List<String> respColumns = new ArrayList<>();
       List<String> columnsTypes = new ArrayList<>();
 
-      TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
       for (Map.Entry<String, AggregateResult> groupPathResult :
           getGroupPathsResultMap().entrySet()) {
         respColumns.add(groupPathResult.getKey());
@@ -68,15 +72,16 @@ public class AggregationPlan extends RawDataQueryPlan {
       }
       resp.setColumns(respColumns);
       resp.setDataTypeList(columnsTypes);
-      return resp;
     } else {
-      return super.getTSExecuteStatementResp(isJdbcQuery);
+      resp = super.getTSExecuteStatementResp(isJdbcQuery);
     }
+    resp.setIgnoreTimeStamp(true);
+    return resp;
   }
 
   @Override
   public List<TSDataType> getWideQueryHeaders(
-      List<String> respColumns, List<String> respSgColumns, Boolean isJdbcQuery, BitSet aliasList)
+      List<String> respColumns, List<String> respSgColumns, boolean isJdbcQuery, BitSet aliasList)
       throws MetadataException {
     List<TSDataType> seriesTypes = new ArrayList<>();
     List<String> aggregations = getAggregations();

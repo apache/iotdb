@@ -21,7 +21,7 @@ package org.apache.iotdb.db.protocol.influxdb.dto;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.protocol.influxdb.meta.MetaManager;
+import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.DataTypeUtils;
 import org.apache.iotdb.db.utils.ParameterUtils;
@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class IoTDBPoint {
 
@@ -56,12 +57,24 @@ public class IoTDBPoint {
     this.values = values;
   }
 
-  public IoTDBPoint(String database, Point point, MetaManager metaManager) {
+  public IoTDBPoint(String database, Point point, InfluxDBMetaManager metaManager) {
     String measurement = null;
     Map<String, String> tags = new HashMap<>();
     Map<String, Object> fields = new HashMap<>();
     Long time = null;
-
+    TimeUnit precision = TimeUnit.NANOSECONDS;
+    // Get the precision of point in influxdb by reflection
+    for (java.lang.reflect.Field reflectField : point.getClass().getDeclaredFields()) {
+      reflectField.setAccessible(true);
+      try {
+        if (reflectField.getType().getName().equalsIgnoreCase("java.util.concurrent.TimeUnit")
+            && reflectField.getName().equalsIgnoreCase("precision")) {
+          precision = (TimeUnit) reflectField.get(point);
+        }
+      } catch (IllegalAccessException e) {
+        throw new IllegalArgumentException(e.getMessage());
+      }
+    }
     // Get the property of point in influxdb by reflection
     for (java.lang.reflect.Field reflectField : point.getClass().getDeclaredFields()) {
       reflectField.setAccessible(true);
@@ -81,16 +94,17 @@ public class IoTDBPoint {
         if (reflectField.getType().getName().equalsIgnoreCase("java.lang.Number")
             && reflectField.getName().equalsIgnoreCase("time")) {
           time = (Long) reflectField.get(point);
+          time = TimeUnit.MILLISECONDS.convert(time, precision);
         }
-        // set current time
-        if (time == null) {
-          time = System.currentTimeMillis();
-        }
+
       } catch (IllegalAccessException e) {
         throw new IllegalArgumentException(e.getMessage());
       }
     }
-
+    // set current time
+    if (time == null) {
+      time = System.currentTimeMillis();
+    }
     ParameterUtils.checkNonEmptyString(database, "database");
     ParameterUtils.checkNonEmptyString(measurement, "measurement name");
     String path = metaManager.generatePath(database, measurement, tags);

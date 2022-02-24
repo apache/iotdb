@@ -37,7 +37,7 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -127,6 +127,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
+  protected int getDevicesNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
+    // adapt to prefix match of IoTDB v0.12
+    return getDevicesNum(path)
+        + (isPrefixMatch
+            ? getDevicesNum(path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD))
+            : 0);
+  }
+
   protected int getDevicesNum(PartialPath path) throws MetadataException {
     // make sure this node knows all storage groups
     try {
@@ -134,7 +142,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     } catch (CheckConsistencyException e) {
       throw new MetadataException(e);
     }
-    Map<String, String> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(path);
+    Map<String, List<PartialPath>> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(path);
     if (sgPathMap.isEmpty()) {
       throw new PathNotExistException(path.getFullPath());
     }
@@ -149,7 +157,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     return ret;
   }
 
-  private int getDeviceCount(Map<String, String> sgPathMap, PartialPath queryPath)
+  private int getDeviceCount(Map<String, List<PartialPath>> sgPathMap, PartialPath queryPath)
       throws CheckConsistencyException, MetadataException {
     AtomicInteger result = new AtomicInteger();
     // split the paths by the data group they belong to
@@ -290,11 +298,22 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected int getPathsNum(PartialPath path) throws MetadataException {
-    return getNodesNumInGivenLevel(path, -1);
+  protected int getPathsNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
+    return getNodesNumInGivenLevel(path, -1, isPrefixMatch);
   }
 
   @Override
+  protected int getNodesNumInGivenLevel(PartialPath path, int level, boolean isPrefixMatch)
+      throws MetadataException {
+    int result = getNodesNumInGivenLevel(path, level);
+    if (isPrefixMatch) {
+      // adapt to prefix match of IoTDB v0.12
+      result +=
+          getNodesNumInGivenLevel(path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD), level);
+    }
+    return result;
+  }
+
   protected int getNodesNumInGivenLevel(PartialPath path, int level) throws MetadataException {
     // make sure this node knows all storage groups
     try {
@@ -311,7 +330,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
     if (!wildcardPath.getMeasurement().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
       wildcardPath = wildcardPath.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
     }
-    Map<String, String> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(wildcardPath);
+    Map<String, List<PartialPath>> sgPathMap =
+        IoTDB.metaManager.groupPathByStorageGroup(wildcardPath);
     if (sgPathMap.isEmpty()) {
       return 0;
     }
@@ -370,14 +390,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
    * @param level the max depth to match the pattern, -1 means matching the whole pattern
    * @return the number of paths that match the pattern at given level
    */
-  private int getPathCount(Map<String, String> sgPathMap, int level)
+  private int getPathCount(Map<String, List<PartialPath>> sgPathMap, int level)
       throws MetadataException, CheckConsistencyException {
     AtomicInteger result = new AtomicInteger();
     // split the paths by the data group they belong to
     Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
-    for (Entry<String, String> sgPathEntry : sgPathMap.entrySet()) {
+    for (Entry<String, List<PartialPath>> sgPathEntry : sgPathMap.entrySet()) {
       String storageGroupName = sgPathEntry.getKey();
-      PartialPath pathUnderSG = new PartialPath(sgPathEntry.getValue());
+      List<PartialPath> paths = sgPathEntry.getValue();
       // find the data group that should hold the timeseries schemas of the storage group
       PartitionGroup partitionGroup =
           metaGroupMember.getPartitionTable().route(storageGroupName, 0);
@@ -387,7 +407,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
         metaGroupMember
             .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getRaftId())
             .syncLeaderWithConsistencyCheck(false);
-        int localResult = getLocalPathCount(pathUnderSG, level);
+        int localResult = 0;
+        for (PartialPath path : paths) {
+          localResult += getLocalPathCount(path, level);
+        }
         logger.debug(
             "{}: get path count of {} locally, result {}",
             metaGroupMember.getName(),
@@ -396,9 +419,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
         result.addAndGet(localResult);
       } else {
         // batch the queries of the same group to reduce communication
-        groupPathMap
-            .computeIfAbsent(partitionGroup, p -> new ArrayList<>())
-            .add(pathUnderSG.getFullPath());
+        for (PartialPath path : paths) {
+          groupPathMap
+              .computeIfAbsent(partitionGroup, p -> new ArrayList<>())
+              .add(path.getFullPath());
+        }
       }
     }
     if (groupPathMap.isEmpty()) {

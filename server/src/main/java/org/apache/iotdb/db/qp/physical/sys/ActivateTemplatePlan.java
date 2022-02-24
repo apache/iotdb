@@ -39,11 +39,11 @@ public class ActivateTemplatePlan extends PhysicalPlan {
   PartialPath prefixPath;
 
   public ActivateTemplatePlan() {
-    super(false, OperatorType.ACTIVATE_TEMPLATE);
+    super(OperatorType.ACTIVATE_TEMPLATE);
   }
 
   public ActivateTemplatePlan(PartialPath prefixPath) {
-    super(false, OperatorType.ACTIVATE_TEMPLATE);
+    super(OperatorType.ACTIVATE_TEMPLATE);
     this.prefixPath = prefixPath;
   }
 

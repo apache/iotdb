@@ -40,8 +40,8 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -111,11 +111,11 @@ public class ReadWriteTest {
     }
     Schema schema = new Schema();
     schema.extendTemplate(
-        TEMPLATE_NAME, new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        TEMPLATE_NAME, new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     schema.extendTemplate(
-        TEMPLATE_NAME, new UnaryMeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+        TEMPLATE_NAME, new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
     schema.extendTemplate(
-        TEMPLATE_NAME, new UnaryMeasurementSchema("s3", TSDataType.INT32, TSEncoding.TS_2DIFF));
+        TEMPLATE_NAME, new MeasurementSchema("s3", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
     TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
 

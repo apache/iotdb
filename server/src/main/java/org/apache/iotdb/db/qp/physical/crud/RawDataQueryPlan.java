@@ -22,12 +22,13 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -51,10 +52,6 @@ public class RawDataQueryPlan extends QueryPlan {
 
   public RawDataQueryPlan() {
     super();
-  }
-
-  public RawDataQueryPlan(boolean isQuery, Operator.OperatorType operatorType) {
-    super(isQuery, operatorType);
   }
 
   @Override
@@ -101,6 +98,19 @@ public class RawDataQueryPlan extends QueryPlan {
 
   public void setExpression(IExpression expression) throws QueryProcessException {
     this.expression = expression;
+    updateDeviceMeasurementsUsingExpression(expression);
+  }
+
+  public void updateDeviceMeasurementsUsingExpression(IExpression expression) {
+    if (expression instanceof SingleSeriesExpression) {
+      Path path = ((SingleSeriesExpression) expression).getSeriesPath();
+      deviceToMeasurements
+          .computeIfAbsent(path.getDevice(), key -> new HashSet<>())
+          .add(path.getMeasurement());
+    } else if (expression instanceof IBinaryExpression) {
+      updateDeviceMeasurementsUsingExpression(((IBinaryExpression) expression).getLeft());
+      updateDeviceMeasurementsUsingExpression(((IBinaryExpression) expression).getRight());
+    }
   }
 
   public List<PartialPath> getDeduplicatedPaths() {
@@ -128,9 +138,10 @@ public class RawDataQueryPlan extends QueryPlan {
         path -> {
           Set<String> set =
               deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>());
-          set.add(path.getMeasurement());
           if (path instanceof AlignedPath) {
             set.addAll(((AlignedPath) path).getMeasurementList());
+          } else {
+            set.add(path.getMeasurement());
           }
         });
     this.deduplicatedPaths = deduplicatedPaths;

@@ -33,13 +33,13 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.MeasurementGroup;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -52,10 +52,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.tsfile.utils.FileGenerator.generateIndexString;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -151,7 +154,7 @@ public class MetadataIndexConstructorTest {
     int[][] vectorMeasurement = new int[deviceNum][];
     String[][] singleMeasurement = new String[deviceNum][];
     for (int i = 0; i < deviceNum; i++) {
-      devices[i] = "d" + i;
+      devices[i] = "d" + generateIndexString(i, deviceNum);
       vectorMeasurement[i] = new int[0];
       singleMeasurement[i] = new String[measurementNum];
       for (int j = 0; j < measurementNum; j++) {
@@ -204,8 +207,14 @@ public class MetadataIndexConstructorTest {
     List<String> correctDevices = new ArrayList<>(); // contains all device by sequence
     List<List<String>> correctFirstMeasurements =
         new ArrayList<>(); // contains first measurements of every leaf, group by device
+    List<String> correctPaths = new ArrayList<>(); // contains all paths by sequence
     generateCorrectResult(
-        correctDevices, correctFirstMeasurements, devices, vectorMeasurement, singleMeasurement);
+        correctDevices,
+        correctFirstMeasurements,
+        correctPaths,
+        devices,
+        vectorMeasurement,
+        singleMeasurement);
     // 4. compare correct result with TsFile's metadata
     Arrays.sort(devices);
     // 4.1 make sure device in order
@@ -216,6 +225,14 @@ public class MetadataIndexConstructorTest {
     }
     // 4.2 make sure timeseries in order
     try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH)) {
+      Iterator<Pair<String, Boolean>> iterator = reader.getAllDevicesIteratorWithIsAligned();
+      while (iterator.hasNext()) {
+        for (String correctDevice : correctDevices) {
+          assertEquals(correctDevice, iterator.next().left);
+        }
+      }
+      assertFalse(iterator.hasNext());
+
       Map<String, List<TimeseriesMetadata>> allTimeseriesMetadata =
           reader.getAllTimeseriesMetadata();
       for (int j = 0; j < actualDevices.size(); j++) {
@@ -229,6 +246,7 @@ public class MetadataIndexConstructorTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
+
     // 4.3 make sure split leaf correctly
     for (int j = 0; j < actualDevices.size(); j++) {
       for (int i = 0; i < actualMeasurements.get(j).size(); i++) {
@@ -236,6 +254,20 @@ public class MetadataIndexConstructorTest {
             actualMeasurements.get(j).get(i),
             correctFirstMeasurements.get(j).get(i * conf.getMaxDegreeOfIndexNode()));
       }
+    }
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH)) {
+      Iterator<List<Path>> iterator = reader.getPathsIterator();
+      int idx = 0;
+      while (iterator.hasNext()) {
+        for (Path actualPath : iterator.next()) {
+          assertEquals(actualPath.getFullPath(), correctPaths.get(idx));
+          idx++;
+        }
+      }
+      assertEquals(correctPaths.size(), idx);
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
@@ -331,6 +363,7 @@ public class MetadataIndexConstructorTest {
   private void generateCorrectResult(
       List<String> correctDevices,
       List<List<String>> correctMeasurements,
+      List<String> correctPaths,
       String[] devices,
       int[][] vectorMeasurement,
       String[][] singleMeasurement) {
@@ -341,16 +374,21 @@ public class MetadataIndexConstructorTest {
       List<String> measurements = new ArrayList<>();
       // single-variable measurement
       if (singleMeasurement != null) {
-        measurements.addAll(Arrays.asList(singleMeasurement[i]));
+        for (String measurement : singleMeasurement[i]) {
+          measurements.add(measurement);
+          correctPaths.add(new Path(device, measurement).getFullPath());
+        }
       }
       // multi-variable measurement
       for (int vectorIndex = 0; vectorIndex < vectorMeasurement[i].length; vectorIndex++) {
         measurements.add("");
+        correctPaths.add(new Path(device, "").getFullPath());
         int measurementNum = vectorMeasurement[i][vectorIndex];
         for (int measurementIndex = 0; measurementIndex < measurementNum; measurementIndex++) {
           String measurementName =
               measurementPrefix + generateIndexString(measurementIndex, measurementNum);
           measurements.add(TsFileConstant.PATH_SEPARATOR + measurementName);
+          correctPaths.add(new Path(device, measurementName).getFullPath());
         }
       }
       Collections.sort(measurements);
@@ -379,7 +417,7 @@ public class MetadataIndexConstructorTest {
           for (String measurement : singleMeasurement[i]) {
             tsFileWriter.registerTimeseries(
                 new Path(device),
-                new UnaryMeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
+                new MeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
           }
           // the number of record rows
           int rowNum = 10;
@@ -407,15 +445,15 @@ public class MetadataIndexConstructorTest {
               vectorPrefix + generateIndexString(vectorIndex, vectorMeasurement.length);
           logger.info("generating vector {}...", vectorName);
           int measurementNum = vectorMeasurement[i][vectorIndex];
-          List<UnaryMeasurementSchema> schemas = new ArrayList<>();
-          List<IMeasurementSchema> tabletSchema = new ArrayList<>();
+          List<MeasurementSchema> schemas = new ArrayList<>();
+          List<MeasurementSchema> tabletSchema = new ArrayList<>();
           for (int measurementIndex = 0; measurementIndex < measurementNum; measurementIndex++) {
             String measurementName =
                 measurementPrefix + generateIndexString(measurementIndex, measurementNum);
             logger.info("generating vector measurement {}...", measurementName);
             // add measurements into file schema (all with INT64 data type)
-            UnaryMeasurementSchema schema1 =
-                new UnaryMeasurementSchema(measurementName, TSDataType.INT64, TSEncoding.RLE);
+            MeasurementSchema schema1 =
+                new MeasurementSchema(measurementName, TSDataType.INT64, TSEncoding.RLE);
             schemas.add(schema1);
             tabletSchema.add(schema1);
           }
@@ -452,21 +490,5 @@ public class MetadataIndexConstructorTest {
       logger.error("meet error in TsFileWrite with tablet", e);
       fail(e.getMessage());
     }
-  }
-
-  /**
-   * generate curIndex string, use "0" on left to make sure align
-   *
-   * @param curIndex current index
-   * @param maxIndex max index
-   * @return curIndex's string
-   */
-  private String generateIndexString(int curIndex, int maxIndex) {
-    StringBuilder res = new StringBuilder(String.valueOf(curIndex));
-    String target = String.valueOf(maxIndex);
-    while (res.length() < target.length()) {
-      res.insert(0, "0");
-    }
-    return res.toString();
   }
 }

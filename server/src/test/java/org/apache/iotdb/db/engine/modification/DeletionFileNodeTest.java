@@ -25,8 +25,8 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 
@@ -56,6 +57,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
 import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
@@ -165,18 +167,29 @@ public class DeletionFileNodeTest {
             SchemaTestUtils.getMeasurementPath(
                 processorName + TsFileConstant.PATH_SEPARATOR + measurements[measurementIdx]),
             null);
-    List<StorageGroupProcessor> list =
-        StorageEngine.getInstance()
-            .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance()
+                .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, TEST_QUERY_CONTEXT, null);
+
       QueryDataSource dataSource =
           QueryResourceManager.getInstance()
               .getQueryDataSource(
-                  (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
+                  (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null, true);
 
       int count = 0;
       for (TsFileResource seqResource : dataSource.getSeqResources()) {
-        List<ReadOnlyMemChunk> timeValuePairs = seqResource.getReadOnlyMemChunk();
+        List<ReadOnlyMemChunk> timeValuePairs =
+            seqResource.getReadOnlyMemChunk((PartialPath) expression.getSeriesPath());
         if (timeValuePairs == null) {
           continue;
         }
@@ -191,13 +204,13 @@ public class DeletionFileNodeTest {
       assertEquals(expectedCount, count);
       QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
   }
 
   @Test
   public void testDeleteInBufferWriteFile()
-      throws StorageEngineException, IOException, IllegalPathException {
+      throws StorageEngineException, IOException, MetadataException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -303,18 +316,29 @@ public class DeletionFileNodeTest {
                 processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]),
             null);
 
-    List<StorageGroupProcessor> list =
-        StorageEngine.getInstance()
-            .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance()
+                .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
 
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, TEST_QUERY_CONTEXT, null);
+
       QueryDataSource dataSource =
           QueryResourceManager.getInstance()
               .getQueryDataSource(
-                  (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
+                  (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null, true);
 
       List<ReadOnlyMemChunk> timeValuePairs =
-          dataSource.getUnseqResources().get(0).getReadOnlyMemChunk();
+          dataSource
+              .getUnseqResources()
+              .get(0)
+              .getReadOnlyMemChunk((PartialPath) expression.getSeriesPath());
       int count = 0;
       for (ReadOnlyMemChunk chunk : timeValuePairs) {
         IPointReader iterator = chunk.getPointReader();
@@ -327,12 +351,12 @@ public class DeletionFileNodeTest {
 
       QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
   }
 
   @Test
-  public void testDeleteInOverflowFile() throws StorageEngineException, IllegalPathException {
+  public void testDeleteInOverflowFile() throws StorageEngineException, MetadataException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);

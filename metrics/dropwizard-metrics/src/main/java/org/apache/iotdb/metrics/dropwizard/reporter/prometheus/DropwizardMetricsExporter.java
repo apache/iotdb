@@ -51,7 +51,6 @@ class DropwizardMetricsExporter {
     } else if (obj instanceof Boolean) {
       value = ((Boolean) obj) ? 1 : 0;
     } else {
-      LOG.warn("Invalid type for Gauge {}: {}", name, obj.getClass().getName());
       return;
     }
 
@@ -192,6 +191,6 @@ class DropwizardMetricsExporter {
   }
 
   static String sanitizeMetricName(String dropwizardName) {
-    return dropwizardName.replaceAll("[^a-zA-Z0-9:_]", "_");
+    return dropwizardName.replaceAll("[^a-zA-Z0-9:_\\]\\[]", "_");
   }
 }

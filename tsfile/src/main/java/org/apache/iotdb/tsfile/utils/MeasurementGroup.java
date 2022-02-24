@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.HashMap;
 import java.util.List;
@@ -26,23 +26,22 @@ import java.util.Map;
 
 public class MeasurementGroup {
   private boolean isAligned;
-  private Map<String, UnaryMeasurementSchema> measurementSchemaMap;
+  private Map<String, MeasurementSchema> measurementSchemaMap;
 
   public MeasurementGroup(boolean isAligned) {
     this.isAligned = isAligned;
     measurementSchemaMap = new HashMap<>();
   }
 
-  public MeasurementGroup(boolean isAligned, List<UnaryMeasurementSchema> measurementSchemas) {
+  public MeasurementGroup(boolean isAligned, List<MeasurementSchema> measurementSchemas) {
     this.isAligned = isAligned;
     measurementSchemaMap = new HashMap<>();
-    for (UnaryMeasurementSchema schema : measurementSchemas) {
+    for (MeasurementSchema schema : measurementSchemas) {
       measurementSchemaMap.put(schema.getMeasurementId(), schema);
     }
   }
 
-  public MeasurementGroup(
-      boolean isAligned, Map<String, UnaryMeasurementSchema> measurementSchemaMap) {
+  public MeasurementGroup(boolean isAligned, Map<String, MeasurementSchema> measurementSchemaMap) {
     this.isAligned = isAligned;
     this.measurementSchemaMap = measurementSchemaMap;
   }
@@ -55,11 +54,11 @@ public class MeasurementGroup {
     isAligned = aligned;
   }
 
-  public Map<String, UnaryMeasurementSchema> getMeasurementSchemaMap() {
+  public Map<String, MeasurementSchema> getMeasurementSchemaMap() {
     return measurementSchemaMap;
   }
 
-  public void setMeasurementSchemaMap(Map<String, UnaryMeasurementSchema> measurementSchemaMap) {
+  public void setMeasurementSchemaMap(Map<String, MeasurementSchema> measurementSchemaMap) {
     this.measurementSchemaMap = measurementSchemaMap;
   }
 }

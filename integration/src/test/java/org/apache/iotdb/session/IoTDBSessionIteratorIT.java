@@ -47,7 +47,6 @@ public class IoTDBSessionIteratorIT {
   @Before
   public void setUp() throws Exception {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     prepareData();
   }
@@ -250,16 +249,16 @@ public class IoTDBSessionIteratorIT {
 
   @Test
   public void testShowDevices() {
-    String[] retArray = new String[] {"root.sg1.d1", "root.sg1.d2"};
+    String[] retArray = new String[] {"root.sg1.d1,false", "root.sg1.d2,false"};
 
     try {
       SessionDataSet sessionDataSet = session.executeQueryStatement("show devices");
       sessionDataSet.setFetchSize(1024);
-      assertEquals(1, sessionDataSet.getColumnNames().size());
+      assertEquals(2, sessionDataSet.getColumnNames().size());
       DataIterator iterator = sessionDataSet.iterator();
       int count = 0;
       while (iterator.next()) {
-        String ans = iterator.getString(1);
+        String ans = String.format("%s,%s", iterator.getString(1), iterator.getString(2));
         assertEquals(retArray[count], ans);
         count++;
       }

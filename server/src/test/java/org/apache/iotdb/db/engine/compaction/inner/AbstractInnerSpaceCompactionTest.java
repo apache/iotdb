@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTest;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -42,7 +42,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -99,12 +99,10 @@ public abstract class AbstractInnerSpaceCompactionTest {
           + "0";
 
   protected String[] deviceIds;
-  protected UnaryMeasurementSchema[] measurementSchemas;
+  protected MeasurementSchema[] measurementSchemas;
 
   protected List<TsFileResource> seqResources = new ArrayList<>();
   protected List<TsFileResource> unseqResources = new ArrayList<>();
-
-  private int prevMergeChunkThreshold;
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
@@ -132,19 +130,16 @@ public abstract class AbstractInnerSpaceCompactionTest {
 
     EnvironmentUtils.envSetUp();
     IoTDB.metaManager.init();
-    prevMergeChunkThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
-    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(-1);
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
     tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
   }
 
   void prepareSeries() throws MetadataException {
-    measurementSchemas = new UnaryMeasurementSchema[measurementNum];
+    measurementSchemas = new MeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] =
-          new UnaryMeasurementSchema(
+          new MeasurementSchema(
               "sensor" + i, TSDataType.DOUBLE, encoding, CompressionType.UNCOMPRESSED);
     }
     deviceIds = new String[deviceNum];
@@ -153,7 +148,7 @@ public abstract class AbstractInnerSpaceCompactionTest {
     }
     IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String device : deviceIds) {
-      for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
         IoTDB.metaManager.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
@@ -202,33 +197,15 @@ public abstract class AbstractInnerSpaceCompactionTest {
       tsFileResource.setClosed(true);
       tsFileResource.updatePlanIndexes(i + seqFileNum);
       unseqResources.add(tsFileResource);
-      prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
+      prepareFile(tsFileResource, i * 2 * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
-
-    File file =
-        new File(
-            UNSEQ_DIRS
-                + File.separator.concat(
-                    unseqFileNum
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + unseqFileNum
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile"));
-    TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setClosed(true);
-    tsFileResource.updatePlanIndexes(seqFileNum + unseqFileNum);
-    unseqResources.add(tsFileResource);
-    prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
   }
 
   void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum, long valueOffset)
       throws IOException, WriteProcessException {
     try (TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile()); ) {
       for (String deviceId : deviceIds) {
-        for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
+        for (MeasurementSchema measurementSchema : measurementSchemas) {
           fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
         }
       }
@@ -255,12 +232,10 @@ public abstract class AbstractInnerSpaceCompactionTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    new CompactionConfigRestorer().restoreCompactionConfig();
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMergeChunkPointNumberThreshold(prevMergeChunkThreshold);
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
@@ -271,6 +246,7 @@ public abstract class AbstractInnerSpaceCompactionTest {
   }
 
   private void removeFiles() throws IOException {
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     for (TsFileResource tsFileResource : seqResources) {
       if (tsFileResource.getTsFile().exists()) {
         tsFileResource.remove();
@@ -290,6 +266,9 @@ public abstract class AbstractInnerSpaceCompactionTest {
     for (File resourceFile : resourceFiles) {
       resourceFile.delete();
     }
-    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+  }
+
+  public void setUnseqFileNum(int num) {
+    this.unseqFileNum = num;
   }
 }

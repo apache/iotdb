@@ -22,13 +22,12 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.security.encrypt.AsymmetricEncryptFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.UnsupportedEncodingException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -138,6 +137,10 @@ public class AuthUtils {
         case CREATE_TIMESERIES:
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:
+        case CREATE_TRIGGER:
+        case DROP_TRIGGER:
+        case START_TRIGGER:
+        case STOP_TRIGGER:
           return;
         default:
           throw new AuthException(
@@ -165,14 +168,17 @@ public class AuthUtils {
    * @return encrypted password if success
    */
   public static String encryptPassword(String password) {
-    try {
-      MessageDigest messageDigest = MessageDigest.getInstance(ENCRYPT_ALGORITHM);
-      messageDigest.update(password.getBytes(STRING_ENCODING));
-      return new String(messageDigest.digest(), STRING_ENCODING);
-    } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
-      logger.error("meet error while encrypting password.", e);
-      return password;
-    }
+    return AsymmetricEncryptFactory.getEncryptProvider(
+            IoTDBDescriptor.getInstance().getConfig().getEncryptDecryptProvider(),
+            IoTDBDescriptor.getInstance().getConfig().getEncryptDecryptProviderParameter())
+        .encrypt(password);
+  }
+
+  public static boolean validatePassword(String originPassword, String encryptPassword) {
+    return AsymmetricEncryptFactory.getEncryptProvider(
+            IoTDBDescriptor.getInstance().getConfig().getEncryptDecryptProvider(),
+            IoTDBDescriptor.getInstance().getConfig().getEncryptDecryptProviderParameter())
+        .validate(originPassword, encryptPassword);
   }
 
   /**

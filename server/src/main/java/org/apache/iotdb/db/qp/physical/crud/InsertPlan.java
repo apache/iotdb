@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -28,11 +29,18 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public abstract class InsertPlan extends PhysicalPlan {
 
-  protected PartialPath deviceId;
+  /**
+   * if use id table, this filed is id form of device path <br>
+   * if not, this filed is device path<br>
+   */
+  protected PartialPath devicePath;
+
   protected boolean isAligned;
   protected String[] measurements;
   // get from client
@@ -40,22 +48,33 @@ public abstract class InsertPlan extends PhysicalPlan {
   // get from MManager
   protected IMeasurementMNode[] measurementMNodes;
 
+  /**
+   * device id reference, for reuse device id in both id table and memtable <br>
+   * used in memtable
+   */
+  protected IDeviceID deviceID;
+
   // record the failed measurements, their reasons, and positions in "measurements"
   List<String> failedMeasurements;
   private List<Exception> failedExceptions;
   List<Integer> failedIndices;
 
   public InsertPlan(Operator.OperatorType operatorType) {
-    super(false, operatorType);
+    super(operatorType);
     super.canBeSplit = false;
   }
 
-  public PartialPath getDeviceId() {
-    return deviceId;
+  /**
+   * if use id table, this filed is id form of device path <br>
+   * if not, this filed is device path<br>
+   * used in flush time manager, last cache, tsfile processor
+   */
+  public PartialPath getDevicePath() {
+    return devicePath;
   }
 
-  public void setDeviceId(PartialPath deviceId) {
-    this.deviceId = deviceId;
+  public void setDevicePath(PartialPath devicePath) {
+    this.devicePath = devicePath;
   }
 
   public String[] getMeasurements() {
@@ -174,17 +193,36 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   @Override
   public void checkIntegrity() throws QueryProcessException {
-    if (deviceId == null) {
+    if (devicePath == null) {
       throw new QueryProcessException("DeviceId is null");
     }
     if (measurements == null) {
       throw new QueryProcessException("Measurements are null");
     }
+    Set<String> deduplicatedMeasurements = new HashSet<>();
     for (String measurement : measurements) {
       if (measurement == null || measurement.isEmpty()) {
         throw new QueryProcessException(
             "Measurement contains null or empty string: " + Arrays.toString(measurements));
       }
+      if (deduplicatedMeasurements.contains(measurement)) {
+        throw new QueryProcessException(
+            "Insertion contains duplicated measurement: " + measurement);
+      } else {
+        deduplicatedMeasurements.add(measurement);
+      }
     }
+  }
+
+  /**
+   * device id reference, for reuse device id in both id table and memtable <br>
+   * used in memtable
+   */
+  public IDeviceID getDeviceID() {
+    return deviceID;
+  }
+
+  public void setDeviceID(IDeviceID deviceID) {
+    this.deviceID = deviceID;
   }
 }

@@ -31,7 +31,13 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * Mainly used in the distributed version, when multiple InsertTabletPlans belong to a raft
@@ -138,7 +144,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     }
     prefixPaths = new ArrayList<>(insertTabletPlanList.size());
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      prefixPaths.add(insertTabletPlan.getDeviceId());
+      prefixPaths.add(insertTabletPlan.getDevicePath());
     }
     return prefixPaths;
   }
@@ -197,7 +203,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   }
 
   public PartialPath getFirstDeviceId() {
-    return insertTabletPlanList.get(0).getDeviceId();
+    return insertTabletPlanList.get(0).getDevicePath();
   }
 
   public InsertTabletPlan getInsertTabletPlan(int index) {
@@ -392,7 +398,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
       Set<String> insertPlanSGSet = new HashSet<>();
       int defaultStorageGroupLevel = new IoTDBConfig().getDefaultStorageGroupLevel();
       for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-        String[] nodes = insertTabletPlan.getDeviceId().getNodes();
+        String[] nodes = insertTabletPlan.getDevicePath().getNodes();
         StringBuilder stringBuilder = new StringBuilder();
         for (int i = 0; i <= defaultStorageGroupLevel && i < nodes.length; i++) {
           stringBuilder.append(nodes[i]).append(".");

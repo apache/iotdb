@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -35,7 +36,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -115,7 +116,7 @@ public class Template {
       // normal measurement
       else {
         curSchema =
-            new UnaryMeasurementSchema(
+            new MeasurementSchema(
                 plan.getMeasurements().get(i).get(0),
                 plan.getDataTypes().get(i).get(0),
                 plan.getEncodings().get(i).get(0),
@@ -170,7 +171,7 @@ public class Template {
     for (String path : alignedPaths) {
       // check aligned whether legal, and records measurements name
       if (getPathNodeInTemplate(path) != null) {
-        throw new IllegalPathException("Path duplicated: " + prefix);
+        throw new IllegalPathException("Path duplicated: " + path);
       }
       pathNodes = MetaUtils.splitPathToDetachedPath(path);
 
@@ -241,18 +242,23 @@ public class Template {
 
   private IMeasurementSchema constructSchema(
       String nodeName, TSDataType dataType, TSEncoding encoding, CompressionType compressor) {
-    return new UnaryMeasurementSchema(nodeName, dataType, encoding, compressor);
+    return new MeasurementSchema(nodeName, dataType, encoding, compressor);
   }
 
   private IMeasurementSchema[] constructSchemas(
       String[] nodeNames,
       TSDataType[] dataTypes,
       TSEncoding[] encodings,
-      CompressionType[] compressors) {
-    UnaryMeasurementSchema[] schemas = new UnaryMeasurementSchema[nodeNames.length];
+      CompressionType[] compressors)
+      throws IllegalPathException {
+    MeasurementSchema[] schemas = new MeasurementSchema[nodeNames.length];
     for (int i = 0; i < nodeNames.length; i++) {
       schemas[i] =
-          new UnaryMeasurementSchema(nodeNames[i], dataTypes[i], encodings[i], compressors[i]);
+          new MeasurementSchema(
+              new PartialPath(nodeNames[i]).getMeasurement(),
+              dataTypes[i],
+              encodings[i],
+              compressors[i]);
     }
     return schemas;
   }
@@ -480,7 +486,8 @@ public class Template {
     pathNode = MetaUtils.splitPathToDetachedPath(measurements[0]);
     prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
     IMNode targetNode = getPathNodeInTemplate(prefix);
-    if (targetNode != null && !targetNode.getAsEntityMNode().isAligned()) {
+    if ((targetNode != null && !targetNode.getAsEntityMNode().isAligned())
+        || (prefix.equals("") && !this.isDirectAligned())) {
       throw new IllegalPathException(prefix, "path already exists but not aligned");
     }
 
@@ -513,8 +520,9 @@ public class Template {
       // If prefix exists and aligned, it will throw exception
       prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
       IMNode parNode = getPathNodeInTemplate(prefix);
-      if (parNode != null && parNode.getAsEntityMNode().isAligned()) {
-        throw new IllegalPathException(prefix, "path already exists and aligned");
+      if ((parNode != null && parNode.getAsEntityMNode().isAligned())
+          || (prefix.equals("") && this.isDirectAligned())) {
+        throw new IllegalPathException(measurements[i], "path already exists and aligned");
       }
 
       IMeasurementSchema schema =
@@ -620,7 +628,7 @@ public class Template {
       byte flag = ReadWriteIOUtils.readByte(buffer);
       IMeasurementSchema measurementSchema = null;
       if (flag == (byte) 0) {
-        measurementSchema = UnaryMeasurementSchema.partialDeserializeFrom(buffer);
+        measurementSchema = MeasurementSchema.partialDeserializeFrom(buffer);
       } else if (flag == (byte) 1) {
         measurementSchema = VectorMeasurementSchema.partialDeserializeFrom(buffer);
       }
