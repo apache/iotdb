@@ -34,6 +34,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.modifyTsFileNameUnseqMergCnt;
 
@@ -89,33 +91,49 @@ public class RecoverMergeTask extends MergeTask {
       default:
         throw new UnsupportedOperationException(taskName + " found unrecognized status " + status);
     }
+    if (logFile.exists()) {
+      logFile.delete();
+    }
     if (logger.isInfoEnabled()) {
       logger.info(
           "{} merge recovery ends after {}ms", taskName, (System.currentTimeMillis() - startTime));
     }
   }
 
+  /** Delete .merge file and merging mods file. */
   private void handleWhenAllSourceFilesExist() throws IOException {
     cleanUp(false);
     tsFileManagement.removeMergingModification();
   }
 
+  /**
+   * 1. If target file does not exist, then move .merge file to target file and serialize target
+   * resource file. <br>
+   * 2. Append merging modification to target mods file and delete merging mods file. <br>
+   * 3. Delete source files and .merge file. <br>
+   * 4. Update resource memory of tsfileManagement. <br>
+   */
   private void handleWhenSomeSourceFilesLost() throws IOException {
+    List<TsFileResource> targetResouces = new ArrayList<>();
     for (TsFileResource sourceSeqResource : resource.getSeqFiles()) {
       File targetFile = modifyTsFileNameUnseqMergCnt(sourceSeqResource.getTsFile());
-      File targetFileResource = new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
-      File tmpTargetFile = new File(sourceSeqResource.getTsFilePath() + MERGE_SUFFIX);
-      // move to target file and target resource file
+      TsFileResource targetTsFileResouce = new TsFileResource(targetFile);
+      // move to target file and serialize resource file
       if (!targetFile.exists()) {
         // move target file
+        File tmpTargetFile = new File(sourceSeqResource.getTsFilePath() + MERGE_SUFFIX);
         FSFactoryProducer.getFSFactory().moveFile(tmpTargetFile, targetFile);
+
+        // serialize target resource file
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFile.getAbsolutePath())) {
+          FileLoaderUtils.updateTsFileResource(reader, targetTsFileResouce);
+        }
+        targetTsFileResouce.serialize();
+        targetResouces.add(targetTsFileResouce);
       }
-      // serialize target resource file
-      TsFileResource targetTsFileResouce = new TsFileResource(targetFile);
-      try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFile.getAbsolutePath())) {
-        FileLoaderUtils.updateTsFileResource(reader, targetTsFileResouce);
-      }
-      targetTsFileResouce.serialize();
+
+      // write merging modifications to new mods file
+      tsFileManagement.updateMergeModification(targetTsFileResouce);
 
       // delete source seq file
       sourceSeqResource.remove();
@@ -125,9 +143,18 @@ public class RecoverMergeTask extends MergeTask {
       if (mergeFile.exists()) {
         mergeFile.delete();
       }
-
-      sourceSeqResource.setFile(targetFile);
     }
-    cleanUp(true);
+
+    // update memory
+    tsFileManagement.replace(
+        resource.getSeqFiles(), resource.getUnseqFiles(), targetResouces, true);
+
+    // delete unseq source files
+    for (TsFileResource unseqResource : resource.getUnseqFiles()) {
+      unseqResource.remove();
+    }
+
+    // delete merging mods file
+    tsFileManagement.removeMergingModification();
   }
 }
