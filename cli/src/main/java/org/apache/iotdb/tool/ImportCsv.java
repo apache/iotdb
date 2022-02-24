@@ -84,7 +84,7 @@ public class ImportCsv extends AbstractCsvTool {
   private static String timeColumn = "Time";
   private static String deviceColumn = "Device";
 
-  private static final int BATCH_SIZE = 10000;
+  private static final int BATCH_SIZE = 1000;
 
   /**
    * create the commandline options.
@@ -315,7 +315,7 @@ public class ImportCsv extends AbstractCsvTool {
           if (!hasStarted.get()) {
             hasStarted.set(true);
             timeFormatter.set(formatterInit(record.get(0)));
-          } else if ((record.getRecordNumber() - 1) % BATCH_SIZE == 0) {
+          } else if (times.size() >= BATCH_SIZE) {
             writeAndEmptyDataSet(deviceIds, times, typesList, valuesList, measurementsList, 3);
           }
 
@@ -432,7 +432,7 @@ public class ImportCsv extends AbstractCsvTool {
             writeAndEmptyDataSet(
                 deviceName.get(), times, typesList, valuesList, measurementsList, 3);
             deviceName.set(record.get(1));
-          } else if (record.getRecordNumber() - 1 % BATCH_SIZE == 0 && times.size() != 0) {
+          } else if (times.size() >= BATCH_SIZE && times.size() != 0) {
             // insert a batch
             writeAndEmptyDataSet(
                 deviceName.get(), times, typesList, valuesList, measurementsList, 3);
