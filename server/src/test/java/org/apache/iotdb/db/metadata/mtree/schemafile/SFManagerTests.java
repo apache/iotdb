@@ -143,7 +143,7 @@ public class SFManagerTests {
     IMNode delGPSNode = (IMNode) sgNodes.toArray()[1];
     IMNode delXNode = (IMNode) sgNodes.toArray()[2];
 
-    sfManager.delete(delSgNode);
+    sfManager.deleteMNode(delSgNode);
     try {
       sfManager.getChildren(delSgNode);
       fail();
@@ -155,7 +155,7 @@ public class SFManagerTests {
           e.getMessage());
     }
 
-    sfManager.delete(delGPSNode.getChild("GPS"));
+    sfManager.deleteMNode(delGPSNode.getChild("GPS"));
     try {
       sfManager.getChildNode(delGPSNode, "GPS");
       fail();
@@ -169,7 +169,7 @@ public class SFManagerTests {
       assertEquals("Node [root.sg1.GPS] does not exists in schema file.", e.getMessage());
     }
 
-    sfManager.delete(delXNode.getChild("GPS").getChild("x"));
+    sfManager.deleteMNode(delXNode.getChild("GPS").getChild("x"));
     try {
       sfManager.getChildNode(delXNode.getChild("GPS"), "x");
       fail();

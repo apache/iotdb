@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNodeIterator;
@@ -33,21 +34,21 @@ import java.util.List;
  */
 public interface IMTreeStore {
 
-  void init() throws IOException;
+  void init() throws MetadataException, IOException;
 
   IMNode getRoot();
 
-  boolean hasChild(IMNode parent, String name);
+  boolean hasChild(IMNode parent, String name) throws MetadataException;
 
-  IMNode getChild(IMNode parent, String name);
+  IMNode getChild(IMNode parent, String name) throws MetadataException;
 
-  IMNodeIterator getChildrenIterator(IMNode parent);
+  IMNodeIterator getChildrenIterator(IMNode parent) throws MetadataException;
 
   void addChild(IMNode parent, String childName, IMNode child);
 
   void addAlias(IEntityMNode parent, String alias, IMeasurementMNode child);
 
-  List<IMeasurementMNode> deleteChild(IMNode parent, String childName);
+  List<IMeasurementMNode> deleteChild(IMNode parent, String childName) throws MetadataException;
 
   void deleteAliasChild(IEntityMNode parent, String alias);
 

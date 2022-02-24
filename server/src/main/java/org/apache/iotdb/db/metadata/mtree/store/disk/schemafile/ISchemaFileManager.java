@@ -16,28 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.store.disk.file;
+package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
+import java.io.IOException;
 import java.util.Iterator;
 
-@Deprecated
-public interface ISchemaFile {
+public interface ISchemaFileManager {
+  IMNode init() throws MetadataException, IOException;
 
-  IMNode init();
+  IMNode getChildNode(IMNode parent, String childName) throws MetadataException, IOException;
 
-  IMNode getChildNode(IMNode parent, String childName);
+  Iterator<IMNode> getChildren(IMNode parent) throws MetadataException, IOException;
 
-  Iterator<IMNode> getChildren(IMNode parent);
+  void writeMNode(IMNode parent) throws MetadataException, IOException;
 
-  void writeMNode(IMNode parent);
+  void deleteMNode(IMNode targetNode) throws MetadataException, IOException;
 
-  void deleteMNode(IMNode targetNode);
+  void sync() throws MetadataException, IOException;
 
-  void sync();
+  void close() throws MetadataException, IOException;
 
-  void close();
-
-  void clear();
+  void clear() throws MetadataException, IOException;
 }

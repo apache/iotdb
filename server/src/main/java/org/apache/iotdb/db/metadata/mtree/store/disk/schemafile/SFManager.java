@@ -30,7 +30,7 @@ import java.util.Map;
  * <li>Extract storage group, choose corresponding file and operate on it
  * <li>Maintain nodes above storage group on MTree
  */
-public class SFManager {
+public class SFManager implements ISchemaFileManager {
 
   public static String fileDirs =
       IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
@@ -95,7 +95,8 @@ public class SFManager {
    *
    * @param node arbitrary instance implements IMNode
    */
-  public void delete(IMNode node) throws MetadataException, IOException {
+  @Override
+  public void deleteMNode(IMNode node) throws MetadataException, IOException {
     if (node.isStorageGroup()) {
       // delete entire corresponding file
       removeSchemaFile(node.getFullPath());

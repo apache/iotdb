@@ -135,7 +135,7 @@ public class MTreeService implements Serializable {
   // region MTree initialization, clear and serialization
   public MTreeService() {}
 
-  public void init() throws IOException {
+  public void init() throws MetadataException, IOException {
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePersistentSchema()) {
       store = new CachedMTreeStore();
     } else {
@@ -578,7 +578,7 @@ public class MTreeService implements Serializable {
     return leafMNodes;
   }
 
-  public boolean isEmptyInternalMNode(IMNode node) {
+  public boolean isEmptyInternalMNode(IMNode node) throws MetadataException {
     IMNodeIterator iterator = store.getChildrenIterator(node);
     try {
       return !IoTDBConstant.PATH_ROOT.equals(node.getName())
@@ -600,7 +600,7 @@ public class MTreeService implements Serializable {
    *
    * @param path a full path or a prefix path
    */
-  public boolean isPathExist(PartialPath path) {
+  public boolean isPathExist(PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
     if (!nodeNames[0].equals(root.getName())) {
       return false;
@@ -658,7 +658,7 @@ public class MTreeService implements Serializable {
    * @param path path
    * @apiNote :for cluster
    */
-  public boolean isStorageGroup(PartialPath path) {
+  public boolean isStorageGroup(PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
     if (nodeNames.length <= 1 || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
       return false;
@@ -689,7 +689,7 @@ public class MTreeService implements Serializable {
   }
 
   /** Check whether the given path contains a storage group */
-  public boolean checkStorageGroupByPath(PartialPath path) {
+  public boolean checkStorageGroupByPath(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
     IMNode cur = root;
     IMNode next = null;
@@ -715,7 +715,7 @@ public class MTreeService implements Serializable {
    *
    * @return storage group in the given path
    */
-  public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
+  public PartialPath getBelongedStorageGroup(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
     IMNode cur = root;
     IMNode next = null;
@@ -1584,7 +1584,7 @@ public class MTreeService implements Serializable {
     }
   }
 
-  public void checkTemplateInUseOnLowerNode(IMNode node) throws TemplateIsInUseException {
+  public void checkTemplateInUseOnLowerNode(IMNode node) throws MetadataException {
     if (node.isMeasurement()) {
       return;
     }
@@ -1615,7 +1615,7 @@ public class MTreeService implements Serializable {
    *
    * @return true iff path corresponding to a measurement inside a template, whether using or not.
    */
-  public boolean isPathExistsWithinTemplate(PartialPath path) {
+  public boolean isPathExistsWithinTemplate(PartialPath path) throws MetadataException {
     if (path.getNodes().length < 2) {
       return false;
     }
@@ -1829,7 +1829,8 @@ public class MTreeService implements Serializable {
     store.updateMNode(node);
   }
 
-  public IMNode getChildFromPinnedMNode(IMNode parent, String measurement) {
+  public IMNode getChildFromPinnedMNode(IMNode parent, String measurement)
+      throws MetadataException {
     return store.getChild(parent, measurement);
   }
 

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.store.disk.file;
+package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
@@ -38,8 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer.getCachedMNodeContainer;
 
-@Deprecated
-public class MockSchemaFile implements ISchemaFile {
+public class MockSFManager implements ISchemaFileManager {
 
   private long fileTail = 0;
 

@@ -296,7 +296,7 @@ public class MManager {
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
       logWriter.setLogNum(lineNumber);
       isRecovering = false;
-    } catch (IOException e) {
+    } catch (MetadataException | IOException e) {
       logger.error(
           "Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
@@ -1016,7 +1016,12 @@ public class MManager {
    * @param path a full path or a prefix path
    */
   public boolean isPathExist(PartialPath path) {
-    return mtree.isPathExist(path);
+    try {
+      return mtree.isPathExist(path);
+    } catch (MetadataException e) {
+      logger.error(e.getMessage());
+      return false;
+    }
   }
 
   /** Get metadata in string */
@@ -1164,12 +1169,22 @@ public class MManager {
    * @apiNote :for cluster
    */
   public boolean isStorageGroup(PartialPath path) {
-    return mtree.isStorageGroup(path);
+    try {
+      return mtree.isStorageGroup(path);
+    } catch (MetadataException e) {
+      logger.error(e.getMessage());
+      return false;
+    }
   }
 
   /** Check whether the given path contains a storage group */
   public boolean checkStorageGroupByPath(PartialPath path) {
-    return mtree.checkStorageGroupByPath(path);
+    try {
+      return mtree.checkStorageGroupByPath(path);
+    } catch (MetadataException e) {
+      logger.error(e.getMessage());
+      return false;
+    }
   }
 
   /**
@@ -1181,7 +1196,12 @@ public class MManager {
    * @return storage group in the given path
    */
   public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
-    return mtree.getBelongedStorageGroup(path);
+    try {
+      return mtree.getBelongedStorageGroup(path);
+    } catch (MetadataException e) {
+      logger.error(e.getMessage());
+      throw new StorageGroupNotSetException(path.getFullPath(), e.getMessage());
+    }
   }
 
   /**
@@ -1503,7 +1523,7 @@ public class MManager {
    * created thus throw PathAlreadyExistException.
    */
   protected IMeasurementMNode getMeasurementMNode(IMNode deviceMNode, String measurementName)
-      throws PathAlreadyExistException {
+      throws MetadataException {
     IMNode result = mtree.getChildFromPinnedMNode(deviceMNode, measurementName);
     if (result == null) {
       return null;
