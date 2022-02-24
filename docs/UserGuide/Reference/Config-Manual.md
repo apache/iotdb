@@ -697,7 +697,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| the max bytes in a RPC request/response|
 |Type| long |
-|Default| 67108864 (should >= 8 * 1024 * 1024) |
+|Default| 536870912 (should >= 512 * 1024 * 1024) |
 |Effective|After restarting system|
 
 ### InfluxDB-Protocol Adaptor
