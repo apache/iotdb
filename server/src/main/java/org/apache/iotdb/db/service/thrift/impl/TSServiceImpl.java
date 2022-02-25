@@ -25,6 +25,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
+import org.apache.iotdb.db.doublewrite.DoubleWriteConsumer;
+import org.apache.iotdb.db.doublewrite.DoubleWriteProducer;
 import org.apache.iotdb.db.doublewrite.DoubleWriteProtectorService;
 import org.apache.iotdb.db.doublewrite.DoubleWriteTask;
 import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
@@ -148,6 +150,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -316,10 +319,18 @@ public class TSServiceImpl implements TSIService.Iface {
 
   protected final ServiceProvider serviceProvider;
 
-  // Double write module, temporary use
+  /* Double write module, temporary use */
+  // DOUBLEWRITE GENERAL
+  private final boolean isEnableDoubleWrite;
+  private final boolean isSyncDoubleWrite;
   private final SessionPool doubleWriteSessionPool;
-  private final ExecutorService doubleWriteTaskThreadPool;
   private final DoubleWriteProtectorService doubleWriteProtectorService;
+
+  // DOUBLEWRITE SYNC
+  private final ExecutorService doubleWriteTaskThreadPool;
+
+  // DOUBLEWRITE ASYNC
+  private final DoubleWriteProducer doubleWriteProducer;
 
   public TSServiceImpl() {
     super();
@@ -328,6 +339,10 @@ public class TSServiceImpl implements TSIService.Iface {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     if (config.isEnableDoubleWrite()) {
       /* Open double write */
+
+      // basic config
+      isEnableDoubleWrite = config.isEnableDoubleWrite();
+      isSyncDoubleWrite = config.isSyncDoubleWrite();
 
       // create SessionPool for double write
       doubleWriteSessionPool =
@@ -352,20 +367,41 @@ public class TSServiceImpl implements TSIService.Iface {
         LOGGER.error("There is an exception during start DoubleWrite", e);
       }
 
-      // create DoubleWriteTaskThreadPool
-      doubleWriteTaskThreadPool =
+      if (isSyncDoubleWrite) {
+        // create DoubleWriteTaskThreadPool
+        doubleWriteTaskThreadPool =
           new ThreadPoolExecutor(
-              config.getDoubleWriteTaskCorePoolSize(),
-              config.getDoubleWriteTaskMaxPoolSize(),
-              config.getDoubleWriteTaskKeepAliveTime(),
-              TimeUnit.HOURS,
-              new ArrayBlockingQueue<>(config.getDoubleWriteTaskMaxPoolSize()),
-              Executors.defaultThreadFactory(),
-              new ThreadPoolExecutor.DiscardOldestPolicy());
+            config.getDoubleWriteTaskCorePoolSize(),
+            config.getDoubleWriteTaskMaxPoolSize(),
+            config.getDoubleWriteTaskKeepAliveTime(),
+            TimeUnit.HOURS,
+            new ArrayBlockingQueue<>(config.getDoubleWriteTaskMaxPoolSize()),
+            Executors.defaultThreadFactory(),
+            new ThreadPoolExecutor.DiscardOldestPolicy());
+
+        doubleWriteProducer = null;
+      } else {
+        // create DoubleWriteProducer and DoubleWriteConsumer
+        BlockingQueue blockingQueue = new ArrayBlockingQueue(config.getDoubleWriteProducerCacheSize());
+        doubleWriteProducer = new DoubleWriteProducer(blockingQueue, doubleWriteProtectorService);
+        for (int i = 0; i < config.getDoubleWriteConsumerConcurrencySize(); i++) {
+          DoubleWriteConsumer consumer = new DoubleWriteConsumer(blockingQueue, doubleWriteSessionPool);
+          new Thread(consumer).start();
+        }
+
+        doubleWriteTaskThreadPool = null;
+      }
+
     } else {
+      isEnableDoubleWrite = false;
+      isSyncDoubleWrite = true;
+
       doubleWriteSessionPool = null;
-      doubleWriteTaskThreadPool = null;
       doubleWriteProtectorService = null;
+
+      doubleWriteTaskThreadPool = null;
+
+      doubleWriteProducer = null;
     }
   }
 
@@ -680,21 +716,18 @@ public class TSServiceImpl implements TSIService.Iface {
       if (physicalPlan.isQuery()) {
         return submitQueryTask(physicalPlan, startTime, req);
       } else {
-        TSExecuteStatementResp resp =
-            executeUpdateStatement(
-                statement,
-                req.statementId,
-                physicalPlan,
-                req.fetchSize,
-                req.timeout,
-                req.getSessionId());
-
-        if (doubleWriteTaskThreadPool != null) {
+        if (isEnableDoubleWrite) {
           // double write
           transmitDoubleWrite(physicalPlan);
         }
 
-        return resp;
+        return executeUpdateStatement(
+          statement,
+          req.statementId,
+          physicalPlan,
+          req.fetchSize,
+          req.timeout,
+          req.getSessionId());
       }
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
@@ -1559,13 +1592,12 @@ public class TSServiceImpl implements TSIService.Iface {
         return status;
       }
 
-      status = executeNonQueryPlan(plan);
-      if (doubleWriteTaskThreadPool != null) {
+      if (isEnableDoubleWrite) {
         // double write
         transmitDoubleWrite(plan);
       }
 
-      return status;
+      return executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_RECORD, e.getErrorCode());
     } catch (Exception e) {
@@ -1601,13 +1633,12 @@ public class TSServiceImpl implements TSIService.Iface {
         return status;
       }
 
-      status = executeNonQueryPlan(plan);
-      if (doubleWriteTaskThreadPool != null) {
+      if (isEnableDoubleWrite) {
         // double write
         transmitDoubleWrite(plan);
       }
 
-      return status;
+      return executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_STRING_RECORD, e.getErrorCode());
     } catch (Exception e) {
@@ -1667,13 +1698,12 @@ public class TSServiceImpl implements TSIService.Iface {
         return status;
       }
 
-      status = executeNonQueryPlan(insertTabletPlan);
-      if (doubleWriteTaskThreadPool != null) {
+      if (isEnableDoubleWrite) {
         // double write
         transmitDoubleWrite(insertTabletPlan);
       }
 
-      return status;
+      return executeNonQueryPlan(insertTabletPlan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_TABLET, e.getErrorCode());
     } catch (Exception e) {
@@ -2184,8 +2214,6 @@ public class TSServiceImpl implements TSIService.Iface {
       LOGGER.info("transmit: {}, count: {}", physicalPlan.getPaths().get(0), ((InsertTabletPlan) physicalPlan).getRowCount());
     }
 
-
-
     // serialize physical plan
     int size = physicalPlan.getSerializedSize();
     ByteArrayOutputStream doubleWriteByteStream = new ByteArrayOutputStream(size);
@@ -2193,11 +2221,16 @@ public class TSServiceImpl implements TSIService.Iface {
     physicalPlan.serialize(doubleWriteSerializeStream);
     ByteBuffer buffer = ByteBuffer.wrap(doubleWriteByteStream.toByteArray());
 
-    // create and wait DoubleWriteTask
-    DoubleWriteTask doubleWriteTask =
+    if (isSyncDoubleWrite) {
+      // create and wait DoubleWriteTask
+      DoubleWriteTask doubleWriteTask =
         new DoubleWriteTask(doubleWriteProtectorService, buffer, doubleWriteSessionPool);
-    Future<?> future = doubleWriteTaskThreadPool.submit(doubleWriteTask);
-    future.get();
+      Future<?> future = doubleWriteTaskThreadPool.submit(doubleWriteTask);
+      future.get();
+    } else {
+      // put the ByteBuffer into DoubleWriteProducer
+      doubleWriteProducer.put(buffer);
+    }
   }
 
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {

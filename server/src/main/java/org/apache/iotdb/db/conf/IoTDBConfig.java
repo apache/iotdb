@@ -804,8 +804,10 @@ public class IoTDBConfig {
   /** Encryption provided class parameter */
   private String encryptDecryptProviderParameter;
 
-  /** Double write config */
+  // DoubleWrite Config
+  /** DOUBLEWRITE GENERAL CONFIG */
   private boolean enableDoubleWrite = false;
+  private boolean syncDoubleWrite = true;
 
   // Secondary IoTDB
   private String secondaryAddress = "127.0.0.1";
@@ -816,25 +818,31 @@ public class IoTDBConfig {
   // The transmitting concurrency size of double write SessionPool
   private int doubleWriteSessionConcurrencySize = 8;
 
-  // The core pool size of DoubleWriteTask
-  private int doubleWriteTaskCorePoolSize = 4;
-  // The max pool size of DoubleWriteTask
-  private int doubleWriteTaskMaxPoolSize = 128;
-  // The max alive time when a DoubleWriteTask is paused
-  private int doubleWriteTaskKeepAliveTime = 1;
-
   // The max size per file in double write persistence. Default is 64MB
   private int doubleWriteMaxLogSize = 1073741824;
   // The core pool size of protector. i.e. The maximum number of running protector
-  private int doubleWriteProtectorCorePoolSize = 5;
+  private int doubleWriteProtectorCorePoolSize = 4;
   // The max pool size of protector. i.e. The maximum number of cached protector
   private int doubleWriteProtectorMaxPoolSize = 64;
   // The max waiting time when a DoubleWriteLogFile is created. i.e. When timeout,
-  // the DoubleWriteProtector will begin to transmit whether the DoubleWriteLogFile is reached its
-  // max size
+  // the DoubleWriteProtector will begin to transmit whether the DoubleWriteLogFile is reached its max size
   private int doubleWriteProtectorMaxWaitingTime = 5;
   // The max alive time when a DoubleWriteProtector is paused
   private int doubleWriteProtectorKeepAliveTime = 1;
+
+  /** DOUBLEWRITE SYNC CONFIG */
+  // The core pool size of DoubleWriteTask
+  private int doubleWriteTaskCorePoolSize = 4;
+  // The max pool size of DoubleWriteTask
+  private int doubleWriteTaskMaxPoolSize = 32;
+  // The max alive time when a DoubleWriteTask is paused
+  private int doubleWriteTaskKeepAliveTime = 1;
+
+  /** DOUBLEWRITE ASYNC CONFIG */
+  // DoubleWrite InsertPlan cache size
+  private int doubleWriteProducerCacheSize = 64;
+  // DoubleWriteConsumer concurrency size
+  private int doubleWriteConsumerConcurrencySize = 4;
 
   public IoTDBConfig() {
     // empty constructor
@@ -2566,6 +2574,14 @@ public class IoTDBConfig {
     this.enableDoubleWrite = enableDoubleWrite;
   }
 
+  public boolean isSyncDoubleWrite() {
+    return syncDoubleWrite;
+  }
+
+  public void setSyncDoubleWrite(boolean syncDoubleWrite) {
+    this.syncDoubleWrite = syncDoubleWrite;
+  }
+
   public String getSecondaryAddress() {
     return secondaryAddress;
   }
@@ -2606,30 +2622,6 @@ public class IoTDBConfig {
     this.doubleWriteSessionConcurrencySize = doubleWriteSessionConcurrencySize;
   }
 
-  public int getDoubleWriteTaskCorePoolSize() {
-    return doubleWriteTaskCorePoolSize;
-  }
-
-  public void setDoubleWriteTaskCorePoolSize(int doubleWriteTaskCorePoolSize) {
-    this.doubleWriteTaskCorePoolSize = doubleWriteTaskCorePoolSize;
-  }
-
-  public int getDoubleWriteTaskMaxPoolSize() {
-    return doubleWriteTaskMaxPoolSize;
-  }
-
-  public void setDoubleWriteTaskMaxPoolSize(int doubleWriteTaskMaxPoolSize) {
-    this.doubleWriteTaskMaxPoolSize = doubleWriteTaskMaxPoolSize;
-  }
-
-  public int getDoubleWriteTaskKeepAliveTime() {
-    return doubleWriteTaskKeepAliveTime;
-  }
-
-  public void setDoubleWriteTaskKeepAliveTime(int doubleWriteTaskKeepAliveTime) {
-    this.doubleWriteTaskKeepAliveTime = doubleWriteTaskKeepAliveTime;
-  }
-
   public int getDoubleWriteMaxLogSize() {
     return doubleWriteMaxLogSize;
   }
@@ -2668,5 +2660,45 @@ public class IoTDBConfig {
 
   public void setDoubleWriteProtectorKeepAliveTime(int doubleWriteProtectorKeepAliveTime) {
     this.doubleWriteProtectorKeepAliveTime = doubleWriteProtectorKeepAliveTime;
+  }
+
+  public int getDoubleWriteTaskCorePoolSize() {
+    return doubleWriteTaskCorePoolSize;
+  }
+
+  public void setDoubleWriteTaskCorePoolSize(int doubleWriteTaskCorePoolSize) {
+    this.doubleWriteTaskCorePoolSize = doubleWriteTaskCorePoolSize;
+  }
+
+  public int getDoubleWriteTaskMaxPoolSize() {
+    return doubleWriteTaskMaxPoolSize;
+  }
+
+  public void setDoubleWriteTaskMaxPoolSize(int doubleWriteTaskMaxPoolSize) {
+    this.doubleWriteTaskMaxPoolSize = doubleWriteTaskMaxPoolSize;
+  }
+
+  public int getDoubleWriteTaskKeepAliveTime() {
+    return doubleWriteTaskKeepAliveTime;
+  }
+
+  public void setDoubleWriteTaskKeepAliveTime(int doubleWriteTaskKeepAliveTime) {
+    this.doubleWriteTaskKeepAliveTime = doubleWriteTaskKeepAliveTime;
+  }
+
+  public int getDoubleWriteProducerCacheSize() {
+    return doubleWriteProducerCacheSize;
+  }
+
+  public void setDoubleWriteProducerCacheSize(int doubleWriteProducerCacheSize) {
+    this.doubleWriteProducerCacheSize = doubleWriteProducerCacheSize;
+  }
+
+  public int getDoubleWriteConsumerConcurrencySize() {
+    return doubleWriteConsumerConcurrencySize;
+  }
+
+  public void setDoubleWriteConsumerConcurrencySize(int doubleWriteConsumerConcurrencySize) {
+    this.doubleWriteConsumerConcurrencySize = doubleWriteConsumerConcurrencySize;
   }
 }
