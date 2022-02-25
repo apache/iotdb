@@ -100,7 +100,7 @@ abstract class MergeTest {
     MergeManager.getINSTANCE().stop();
   }
 
-  private void prepareSeries() throws MetadataException {
+  protected void prepareSeries() throws MetadataException {
     measurementSchemas = new MeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] =
