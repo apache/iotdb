@@ -423,8 +423,8 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
-      Assert.assertEquals("12.291666666666666", result1);
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(12.291666666666666, result1, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -438,8 +438,8 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
-      Assert.assertEquals("12.291666666666666", result1);
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(12.291666666666666, result1, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -453,8 +453,8 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
-      Assert.assertEquals("12.291666666666666", result1);
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(12.291666666666666, result1, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -468,8 +468,8 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
-      Assert.assertEquals("12.291666666666666", result1);
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(12.291666666666666, result1, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -483,8 +483,8 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
-      Assert.assertEquals("8.0", result1);
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(8.0, result1, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -498,8 +498,8 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
-      Assert.assertEquals("12.291666666666666", result1);
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(8.0, result1, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -513,8 +513,8 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
-      Assert.assertEquals("12.291666666666666", result1);
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(8.0, result1, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -528,8 +528,8 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
-      Assert.assertEquals("12.291666666666666", result1);
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(8.0, result1, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -543,8 +543,8 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
-      Assert.assertEquals("0.5630881927754872", result1);
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(0.5630881927754872, result1, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -558,8 +558,8 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
-      Assert.assertEquals("0.5630881927754872", result1);
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(0.5630881927754872, result1, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -573,8 +573,8 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
-      Assert.assertEquals("0.5630881927754872", result1);
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(0.5630881927754872, result1, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -588,8 +588,8 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
-      Assert.assertEquals("0.5630881927754872", result1);
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(0.5630881927754872, result1, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -603,11 +603,11 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
+      double result1 = resultSet.getDouble(1);
       resultSet.next();
-      String result2 = resultSet.getString(1);
-      Assert.assertEquals("0.0", result1);
-      Assert.assertEquals("0.0", result2);
+      double result2 = resultSet.getDouble(1);
+      Assert.assertEquals(0.0, result1, 0.01);
+      Assert.assertEquals(0.0, result2, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -621,11 +621,11 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
+      double result1 = resultSet.getDouble(1);
       resultSet.next();
-      String result2 = resultSet.getString(1);
-      Assert.assertEquals("0.0", result1);
-      Assert.assertEquals("0.0", result2);
+      double result2 = resultSet.getDouble(1);
+      Assert.assertEquals(0.0, result1, 0.01);
+      Assert.assertEquals(0.0, result2, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -639,11 +639,11 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
+      double result1 = resultSet.getDouble(1);
       resultSet.next();
-      String result2 = resultSet.getString(1);
-      Assert.assertEquals("0.0", result1);
-      Assert.assertEquals("0.0", result2);
+      double result2 = resultSet.getDouble(1);
+      Assert.assertEquals(0.0, result1, 0.01);
+      Assert.assertEquals(0.0, result2, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -657,11 +657,11 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
+      double result1 = resultSet.getDouble(1);
       resultSet.next();
-      String result2 = resultSet.getString(1);
-      Assert.assertEquals("0.0", result1);
-      Assert.assertEquals("0.0", result2);
+      double result2 = resultSet.getDouble(1);
+      Assert.assertEquals(0.0, result1, 0.01);
+      Assert.assertEquals(0.0, result2, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -675,32 +675,32 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
+      double result1 = resultSet.getDouble(1);
       resultSet.next();
-      String result2 = resultSet.getString(1);
+      double result2 = resultSet.getDouble(1);
       resultSet.next();
-      String result3 = resultSet.getString(1);
+      double result3 = resultSet.getDouble(1);
       resultSet.next();
-      String result4 = resultSet.getString(1);
+      double result4 = resultSet.getDouble(1);
       resultSet.next();
-      String result5 = resultSet.getString(1);
+      double result5 = resultSet.getDouble(1);
       resultSet.next();
-      String result6 = resultSet.getString(1);
+      double result6 = resultSet.getDouble(1);
       resultSet.next();
-      String result7 = resultSet.getString(1);
+      double result7 = resultSet.getDouble(1);
       resultSet.next();
-      String result8 = resultSet.getString(1);
+      double result8 = resultSet.getDouble(1);
       resultSet.next();
-      String result9 = resultSet.getString(1);
-      Assert.assertEquals("0.0", result1);
-      Assert.assertEquals("4.0", result2);
-      Assert.assertEquals("9.6", result3);
-      Assert.assertEquals("13.4", result4);
-      Assert.assertEquals("20.0", result5);
-      Assert.assertEquals("15.6", result6);
-      Assert.assertEquals("9.2", result7);
-      Assert.assertEquals("11.8", result8);
-      Assert.assertEquals("6.0", result9);
+      double result9 = resultSet.getDouble(1);
+      Assert.assertEquals(0.0, result1, 0.01);
+      Assert.assertEquals(4.0, result2, 0.01);
+      Assert.assertEquals(9.6, result3, 0.01);
+      Assert.assertEquals(13.4, result4, 0.01);
+      Assert.assertEquals(20.0, result5, 0.01);
+      Assert.assertEquals(15.6, result6, 0.01);
+      Assert.assertEquals(9.2, result7, 0.01);
+      Assert.assertEquals(11.8, result8, 0.01);
+      Assert.assertEquals(6.0, result9, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -714,32 +714,32 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
+      double result1 = resultSet.getDouble(1);
       resultSet.next();
-      String result2 = resultSet.getString(1);
+      double result2 = resultSet.getDouble(1);
       resultSet.next();
-      String result3 = resultSet.getString(1);
+      double result3 = resultSet.getDouble(1);
       resultSet.next();
-      String result4 = resultSet.getString(1);
+      double result4 = resultSet.getDouble(1);
       resultSet.next();
-      String result5 = resultSet.getString(1);
+      double result5 = resultSet.getDouble(1);
       resultSet.next();
-      String result6 = resultSet.getString(1);
+      double result6 = resultSet.getDouble(1);
       resultSet.next();
-      String result7 = resultSet.getString(1);
+      double result7 = resultSet.getDouble(1);
       resultSet.next();
-      String result8 = resultSet.getString(1);
+      double result8 = resultSet.getDouble(1);
       resultSet.next();
-      String result9 = resultSet.getString(1);
-      Assert.assertEquals("0.0", result1);
-      Assert.assertEquals("4.0", result2);
-      Assert.assertEquals("9.6", result3);
-      Assert.assertEquals("13.4", result4);
-      Assert.assertEquals("20.0", result5);
-      Assert.assertEquals("15.6", result6);
-      Assert.assertEquals("9.2", result7);
-      Assert.assertEquals("11.8", result8);
-      Assert.assertEquals("6.0", result9);
+      double result9 = resultSet.getDouble(1);
+      Assert.assertEquals(0.0, result1, 0.01);
+      Assert.assertEquals(4.0, result2, 0.01);
+      Assert.assertEquals(9.6, result3, 0.01);
+      Assert.assertEquals(13.4, result4, 0.01);
+      Assert.assertEquals(20.0, result5, 0.01);
+      Assert.assertEquals(15.6, result6, 0.01);
+      Assert.assertEquals(9.2, result7, 0.01);
+      Assert.assertEquals(11.8, result8, 0.01);
+      Assert.assertEquals(6.0, result9, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -753,32 +753,32 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
+      double result1 = resultSet.getDouble(1);
       resultSet.next();
-      String result2 = resultSet.getString(1);
+      double result2 = resultSet.getDouble(1);
       resultSet.next();
-      String result3 = resultSet.getString(1);
+      double result3 = resultSet.getDouble(1);
       resultSet.next();
-      String result4 = resultSet.getString(1);
+      double result4 = resultSet.getDouble(1);
       resultSet.next();
-      String result5 = resultSet.getString(1);
+      double result5 = resultSet.getDouble(1);
       resultSet.next();
-      String result6 = resultSet.getString(1);
+      double result6 = resultSet.getDouble(1);
       resultSet.next();
-      String result7 = resultSet.getString(1);
+      double result7 = resultSet.getDouble(1);
       resultSet.next();
-      String result8 = resultSet.getString(1);
+      double result8 = resultSet.getDouble(1);
       resultSet.next();
-      String result9 = resultSet.getString(1);
-      Assert.assertEquals("0.0", result1);
-      Assert.assertEquals("4.0", result2);
-      Assert.assertEquals("9.6", result3);
-      Assert.assertEquals("13.4", result4);
-      Assert.assertEquals("20.0", result5);
-      Assert.assertEquals("15.6", result6);
-      Assert.assertEquals("9.2", result7);
-      Assert.assertEquals("11.8", result8);
-      Assert.assertEquals("6.0", result9);
+      double result9 = resultSet.getDouble(1);
+      Assert.assertEquals(0.0, result1, 0.01);
+      Assert.assertEquals(4.0, result2, 0.01);
+      Assert.assertEquals(9.6, result3, 0.01);
+      Assert.assertEquals(13.4, result4, 0.01);
+      Assert.assertEquals(20.0, result5, 0.01);
+      Assert.assertEquals(15.6, result6, 0.01);
+      Assert.assertEquals(9.2, result7, 0.01);
+      Assert.assertEquals(11.8, result8, 0.01);
+      Assert.assertEquals(6.0, result9, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -792,32 +792,32 @@ public class DMatchTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
+      double result1 = resultSet.getDouble(1);
       resultSet.next();
-      String result2 = resultSet.getString(1);
+      double result2 = resultSet.getDouble(1);
       resultSet.next();
-      String result3 = resultSet.getString(1);
+      double result3 = resultSet.getDouble(1);
       resultSet.next();
-      String result4 = resultSet.getString(1);
+      double result4 = resultSet.getDouble(1);
       resultSet.next();
-      String result5 = resultSet.getString(1);
+      double result5 = resultSet.getDouble(1);
       resultSet.next();
-      String result6 = resultSet.getString(1);
+      double result6 = resultSet.getDouble(1);
       resultSet.next();
-      String result7 = resultSet.getString(1);
+      double result7 = resultSet.getDouble(1);
       resultSet.next();
-      String result8 = resultSet.getString(1);
+      double result8 = resultSet.getDouble(1);
       resultSet.next();
-      String result9 = resultSet.getString(1);
-      Assert.assertEquals("0.0", result1);
-      Assert.assertEquals("4.0", result2);
-      Assert.assertEquals("9.6", result3);
-      Assert.assertEquals("13.4", result4);
-      Assert.assertEquals("20.0", result5);
-      Assert.assertEquals("15.6", result6);
-      Assert.assertEquals("9.2", result7);
-      Assert.assertEquals("11.8", result8);
-      Assert.assertEquals("6.0", result9);
+      double result9 = resultSet.getDouble(1);
+      Assert.assertEquals(0.0, result1, 0.01);
+      Assert.assertEquals(4.0, result2, 0.01);
+      Assert.assertEquals(9.6, result3, 0.01);
+      Assert.assertEquals(13.4, result4, 0.01);
+      Assert.assertEquals(20.0, result5, 0.01);
+      Assert.assertEquals(15.6, result6, 0.01);
+      Assert.assertEquals(9.2, result7, 0.01);
+      Assert.assertEquals(11.8, result8, 0.01);
+      Assert.assertEquals(6.0, result9, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
