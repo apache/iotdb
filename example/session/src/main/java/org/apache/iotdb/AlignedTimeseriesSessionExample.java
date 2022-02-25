@@ -573,9 +573,9 @@ public class AlignedTimeseriesSessionExample {
       tablet3.addTimestamp(row3, timestamp);
       for (int i = 0; i < 2; i++) {
         long value = new SecureRandom().nextLong();
-        tablet1.addValue(schemaList1.get(0).getMeasurementId(), row1, value);
-        tablet2.addValue(schemaList2.get(0).getMeasurementId(), row2, value);
-        tablet3.addValue(schemaList3.get(0).getMeasurementId(), row3, value);
+        tablet1.addValue(schemaList1.get(i).getMeasurementId(), row1, value);
+        tablet2.addValue(schemaList2.get(i).getMeasurementId(), row2, value);
+        tablet3.addValue(schemaList3.get(i).getMeasurementId(), row3, value);
       }
       if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
         session.insertAlignedTablets(tabletMap, true);
