@@ -861,6 +861,7 @@ public class StorageEngine implements IService {
     StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);
     storageGroupManager.deleteStorageGroupSystemFolder(
         systemDir + File.pathSeparator + storageGroupPath);
+    storageGroupManager.stopSchedulerPool();
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
