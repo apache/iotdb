@@ -665,8 +665,8 @@ TS_2DIFF
     ;
 
 FREQ
-	: F R E Q
-	;
+    : F R E Q
+    ;
 
 // Compressor Type Keywords
 
