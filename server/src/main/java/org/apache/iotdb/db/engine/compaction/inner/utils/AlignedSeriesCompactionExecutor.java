@@ -20,6 +20,11 @@ package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileAlignedSeriesReaderIterator;
@@ -56,6 +61,8 @@ public class AlignedSeriesCompactionExecutor {
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
   private final long chunkPointNumThreshold =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+  private final boolean enableMetrics =
+      MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 
   public AlignedSeriesCompactionExecutor(
       String device,
@@ -148,8 +155,22 @@ public class AlignedSeriesCompactionExecutor {
   private void flushChunkWriterIfLargeEnough() throws IOException {
     if (remainingPointInChunkWriter >= chunkPointNumThreshold
         || chunkWriter.estimateMaxSeriesMemSize() >= chunkSizeThreshold * schemaList.size()) {
+      if (enableMetrics) {
+        addMetrics(chunkWriter.estimateMaxSeriesMemSize());
+      }
       chunkWriter.writeToFileWriter(writer);
       remainingPointInChunkWriter = 0L;
     }
+  }
+
+  private void addMetrics(long byteNum) {
+    Counter counter =
+        MetricsService.getInstance()
+            .getMetricManager()
+            .getOrCreateCounter(
+                Metric.BYTE_WRITTEN.toString(),
+                Tag.NAME.toString(),
+                "inner_compaction_written_bytes");
+    counter.inc(byteNum);
   }
 }

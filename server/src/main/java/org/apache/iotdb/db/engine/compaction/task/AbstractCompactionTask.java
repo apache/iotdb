@@ -21,12 +21,15 @@ package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossCompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.type.Counter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,6 +85,29 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
               Metric.COST_TASK.toString(),
               Tag.NAME.toString(),
               "compaction");
+      if (this instanceof AbstractInnerSpaceCompactionTask) {
+        Counter counter =
+            MetricsService.getInstance()
+                .getMetricManager()
+                .getOrCreateCounter(
+                    Metric.COMPACTION_TASK_COUNT.toString(),
+                    Tag.NAME.toString(),
+                    "inner_compaction_count",
+                    Tag.TYPE.toString(),
+                    ((AbstractInnerSpaceCompactionTask) this).isSequence()
+                        ? "sequence"
+                        : "unsequence");
+        counter.inc();
+      } else if (this instanceof AbstractCrossSpaceCompactionTask) {
+        Counter counter =
+            MetricsService.getInstance()
+                .getMetricManager()
+                .getOrCreateCounter(
+                    Metric.COMPACTION_TASK_COUNT.toString(),
+                    Tag.NAME.toString(),
+                    "cross_compaction_count");
+        counter.inc();
+      }
     }
 
     return null;
