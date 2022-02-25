@@ -33,6 +33,7 @@ import java.util.List;
 public class RewriteCrossSpaceCompactionLogger implements AutoCloseable {
 
   public static final String COMPACTION_LOG_NAME = "cross-compaction.log";
+  public static final String COMPACTION_LOG_NAME_FEOM_OLD = "merge.log";
 
   public static final String STR_SEQ_FILES = "seqFiles";
   public static final String STR_TARGET_FILES = "targetFiles";
@@ -77,6 +78,17 @@ public class RewriteCrossSpaceCompactionLogger implements AutoCloseable {
 
   public static File[] findCrossSpaceCompactionLogs(String directory) {
     File timePartitionDir = new File(directory);
+
+    // check whether there is old compaction log from previous version (<0.13)
+    File storageGroupDir = timePartitionDir.getParentFile();
+    if (storageGroupDir.exists()) {
+      File[] compactionLogsFromOld =
+          storageGroupDir.listFiles((dir, name) -> name.endsWith(COMPACTION_LOG_NAME_FEOM_OLD));
+      if (compactionLogsFromOld.length != 0) {
+        return compactionLogsFromOld;
+      }
+    }
+
     if (timePartitionDir.exists()) {
       return timePartitionDir.listFiles((dir, name) -> name.endsWith(COMPACTION_LOG_NAME));
     } else {
