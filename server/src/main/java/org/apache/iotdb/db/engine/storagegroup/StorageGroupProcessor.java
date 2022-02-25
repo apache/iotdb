@@ -517,8 +517,6 @@ public class StorageGroupProcessor {
       CompactionMergeRecoverTask recoverTask =
           new CompactionMergeRecoverTask(
               tsFileManagement,
-              new ArrayList<>(tsFileManagement.getTsFileList(true)),
-              tsFileManagement.getTsFileList(false),
               storageGroupSysDir.getPath(),
               tsFileManagement::mergeEndAction,
               taskName,

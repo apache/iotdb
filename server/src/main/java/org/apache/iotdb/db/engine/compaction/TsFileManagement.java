@@ -82,8 +82,6 @@ public abstract class TsFileManagement {
   protected boolean isMergeExecutedInCurrentTask = false;
 
   protected boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig().isForceFullMerge();
-  private final int maxOpenFileNumInEachUnseqCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getMaxSelectUnseqFileNumInEachUnseqCompaction();
 
   protected ReentrantLock compactionSelectionLock = new ReentrantLock();
 
@@ -336,6 +334,19 @@ public abstract class TsFileManagement {
     seqFile.writeUnlock();
   }
 
+  public void replace(
+      List<TsFileResource> seqResources,
+      List<TsFileResource> unseqResources,
+      List<TsFileResource> targetResources,
+      boolean isTargetSeq)
+      throws IOException {
+    writeLock();
+    removeAll(seqResources, true);
+    removeAll(unseqResources, false);
+    addAll(targetResources, isTargetSeq);
+    writeUnlock();
+  }
+
   private void removeUnseqFiles(List<TsFileResource> unseqFiles) {
     writeLock();
     try {
@@ -360,7 +371,7 @@ public abstract class TsFileManagement {
   }
 
   @SuppressWarnings("squid:S1141")
-  private void updateMergeModification(TsFileResource seqFile) {
+  public void updateMergeModification(TsFileResource seqFile) {
     try {
       // remove old modifications and write modifications generated during merge
       seqFile.removeModFile();
@@ -387,7 +398,7 @@ public abstract class TsFileManagement {
     }
   }
 
-  private void removeMergingModification() {
+  public void removeMergingModification() {
     try {
       if (mergingModification != null) {
         mergingModification.remove();

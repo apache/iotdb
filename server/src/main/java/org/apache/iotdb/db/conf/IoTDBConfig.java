@@ -1463,10 +1463,6 @@ public class IoTDBConfig {
     return forceFullMerge;
   }
 
-  void setForceFullMerge(boolean forceFullMerge) {
-    this.forceFullMerge = forceFullMerge;
-  }
-
   public int getCompactionThreadNum() {
     return compactionThreadNum;
   }
