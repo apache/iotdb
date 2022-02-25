@@ -37,7 +37,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.tsfile.Constant.*;
+import static org.apache.iotdb.tsfile.Constant.DEVICE_1;
+import static org.apache.iotdb.tsfile.Constant.SENSOR_1;
+import static org.apache.iotdb.tsfile.Constant.SENSOR_2;
+import static org.apache.iotdb.tsfile.Constant.SENSOR_3;
 
 /** An example of writing data with Tablet to TsFile */
 public class TsFileWriteWithTablet {
@@ -46,12 +49,8 @@ public class TsFileWriteWithTablet {
 
   public static void main(String[] args) {
     try {
-      File dirPath = new File(TSFILE_DIR_PATH);
-      if (!dirPath.getParentFile().exists()) {
-        dirPath.getParentFile().mkdirs();
-      }
-
-      File f = FSFactoryProducer.getFSFactory().getFile(TSFILE_DIR_PATH.concat(FILE_NAME));
+      String path = "Record.tsfile";
+      File f = FSFactoryProducer.getFSFactory().getFile(path);
       if (f.exists() && !f.delete()) {
         throw new RuntimeException("can not delete " + f.getAbsolutePath());
       }

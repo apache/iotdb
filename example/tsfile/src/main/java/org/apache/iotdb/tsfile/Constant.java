@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.tsfile;
 
-import java.io.File;
-
 public class Constant {
 
   private Constant() {}
@@ -32,15 +30,4 @@ public class Constant {
   static final String DEVICE_PREFIX = "device_";
   static final String DEVICE_1 = "root.sg.device_1";
   static final String DEVICE_2 = "root.sg.device_2";
-
-  static final String SG_NAME = "root.sg";
-
-  static final String BASE_OUTPUT_PATH = "target".concat(File.separator);
-  static final String PARTIAL_PATH_STRING =
-      String.format(
-          "%s" + File.separator + "%d" + File.separator + "%d" + File.separator, SG_NAME, 0, 0);
-  static final String TSFILE_DIR_PATH =
-      BASE_OUTPUT_PATH + "tsfile".concat(File.separator) + PARTIAL_PATH_STRING;
-
-  static final String FILE_NAME = "1-0-0.tsfile";
 }

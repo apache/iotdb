@@ -33,7 +33,10 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import static org.apache.iotdb.tsfile.Constant.*;
+import static org.apache.iotdb.tsfile.Constant.DEVICE_1;
+import static org.apache.iotdb.tsfile.Constant.SENSOR_1;
+import static org.apache.iotdb.tsfile.Constant.SENSOR_2;
+import static org.apache.iotdb.tsfile.Constant.SENSOR_3;
 
 /**
  * The class is to show how to read TsFile file named "test.tsfile". The TsFile file "test.tsfile"
@@ -55,7 +58,7 @@ public class TsFileRead {
   public static void main(String[] args) throws IOException {
 
     // file path
-    String path = TSFILE_DIR_PATH.concat(FILE_NAME);
+    String path = "test.tsfile";
 
     // create reader and get the readTsFile interface
     try (TsFileSequenceReader reader = new TsFileSequenceReader(path);

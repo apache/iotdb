@@ -36,20 +36,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
-import static org.apache.iotdb.tsfile.Constant.FILE_NAME;
-import static org.apache.iotdb.tsfile.Constant.TSFILE_DIR_PATH;
-
 public class TsFileForceAppendWrite {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileForceAppendWrite.class);
 
   public static void main(String[] args) throws IOException {
-    File dirPath = new File(TSFILE_DIR_PATH);
-    if (!dirPath.getParentFile().exists()) {
-      dirPath.getParentFile().mkdirs();
-    }
-
-    File f = FSFactoryProducer.getFSFactory().getFile(TSFILE_DIR_PATH.concat(FILE_NAME));
+    String path = "test.tsfile";
+    File f = FSFactoryProducer.getFSFactory().getFile(path);
     if (f.exists()) {
       Files.delete(f.toPath());
     }

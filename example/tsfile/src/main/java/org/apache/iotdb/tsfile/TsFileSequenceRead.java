@@ -43,9 +43,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.tsfile.Constant.FILE_NAME;
-import static org.apache.iotdb.tsfile.Constant.TSFILE_DIR_PATH;
-
 /** This tool is used to read TsFile sequentially, including nonAligned or aligned timeseries. */
 public class TsFileSequenceRead {
   // if you wanna print detailed datas in pages, then turn it true.
@@ -56,7 +53,7 @@ public class TsFileSequenceRead {
     "squid:S106"
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
-    String filename = TSFILE_DIR_PATH.concat(FILE_NAME);
+    String filename = "test.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
