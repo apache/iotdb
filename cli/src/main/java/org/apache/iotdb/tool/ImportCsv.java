@@ -73,6 +73,9 @@ public class ImportCsv extends AbstractCsvTool {
   private static final String FAILED_FILE_ARGS = "fd";
   private static final String FAILED_FILE_NAME = "failed file directory";
 
+  private static final String BATCH_POINT_SIZE_ARGS = "bs";
+  private static final String BATCH_POINT_SIZE_NAME = "batch point size";
+
   private static final String CSV_SUFFIXS = "csv";
   private static final String TXT_SUFFIXS = "txt";
 
@@ -85,7 +88,7 @@ public class ImportCsv extends AbstractCsvTool {
   private static String timeColumn = "Time";
   private static String deviceColumn = "Device";
 
-  private static final int BATCH_POINT_SIZE = 1_000_000;
+  private static int batchPointSize = 1_000_000;
 
   /**
    * create the commandline options.
@@ -131,6 +134,14 @@ public class ImportCsv extends AbstractCsvTool {
             .build();
     options.addOption(opTimeZone);
 
+    Option opBatchPointSize =
+        Option.builder(BATCH_POINT_SIZE_ARGS)
+            .argName(BATCH_POINT_SIZE_NAME)
+            .hasArg()
+            .desc("1000000 (optional)")
+            .build();
+    options.addOption(opBatchPointSize);
+
     return options;
   }
 
@@ -142,6 +153,7 @@ public class ImportCsv extends AbstractCsvTool {
   private static void parseSpecialParams(CommandLine commandLine) {
     timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
     targetPath = commandLine.getOptionValue(FILE_ARGS);
+    batchPointSize = Integer.parseInt(commandLine.getOptionValue(BATCH_POINT_SIZE_ARGS));
     if (commandLine.getOptionValue(FAILED_FILE_ARGS) != null) {
       failedFileDirectory = commandLine.getOptionValue(FAILED_FILE_ARGS);
       File file = new File(failedFileDirectory);
@@ -317,7 +329,7 @@ public class ImportCsv extends AbstractCsvTool {
           if (!hasStarted.get()) {
             hasStarted.set(true);
             timeFormatter.set(formatterInit(record.get(0)));
-          } else if (pointSize.get() >= BATCH_POINT_SIZE) {
+          } else if (pointSize.get() >= batchPointSize) {
             writeAndEmptyDataSet(deviceIds, times, typesList, valuesList, measurementsList, 3);
             pointSize.set(0);
           }
@@ -440,7 +452,7 @@ public class ImportCsv extends AbstractCsvTool {
                 deviceName.get(), times, typesList, valuesList, measurementsList, 3);
             pointSize.set(0);
             deviceName.set(record.get(1));
-          } else if (pointSize.get() >= BATCH_POINT_SIZE) {
+          } else if (pointSize.get() >= batchPointSize) {
             // insert a batch
             writeAndEmptyDataSet(
                 deviceName.get(), times, typesList, valuesList, measurementsList, 3);
