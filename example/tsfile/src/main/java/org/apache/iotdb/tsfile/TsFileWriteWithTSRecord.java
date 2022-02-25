@@ -49,7 +49,7 @@ public class TsFileWriteWithTSRecord {
 
   public static void main(String[] args) {
     try {
-      String path = "Tablet.tsfile";
+      String path = "Record.tsfile";
       File f = FSFactoryProducer.getFSFactory().getFile(path);
       if (f.exists()) {
         f.delete();

@@ -48,7 +48,7 @@ public class TsFileWriteAlignedWithTSRecord {
       LoggerFactory.getLogger(TsFileWriteAlignedWithTSRecord.class);
 
   public static void main(String[] args) throws IOException {
-    File f = FSFactoryProducer.getFSFactory().getFile("alignedTablet.tsfile");
+    File f = FSFactoryProducer.getFSFactory().getFile("alignedRecord.tsfile");
     if (f.exists() && !f.delete()) {
       throw new RuntimeException("can not delete " + f.getAbsolutePath());
     }

@@ -49,7 +49,7 @@ public class TsFileWriteWithTablet {
 
   public static void main(String[] args) {
     try {
-      String path = "Record.tsfile";
+      String path = "Tablet.tsfile";
       File f = FSFactoryProducer.getFSFactory().getFile(path);
       if (f.exists() && !f.delete()) {
         throw new RuntimeException("can not delete " + f.getAbsolutePath());
