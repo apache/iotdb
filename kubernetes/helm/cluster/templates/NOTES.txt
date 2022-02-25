@@ -28,4 +28,4 @@ To learn more about the release, try:
 
 To connect to iotdb server, use the address:
 
-  {{ .Release.Name }}.{{ .Release.Name }}.svc.cluster.local
+  {{ .Release.Name }}.{{ .Values.namespace }}.svc.cluster.local
