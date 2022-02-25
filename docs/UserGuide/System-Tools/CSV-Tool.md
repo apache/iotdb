@@ -188,6 +188,10 @@ Description:
   - specifying a directory to save files which save failed lines. If you don't use this parameter, the failed file will be saved at original directory, and the filename will be the source filename with suffix `.failed`.
   - example: `-fd ./failed/`
 
+* `-batch`:
+  - specifying the point's number of a batch. If the program throw the exception `org.apache.thrift.transport.TTransportException: Frame size larger than protect max size`, you can lower this parameter as appropriate.
+  - example: `-bs 100000`, `100000` is the default value.
+
 ### Example
 
 ```sh
