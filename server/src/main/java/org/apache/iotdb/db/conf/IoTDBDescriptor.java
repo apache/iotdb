@@ -783,12 +783,9 @@ public class IoTDBDescriptor {
                   "enable_double_write", String.valueOf(conf.isEnableDoubleWrite()))));
 
       conf.setSyncDoubleWrite(
-        Boolean.parseBoolean(
-          properties.getProperty(
-            "sync_double_write", String.valueOf(conf.isSyncDoubleWrite())
-          )
-        )
-      );
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "sync_double_write", String.valueOf(conf.isSyncDoubleWrite()))));
 
       conf.setSecondaryAddress(
           properties.getProperty("secondary_address", conf.getSecondaryAddress()));
@@ -838,38 +835,34 @@ public class IoTDBDescriptor {
                   String.valueOf(conf.getDoubleWriteProtectorKeepAliveTime()))));
 
       conf.setDoubleWriteTaskCorePoolSize(
-        Integer.parseInt(
-          properties.getProperty(
-            "double_write_task_core_pool_size",
-            String.valueOf(conf.getDoubleWriteTaskCorePoolSize()))));
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_task_core_pool_size",
+                  String.valueOf(conf.getDoubleWriteTaskCorePoolSize()))));
 
       conf.setDoubleWriteTaskMaxPoolSize(
-        Integer.parseInt(
-          properties.getProperty(
-            "double_write_task_max_pool_size",
-            String.valueOf(conf.getDoubleWriteTaskMaxPoolSize()))));
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_task_max_pool_size",
+                  String.valueOf(conf.getDoubleWriteTaskMaxPoolSize()))));
 
       conf.setDoubleWriteTaskKeepAliveTime(
-        Integer.parseInt(
-          properties.getProperty(
-            "double_write_task_keep_alive_time",
-            String.valueOf(conf.getDoubleWriteTaskKeepAliveTime()))));
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_task_keep_alive_time",
+                  String.valueOf(conf.getDoubleWriteTaskKeepAliveTime()))));
 
       conf.setDoubleWriteProducerCacheSize(
-        Integer.parseInt(
-          properties.getProperty(
-            "double_write_producer_cache_size", String.valueOf(conf.getDoubleWriteProducerCacheSize())
-          )
-        )
-      );
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_producer_cache_size",
+                  String.valueOf(conf.getDoubleWriteProducerCacheSize()))));
 
       conf.setDoubleWriteConsumerConcurrencySize(
-        Integer.parseInt(
-          properties.getProperty(
-            "double_write_consumer_concurrency_size", String.valueOf(conf.getDoubleWriteConsumerConcurrencySize())
-          )
-        )
-      );
+          Integer.parseInt(
+              properties.getProperty(
+                  "double_write_consumer_concurrency_size",
+                  String.valueOf(conf.getDoubleWriteConsumerConcurrencySize()))));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()

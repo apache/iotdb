@@ -807,6 +807,7 @@ public class IoTDBConfig {
   // DoubleWrite Config
   /** DOUBLEWRITE GENERAL CONFIG */
   private boolean enableDoubleWrite = false;
+
   private boolean syncDoubleWrite = true;
 
   // Secondary IoTDB
@@ -825,7 +826,8 @@ public class IoTDBConfig {
   // The max pool size of protector. i.e. The maximum number of cached protector
   private int doubleWriteProtectorMaxPoolSize = 64;
   // The max waiting time when a DoubleWriteLogFile is created. i.e. When timeout,
-  // the DoubleWriteProtector will begin to transmit whether the DoubleWriteLogFile is reached its max size
+  // the DoubleWriteProtector will begin to transmit whether the DoubleWriteLogFile is reached its
+  // max size
   private int doubleWriteProtectorMaxWaitingTime = 5;
   // The max alive time when a DoubleWriteProtector is paused
   private int doubleWriteProtectorKeepAliveTime = 1;

@@ -370,22 +370,24 @@ public class TSServiceImpl implements TSIService.Iface {
       if (isSyncDoubleWrite) {
         // create DoubleWriteTaskThreadPool
         doubleWriteTaskThreadPool =
-          new ThreadPoolExecutor(
-            config.getDoubleWriteTaskCorePoolSize(),
-            config.getDoubleWriteTaskMaxPoolSize(),
-            config.getDoubleWriteTaskKeepAliveTime(),
-            TimeUnit.HOURS,
-            new ArrayBlockingQueue<>(config.getDoubleWriteTaskMaxPoolSize()),
-            Executors.defaultThreadFactory(),
-            new ThreadPoolExecutor.DiscardOldestPolicy());
+            new ThreadPoolExecutor(
+                config.getDoubleWriteTaskCorePoolSize(),
+                config.getDoubleWriteTaskMaxPoolSize(),
+                config.getDoubleWriteTaskKeepAliveTime(),
+                TimeUnit.HOURS,
+                new ArrayBlockingQueue<>(config.getDoubleWriteTaskMaxPoolSize()),
+                Executors.defaultThreadFactory(),
+                new ThreadPoolExecutor.DiscardOldestPolicy());
 
         doubleWriteProducer = null;
       } else {
         // create DoubleWriteProducer and DoubleWriteConsumer
-        BlockingQueue blockingQueue = new ArrayBlockingQueue(config.getDoubleWriteProducerCacheSize());
+        BlockingQueue<ByteBuffer> blockingQueue =
+            new ArrayBlockingQueue<>(config.getDoubleWriteProducerCacheSize());
         doubleWriteProducer = new DoubleWriteProducer(blockingQueue, doubleWriteProtectorService);
         for (int i = 0; i < config.getDoubleWriteConsumerConcurrencySize(); i++) {
-          DoubleWriteConsumer consumer = new DoubleWriteConsumer(blockingQueue, doubleWriteSessionPool);
+          DoubleWriteConsumer consumer =
+              new DoubleWriteConsumer(blockingQueue, doubleWriteSessionPool);
           new Thread(consumer).start();
         }
 
@@ -722,12 +724,12 @@ public class TSServiceImpl implements TSIService.Iface {
         }
 
         return executeUpdateStatement(
-          statement,
-          req.statementId,
-          physicalPlan,
-          req.fetchSize,
-          req.timeout,
-          req.getSessionId());
+            statement,
+            req.statementId,
+            physicalPlan,
+            req.fetchSize,
+            req.timeout,
+            req.getSessionId());
       }
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
@@ -2201,7 +2203,10 @@ public class TSServiceImpl implements TSIService.Iface {
     }
 
     if (physicalPlan instanceof InsertTabletPlan) {
-      LOGGER.info("transmit: {}, count: {}", physicalPlan.getPaths().get(0), ((InsertTabletPlan) physicalPlan).getRowCount());
+      LOGGER.info(
+          "transmit: {}, count: {}",
+          physicalPlan.getPaths().get(0),
+          ((InsertTabletPlan) physicalPlan).getRowCount());
     }
 
     return executeNonQueryPlan(physicalPlan);
@@ -2211,7 +2216,10 @@ public class TSServiceImpl implements TSIService.Iface {
       throws InterruptedException, ExecutionException, IOException {
 
     if (physicalPlan instanceof InsertTabletPlan) {
-      LOGGER.info("transmit: {}, count: {}", physicalPlan.getPaths().get(0), ((InsertTabletPlan) physicalPlan).getRowCount());
+      LOGGER.info(
+          "transmit: {}, count: {}",
+          physicalPlan.getPaths().get(0),
+          ((InsertTabletPlan) physicalPlan).getRowCount());
     }
 
     // serialize physical plan
@@ -2224,7 +2232,7 @@ public class TSServiceImpl implements TSIService.Iface {
     if (isSyncDoubleWrite) {
       // create and wait DoubleWriteTask
       DoubleWriteTask doubleWriteTask =
-        new DoubleWriteTask(doubleWriteProtectorService, buffer, doubleWriteSessionPool);
+          new DoubleWriteTask(doubleWriteProtectorService, buffer, doubleWriteSessionPool);
       Future<?> future = doubleWriteTaskThreadPool.submit(doubleWriteTask);
       future.get();
     } else {

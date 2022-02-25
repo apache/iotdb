@@ -18,28 +18,15 @@
  */
 package org.apache.iotdb.db.doublewrite;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.writelog.io.LogWriter;
-import org.apache.iotdb.session.pool.SessionPool;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Random;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * DoubleWriteProducer using BlockingQueue to cache PhysicalPlan. And persist some PhysicalPlan when
@@ -53,10 +40,11 @@ public class DoubleWriteProducer {
   private final DoubleWriteProtectorService service;
 
   public DoubleWriteProducer(
-    BlockingQueue<ByteBuffer> doubleWriteQueue, DoubleWriteProtectorService service) {
+      BlockingQueue<ByteBuffer> doubleWriteQueue, DoubleWriteProtectorService service) {
     this.doubleWriteQueue = doubleWriteQueue;
     this.service = service;
-    doubleWriteCacheSize = IoTDBDescriptor.getInstance().getConfig().getDoubleWriteProducerCacheSize();
+    doubleWriteCacheSize =
+        IoTDBDescriptor.getInstance().getConfig().getDoubleWriteProducerCacheSize();
   }
 
   public void put(ByteBuffer planBuffer) {

@@ -36,7 +36,7 @@ public class DoubleWriteConsumer implements Runnable {
   private final SessionPool doubleWriteSessionPool;
 
   public DoubleWriteConsumer(
-    BlockingQueue<ByteBuffer> doubleWriteQueue, SessionPool doubleWriteSessionPool) {
+      BlockingQueue<ByteBuffer> doubleWriteQueue, SessionPool doubleWriteSessionPool) {
     this.doubleWriteQueue = doubleWriteQueue;
     this.doubleWriteSessionPool = doubleWriteSessionPool;
   }
