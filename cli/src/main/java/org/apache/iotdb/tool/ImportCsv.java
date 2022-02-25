@@ -146,11 +146,11 @@ public class ImportCsv extends AbstractCsvTool {
     options.addOption(opTimeZone);
 
     Option opBatchPointSize =
-            Option.builder(BATCH_POINT_SIZE_ARGS)
-                    .argName(BATCH_POINT_SIZE_NAME)
-                    .hasArg()
-                    .desc("100000 (optional)")
-                    .build();
+        Option.builder(BATCH_POINT_SIZE_ARGS)
+            .argName(BATCH_POINT_SIZE_NAME)
+            .hasArg()
+            .desc("100000 (optional)")
+            .build();
     options.addOption(opBatchPointSize);
 
     return options;
