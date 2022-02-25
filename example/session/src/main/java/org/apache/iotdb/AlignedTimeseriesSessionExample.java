@@ -303,7 +303,6 @@ public class AlignedTimeseriesSessionExample {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
-    tablet.setAligned(true);
     long timestamp = 1;
 
     for (long row = 1; row < 100; row++) {
@@ -314,7 +313,7 @@ public class AlignedTimeseriesSessionExample {
       tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, new SecureRandom().nextInt());
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertTablet(tablet, true);
+        session.insertAlignedTablet(tablet, true);
         tablet.reset();
       }
       timestamp++;
@@ -338,7 +337,6 @@ public class AlignedTimeseriesSessionExample {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR2, schemaList);
-    tablet.setAligned(true);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
@@ -353,13 +351,13 @@ public class AlignedTimeseriesSessionExample {
       sensor2[row] = new SecureRandom().nextInt();
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertTablet(tablet, true);
+        session.insertAlignedTablet(tablet, true);
         tablet.reset();
       }
     }
 
     if (tablet.rowSize != 0) {
-      session.insertTablet(tablet, true);
+      session.insertAlignedTablet(tablet, true);
       tablet.reset();
     }
 
@@ -375,7 +373,6 @@ public class AlignedTimeseriesSessionExample {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR3, schemaList);
-    tablet.setAligned(true);
 
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
@@ -400,14 +397,14 @@ public class AlignedTimeseriesSessionExample {
       }
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertTablet(tablet, true);
+        session.insertAlignedTablet(tablet, true);
         tablet.reset();
         bitMaps[1].reset();
       }
     }
 
     if (tablet.rowSize != 0) {
-      session.insertTablet(tablet, true);
+      session.insertAlignedTablet(tablet, true);
       tablet.reset();
     }
 
@@ -559,9 +556,6 @@ public class AlignedTimeseriesSessionExample {
     Tablet tablet1 = new Tablet(ROOT_SG2_D1_VECTOR6, schemaList1, 100);
     Tablet tablet2 = new Tablet(ROOT_SG2_D1_VECTOR7, schemaList2, 100);
     Tablet tablet3 = new Tablet(ROOT_SG2_D1_VECTOR8, schemaList3, 100);
-    tablet1.setAligned(true);
-    tablet2.setAligned(true);
-    tablet3.setAligned(true);
 
     Map<String, Tablet> tabletMap = new HashMap<>();
     tabletMap.put(ROOT_SG2_D1_VECTOR6, tablet1);
@@ -584,7 +578,7 @@ public class AlignedTimeseriesSessionExample {
         tablet3.addValue(schemaList3.get(0).getSubMeasurementsList().get(i), row3, value);
       }
       if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
-        session.insertTablets(tabletMap, true);
+        session.insertAlignedTablets(tabletMap, true);
         tablet1.reset();
         tablet2.reset();
         tablet3.reset();
@@ -593,7 +587,7 @@ public class AlignedTimeseriesSessionExample {
     }
 
     if (tablet1.rowSize != 0) {
-      session.insertTablets(tabletMap, true);
+      session.insertAlignedTablets(tabletMap, true);
       tablet1.reset();
       tablet2.reset();
       tablet3.reset();
@@ -623,7 +617,7 @@ public class AlignedTimeseriesSessionExample {
         sensor3[row3] = i;
       }
       if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
-        session.insertTablets(tabletMap, true);
+        session.insertAlignedTablets(tabletMap, true);
 
         tablet1.reset();
         tablet2.reset();
@@ -632,7 +626,7 @@ public class AlignedTimeseriesSessionExample {
     }
 
     if (tablet1.rowSize != 0) {
-      session.insertTablets(tabletMap, true);
+      session.insertAlignedTablets(tabletMap, true);
       tablet1.reset();
       tablet2.reset();
       tablet3.reset();

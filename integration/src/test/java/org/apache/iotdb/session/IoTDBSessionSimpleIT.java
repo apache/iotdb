@@ -395,7 +395,6 @@ public class IoTDBSessionSimpleIT {
     schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
 
     Tablet tablet = new Tablet("root.sg1.d1", schemaList);
-    tablet.setAligned(true);
     long timestamp = System.currentTimeMillis();
 
     for (long row = 0; row < 10; row++) {
@@ -1266,7 +1265,6 @@ public class IoTDBSessionSimpleIT {
     schemaList.add(new MeasurementSchema("x", TSDataType.FLOAT));
     schemaList.add(new MeasurementSchema("y", TSDataType.FLOAT));
     Tablet tablet = new Tablet("root.sg.loc1.sector", schemaList);
-    tablet.setAligned(true);
 
     long timestamp = System.currentTimeMillis();
 
