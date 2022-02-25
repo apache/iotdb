@@ -139,6 +139,28 @@ Shell >./standalone.sh
 
 ![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/pwd.png?raw=true)
 
+8、创建角色，点击左侧菜单的 Roles然后点击Add Role 按钮添加角色
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role1.png?raw=true)
+
+9、在Role Name 中输入`iotdb_admin`，点击save 按钮。提示：这里的`iotdb_admin`不能为其他名称否则即使登陆成功后也将无权限使用iotdb的查询、插入、创建存储组、添加用户、角色等功能
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role2.png?raw=true)
+
+10、点击左侧的User 菜单然后点击用户列表中的Edit的按钮为该用户添加我们刚创建的`iotdb_admin`角色
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role3.png?raw=true)
+
+11、选择Role Mappings ，在Available Role选择`iotdb_admin`角色然后点Add selected 按钮添加角色
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role4.png?raw=true)
+
+12、如果`iotdb_admin`角色在Assigned Roles中并且出现`Success Role mappings updated`提示，证明角色添加成功
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role5.png?raw=true)
+
+提示：如果用户角色有调整需要重新生成token并且重新登陆iotdb才会生效
+
 以上步骤提供了一种 keycloak 登陆 iotdb 方式，更多方式请参考 keycloak 配置
 
 若对应的 IoTDB 服务器开启了使用 OpenID Connect (OIDC) 作为权限认证服务，那么就不再需要使用用户名密码进行登录。
@@ -159,7 +181,7 @@ curl -X POST "http://{your-keycloack-server}/auth/realms/{your-realm}/protocol/o
  -d "username={username}" \
  -d "password={password}" \
  -d 'grant_type=password' \
- -d "client_id=iotdb"
+ -d "client_id=iotdb-client"
 ```
 
 示例结果如下：

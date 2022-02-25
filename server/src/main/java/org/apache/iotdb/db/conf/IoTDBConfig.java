@@ -751,7 +751,7 @@ public class IoTDBConfig {
   private long startUpNanosecond = System.nanoTime();
 
   /** Unit: byte */
-  private int thriftMaxFrameSize = 67108864;
+  private int thriftMaxFrameSize = 536870912;
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
