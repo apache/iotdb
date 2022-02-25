@@ -23,6 +23,7 @@ import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.itbase.category.RemoteTest;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -569,36 +570,47 @@ public class IoTDBMetadataFetchIT {
   public void showCountNodes() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String[] sqls =
-          new String[] {
-            "COUNT NODES root.** level=1",
-            "COUNT NODES root.ln level=1",
-            "COUNT NODES root.ln.wf01.** level=1",
-            "COUNT NODES root.ln.wf01.* level=2",
-            "COUNT NODES root.ln.wf01.* level=3",
-            "COUNT NODES root.ln.wf01.* level=4"
+      // Create a storage group without any timeseries to cover this special case.
+      // An empty storage group should be taken into account as a node as well.
+      statement.execute("SET STORAGE GROUP TO root.ln3.wf01");
+      // The tree now just looks like this
+      // L0:                        root
+      //                /         /      \          \
+      // L1:           ln      ln1       ln2         ln3
+      //            /           |          |           |
+      // L2:      wf01         wf01      wf01        wf01(sg)
+      //       /      \         |          |
+      // L3: wt01(sg) wt02(sg) wt01(sg)  wt01
+      //       /  \     /  \    |   \      |  \
+      // L4: st. temp. s1  s2  st. temp.  st. temp.
+
+      Pair<String, Integer>[] testCases =
+          new Pair[] {
+            new Pair<>("COUNT NODES root.** level=1", 4),
+            new Pair<>("COUNT NODES root.ln level=1", 1),
+            new Pair<>("COUNT NODES root.ln.wf01.* level=1", 1),
+            new Pair<>("COUNT NODES root.ln.wf01.* level=2", 1),
+            new Pair<>("COUNT NODES root.ln.wf01.* level=3", 2),
+            new Pair<>("COUNT NODES root.ln.wf01.* level=4", 0),
+            new Pair<>("COUNT NODES root.ln.wf01.*.status level=4", 1),
+            new Pair<>("COUNT NODES root.ln.wf01.**.status level=4", 1),
+            new Pair<>("COUNT NODES root.ln3.wf01 level=1", 1),
+            new Pair<>("COUNT NODES root.ln3.wf01.** level=1", 0),
+            new Pair<>("COUNT NODES root.ln3.wf01.* level=1", 0),
+            new Pair<>("COUNT NODES root.ln3.wf01.* level=2", 0),
+            new Pair<>("COUNT NODES root.*.wf01 level=2", 4),
+            new Pair<>("COUNT NODES root.*.wf01.* level=2", 3),
+            new Pair<>("COUNT NODES root.*.*.*.temperature level=4", 3),
+            new Pair<>("COUNT NODES root.**.wf01.*.temperature level=4", 3),
           };
-      String[] standards = new String[] {"3,\n", "1,\n", "1,\n", "1,\n", "2,\n", "0,\n"};
-      for (int n = 0; n < sqls.length; n++) {
-        String sql = sqls[n];
-        String standard = standards[n];
-        StringBuilder builder = new StringBuilder();
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                builder.append("\n");
-              }
-            }
-          }
-          Assert.assertEquals(standard, builder.toString());
+      for (Pair<String, Integer> testCase : testCases) {
+        String sql = testCase.left;
+        int expected = testCase.right;
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          Assert.assertTrue(resultSet.next());
+          Assert.assertEquals("test case: " + testCase, expected, resultSet.getInt("count"));
+          Assert.assertFalse(resultSet.next());
         } catch (SQLException e) {
-          logger.error("showCountNodes() failed", e);
           fail(e.getMessage());
         }
       }
