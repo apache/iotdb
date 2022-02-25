@@ -25,18 +25,41 @@ import java.io.IOException;
 import java.util.Iterator;
 
 public interface ISchemaFileManager {
+  /**
+   * Load all schema files under target directory, return the recovered tree.
+   *
+   * @return a deep copy tree corresponding to files.
+   */
   IMNode init() throws MetadataException, IOException;
 
   IMNode getChildNode(IMNode parent, String childName) throws MetadataException, IOException;
 
   Iterator<IMNode> getChildren(IMNode parent) throws MetadataException, IOException;
 
+  /**
+   * If parameter node is above storage group, update upper tree directly. NOTICE, it is not
+   * reliable if it had no descendant of storage group.
+   *
+   * <p>Get storage group name of the parameter node, write the node with non-negative segment
+   * address into corresponding file.
+   *
+   * @param parent cannot be a MeasurementMNode
+   */
   void writeMNode(IMNode parent) throws MetadataException, IOException;
 
+  /**
+   * If a node above storage group, prune upperTree directly, remove children in cascade.
+   *
+   * <p>If a storage group node, remove corresponding file and prune upper tree, otherwise remove
+   * record of the node as well as segment of it if not measurement.
+   *
+   * @param targetNode arbitrary instance implements IMNode
+   */
   void deleteMNode(IMNode targetNode) throws MetadataException, IOException;
 
   void sync() throws MetadataException, IOException;
 
+  /** Close all files and get a new upper tree. */
   void close() throws MetadataException, IOException;
 
   void clear() throws MetadataException, IOException;

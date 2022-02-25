@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.metadata.SchemaFileNotExists;
 import org.apache.iotdb.db.exception.metadata.SchemaPageOverflowException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
@@ -82,6 +83,7 @@ public class SchemaFile implements ISchemaFile {
   String filePath;
   String storageGroupName;
   long dataTTL;
+  boolean isEntity;
 
   ByteBuffer headerContent;
   int lastPageIndex; // last page index of the file, boundary to grow
@@ -94,7 +96,7 @@ public class SchemaFile implements ISchemaFile {
   File pmtFile;
   FileChannel channel;
 
-  private SchemaFile(String sgName, boolean override, long ttl)
+  private SchemaFile(String sgName, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
     this.storageGroupName = sgName;
     filePath =
@@ -125,16 +127,22 @@ public class SchemaFile implements ISchemaFile {
     headerContent = ByteBuffer.allocate(SchemaFile.FILE_HEADER_SIZE);
     pageInstCache = new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true);
     dataTTL = ttl; // will be overwritten if to init
+    this.isEntity = isEntity;
     initFileHeader();
   }
 
   public static ISchemaFile initSchemaFile(String sgName, long dataTTL)
       throws IOException, MetadataException {
-    return new SchemaFile(sgName, true, dataTTL);
+    return new SchemaFile(sgName, true, dataTTL, false);
+  }
+
+  public static ISchemaFile initSchemaFile(String sgName, long dataTTL, boolean isEntity)
+      throws IOException, MetadataException {
+    return new SchemaFile(sgName, true, dataTTL, isEntity);
   }
 
   public static ISchemaFile loadSchemaFile(String sgName) throws IOException, MetadataException {
-    return new SchemaFile(sgName, false, -1);
+    return new SchemaFile(sgName, false, -1L, false);
   }
 
   // region Interface Implementation
@@ -142,8 +150,13 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public IMNode init() throws MetadataException {
     String[] sgPathNodes = MetaUtils.splitPathToDetachedPath(storageGroupName);
-    return setNodeAddress(
-        new StorageGroupMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
+    if (isEntity) {
+      return setNodeAddress(
+          new StorageGroupEntityMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
+    } else {
+      return setNodeAddress(
+          new StorageGroupMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
+    }
   }
 
   @Override
@@ -154,17 +167,19 @@ public class SchemaFile implements ISchemaFile {
 
     // Get corresponding page instance, segment id
     long curSegAddr = getNodeAddress(node);
-    if (curSegAddr < 0) {
-      if (isStorageGroupNode(node)) {
-        // root node
-        curPage = getRootPage();
-        pageIndex = curPage.getPageIndex();
-        curSegIdx = 0;
-        setNodeAddress(node, 0L);
-      } else {
-        throw new MetadataException("Cannot store a node without segment address except for root.");
-      }
+
+    if (node.isStorageGroup()) {
+      // Notice that it implies StorageGroupNode is always of 0L segmentAddress
+      curPage = getRootPage();
+      pageIndex = curPage.getPageIndex();
+      curSegIdx = 0;
+      isEntity = node.isEntity();
+      setNodeAddress(node, 0L);
     } else {
+      if (curSegAddr < 0) {
+        throw new MetadataException(
+            "Cannot store a node without segment address except for StorageGroupNode.");
+      }
       pageIndex = SchemaFile.getPageIndex(curSegAddr);
       curSegIdx = SchemaFile.getSegIndex(curSegAddr);
       curPage = getPageInstance(pageIndex);
@@ -345,7 +360,7 @@ public class SchemaFile implements ISchemaFile {
   public Iterator<IMNode> getChildren(IMNode parent) throws MetadataException, IOException {
     if (parent.isMeasurement() || getNodeAddress(parent) < 0) {
       throw new MetadataException(
-          String.format("Node [] has no child in schema file.", parent.getFullPath()));
+          String.format("Node [%s] has no child in schema file.", parent.getFullPath()));
     }
 
     int pageIdx = getPageIndex(getNodeAddress(parent));
@@ -446,7 +461,8 @@ public class SchemaFile implements ISchemaFile {
   // region File Operations
 
   /**
-   * This method initiate file header buffer, with an empty file if meant to init.
+   * This method initiate file header buffer, with an empty file if meant to init. <br>
+   * TODO: differ StroageGroupNode from StroageGroupEntityNode
    *
    * <p><b>File Header Structure:</b>
    *
@@ -456,7 +472,8 @@ public class SchemaFile implements ISchemaFile {
    *       <ul>
    *         <li><s>a. var length string (less than 200 bytes): path to root(SG) node</s>
    *         <li>a. 1 long (8 bytes): dataTTL
-   *         <li>b. fixed length buffer (13 bytes): internal or entity node buffer [not implemented
+   *         <li>b. 1 bool (1 byte): isEntityStorageGroup
+   *         <li>c. fixed length buffer (13 bytes): internal or entity node buffer [not implemented
    *             yet]
    *       </ul>
    * </ul>
@@ -469,12 +486,14 @@ public class SchemaFile implements ISchemaFile {
       lastPageIndex = 0;
       ReadWriteIOUtils.write(lastPageIndex, headerContent);
       ReadWriteIOUtils.write(dataTTL, headerContent);
+      ReadWriteIOUtils.write(isEntity, headerContent);
       initRootPage();
     } else {
       channel.read(headerContent);
       headerContent.clear();
       lastPageIndex = ReadWriteIOUtils.readInt(headerContent);
       dataTTL = ReadWriteIOUtils.readLong(headerContent);
+      isEntity = ReadWriteIOUtils.readBool(headerContent);
       rootPage = getPageInstance(0);
     }
   }
@@ -484,6 +503,7 @@ public class SchemaFile implements ISchemaFile {
 
     ReadWriteIOUtils.write(lastPageIndex, headerContent);
     ReadWriteIOUtils.write(dataTTL, headerContent);
+    ReadWriteIOUtils.write(isEntity, headerContent);
 
     headerContent.clear();
     channel.write(headerContent, 0);
@@ -714,7 +734,10 @@ public class SchemaFile implements ISchemaFile {
       totalSize += child.getName().getBytes().length;
       totalSize += 2 + 4; // for record offset, length of string key
       if (child.isMeasurement()) {
-        totalSize += child.getAsMeasurementMNode().getAlias().getBytes().length + 4;
+        totalSize +=
+            child.getAsMeasurementMNode().getAlias() == null
+                ? 4
+                : child.getAsMeasurementMNode().getAlias().getBytes().length + 4;
         totalSize += 24; // slightly larger than actually size
       } else {
         totalSize += 14; // slightly larger

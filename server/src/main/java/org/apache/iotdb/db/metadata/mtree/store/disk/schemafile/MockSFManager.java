@@ -149,7 +149,7 @@ public class MockSFManager implements ISchemaFileManager {
     return address;
   }
 
-  private IMNode cloneMNode(IMNode node) {
+  static IMNode cloneMNode(IMNode node) {
     if (node == null) {
       return null;
     }
@@ -187,7 +187,7 @@ public class MockSFManager implements ISchemaFileManager {
     }
   }
 
-  private void cloneInternalMNodeData(IMNode node, IMNode result) {
+  private static void cloneInternalMNodeData(IMNode node, IMNode result) {
     result.setUseTemplate(node.isUseTemplate());
     result.setSchemaTemplate(node.getSchemaTemplate());
     ICachedMNodeContainer container = new CachedMNodeContainer();

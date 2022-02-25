@@ -846,6 +846,7 @@ public abstract class MTreeTestCase {
         null);
     StorageGroupFilter filter = storageGroup -> storageGroup.equals("root.sg1");
 
+    System.out.println(root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, null));
     Assert.assertEquals(
         4, root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, null).size());
     Assert.assertEquals(

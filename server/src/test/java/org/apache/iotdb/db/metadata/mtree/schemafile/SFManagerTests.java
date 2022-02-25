@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 public class SFManagerTests {
 
@@ -143,34 +142,15 @@ public class SFManagerTests {
     IMNode delXNode = (IMNode) sgNodes.toArray()[2];
 
     sfManager.deleteMNode(delSgNode);
-    try {
-      sfManager.getChildren(delSgNode);
-      fail();
-    } catch (MetadataException e) {
-      assertEquals("Schema file [root.ph.pre.sg3.pst] not exists.", e.getMessage());
-    }
+    assertEquals(false, sfManager.getChildren(delSgNode).hasNext());
 
     sfManager.deleteMNode(delGPSNode.getChild("GPS"));
-    try {
-      sfManager.getChildNode(delGPSNode, "GPS");
-      fail();
-    } catch (MetadataException e) {
-      assertEquals("Node [root.sg1] has no child named [GPS].", e.getMessage());
-    }
-    try {
-      sfManager.getChildren(delGPSNode.getChild("GPS"));
-      fail();
-    } catch (MetadataException e) {
-      assertEquals("Node [root.sg1.GPS] does not exists in schema file.", e.getMessage());
-    }
+    assertEquals(null, sfManager.getChildNode(delGPSNode, "GPS"));
+    assertEquals(false, sfManager.getChildren(delGPSNode.getChild("GPS")).hasNext());
 
     sfManager.deleteMNode(delXNode.getChild("GPS").getChild("x"));
-    try {
-      sfManager.getChildNode(delXNode.getChild("GPS"), "x");
-      fail();
-    } catch (MetadataException e) {
-      assertEquals("Node [root.kv1.sg2.GPS] has no child named [x].", e.getMessage());
-    }
+    assertEquals(null, sfManager.getChildNode(delXNode.getChild("GPS"), "x"));
+
     Iterable<IMNode> res = getIterable(sfManager.getChildren(delXNode.getChild("GPS")));
     for (IMNode rNode : res) {
       assertEquals("y", rNode.getName());
