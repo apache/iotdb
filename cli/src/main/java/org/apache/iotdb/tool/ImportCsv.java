@@ -73,7 +73,7 @@ public class ImportCsv extends AbstractCsvTool {
   private static final String FAILED_FILE_ARGS = "fd";
   private static final String FAILED_FILE_NAME = "failed file directory";
 
-  private static final String BATCH_POINT_SIZE_ARGS = "bs";
+  private static final String BATCH_POINT_SIZE_ARGS = "batch";
   private static final String BATCH_POINT_SIZE_NAME = "batch point size";
 
   private static final String CSV_SUFFIXS = "csv";
@@ -138,7 +138,7 @@ public class ImportCsv extends AbstractCsvTool {
         Option.builder(BATCH_POINT_SIZE_ARGS)
             .argName(BATCH_POINT_SIZE_NAME)
             .hasArg()
-            .desc("1000000 (optional)")
+            .desc("100000 (optional)")
             .build();
     options.addOption(opBatchPointSize);
 

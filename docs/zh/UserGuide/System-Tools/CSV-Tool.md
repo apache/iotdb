@@ -153,13 +153,19 @@ Time,root.test.t1.str(TEXT),root.test.t2.str(TEXT),root.test.t2.int(INT32)
 通过设备对齐，并且header中不包含数据类型的数据。
 
 ```sql
-Time,Device,str,int1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",1970-01-01T08:00:00.002+08:00,root.test.t1,"123",1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
+Time,Device,str,int
+1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",
+1970-01-01T08:00:00.002+08:00,root.test.t1,"123",
+1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
 ```
 
 通过设备对齐，并且header中包含数据类型的数据。
 
 ```sql
-Time,Device,str(TEXT),int(INT32)1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",1970-01-01T08:00:00.002+08:00,root.test.t1,"123",1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
+Time,Device,str(TEXT),int(INT32)
+1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",
+1970-01-01T08:00:00.002+08:00,root.test.t1,"123",
+1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
 ```
 
 ### 运行方法
@@ -182,7 +188,7 @@ tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
   - 指定一个目录来存放保存失败的行的文件，如果你没有指定这个参数，失败的文件将会被保存到源数据的目录中，然后文件名是源文件名加上`.failed`的后缀。
   - 例如: `-fd ./failed/`
 
-* `-bs`:
+* `-batch`:
   - 用于指定每一批插入的数据的点数。如果程序报了`org.apache.thrift.transport.TTransportException: Frame size larger than protect max size`这个错的话，就可以适当的调低这个参数。
   - 例如: `-bs 100000`，`100000`是默认值。
 
