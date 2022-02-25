@@ -51,6 +51,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -84,7 +85,7 @@ public class ImportCsv extends AbstractCsvTool {
   private static String timeColumn = "Time";
   private static String deviceColumn = "Device";
 
-  private static final int BATCH_SIZE = 1000;
+  private static final int BATCH_POINT_SIZE = 1_000_000;
 
   /**
    * create the commandline options.
@@ -304,6 +305,7 @@ public class ImportCsv extends AbstractCsvTool {
     List<List<String>> measurementsList = new ArrayList<>();
     List<List<TSDataType>> typesList = new ArrayList<>();
     List<List<Object>> valuesList = new ArrayList<>();
+    AtomicInteger pointSize = new AtomicInteger(0);
 
     AtomicReference<SimpleDateFormat> timeFormatter = new AtomicReference<>(null);
     AtomicReference<Boolean> hasStarted = new AtomicReference<>(false);
@@ -315,8 +317,9 @@ public class ImportCsv extends AbstractCsvTool {
           if (!hasStarted.get()) {
             hasStarted.set(true);
             timeFormatter.set(formatterInit(record.get(0)));
-          } else if (times.size() >= BATCH_SIZE) {
+          } else if (pointSize.get() >= BATCH_POINT_SIZE) {
             writeAndEmptyDataSet(deviceIds, times, typesList, valuesList, measurementsList, 3);
+            pointSize.set(0);
           }
 
           boolean isFail = false;
@@ -355,6 +358,7 @@ public class ImportCsv extends AbstractCsvTool {
                     measurements.add(headerNameMap.get(header).replace(deviceId + '.', ""));
                     types.add(type);
                     values.add(valueTrans);
+                    pointSize.getAndIncrement();
                   }
                 }
               }
@@ -383,6 +387,7 @@ public class ImportCsv extends AbstractCsvTool {
         });
     if (!deviceIds.isEmpty()) {
       writeAndEmptyDataSet(deviceIds, times, typesList, valuesList, measurementsList, 3);
+      pointSize.set(0);
     }
 
     if (!failedRecords.isEmpty()) {
@@ -419,6 +424,8 @@ public class ImportCsv extends AbstractCsvTool {
     List<List<Object>> valuesList = new ArrayList<>();
     List<List<String>> measurementsList = new ArrayList<>();
 
+    AtomicInteger pointSize = new AtomicInteger(0);
+
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
 
     records.forEach(
@@ -431,11 +438,13 @@ public class ImportCsv extends AbstractCsvTool {
             // if device changed
             writeAndEmptyDataSet(
                 deviceName.get(), times, typesList, valuesList, measurementsList, 3);
+            pointSize.set(0);
             deviceName.set(record.get(1));
-          } else if (times.size() >= BATCH_SIZE && times.size() != 0) {
+          } else if (pointSize.get() >= BATCH_POINT_SIZE) {
             // insert a batch
             writeAndEmptyDataSet(
                 deviceName.get(), times, typesList, valuesList, measurementsList, 3);
+            pointSize.set(0);
           }
 
           // the data of the record
@@ -485,6 +494,7 @@ public class ImportCsv extends AbstractCsvTool {
                   values.add(valueTrans);
                   measurements.add(headerNameMap.get(measurement));
                   types.add(type);
+                  pointSize.getAndIncrement();
                 }
               }
             }
@@ -511,6 +521,7 @@ public class ImportCsv extends AbstractCsvTool {
         });
     if (times.size() != 0) {
       writeAndEmptyDataSet(deviceName.get(), times, typesList, valuesList, measurementsList, 3);
+      pointSize.set(0);
     }
     if (!failedRecords.isEmpty()) {
       writeCsvFile(headerNames, failedRecords, failedFilePath);
