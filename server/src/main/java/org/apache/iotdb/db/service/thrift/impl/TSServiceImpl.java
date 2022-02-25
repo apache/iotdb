@@ -2169,11 +2169,23 @@ public class TSServiceImpl implements TSIService.Iface {
     } catch (IllegalPathException | IOException e) {
       LOGGER.error("double write deserialization failed.", e);
     }
+
+    if (physicalPlan instanceof InsertTabletPlan) {
+      LOGGER.info("transmit: {}, count: {}", physicalPlan.getPaths().get(0), ((InsertTabletPlan) physicalPlan).getRowCount());
+    }
+
     return executeNonQueryPlan(physicalPlan);
   }
 
   private void transmitDoubleWrite(PhysicalPlan physicalPlan)
       throws InterruptedException, ExecutionException, IOException {
+
+    if (physicalPlan instanceof InsertTabletPlan) {
+      LOGGER.info("transmit: {}, count: {}", physicalPlan.getPaths().get(0), ((InsertTabletPlan) physicalPlan).getRowCount());
+    }
+
+
+
     // serialize physical plan
     int size = physicalPlan.getSerializedSize();
     ByteArrayOutputStream doubleWriteByteStream = new ByteArrayOutputStream(size);

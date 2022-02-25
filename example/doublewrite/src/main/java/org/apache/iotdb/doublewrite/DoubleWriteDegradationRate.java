@@ -36,11 +36,11 @@ public class DoubleWriteDegradationRate extends DoubleWriteUtil {
    * already applies to all write interfaces, so you are free to modify these parameters.
    */
   // Total insertion requests during test
-  private static final int batchCnt = 10000;
+  private static final int batchCnt = 100000;
   // The insertion timeseries count per timestamp
   private static final int timeseriesCnt = 100;
   // The insertion rows count per request
-  private static final int batchSize = 10;
+  private static final int batchSize = 1;
 
   public static void main(String[] args) throws Exception {
     initEnvironment();
