@@ -167,18 +167,19 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
     Map<Integer, String> fieldOrdersReversed = new HashMap<>();
     updateFieldOrders(database, measurement, fieldOrders, fieldOrdersReversed);
     TSQueryRsp tsQueryRsp;
-    // contain filter condition or don't have function the result of the function is calculated by
-    // traversal
+    // contain filter condition or have common query the result of by traversal.
     if (queryOperator.getWhereComponent() != null
-        || !queryOperator.getSelectComponent().isHasFunction()) {
+        || queryOperator.getSelectComponent().isHasCommonQuery()) {
       // step1 : generate query results
       tsQueryRsp = InfluxDBUtils.queryExpr(queryOperator.getWhereComponent().getFilterOperator());
       // step2 : select filter
       InfluxDBUtils.ProcessSelectComponent(tsQueryRsp, queryOperator.getSelectComponent());
     }
-    // don't contain filter condition and have function use iotdb function
+    // don't contain filter condition and only have function use iotdb function.
     else {
-      tsQueryRsp = InfluxDBUtils.queryFuncWithoutFilter(queryOperator.getSelectComponent());
+      tsQueryRsp =
+          InfluxDBUtils.queryFuncWithoutFilter(
+              queryOperator.getSelectComponent(), database, measurement);
     }
     return tsQueryRsp;
   }
