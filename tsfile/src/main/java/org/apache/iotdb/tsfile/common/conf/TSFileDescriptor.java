@@ -141,6 +141,14 @@ public class TSFileDescriptor {
       conf.setBatchSize(
           Integer.parseInt(
               properties.getProperty("batch_size", Integer.toString(conf.getBatchSize()))));
+      conf.setFreqEncodingSNR(
+          Double.parseDouble(
+              properties.getProperty(
+                  "freq_encoding_snr", Double.toString(conf.getFreqEncodingSNR()))));
+      conf.setFreqEncodingBlockSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "freq_encoding_block_size", Integer.toString(conf.getFreqEncodingBlockSize()))));
     } catch (IOException e) {
       logger.warn("Cannot load config file, use default configuration", e);
     } catch (Exception e) {

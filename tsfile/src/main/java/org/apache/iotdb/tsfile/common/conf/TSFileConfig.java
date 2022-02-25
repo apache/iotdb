@@ -107,6 +107,10 @@ public class TSFileConfig implements Serializable {
   private double sdtMaxError = 100;
   /** Default DFT satisfy rate is 0.1 */
   private double dftSatisfyRate = 0.1;
+  /** Default SNR for FREQ encoding is 40dB. */
+  private double freqEncodingSNR = 40;
+  /** Default block size for FREQ encoding is 1024. */
+  private int freqEncodingBlockSize = 1024;
   /** Data compression method, TsFile supports UNCOMPRESSED, SNAPPY or LZ4. */
   private CompressionType compressor = CompressionType.SNAPPY;
   /** Line count threshold for checking page memory occupied size. */
@@ -410,5 +414,21 @@ public class TSFileConfig implements Serializable {
 
   public void setBatchSize(int batchSize) {
     this.batchSize = batchSize;
+  }
+
+  public double getFreqEncodingSNR() {
+    return freqEncodingSNR;
+  }
+
+  public void setFreqEncodingSNR(double freqEncodingSNR) {
+    this.freqEncodingSNR = freqEncodingSNR;
+  }
+
+  public int getFreqEncodingBlockSize() {
+    return freqEncodingBlockSize;
+  }
+
+  public void setFreqEncodingBlockSize(int freqEncodingBlockSize) {
+    this.freqEncodingBlockSize = freqEncodingBlockSize;
   }
 }

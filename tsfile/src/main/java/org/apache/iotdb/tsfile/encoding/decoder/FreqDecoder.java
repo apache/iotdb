@@ -18,12 +18,11 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.BitReader;
 
-import org.jtransforms.fft.DoubleFFT_1D;
+import org.jtransforms.dct.DoubleDCT_1D;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-/** @author Wang Haoyu */
 public class FreqDecoder extends Decoder {
 
   private double data[];
@@ -73,83 +72,67 @@ public class FreqDecoder extends Decoder {
 
   private void loadBlock(ByteBuffer buffer) {
     BitReader reader = new BitReader(buffer);
-    // 16位原始数据长度
+    // Block size with 16 bits
     this.readTotalCount = (int) reader.next(16);
-    // 16位数据点个数
+    // Number of reserved components with 16 bits
     int m = (int) reader.next(16);
-    // 32位基底
-    int base = (int) reader.next(32);
-    // 以TS_2DIFF格式解码index序列
-    int[] index = new int[m];
-    decodeTS2DIFF(index, reader);
+    // Exponent of quantification level with 16 bits
+    int beta = (short) reader.next(16);
+    // Decode index sequence
+    int[] index = decodeIndex(m, reader);
+    // Decode value sequence
+    long[] value = decodeValue(m, reader);
     reader.skip();
-    // 以降序格式解码amplitude和angle序列
-    int amplitude[] = new int[m];
-    double angle[] = new double[m];
-    decodeDescend(amplitude, angle, reader);
-    reader.skip();
-    // 序列反离散化
-    double a[] = new double[readTotalCount * 2];
-    double eps1 = Math.pow(2, base);
+    // Quantification
+    double eps = Math.pow(2, beta);
+    this.data = new double[readTotalCount];
     for (int i = 0; i < m; i++) {
-      double amp = amplitude[i] * eps1;
-      double theta = angle[i];
-      int k = index[i];
-      a[k * 2] = amp * Math.cos(theta);
-      a[k * 2 + 1] = amp * Math.sin(theta);
-      if (k > 0) {
-        k = this.readTotalCount - k;
-        a[k * 2] = amp * Math.cos(theta);
-        a[k * 2 + 1] = -amp * Math.sin(theta);
+      data[index[i]] = value[i] * eps;
+    }
+    DoubleDCT_1D dct = new DoubleDCT_1D(readTotalCount);
+    dct.inverse(data, true);
+  }
+
+  private long[] decodeValue(int m, BitReader reader) {
+    if (m == 0) {
+      return new long[0];
+    }
+    // Decode the encoded bit width of the first value with 8 bits
+    int bits = (int) reader.next(8);
+    // Decode min{|v|}
+    long min = reader.next(bits);
+    // Decode all values
+    long value[] = new long[m];
+    int symbol;
+    for (int i = 0; i < m; i++) {
+      symbol = (int) reader.next(1);
+      value[i] = reader.next(bits);
+      bits = getValueWidth(value[i]);
+      value[i] += min;
+      if (symbol == 1) { // Negative value
+        value[i] = -value[i];
       }
     }
-    DoubleFFT_1D fft = new DoubleFFT_1D(readTotalCount);
-    fft.complexInverse(a, true);
-    this.data = new double[readTotalCount];
-    for (int i = 0; i < readTotalCount; i++) {
-      this.data[i] = a[i * 2];
-    }
+    return value;
   }
 
-  private void decodeTS2DIFF(int value[], BitReader reader) {
-    if (value.length == 0) {
-      return;
+  private int[] decodeIndex(int m, BitReader reader) {
+    int[] value = new int[m];
+    int bitsWidth = getValueWidth(getValueWidth(readTotalCount - 1));
+    for (int i = 0; i < m; i += 8) {
+      int bits = (int) reader.next(bitsWidth);
+      for (int j = i; j < Math.min(i + 8, m); j++) {
+        value[j] = (int) reader.next(bits);
+      }
     }
-    int m = value.length;
-    int minDiff = (int) reader.next(32); // 32位最小差分
-    int bits = (int) reader.next(8); // 8位数据宽度
-    // 读取所有差值
-    int diff[] = new int[m];
-    for (int i = 0; i < m; i++) {
-      diff[i] = (int) (reader.next(bits) + minDiff);
-    }
-    // 去差分
-    value[0] = diff[0];
-    for (int i = 1; i < m; i++) {
-      value[i] = value[i - 1] + diff[i];
-    }
-  }
-
-  private void decodeDescend(int amp[], double angle[], BitReader reader) {
-    if (amp.length == 0) {
-      return;
-    }
-    // 8位，第一个数的位数
-    int bits = (int) reader.next(8);
-    // 读取所有数据
-    for (int i = 0; i < amp.length; i++) {
-      amp[i] = (int) reader.next(bits);
-      int a = (int) reader.next(bits);
-      angle[i] = a * 1.0 / (1 << bits) * 2 * Math.PI - Math.PI;
-      bits = getValueWidth(amp[i]);
-    }
+    return value;
   }
 
   /**
-   * 计算x的数据宽度
+   * Get the valid bit width of x
    *
    * @param x
-   * @return 数据宽度
+   * @return valid bit width
    */
   private int getValueWidth(long x) {
     return 64 - Long.numberOfLeadingZeros(x);

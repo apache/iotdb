@@ -18,7 +18,7 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.BitConstructor;
 
-import org.jtransforms.fft.DoubleFFT_1D;
+import org.jtransforms.dct.DoubleDCT_1D;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,34 +27,40 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.PriorityQueue;
 
-/** @author Wang Haoyu */
 public class FreqEncoder extends Encoder {
 
+  public static final String FREQ_ENCODING_SNR = "freq_encoding_snr";
+  public static final String FREQ_ENCODING_BLOCK_SIZE = "freq_encoding_block_size";
   protected static final int BLOCK_DEFAULT_SIZE = 1024;
+  protected static final double DEFAULT_SNR = 40;
   private static final Logger logger = LoggerFactory.getLogger(FreqEncoder.class);
-  private ByteArrayOutputStream out;
   private int blockSize;
   protected int writeIndex = 0;
   private double threshold = 1e-4;
-  private int base;
+  private int beta;
   private double[] dataBuffer;
-  private DoubleFFT_1D transformer;
+  private DoubleDCT_1D transformer;
 
   public FreqEncoder() {
     this(BLOCK_DEFAULT_SIZE);
   }
 
   public FreqEncoder(int size) {
+    this(size, DEFAULT_SNR);
+  }
+
+  public FreqEncoder(int size, double snr) {
     super(TSEncoding.FREQ);
     this.blockSize = size;
-    this.transformer = new DoubleFFT_1D(blockSize);
-    this.dataBuffer = new double[2 * blockSize];
+    this.transformer = new DoubleDCT_1D(blockSize);
+    this.dataBuffer = new double[blockSize];
+    snr = Math.max(snr, 0);
+    this.threshold = Math.pow(10, -snr / 10);
   }
 
   @Override
   public void encode(double value, ByteArrayOutputStream out) {
-    dataBuffer[writeIndex * 2] = value; // Real part
-    dataBuffer[writeIndex * 2 + 1] = 0; // Imaginary part
+    dataBuffer[writeIndex] = value;
     writeIndex++;
     if (writeIndex == blockSize) {
       flush(out);
@@ -97,120 +103,101 @@ public class FreqEncoder extends Encoder {
 
   private void flushBlock(ByteArrayOutputStream out) throws IOException {
     if (writeIndex > 0) {
-      fft();
-      ArrayList<Point> list = selectPoints();
-      //                        System.out.println(list.size());
+      dct();
+      ArrayList<Point> list = selectPoints(dataBuffer);
       byte[] data = encodeBlock(list);
-      //            System.out.println(data.length);
       out.write(data);
       writeIndex = 0;
     }
   }
 
+  private void dct() {
+    DoubleDCT_1D dct =
+        (writeIndex == this.blockSize) ? this.transformer : new DoubleDCT_1D(writeIndex);
+    dct.forward(dataBuffer, true);
+  }
+
   private byte[] encodeBlock(ArrayList<Point> list) {
-    // 序列离散化
+    // Quantification
     int m = list.size();
     int[] index = new int[m];
-    int[] amptitude = new int[m];
-    double[] angle = new double[m];
-    double eps1 = Math.pow(2, base); // eps2 = Math.PI / 128;
+    long[] value = new long[m];
+    double eps = Math.pow(2, beta);
     for (int i = 0; i < m; i++) {
       Point p = list.get(i);
       index[i] = p.getIndex();
-      amptitude[i] = (int) Math.round(p.getAmp() / eps1);
-      angle[i] = p.getAngle();
-      //            angle[i] = (byte) (Math.round(p.getAngle() / eps2) + 128);
+      value[i] = Math.round(p.getValue() / eps);
     }
-    BitConstructor constructor = new BitConstructor(8 + 13 * m);
-    // 16位原始数据长度
+    BitConstructor constructor = new BitConstructor(9 + 13 * m);
+    // Block size with 16 bits
     constructor.add(writeIndex, 16);
-    // 16位数据点个数
+    // Number of reserved components with 16 bits
     constructor.add(m, 16);
-    // 32位基底
-    constructor.add(base, 32);
-    // 以TS_2DIFF格式编码index序列
-    encodeTS2DIFF(index, constructor);
+    // Exponent of quantification level with 16 bits
+    constructor.add(beta, 16);
+    // Encode the index sequence
+    encodeIndex(index, constructor);
+    // Encode the value sequence
+    encodeValue(value, constructor);
     constructor.pad();
-    //        System.out.println(constructor.sizeInBytes());
-    // 以降序格式编码amplitude序列
-    encodeDescend(amptitude, angle, constructor);
-    constructor.pad();
-    //        System.out.println(constructor.sizeInBytes());
-    // 以原始格式编码angle序列
-    //        constructor.add(angle);
-    //            System.out.println(constructor.sizeInBytes());
-    // 返回编码后的字节流
+    // return the encoded bytes
     return constructor.toByteArray();
   }
 
-  private void encodeDescend(int[] value, double[] angle, BitConstructor constructor) {
+  private void encodeIndex(int[] value, BitConstructor constructor) {
+    int bitsWidth = getValueWidth(getValueWidth(writeIndex - 1));
+    for (int i = 0; i < value.length; i += 8) {
+      int bits = 0;
+      for (int j = i; j < Math.min(value.length, i + 8); j++) {
+        bits = Math.max(bits, getValueWidth(value[j]));
+      }
+      constructor.add(bits, bitsWidth);
+      for (int j = i; j < Math.min(value.length, i + 8); j++) {
+        constructor.add(value[j], bits);
+      }
+    }
+  }
+
+  private void encodeValue(long[] value, BitConstructor constructor) {
     if (value.length == 0) {
       return;
     }
-    // 8位，第一个数的位数
-    int bits = getValueWidth(value[0]);
+    // Encode the encoded bit width of the first value with 8 bits
+    int bits = getValueWidth(Math.abs(value[0]));
     constructor.add(bits, 8);
-    //        System.out.println(bits);
-    // 存储所有数据
+    // Encode min{|v|}
+    long min = Math.abs(value[value.length - 1]);
+    constructor.add(min, bits);
+    // Encode all values
     for (int i = 0; i < value.length; i++) {
+      constructor.add(value[i] >= 0 ? 0 : 1, 1); // Symbol bit
+      value[i] = Math.abs(value[i]) - min;
       constructor.add(value[i], bits);
-      int a = (int) Math.round((angle[i] + Math.PI) / (2 * Math.PI) * (1 << bits));
-      constructor.add(a, bits);
       bits = getValueWidth(value[i]);
     }
   }
 
-  private void encodeTS2DIFF(int[] value, BitConstructor constructor) {
-    if (value.length == 0) {
-      return;
-    }
-    // 差分
-    int diff[] = new int[value.length];
-    diff[0] = value[0];
-    for (int i = 1; i < value.length; i++) {
-      diff[i] = value[i] - value[i - 1];
-    }
-    // 正数化
-    int minDiff = Integer.MAX_VALUE;
-    for (int i = 0; i < diff.length; i++) {
-      minDiff = Math.min(minDiff, diff[i]);
-    }
-    for (int i = 0; i < diff.length; i++) {
-      diff[i] -= minDiff;
-    }
-    constructor.add(minDiff, 32);
-    // 计算每个值需要的位数（数据宽度）
-    int bits = 0;
-    for (int i = 0; i < diff.length; i++) {
-      bits = Math.max(bits, getValueWidth(diff[i]));
-    }
-    constructor.add(bits, 8);
-    // 保存所有差值
-    for (int i = 0; i < diff.length; i++) {
-      constructor.add(diff[i], bits);
-    }
-  }
-
   /**
-   * 计算x的数据宽度
+   * Get the valid bit width of x
    *
    * @param x
-   * @return 数据宽度
+   * @return valid bit width
    */
   private int getValueWidth(long x) {
     return 64 - Long.numberOfLeadingZeros(x);
   }
 
-  private int getBase(int m, double sum2) {
-    double temp = Math.sqrt(threshold * sum2 / (m * writeIndex));
-    return max2Power(temp);
+  private int initBeta(double sum2) {
+    double temp = Math.sqrt(threshold * sum2 / (writeIndex * writeIndex));
+    return (int) Math.max(max2Power(temp), Math.log(sum2) / (2 * Math.log(2)) - 60);
   }
 
   /**
-   * 返回小于等于x的最大的2的幂（包括负数次幂）的指数
+   * Returns the exponent of the largest power of 2 that is less than or equal to x.<br>
+   * max{y|2^y &le x, y is an integer}
    *
    * @param x
-   * @return 小于等于x的最大的2的幂的指数
+   * @return the exponent of the largest power of 2 that is less than or equal to x
    */
   private int max2Power(double x) {
     double ans = 1;
@@ -229,86 +216,98 @@ public class FreqEncoder extends Encoder {
     return exponent;
   }
 
-  private ArrayList<Point> selectPoints() {
-    int n = this.writeIndex;
-    // 利用优先队列（堆）来维护信息量大的数据点
+  private ArrayList<Point> selectPoints(double a[]) {
+    // Keep the components with priority queue in the descending order of energy
     double sum2 = 0;
     Point point;
-    PriorityQueue<Point> queue = new PriorityQueue<>(n / 2);
-    for (int i = 0; i <= n / 2; i++) {
-      point = new Point(i, dataBuffer[2 * i], dataBuffer[2 * i + 1]);
+    PriorityQueue<Point> queue = new PriorityQueue<>(writeIndex);
+    for (int i = 0; i < writeIndex; i++) {
+      point = new Point(i, a[i]);
       queue.add(point);
       sum2 += point.getPower();
     }
-    // 挑选数据量大的数据点加入keepList
-    double temp = sum2;
+    // Add components to keepList
+    this.beta = initBeta(sum2);
+    double systemError = sum2;
     ArrayList<Point> keepList = new ArrayList<>();
-    while (temp < threshold * sum2) {
-      point = queue.poll();
-      keepList.add(point);
-      temp = temp + point.getPower();
-    }
-    this.base = getBase(keepList.size(), sum2);
+    int m = 0; // Number of reserved components
+    double roundingError = 0;
+    double reduceBits = Double.MAX_VALUE;
+    boolean first = true;
+    do {
+      while (systemError + roundingError > threshold * sum2) {
+        point = queue.poll();
+        if (point == null) {
+          systemError = 0;
+          break;
+        }
+        keepList.add(point);
+        systemError = systemError - point.getPower();
+        roundingError = Math.pow(2, this.beta * 2) * keepList.size();
+      }
+      double increaseBits = estimateIncreaseBits(keepList, m);
+      if (reduceBits <= increaseBits || systemError + roundingError > threshold * sum2) {
+        if (!first) {
+          keepList = new ArrayList(keepList.subList(0, m));
+          this.beta--;
+        }
+        break;
+      }
+      // Increase quantification level
+      first = false;
+      m = keepList.size();
+      reduceBits = m;
+      this.beta++;
+      roundingError = Math.pow(2, this.beta * 2) * m;
+    } while (true);
     return keepList;
   }
 
-  private void fft() {
-    DoubleFFT_1D fft =
-        (writeIndex == this.blockSize) ? this.transformer : new DoubleFFT_1D(writeIndex);
-    fft.complexForward(dataBuffer);
+  /**
+   * Estimate the number of increased bits by reserving more components
+   *
+   * @param list The list of reserved components in this turn
+   * @param m The number of resereved components in last turn
+   * @return Estimated number of bits
+   */
+  private double estimateIncreaseBits(ArrayList<Point> list, int m) {
+    double bits = 0;
+    double eps = Math.pow(2, beta);
+    for (int i = m; i < list.size(); i++) {
+      bits += getValueWidth(writeIndex - 1); // Index
+      bits += getValueWidth(Math.round(Math.abs(list.get(i).getValue()) / eps)); // Value
+      bits += 1; // Symbol
+    }
+    return bits;
   }
 
-  private class Point implements Comparable<Point> {
+  protected class Point implements Comparable<Point> {
 
-    private final double real;
-    private final double imag;
     private final int index;
-    private final double power;
+    private final double value;
 
-    Point(int index, double real, double imag) {
+    public Point(int index, double value) {
       this.index = index;
-      this.real = real;
-      this.imag = imag;
-      int n = FreqEncoder.this.writeIndex;
-      if (this.index == 0 || ((n % 2 == 0) && (this.index == n / 2))) {
-        this.power = real * real + imag * imag;
-      } else {
-        this.power = 2 * (real * real + imag * imag);
-      }
+      this.value = value;
     }
 
     @Override
     public int compareTo(Point o) {
-      return Double.compare(o.power, this.power);
-    }
-
-    public double getPower() {
-      return this.power;
-    }
-
-    /** @return the amp */
-    public double getAmp() {
-      return Math.sqrt(this.power);
-    }
-
-    /** @return the angle */
-    public double getAngle() {
-      return Math.atan2(this.imag, this.real);
-    }
-
-    /** @return the real */
-    public double getReal() {
-      return real;
-    }
-
-    /** @return the imag */
-    public double getImag() {
-      return imag;
+      return Double.compare(o.getPower(), this.getPower());
     }
 
     /** @return the index */
     public int getIndex() {
       return index;
+    }
+
+    /** @return the value */
+    public double getValue() {
+      return value;
+    }
+
+    public double getPower() {
+      return value * value;
     }
   }
 }
