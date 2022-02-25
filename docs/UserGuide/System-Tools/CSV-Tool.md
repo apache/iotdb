@@ -190,7 +190,7 @@ Description:
 
 * `-bs`:
   - specifying the point's number of a batch. If the program throw the exception `org.apache.thrift.transport.TTransportException: Frame size larger than protect max size`, you can lower this parameter as appropriate.
-  - example: `-bs 1000000`, `1000000` is the default value.
+  - example: `-bs 100000`, `100000` is the default value.
 
 ### Example
 

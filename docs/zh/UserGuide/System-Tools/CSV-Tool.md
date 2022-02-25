@@ -184,7 +184,7 @@ tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
 
 * `-bs`:
   - 用于指定每一批插入的数据的点数。如果程序报了`org.apache.thrift.transport.TTransportException: Frame size larger than protect max size`这个错的话，就可以适当的调低这个参数。
-  - 例如: `-bs 1000000`，`1000000`是默认值。
+  - 例如: `-bs 100000`，`100000`是默认值。
 
 ### Example
 

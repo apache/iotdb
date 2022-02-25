@@ -88,7 +88,7 @@ public class ImportCsv extends AbstractCsvTool {
   private static String timeColumn = "Time";
   private static String deviceColumn = "Device";
 
-  private static int batchPointSize = 1_000_000;
+  private static int batchPointSize = 100_000;
 
   /**
    * create the commandline options.
