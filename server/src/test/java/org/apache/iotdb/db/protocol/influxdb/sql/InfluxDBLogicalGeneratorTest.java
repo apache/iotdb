@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.sql;
 
-import org.apache.iotdb.db.protocol.influxdb.expression.InfluxResultColumn;
 import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxNodeExpression;
 import org.apache.iotdb.db.protocol.influxdb.operator.*;
+import org.apache.iotdb.db.query.expression.ResultColumn;
 
 import org.junit.Test;
 
@@ -33,11 +33,10 @@ public class InfluxDBLogicalGeneratorTest {
   public void testParserSql1() {
     InfluxQueryOperator operator =
         (InfluxQueryOperator) InfluxDBLogicalGenerator.generate("SELECT * FROM h2o_feet");
-    List<InfluxResultColumn> influxResultColumnList =
-        operator.getSelectComponent().getInfluxResultColumns();
-    assertEquals(influxResultColumnList.size(), 1);
+    List<ResultColumn> resultColumnList = operator.getSelectComponent().getInfluxResultColumns();
+    assertEquals(resultColumnList.size(), 1);
     InfluxNodeExpression influxNodeExpression =
-        (InfluxNodeExpression) influxResultColumnList.get(0).getExpression();
+        (InfluxNodeExpression) resultColumnList.get(0).getExpression();
     assertEquals(influxNodeExpression.getName(), "*");
     assertEquals(operator.getFromComponent().getNodeName().get(0), "h2o_feet");
     assertNull(operator.getWhereComponent());
@@ -48,11 +47,10 @@ public class InfluxDBLogicalGeneratorTest {
     InfluxQueryOperator operator =
         (InfluxQueryOperator)
             InfluxDBLogicalGenerator.generate("SELECT a,b,c FROM h2o_feet where a>1 and b<1");
-    List<InfluxResultColumn> influxResultColumnList =
-        operator.getSelectComponent().getInfluxResultColumns();
-    assertEquals(influxResultColumnList.size(), 3);
+    List<ResultColumn> resultColumnList = operator.getSelectComponent().getInfluxResultColumns();
+    assertEquals(resultColumnList.size(), 3);
     InfluxNodeExpression influxNodeExpression =
-        (InfluxNodeExpression) influxResultColumnList.get(0).getExpression();
+        (InfluxNodeExpression) resultColumnList.get(0).getExpression();
     assertEquals(influxNodeExpression.getName(), "a");
     InfluxWhereComponent influxWhereComponent = operator.getWhereComponent();
     InfluxFilterOperator filterOperator =

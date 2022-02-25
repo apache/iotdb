@@ -18,16 +18,20 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.sql;
 
-import org.apache.iotdb.db.protocol.influxdb.expression.InfluxResultColumn;
-import org.apache.iotdb.db.protocol.influxdb.expression.binary.*;
-import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxFunctionExpression;
-import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxNegationExpression;
 import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxNodeExpression;
 import org.apache.iotdb.db.protocol.influxdb.operator.*;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
+import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
+import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
+import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 
 public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<InfluxOperator> {
 
@@ -140,9 +144,9 @@ public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<InfluxOpera
     }
   }
 
-  private InfluxResultColumn parseResultColumn(
+  private ResultColumn parseResultColumn(
       InfluxDBSqlParser.ResultColumnContext resultColumnContext) {
-    return new InfluxResultColumn(
+    return new ResultColumn(
         parseExpression(resultColumnContext.expression()),
         resultColumnContext.AS() == null ? null : resultColumnContext.ID().getText());
   }
@@ -161,7 +165,7 @@ public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<InfluxOpera
     }
     if (context.unary != null) {
       return context.MINUS() != null
-          ? new InfluxNegationExpression(parseExpression(context.expression(0)))
+          ? new NegationExpression(parseExpression(context.expression(0)))
           : parseExpression(context.expression(0));
     }
 
@@ -169,27 +173,27 @@ public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<InfluxOpera
     Expression leftExpression = parseExpression(context.leftExpression);
     Expression rightExpression = parseExpression(context.rightExpression);
     if (context.STAR() != null) {
-      return new InfluxMultiplicationExpression(leftExpression, rightExpression);
+      return new MultiplicationExpression(leftExpression, rightExpression);
     }
     if (context.DIV() != null) {
-      return new InfluxDivisionExpression(leftExpression, rightExpression);
+      return new DivisionExpression(leftExpression, rightExpression);
     }
     if (context.MOD() != null) {
-      return new InfluxModuloExpression(leftExpression, rightExpression);
+      return new ModuloExpression(leftExpression, rightExpression);
     }
     if (context.PLUS() != null) {
-      return new InfluxAdditionExpression(leftExpression, rightExpression);
+      return new AdditionExpression(leftExpression, rightExpression);
     }
     if (context.MINUS() != null) {
-      return new InfluxSubtractionExpression(leftExpression, rightExpression);
+      return new SubtractionExpression(leftExpression, rightExpression);
     }
     throw new UnsupportedOperationException();
   }
 
   private Expression parseFunctionExpression(InfluxDBSqlParser.ExpressionContext functionClause) {
 
-    InfluxFunctionExpression functionExpression =
-        new InfluxFunctionExpression(functionClause.functionName.getText());
+    FunctionExpression functionExpression =
+        new FunctionExpression(functionClause.functionName.getText());
 
     // expressions
     for (InfluxDBSqlParser.ExpressionContext expression : functionClause.expression()) {
