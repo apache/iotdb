@@ -240,7 +240,7 @@ public class TsFileNameGenerator {
   }
 
   public static class TsFileName {
-    private static final String FILE_NAME_PATTERN = "(\\d+)-(\\d+)-(\\d+)-(\\d+).tsfile$";
+    private static final String FILE_NAME_PATTERN = "((-)?\\d+)-(\\d+)-(\\d+)-(\\d+).tsfile$";
     private static final Pattern FILE_NAME_MATCHER = Pattern.compile(TsFileName.FILE_NAME_PATTERN);
 
     private long time;
