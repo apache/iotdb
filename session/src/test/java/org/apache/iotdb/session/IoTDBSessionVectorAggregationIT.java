@@ -220,7 +220,6 @@ public class IoTDBSessionVectorAggregationIT {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR1, schemaList);
-    tablet.setAligned(true);
 
     for (long row = 1; row <= 100; row++) {
       int rowIndex = tablet.rowSize++;
@@ -229,7 +228,7 @@ public class IoTDBSessionVectorAggregationIT {
       tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (int) (row + 2));
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertTablet(tablet, true);
+        session.insertAlignedTablet(tablet, true);
         tablet.reset();
       }
     }
