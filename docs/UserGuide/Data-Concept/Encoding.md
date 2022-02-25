@@ -54,6 +54,12 @@ Usage restrictions: When using GORILLA to encode INT32 data, you need to ensure 
 
 DICTIONARY encoding is lossless. It is suitable for TEXT data with low cardinality (i.e. low number of distinct values). It is not recommended to use it for high-cardinality data. 
 
+* FREQ
+
+FREQ encoding is lossy. It transforms the time sequence to the frequency domain and only reserve part of the frequency components with high energy. It is more suitable for sequence with obvious periodicity.
+
+> There are two parameters of FREQ encoding in the configuration file: `freq_snr` defines the signal-noise-ratio (SNR), `freq_block_size` defines the data size in a time-frequency transformation.
+
 
 ## Correspondence between data type and encoding
 
@@ -66,10 +72,10 @@ The five encodings described in the previous sections are applicable to differen
 |Data Type	|Supported Encoding|
 |:---:|:---:|
 |BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA|
-|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA|
-|FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA|
-|DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA|
+|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
+|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
+|FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
+|DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
 |TEXT	|PLAIN, DICTIONARY|
 
 </div>
