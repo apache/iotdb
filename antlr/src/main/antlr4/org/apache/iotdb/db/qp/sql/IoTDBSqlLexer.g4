@@ -69,6 +69,10 @@ ANY
     : A N Y
     ;
 
+APPEND
+    : A P P E N D
+    ;
+
 AS
     : A S
     ;
@@ -378,6 +382,10 @@ PROPERTY
     : P R O P E R T Y
     ;
 
+PRUNE
+    : P R U N E
+    ;
+
 QUERIES
     : Q U E R I E S
     ;
@@ -404,6 +412,10 @@ RENAME
 
 RESAMPLE
     : R E S A M P L E
+    ;
+
+RESOURCE
+    : R E S O U R C E
     ;
 
 REVOKE
@@ -480,6 +492,10 @@ TASK
 
 TEMPLATE
     : T E M P L A T E
+    ;
+
+TEMPLATES
+    : T E M P L A T E S
     ;
 
 TIME
@@ -869,11 +885,18 @@ DURATION_LITERAL
     ;
 
 DATETIME_LITERAL
-    : INTEGER_LITERAL ('-'|'/') INTEGER_LITERAL ('-'|'/') INTEGER_LITERAL ((T | WS)
-      INTEGER_LITERAL ':' INTEGER_LITERAL ':' INTEGER_LITERAL (DOT INTEGER_LITERAL)?
-      (('+' | '-') INTEGER_LITERAL ':' INTEGER_LITERAL)?)?
+    : DATE_LITERAL ((T | WS) TIME_LITERAL (('+' | '-') INTEGER_LITERAL ':' INTEGER_LITERAL)?)?
     ;
 
+fragment DATE_LITERAL
+    : INTEGER_LITERAL '-' INTEGER_LITERAL '-' INTEGER_LITERAL
+    | INTEGER_LITERAL '/' INTEGER_LITERAL '/' INTEGER_LITERAL
+    | INTEGER_LITERAL '.' INTEGER_LITERAL '.' INTEGER_LITERAL
+    ;
+
+fragment TIME_LITERAL
+    : INTEGER_LITERAL ':' INTEGER_LITERAL ':' INTEGER_LITERAL (DOT INTEGER_LITERAL)?
+    ;
 
 // Number Literal
 
@@ -917,8 +940,8 @@ ID
     : NAME_CHAR+
     ;
 
-QUTOED_ID_WITHOUT_DOT
-    : BQUOTA_STRING_WITHOUT_DOT
+QUTOED_ID_IN_NODE_NAME
+    : BQUOTA_STRING_IN_NODE_NAME
     ;
 
 QUTOED_ID
@@ -944,19 +967,19 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\'. | '""' | ~('"'| '\\') )* '"'
+    : '"' ( '\\'. | ~('"'| '\\') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ('\\'. | '\'\'' | ~('\'' | '\\'))* '\''
+    : '\'' ( '\\'. | ~('\''| '\\') )* '\''
     ;
 
 fragment BQUOTA_STRING
-    : '`' ( '\\'. | '``' | ~('`'|'\\'))* '`'
+    : '`' ( '\\'. | ~('`'| '\\') )* '`'
     ;
 
-fragment BQUOTA_STRING_WITHOUT_DOT
-    : '`' ( '\\'. | '``' | ~('`'|'\\'|'.'))* '`'
+fragment BQUOTA_STRING_IN_NODE_NAME
+    : '`' ( '\\' ('`'|'\\'|'\''|'"') | ~('`'|'\\'|'.'|'\''|'"'))* '`'
     ;
 
 // Characters and write it this way for case sensitivity

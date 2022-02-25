@@ -238,6 +238,14 @@ public class IoTDBDescriptor {
         conf.setMlogBufferSize(mlogBufferSize);
       }
 
+      long forceMlogPeriodInMs =
+          Long.parseLong(
+              properties.getProperty(
+                  "sync_mlog_period_in_ms", Long.toString(conf.getSyncMlogPeriodInMs())));
+      if (forceMlogPeriodInMs > 0) {
+        conf.setSyncMlogPeriodInMs(forceMlogPeriodInMs);
+      }
+
       conf.setMultiDirStrategyClassName(
           properties.getProperty("multi_dir_strategy", conf.getMultiDirStrategyClassName()));
 
@@ -352,12 +360,6 @@ public class IoTDBDescriptor {
           CompactionPriority.valueOf(
               properties.getProperty(
                   "compaction_priority", conf.getCompactionPriority().toString())));
-
-      conf.setMaxOpenFileNumInCrossSpaceCompaction(
-          Integer.parseInt(
-              properties.getProperty(
-                  "max_open_file_num_in_cross_space_compaction",
-                  Integer.toString(conf.getMaxOpenFileNumInCrossSpaceCompaction()))));
 
       conf.setQueryTimeoutThreshold(
           Integer.parseInt(
@@ -620,9 +622,6 @@ public class IoTDBDescriptor {
                   "concurrent_writing_time_partition",
                   String.valueOf(conf.getConcurrentWritingTimePartition()))));
 
-      conf.setTimeIndexLevel(
-          properties.getProperty("time_index_level", String.valueOf(conf.getTimeIndexLevel())));
-
       // the default fill interval in LinearFill and PreviousFill
       conf.setDefaultFillInterval(
           Integer.parseInt(
@@ -674,6 +673,12 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "virtual_storage_group_num", String.valueOf(conf.getVirtualStorageGroupNum()))));
+
+      conf.setRecoveryLogIntervalInMs(
+          Long.parseLong(
+              properties.getProperty(
+                  "recovery_log_interval_in_ms",
+                  String.valueOf(conf.getRecoveryLogIntervalInMs()))));
 
       conf.setConcurrentWindowEvaluationThread(
           Integer.parseInt(
@@ -761,6 +766,15 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "insert_multi_tablet_enable_multithreading_column_threshold",
                   String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
+
+      conf.setEncryptDecryptProvider(
+          properties.getProperty(
+              "iotdb_server_encrypt_decrypt_provider", conf.getEncryptDecryptProvider()));
+
+      conf.setEncryptDecryptProviderParameter(
+          properties.getProperty(
+              "iotdb_server_encrypt_decrypt_provider_parameter",
+              conf.getEncryptDecryptProviderParameter()));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
@@ -1276,6 +1290,12 @@ public class IoTDBDescriptor {
     logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForWrite());
     logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
 
+    conf.setMaxQueryDeduplicatedPathNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_deduplicated_path_num",
+                Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
+
     if (!conf.isMetaDataCacheEnable()) {
       return;
     }
@@ -1307,12 +1327,6 @@ public class IoTDBDescriptor {
         }
       }
     }
-
-    conf.setMaxQueryDeduplicatedPathNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_deduplicated_path_num",
-                Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

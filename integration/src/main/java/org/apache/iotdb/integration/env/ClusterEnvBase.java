@@ -48,13 +48,13 @@ public abstract class ClusterEnvBase implements BaseEnv {
   public List<Integer> searchAvailablePort(int nodeNum) {
     // To search available ports and to prepare for concurrent cluster testing, so we search port in
     // batches. For example, when there are 5 nodes, the port range of the first search is
-    // 6671-6680, 20001-20010, 40001-40010. If any one of these 30 ports is occupied, it will be
+    // 6671-6680, 10001-10010, 11001-21010. If any one of these 30 ports is occupied, it will be
     // added up as a whole (add 10 to each port) to look for the next batch of ports.
 
     String cmd = "lsof -iTCP -sTCP:LISTEN -P -n | grep -E ";
     int rpcPortStart = 6671;
-    int metaPortStart = 20001;
-    int dataPortStart = 40001;
+    int metaPortStart = 10001;
+    int dataPortStart = 11001;
     boolean flag = true;
     int counter = 0;
     do {
@@ -161,6 +161,9 @@ public abstract class ClusterEnvBase implements BaseEnv {
   public void stopCluster() {
     for (ClusterNode node : this.nodes) {
       node.stop();
+    }
+    for (ClusterNode node : this.nodes) {
+      node.waitingToShutDown();
     }
   }
 

@@ -30,6 +30,7 @@ import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.UniformReservoir;
 import com.codahale.metrics.jvm.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +54,10 @@ public class DropwizardMetricManager implements MetricManager {
 
   com.codahale.metrics.MetricRegistry metricRegistry;
   MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
+  MetricRegistry.MetricSupplier<com.codahale.metrics.Timer> timerMetricSupplier =
+      () -> new com.codahale.metrics.Timer(new UniformReservoir());
+  MetricRegistry.MetricSupplier<com.codahale.metrics.Histogram> histogramMetricSupplier =
+      () -> new com.codahale.metrics.Histogram(new UniformReservoir());
 
   /** init the field with dropwizard library. */
   public DropwizardMetricManager() {
@@ -141,7 +146,10 @@ public class DropwizardMetricManager implements MetricManager {
     MetricName name = new MetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
-            name, key -> new DropwizardHistogram(metricRegistry.histogram(name.toFlatString())));
+            name,
+            key ->
+                new DropwizardHistogram(
+                    metricRegistry.histogram(name.toFlatString(), histogramMetricSupplier)));
     if (m instanceof Histogram) {
       return (Histogram) m;
     }
@@ -156,7 +164,10 @@ public class DropwizardMetricManager implements MetricManager {
     MetricName name = new MetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
-            name, key -> new DropwizardTimer(metricRegistry.timer(name.toFlatString())));
+            name,
+            key ->
+                new DropwizardTimer(
+                    metricRegistry.timer(name.toFlatString(), timerMetricSupplier)));
     if (m instanceof Timer) {
       return (Timer) m;
     }
@@ -225,7 +236,10 @@ public class DropwizardMetricManager implements MetricManager {
     MetricName name = new MetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
-            name, key -> new DropwizardHistogram(metricRegistry.histogram(name.toFlatString())));
+            name,
+            key ->
+                new DropwizardHistogram(
+                    metricRegistry.histogram(name.toFlatString(), histogramMetricSupplier)));
     if (m instanceof Histogram) {
       ((Histogram) m).update(value);
       return;
@@ -241,7 +255,10 @@ public class DropwizardMetricManager implements MetricManager {
     MetricName name = new MetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
-            name, key -> new DropwizardTimer(metricRegistry.timer(name.toFlatString())));
+            name,
+            key ->
+                new DropwizardTimer(
+                    metricRegistry.timer(name.toFlatString(), timerMetricSupplier)));
 
     if (m instanceof Timer) {
       ((Timer) m).update(delta, timeUnit);

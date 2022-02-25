@@ -39,10 +39,12 @@ ddlStatement
     | createSchemaTemplate | createTimeseriesOfSchemaTemplate
     | createFunction | createTrigger | createContinuousQuery | createSnapshot
     | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition
-    | dropFunction | dropTrigger | dropContinuousQuery | setTTL | unsetTTL
-    | setSchemaTemplate | unsetSchemaTemplate | startTrigger | stopTrigger
+    | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
+    | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
     | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
+    | showSchemaTemplates | showNodesInSchemaTemplate
+    | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
     ;
 
@@ -58,7 +60,7 @@ dclStatement
 
 utilityStatement
     : merge | fullMerge | flush | clearCache | settle
-    | setSystemStatus | showVersion | showFlushInfo | showLockInfo
+    | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
@@ -89,19 +91,17 @@ alignedMeasurements
 
 // Create Schema Template
 createSchemaTemplate
-    : CREATE SCHEMA TEMPLATE templateName=identifier
-    LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
+    : CREATE SCHEMA? TEMPLATE templateName=identifier
+    ALIGNED? LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
     ;
 
 templateMeasurementClause
-    : suffixPath attributeClauses #nonAlignedTemplateMeasurement
-    | suffixPath LR_BRACKET nodeNameWithoutWildcard attributeClauses
-    (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET  #alignedTemplateMeasurement
+    : nodeNameWithoutWildcard attributeClauses
     ;
 
 // Create Timeseries Of Schema Template
 createTimeseriesOfSchemaTemplate
-    : CREATE TIMESERIES OF SCHEMA TEMPLATE ON prefixPath
+    : CREATE TIMESERIES OF SCHEMA? TEMPLATE ON prefixPath
     ;
 
 // Create Function
@@ -196,6 +196,11 @@ dropContinuousQuery
     : DROP (CONTINUOUS QUERY|CQ) continuousQueryName=identifier
     ;
 
+// Drop Schema Template
+dropSchemaTemplate
+    : DROP SCHEMA? TEMPLATE templateName=identifier
+    ;
+
 // Set TTL
 setTTL
     : SET TTL TO path=prefixPath time=INTEGER_LITERAL
@@ -208,12 +213,12 @@ unsetTTL
 
 // Set Schema Template
 setSchemaTemplate
-    : SET SCHEMA TEMPLATE templateName=identifier TO prefixPath
+    : SET SCHEMA? TEMPLATE templateName=identifier TO prefixPath
     ;
 
 // Unset Schema Template
 unsetSchemaTemplate
-    : UNSET SCHEMA TEMPLATE templateName=identifier FROM prefixPath
+    : UNSET SCHEMA? TEMPLATE templateName=identifier FROM prefixPath
     ;
 
 // Start Trigger
@@ -278,6 +283,26 @@ showTTL
 // Show All TTL
 showAllTTL
     : SHOW ALL TTL
+    ;
+
+// Show Schema Template
+showSchemaTemplates
+    : SHOW SCHEMA? TEMPLATES
+    ;
+
+// Show Measurements In Schema Template
+showNodesInSchemaTemplate
+    : SHOW NODES OPERATOR_IN SCHEMA? TEMPLATE templateName=identifier
+    ;
+
+// Show Paths Set Schema Template
+showPathsSetSchemaTemplate
+    : SHOW PATHS SET SCHEMA? TEMPLATE templateName=identifier
+    ;
+
+// Show Paths Using Schema Template
+showPathsUsingSchemaTemplate
+    : SHOW PATHS USING SCHEMA? TEMPLATE templateName=identifier
     ;
 
 // Count Storage Group
@@ -600,6 +625,11 @@ showLockInfo
     ;
 
 
+// Show Query Resource
+showQueryResource
+    : SHOW QUERY RESOURCE
+    ;
+
 // Show Query Processlist
 showQueryProcesslist
     : SHOW QUERY PROCESSLIST
@@ -674,14 +704,14 @@ nodeName
     : wildcard
     | wildcard? ID wildcard?
     | wildcard? INTEGER_LITERAL wildcard?
-    | QUTOED_ID_WITHOUT_DOT
+    | QUTOED_ID_IN_NODE_NAME
     | STRING_LITERAL
     ;
 
 nodeNameWithoutWildcard
     : ID
     | INTEGER_LITERAL
-    | QUTOED_ID_WITHOUT_DOT
+    | QUTOED_ID_IN_NODE_NAME
     | STRING_LITERAL
     ;
 
@@ -693,7 +723,7 @@ nodeNameCanInExpr
     : wildcard
     | wildcard? ID wildcard?
     | QUTOED_ID
-    | QUTOED_ID_WITHOUT_DOT
+    | QUTOED_ID_IN_NODE_NAME
     ;
 
 wildcard
@@ -707,7 +737,7 @@ wildcard
 identifier
     : ID
     | QUTOED_ID
-    | QUTOED_ID_WITHOUT_DOT
+    | QUTOED_ID_IN_NODE_NAME
     | INTEGER_LITERAL
     ;
 

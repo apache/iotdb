@@ -412,6 +412,15 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 1048576 |
 |改后生效方式|触发生效|
 
+* sync\_mlog\_period\_in\_ms
+
+|名字| sync\_mlog\_period\_in\_ms |
+|:---:|:---|
+|描述| mlog定期刷新到磁盘的周期，单位毫秒。如果该参数为0，则表示每次对元数据的更新操作都会被立即写到磁盘上。|
+|类型| Int64 |
+|默认值| 100 |
+|改后生效方式|重启服务生效|
+
 * memtable\_size\_threshold
 
 |名字| memtable\_size\_threshold |
@@ -619,14 +628,6 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 3600 |
 |改后生效方式|重启服务生效|
 
-* time\_index\_level
-
-|名字| time\_index\_level |
-|:---:|:---|
-|描述| TimeIndex的级别，记录了TsFileResource的开始时间和结束时间。 目前，支持 DEVICE_TIME_INDEX 和 FILE_TIME_INDEX，第一次设置后无法更改。 |
-|类型| String |
-|默认值| DEVICE_TIME_INDEX |
-|改后生效方式|触发生效|
 
 ### 内存控制配置
 
@@ -888,15 +889,6 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 30|
 |改后生效方式|重启服务生效|
 
-* max\_open\_file\_num\_in\_cross\_space\_compaction
-
-|名字| max\_open\_file\_num\_in\_cross\_space\_compaction |
-|:---:|:---|
-|描述| 一次跨空间合并中打开文件的最大数目 |
-|类型| Int32 |
-|默认值| 100|
-|改后生效方式|重启服务生效|
-
 * cross\_compaction\_file\_selection\_time\_budget
 
 |名字| cross\_compaction\_file\_selection\_time\_budget |
@@ -948,7 +940,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |:---:|:---|
 |描述| 每秒可达到的写入吞吐量合并限制。|
 |类型| Int32 |
-|默认值| 8 |
+|默认值| 30 |
 |改后生效方式| 重启服务生效|
 
 

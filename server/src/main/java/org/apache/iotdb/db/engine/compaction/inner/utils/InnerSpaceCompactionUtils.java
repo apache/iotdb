@@ -53,7 +53,8 @@ import java.util.List;
 
 public class InnerSpaceCompactionUtils {
 
-  private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   private InnerSpaceCompactionUtils() {
     throw new IllegalStateException("Utility class");
@@ -180,7 +181,6 @@ public class InnerSpaceCompactionUtils {
             ModificationFile.getCompactionMods(sourceFile);
         Collection<Modification> newModification = compactionModificationFile.getModifications();
         compactionModificationFile.close();
-        sourceFile.resetModFile();
         // write the new modifications to its old modification file
         try (ModificationFile oldModificationFile = sourceFile.getModFile()) {
           for (Modification modification : newModification) {

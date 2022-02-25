@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
@@ -293,10 +294,11 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public Set<String> getAllDevices(RaftNode header, List<String> path) throws TException {
+  public Set<String> getAllDevices(RaftNode header, List<String> path, boolean isPrefixMatch)
+      throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CMManager) IoTDB.metaManager).getAllDevices(path);
+      return ((CMManager) IoTDB.metaManager).getAllDevices(path, isPrefixMatch);
     } catch (MetadataException | CheckConsistencyException e) {
       throw new TException(e);
     }
@@ -342,10 +344,9 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public ByteBuffer getAllMeasurementSchema(RaftNode header, ByteBuffer planBinary)
-      throws TException {
+  public ByteBuffer getAllMeasurementSchema(MeasurementSchemaRequest request) throws TException {
     try {
-      return dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(planBinary);
+      return dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(request);
     } catch (CheckConsistencyException | IOException | MetadataException e) {
       throw new TException(e);
     }

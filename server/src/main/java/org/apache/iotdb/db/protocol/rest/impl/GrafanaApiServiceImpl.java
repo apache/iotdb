@@ -52,23 +52,20 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
   private final ServiceProvider serviceProvider = IoTDB.serviceProvider;
   private final AuthorizationHandler authorizationHandler;
 
-  private final float timePrecision; // the default timestamp precision is ms
+  private final long timePrecision; // the default timestamp precision is ms
 
   public GrafanaApiServiceImpl() throws QueryProcessException {
     authorizationHandler = new AuthorizationHandler(serviceProvider);
 
     switch (IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()) {
       case "ns":
-        timePrecision = 1000000f;
+        timePrecision = 1000000;
         break;
       case "us":
-        timePrecision = 1000f;
-        break;
-      case "s":
-        timePrecision = 1f / 1000;
+        timePrecision = 1000;
         break;
       default:
-        timePrecision = 1f;
+        timePrecision = 1;
     }
   }
 
@@ -162,10 +159,10 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
 
         if (queryDataSet instanceof GroupByLevelDataSet) {
-          return QueryDataSetHandler.fillGroupByLevelDataSet(queryDataSet, 0);
+          return QueryDataSetHandler.fillGroupByLevelDataSet(queryDataSet, 0, timePrecision);
         } else {
           return QueryDataSetHandler.fillDataSetWithTimestamps(
-              queryDataSet, (QueryPlan) physicalPlan, 0);
+              queryDataSet, (QueryPlan) physicalPlan, 0, timePrecision);
         }
       } finally {
         ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
@@ -173,5 +170,15 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     }
+  }
+
+  @Override
+  public Response login(SecurityContext securityContext) throws NotFoundException {
+    return Response.ok()
+        .entity(
+            new ExecutionStatus()
+                .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                .message(TSStatusCode.SUCCESS_STATUS.name()))
+        .build();
   }
 }

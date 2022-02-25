@@ -34,6 +34,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
@@ -707,10 +708,10 @@ public class Session {
   }
 
   /**
-   * only: select last status from root.ln.d1.s1 where time >= 1621326244168;
+   * query e.g. select last data from paths where time >= lastTime
    *
    * @param paths timeSeries eg. root.ln.d1.s1,root.ln.d1.s2
-   * @param LastTime get the last data, whose timestamp greater than or equal LastTime eg.
+   * @param LastTime get the last data, whose timestamp is greater than or equal LastTime e.g.
    *     1621326244168
    */
   public SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
@@ -1232,6 +1233,55 @@ public class Session {
   }
 
   /**
+   * Insert multiple rows with String format data, which can reduce the overhead of network. This
+   * method is just like jdbc executeBatch, we pack some insert request in batch and send them to
+   * server. If you want improve your performance, please see insertTablet method
+   *
+   * <p>Each row could have same deviceId but different time, number of measurements, number of
+   * values as String
+   *
+   * @param haveSorted deprecated, whether the times have been sorted
+   */
+  public void insertStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    int len = times.size();
+    if (len != measurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+          "times, measurementsList and valuesList's size should be equal");
+    }
+    TSInsertStringRecordsOfOneDeviceReq req =
+        genTSInsertStringRecordsOfOneDeviceReq(
+            deviceId, times, measurementsList, valuesList, haveSorted, false);
+    try {
+      getSessionConnection(deviceId).insertStringRecordsOfOneDevice(req);
+    } catch (RedirectException e) {
+      handleRedirection(deviceId, e.getEndPoint());
+    }
+  }
+
+  /**
+   * Insert multiple rows with String format data, which can reduce the overhead of network. This
+   * method is just like jdbc executeBatch, we pack some insert request in batch and send them to
+   * server. If you want improve your performance, please see insertTablet method
+   *
+   * <p>Each row could have same deviceId but different time, number of measurements, number of
+   * values as String
+   */
+  public void insertStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    insertStringRecordsOfOneDevice(deviceId, times, measurementsList, valuesList, false);
+  }
+
+  /**
    * Insert aligned multiple rows, which can reduce the overhead of network. This method is just
    * like jdbc executeBatch, we pack some insert request in batch and send them to server. If you
    * want improve your performance, please see insertTablet method
@@ -1284,6 +1334,57 @@ public class Session {
     }
   }
 
+  /**
+   * Insert multiple rows with String format data, which can reduce the overhead of network. This
+   * method is just like jdbc executeBatch, we pack some insert request in batch and send them to
+   * server. If you want improve your performance, please see insertTablet method
+   *
+   * <p>Each row could have same deviceId but different time, number of measurements, number of
+   * values as String
+   *
+   * @param haveSorted deprecated, whether the times have been sorted
+   */
+  public void insertAlignedStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    int len = times.size();
+    if (len != measurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+          "times, measurementsList and valuesList's size should be equal");
+    }
+    TSInsertStringRecordsOfOneDeviceReq req =
+        genTSInsertStringRecordsOfOneDeviceReq(
+            deviceId, times, measurementsList, valuesList, haveSorted, true);
+    try {
+      getSessionConnection(deviceId).insertStringRecordsOfOneDevice(req);
+    } catch (RedirectException e) {
+      handleRedirection(deviceId, e.getEndPoint());
+    }
+  }
+
+  /**
+   * Insert aligned multiple rows with String format data, which can reduce the overhead of network.
+   * This method is just like jdbc executeBatch, we pack some insert request in batch and send them
+   * to server. If you want improve your performance, please see insertTablet method
+   *
+   * <p>Each row could have same prefixPath but different time, number of measurements, number of
+   * values as String
+   *
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertAlignedStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    insertAlignedStringRecordsOfOneDevice(deviceId, times, measurementsList, valuesList, false);
+  }
+
   private TSInsertRecordsOfOneDeviceReq genTSInsertRecordsOfOneDeviceReq(
       String prefixPath,
       List<Long> times,
@@ -1324,6 +1425,42 @@ public class Session {
     request.setValuesList(buffersList);
     request.setIsAligned(isAligned);
     return request;
+  }
+
+  private TSInsertStringRecordsOfOneDeviceReq genTSInsertStringRecordsOfOneDeviceReq(
+      String prefixPath,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      boolean haveSorted,
+      boolean isAligned) {
+    // check params size
+    int len = times.size();
+    if (len != measurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+          "times, measurementsList and valuesList's size should be equal");
+    }
+
+    if (!checkSorted(times)) {
+      Integer[] index = new Integer[times.size()];
+      for (int i = 0; i < index.length; i++) {
+        index[i] = i;
+      }
+      Arrays.sort(index, Comparator.comparingLong(times::get));
+      times.sort(Long::compareTo);
+      // sort measurementsList
+      measurementsList = sortList(measurementsList, index);
+      // sort valuesList
+      valuesList = sortList(valuesList, index);
+    }
+
+    TSInsertStringRecordsOfOneDeviceReq req = new TSInsertStringRecordsOfOneDeviceReq();
+    req.setPrefixPath(prefixPath);
+    req.setTimestamps(times);
+    req.setMeasurementsList(measurementsList);
+    req.setValuesList(valuesList);
+    req.setIsAligned(isAligned);
+    return req;
   }
 
   /**
@@ -1431,11 +1568,11 @@ public class Session {
    */
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
+    TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
     try {
-      getSessionConnection(tablet.prefixPath).insertTablet(request);
+      getSessionConnection(tablet.deviceId).insertTablet(request);
     } catch (RedirectException e) {
-      handleRedirection(tablet.prefixPath, e.getEndPoint());
+      handleRedirection(tablet.deviceId, e.getEndPoint());
     }
   }
 
@@ -1451,8 +1588,7 @@ public class Session {
    */
   public void insertAlignedTablet(Tablet tablet)
       throws StatementExecutionException, IoTDBConnectionException {
-    tablet.setAligned(true);
-    insertTablet(tablet);
+    insertAlignedTablet(tablet, false);
   }
 
   /**
@@ -1463,11 +1599,15 @@ public class Session {
    */
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    tablet.setAligned(true);
-    insertTablet(tablet, sorted);
+    TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, true);
+    try {
+      getSessionConnection(tablet.deviceId).insertTablet(request);
+    } catch (RedirectException e) {
+      handleRedirection(tablet.deviceId, e.getEndPoint());
+    }
   }
 
-  private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted)
+  private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted, boolean isAligned)
       throws BatchExecutionException {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
@@ -1480,8 +1620,8 @@ public class Session {
       request.addToTypes(measurementSchema.getType().ordinal());
     }
 
-    request.setPrefixPath(tablet.prefixPath);
-    request.setIsAligned(tablet.isAligned());
+    request.setPrefixPath(tablet.deviceId);
+    request.setIsAligned(isAligned);
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
     request.setValues(SessionUtils.getValueBuffer(tablet));
     request.setSize(tablet.rowSize);
@@ -1511,9 +1651,10 @@ public class Session {
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     if (enableCacheLeader) {
-      insertTabletsWithLeaderCache(tablets, sorted);
+      insertTabletsWithLeaderCache(tablets, sorted, false);
     } else {
-      TSInsertTabletsReq request = genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted);
+      TSInsertTabletsReq request =
+          genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, false);
       try {
         defaultSessionConnection.insertTablets(request);
       } catch (RedirectException ignored) {
@@ -1532,10 +1673,7 @@ public class Session {
    */
   public void insertAlignedTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
-    for (Tablet tablet : tablets.values()) {
-      tablet.setAligned(true);
-    }
-    insertTablets(tablets, false);
+    insertAlignedTablets(tablets, false);
   }
 
   /**
@@ -1547,53 +1685,55 @@ public class Session {
    */
   public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    for (Tablet tablet : tablets.values()) {
-      tablet.setAligned(true);
+    if (enableCacheLeader) {
+      insertTabletsWithLeaderCache(tablets, sorted, true);
+    } else {
+      TSInsertTabletsReq request =
+          genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, true);
+      try {
+        defaultSessionConnection.insertTablets(request);
+      } catch (RedirectException ignored) {
+        // ignored
+      }
     }
-    insertTablets(tablets, sorted);
   }
 
-  private void insertTabletsWithLeaderCache(Map<String, Tablet> tablets, boolean sorted)
+  private void insertTabletsWithLeaderCache(
+      Map<String, Tablet> tablets, boolean sorted, boolean isAligned)
       throws IoTDBConnectionException, StatementExecutionException {
     Map<SessionConnection, TSInsertTabletsReq> tabletGroup = new HashMap<>();
     for (Entry<String, Tablet> entry : tablets.entrySet()) {
       final SessionConnection connection = getSessionConnection(entry.getKey());
       TSInsertTabletsReq request =
           tabletGroup.computeIfAbsent(connection, k -> new TSInsertTabletsReq());
-      updateTSInsertTabletsReq(request, entry.getValue(), sorted);
+      updateTSInsertTabletsReq(request, entry.getValue(), sorted, isAligned);
     }
 
     insertByGroup(tabletGroup, SessionConnection::insertTablets);
   }
 
-  private TSInsertTabletsReq genTSInsertTabletsReq(List<Tablet> tablets, boolean sorted)
-      throws BatchExecutionException {
+  private TSInsertTabletsReq genTSInsertTabletsReq(
+      List<Tablet> tablets, boolean sorted, boolean isAligned) throws BatchExecutionException {
     TSInsertTabletsReq request = new TSInsertTabletsReq();
     if (tablets.isEmpty()) {
       throw new BatchExecutionException("No tablet is inserting!");
     }
-    boolean isFirstTabletAligned = tablets.get(0).isAligned();
     for (Tablet tablet : tablets) {
-      if (isFirstTabletAligned != tablet.isAligned()) {
-        throw new BatchExecutionException("The tablets should be all aligned or non-aligned!");
-      }
-      updateTSInsertTabletsReq(request, tablet, sorted);
+      updateTSInsertTabletsReq(request, tablet, sorted, isAligned);
     }
     return request;
   }
 
-  private void updateTSInsertTabletsReq(TSInsertTabletsReq request, Tablet tablet, boolean sorted)
+  private void updateTSInsertTabletsReq(
+      TSInsertTabletsReq request, Tablet tablet, boolean sorted, boolean isAligned)
       throws BatchExecutionException {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
     }
-    request.addToPrefixPaths(tablet.prefixPath);
+    request.addToPrefixPaths(tablet.deviceId);
     List<String> measurements = new ArrayList<>();
     List<Integer> dataTypes = new ArrayList<>();
-
-    if (tablet.isAligned()) {
-      request.setIsAligned(true);
-    }
+    request.setIsAligned(isAligned);
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
       measurements.add(measurementSchema.getMeasurementId());
       dataTypes.add(measurementSchema.getType().ordinal());
@@ -1620,7 +1760,7 @@ public class Session {
    */
   public void testInsertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
+    TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
     defaultSessionConnection.testInsertTablet(request);
   }
 
@@ -1639,7 +1779,8 @@ public class Session {
    */
   public void testInsertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertTabletsReq request = genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted);
+    TSInsertTabletsReq request =
+        genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, false);
     defaultSessionConnection.testInsertTablets(request);
   }
 
@@ -1914,6 +2055,15 @@ public class Session {
 
   /**
    * Construct Template at session and create it at server.
+   *
+   * <p>The template instance constructed within session is SUGGESTED to be a flat measurement
+   * template, which has no internal nodes inside a template.
+   *
+   * <p>For example, template(s1, s2, s3) is a flat measurement template, while template2(GPS.x,
+   * GPS.y, s1) is not.
+   *
+   * <p>Tree-structured template, which is contrary to flat measurement template, may not be
+   * supported in further version of IoTDB
    *
    * @see Template
    */

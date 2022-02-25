@@ -37,22 +37,20 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompactionTask {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(RewriteCrossCompactionRecoverTask.class);
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private File compactionLogFile;
-  private String logicalStorageGroupName;
-  private String virtualStorageGroup;
 
   public RewriteCrossCompactionRecoverTask(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartitionId,
-      String storageGroupDir,
       File logFile,
       AtomicInteger currentTaskNum,
       TsFileManager tsFileManager) {
@@ -60,14 +58,11 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
         logicalStorageGroupName,
         virtualStorageGroupName,
         timePartitionId,
-        storageGroupDir,
         tsFileManager,
         null,
         null,
         currentTaskNum);
     this.compactionLogFile = logFile;
-    this.logicalStorageGroupName = logicalStorageGroupName;
-    this.virtualStorageGroup = virtualStorageGroupName;
   }
 
   @Override
@@ -80,9 +75,8 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
     try {
       if (compactionLogFile.exists()) {
         LOGGER.info(
-            "{}-{} [Compaction][Recover] cross space compaction log file {} exists, start to recover it",
-            logicalStorageGroupName,
-            virtualStorageGroup,
+            "{} [Compaction][Recover] cross space compaction log file {} exists, start to recover it",
+            fullStorageGroupName,
             compactionLogFile);
         RewriteCrossSpaceCompactionLogAnalyzer logAnalyzer =
             new RewriteCrossSpaceCompactionLogAnalyzer(compactionLogFile);
@@ -93,9 +87,7 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
         // compaction log file is incomplete
         if (targetFileIdentifiers.isEmpty() || sourceFileIdentifiers.isEmpty()) {
           LOGGER.info(
-              "{}-{} [Compaction][Recover] incomplete log file, abort recover",
-              logicalStorageGroupName,
-              virtualStorageGroup);
+              "{} [Compaction][Recover] incomplete log file, abort recover", fullStorageGroupName);
           return;
         }
 
@@ -111,7 +103,7 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
         if (isAllSourcesFileExisted) {
           handleSuccess =
               handleWithAllSourceFilesExist(
-                  logAnalyzer, targetFileIdentifiers, sourceFileIdentifiers, fullStorageGroupName);
+                  targetFileIdentifiers, sourceFileIdentifiers, fullStorageGroupName);
         } else {
           handleSuccess = handleWithoutAllSourceFilesExist(sourceFileIdentifiers);
         }
@@ -145,19 +137,18 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
     }
   }
 
+  /**
+   * All source files exist: (1) delete all the target files and tmp target files (2) delete
+   * compaction mods files.
+   */
   private boolean handleWithAllSourceFilesExist(
-      RewriteCrossSpaceCompactionLogAnalyzer analyzer,
       List<TsFileIdentifier> targetFileIdentifiers,
       List<TsFileIdentifier> sourceFileIdentifiers,
       String fullStorageGroupName) {
-    // all source files exist, delete all the target files and tmp target files
     LOGGER.info(
         "{} [Compaction][Recover] all source files exists, delete all target files.",
         fullStorageGroupName);
-    List<TsFileResource> sourceTsFileResourceList = new ArrayList<>();
-    for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
-      sourceTsFileResourceList.add(new TsFileResource(sourceFileIdentifier.getFileFromDataDirs()));
-    }
+
     for (TsFileIdentifier targetFileIdentifier : targetFileIdentifiers) {
       // xxx.merge
       File tmpTargetFile = targetFileIdentifier.getFileFromDataDirs();
@@ -186,12 +177,17 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
         return false;
       }
     }
-    // deal with compaction modification
+
+    // delete compaction mods files
+    List<TsFileResource> sourceTsFileResourceList = new ArrayList<>();
+    for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
+      sourceTsFileResourceList.add(new TsFileResource(sourceFileIdentifier.getFileFromDataDirs()));
+    }
     try {
-      CompactionUtils.appendNewModificationsToOldModsFile(sourceTsFileResourceList);
+      CompactionUtils.deleteCompactionModsFile(sourceTsFileResourceList, Collections.emptyList());
     } catch (Throwable e) {
       LOGGER.error(
-          "{} Exception occurs while handling exception, set allowCompaction to false",
+          "{} [Compaction][Recover] Exception occurs while deleting compaction mods file, set allowCompaction to false",
           fullStorageGroupName,
           e);
       return false;
@@ -199,6 +195,10 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
     return true;
   }
 
+  /**
+   * Some source files lost: delete remaining source files, encluding: tsfile, resource file, mods
+   * file and compaction mods file.
+   */
   private boolean handleWithoutAllSourceFilesExist(List<TsFileIdentifier> sourceFileIdentifiers) {
     // some source files have been deleted, while target file must exist.
     boolean handleSuccess = true;
@@ -216,17 +216,15 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
           getFileFromDataDirs(sourceFileIdentifier.getFilePath() + ModificationFile.FILE_SUFFIX);
       if (compactionModFile != null && !compactionModFile.delete()) {
         LOGGER.error(
-            "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
-            logicalStorageGroupName,
-            virtualStorageGroup,
+            "{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+            fullStorageGroupName,
             compactionModFile);
         handleSuccess = false;
       }
       if (modFile != null && !modFile.delete()) {
         LOGGER.error(
-            "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
-            logicalStorageGroupName,
-            virtualStorageGroup,
+            "{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+            fullStorageGroupName,
             modFile);
         handleSuccess = false;
       }
@@ -235,9 +233,7 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
     if (!InnerSpaceCompactionUtils.deleteTsFilesInDisk(
         remainSourceTsFileResources, fullStorageGroupName)) {
       LOGGER.error(
-          "{}-{} [Compaction][Recover] fail to delete remaining source files.",
-          logicalStorageGroupName,
-          virtualStorageGroup);
+          "{} [Compaction][Recover] fail to delete remaining source files.", fullStorageGroupName);
       handleSuccess = false;
     }
     return handleSuccess;

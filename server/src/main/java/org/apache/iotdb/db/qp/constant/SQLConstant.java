@@ -189,6 +189,15 @@ public class SQLConstant {
   public static final int TOK_SCHEMA_TEMPLATE_SET = 113;
   public static final int TOK_SCHEMA_TEMPLATE_ACTIVATE = 114;
   public static final int TOK_SCHEMA_TEMPLATE_UNSET = 115;
+  public static final int TOK_SCHEMA_TEMPLATE_APPEND = 116;
+  public static final int TOK_SCHEMA_TEMPLATE_PRUNE = 117;
+  public static final int TOK_SCHEMA_TEMPLATE_DROP = 118;
+  public static final int TOK_SCHEMA_TEMPLATE_SHOW = 119;
+  public static final int TOK_SCHEMA_TEMPLATE_SHOW_NODES = 120;
+  public static final int TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET = 121;
+  public static final int TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING = 122;
+
+  public static final int TOK_SHOW_QUERY_RESOURCE = 123;
 
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 
@@ -267,6 +276,15 @@ public class SQLConstant {
     tokenNames.put(TOK_SCHEMA_TEMPLATE_SET, "TOK_SCHEMA_TEMPLATE_SET");
     tokenNames.put(TOK_SCHEMA_TEMPLATE_ACTIVATE, "TOK_SCHEMA_TEMPLATE_ACTIVATE");
     tokenNames.put(TOK_SCHEMA_TEMPLATE_UNSET, "TOK_SCHEMA_TEMPLATE_UNSET");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_APPEND, "TOK_SCHEMA_TEMPLATE_APPEND");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_PRUNE, "TOK_SCHEMA_TEMPLATE_PRUNE");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_DROP, "TOK_SCHEMA_TEMPLATE_DROP");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_SHOW, "TOK_SCHEMA_TEMPLATE_SHOW");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_SHOW_NODES, "TOK_SCHEMA_TEMPLATE_SHOW_NODES");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET, "TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING, "TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING");
+
+    tokenNames.put(TOK_SHOW_QUERY_RESOURCE, "TOK_SHOW_QUERY_RESOURCE");
   }
 
   public static boolean isReservedPath(PartialPath pathStr) {

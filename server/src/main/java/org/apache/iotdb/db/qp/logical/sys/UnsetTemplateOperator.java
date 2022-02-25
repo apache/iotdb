@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -55,6 +56,10 @@ public class UnsetTemplateOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new UnsetTemplatePlan(prefixPath.toString(), templateName);
+    try {
+      return new UnsetTemplatePlan(prefixPath.toString(), templateName);
+    } catch (IllegalPathException e) {
+      throw new QueryProcessException(e);
+    }
   }
 }

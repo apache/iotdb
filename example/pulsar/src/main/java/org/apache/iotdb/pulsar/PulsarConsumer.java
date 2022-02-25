@@ -20,7 +20,7 @@ package org.apache.iotdb.pulsar;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -43,6 +43,7 @@ public class PulsarConsumer {
   // Specify the number of consumers
   private static final int CONSUMER_NUM = 3;
   private List<Consumer<?>> consumerList;
+  private static SessionPool pool;
   private static final Logger logger = LoggerFactory.getLogger(PulsarConsumer.class);
 
   public PulsarConsumer(List<Consumer<?>> consumerList) {
@@ -52,7 +53,7 @@ public class PulsarConsumer {
   public void consumeInParallel() throws ClassNotFoundException {
     ExecutorService executor = Executors.newFixedThreadPool(CONSUMER_NUM);
     for (int i = 0; i < consumerList.size(); i++) {
-      PulsarConsumerThread consumerExecutor = new PulsarConsumerThread(consumerList.get(i));
+      PulsarConsumerThread consumerExecutor = new PulsarConsumerThread(consumerList.get(i), pool);
       executor.submit(consumerExecutor);
     }
   }
@@ -60,36 +61,29 @@ public class PulsarConsumer {
   @SuppressWarnings("squid:S2068")
   private static void initIoTDB() {
     try {
-      Session session =
-          new Session(
-              Constant.IOTDB_CONNECTION_HOST,
-              Constant.IOTDB_CONNECTION_PORT,
-              Constant.IOTDB_CONNECTION_USER,
-              Constant.IOTDB_CONNECTION_PASSWORD);
-      session.open();
       for (String storageGroup : Constant.STORAGE_GROUP) {
-        addStorageGroup(session, storageGroup);
+        addStorageGroup(storageGroup);
       }
       for (String[] sql : Constant.CREATE_TIMESERIES) {
-        createTimeseries(session, sql);
+        createTimeseries(sql);
       }
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       logger.error(e.getMessage());
     }
   }
 
-  private static void addStorageGroup(Session session, String storageGroup)
+  private static void addStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
-    session.setStorageGroup(storageGroup);
+    pool.setStorageGroup(storageGroup);
   }
 
-  private static void createTimeseries(Session session, String[] sql)
+  private static void createTimeseries(String[] sql)
       throws StatementExecutionException, IoTDBConnectionException {
     String timeseries = sql[0];
     TSDataType dataType = TSDataType.valueOf(sql[1]);
     TSEncoding encoding = TSEncoding.valueOf(sql[2]);
     CompressionType compressionType = CompressionType.valueOf(sql[3]);
-    session.createTimeseries(timeseries, dataType, encoding, compressionType);
+    pool.createTimeseries(timeseries, dataType, encoding, compressionType);
   }
 
   public static void main(String[] args) throws PulsarClientException, ClassNotFoundException {

@@ -638,7 +638,7 @@ public class StorageGroupProcessorTest {
           TriggerExecutionException {
     int originCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(10);
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(9);
     boolean originEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     boolean originEnableUnseqSpaceCompaction =
@@ -687,7 +687,7 @@ public class StorageGroupProcessorTest {
             context,
             null,
             null);
-    Assert.assertEquals(1, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }

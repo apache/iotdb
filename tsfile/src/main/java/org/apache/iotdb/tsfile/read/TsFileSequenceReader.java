@@ -601,7 +601,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
       deviceList.addAll(
           metadataIndexNode.getChildren().stream()
-              .map(MetadataIndexEntry::getName)
+              .map(x -> x.getName().intern())
               .collect(Collectors.toList()));
       return deviceList;
     }
