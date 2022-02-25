@@ -116,15 +116,12 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
         return false;
       }
       ChunkCacheKey that = (ChunkCacheKey) o;
-      return Objects.equals(offsetOfChunkHeader, that.offsetOfChunkHeader)
-          && Objects.equals(measurementUid, that.measurementUid)
-          && deleteIntervalList == that.deleteIntervalList
-          && statistics == that.statistics;
+      return Objects.equals(offsetOfChunkHeader, that.offsetOfChunkHeader);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(offsetOfChunkHeader, measurementUid, deleteIntervalList, statistics);
+      return Objects.hash(offsetOfChunkHeader);
     }
 
     public Long getOffsetOfChunkHeader() {
