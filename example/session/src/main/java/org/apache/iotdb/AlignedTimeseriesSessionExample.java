@@ -546,12 +546,12 @@ public class AlignedTimeseriesSessionExample {
     schemaList1.add(new MeasurementSchema("s2", TSDataType.INT64));
 
     List<MeasurementSchema> schemaList2 = new ArrayList<>();
-    schemaList1.add(new MeasurementSchema("s1", TSDataType.INT64));
-    schemaList1.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemaList2.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList2.add(new MeasurementSchema("s2", TSDataType.INT64));
 
     List<MeasurementSchema> schemaList3 = new ArrayList<>();
-    schemaList1.add(new MeasurementSchema("s1", TSDataType.INT64));
-    schemaList1.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemaList3.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList3.add(new MeasurementSchema("s2", TSDataType.INT64));
 
     Tablet tablet1 = new Tablet(ROOT_SG2_D1_VECTOR6, schemaList1, 100);
     Tablet tablet2 = new Tablet(ROOT_SG2_D1_VECTOR7, schemaList2, 100);
@@ -573,9 +573,9 @@ public class AlignedTimeseriesSessionExample {
       tablet3.addTimestamp(row3, timestamp);
       for (int i = 0; i < 2; i++) {
         long value = new SecureRandom().nextLong();
-        tablet1.addValue(schemaList1.get(0).getSubMeasurementsList().get(i), row1, value);
-        tablet2.addValue(schemaList2.get(0).getSubMeasurementsList().get(i), row2, value);
-        tablet3.addValue(schemaList3.get(0).getSubMeasurementsList().get(i), row3, value);
+        tablet1.addValue(schemaList1.get(0).getMeasurementId(), row1, value);
+        tablet2.addValue(schemaList2.get(0).getMeasurementId(), row2, value);
+        tablet3.addValue(schemaList3.get(0).getMeasurementId(), row3, value);
       }
       if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
         session.insertAlignedTablets(tabletMap, true);
