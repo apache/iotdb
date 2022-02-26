@@ -17,7 +17,6 @@ package org.apache.iotdb.tsfile.utils;
 
 import java.nio.ByteBuffer;
 
-/** @author Wang Haoyu */
 public class BitReader {
 
   private static final int BITS_IN_A_BYTE = 8;
@@ -36,11 +35,12 @@ public class BitReader {
       if (bitCnt == BITS_IN_A_BYTE) {
         next();
       }
-      int m = len + bitCnt >= BITS_IN_A_BYTE ? BITS_IN_A_BYTE - bitCnt : len; // 从当前byte中读取的bit数
+      // Number of bits read from the current byte
+      int m = len + bitCnt >= BITS_IN_A_BYTE ? BITS_IN_A_BYTE - bitCnt : len;
       len -= m;
       ret = ret << m;
-      byte y = (byte) (cache & MASKS[bitCnt]); // 运算时byte自动转化为int，需要&截取低位
-      y = (byte) ((y & 0xff) >>> (BITS_IN_A_BYTE - bitCnt - m)); // 逻辑右移，高位补0
+      byte y = (byte) (cache & MASKS[bitCnt]); // Truncate the low bits with &
+      y = (byte) ((y & 0xff) >>> (BITS_IN_A_BYTE - bitCnt - m)); // Logical shift right
       ret = ret | (y & 0xff);
       bitCnt += m;
     }

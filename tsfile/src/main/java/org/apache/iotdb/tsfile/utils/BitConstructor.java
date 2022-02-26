@@ -17,11 +17,6 @@ package org.apache.iotdb.tsfile.utils;
 
 import org.eclipse.collections.impl.list.mutable.primitive.ByteArrayList;
 
-/**
- * 大端，低字节存储高位
- *
- * @author Wang Haoyu
- */
 public class BitConstructor {
 
   private static final int BITS_IN_A_BYTE = 8;
@@ -39,9 +34,10 @@ public class BitConstructor {
   }
 
   public void add(long x, int len) {
-    x = x & ~(ALL_MASK << len); // 保证x除最低的len位之外都是0
+    x = x & ~(ALL_MASK << len); // Make sure that all bits expect the lowest len bits of x are 0
     while (len > 0) {
-      int m = len + cnt >= BITS_IN_A_BYTE ? BITS_IN_A_BYTE - cnt : len; // 向cache中插入的bit数
+      // Number of bits inserted into cache
+      int m = len + cnt >= BITS_IN_A_BYTE ? BITS_IN_A_BYTE - cnt : len;
       len -= m;
       cnt += m;
       byte y = (byte) (x >> len);
@@ -72,7 +68,7 @@ public class BitConstructor {
     cnt = 0;
   }
 
-  /** 如果当前字节存在剩余位，则全部填充0 */
+  /** Fill the rest part of cache with 0 */
   public void pad() {
     if (cnt > 0) {
       data.add(cache);
