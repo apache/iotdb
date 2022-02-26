@@ -261,15 +261,11 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
       }
     }
     File compactionModsFileFromOld =
-        getFileFromDataDirs(
-            "sequence"
-                + File.separator
-                + tsFileManager.getStorageGroupName()
-                + File.separator
-                + tsFileManager.getVirtualStorageGroup()
+        new File(
+            tsFileManager.getStorageGroupDir()
                 + File.separator
                 + IoTDBConstant.COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD);
-    if (compactionModsFileFromOld != null && !compactionModsFileFromOld.delete()) {
+    if (compactionModsFileFromOld.exists() && !compactionModsFileFromOld.delete()) {
       LOGGER.error(
           "{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
           fullStorageGroupName,
@@ -289,12 +285,8 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
       List<TsFileIdentifier> targetFileIdentifiers, List<TsFileIdentifier> sourceFileIdentifiers) {
     try {
       File compactionModsFileFromOld =
-          getFileFromDataDirs(
-              "sequence"
-                  + File.separator
-                  + tsFileManager.getStorageGroupName()
-                  + File.separator
-                  + tsFileManager.getVirtualStorageGroup()
+          new File(
+              tsFileManager.getStorageGroupDir()
                   + File.separator
                   + IoTDBConstant.COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD);
       List<TsFileResource> targetFileResources = new ArrayList<>();
@@ -352,7 +344,7 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
           targetFileResources.add(targetResource);
 
           // append compaction modifications to target mods file and delete compaction mods file
-          if (compactionModsFileFromOld != null) {
+          if (compactionModsFileFromOld.exists()) {
             ModificationFile compactionModsFile =
                 new ModificationFile(compactionModsFileFromOld.getPath());
             appendCompactionModificationsFromOld(targetResource, compactionModsFile);
@@ -387,7 +379,7 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
       }
 
       // delete compaction mods file
-      if (compactionModsFileFromOld != null && !compactionModsFileFromOld.delete()) {
+      if (compactionModsFileFromOld.exists() && !compactionModsFileFromOld.delete()) {
         LOGGER.error(
             "{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
             fullStorageGroupName,
