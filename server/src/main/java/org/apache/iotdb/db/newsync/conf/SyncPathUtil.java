@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.newsync.utils;
+package org.apache.iotdb.db.newsync.conf;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
@@ -24,16 +24,26 @@ import java.io.File;
 
 /** Util for path generation in sync module */
 public class SyncPathUtil {
+  /** sender */
+
+  public static String getSenderPipeDir(String pipeName, long createTime) {
+    return IoTDBDescriptor.getInstance().getConfig().getNewSyncDir()
+        + File.separator
+        + SyncConstant.SENDER_PIPE_DIR_NAME
+        + String.format("-%s-%d", pipeName, createTime);
+  }
+
+  /** receiver */
   public static String getReceiverPipeLogDir(String pipeName, String remoteIp, long createTime) {
     return getReceiverPipeDir(pipeName, remoteIp, createTime)
         + File.separator
-        + SyncConstant.PIPELOG_DIR_NAME;
+        + SyncConstant.PIPE_LOG_DIR_NAME;
   }
 
   public static String getReceiverFileDataDir(String pipeName, String remoteIp, long createTime) {
     return getReceiverPipeDir(pipeName, remoteIp, createTime)
         + File.separator
-        + SyncConstant.FILEDATA_DIR_NAME;
+        + SyncConstant.FILE_DATA_DIR_NAME;
   }
 
   public static String getReceiverPipeDir(String pipeName, String remoteIp, long createTime) {

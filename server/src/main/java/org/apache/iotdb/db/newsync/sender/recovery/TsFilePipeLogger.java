@@ -22,9 +22,10 @@ package org.apache.iotdb.db.newsync.sender.recovery;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.newsync.conf.SyncConstant;
+import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
-import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
-import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
+import org.apache.iotdb.db.newsync.pipedata.data.TsFilePipeData;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.utils.FileUtils;
 
@@ -47,8 +48,8 @@ import java.util.List;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
-public class TsFilePipeLog {
-  private static final Logger logger = LoggerFactory.getLogger(TsFilePipeLog.class);
+public class TsFilePipeLogger {
+  private static final Logger logger = LoggerFactory.getLogger(TsFilePipeLogger.class);
 
   private final String pipeDir;
   private final String tsFileDir;
@@ -63,10 +64,10 @@ public class TsFilePipeLog {
   private BufferedWriter removeSerialNumberWriter;
   private long currentRemoveLogSize;
 
-  public TsFilePipeLog(TsFilePipe tsFilePipe) {
-    pipeDir = SenderConf.getPipeDir(tsFilePipe);
-    tsFileDir = new File(pipeDir, SenderConf.tsFileDirName).getPath();
-    pipeLogDir = new File(pipeDir, SenderConf.pipeLogDirName).getPath();
+  public TsFilePipeLogger(TsFilePipe tsFilePipe) {
+    pipeDir = SyncPathUtil.getSenderPipeDir(tsFilePipe.getName(), tsFilePipe.getCreateTime());
+    tsFileDir = new File(pipeDir, SyncConstant.FILE_DATA_DIR_NAME).getPath();
+    pipeLogDir = new File(pipeDir, SyncConstant.PIPE_LOG_DIR_NAME).getPath();
   }
 
   /** make hard link for tsfile * */
@@ -77,7 +78,7 @@ public class TsFilePipeLog {
       File modsHardLink = createHardLink(mods);
       if (modsOffset != 0L) {
         serializeModsOffset(
-            new File(modsHardLink.getPath() + SenderConf.modsOffsetFileSuffix), modsOffset);
+            new File(modsHardLink.getPath() + SyncConstant.MODS_OFFSET_FILE_SUFFIX), modsOffset);
       }
     } else if (modsOffset != 0L) {
       logger.warn(
@@ -147,6 +148,7 @@ public class TsFilePipeLog {
   public void addHistoryPipeData(PipeData pipeData) throws IOException {
     getHistoryOutputStream();
     pipeData.serialize(historyOutputStream);
+    historyOutputStream.flush();
   }
 
   private void getHistoryOutputStream() throws IOException {
@@ -157,7 +159,7 @@ public class TsFilePipeLog {
     // recover history pipe log
     File logDir = new File(pipeLogDir);
     logDir.mkdirs();
-    File historyPipeLog = new File(pipeLogDir, SenderConf.historyPipeLogName);
+    File historyPipeLog = new File(pipeLogDir, SyncConstant.HISTORY_PIPE_LOG_NAME);
     createFile(historyPipeLog);
     historyOutputStream = new DataOutputStream(new FileOutputStream(historyPipeLog, true));
   }
@@ -165,6 +167,7 @@ public class TsFilePipeLog {
   public synchronized void addRealTimePipeData(PipeData pipeData) throws IOException {
     getRealTimeOutputStream(pipeData.getSerialNumber());
     currentPipeLogSize += pipeData.serialize(realTimeOutputStream);
+    realTimeOutputStream.flush();
   }
 
   private void getRealTimeOutputStream(long serialNumber) throws IOException {
@@ -177,7 +180,7 @@ public class TsFilePipeLog {
         File writingPipeLog =
             new File(
                 pipeLogDir,
-                SenderConf.getRealTimePipeLogName(realTimePipeLogStartNumber.peekLast()));
+                SyncConstant.getPipeLogName(realTimePipeLogStartNumber.peekLast()));
         realTimeOutputStream = new DataOutputStream(new FileOutputStream(writingPipeLog, true));
         currentPipeLogSize = writingPipeLog.length();
       } else {
@@ -185,7 +188,7 @@ public class TsFilePipeLog {
       }
     }
 
-    if (currentPipeLogSize > SenderConf.defaultPipeLogSizeInByte) {
+    if (currentPipeLogSize > SyncConstant.DEFAULT_PIPE_LOG_SIZE_IN_BYTE) {
       moveToNextPipeLog(serialNumber);
     }
   }
@@ -197,8 +200,8 @@ public class TsFilePipeLog {
 
     logDir.mkdirs();
     for (File file : logDir.listFiles())
-      if (file.getName().endsWith(SenderConf.realTimePipeLogNameSuffix)) {
-        startNumbers.add(SenderConf.getSerialNumberFromPipeLogName(file.getName()));
+      if (file.getName().endsWith(SyncConstant.PIPE_LOG_NAME_SUFFIX)) {
+        startNumbers.add(SyncConstant.getSerialNumberFromPipeLogName(file.getName()));
       }
     if (startNumbers.size() != 0) {
       Collections.sort(startNumbers);
@@ -212,7 +215,7 @@ public class TsFilePipeLog {
     if (realTimeOutputStream != null) {
       realTimeOutputStream.close();
     }
-    File newPipeLog = new File(pipeLogDir, SenderConf.getRealTimePipeLogName(startSerialNumber));
+    File newPipeLog = new File(pipeLogDir, SyncConstant.getPipeLogName(startSerialNumber));
     createFile(newPipeLog);
 
     realTimeOutputStream = new DataOutputStream(new FileOutputStream(newPipeLog));
@@ -221,9 +224,19 @@ public class TsFilePipeLog {
   }
 
   /** remove pipe log data */
-  public void removePipeData(long serialNumber) throws IOException {
+  public void removePipeData(PipeData pipeData) throws IOException {
+    long serialNumber = pipeData.getSerialNumber();
     serializeRemoveSerialNumber(serialNumber);
 
+    // delete tsfile
+    if (PipeData.Type.TSFILE.equals(pipeData.getType())) {
+      List<File> tsFiles = ((TsFilePipeData) pipeData).getTsFiles();
+      for (File file : tsFiles) {
+        Files.deleteIfExists(file.toPath());
+      }
+    }
+
+    // delete pipe log
     if (serialNumber >= 0) {
       if (historyOutputStream != null) {
         removeHistoryPipeLog();
@@ -250,7 +263,7 @@ public class TsFilePipeLog {
   private void removeHistoryPipeLog() throws IOException {
     historyOutputStream.close();
     historyOutputStream = null;
-    File historyPipeLog = new File(pipeLogDir, SenderConf.historyPipeLogName);
+    File historyPipeLog = new File(pipeLogDir, SyncConstant.HISTORY_PIPE_LOG_NAME);
     try {
       Files.delete(historyPipeLog.toPath());
     } catch (NoSuchFileException e) {
@@ -260,8 +273,7 @@ public class TsFilePipeLog {
   }
 
   private void removeRealTimePipeLog(long serialNumber) throws IOException {
-    File realTimePipeLog = new File(pipeLogDir, SenderConf.getRealTimePipeLogName(serialNumber));
-    removeTsFile(realTimePipeLog);
+    File realTimePipeLog = new File(pipeLogDir, SyncConstant.getPipeLogName(serialNumber));
     try {
       Files.delete(realTimePipeLog.toPath());
     } catch (NoSuchFileException e) {
@@ -270,37 +282,18 @@ public class TsFilePipeLog {
     }
   }
 
-  private void removeTsFile(File realTimePipeLog) {
-    try {
-      List<PipeData> pipeData = TsFilePipeLogAnalyzer.parseFile(realTimePipeLog);
-      List<File> tsFiles;
-      for (PipeData data : pipeData)
-        if (PipeData.Type.TSFILE.equals(data.getType())) {
-          tsFiles = ((TsFilePipeData) data).getTsFiles();
-          for (File file : tsFiles) {
-            Files.deleteIfExists(file.toPath());
-          }
-        }
-    } catch (IOException e) {
-      logger.warn(
-          String.format(
-              "Can not parse pipe log %s, the tsfiles in this pipe log will not be deleted, because %s",
-              realTimePipeLog.getPath(), e));
-    }
-  }
-
   private void serializeRemoveSerialNumber(long serialNumber) throws IOException {
     if (removeSerialNumberWriter == null) {
       removeSerialNumberWriter =
           new BufferedWriter(
-              new FileWriter(new File(pipeLogDir, SenderConf.removeSerialNumberLogName)));
+              new FileWriter(new File(pipeLogDir, SyncConstant.REMOVE_LOG_NAME)));
       currentRemoveLogSize = 0;
     }
     removeSerialNumberWriter.write(String.valueOf(serialNumber));
     removeSerialNumberWriter.newLine();
     removeSerialNumberWriter.flush();
     currentRemoveLogSize += Long.BYTES;
-    if (currentRemoveLogSize >= SenderConf.defaultPipeLogSizeInByte) {
+    if (currentRemoveLogSize >= SyncConstant.DEFAULT_PIPE_LOG_SIZE_IN_BYTE) {
       removeSerialNumberWriter.close();
       removeSerialNumberWriter = null;
     }
@@ -308,7 +301,7 @@ public class TsFilePipeLog {
 
   public void finishCollect() {
     try {
-      if (createFile(new File(pipeDir, SenderConf.pipeCollectFinishLockName))) {
+      if (createFile(new File(pipeDir, SyncConstant.FINISH_COLLECT_LOCK_NAME))) {
         logger.info(String.format("Create finish collecting Lock file in %s.", pipeDir));
       }
     } catch (IOException e) {

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.newsync.sender.pipe;
 
 import org.apache.iotdb.db.exception.PipeSinkException;
-import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
+import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class IoTDBPipeSink implements PipeSink {
@@ -31,8 +31,8 @@ public class IoTDBPipeSink implements PipeSink {
   private int port;
 
   public IoTDBPipeSink(String name) {
-    ip = SenderConf.defaultPipeSinkIP;
-    port = SenderConf.defaultPipeSinkPort;
+    ip = SyncConstant.DEFAULT_PIPE_SINK_IP;
+    port = SyncConstant.DEFAULT_PIPE_SINK_PORT;
     this.name = name;
     type = Type.IoTDB;
   }

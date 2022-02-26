@@ -23,9 +23,9 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
-import org.apache.iotdb.db.newsync.utils.BufferedPipeDataBlockingQueue;
-import org.apache.iotdb.db.newsync.utils.SyncConstant;
-import org.apache.iotdb.db.newsync.utils.SyncPathUtil;
+import org.apache.iotdb.db.newsync.conf.BufferedPipeDataBlockingQueue;
+import org.apache.iotdb.db.newsync.conf.SyncConstant;
+import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

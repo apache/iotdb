@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.newsync.sender.recovery;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.newsync.conf.SyncConstant;
+import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
-import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 
 import org.slf4j.Logger;
@@ -51,8 +52,8 @@ public class TsFilePipeLogAnalyzer {
   private long removeSerialNumber;
 
   public TsFilePipeLogAnalyzer(TsFilePipe pipe) {
-    pipeDir = SenderConf.getPipeDir(pipe);
-    pipeLogDir = new File(pipeDir, SenderConf.pipeLogDirName).getPath();
+    pipeDir = SyncPathUtil.getSenderPipeDir(pipe.getName(), pipe.getCreateTime());
+    pipeLogDir = new File(pipeDir, SyncConstant.PIPE_LOG_DIR_NAME).getPath();
   }
 
   public BlockingDeque<PipeData> recover() {
@@ -71,7 +72,7 @@ public class TsFilePipeLogAnalyzer {
   }
 
   private void deserializeRemoveSerialNumber() {
-    File removeSerialNumberLog = new File(pipeLogDir, SenderConf.removeSerialNumberLogName);
+    File removeSerialNumberLog = new File(pipeLogDir, SyncConstant.REMOVE_LOG_NAME);
     if (!removeSerialNumberLog.exists()) {
       return;
     }
@@ -98,7 +99,7 @@ public class TsFilePipeLogAnalyzer {
   }
 
   private void recoverHistoryData() {
-    File historyPipeLog = new File(pipeLogDir, SenderConf.historyPipeLogName);
+    File historyPipeLog = new File(pipeLogDir, SyncConstant.HISTORY_PIPE_LOG_NAME);
     if (!historyPipeLog.exists()) {
       return;
     }
@@ -134,14 +135,14 @@ public class TsFilePipeLogAnalyzer {
 
     List<Long> startNumbers = new ArrayList<>();
     for (File file : pipeLogDir.listFiles())
-      if (file.getName().endsWith(SenderConf.realTimePipeLogNameSuffix)) {
-        startNumbers.add(SenderConf.getSerialNumberFromPipeLogName(file.getName()));
+      if (file.getName().endsWith(SyncConstant.PIPE_LOG_NAME_SUFFIX)) {
+        startNumbers.add(SyncConstant.getSerialNumberFromPipeLogName(file.getName()));
       }
     if (startNumbers.size() != 0) {
       Collections.sort(startNumbers);
       for (Long startNumber : startNumbers) {
         File realTimePipeLog =
-            new File(this.pipeLogDir, SenderConf.getRealTimePipeLogName(startNumber));
+            new File(this.pipeLogDir, SyncConstant.getPipeLogName(startNumber));
         try {
           List<PipeData> realTimeData = parseFile(realTimePipeLog);
           for (PipeData data : realTimeData)
@@ -158,7 +159,7 @@ public class TsFilePipeLogAnalyzer {
   }
 
   public boolean isCollectFinished() {
-    return new File(pipeDir, SenderConf.pipeCollectFinishLockName).exists();
+    return new File(pipeDir, SyncConstant.FINISH_COLLECT_LOCK_NAME).exists();
   }
 
   public static List<PipeData> parseFile(File file) throws IOException {
