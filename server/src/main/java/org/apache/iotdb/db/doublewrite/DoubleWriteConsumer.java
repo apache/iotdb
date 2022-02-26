@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.doublewrite;
 
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import org.slf4j.Logger;
@@ -57,8 +58,13 @@ public class DoubleWriteConsumer implements Runnable {
         try {
           head.position(0);
           transmitStatus = doubleWriteSessionPool.doubleWriteTransmit(head);
+        } catch (IoTDBConnectionException connectionException) {
+          // warn IoTDBConnectionException and retry
+          LOGGER.warn("DoubleWriteProtector can't transmit, retrying...", connectionException);
         } catch (Exception e) {
-          LOGGER.error("DoubleWriteConsumer can't transmit, retrying...", e);
+          // error exception and break
+          LOGGER.error("DoubleWriteProtector can't transmit", e);
+          break;
         }
 
         if (transmitStatus) {

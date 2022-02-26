@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.doublewrite;
 
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import org.slf4j.Logger;
@@ -49,9 +50,13 @@ public class DoubleWriteTask implements Runnable {
     try {
       physicalPlanBuffer.position(0);
       transmitStatus = doubleWriteSessionPool.doubleWriteTransmit(physicalPlanBuffer);
+    } catch (IoTDBConnectionException connectionException) {
+      // warn IoTDBConnectionException and do serialization
+      LOGGER.warn("DoubleWriteTask can't transmit", connectionException);
     } catch (Exception e) {
-      // log exception and do serialization
+      // error exception and return
       LOGGER.error("DoubleWriteTask can't transmit", e);
+      return;
     }
 
     // serialize the PhysicalPlan if transition failed
