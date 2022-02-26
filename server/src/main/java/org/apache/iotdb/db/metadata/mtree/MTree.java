@@ -32,7 +32,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
-import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -44,6 +43,7 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mtree.traverser.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.CollectorTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
@@ -1262,12 +1262,20 @@ public class MTree implements Serializable {
   /**
    * Get the count of timeseries matching the given path.
    *
-   * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @param pathPattern a path pattern or a full path, may contain wildcard.
+   * @param storageGroup the storage group path. If it's null, then the satisfied ones in all the
+   *     storage groups will be counted.
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path.
+   * @return the satisfied timeseries count.
    */
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+  public int getAllTimeseriesCount(
+      PartialPath pathPattern, PartialPath storageGroup, boolean isPrefixMatch)
       throws MetadataException {
     CounterTraverser counter = new MeasurementCounter(root, pathPattern);
     counter.setPrefixMatch(isPrefixMatch);
+    if (storageGroup != null) {
+      counter.setStorageGroupFilter(sg -> sg.equals(storageGroup.getFullPath()));
+    }
     counter.traverse();
     return counter.getCount();
   }
@@ -1275,10 +1283,11 @@ public class MTree implements Serializable {
   /**
    * Get the count of timeseries matching the given path.
    *
-   * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @param pathPattern a path pattern or a full path, may contain wildcard.
+   * @return the satisfied timeseries count.
    */
   public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
-    return getAllTimeseriesCount(pathPattern, false);
+    return getAllTimeseriesCount(pathPattern, null, false);
   }
 
   /**
@@ -1334,11 +1343,22 @@ public class MTree implements Serializable {
    * Get the count of nodes in the given level matching the given path. If using prefix match, the
    * path pattern is used to match prefix path. All timeseries start with the matched prefix path
    * will be counted.
+   *
+   * @param pathPattern a path pattern or a full path.
+   * @param storageGroup the storage group the nodes belong to. If it's null, it will query all
+   *     storage groups.
+   * @param level the level should match the level of the path.
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path.
+   * @return the count result.
    */
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
+  public int getNodesCountInGivenLevel(
+      PartialPath pathPattern, PartialPath storageGroup, int level, boolean isPrefixMatch)
       throws MetadataException {
     MNodeLevelCounter counter = new MNodeLevelCounter(root, pathPattern, level);
     counter.setPrefixMatch(isPrefixMatch);
+    if (storageGroup != null) {
+      counter.setStorageGroupFilter(sg -> sg.equals(storageGroup.getFullPath()));
+    }
     counter.traverse();
     return counter.getCount();
   }
@@ -1346,7 +1366,7 @@ public class MTree implements Serializable {
   /** Get the count of nodes in the given level matching the given path. */
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
       throws MetadataException {
-    return getNodesCountInGivenLevel(pathPattern, level, false);
+    return getNodesCountInGivenLevel(pathPattern, null, level, false);
   }
 
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(

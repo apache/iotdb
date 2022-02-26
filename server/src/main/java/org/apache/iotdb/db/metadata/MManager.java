@@ -49,6 +49,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
+import org.apache.iotdb.db.metadata.mtree.traverser.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.tag.TagManager;
@@ -363,7 +364,11 @@ public class MManager {
     }
   }
 
-  /** @return line number of the logFile */
+  /**
+   * Init mtree from the log file.
+   *
+   * @return line number of the logFile
+   */
   @SuppressWarnings("squid:S3776")
   private int initFromLog(File logFile) throws IOException {
     long time = System.currentTimeMillis();
@@ -1018,21 +1023,47 @@ public class MManager {
   }
 
   /**
-   * To calculate the count of timeseries matching given path. The path could be a pattern of a full
-   * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
-   * path. All timeseries start with the matched prefix path will be counted.
+   * To calculate the count of timeseries matching given path in the storage group. The path could
+   * be a pattern of a full path, may contain wildcard. If using prefix match, the path pattern is
+   * used to match prefix path. All timeseries start with the matched prefix path will be counted.
+   * If the storage group is null, then it will count all the paths matching the pattern in all
+   * storage groups.
+   *
+   * @param pathPattern a path pattern or a full path.
+   * @param storageGroup the storage group the nodes belong to. If it's null, it will query all
+   *     storage groups.
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path.
+   * @return the count result.
    */
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+  public int getAllTimeseriesCount(
+      PartialPath pathPattern, PartialPath storageGroup, boolean isPrefixMatch)
       throws MetadataException {
-    return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
+    return mtree.getAllTimeseriesCount(pathPattern, storageGroup, isPrefixMatch);
+  }
+
+  /**
+   * To calculate the count of timeseries matching given path in the storage group. The path could
+   * be a pattern of a full path, may contain wildcard.
+   *
+   * @param pathPattern a path pattern or a full path.
+   * @param storageGroup the storage group the nodes belong to. If it's null, it will query all
+   *     storage groups.
+   * @return the count result.
+   */
+  public int getAllTimeseriesCount(PartialPath pathPattern, PartialPath storageGroup)
+      throws MetadataException {
+    return getAllTimeseriesCount(pathPattern, storageGroup, false);
   }
 
   /**
    * To calculate the count of timeseries matching given path. The path could be a pattern of a full
    * path, may contain wildcard.
+   *
+   * @param pathPattern a path pattern or a full path.
+   * @return the count result.
    */
   public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
-    return getAllTimeseriesCount(pathPattern, false);
+    return getAllTimeseriesCount(pathPattern, null, false);
   }
 
   /**
@@ -1061,28 +1092,35 @@ public class MManager {
   }
 
   /**
+   * To calculate the count of nodes in the given level for given path pattern in the storage group.
+   *
+   * @param pathPattern a path pattern or a full path.
+   * @param level the level should match the level of the path.
+   * @param storageGroup the storage group the nodes belong to. If it's null, it will query all
+   *     storage groups.
+   * @return the count result.
+   */
+  public int getNodesCountInGivenLevel(PartialPath pathPattern, PartialPath storageGroup, int level)
+      throws MetadataException {
+    return getNodesCountInGivenLevel(pathPattern, storageGroup, level, false);
+  }
+
+  /**
    * To calculate the count of nodes in the given level for given path pattern. If using prefix
    * match, the path pattern is used to match prefix path. All timeseries start with the matched
    * prefix path will be counted.
    *
-   * @param pathPattern a path pattern or a full path
-   * @param level the level should match the level of the path
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   * @param pathPattern a path pattern or a full path.
+   * @param level the level should match the level of the path.
+   * @param storageGroup the storage group the nodes belong to. If it's null, it will query all
+   *     storage groups.
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path.
+   * @return the count result.
    */
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
+  public int getNodesCountInGivenLevel(
+      PartialPath pathPattern, PartialPath storageGroup, int level, boolean isPrefixMatch)
       throws MetadataException {
-    return mtree.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
-  }
-
-  /**
-   * To calculate the count of nodes in the given level for given path pattern.
-   *
-   * @param pathPattern a path pattern or a full path
-   * @param level the level should match the level of the path
-   */
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
-      throws MetadataException {
-    return getNodesCountInGivenLevel(pathPattern, level, false);
+    return mtree.getNodesCountInGivenLevel(pathPattern, storageGroup, level, isPrefixMatch);
   }
 
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
@@ -1798,16 +1836,6 @@ public class MManager {
   public void cacheMeta(
       PartialPath path, IMeasurementMNode measurementMNode, boolean needSetFullPath) {
     // do nothing
-  }
-
-  /**
-   * StorageGroupFilter filters unsatisfied storage groups in metadata queries to speed up and
-   * deduplicate.
-   */
-  @FunctionalInterface
-  public interface StorageGroupFilter {
-
-    boolean satisfy(String storageGroup);
   }
   // endregion
 

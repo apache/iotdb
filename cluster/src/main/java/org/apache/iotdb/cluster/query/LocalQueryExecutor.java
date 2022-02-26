@@ -30,6 +30,8 @@ import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.query.reader.mult.IMultBatchReader;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetCountRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetCountResponse;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
@@ -1000,19 +1002,25 @@ public class LocalQueryExecutor {
     return previousFill.getFillResult();
   }
 
-  public int getPathCount(List<String> pathsToQuery, int level)
+  public GetCountResponse getPathCount(GetCountRequest request)
       throws CheckConsistencyException, MetadataException {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
-
+    List<Integer> res = new ArrayList<>(request.getStorageGroups().size());
+    PartialPath pattern = new PartialPath(request.getPattern());
     int count = 0;
-    for (String s : pathsToQuery) {
-      if (level == -1) {
-        count += getCMManager().getAllTimeseriesCount(new PartialPath(s));
+    for (String s : request.getStorageGroups()) {
+      PartialPath sg = new PartialPath(s);
+      int currentCount;
+      int level = request.getLevel();
+      if (request.getLevel() == -1) {
+        currentCount = getCMManager().getAllTimeseriesCount(pattern, sg);
       } else {
-        count += getCMManager().getNodesCountInGivenLevel(new PartialPath(s), level);
+        currentCount = getCMManager().getNodesCountInGivenLevel(pattern, sg, level);
       }
+      count += currentCount;
+      res.add(currentCount);
     }
-    return count;
+    return new GetCountResponse(res, count);
   }
 
   public int getDeviceCount(List<String> pathsToQuery)

@@ -132,6 +132,18 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return new PartialPath(newPathNodes);
   }
 
+  /**
+   * Return the prefix of this path in the given level. The level starts at 0. If level is greater
+   * or equal than the node length, the whole path will be returned.
+   *
+   * @param level the prefix path level, starting from 0.
+   * @return the prefix path
+   */
+  public PartialPath getPrefixPath(int level) {
+    int len = Math.min(level + 1, getNodeLength());
+    return new PartialPath(Arrays.copyOf(nodes, len));
+  }
+
   public String[] getNodes() {
     return nodes;
   }

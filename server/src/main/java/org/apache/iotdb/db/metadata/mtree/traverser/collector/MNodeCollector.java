@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
@@ -33,9 +32,6 @@ import java.util.Set;
  * will not be processed more than once. If a level is not given, the current node is processed.
  */
 public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
-
-  // traverse for specific storage group
-  protected StorageGroupFilter storageGroupFilter = null;
 
   // level query option
   protected int targetLevel = -1;
@@ -85,10 +81,6 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
   }
 
   protected abstract void transferToResult(IMNode node);
-
-  public void setStorageGroupFilter(StorageGroupFilter storageGroupFilter) {
-    this.storageGroupFilter = storageGroupFilter;
-  }
 
   public void setTargetLevel(int targetLevel) {
     this.targetLevel = targetLevel;

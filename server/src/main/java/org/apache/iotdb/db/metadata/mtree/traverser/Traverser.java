@@ -53,6 +53,8 @@ public abstract class Traverser {
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
 
+  protected StorageGroupFilter storageGroupFilter;
+
   public Traverser(IMNode startNode, PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(startNode.getName())) {
@@ -82,6 +84,11 @@ public abstract class Traverser {
    * @throws MetadataException some result process may throw MetadataException
    */
   protected void traverse(IMNode node, int idx, int level) throws MetadataException {
+    if (storageGroupFilter != null
+        && node.isStorageGroup()
+        && !storageGroupFilter.satisfy(node.getFullPath())) {
+      return;
+    }
 
     if (processMatchedMNode(node, idx, level)) {
       return;
@@ -274,7 +281,9 @@ public abstract class Traverser {
     return new PartialPath(builder.toString());
   }
 
-  /** @return the storage group node in the traverse path */
+  /**
+   * @return the storage group node in the traverse path
+   */
   protected IMNode getStorageGroupNodeInTraversePath() {
     Iterator<IMNode> nodes = traverseContext.iterator();
     while (nodes.hasNext()) {
@@ -284,5 +293,9 @@ public abstract class Traverser {
       }
     }
     return null;
+  }
+
+  public void setStorageGroupFilter(StorageGroupFilter storageGroupFilter) {
+    this.storageGroupFilter = storageGroupFilter;
   }
 }

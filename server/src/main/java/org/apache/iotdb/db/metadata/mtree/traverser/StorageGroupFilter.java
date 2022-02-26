@@ -16,32 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.metadata.mtree.traverser;
 
-package org.apache.iotdb.cluster.query.filter;
+/**
+ * StorageGroupFilter filters unsatisfied storage groups in metadata queries to speed up and
+ * deduplicate.
+ */
+@FunctionalInterface
+public interface StorageGroupFilter {
 
-import org.apache.iotdb.cluster.config.ClusterConstant;
-import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
-import org.apache.iotdb.db.metadata.mtree.traverser.StorageGroupFilter;
-
-import java.util.List;
-
-public class SlotSgFilter implements StorageGroupFilter {
-
-  private List<Integer> slots;
-
-  public SlotSgFilter(List<Integer> slots) {
-    this.slots = slots;
-  }
-
-  @Override
-  public boolean satisfy(String storageGroup) {
-    return satisfy(storageGroup, slots);
-  }
-
-  private static boolean satisfy(String storageGroup, List<Integer> nodeSlots) {
-    int slot =
-        SlotPartitionTable.getSlotStrategy()
-            .calculateSlotByPartitionNum(storageGroup, 0, ClusterConstant.SLOT_NUM);
-    return nodeSlots.contains(slot);
-  }
+  boolean satisfy(String storageGroup);
 }

@@ -30,6 +30,8 @@ import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
+import org.apache.iotdb.cluster.rpc.thrift.GetCountRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetCountResponse;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
@@ -257,11 +259,12 @@ public class SyncClientAdaptorTest {
 
           @Override
           public void getPathCount(
-              RaftNode header,
-              List<String> pathsToQuery,
-              int level,
-              AsyncMethodCallback<Integer> resultHandler) {
-            resultHandler.onComplete(pathsToQuery.size());
+              GetCountRequest request, AsyncMethodCallback<GetCountResponse> resultHandler) {
+            List<Integer> detailed = new ArrayList<>();
+            request.getStorageGroups().forEach(s -> detailed.add(1));
+            GetCountResponse resp =
+                new GetCountResponse(detailed, request.getStorageGroups().size());
+            resultHandler.onComplete(resp);
           }
 
           @Override
@@ -415,9 +418,12 @@ public class SyncClientAdaptorTest {
             SyncClientAdaptor.getAllPaths(dataClient, TestUtils.getRaftNode(0, 0), paths, false)
                 .paths);
     assertEquals(paths, result);
+    List<Integer> detailed = new ArrayList<>();
+    paths.forEach(s -> detailed.add(1));
     assertEquals(
-        paths.size(),
-        (int) SyncClientAdaptor.getPathCount(dataClient, TestUtils.getRaftNode(0, 0), paths, 0));
+        new GetCountResponse(detailed, paths.size()),
+        SyncClientAdaptor.getPathCount(
+            dataClient, new GetCountRequest(TestUtils.getRaftNode(0, 0), paths, "root.*", 0)));
     assertEquals(
         new HashSet<>(paths),
         SyncClientAdaptor.getAllDevices(dataClient, TestUtils.getRaftNode(0, 0), paths, false));

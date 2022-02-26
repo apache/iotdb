@@ -782,12 +782,12 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected int getPathsNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesCount(path, isPrefixMatch);
+    return IoTDB.metaManager.getAllTimeseriesCount(path, null, isPrefixMatch);
   }
 
   protected int getNodesNumInGivenLevel(PartialPath path, int level, boolean isPrefixMatch)
       throws MetadataException {
-    return IoTDB.metaManager.getNodesCountInGivenLevel(path, level, isPrefixMatch);
+    return IoTDB.metaManager.getNodesCountInGivenLevel(path, null, level, isPrefixMatch);
   }
 
   protected List<MeasurementPath> getPathsName(PartialPath path) throws MetadataException {

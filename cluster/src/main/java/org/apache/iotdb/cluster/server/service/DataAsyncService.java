@@ -27,6 +27,8 @@ import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
+import org.apache.iotdb.cluster.rpc.thrift.GetCountRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetCountResponse;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
@@ -449,13 +451,9 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void getPathCount(
-      RaftNode header,
-      List<String> pathsToQuery,
-      int level,
-      AsyncMethodCallback<Integer> resultHandler) {
+      GetCountRequest request, AsyncMethodCallback<GetCountResponse> resultHandler) {
     try {
-      resultHandler.onComplete(
-          dataGroupMember.getLocalQueryExecutor().getPathCount(pathsToQuery, level));
+      resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().getPathCount(request));
     } catch (CheckConsistencyException | MetadataException e) {
       resultHandler.onError(e);
     }

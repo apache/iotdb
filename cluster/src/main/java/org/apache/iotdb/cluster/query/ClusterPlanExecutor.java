@@ -31,6 +31,8 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.filter.SlotSgFilter;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
+import org.apache.iotdb.cluster.rpc.thrift.GetCountRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetCountResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -64,7 +66,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -72,6 +73,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -79,6 +81,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class ClusterPlanExecutor extends PlanExecutor {
 
@@ -321,60 +324,45 @@ public class ClusterPlanExecutor extends PlanExecutor {
     } catch (CheckConsistencyException e) {
       throw new MetadataException(e);
     }
+    // level >= 0 is the COUNT NODE query.
+    boolean countNode = level >= 0;
 
-    // Here we append a ** to the path to query the storage groups which have the prefix as 'path',
-    // if path doesn't end with **.
-    // e.g. we have SG root.sg.a and root.sg.b, the query path is root.sg, we should return the map
-    // with key root.sg.a and root.sg.b instead of an empty one.
-    PartialPath wildcardPath = path;
-    if (!wildcardPath.getMeasurement().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
-      wildcardPath = wildcardPath.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+    // This set is used to record the storage group whose level is larger than the queried one.
+    // Each storage group in this set will contribute 1 to the final result.
+    Set<PartialPath> matchedPrefixes = new HashSet<>();
+    Set<PartialPath> longSgPaths = new HashSet<>();
+    if (countNode) {
+      List<PartialPath> allSgs = IoTDB.metaManager.getAllStorageGroupPaths();
+      for (PartialPath sg : allSgs) {
+        if (sg.getNodeLength() >= level + 1 && path.matchPrefixPath(sg)) {
+          matchedPrefixes.add(sg.getPrefixPath(level));
+          longSgPaths.add(sg);
+        }
+      }
     }
-    Map<String, List<PartialPath>> sgPathMap =
-        IoTDB.metaManager.groupPathByStorageGroup(wildcardPath);
+    Map<String, List<PartialPath>> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(path);
     if (sgPathMap.isEmpty()) {
-      return 0;
+      return matchedPrefixes.size();
     }
     logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
     int ret = 0;
     try {
-      // level >= 0 is the COUNT NODE query
-      if (level >= 0) {
-        int prefixPartIdx = 0;
-        for (; prefixPartIdx < path.getNodeLength(); prefixPartIdx++) {
-          String currentPart = path.getNodes()[prefixPartIdx];
-          if (currentPart.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
-            break;
-          } else if (currentPart.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-            // Only level equals the first * occurred level, e.g. root.sg.d1.* and level = 4, the
-            // query makes sense.
-            if (level != prefixPartIdx) {
-              return 0;
-            }
-            break;
-          }
+      List<PartialPath> sgsToQuery = new ArrayList<>(sgPathMap.size());
+      // Here we fill out the storage groups in the matchedPrefixes as they only contribute 1 and
+      // don't need to query again.
+      for (String storageGroupName : sgPathMap.keySet()) {
+        PartialPath sg = new PartialPath(storageGroupName);
+        if (!longSgPaths.contains(sg)) {
+          sgsToQuery.add(sg);
         }
-        // if level is less than the query path level, there's no suitable node
-        if (level < prefixPartIdx - 1) {
-          return 0;
-        }
-        Set<String> deletedSg = new HashSet<>();
-        Set<PartialPath> matchedPath = new HashSet<>(0);
-        for (String sg : sgPathMap.keySet()) {
-          PartialPath p = new PartialPath(sg);
-          // if the storage group path level is larger than the query level, then the prefix must be
-          // a suitable node and there's no need to query children nodes later
-          if (p.getNodeLength() - 1 >= level) {
-            deletedSg.add(sg);
-            matchedPath.add(new PartialPath(Arrays.copyOfRange(p.getNodes(), 0, level + 1)));
-          }
-        }
-        for (String sg : deletedSg) {
-          sgPathMap.remove(sg);
-        }
-        ret += matchedPath.size();
       }
-      ret += getPathCount(sgPathMap, level);
+      if (sgsToQuery.size() > 0) {
+        Map<PartialPath, Integer> detailedPaths = getPathCount(sgsToQuery, path, level);
+        for (int v : detailedPaths.values()) {
+          ret += v;
+        }
+      }
+      ret += matchedPrefixes.size();
     } catch (CheckConsistencyException e) {
       throw new MetadataException(e);
     }
@@ -383,21 +371,22 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   /**
-   * Split the paths by the data group they belong to and query them from the groups separately.
+   * Query the path count with pattern and level in the given storage groups.
    *
-   * @param sgPathMap the key is the storage group name and the value is the path to be queried with
-   *     storage group added
-   * @param level the max depth to match the pattern, -1 means matching the whole pattern
-   * @return the number of paths that match the pattern at given level
+   * @param sgPaths the queried storage groups.
+   * @param pattern the queried pattern.
+   * @param level the max depth to match the pattern, -1 means matching the whole pattern.
+   * @return the key is the storage group path, the value is the node count in that storage group
+   *     matching the pattern in the level.
    */
-  private int getPathCount(Map<String, List<PartialPath>> sgPathMap, int level)
+  private Map<PartialPath, Integer> getPathCount(
+      List<PartialPath> sgPaths, PartialPath pattern, int level)
       throws MetadataException, CheckConsistencyException {
-    AtomicInteger result = new AtomicInteger();
-    // split the paths by the data group they belong to
-    Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
-    for (Entry<String, List<PartialPath>> sgPathEntry : sgPathMap.entrySet()) {
-      String storageGroupName = sgPathEntry.getKey();
-      List<PartialPath> paths = sgPathEntry.getValue();
+    ConcurrentHashMap<PartialPath, Integer> result = new ConcurrentHashMap<>();
+    // split the storage groups by the data group they belong to
+    Map<PartitionGroup, List<PartialPath>> remoteSgMap = new HashMap<>();
+    for (PartialPath sg : sgPaths) {
+      String storageGroupName = sg.getFullPath();
       // find the data group that should hold the timeseries schemas of the storage group
       PartitionGroup partitionGroup =
           metaGroupMember.getPartitionTable().route(storageGroupName, 0);
@@ -407,82 +396,83 @@ public class ClusterPlanExecutor extends PlanExecutor {
         metaGroupMember
             .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getRaftId())
             .syncLeaderWithConsistencyCheck(false);
-        int localResult = 0;
-        for (PartialPath path : paths) {
-          localResult += getLocalPathCount(path, level);
-        }
+        int localResult = getLocalPathCount(pattern, sg, level);
         logger.debug(
             "{}: get path count of {} locally, result {}",
             metaGroupMember.getName(),
-            partitionGroup,
+            sg,
             localResult);
-        result.addAndGet(localResult);
+        result.put(sg, localResult);
       } else {
         // batch the queries of the same group to reduce communication
-        for (PartialPath path : paths) {
-          groupPathMap
-              .computeIfAbsent(partitionGroup, p -> new ArrayList<>())
-              .add(path.getFullPath());
-        }
+        remoteSgMap.computeIfAbsent(partitionGroup, p -> new ArrayList<>()).add(sg);
       }
     }
-    if (groupPathMap.isEmpty()) {
-      return result.get();
+    if (remoteSgMap.isEmpty()) {
+      return result;
     }
     // TODO: create a thread pool for each query calling.
-    ExecutorService remoteQueryThreadPool = Executors.newFixedThreadPool(groupPathMap.size());
+    ExecutorService remoteQueryThreadPool = Executors.newFixedThreadPool(remoteSgMap.size());
     List<Future<Void>> remoteFutures = new ArrayList<>();
     // query each data group separately
-    for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry : groupPathMap.entrySet()) {
+    for (Entry<PartitionGroup, List<PartialPath>> partitionGroupPathEntry :
+        remoteSgMap.entrySet()) {
       PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
-      List<String> pathsToQuery = partitionGroupPathEntry.getValue();
+      List<PartialPath> sgsToQuery = partitionGroupPathEntry.getValue();
       remoteFutures.add(
           remoteQueryThreadPool.submit(
               () -> {
                 try {
-                  result.addAndGet(getRemotePathCount(partitionGroup, pathsToQuery, level));
+                  List<Integer> partsCount =
+                      getRemotePathCount(partitionGroup, sgsToQuery, pattern, level);
+                  for (int i = 0; i < sgsToQuery.size(); i++) {
+                    result.put(sgsToQuery.get(i), partsCount.get(i));
+                  }
                 } catch (MetadataException e) {
                   logger.warn(
-                      "Cannot get remote path count of {} from {}",
-                      pathsToQuery,
-                      partitionGroup,
-                      e);
+                      "Cannot get remote path count of {} from {}", sgsToQuery, partitionGroup, e);
                 }
                 return null;
               }));
     }
     waitForThreadPool(remoteFutures, remoteQueryThreadPool, "getPathCount()");
 
-    return result.get();
+    return result;
   }
 
-  private int getLocalPathCount(PartialPath path, int level) throws MetadataException {
+  private int getLocalPathCount(PartialPath pattern, PartialPath sg, int level)
+      throws MetadataException {
     int localResult;
     if (level == -1) {
-      localResult = IoTDB.metaManager.getAllTimeseriesCount(path);
+      localResult = IoTDB.metaManager.getAllTimeseriesCount(pattern, sg);
     } else {
-      localResult = IoTDB.metaManager.getNodesCountInGivenLevel(path, level);
+      localResult = IoTDB.metaManager.getNodesCountInGivenLevel(pattern, sg, level);
     }
     return localResult;
   }
 
-  private int getRemotePathCount(
-      PartitionGroup partitionGroup, List<String> pathsToQuery, int level)
+  private List<Integer> getRemotePathCount(
+      PartitionGroup partitionGroup, List<PartialPath> sgsToQuery, PartialPath pattern, int level)
       throws MetadataException {
     // choose the node with lowest latency or highest throughput
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
-    Integer count;
     for (Node node : coordinatedNodes) {
       try {
-        count = getRemotePathCountForOneNode(node, partitionGroup, pathsToQuery, level);
-        logger.debug(
-            "{}: get path count of {} from {}, result {}",
-            metaGroupMember.getName(),
-            partitionGroup,
-            node,
-            count);
-        if (count != null) {
-          return count;
+        GetCountResponse resp =
+            getRemotePathCountForOneNode(
+                node,
+                partitionGroup,
+                sgsToQuery.stream().map(PartialPath::getFullPath).collect(Collectors.toList()),
+                pattern.getFullPath(),
+                level);
+        if (resp != null) {
+          logger.debug(
+              "{}: get path count of {} from {}, result {}",
+              metaGroupMember.getName(),
+              partitionGroup,
+              node,
+              resp.getTotal());
+          return resp.getDetailedCounts();
         }
       } catch (IOException | TException e) {
         throw new MetadataException(e);
@@ -491,21 +481,22 @@ public class ClusterPlanExecutor extends PlanExecutor {
         throw new MetadataException(e);
       }
     }
-    logger.warn("Cannot get paths of {} from {}", pathsToQuery, partitionGroup);
-    return 0;
+    logger.warn("Cannot get paths of {} from {}", sgsToQuery, partitionGroup);
+    return sgsToQuery.stream().map(k -> 0).collect(Collectors.toList());
   }
 
-  private Integer getRemotePathCountForOneNode(
-      Node node, PartitionGroup partitionGroup, List<String> pathsToQuery, int level)
+  private GetCountResponse getRemotePathCountForOneNode(
+      Node node, PartitionGroup partitionGroup, List<String> sgsToQuery, String pattern, int level)
       throws IOException, TException, InterruptedException {
-    Integer count;
+    GetCountResponse resp;
+    GetCountRequest req =
+        new GetCountRequest(partitionGroup.getHeader(), sgsToQuery, pattern, level);
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
           ClusterIoTDB.getInstance()
               .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       client.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
-      count =
-          SyncClientAdaptor.getPathCount(client, partitionGroup.getHeader(), pathsToQuery, level);
+      resp = SyncClientAdaptor.getPathCount(client, req);
     } else {
       SyncDataClient syncDataClient = null;
       try {
@@ -513,7 +504,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         syncDataClient.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
-        count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
+        resp = syncDataClient.getPathCount(req);
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
         syncDataClient.close();
@@ -524,7 +515,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         }
       }
     }
-    return count;
+    return resp;
   }
 
   @Override

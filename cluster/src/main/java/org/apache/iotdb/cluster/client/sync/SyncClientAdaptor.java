@@ -29,6 +29,8 @@ import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
+import org.apache.iotdb.cluster.rpc.thrift.GetCountRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetCountResponse;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
@@ -355,13 +357,12 @@ public class SyncClientAdaptor {
     return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 
-  public static Integer getPathCount(
-      AsyncDataClient client, RaftNode header, List<String> pathsToQuery, int level)
+  public static GetCountResponse getPathCount(AsyncDataClient client, GetCountRequest request)
       throws InterruptedException, TException {
-    AtomicReference<Integer> remoteResult = new AtomicReference<>(null);
-    GenericHandler<Integer> handler = new GenericHandler<>(client.getNode(), remoteResult);
+    AtomicReference<GetCountResponse> remoteResult = new AtomicReference<>(null);
+    GenericHandler<GetCountResponse> handler = new GenericHandler<>(client.getNode(), remoteResult);
 
-    client.getPathCount(header, pathsToQuery, level, handler);
+    client.getPathCount(request, handler);
     return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 

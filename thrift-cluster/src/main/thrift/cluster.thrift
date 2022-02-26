@@ -276,6 +276,18 @@ struct MeasurementSchemaRequest {
   4: required binary planBinary
 }
 
+struct GetCountRequest {
+  1: required RaftNode header
+  2: required list<string> storageGroups
+  3: required string pattern
+  4: required int level
+}
+
+struct GetCountResponse {
+  1: required list<int> detailedCounts // the detailed count list in the given storage groups order
+  2: required int total; // the total path count
+}
+
 
 service RaftService {
   /**
@@ -470,7 +482,7 @@ service TSDataService extends RaftService {
   **/
   binary last(1: LastQueryRequest request)
 
-  int getPathCount(1: RaftNode header, 2: list<string> pathsToQuery, 3: int level)
+  GetCountResponse getPathCount(1: GetCountRequest request)
 
   int getDeviceCount(1: RaftNode header, 2: list<string> pathsToQuery)
 

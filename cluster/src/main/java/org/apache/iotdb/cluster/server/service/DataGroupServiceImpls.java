@@ -25,6 +25,8 @@ import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
+import org.apache.iotdb.cluster.rpc.thrift.GetCountRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetCountResponse;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
@@ -432,14 +434,12 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void getPathCount(
-      RaftNode header,
-      List<String> pathsToQuery,
-      int level,
-      AsyncMethodCallback<Integer> resultHandler) {
+      GetCountRequest request, AsyncMethodCallback<GetCountResponse> resultHandler) {
     DataAsyncService service =
-        DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "count path");
+        DataGroupEngine.getInstance()
+            .getDataAsyncService(request.getHeader(), resultHandler, "count path");
     if (service != null) {
-      service.getPathCount(header, pathsToQuery, level, resultHandler);
+      service.getPathCount(request, resultHandler);
     }
   }
 
@@ -627,10 +627,10 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public int getPathCount(RaftNode header, List<String> pathsToQuery, int level) throws TException {
+  public GetCountResponse getPathCount(GetCountRequest request) throws TException {
     return DataGroupEngine.getInstance()
-        .getDataSyncService(header)
-        .getPathCount(header, pathsToQuery, level);
+        .getDataSyncService(request.getHeader())
+        .getPathCount(request);
   }
 
   @Override

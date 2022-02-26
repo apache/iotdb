@@ -27,6 +27,8 @@ import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
+import org.apache.iotdb.cluster.rpc.thrift.GetCountRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetCountResponse;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
@@ -422,9 +424,9 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public int getPathCount(RaftNode header, List<String> pathsToQuery, int level) throws TException {
+  public GetCountResponse getPathCount(GetCountRequest request) throws TException {
     try {
-      return dataGroupMember.getLocalQueryExecutor().getPathCount(pathsToQuery, level);
+      return dataGroupMember.getLocalQueryExecutor().getPathCount(request);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }
