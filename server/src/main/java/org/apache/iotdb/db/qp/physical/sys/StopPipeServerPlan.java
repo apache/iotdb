@@ -43,12 +43,12 @@ public class StopPipeServerPlan extends PhysicalPlan {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.START_PIPE_SERVER.ordinal());
+    stream.writeByte((byte) PhysicalPlanType.STOP_PIPE_SERVER.ordinal());
   }
 
   @Override
   public void serializeImpl(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.START_PIPE_SERVER.ordinal());
+    buffer.put((byte) PhysicalPlanType.STOP_PIPE_SERVER.ordinal());
   }
 
   @Override

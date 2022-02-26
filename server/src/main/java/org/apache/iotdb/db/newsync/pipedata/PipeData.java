@@ -20,11 +20,16 @@
 package org.apache.iotdb.db.newsync.pipedata;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.newsync.pipedata.data.DeletionPipeData;
+import org.apache.iotdb.db.newsync.pipedata.data.SchemaPipeData;
+import org.apache.iotdb.db.newsync.pipedata.data.TsFilePipeData;
 import org.apache.iotdb.db.newsync.receiver.load.ILoader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -32,7 +37,7 @@ import java.io.IOException;
 public abstract class PipeData {
   private static final Logger logger = LoggerFactory.getLogger(PipeData.class);
 
-  protected final long serialNumber;
+  protected long serialNumber;
 
   public PipeData(long serialNumber) {
     this.serialNumber = serialNumber;
@@ -42,17 +47,9 @@ public abstract class PipeData {
     return serialNumber;
   }
 
-  //    abstract public Loader.Type getLoaderType() {
-  //      if (tsFilePath != null) {
-  //        return Loader.Type.TsFile;
-  //      } else if (deletion != null) {
-  //        return Loader.Type.Deletion;
-  //      } else if (plan != null) {
-  //        return Loader.Type.PhysicalPlan;
-  //      }
-  //      logger.error("Wrong type for transport type.");
-  //      return null;
-  //    }
+  public void setSerialNumber(long serialNumber) {
+    this.serialNumber = serialNumber;
+  }
 
   public abstract Type getType();
 
@@ -63,6 +60,12 @@ public abstract class PipeData {
     stream.writeLong(serialNumber);
     serializeSize += Long.BYTES;
     return serializeSize;
+  }
+
+  public byte[] serialize() throws IOException {
+    ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+    serialize(new DataOutputStream(byteStream));
+    return byteStream.toByteArray();
   }
 
   public static PipeData deserialize(DataInputStream stream)
@@ -80,6 +83,10 @@ public abstract class PipeData {
         throw new UnsupportedOperationException(
             "Deserialize PipeData error because Unknown type " + type);
     }
+  }
+
+  public static PipeData deserialize(byte[] bytes) throws IllegalPathException, IOException {
+    return deserialize(new DataInputStream(new ByteArrayInputStream(bytes)));
   }
 
   public abstract ILoader createLoader();

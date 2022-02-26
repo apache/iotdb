@@ -19,7 +19,8 @@
  */
 package org.apache.iotdb.db.newsync.sender.recovery;
 
-import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
+import org.apache.iotdb.db.newsync.conf.SyncConstant;
+import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
@@ -45,7 +46,7 @@ public class SenderLogger {
         return;
       }
 
-      File senderLog = new File(SenderConf.senderLog);
+      File senderLog = new File(SyncPathUtil.getSysDir(), SyncConstant.SENDER_LOG_NAME);
       if (!senderLog.exists()) {
         if (!senderLog.getParentFile().exists()) {
           senderLog.getParentFile().mkdirs();
@@ -76,7 +77,7 @@ public class SenderLogger {
     getBufferedWriter();
     try {
       bw.write(Operator.OperatorType.DROP_PIPESINK.name());
-      bw.write(SenderConf.senderLogSplitCharacter);
+      bw.write(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
       bw.write(pipeSinkName);
       bw.newLine();
       bw.flush();
@@ -89,7 +90,7 @@ public class SenderLogger {
     getBufferedWriter();
     try {
       bw.write(Operator.OperatorType.CREATE_PIPE.name());
-      bw.write(SenderConf.senderLogSplitCharacter);
+      bw.write(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
       bw.write(String.valueOf(pipeCreateTime));
       bw.newLine();
       bw.write(plan.toString());
@@ -104,7 +105,7 @@ public class SenderLogger {
     getBufferedWriter();
     try {
       bw.write(type.name());
-      bw.write(SenderConf.senderLogSplitCharacter);
+      bw.write(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
       bw.write(pipeName);
       bw.newLine();
       bw.flush();

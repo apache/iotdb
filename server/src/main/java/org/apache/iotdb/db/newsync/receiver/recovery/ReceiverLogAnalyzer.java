@@ -21,8 +21,8 @@ package org.apache.iotdb.db.newsync.receiver.recovery;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
-import org.apache.iotdb.db.newsync.utils.SyncConstant;
-import org.apache.iotdb.db.newsync.utils.SyncPathUtil;
+import org.apache.iotdb.db.newsync.conf.SyncConstant;
+import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.service.ServiceType;
 
 import org.slf4j.Logger;

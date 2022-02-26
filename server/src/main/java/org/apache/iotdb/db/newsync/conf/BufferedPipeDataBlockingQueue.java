@@ -17,7 +17,7 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.newsync.utils;
+package org.apache.iotdb.db.newsync.conf;
 
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 
