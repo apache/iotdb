@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * DoubleWriteProducer using BlockingQueue to cache PhysicalPlan. And persist some PhysicalPlan when
@@ -47,6 +48,15 @@ public class DoubleWriteProducer {
   }
 
   public void put(ByteBuffer planBuffer) {
+    // It's better to go through producer-consumer module
+    if (doubleWriteQueue.size() == doubleWriteCacheSize) {
+      try {
+        TimeUnit.SECONDS.sleep(1);
+      } catch (InterruptedException ignore) {
+        // ignore
+      }
+    }
+
     // Persist when there are too many PhysicalPlan to transmit
     if (doubleWriteQueue.size() == doubleWriteCacheSize) {
       try {
