@@ -57,6 +57,12 @@ public class MaxSeriesMergeFileSelector extends MaxFileMergeFileSelector {
           resource.getUnseqFiles().size());
 
       searchMaxSeriesNum();
+      logger.error(
+          "selected seq files is {}, selected unseq files is {}, total seq files is {}, total unseq files is {}",
+          selectedSeqFiles,
+          selectedUnseqFiles,
+          resource.getSeqFiles(),
+          resource.getUnseqFiles());
       resource.setSeqFiles(selectedSeqFiles);
       resource.setUnseqFiles(selectedUnseqFiles);
       resource.removeOutdatedSeqReaders();

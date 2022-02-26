@@ -90,6 +90,8 @@ public class MergeFileTask {
     if (logger.isInfoEnabled()) {
       logger.info("{} starts to merge {} files", taskName, unmergedFiles.size());
     }
+
+    checkResourceValid();
     long startTime = System.currentTimeMillis();
     for (int i = 0; i < unmergedFiles.size(); i++) {
       TsFileResource seqFile = unmergedFiles.get(i);
@@ -134,6 +136,45 @@ public class MergeFileTask {
     if (logger.isInfoEnabled()) {
       logger.info(
           "{} has merged all files after {}ms", taskName, System.currentTimeMillis() - startTime);
+    }
+  }
+
+  void checkResourceValid() throws IOException {
+    // device -> [startTime, endTime]
+    Map<String, Long> devicesTimeRangeMap = new HashMap<>();
+    for (TsFileResource seqFile : resource.getSeqFiles()) {
+      TsFileIOWriter fileWriter = resource.getMergeFileWriter(seqFile, false);
+      Map<String, List<ChunkMetadata>> deviceChunkMetadataListMap =
+          fileWriter.getDeviceChunkMetadataMap();
+      for (Entry<String, List<ChunkMetadata>> entry : deviceChunkMetadataListMap.entrySet()) {
+        String device = entry.getKey();
+        if (!device.equals("root.Baoshan.670107E20.00")) {
+          continue;
+        }
+        List<ChunkMetadata> metadata = entry.getValue();
+
+        long maxEndTimeForThisFile = Long.MIN_VALUE;
+        long minStartTimeForThisFile = Long.MAX_VALUE;
+        for (ChunkMetadata chunkMetadata : metadata) {
+          if (chunkMetadata.getEndTime() > maxEndTimeForThisFile) {
+            maxEndTimeForThisFile = chunkMetadata.getEndTime();
+          }
+          if (chunkMetadata.getStartTime() < minStartTimeForThisFile) {
+            minStartTimeForThisFile = chunkMetadata.getStartTime();
+          }
+        }
+
+        if (devicesTimeRangeMap.containsKey(device)
+            && devicesTimeRangeMap.get(device) > minStartTimeForThisFile) {
+          //          logger.error(
+          //              "merge error occurs. seq file is {}, unseq file is {}, device is {}",
+          //              resource.getSeqFiles(),
+          //              resource.getUnseqFiles(),
+          //              device);
+          //          System.exit(-1);
+        }
+        devicesTimeRangeMap.put(device, maxEndTimeForThisFile);
+      }
     }
   }
 

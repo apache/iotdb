@@ -249,6 +249,20 @@ public class MergeResource {
   }
 
   public List<TsFileResource> getSeqFiles() {
+    List<TsFileResource> resources = new ArrayList<>(seqFiles);
+    resources.sort(
+        (o1, o2) -> {
+          try {
+            TsFileResource.TsFileName o1Name =
+                TsFileResource.getTsFileName(o1.getTsFile().getName());
+            TsFileResource.TsFileName o2Name =
+                TsFileResource.getTsFileName(o2.getTsFile().getName());
+            return (int) (o1Name.getTime() - o2Name.getTime());
+          } catch (IOException e) {
+            e.printStackTrace();
+            return 0;
+          }
+        });
     return seqFiles;
   }
 
