@@ -286,7 +286,7 @@ public class TsFilePipeLogger {
     if (removeSerialNumberWriter == null) {
       removeSerialNumberWriter =
           new BufferedWriter(
-              new FileWriter(new File(pipeLogDir, SyncConstant.REMOVE_LOG_NAME)));
+              new FileWriter(new File(pipeLogDir, SyncConstant.COMMIT_LOG_NAME)));
       currentRemoveLogSize = 0;
     }
     removeSerialNumberWriter.write(String.valueOf(serialNumber));

@@ -9,7 +9,7 @@ public interface PipeDataQueue {
 
     List<PipeData> pull(long serialNumber);
 
-    PipeData blockingPull();
+    PipeData take() throws InterruptedException;
 
     void commit();
 
