@@ -509,7 +509,7 @@ public class MergeMultiChunkTask {
               chunk,
               chunkWriter,
               unseqReader,
-              isLastChunk ? currMeta.getEndTime() : resourceEndTime,
+              isLastChunk ? resourceEndTime : currMeta.getEndTime(),
               pathIdx);
       mergedChunkNum.incrementAndGet();
     }

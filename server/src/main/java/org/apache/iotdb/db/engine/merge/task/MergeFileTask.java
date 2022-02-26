@@ -166,12 +166,12 @@ public class MergeFileTask {
 
         if (devicesTimeRangeMap.containsKey(device)
             && devicesTimeRangeMap.get(device) > minStartTimeForThisFile) {
-          //          logger.error(
-          //              "merge error occurs. seq file is {}, unseq file is {}, device is {}",
-          //              resource.getSeqFiles(),
-          //              resource.getUnseqFiles(),
-          //              device);
-          //          System.exit(-1);
+          logger.error(
+              "merge error occurs. seq file is {}, unseq file is {}, device is {}",
+              resource.getSeqFiles(),
+              resource.getUnseqFiles(),
+              device);
+          System.exit(-1);
         }
         devicesTimeRangeMap.put(device, maxEndTimeForThisFile);
       }
