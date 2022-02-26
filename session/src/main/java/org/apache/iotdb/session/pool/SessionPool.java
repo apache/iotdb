@@ -2097,6 +2097,7 @@ public class SessionPool {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
+        buffer.position(0);
         session.doubleWriteTransmit(buffer);
         putBack(session);
         return true;

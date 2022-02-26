@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.doublewrite;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.writelog.io.LogWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,9 +49,9 @@ public class DoubleWriteProducer {
   public void put(ByteBuffer planBuffer) {
     // Persist when there are too many PhysicalPlan to transmit
     if (doubleWriteQueue.size() == doubleWriteCacheSize) {
-      LogWriter doubleWriteLogWriter = service.acquireLogWriter();
       try {
-        doubleWriteLogWriter.write(planBuffer);
+        planBuffer.position(planBuffer.limit());
+        service.acquireLogWriter().write(planBuffer);
       } catch (IOException e) {
         LOGGER.error("DoubleWriteProducer can't serialize physicalPlan", e);
       }

@@ -718,18 +718,22 @@ public class TSServiceImpl implements TSIService.Iface {
       if (physicalPlan.isQuery()) {
         return submitQueryTask(physicalPlan, startTime, req);
       } else {
-        if (isEnableDoubleWrite) {
+        TSExecuteStatementResp resp =
+            executeUpdateStatement(
+                statement,
+                req.statementId,
+                physicalPlan,
+                req.fetchSize,
+                req.timeout,
+                req.getSessionId());
+
+        if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && isEnableDoubleWrite) {
           // double write
           transmitDoubleWrite(physicalPlan);
         }
 
-        return executeUpdateStatement(
-            statement,
-            req.statementId,
-            physicalPlan,
-            req.fetchSize,
-            req.timeout,
-            req.getSessionId());
+        return resp;
       }
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
@@ -1594,12 +1598,14 @@ public class TSServiceImpl implements TSIService.Iface {
         return status;
       }
 
-      if (isEnableDoubleWrite) {
+      status = executeNonQueryPlan(plan);
+
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() && isEnableDoubleWrite) {
         // double write
         transmitDoubleWrite(plan);
       }
 
-      return executeNonQueryPlan(plan);
+      return status;
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_RECORD, e.getErrorCode());
     } catch (Exception e) {
@@ -1635,12 +1641,14 @@ public class TSServiceImpl implements TSIService.Iface {
         return status;
       }
 
-      if (isEnableDoubleWrite) {
+      status = executeNonQueryPlan(plan);
+
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() && isEnableDoubleWrite) {
         // double write
         transmitDoubleWrite(plan);
       }
 
-      return executeNonQueryPlan(plan);
+      return status;
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_STRING_RECORD, e.getErrorCode());
     } catch (Exception e) {
@@ -1700,12 +1708,14 @@ public class TSServiceImpl implements TSIService.Iface {
         return status;
       }
 
-      if (isEnableDoubleWrite) {
+      status = executeNonQueryPlan(insertTabletPlan);
+
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() && isEnableDoubleWrite) {
         // double write
         transmitDoubleWrite(insertTabletPlan);
       }
 
-      return executeNonQueryPlan(insertTabletPlan);
+      return status;
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_TABLET, e.getErrorCode());
     } catch (Exception e) {
@@ -2204,7 +2214,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
     if (physicalPlan instanceof InsertTabletPlan) {
       LOGGER.info(
-          "transmit: {}, count: {}",
+          "DoubleWrite receive: {}, count: {}",
           physicalPlan.getPaths().get(0),
           ((InsertTabletPlan) physicalPlan).getRowCount());
     }
@@ -2217,7 +2227,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
     if (physicalPlan instanceof InsertTabletPlan) {
       LOGGER.info(
-          "transmit: {}, count: {}",
+          "DoubleWrite transmit: {}, count: {}",
           physicalPlan.getPaths().get(0),
           ((InsertTabletPlan) physicalPlan).getRowCount());
     }
