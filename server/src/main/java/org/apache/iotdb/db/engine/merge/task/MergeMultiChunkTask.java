@@ -315,6 +315,7 @@ public class MergeMultiChunkTask {
     mergeFileWriter.startChunkGroup(deviceId);
     boolean dataWritten =
         mergeChunks(
+            deviceId,
             seqChunkMeta,
             isLastFile,
             fileSequenceReader,
@@ -343,6 +344,7 @@ public class MergeMultiChunkTask {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private boolean mergeChunks(
+      String deviceId,
       List<ChunkMetadata>[] seqChunkMeta,
       boolean isLastFile,
       TsFileSequenceReader reader,
@@ -396,6 +398,7 @@ public class MergeMultiChunkTask {
                       unseqReaders,
                       currFile,
                       isLastFile,
+                      currFile.getEndTime(deviceId),
                       i)));
 
       if (Thread.interrupted()) {
@@ -451,6 +454,8 @@ public class MergeMultiChunkTask {
       ChunkMetadata currMeta,
       boolean chunkOverflowed,
       boolean chunkTooSmall,
+      boolean isLastChunk,
+      long resourceEndTime,
       Chunk chunk,
       int lastUnclosedChunkPoint,
       int pathIdx,
@@ -500,7 +505,12 @@ public class MergeMultiChunkTask {
     } else {
       // 3.2 SK is overflowed, uncompress sequence chunk and merge with unseq chunk, then write
       unclosedChunkPoint +=
-          writeChunkWithUnseq(chunk, chunkWriter, unseqReader, currMeta.getEndTime(), pathIdx);
+          writeChunkWithUnseq(
+              chunk,
+              chunkWriter,
+              unseqReader,
+              isLastChunk ? currMeta.getEndTime() : resourceEndTime,
+              pathIdx);
       mergedChunkNum.incrementAndGet();
     }
 
@@ -589,6 +599,7 @@ public class MergeMultiChunkTask {
     private TsFileResource currFile;
     private boolean isLastFile;
     private int taskNum;
+    private long resourceEndTime;
 
     private int totalSeriesNum;
 
@@ -601,6 +612,7 @@ public class MergeMultiChunkTask {
         IPointReader[] unseqReaders,
         TsFileResource currFile,
         boolean isLastFile,
+        long resourceEndTime,
         int taskNum) {
       this.chunkIdxHeap = chunkIdxHeap;
       this.metaListEntries = metaListEntries;
@@ -612,6 +624,7 @@ public class MergeMultiChunkTask {
       this.isLastFile = isLastFile;
       this.taskNum = taskNum;
       this.totalSeriesNum = chunkIdxHeap.size();
+      this.resourceEndTime = resourceEndTime;
     }
 
     @Override
@@ -651,6 +664,8 @@ public class MergeMultiChunkTask {
                   currMeta,
                   chunkOverflowed,
                   chunkTooSmall,
+                  isLastChunk,
+                  resourceEndTime,
                   chunk,
                   ptWrittens[pathIdx],
                   pathIdx,

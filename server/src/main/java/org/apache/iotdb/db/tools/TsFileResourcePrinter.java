@@ -38,7 +38,8 @@ public class TsFileResourcePrinter {
   @SuppressWarnings("squid:S106")
   public static void main(String[] args) throws IOException {
 
-    String folder = "data/data/sequence/root.group_1/0";
+    String folder =
+        "D:\\Workspace\\iotdb\\data\\data\\sequence\\root.Baoshan\\4\\0\\1645862192442-4-0-1.tsfile.resource";
     if (args.length >= 1) {
       folder = args[0];
     }
@@ -78,9 +79,9 @@ public class TsFileResourcePrinter {
           "device %s, start time %d (%s), end time %d (%s)%n",
           device,
           resource.getStartTime(device),
-          DatetimeUtils.convertMillsecondToZonedDateTime(resource.getStartTime(device)),
+          DatetimeUtils.convertMillsecondToZonedDateTime(resource.getStartTime(device) / 1000000),
           resource.getEndTime(device),
-          DatetimeUtils.convertMillsecondToZonedDateTime(resource.getEndTime(device)));
+          DatetimeUtils.convertMillsecondToZonedDateTime(resource.getEndTime(device) / 1000000));
     }
     System.out.println();
   }
