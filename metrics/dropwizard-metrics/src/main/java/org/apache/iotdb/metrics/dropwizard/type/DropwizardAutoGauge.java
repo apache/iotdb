@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.dropwizard.type;
 
+import org.apache.iotdb.metrics.enums.OutPutFormat;
 import org.apache.iotdb.metrics.type.Gauge;
 
 import java.lang.ref.WeakReference;
@@ -60,5 +61,10 @@ public class DropwizardAutoGauge<T> implements Gauge, com.codahale.metrics.Gauge
   @Override
   public void set(long value) {
     throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
+  }
+
+  @Override
+  public StringBuffer toString(OutPutFormat format) {
+    return null;
   }
 }

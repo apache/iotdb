@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.impl;
 
+import org.apache.iotdb.metrics.enums.OutPutFormat;
 import org.apache.iotdb.metrics.type.Gauge;
 
 public class DoNothingGauge implements Gauge {
@@ -36,5 +37,10 @@ public class DoNothingGauge implements Gauge {
   @Override
   public void set(long value) {
     // do nothing
+  }
+
+  @Override
+  public StringBuffer toString(OutPutFormat format) {
+    return null;
   }
 }

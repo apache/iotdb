@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics;
 
+import org.apache.iotdb.metrics.enums.MetricLevel;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -35,9 +36,10 @@ public interface MetricManager {
   /**
    * Get Counter If exists, then return or create one to return
    *
+   * @param metricLevel
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
-  Counter getOrCreateCounter(String metric, String... tags);
+  Counter getOrCreateCounter(String metric, MetricLevel metricLevel, String... tags);
 
   /**
    * Get Gauge If exists, then return or create one to return
@@ -46,38 +48,44 @@ public interface MetricManager {
    * gc. NOTICE: When the obj has already been cleared by gc when you call the gauge's value(), then
    * you will get 0L;
    *
+   * @param metricLevel
    * @param obj which will be monitored automatically
    * @param mapper use which to map the obj to a long value
    */
-  <T> Gauge getOrCreateAutoGauge(String metric, T obj, ToLongFunction<T> mapper, String... tags);
+  <T> Gauge getOrCreateAutoGauge(
+      String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags);
 
   /**
    * Get Gauge If exists, then return or create one to return
    *
+   * @param metricLevel
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
-  Gauge getOrCreateGauge(String metric, String... tags);
+  Gauge getOrCreateGauge(String metric, MetricLevel metricLevel, String... tags);
 
   /**
    * Get Rate If exists, then return or create one to return
    *
+   * @param metricLevel
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
-  Rate getOrCreateRate(String metric, String... tags);
+  Rate getOrCreateRate(String metric, MetricLevel metricLevel, String... tags);
 
   /**
    * Get Histogram If exists, then return or create one to return
    *
+   * @param metricLevel
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
-  Histogram getOrCreateHistogram(String metric, String... tags);
+  Histogram getOrCreateHistogram(String metric, MetricLevel metricLevel, String... tags);
 
   /**
    * Get Timer If exists, then return or create one to return
    *
+   * @param metricLevel
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
-  Timer getOrCreateTimer(String metric, String... tags);
+  Timer getOrCreateTimer(String metric, MetricLevel metricLevel, String... tags);
 
   /** Update Counter */
   void count(long delta, String metric, String... tags);

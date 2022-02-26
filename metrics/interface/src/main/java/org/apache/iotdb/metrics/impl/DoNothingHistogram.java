@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.impl;
 
+import org.apache.iotdb.metrics.enums.OutPutFormat;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
@@ -37,5 +38,10 @@ public class DoNothingHistogram implements Histogram {
   @Override
   public HistogramSnapshot takeSnapshot() {
     return new DoNothingHistogramSnapshot();
+  }
+
+  @Override
+  public StringBuffer toString(OutPutFormat format) {
+    return null;
   }
 }

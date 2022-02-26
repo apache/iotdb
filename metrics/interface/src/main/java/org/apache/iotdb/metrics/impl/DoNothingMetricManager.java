@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.enums.MetricLevel;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -42,33 +43,33 @@ public class DoNothingMetricManager implements MetricManager {
   public static final DoNothingTimer doNothingTimer = new DoNothingTimer();
 
   @Override
-  public Counter getOrCreateCounter(String metric, String... tags) {
+  public Counter getOrCreateCounter(String metric, MetricLevel metricLevel, String... tags) {
     return doNothingCounter;
   }
 
   @Override
   public <T> Gauge getOrCreateAutoGauge(
-      String metric, T obj, ToLongFunction<T> mapper, String... tags) {
+      String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
     return doNothingGauge;
   }
 
   @Override
-  public Gauge getOrCreateGauge(String metric, String... tags) {
+  public Gauge getOrCreateGauge(String metric, MetricLevel metricLevel, String... tags) {
     return doNothingGauge;
   }
 
   @Override
-  public Histogram getOrCreateHistogram(String metric, String... tags) {
+  public Histogram getOrCreateHistogram(String metric, MetricLevel metricLevel, String... tags) {
     return doNothingHistogram;
   }
 
   @Override
-  public Rate getOrCreateRate(String metric, String... tags) {
+  public Rate getOrCreateRate(String metric, MetricLevel metricLevel, String... tags) {
     return doNothingRate;
   }
 
   @Override
-  public Timer getOrCreateTimer(String metric, String... tags) {
+  public Timer getOrCreateTimer(String metric, MetricLevel metricLevel, String... tags) {
     return doNothingTimer;
   }
 

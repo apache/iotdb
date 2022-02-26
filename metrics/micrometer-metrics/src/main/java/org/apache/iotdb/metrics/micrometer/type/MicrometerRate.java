@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.micrometer.type;
 
+import org.apache.iotdb.metrics.enums.OutPutFormat;
 import org.apache.iotdb.metrics.type.Rate;
 
 import com.codahale.metrics.Meter;
@@ -77,5 +78,10 @@ public class MicrometerRate implements Rate {
   public void mark(long n) {
     atomicLong.set(n);
     meter.mark(n);
+  }
+
+  @Override
+  public StringBuffer toString(OutPutFormat format) {
+    return null;
   }
 }

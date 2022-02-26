@@ -73,6 +73,7 @@ import org.apache.iotdb.db.service.metrics.Operation;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.metrics.enums.MetricLevel;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -2077,11 +2078,12 @@ public class TSServiceImpl implements TSIService.Iface {
     if (CONFIG.isEnablePerformanceStat()) {
       MetricsService.getInstance()
           .getMetricManager()
-          .getOrCreateHistogram("operation_histogram", "name", operation.getName())
+          .getOrCreateHistogram(
+              "operation_histogram", MetricLevel.NORMAL, "name", operation.getName())
           .update(System.currentTimeMillis() - startTime);
       MetricsService.getInstance()
           .getMetricManager()
-          .getOrCreateCounter("operation_count", "name", operation.getName())
+          .getOrCreateCounter("operation_count", MetricLevel.NORMAL, "name", operation.getName())
           .inc();
     }
   }

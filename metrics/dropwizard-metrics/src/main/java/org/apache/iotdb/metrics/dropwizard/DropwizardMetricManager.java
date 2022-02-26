@@ -23,6 +23,7 @@ import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.dropwizard.type.*;
+import org.apache.iotdb.metrics.enums.MetricLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.type.*;
 import org.apache.iotdb.metrics.type.Timer;
@@ -67,7 +68,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public Counter getOrCreateCounter(String metric, String... tags) {
+  public Counter getOrCreateCounter(String metric, MetricLevel metricLevel, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingCounter;
     }
@@ -83,7 +84,7 @@ public class DropwizardMetricManager implements MetricManager {
 
   @Override
   public <T> Gauge getOrCreateAutoGauge(
-      String metric, T obj, ToLongFunction<T> mapper, String... tags) {
+      String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingGauge;
     }
@@ -103,7 +104,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public Gauge getOrCreateGauge(String metric, String... tags) {
+  public Gauge getOrCreateGauge(String metric, MetricLevel metricLevel, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingGauge;
     }
@@ -124,7 +125,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public Rate getOrCreateRate(String metric, String... tags) {
+  public Rate getOrCreateRate(String metric, MetricLevel metricLevel, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingRate;
     }
@@ -139,7 +140,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public Histogram getOrCreateHistogram(String metric, String... tags) {
+  public Histogram getOrCreateHistogram(String metric, MetricLevel metricLevel, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingHistogram;
     }
@@ -157,7 +158,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public Timer getOrCreateTimer(String metric, String... tags) {
+  public Timer getOrCreateTimer(String metric, MetricLevel metricLevel, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingTimer;
     }

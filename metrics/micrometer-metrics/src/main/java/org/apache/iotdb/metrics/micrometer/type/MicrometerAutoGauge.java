@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.micrometer.type;
 
+import org.apache.iotdb.metrics.enums.OutPutFormat;
 import org.apache.iotdb.metrics.type.Gauge;
 
 import io.micrometer.core.instrument.Tags;
@@ -66,5 +67,10 @@ public class MicrometerAutoGauge<T> implements Gauge {
   @Override
   public void decr(long value) {
     throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
+  }
+
+  @Override
+  public StringBuffer toString(OutPutFormat format) {
+    return null;
   }
 }

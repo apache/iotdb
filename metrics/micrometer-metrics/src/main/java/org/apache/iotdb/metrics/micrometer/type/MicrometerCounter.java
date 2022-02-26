@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.micrometer.type;
 
+import org.apache.iotdb.metrics.enums.OutPutFormat;
 import org.apache.iotdb.metrics.type.Counter;
 
 public class MicrometerCounter implements Counter {
@@ -41,5 +42,10 @@ public class MicrometerCounter implements Counter {
   @Override
   public long count() {
     return (long) counter.count();
+  }
+
+  @Override
+  public StringBuffer toString(OutPutFormat format) {
+    return null;
   }
 }

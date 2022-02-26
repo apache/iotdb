@@ -19,4 +19,9 @@
 
 package org.apache.iotdb.metrics.type;
 
-public interface IMetric {}
+import org.apache.iotdb.metrics.enums.OutPutFormat;
+
+public interface IMetric {
+  /** format metric into string */
+  StringBuffer toString(OutPutFormat format);
+}

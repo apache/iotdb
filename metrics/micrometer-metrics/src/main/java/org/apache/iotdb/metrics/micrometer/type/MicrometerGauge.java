@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.micrometer.type;
 
+import org.apache.iotdb.metrics.enums.OutPutFormat;
 import org.apache.iotdb.metrics.type.Gauge;
 
 import io.micrometer.core.instrument.Tags;
@@ -53,5 +54,10 @@ public class MicrometerGauge implements Gauge {
   @Override
   public void set(long value) {
     atomicLong.set(value);
+  }
+
+  @Override
+  public StringBuffer toString(OutPutFormat format) {
+    return null;
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.dropwizard.type;
 
+import org.apache.iotdb.metrics.enums.OutPutFormat;
 import org.apache.iotdb.metrics.type.Rate;
 
 import com.codahale.metrics.Meter;
@@ -90,5 +91,10 @@ public class DropwizardRate implements Rate {
     if (meter != null) {
       meter.mark(n);
     }
+  }
+
+  @Override
+  public StringBuffer toString(OutPutFormat format) {
+    return null;
   }
 }
