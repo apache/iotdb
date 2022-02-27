@@ -141,8 +141,7 @@ public class TsFilePipeLogAnalyzer {
     if (startNumbers.size() != 0) {
       Collections.sort(startNumbers);
       for (Long startNumber : startNumbers) {
-        File realTimePipeLog =
-            new File(this.pipeLogDir, SyncConstant.getPipeLogName(startNumber));
+        File realTimePipeLog = new File(this.pipeLogDir, SyncConstant.getPipeLogName(startNumber));
         try {
           List<PipeData> realTimeData = parseFile(realTimePipeLog);
           for (PipeData data : realTimeData)

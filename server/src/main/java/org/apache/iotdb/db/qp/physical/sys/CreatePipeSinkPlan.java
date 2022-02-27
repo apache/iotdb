@@ -86,8 +86,12 @@ public class CreatePipeSinkPlan extends PhysicalPlan {
     builder.append(pipeSinkType).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
     builder.append(pipeSinkAttributes.size()).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
     for (int i = 0; i < pipeSinkAttributes.size(); i++) {
-      builder.append(pipeSinkAttributes.get(i).left).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
-      builder.append(pipeSinkAttributes.get(i).right).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
+      builder
+          .append(pipeSinkAttributes.get(i).left)
+          .append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
+      builder
+          .append(pipeSinkAttributes.get(i).right)
+          .append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
     }
     return builder.toString();
   }

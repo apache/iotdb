@@ -21,6 +21,7 @@ package org.apache.iotdb.db.newsync.conf;
 public class SyncConstant {
   /** sender */
   public static final String DEFAULT_PIPE_SINK_IP = "127.0.0.1";
+
   public static final int DEFAULT_PIPE_SINK_PORT = 6670;
 
   public static final String SENDER_PIPE_DIR_NAME = "sender";
@@ -46,8 +47,9 @@ public class SyncConstant {
     return Long.parseLong(pipeLogName.split("-")[0]);
   }
 
-  /** receiver  */
+  /** receiver */
   public static final String SYNC_SYS_DIR = "sys";
+
   public static final String RECEIVER_DIR = "receiver";
   public static final String RECEIVER_LOG_NAME = "receiverService.log";
   public static final String PIPE_LOG_DIR_NAME = "pipe-log";

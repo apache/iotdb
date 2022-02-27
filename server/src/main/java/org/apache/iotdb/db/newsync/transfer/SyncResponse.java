@@ -16,20 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.newsync.pipedata.queue;
+package org.apache.iotdb.db.newsync.transfer;
 
-import org.apache.iotdb.db.newsync.pipedata.PipeData;
-
-import java.util.List;
-
-public interface PipeDataQueue {
-  boolean offer(PipeData data);
-
-  List<PipeData> pull(long serialNumber);
-
-  PipeData blockingPull() throws InterruptedException;
-
-  void commit();
-
-  void clear();
+public class SyncResponse {
+    public static final int SUCCESS = 0;
+    public static final int WARN = 1;
+    public static final int ERROR = 2;
 }

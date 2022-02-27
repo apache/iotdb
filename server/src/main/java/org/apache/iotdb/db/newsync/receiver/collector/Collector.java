@@ -22,17 +22,15 @@ package org.apache.iotdb.db.newsync.receiver.collector;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.conf.BufferedPipeDataBlockingQueue;
-import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
+import org.apache.iotdb.db.newsync.pipedata.PipeData;
+import org.apache.iotdb.db.newsync.pipedata.queue.BufferedPipeDataQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -117,91 +115,41 @@ public class Collector {
   }
 
   private class ScanTask implements Runnable {
-    private final String scanPath;
+    private final BufferedPipeDataQueue pipeDataQueue;
 
-    private ScanTask(String dirPath) {
-      scanPath = dirPath;
+    private ScanTask(String pipeLogDir) {
+      pipeDataQueue = new BufferedPipeDataQueue(pipeLogDir);
     }
 
     @Override
     public void run() {
-      try {
-        while (!Thread.interrupted()) {
-          File dir = new File(scanPath);
-          if (dir.exists() && dir.isDirectory()) {
-            BufferedPipeDataBlockingQueue pipeDataQueue;
-            File[] files = dir.listFiles((d, s) -> !s.endsWith(SyncConstant.COLLECTOR_SUFFIX));
-            int nextIndex = 0;
-
-            if (files.length > 0) {
-              // read from disk
-              // TODO: Assuming that the file name is incremented by number
-              Arrays.sort(files, Comparator.comparingLong(o -> Long.parseLong(o.getName())));
-              try {
-                pipeDataQueue = parsePipeLogToBlockingQueue(files[0]);
-              } catch (IOException e) {
-                logger.error("Parse pipe data log {} error.", files[0].getPath());
-                // TODO: stop
-                return;
-              }
-            } else {
-              // read from buffer
-              // TODO: get buffer from transport, this is mock implement
-              pipeDataQueue = BufferedPipeDataBlockingQueue.getMock();
-            }
-
-            File recordFile = new File(pipeDataQueue.getFileName() + SyncConstant.COLLECTOR_SUFFIX);
-            if (recordFile.exists()) {
-              RandomAccessFile raf = new RandomAccessFile(recordFile, "r");
-              if (raf.length() > Integer.BYTES) {
-                raf.seek(raf.length() - Integer.BYTES);
-                nextIndex = raf.readInt() + 1;
-              }
-              raf.close();
-            }
-            DataOutputStream outputStream =
-                new DataOutputStream(new FileOutputStream(recordFile, true));
-            while (!pipeDataQueue.isEnd()) {
-              PipeData pipeData = null;
-              try {
-                pipeData = pipeDataQueue.take();
-              } catch (InterruptedException e) {
-                outputStream.close();
-                Thread.currentThread().interrupt();
-              }
-              int currentIndex = pipeDataQueue.getAndIncreaseIndex();
-              if (currentIndex < nextIndex) {
-                continue;
-              }
-              try {
-                logger.info(
-                    "Start load pipeData with serialize number {} and type {}",
-                    pipeData.getSerialNumber(),
-                    pipeData.getType());
-                pipeData.createLoader().load();
-                outputStream.writeInt(currentIndex);
-              } catch (Exception e) {
-                // TODO: how to response error message to sender?
-                // TODO: should drop this pipe?
-                logger.error(
-                    "Cannot load pipeData with serialize number {} and type {}, because {}",
-                    pipeData.getSerialNumber(),
-                    pipeData.getType(),
-                    e.getMessage());
-                break;
-              }
-            }
-            outputStream.close();
-            // if all success loaded, remove pipelog and record file
-            File pipeLog = new File(pipeDataQueue.getFileName());
-            if (pipeLog.exists()) {
-              Files.deleteIfExists(pipeLog.toPath());
-              Files.deleteIfExists(Paths.get(files[0].getPath() + SyncConstant.COLLECTOR_SUFFIX));
-            }
+      while (!Thread.interrupted()) {
+        PipeData pipeData = null;
+        try {
+          pipeData = pipeDataQueue.blockingPull();
+          logger.info(
+              "Start load pipeData with serialize number {} and type {}",
+              pipeData.getSerialNumber(),
+              pipeData.getType());
+          pipeData.createLoader().load();
+          pipeDataQueue.commit();
+        } catch (InterruptedException e) {
+          logger.warn(String.format("Be interrupted when waiting for pipe data, because %s", e));
+          Thread.currentThread().interrupt();
+        } catch (Exception e) {
+          // TODO: how to response error message to sender?
+          // TODO: should drop this pipe?
+          if (pipeData != null) {
+            logger.error(
+                "Cannot load pipeData with serialize number {} and type {}, because {}",
+                pipeData.getSerialNumber(),
+                pipeData.getType(),
+                e.getMessage());
+          } else {
+            logger.error("Cannot load pipeData because {}", e.getMessage());
           }
+          break;
         }
-      } catch (IOException e) {
-        logger.error(e.getMessage());
       }
     }
   }

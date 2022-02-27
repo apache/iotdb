@@ -20,11 +20,13 @@ package org.apache.iotdb.db.newsync.receiver;
 
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.receiver.collector.Collector;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
 import org.apache.iotdb.db.newsync.receiver.manager.ReceiverManager;
-import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
+import org.apache.iotdb.db.newsync.transfer.SyncRequest;
+import org.apache.iotdb.db.newsync.transfer.SyncResponse;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -85,6 +87,11 @@ public class ReceiverService implements IService {
       return false;
     }
     return true;
+  }
+
+  /** heartbeat RPC handle */
+  public SyncResponse recMsg(SyncRequest request){
+    return null;
   }
 
   /** create and start a new pipe named pipeName */

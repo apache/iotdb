@@ -179,8 +179,7 @@ public class TsFilePipeLogger {
       if (!realTimePipeLogStartNumber.isEmpty()) {
         File writingPipeLog =
             new File(
-                pipeLogDir,
-                SyncConstant.getPipeLogName(realTimePipeLogStartNumber.peekLast()));
+                pipeLogDir, SyncConstant.getPipeLogName(realTimePipeLogStartNumber.peekLast()));
         realTimeOutputStream = new DataOutputStream(new FileOutputStream(writingPipeLog, true));
         currentPipeLogSize = writingPipeLog.length();
       } else {
@@ -285,8 +284,7 @@ public class TsFilePipeLogger {
   private void serializeRemoveSerialNumber(long serialNumber) throws IOException {
     if (removeSerialNumberWriter == null) {
       removeSerialNumberWriter =
-          new BufferedWriter(
-              new FileWriter(new File(pipeLogDir, SyncConstant.REMOVE_LOG_NAME)));
+          new BufferedWriter(new FileWriter(new File(pipeLogDir, SyncConstant.REMOVE_LOG_NAME)));
       currentRemoveLogSize = 0;
     }
     removeSerialNumberWriter.write(String.valueOf(serialNumber));
