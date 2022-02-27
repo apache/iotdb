@@ -31,7 +31,6 @@ public interface MetricManager {
   /**
    * Get Counter If exists, then return or create one to return
    *
-   * @param metricLevel
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
   Counter getOrCreateCounter(String metric, MetricLevel metricLevel, String... tags);
@@ -43,7 +42,6 @@ public interface MetricManager {
    * gc. NOTICE: When the obj has already been cleared by gc when you call the gauge's value(), then
    * you will get 0L;
    *
-   * @param metricLevel
    * @param obj which will be monitored automatically
    * @param mapper use which to map the obj to a long value
    */
@@ -53,7 +51,6 @@ public interface MetricManager {
   /**
    * Get Gauge If exists, then return or create one to return
    *
-   * @param metricLevel
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
   Gauge getOrCreateGauge(String metric, MetricLevel metricLevel, String... tags);
@@ -61,7 +58,6 @@ public interface MetricManager {
   /**
    * Get Rate If exists, then return or create one to return
    *
-   * @param metricLevel
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
   Rate getOrCreateRate(String metric, MetricLevel metricLevel, String... tags);
@@ -69,7 +65,6 @@ public interface MetricManager {
   /**
    * Get Histogram If exists, then return or create one to return
    *
-   * @param metricLevel
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
   Histogram getOrCreateHistogram(String metric, MetricLevel metricLevel, String... tags);
@@ -77,25 +72,24 @@ public interface MetricManager {
   /**
    * Get Timer If exists, then return or create one to return
    *
-   * @param metricLevel
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
   Timer getOrCreateTimer(String metric, MetricLevel metricLevel, String... tags);
 
-  /** Update Counter */
-  void count(long delta, String metric, String... tags);
+  /** update Counter. Create if not exists */
+  void count(long delta, String metric, MetricLevel metricLevel, String... tags);
 
-  /** update Gauge */
-  void gauge(long value, String metric, String... tags);
+  /** set init value of Gauge. Create if not exists */
+  void gauge(long value, String metric, MetricLevel metricLevel, String... tags);
 
-  /** update Rate */
-  void rate(long value, String metric, String... tags);
+  /** update Rate. Create if not exists */
+  void rate(long value, String metric, MetricLevel metricLevel, String... tags);
 
-  /** update Histogram */
-  void histogram(long value, String metric, String... tags);
+  /** update Histogram. Create if not exists */
+  void histogram(long value, String metric, MetricLevel metricLevel, String... tags);
 
-  /** update Timer */
-  void timer(long delta, TimeUnit timeUnit, String metric, String... tags);
+  /** update Timer. Create if not exists */
+  void timer(long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags);
 
   /** remove counter */
   void removeCounter(String metric, String... tags);

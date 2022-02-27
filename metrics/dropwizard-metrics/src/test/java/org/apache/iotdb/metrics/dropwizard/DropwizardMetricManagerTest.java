@@ -131,9 +131,9 @@ public class DropwizardMetricManagerTest {
     Counter counter =
         metricManager.getOrCreateCounter("count_inc", MetricLevel.normal, "tag1", "tag2");
     assertNotNull(counter);
-    metricManager.count(10, "count_inc", "tag1", "tag2");
+    metricManager.count(10, "count_inc", MetricLevel.normal, "tag1", "tag2");
     assertEquals(counter.count(), 10);
-    metricManager.count(10L, "count_inc", "tag1", "tag2");
+    metricManager.count(10L, "count_inc", MetricLevel.normal, "tag1", "tag2");
     assertEquals(counter.count(), 20);
   }
 
@@ -141,10 +141,10 @@ public class DropwizardMetricManagerTest {
   public void gauge() {
     Gauge gauge1 = metricManager.getOrCreateGauge("gauge_set1", MetricLevel.normal, "tag1", "tag2");
     assertNotNull(gauge1);
-    metricManager.gauge(10, "gauge_set1", "tag1", "tag2");
+    metricManager.gauge(10, "gauge_set1", MetricLevel.normal, "tag1", "tag2");
     assertEquals(10, gauge1.value());
     Gauge gauge2 = metricManager.getOrCreateGauge("gauge_set2", MetricLevel.normal, "tag1", "tag2");
-    metricManager.gauge(20L, "gauge_set2", "tag1", "tag2");
+    metricManager.gauge(20L, "gauge_set2", MetricLevel.normal, "tag1", "tag2");
     assertEquals(20, gauge2.value());
   }
 
@@ -152,9 +152,9 @@ public class DropwizardMetricManagerTest {
   public void rate() {
     Rate rate = metricManager.getOrCreateRate("rate_mark", MetricLevel.normal, "tag1", "tag2");
     assertNotNull(rate);
-    metricManager.rate(10, "rate_mark", "tag1", "tag2");
+    metricManager.rate(10, "rate_mark", MetricLevel.normal, "tag1", "tag2");
     assertEquals(10, rate.getCount());
-    metricManager.rate(20L, "rate_mark", "tag1", "tag2");
+    metricManager.rate(20L, "rate_mark", MetricLevel.normal, "tag1", "tag2");
     assertEquals(30, rate.getCount());
   }
 
@@ -163,16 +163,16 @@ public class DropwizardMetricManagerTest {
     Histogram histogram =
         metricManager.getOrCreateHistogram("history_count", MetricLevel.normal, "tag1", "tag2");
     assertNotNull(histogram);
-    metricManager.histogram(10, "history_count", "tag1", "tag2");
-    metricManager.histogram(20L, "history_count", "tag1", "tag2");
-    metricManager.histogram(30, "history_count", "tag1", "tag2");
+    metricManager.histogram(10, "history_count", MetricLevel.normal, "tag1", "tag2");
+    metricManager.histogram(20L, "history_count", MetricLevel.normal, "tag1", "tag2");
+    metricManager.histogram(30, "history_count", MetricLevel.normal, "tag1", "tag2");
     try {
       Thread.sleep(1000);
     } catch (Exception e) {
       // do nothing
     }
-    metricManager.histogram(40L, "history_count", "tag1", "tag2");
-    metricManager.histogram(50, "history_count", "tag1", "tag2");
+    metricManager.histogram(40L, "history_count", MetricLevel.normal, "tag1", "tag2");
+    metricManager.histogram(50, "history_count", MetricLevel.normal, "tag1", "tag2");
     assertEquals(5, histogram.count());
     assertEquals(5, histogram.takeSnapshot().size());
     assertEquals(10, histogram.takeSnapshot().getMin());
@@ -184,16 +184,17 @@ public class DropwizardMetricManagerTest {
   @Test
   public void timer() {
     Timer timer = metricManager.getOrCreateTimer("timer_mark", MetricLevel.normal, "tag1", "tag2");
-    metricManager.timer(2L, TimeUnit.MINUTES, "timer_mark", "tag1", "tag2");
-    metricManager.timer(4L, TimeUnit.MINUTES, "timer_" + "mark", "tag1", "tag2");
-    metricManager.timer(6L, TimeUnit.MINUTES, "timer_mark", "tag1", "tag2");
+    metricManager.timer(2L, TimeUnit.MINUTES, "timer_mark", MetricLevel.normal, "tag1", "tag2");
+    metricManager.timer(
+        4L, TimeUnit.MINUTES, "timer_" + "mark", MetricLevel.normal, "tag1", "tag2");
+    metricManager.timer(6L, TimeUnit.MINUTES, "timer_mark", MetricLevel.normal, "tag1", "tag2");
     try {
       Thread.sleep(1000);
     } catch (Exception e) {
       // do nothing
     }
-    metricManager.timer(8L, TimeUnit.MINUTES, "timer_mark", "tag1", "tag2");
-    metricManager.timer(10L, TimeUnit.MINUTES, "timer_mark", "tag1", "tag2");
+    metricManager.timer(8L, TimeUnit.MINUTES, "timer_mark", MetricLevel.normal, "tag1", "tag2");
+    metricManager.timer(10L, TimeUnit.MINUTES, "timer_mark", MetricLevel.normal, "tag1", "tag2");
     assertEquals(5, timer.getImmutableRate().getCount());
     assertEquals(5, timer.takeSnapshot().size());
     assertEquals(120000000000L, timer.takeSnapshot().getMin());

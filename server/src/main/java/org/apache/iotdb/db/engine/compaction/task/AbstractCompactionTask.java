@@ -27,6 +27,7 @@ import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.enums.MetricLevel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,6 +81,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
               System.currentTimeMillis() - startTime,
               TimeUnit.MILLISECONDS,
               Metric.COST_TASK.toString(),
+              MetricLevel.normal,
               Tag.NAME.toString(),
               "compaction");
     }

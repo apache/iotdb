@@ -71,7 +71,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingCounter;
     }
-    MetricName name = new MetricName(metric, tags);
+    MetricName name = new MetricName(metric, metricLevel, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name, key -> new DropwizardCounter(metricRegistry.counter(name.toFlatString())));
@@ -87,7 +87,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingGauge;
     }
-    MetricName name = new MetricName(metric, tags);
+    MetricName name = new MetricName(metric, metricLevel, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -107,7 +107,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingGauge;
     }
-    MetricName name = new MetricName(metric, tags);
+    MetricName name = new MetricName(metric, metricLevel, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -128,7 +128,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingRate;
     }
-    MetricName name = new MetricName(metric, tags);
+    MetricName name = new MetricName(metric, metricLevel, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name, key -> new DropwizardRate(metricRegistry.meter(name.toFlatString())));
@@ -143,7 +143,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingHistogram;
     }
-    MetricName name = new MetricName(metric, tags);
+    MetricName name = new MetricName(metric, metricLevel, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -161,7 +161,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable()) {
       return DoNothingMetricManager.doNothingTimer;
     }
-    MetricName name = new MetricName(metric, tags);
+    MetricName name = new MetricName(metric, metricLevel, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -175,11 +175,11 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public void count(long delta, String metric, String... tags) {
-    if (!isEnable()) {
+  public void count(long delta, String metric, MetricLevel metricLevel, String... tags) {
+    if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName name = new MetricName(metric, tags);
+    MetricName name = new MetricName(metric, metricLevel, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name, key -> new DropwizardCounter(metricRegistry.counter(name.toFlatString())));
@@ -191,11 +191,11 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public void gauge(long value, String metric, String... tags) {
-    if (!isEnable()) {
+  public void gauge(long value, String metric, MetricLevel metricLevel, String... tags) {
+    if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName name = new MetricName(metric, tags);
+    MetricName name = new MetricName(metric, metricLevel, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -213,11 +213,11 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public void rate(long value, String metric, String... tags) {
-    if (!isEnable()) {
+  public void rate(long value, String metric, MetricLevel metricLevel, String... tags) {
+    if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName name = new MetricName(metric, tags);
+    MetricName name = new MetricName(metric, metricLevel, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name, key -> new DropwizardRate(metricRegistry.meter(name.toFlatString())));
@@ -229,11 +229,11 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public void histogram(long value, String metric, String... tags) {
-    if (!isEnable()) {
+  public void histogram(long value, String metric, MetricLevel metricLevel, String... tags) {
+    if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName name = new MetricName(metric, tags);
+    MetricName name = new MetricName(metric, metricLevel, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -248,11 +248,12 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public void timer(long delta, TimeUnit timeUnit, String metric, String... tags) {
-    if (!isEnable()) {
+  public void timer(
+      long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags) {
+    if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName name = new MetricName(metric, tags);
+    MetricName name = new MetricName(metric, metricLevel, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,

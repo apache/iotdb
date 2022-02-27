@@ -19,28 +19,18 @@
 
 package org.apache.iotdb.metrics.dropwizard;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import org.apache.iotdb.metrics.enums.MetricLevel;
+
+import java.util.*;
 
 /** the unique identifier of a metric, include a name and some tags. */
 public class MetricName {
   public static final String SEPARATOR = ":";
-  public static final Map<String, String> EMPTY_TAGS = Collections.emptyMap();
 
   private String name;
+  private MetricLevel metricLevel;
   private Map<String, String> tags;
 
-  /**
-   * the unique identifier of a metric, include a name and some tags.
-   *
-   * @param name metric name
-   * @param tags string appear in pairs, like sg="ln",user="user1" will be "sg", "ln", "user",
-   *     "user1"
-   */
   public MetricName(String name, String... tags) {
     this.name = name;
     this.tags = new HashMap<>();
@@ -48,10 +38,17 @@ public class MetricName {
       this.tags.put(tags[i], tags[i + 1]);
     }
   }
-
-  public MetricName(String name, Map<String, String> tags) {
-    this.name = name;
-    this.tags = tags;
+  /**
+   * the unique identifier of a metric, include a name and some tags.
+   *
+   * @param name metric name
+   * @param metricLevel metric level
+   * @param tags string appear in pairs, like sg="ln",user="user1" will be "sg", "ln", "user",
+   *     "user1"
+   */
+  public MetricName(String name, MetricLevel metricLevel, String... tags) {
+    this(name, tags);
+    this.metricLevel = metricLevel;
   }
 
   /**
@@ -84,7 +81,15 @@ public class MetricName {
 
   @Override
   public String toString() {
-    return "MetricName{" + "name='" + name + '\'' + ", tags=" + tags + '}';
+    return "MetricName{"
+        + "name='"
+        + name
+        + "'"
+        + ", metricLevel="
+        + metricLevel.name()
+        + ", tags="
+        + tags
+        + '}';
   }
 
   public String getName() {
@@ -93,6 +98,14 @@ public class MetricName {
 
   public void setName(String name) {
     this.name = name;
+  }
+
+  public MetricLevel getMetricLevel() {
+    return metricLevel;
+  }
+
+  public void setMetricLevel(MetricLevel metricLevel) {
+    this.metricLevel = metricLevel;
   }
 
   public Map<String, String> getTags() {
@@ -105,6 +118,7 @@ public class MetricName {
 
   @Override
   public boolean equals(Object obj) {
+    // do not compare metricLevel
     if (!(obj instanceof MetricName)) {
       return false;
     }
