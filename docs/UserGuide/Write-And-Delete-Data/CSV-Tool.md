@@ -191,6 +191,10 @@ Description:
   - whether to use the aligned interface? The option `false` is default.
   - example: `-aligned true`
 
+* `-batch`:
+  - specifying the point's number of a batch. If the program throw the exception `org.apache.thrift.transport.TTransportException: Frame size larger than protect max size`, you can lower this parameter as appropriate.
+  - example: `-batch 100000`, `100000` is the default value.
+
 ### Example
 
 ```sh
