@@ -53,9 +53,9 @@ public class MicrometerMetricManagerTest {
   }
 
   private void getOrCreateDifferentMetricsWithSameName() {
-    Timer timer = metricManager.getOrCreateTimer("metric", MetricLevel.NORMAL, "tag1", "tag2");
+    Timer timer = metricManager.getOrCreateTimer("metric", MetricLevel.normal, "tag1", "tag2");
     assertNotNull(timer);
-    metricManager.getOrCreateCounter("metric", MetricLevel.NORMAL, "tag1", "tag2");
+    metricManager.getOrCreateCounter("metric", MetricLevel.normal, "tag1", "tag2");
   }
 
   @Test
@@ -68,7 +68,7 @@ public class MicrometerMetricManagerTest {
     List<Integer> list = new ArrayList<>();
     Gauge autoGauge =
         metricManager.getOrCreateAutoGauge(
-            "autoGaugeMetric", MetricLevel.NORMAL, list, List::size, "tagk", "tagv");
+            "autoGaugeMetric", MetricLevel.normal, list, List::size, "tagk", "tagv");
     assertEquals(0L, autoGauge.value());
     list.add(1);
     assertEquals(1L, autoGauge.value());

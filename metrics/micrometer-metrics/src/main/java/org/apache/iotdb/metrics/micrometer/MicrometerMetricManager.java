@@ -26,7 +26,6 @@ import org.apache.iotdb.metrics.enums.MetricLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.micrometer.type.*;
 import org.apache.iotdb.metrics.type.*;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Metrics;
@@ -355,25 +354,9 @@ public class MicrometerMetricManager implements MetricManager {
     return metricMap;
   }
 
-  @Override
-  public void enablePredefinedMetric(PredefinedMetric metric) {
-    if (!isEnable) {
-      return;
-    }
-    switch (metric) {
-      case jvm:
-        enableJvmMetrics();
-        break;
-      case logback:
-        enableLogbackMetrics();
-        break;
-      default:
-        logger.warn("Unsupported metric type {}", metric);
-    }
-  }
-
   /** bind default metric to registry(or reporter */
   private void enableJvmMetrics() {
+    // TODO
     if (!isEnable) {
       return;
     }
@@ -392,6 +375,7 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   private void enableLogbackMetrics() {
+    // TODO
     if (!isEnable) {
       return;
     }

@@ -300,7 +300,7 @@ public class CompactionTaskManager implements IService {
             .getMetricManager()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
-                MetricLevel.NORMAL,
+                MetricLevel.normal,
                 Tag.NAME.toString(),
                 "compaction_" + taskType,
                 Tag.STATUS.toString(),

@@ -47,7 +47,7 @@ public class TsFileProcessorInfo {
           .getMetricManager()
           .getOrCreateGauge(
               Metric.MEM.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.normal,
               Tag.NAME.toString(),
               "chunkMetaData_"
                   + storageGroupInfo.getVirtualStorageGroupProcessor().getLogicalStorageGroupName())
@@ -64,7 +64,7 @@ public class TsFileProcessorInfo {
           .getMetricManager()
           .getOrCreateGauge(
               Metric.MEM.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.normal,
               Tag.NAME.toString(),
               "chunkMetaData_"
                   + storageGroupInfo.getVirtualStorageGroupProcessor().getLogicalStorageGroupName())
@@ -80,7 +80,7 @@ public class TsFileProcessorInfo {
           .getMetricManager()
           .getOrCreateGauge(
               Metric.MEM.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.normal,
               Tag.NAME.toString(),
               "chunkMetaData_"
                   + storageGroupInfo.getVirtualStorageGroupProcessor().getLogicalStorageGroupName())

@@ -23,7 +23,6 @@ import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import org.slf4j.Logger;
@@ -58,10 +57,7 @@ public abstract class MetricService {
     // start reporter
     compositeReporter.startAll();
 
-    for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
-      enablePredefinedMetric(predefinedMetric);
-    }
-    logger.info("Start predefined metric:" + metricConfig.getPredefinedMetrics());
+    logger.info("Start metric at level: " + metricConfig.getMetricLevel().name());
 
     collectFileSystemInfo();
   }
@@ -141,14 +137,6 @@ public abstract class MetricService {
    * @param reloadLevel
    */
   protected abstract void reloadProperties(ReloadLevel reloadLevel);
-
-  /**
-   * Enable some predefined metric, now support jvm, logback. Notice: In dropwizard mode, logback
-   * metrics are not supported
-   */
-  public void enablePredefinedMetric(PredefinedMetric metric) {
-    metricManager.enablePredefinedMetric(metric);
-  }
 
   public MetricManager getMetricManager() {
     return metricManager;

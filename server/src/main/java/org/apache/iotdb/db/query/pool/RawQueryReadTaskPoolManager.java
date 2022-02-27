@@ -56,7 +56,7 @@ public class RawQueryReadTaskPoolManager extends AbstractPoolManager {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.QUEUE.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.normal,
               pool,
               p -> ((ThreadPoolExecutor) p).getActiveCount(),
               Tag.NAME.toString(),
@@ -67,7 +67,7 @@ public class RawQueryReadTaskPoolManager extends AbstractPoolManager {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.QUEUE.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.normal,
               pool,
               p -> ((ThreadPoolExecutor) p).getQueue().size(),
               Tag.NAME.toString(),

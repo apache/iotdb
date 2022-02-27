@@ -27,7 +27,6 @@ import org.apache.iotdb.metrics.enums.MetricLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.type.*;
 import org.apache.iotdb.metrics.type.Timer;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
@@ -388,25 +387,12 @@ public class DropwizardMetricManager implements MetricManager {
     return isEnable;
   }
 
-  @Override
-  public void enablePredefinedMetric(PredefinedMetric metric) {
-    if (!isEnable) {
-      return;
-    }
-    switch (metric) {
-      case jvm:
-        enableJvmMetrics();
-        break;
-      default:
-        logger.warn("Unsupported metric type {}", metric);
-    }
-  }
-
   public MetricRegistry getMetricRegistry() {
     return metricRegistry;
   }
 
   private void enableJvmMetrics() {
+    // TODO remove
     if (!isEnable) {
       return;
     }

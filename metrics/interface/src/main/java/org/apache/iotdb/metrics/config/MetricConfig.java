@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.config;
 
+import org.apache.iotdb.metrics.enums.MetricLevel;
 import org.apache.iotdb.metrics.utils.MonitorType;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -40,6 +41,8 @@ public class MetricConfig {
   private List<ReporterType> metricReporterList =
       Arrays.asList(ReporterType.jmx, ReporterType.prometheus);
 
+  private MetricLevel metricLevel = MetricLevel.normal;
+
   private List<PredefinedMetric> predefinedMetrics = Arrays.asList(PredefinedMetric.jvm);
 
   /** the config of prometheus reporter */
@@ -47,10 +50,9 @@ public class MetricConfig {
 
   public void copy(MetricConfig newMetricConfig) {
     enableMetric = newMetricConfig.getEnableMetric();
-    predefinedMetrics = newMetricConfig.getPredefinedMetrics();
     monitorType = newMetricConfig.getMonitorType();
     metricReporterList = newMetricConfig.getMetricReporterList();
-    predefinedMetrics = newMetricConfig.getPredefinedMetrics();
+    metricLevel = newMetricConfig.getMetricLevel();
     prometheusReporterConfig = newMetricConfig.getPrometheusReporterConfig();
   }
 
@@ -94,12 +96,12 @@ public class MetricConfig {
     this.prometheusReporterConfig = prometheusReporterConfig;
   }
 
-  public List<PredefinedMetric> getPredefinedMetrics() {
-    return predefinedMetrics;
+  public MetricLevel getMetricLevel() {
+    return metricLevel;
   }
 
-  public void setPredefinedMetrics(List<PredefinedMetric> predefinedMetrics) {
-    this.predefinedMetrics = predefinedMetrics;
+  public void setMetricLevel(MetricLevel metricLevel) {
+    this.metricLevel = metricLevel;
   }
 
   /** the following is prometheus related config. */
@@ -147,7 +149,7 @@ public class MetricConfig {
         && pushPeriodInSecond.equals(anotherMetricConfig.getPushPeriodInSecond())
         && monitorType.equals(anotherMetricConfig.getMonitorType())
         && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
-        && predefinedMetrics.equals(anotherMetricConfig.getPredefinedMetrics())
+        && metricLevel.equals(anotherMetricConfig.getMetricLevel())
         && prometheusReporterConfig.equals(anotherMetricConfig.getPrometheusReporterConfig());
   }
 }

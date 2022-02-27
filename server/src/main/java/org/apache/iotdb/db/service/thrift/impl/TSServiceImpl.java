@@ -2079,11 +2079,11 @@ public class TSServiceImpl implements TSIService.Iface {
       MetricsService.getInstance()
           .getMetricManager()
           .getOrCreateHistogram(
-              "operation_histogram", MetricLevel.NORMAL, "name", operation.getName())
+              "operation_histogram", MetricLevel.normal, "name", operation.getName())
           .update(System.currentTimeMillis() - startTime);
       MetricsService.getInstance()
           .getMetricManager()
-          .getOrCreateCounter("operation_count", MetricLevel.NORMAL, "name", operation.getName())
+          .getOrCreateCounter("operation_count", MetricLevel.normal, "name", operation.getName())
           .inc();
     }
   }
