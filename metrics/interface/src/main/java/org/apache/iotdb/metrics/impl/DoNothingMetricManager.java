@@ -133,6 +133,11 @@ public class DoNothingMetricManager implements MetricManager {
   }
 
   @Override
+  public boolean isEnable(MetricLevel metricLevel) {
+    return false;
+  }
+
+  @Override
   public boolean init() {
     return false;
   }

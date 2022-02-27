@@ -157,6 +157,9 @@ public interface MetricManager {
   /** whether is enabled monitor */
   boolean isEnable();
 
+  /** whether is enabled monitor in specific level */
+  boolean isEnable(MetricLevel metricLevel);
+
   /**
    * init something.
    *

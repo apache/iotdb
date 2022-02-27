@@ -308,6 +308,7 @@ public class DropwizardMetricManagerTest {
   @Test
   public void isEnable() {
     assertTrue(metricManager.isEnable());
+    assertTrue(metricManager.isEnable(MetricLevel.normal));
   }
 
   @AfterClass

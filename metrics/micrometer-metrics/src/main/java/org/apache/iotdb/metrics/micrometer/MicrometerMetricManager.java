@@ -75,7 +75,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public Counter getOrCreateCounter(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable) {
+    if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingCounter;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.COUNTER, tags);
@@ -91,7 +91,7 @@ public class MicrometerMetricManager implements MetricManager {
   @Override
   public <T> Gauge getOrCreateAutoGauge(
       String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
-    if (!isEnable) {
+    if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingGauge;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
@@ -106,7 +106,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public Gauge getOrCreateGauge(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable) {
+    if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingGauge;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
@@ -120,7 +120,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public Histogram getOrCreateHistogram(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable) {
+    if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingHistogram;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
@@ -151,7 +151,7 @@ public class MicrometerMetricManager implements MetricManager {
    */
   @Override
   public Rate getOrCreateRate(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable) {
+    if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingRate;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
@@ -169,7 +169,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public Timer getOrCreateTimer(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable) {
+    if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingTimer;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.TIMER, tags);
@@ -192,7 +192,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public void count(long delta, String metric, String... tags) {
-    if (!isEnable) {
+    if (!isEnable()) {
       return;
     }
     io.micrometer.core.instrument.Counter innerCounter = meterRegistry.counter(metric, tags);
@@ -201,7 +201,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public void histogram(long value, String metric, String... tags) {
-    if (!isEnable) {
+    if (!isEnable()) {
       return;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
@@ -226,7 +226,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public void gauge(long value, String metric, String... tags) {
-    if (!isEnable) {
+    if (!isEnable()) {
       return;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
@@ -242,7 +242,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public void rate(long value, String metric, String... tags) {
-    if (!isEnable) {
+    if (!isEnable()) {
       return;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
@@ -261,7 +261,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public synchronized void timer(long delta, TimeUnit timeUnit, String metric, String... tags) {
-    if (!isEnable) {
+    if (!isEnable()) {
       return;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.TIMER, tags);
@@ -357,7 +357,7 @@ public class MicrometerMetricManager implements MetricManager {
   /** bind default metric to registry(or reporter */
   private void enableJvmMetrics() {
     // TODO
-    if (!isEnable) {
+    if (!isEnable()) {
       return;
     }
     ClassLoaderMetrics classLoaderMetrics = new ClassLoaderMetrics();
@@ -376,7 +376,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   private void enableLogbackMetrics() {
     // TODO
-    if (!isEnable) {
+    if (!isEnable()) {
       return;
     }
     new LogbackMetrics().bindTo(meterRegistry);
@@ -384,7 +384,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public void removeCounter(String metric, String... tags) {
-    if (!isEnable) {
+    if (!isEnable()) {
       return;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.COUNTER, tags);
@@ -393,7 +393,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public void removeGauge(String metric, String... tags) {
-    if (!isEnable) {
+    if (!isEnable()) {
       return;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
@@ -402,7 +402,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public void removeRate(String metric, String... tags) {
-    if (!isEnable) {
+    if (!isEnable()) {
       return;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
@@ -411,7 +411,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public void removeHistogram(String metric, String... tags) {
-    if (!isEnable) {
+    if (!isEnable()) {
       return;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
@@ -420,7 +420,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public void removeTimer(String metric, String... tags) {
-    if (!isEnable) {
+    if (!isEnable()) {
       return;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.TIMER, tags);
@@ -439,5 +439,10 @@ public class MicrometerMetricManager implements MetricManager {
   @Override
   public boolean isEnable() {
     return isEnable;
+  }
+
+  @Override
+  public boolean isEnable(MetricLevel metricLevel) {
+    return isEnable() && MetricLevel.isHigher(metricLevel, metricConfig.getMetricLevel());
   }
 }
