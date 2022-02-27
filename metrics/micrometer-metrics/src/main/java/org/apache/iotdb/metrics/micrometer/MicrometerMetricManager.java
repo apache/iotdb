@@ -33,6 +33,7 @@ import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.binder.jvm.*;
 import io.micrometer.core.instrument.binder.logging.LogbackMetrics;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -374,9 +375,25 @@ public class MicrometerMetricManager implements MetricManager {
     return metricMap;
   }
 
+  @Override
+  public void enablePredefinedMetric(PredefinedMetric metric) {
+    if (!isEnable) {
+      return;
+    }
+    switch (metric) {
+      case jvm:
+        enableJvmMetrics();
+        break;
+      case logback:
+        enableLogbackMetrics();
+        break;
+      default:
+        logger.warn("Unsupported metric type {}", metric);
+    }
+  }
+
   /** bind default metric to registry(or reporter */
   private void enableJvmMetrics() {
-    // TODO
     if (!isEnable()) {
       return;
     }
@@ -395,7 +412,6 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   private void enableLogbackMetrics() {
-    // TODO
     if (!isEnable()) {
       return;
     }

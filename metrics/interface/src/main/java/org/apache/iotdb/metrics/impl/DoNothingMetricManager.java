@@ -26,6 +26,7 @@ import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import java.util.Collections;
 import java.util.List;
@@ -136,6 +137,11 @@ public class DoNothingMetricManager implements MetricManager {
   @Override
   public boolean isEnable(MetricLevel metricLevel) {
     return false;
+  }
+
+  @Override
+  public void enablePredefinedMetric(PredefinedMetric metric) {
+
   }
 
   @Override

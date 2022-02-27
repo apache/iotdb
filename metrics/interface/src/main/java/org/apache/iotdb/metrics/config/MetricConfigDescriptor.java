@@ -110,7 +110,8 @@ public class MetricConfigDescriptor {
       } else if (metricConfig.getEnableMetric()) {
         // restart reporters or restart service
         if (!metricConfig.getMonitorType().equals(newMetricConfig.getMonitorType())
-            || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())) {
+            || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
+            || !metricConfig.getPredefinedMetrics().equals(newMetricConfig.getPredefinedMetrics())) {
           reloadLevel = ReloadLevel.RESTART_METRIC;
         } else {
           reloadLevel = ReloadLevel.RESTART_REPORTER;

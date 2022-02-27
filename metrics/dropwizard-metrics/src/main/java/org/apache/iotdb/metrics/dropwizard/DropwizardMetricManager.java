@@ -32,6 +32,7 @@ import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.UniformReservoir;
 import com.codahale.metrics.jvm.*;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -397,8 +398,21 @@ public class DropwizardMetricManager implements MetricManager {
     return metricRegistry;
   }
 
+  @Override
+  public void enablePredefinedMetric(PredefinedMetric metric) {
+    if (!isEnable) {
+      return;
+    }
+    switch (metric) {
+      case jvm:
+        enableJvmMetrics();
+        break;
+      default:
+        logger.warn("Unsupported metric type {}", metric);
+    }
+  }
+
   private void enableJvmMetrics() {
-    // TODO remove
     if (!isEnable()) {
       return;
     }

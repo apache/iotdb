@@ -31,6 +31,11 @@ monitorType: micrometer
 # Level of metric level
 metricLevel: all
 
+# Predefined metric, options: [jvm, logback], logback are not supported in dropwizard
+predefinedMetrics:
+  - jvm
+  - logback
+
 # Period time of push, only valid for dropwizard
 pushPeriodInSecond: 5
 

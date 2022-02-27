@@ -53,6 +53,7 @@ public class MetricConfig {
     monitorType = newMetricConfig.getMonitorType();
     metricReporterList = newMetricConfig.getMetricReporterList();
     metricLevel = newMetricConfig.getMetricLevel();
+    predefinedMetrics = newMetricConfig.getPredefinedMetrics();
     prometheusReporterConfig = newMetricConfig.getPrometheusReporterConfig();
   }
 
@@ -104,6 +105,14 @@ public class MetricConfig {
     this.metricLevel = metricLevel;
   }
 
+  public List<PredefinedMetric> getPredefinedMetrics() {
+    return predefinedMetrics;
+  }
+
+  public void setPredefinedMetrics(List<PredefinedMetric> predefinedMetrics) {
+    this.predefinedMetrics = predefinedMetrics;
+  }
+
   /** the following is prometheus related config. */
   public static class PrometheusReporterConfig {
     private String prometheusExporterUrl = "http://localhost";
@@ -150,6 +159,7 @@ public class MetricConfig {
         && monitorType.equals(anotherMetricConfig.getMonitorType())
         && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
+        && predefinedMetrics.equals(anotherMetricConfig.getPredefinedMetrics())
         && prometheusReporterConfig.equals(anotherMetricConfig.getPrometheusReporterConfig());
   }
 }
