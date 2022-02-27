@@ -19,46 +19,46 @@
 package org.apache.iotdb.db.newsync.transfer;
 
 public class SyncRequest {
-    public static final int CREATE = 0;
-    public static final int START = 1;
-    public static final int STOP = 2;
-    public static final int DROP = 3;
-    public static final int HEARTBEAT = 4;
+  public static final int CREATE = 0;
+  public static final int START = 1;
+  public static final int STOP = 2;
+  public static final int DROP = 3;
+  public static final int HEARTBEAT = 4;
 
-    private int code;
-    private String pipeName;
-    private String remoteIp;
-    private long createTime;
+  private int code;
+  private String pipeName;
+  private String remoteIp;
+  private long createTime;
 
-    public int getCode() {
-        return code;
-    }
+  public int getCode() {
+    return code;
+  }
 
-    public void setCode(int code) {
-        this.code = code;
-    }
+  public void setCode(int code) {
+    this.code = code;
+  }
 
-    public String getPipeName() {
-        return pipeName;
-    }
+  public String getPipeName() {
+    return pipeName;
+  }
 
-    public void setPipeName(String pipeName) {
-        this.pipeName = pipeName;
-    }
+  public void setPipeName(String pipeName) {
+    this.pipeName = pipeName;
+  }
 
-    public String getRemoteIp() {
-        return remoteIp;
-    }
+  public String getRemoteIp() {
+    return remoteIp;
+  }
 
-    public void setRemoteIp(String remoteIp) {
-        this.remoteIp = remoteIp;
-    }
+  public void setRemoteIp(String remoteIp) {
+    this.remoteIp = remoteIp;
+  }
 
-    public long getCreateTime() {
-        return createTime;
-    }
+  public long getCreateTime() {
+    return createTime;
+  }
 
-    public void setCreateTime(long createTime) {
-        this.createTime = createTime;
-    }
+  public void setCreateTime(long createTime) {
+    this.createTime = createTime;
+  }
 }

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
-import org.apache.iotdb.db.newsync.pipedata.data.TsFilePipeData;
+import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.newsync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.utils.FileUtils;
 
@@ -284,7 +284,7 @@ public class TsFilePipeLogger {
   private void serializeRemoveSerialNumber(long serialNumber) throws IOException {
     if (removeSerialNumberWriter == null) {
       removeSerialNumberWriter =
-          new BufferedWriter(new FileWriter(new File(pipeLogDir, SyncConstant.REMOVE_LOG_NAME)));
+          new BufferedWriter(new FileWriter(new File(pipeLogDir, SyncConstant.COMMIT_LOG_NAME)));
       currentRemoveLogSize = 0;
     }
     removeSerialNumberWriter.write(String.valueOf(serialNumber));

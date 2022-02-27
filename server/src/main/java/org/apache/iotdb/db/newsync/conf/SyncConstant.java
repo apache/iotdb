@@ -33,7 +33,7 @@ public class SyncConstant {
   public static final String PIPE_LOG_NAME_SUFFIX = "-pipe.log";
   public static final Long DEFAULT_PIPE_LOG_SIZE_IN_BYTE = 10485760L;
   public static final String HISTORY_PIPE_LOG_NAME = PIPE_LOG_NAME_SUFFIX + ".history";
-  public static final String REMOVE_LOG_NAME = "remove.log";
+  public static final String COMMIT_LOG_NAME = "commit.log";
 
   public static final String SENDER_LOG_NAME = "senderService.log";
   public static final String PLAN_SERIALIZE_SPLIT_CHARACTER = ",";
@@ -54,5 +54,4 @@ public class SyncConstant {
   public static final String RECEIVER_LOG_NAME = "receiverService.log";
   public static final String PIPE_LOG_DIR_NAME = "pipe-log";
   public static final String FILE_DATA_DIR_NAME = "file-data";
-  public static final String COLLECTOR_SUFFIX = ".collector";
 }

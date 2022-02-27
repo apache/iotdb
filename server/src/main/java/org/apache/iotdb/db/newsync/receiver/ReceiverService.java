@@ -90,7 +90,7 @@ public class ReceiverService implements IService {
   }
 
   /** heartbeat RPC handle */
-  public SyncResponse recMsg(SyncRequest request){
+  public SyncResponse recMsg(SyncRequest request) {
     return null;
   }
 

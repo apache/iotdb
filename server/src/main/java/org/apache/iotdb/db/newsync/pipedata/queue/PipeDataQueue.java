@@ -15,6 +15,7 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 package org.apache.iotdb.db.newsync.pipedata.queue;
 
@@ -27,7 +28,7 @@ public interface PipeDataQueue {
 
   List<PipeData> pull(long serialNumber);
 
-  PipeData blockingPull() throws InterruptedException;
+  PipeData take() throws InterruptedException;
 
   void commit();
 

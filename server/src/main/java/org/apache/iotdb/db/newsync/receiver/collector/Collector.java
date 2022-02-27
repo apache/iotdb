@@ -21,8 +21,6 @@ package org.apache.iotdb.db.newsync.receiver.collector;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.newsync.conf.BufferedPipeDataBlockingQueue;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.queue.BufferedPipeDataQueue;
@@ -93,32 +91,11 @@ public class Collector {
     taskFutures.remove(dir);
   }
 
-  private static BufferedPipeDataBlockingQueue parsePipeLogToBlockingQueue(File file)
-      throws IOException {
-    BufferedPipeDataBlockingQueue blockingQueue =
-        new BufferedPipeDataBlockingQueue(file.getAbsolutePath(), 100);
-    DataInputStream inputStream = new DataInputStream(new FileInputStream(file));
-    try {
-      while (true) {
-        blockingQueue.offer(PipeData.deserialize(inputStream));
-      }
-    } catch (EOFException e) {
-      logger.info(String.format("Finish parsing pipeLog %s.", file.getPath()));
-    } catch (IllegalPathException e) {
-      logger.error(String.format("Parsing pipeLog %s error, because %s", file.getPath(), e));
-      throw new IOException(e);
-    } finally {
-      inputStream.close();
-    }
-    blockingQueue.end();
-    return blockingQueue;
-  }
-
   private class ScanTask implements Runnable {
     private final BufferedPipeDataQueue pipeDataQueue;
 
     private ScanTask(String pipeLogDir) {
-      pipeDataQueue = new BufferedPipeDataQueue(pipeLogDir);
+      pipeDataQueue = BufferedPipeDataQueue.getInstance(pipeLogDir);
     }
 
     @Override
@@ -126,7 +103,7 @@ public class Collector {
       while (!Thread.interrupted()) {
         PipeData pipeData = null;
         try {
-          pipeData = pipeDataQueue.blockingPull();
+          pipeData = pipeDataQueue.take();
           logger.info(
               "Start load pipeData with serialize number {} and type {}",
               pipeData.getSerialNumber(),
@@ -134,7 +111,7 @@ public class Collector {
           pipeData.createLoader().load();
           pipeDataQueue.commit();
         } catch (InterruptedException e) {
-          logger.warn(String.format("Be interrupted when waiting for pipe data, because %s", e));
+          logger.warn("Be interrupted when waiting for pipe data, because {}", e.getMessage());
           Thread.currentThread().interrupt();
         } catch (Exception e) {
           // TODO: how to response error message to sender?

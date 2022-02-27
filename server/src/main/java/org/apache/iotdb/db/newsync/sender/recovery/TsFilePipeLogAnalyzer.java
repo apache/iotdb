@@ -72,7 +72,7 @@ public class TsFilePipeLogAnalyzer {
   }
 
   private void deserializeRemoveSerialNumber() {
-    File removeSerialNumberLog = new File(pipeLogDir, SyncConstant.REMOVE_LOG_NAME);
+    File removeSerialNumberLog = new File(pipeLogDir, SyncConstant.COMMIT_LOG_NAME);
     if (!removeSerialNumberLog.exists()) {
       return;
     }
