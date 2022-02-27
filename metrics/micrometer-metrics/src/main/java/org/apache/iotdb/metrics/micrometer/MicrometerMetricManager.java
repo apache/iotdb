@@ -26,6 +26,7 @@ import org.apache.iotdb.metrics.enums.MetricLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.micrometer.type.*;
 import org.apache.iotdb.metrics.type.*;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Metrics;
@@ -33,7 +34,6 @@ import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.binder.jvm.*;
 import io.micrometer.core.instrument.binder.logging.LogbackMetrics;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

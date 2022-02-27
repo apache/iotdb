@@ -140,9 +140,7 @@ public class DoNothingMetricManager implements MetricManager {
   }
 
   @Override
-  public void enablePredefinedMetric(PredefinedMetric metric) {
-
-  }
+  public void enablePredefinedMetric(PredefinedMetric metric) {}
 
   @Override
   public boolean init() {

@@ -27,12 +27,12 @@ import org.apache.iotdb.metrics.enums.MetricLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.type.*;
 import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.UniformReservoir;
 import com.codahale.metrics.jvm.*;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
