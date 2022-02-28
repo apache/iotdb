@@ -108,13 +108,11 @@ public class CachedMTreeStore implements IMTreeStore {
         if (node == null || !cacheStrategy.isCached(node)) {
           node = loadChildFromDisk(parent, name);
         } else {
-          synchronized (node) {
-            if (cacheStrategy.isCached(node)) {
-              pinMNodeInMemory(node);
-              cacheStrategy.updateCacheStatusAfterMemoryRead(node);
-            } else {
-              node = loadChildFromDisk(parent, name);
-            }
+          if (cacheStrategy.isCached(node)) {
+            pinMNodeInMemory(node);
+            cacheStrategy.updateCacheStatusAfterMemoryRead(node);
+          } else {
+            node = loadChildFromDisk(parent, name);
           }
         }
       }
@@ -259,14 +257,16 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   private void pinMNodeInMemory(IMNode node) {
-    if (!cacheStrategy.isPinned(node)) {
-      if (cacheStrategy.isCached(node)) {
-        memManager.upgradeMemResource(node);
-      } else {
-        memManager.requestPinnedMemResource(node);
+    synchronized (node) {
+      if (!cacheStrategy.isPinned(node)) {
+        if (cacheStrategy.isCached(node)) {
+          memManager.upgradeMemResource(node);
+        } else {
+          memManager.requestPinnedMemResource(node);
+        }
       }
+      cacheStrategy.pinMNode(node);
     }
-    cacheStrategy.pinMNode(node);
     if (memManager.isExceedCapacity()) {
       tryExecuteMemoryRelease();
     }
@@ -448,13 +448,11 @@ public class CachedMTreeStore implements IMTreeStore {
               // this branch means the node load from disk is in cache, thus use the instance in
               // cache
               node = parent.getChild(node.getName());
-              synchronized (node) {
-                if (cacheStrategy.isCached(node)) {
-                  pinMNodeInMemory(node);
-                  cacheStrategy.updateCacheStatusAfterMemoryRead(node);
-                } else {
-                  node = loadChildFromDisk(parent, node.getName());
-                }
+              if (cacheStrategy.isCached(node)) {
+                pinMNodeInMemory(node);
+                cacheStrategy.updateCacheStatusAfterMemoryRead(node);
+              } else {
+                node = loadChildFromDisk(parent, node.getName());
               }
             } else {
               node.setParent(parent);
