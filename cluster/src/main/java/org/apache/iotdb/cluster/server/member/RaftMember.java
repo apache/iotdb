@@ -273,6 +273,7 @@ public abstract class RaftMember {
     }
 
     startBackGroundThreads();
+    setSkipElection(false);
     logger.info("{} started", name);
   }
 
