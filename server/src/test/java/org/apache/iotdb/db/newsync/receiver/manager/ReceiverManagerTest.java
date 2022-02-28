@@ -34,6 +34,8 @@ public class ReceiverManagerTest {
   private static final String pipe2 = "pipe2";
   private static final String ip1 = "192.168.1.11";
   private static final String ip2 = "192.168.2.22";
+  private static final long createdTime1 = System.currentTimeMillis();
+  private static final long createdTime2 = System.currentTimeMillis() + 1;
 
   @Before
   public void setUp() throws Exception {
@@ -73,6 +75,20 @@ public class ReceiverManagerTest {
           Assert.assertEquals(new PipeInfo(pipe1, ip2, PipeStatus.DROP, 3), pipeInfo);
         }
       }
+      PipeMessage info = new PipeMessage(PipeMessage.MsgType.INFO, "info");
+      PipeMessage warn = new PipeMessage(PipeMessage.MsgType.WARN, "warn");
+      PipeMessage error = new PipeMessage(PipeMessage.MsgType.ERROR, "error");
+      manager.writePipeMessage(pipe1, ip1, createdTime1, info);
+      manager.writePipeMessage(pipe1, ip1, createdTime1, warn);
+      List<PipeMessage> messages = manager.getPipeMessages(pipe1, ip1, createdTime1);
+      Assert.assertEquals(2, messages.size());
+      Assert.assertEquals(info, messages.get(0));
+      Assert.assertEquals(warn, messages.get(1));
+      manager.writePipeMessage(pipe1, ip1, createdTime1, error);
+      messages = manager.getPipeMessages(pipe1, ip1, createdTime1);
+      Assert.assertEquals(1, messages.size());
+      Assert.assertEquals(error, messages.get(0));
+      manager.close();
     } catch (Exception e) {
       Assert.fail();
       e.printStackTrace();

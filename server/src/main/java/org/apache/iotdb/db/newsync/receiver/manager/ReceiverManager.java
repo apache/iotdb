@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.newsync.receiver.manager;
 
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.receiver.recovery.ReceiverLog;
 import org.apache.iotdb.db.newsync.receiver.recovery.ReceiverLogAnalyzer;
 
@@ -35,12 +36,15 @@ public class ReceiverManager {
   private boolean pipeServerEnable;
   // <pipeName, <remoteIp, pipeInfo>>
   private Map<String, Map<String, PipeInfo>> pipeInfoMap;
+  // <pipeFolderName, pipeMsg>
+  private Map<String, List<PipeMessage>> pipeMessageMap;
   private ReceiverLog log;
 
   public void init() throws StartupException {
     ReceiverLogAnalyzer.scan();
     pipeInfoMap = ReceiverLogAnalyzer.getPipeInfoMap();
     pipeServerEnable = ReceiverLogAnalyzer.isPipeServerEnable();
+    pipeMessageMap = ReceiverLogAnalyzer.getPipeMessageMap();
     log = new ReceiverLog();
   }
 
@@ -95,6 +99,43 @@ public class ReceiverManager {
     return res;
   }
 
+  public void writePipeMessage(
+      String pipeName, String remoteIp, long createTime, PipeMessage message) {
+    // TODO: 加锁
+    String pipeIdentifier = SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
+    try {
+      log.writePipeMsg(pipeIdentifier, message);
+    } catch (IOException e) {
+      logger.error(
+          "Can not write pipe message {} from {} to disk because {}",
+          message,
+          pipeIdentifier,
+          e.getMessage());
+    }
+    pipeMessageMap.computeIfAbsent(pipeIdentifier, i -> new ArrayList<>()).add(message);
+  }
+
+  public List<PipeMessage> getPipeMessages(String pipeName, String remoteIp, long createTime) {
+    // TODO: 加锁
+    String pipeIdentifier = SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
+    try {
+      log.readPipeMsg(pipeIdentifier);
+    } catch (IOException e) {
+      logger.error(
+          "Can not read pipe message about {} from disk because {}",
+          pipeIdentifier,
+          e.getMessage());
+    }
+    List<PipeMessage> res;
+    if (pipeMessageMap.containsKey(pipeIdentifier)) {
+      res = pipeMessageMap.get(pipeIdentifier);
+      pipeMessageMap.remove(pipeIdentifier);
+    } else {
+      res = new ArrayList<>();
+    }
+    return res;
+  }
+
   public boolean isPipeServerEnable() {
     return pipeServerEnable;
   }
@@ -104,14 +145,14 @@ public class ReceiverManager {
   }
 
   public static ReceiverManager getInstance() {
-    return ReceiverMonitorHolder.INSTANCE;
+    return ReceiverManagerHolder.INSTANCE;
   }
 
   private ReceiverManager() {}
 
-  private static class ReceiverMonitorHolder {
+  private static class ReceiverManagerHolder {
     private static final ReceiverManager INSTANCE = new ReceiverManager();
 
-    private ReceiverMonitorHolder() {}
+    private ReceiverManagerHolder() {}
   }
 }

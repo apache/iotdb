@@ -21,14 +21,17 @@ package org.apache.iotdb.db.newsync.receiver.collector;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.queue.BufferedPipeDataQueue;
+import org.apache.iotdb.db.newsync.pipedata.queue.PipeDataQueue;
+import org.apache.iotdb.db.newsync.receiver.manager.PipeMessage;
+import org.apache.iotdb.db.newsync.receiver.manager.ReceiverManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -80,26 +83,33 @@ public class Collector {
   }
 
   public void startPipe(String pipeName, String remoteIp, long createTime) {
-    String dir = SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime);
-    ScanTask task = new ScanTask(dir);
+    String dir = SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
+    ScanTask task = new ScanTask(pipeName, remoteIp, createTime);
     taskFutures.put(dir, executorService.submit(task));
   }
 
   public void stopPipe(String pipeName, String remoteIp, long createTime) {
-    String dir = SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime);
+    String dir = SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
     taskFutures.get(dir).cancel(true);
     taskFutures.remove(dir);
   }
 
   private class ScanTask implements Runnable {
-    private final BufferedPipeDataQueue pipeDataQueue;
+    private final String pipeName;
+    private final String remoteIp;
+    private final long createTime;
 
-    private ScanTask(String pipeLogDir) {
-      pipeDataQueue = BufferedPipeDataQueue.getInstance(pipeLogDir);
+    private ScanTask(String pipeName, String remoteIp, long createTime) {
+      this.pipeName = pipeName;
+      this.remoteIp = remoteIp;
+      this.createTime = createTime;
     }
 
     @Override
     public void run() {
+      PipeDataQueue pipeDataQueue =
+          BufferedPipeDataQueue.getInstance(
+              SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime));
       while (!Thread.interrupted()) {
         PipeData pipeData = null;
         try {
@@ -113,18 +123,32 @@ public class Collector {
         } catch (InterruptedException e) {
           logger.warn("Be interrupted when waiting for pipe data, because {}", e.getMessage());
           Thread.currentThread().interrupt();
+        } catch (StorageGroupAlreadySetException e) {
+          // bearable exception
+          String msg =
+              String.format(
+                  "Sync receiver try to set storage group %s that has already been set",
+                  e.getStorageGroupPath());
+          logger.warn(msg);
+          ReceiverManager.getInstance()
+              .writePipeMessage(
+                  pipeName, remoteIp, createTime, new PipeMessage(PipeMessage.MsgType.WARN, msg));
         } catch (Exception e) {
-          // TODO: how to response error message to sender?
+          // unbearable exception
           // TODO: should drop this pipe?
+          String msg;
           if (pipeData != null) {
-            logger.error(
-                "Cannot load pipeData with serialize number {} and type {}, because {}",
-                pipeData.getSerialNumber(),
-                pipeData.getType(),
-                e.getMessage());
+            msg =
+                String.format(
+                    "Cannot load pipeData with serialize number %d and type %s, because %s",
+                    pipeData.getSerialNumber(), pipeData.getType(), e.getMessage());
           } else {
-            logger.error("Cannot load pipeData because {}", e.getMessage());
+            msg = String.format("Cannot load pipeData because %s", e.getMessage());
           }
+          logger.error(msg);
+          ReceiverManager.getInstance()
+              .writePipeMessage(
+                  pipeName, remoteIp, createTime, new PipeMessage(PipeMessage.MsgType.ERROR, msg));
           break;
         }
       }
