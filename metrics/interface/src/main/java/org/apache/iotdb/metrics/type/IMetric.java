@@ -23,7 +23,7 @@ import org.apache.iotdb.metrics.enums.OutPutFormat;
 
 public interface IMetric {
   /** format metric into string */
-  default StringBuffer toString(OutPutFormat format){
+  default StringBuffer toString(OutPutFormat format) {
     return new StringBuffer();
   }
 }
