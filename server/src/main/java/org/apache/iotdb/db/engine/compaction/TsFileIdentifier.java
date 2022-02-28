@@ -111,6 +111,28 @@ public class TsFileIdentifier {
         splittedFileInfo[FILE_NAME_OFFSET_IN_LOG]);
   }
 
+  /**
+   * This function generates an instance of CompactionFileIdentifier by parsing the old info string
+   * from previous version (<0.13) of a tsfile(usually recorded in a compaction.log), such as
+   * “root.test.sg 0 0 1-1-0-0.tsfile true"
+   */
+  public static TsFileIdentifier getFileIdentifierFromOldInfoString(String oldInfoString) {
+    String[] splittedFileInfo = oldInfoString.split(INFO_SEPARATOR);
+    int length = splittedFileInfo.length;
+    if (length != 5) {
+      throw new RuntimeException(
+          String.format(
+              "String %s is not a legal file info string from previous version (<0.13)",
+              oldInfoString));
+    }
+    return new TsFileIdentifier(
+        splittedFileInfo[LOGICAL_SG_OFFSET_IN_LOG],
+        splittedFileInfo[VIRTUAL_SG_OFFSET_IN_LOG],
+        splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG],
+        Boolean.parseBoolean(splittedFileInfo[FILE_NAME_OFFSET_IN_LOG]),
+        splittedFileInfo[SEQUENCE_OFFSET_IN_LOG]);
+  }
+
   @Override
   public String toString() {
     return String.format(

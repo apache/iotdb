@@ -25,10 +25,15 @@ import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -42,9 +47,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompactionTask {
-
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  private final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private File compactionLogFile;
 
   public RewriteCrossCompactionRecoverTask(
@@ -101,11 +104,20 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
           }
         }
         if (isAllSourcesFileExisted) {
-          handleSuccess =
-              handleWithAllSourceFilesExist(
-                  targetFileIdentifiers, sourceFileIdentifiers, fullStorageGroupName);
+          if (logAnalyzer.isLogFromOld()) {
+            handleSuccess = handleWithAllSourceFilesExistFromOld(targetFileIdentifiers);
+          } else {
+            handleSuccess =
+                handleWithAllSourceFilesExist(targetFileIdentifiers, sourceFileIdentifiers);
+          }
         } else {
-          handleSuccess = handleWithoutAllSourceFilesExist(sourceFileIdentifiers);
+          if (logAnalyzer.isLogFromOld()) {
+            handleSuccess =
+                handleWithoutAllSourceFilesExistFromOld(
+                    targetFileIdentifiers, sourceFileIdentifiers);
+          } else {
+            handleSuccess = handleWithoutAllSourceFilesExist(sourceFileIdentifiers);
+          }
         }
       }
     } catch (IOException e) {
@@ -142,15 +154,13 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
    * compaction mods files.
    */
   private boolean handleWithAllSourceFilesExist(
-      List<TsFileIdentifier> targetFileIdentifiers,
-      List<TsFileIdentifier> sourceFileIdentifiers,
-      String fullStorageGroupName) {
+      List<TsFileIdentifier> targetFileIdentifiers, List<TsFileIdentifier> sourceFileIdentifiers) {
     LOGGER.info(
         "{} [Compaction][Recover] all source files exists, delete all target files.",
         fullStorageGroupName);
 
     for (TsFileIdentifier targetFileIdentifier : targetFileIdentifiers) {
-      // xxx.merge
+      // xxx.cross
       File tmpTargetFile = targetFileIdentifier.getFileFromDataDirs();
       // xxx.tsfile
       File targetFile =
@@ -237,6 +247,168 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
       handleSuccess = false;
     }
     return handleSuccess;
+  }
+
+  /** Delete tmp target file and compaction mods file. */
+  private boolean handleWithAllSourceFilesExistFromOld(
+      List<TsFileIdentifier> targetFileIdentifiers) {
+    // delete tmp target file
+    for (TsFileIdentifier targetFileIdentifier : targetFileIdentifiers) {
+      // xxx.tsfile.merge
+      File tmpTargetFile = targetFileIdentifier.getFileFromDataDirs();
+      if (tmpTargetFile != null) {
+        tmpTargetFile.delete();
+      }
+    }
+    File compactionModsFileFromOld =
+        new File(
+            tsFileManager.getStorageGroupDir()
+                + File.separator
+                + IoTDBConstant.COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD);
+    if (compactionModsFileFromOld.exists() && !compactionModsFileFromOld.delete()) {
+      LOGGER.error(
+          "{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+          fullStorageGroupName,
+          compactionModsFileFromOld);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * 1. If target file does not exist, then move .merge file to target file <br>
+   * 2. If target resource file does not exist, then serialize it. <br>
+   * 3. Append merging modification to target mods file and delete merging mods file. <br>
+   * 4. Delete source files and .merge file. <br>
+   */
+  private boolean handleWithoutAllSourceFilesExistFromOld(
+      List<TsFileIdentifier> targetFileIdentifiers, List<TsFileIdentifier> sourceFileIdentifiers) {
+    try {
+      File compactionModsFileFromOld =
+          new File(
+              tsFileManager.getStorageGroupDir()
+                  + File.separator
+                  + IoTDBConstant.COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD);
+      List<TsFileResource> targetFileResources = new ArrayList<>();
+      for (int i = 0; i < sourceFileIdentifiers.size(); i++) {
+        TsFileIdentifier sourceFileIdentifier = sourceFileIdentifiers.get(i);
+        if (sourceFileIdentifier.isSequence()) {
+          File tmpTargetFile = targetFileIdentifiers.get(i).getFileFromDataDirs();
+          File targetFile = null;
+
+          // move tmp target file to target file if not exist
+          if (tmpTargetFile != null) {
+            // move tmp target file to target file
+            String sourceFilePath =
+                tmpTargetFile
+                    .getPath()
+                    .replace(
+                        TsFileConstant.TSFILE_SUFFIX
+                            + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX_FROM_OLD,
+                        TsFileConstant.TSFILE_SUFFIX);
+            targetFile = TsFileNameGenerator.increaseCrossCompactionCnt(new File(sourceFilePath));
+            FSFactoryProducer.getFSFactory().moveFile(tmpTargetFile, targetFile);
+          } else {
+            // target file must exist
+            File file =
+                TsFileNameGenerator.increaseCrossCompactionCnt(
+                    new File(
+                        targetFileIdentifiers
+                            .get(i)
+                            .getFilePath()
+                            .replace(
+                                TsFileConstant.TSFILE_SUFFIX
+                                    + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX_FROM_OLD,
+                                TsFileConstant.TSFILE_SUFFIX)));
+
+            targetFile = getFileFromDataDirs(file.getPath());
+          }
+          if (targetFile == null) {
+            LOGGER.error(
+                "{} [Compaction][Recover] target file of source seq file {} does not exist (<0.13).",
+                fullStorageGroupName,
+                sourceFileIdentifier.getFilePath());
+            return false;
+          }
+
+          // serialize target resource file if not exist
+          TsFileResource targetResource = new TsFileResource(targetFile);
+          if (!targetResource.resourceFileExists()) {
+            try (TsFileSequenceReader reader =
+                new TsFileSequenceReader(targetFile.getAbsolutePath())) {
+              FileLoaderUtils.updateTsFileResource(reader, targetResource);
+            }
+            targetResource.serialize();
+          }
+
+          targetFileResources.add(targetResource);
+
+          // append compaction modifications to target mods file and delete compaction mods file
+          if (compactionModsFileFromOld.exists()) {
+            ModificationFile compactionModsFile =
+                new ModificationFile(compactionModsFileFromOld.getPath());
+            appendCompactionModificationsFromOld(targetResource, compactionModsFile);
+          }
+
+          // delete tmp target file
+          if (tmpTargetFile != null) {
+            tmpTargetFile.delete();
+          }
+        }
+
+        // delete source tsfile
+        File sourceFile = sourceFileIdentifier.getFileFromDataDirs();
+        if (sourceFile != null) {
+          sourceFile.delete();
+        }
+
+        // delete source resource file
+        sourceFile =
+            getFileFromDataDirs(
+                sourceFileIdentifier.getFilePath() + TsFileResource.RESOURCE_SUFFIX);
+        if (sourceFile != null) {
+          sourceFile.delete();
+        }
+
+        // delete source mods file
+        sourceFile =
+            getFileFromDataDirs(sourceFileIdentifier.getFilePath() + ModificationFile.FILE_SUFFIX);
+        if (sourceFile != null) {
+          sourceFile.delete();
+        }
+      }
+
+      // delete compaction mods file
+      if (compactionModsFileFromOld.exists() && !compactionModsFileFromOld.delete()) {
+        LOGGER.error(
+            "{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+            fullStorageGroupName,
+            compactionModsFileFromOld);
+        return false;
+      }
+    } catch (Throwable e) {
+      LOGGER.error(
+          "{} [Compaction][Recover] fail to handle with some source files lost from old version.",
+          fullStorageGroupName,
+          e);
+      return false;
+    }
+
+    return true;
+  }
+
+  public void appendCompactionModificationsFromOld(
+      TsFileResource resource, ModificationFile compactionModsFile) throws IOException {
+
+    if (compactionModsFile != null) {
+      for (Modification modification : compactionModsFile.getModifications()) {
+        // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+        // change after compaction
+        modification.setFileOffset(Long.MAX_VALUE);
+        resource.getModFile().write(modification);
+      }
+      resource.getModFile().close();
+    }
   }
 
   /**
