@@ -2014,6 +2014,7 @@ public class MManager {
 
     // 1. get device node, set using template if accessed.
     boolean mountedNodeFound = false;
+    boolean isDeviceInTemplate = false;
     // check every measurement path
     for (String measurementId : measurementList) {
       PartialPath fullPath = devicePath.concatNode(measurementId);
@@ -2032,6 +2033,9 @@ public class MManager {
           mtree.unPinMNode(mountedNode);
         }
         mountedNodeFound = true;
+        if (index < devicePath.getNodeLength() - 1) {
+          isDeviceInTemplate = true;
+        }
       }
     }
     // get logical device node, may be in template. will be multiple if overlap is allowed.
@@ -2062,7 +2066,7 @@ public class MManager {
         try {
           // get MeasurementMNode, auto create if absent
           Pair<IMNode, IMeasurementMNode> pair =
-              getMeasurementMNodeForInsertPlan(plan, i, deviceMNode);
+              getMeasurementMNodeForInsertPlan(plan, i, deviceMNode, isDeviceInTemplate);
           deviceMNode = pair.left;
           measurementMNode = pair.right;
 
@@ -2118,16 +2122,22 @@ public class MManager {
   }
 
   private Pair<IMNode, IMeasurementMNode> getMeasurementMNodeForInsertPlan(
-      InsertPlan plan, int loc, IMNode deviceMNode) throws MetadataException {
+      InsertPlan plan, int loc, IMNode deviceMNode, boolean isDeviceInTemplate)
+      throws MetadataException {
     PartialPath devicePath = plan.getDevicePath();
     String[] measurementList = plan.getMeasurements();
     String measurement = measurementList[loc];
-    IMeasurementMNode measurementMNode = getMeasurementMNode(deviceMNode, measurement);
-    if (measurementMNode == null) {
-      measurementMNode = findMeasurementInTemplate(deviceMNode, measurement);
+    IMeasurementMNode measurementMNode = null;
+    if (isDeviceInTemplate) {
+      measurementMNode = deviceMNode.getChild(measurement).getAsMeasurementMNode();
+    } else {
+      measurementMNode = getMeasurementMNode(deviceMNode, measurement);
+      if (measurementMNode == null) {
+        measurementMNode = findMeasurementInTemplate(deviceMNode, measurement);
+      }
     }
     if (measurementMNode == null) {
-      if (!config.isAutoCreateSchemaEnabled()) {
+      if (!config.isAutoCreateSchemaEnabled() || isDeviceInTemplate) {
         throw new PathNotExistException(devicePath + PATH_SEPARATOR + measurement);
       } else {
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
