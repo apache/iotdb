@@ -129,8 +129,8 @@ public class TsFileIdentifier {
         splittedFileInfo[LOGICAL_SG_OFFSET_IN_LOG],
         splittedFileInfo[VIRTUAL_SG_OFFSET_IN_LOG],
         splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG],
-        Boolean.parseBoolean(splittedFileInfo[FILE_NAME_OFFSET_IN_LOG]),
-        splittedFileInfo[SEQUENCE_OFFSET_IN_LOG]);
+        Boolean.parseBoolean(splittedFileInfo[SEQUENCE_OFFSET_IN_LOG]),
+        splittedFileInfo[FILE_NAME_OFFSET_IN_LOG]);
   }
 
   @Override
