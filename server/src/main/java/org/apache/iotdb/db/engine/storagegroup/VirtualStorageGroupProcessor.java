@@ -800,7 +800,14 @@ public class VirtualStorageGroupProcessor {
   /** check if the tsfile's time is smaller than system current time */
   private void checkTsFileTime(File tsFile) throws StorageGroupProcessorException {
     String[] items = tsFile.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
-    long fileTime = Long.parseLong(items[0]);
+    long fileTime;
+    if (items.length == 5) {
+      // timestamp is a negative number
+      fileTime = -1 * Long.parseLong(items[1]);
+    } else {
+      fileTime = Long.parseLong(items[0]);
+    }
+
     long currentTime = System.currentTimeMillis();
     if (fileTime > currentTime) {
       throw new StorageGroupProcessorException(

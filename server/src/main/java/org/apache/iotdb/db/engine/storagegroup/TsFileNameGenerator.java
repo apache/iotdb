@@ -107,9 +107,13 @@ public class TsFileNameGenerator {
     Matcher matcher = TsFileName.FILE_NAME_MATCHER.matcher(fileName);
     if (matcher.find()) {
       try {
+        long time = Long.parseLong(matcher.group(1));
+        if (fileName.startsWith("-")) {
+          time = -1 * time;
+        }
         TsFileName tsFileName =
             new TsFileName(
-                Long.parseLong(matcher.group(1)),
+                time,
                 Long.parseLong(matcher.group(2)),
                 Integer.parseInt(matcher.group(3)),
                 Integer.parseInt(matcher.group(4)));
@@ -240,7 +244,7 @@ public class TsFileNameGenerator {
   }
 
   public static class TsFileName {
-    private static final String FILE_NAME_PATTERN = "((-)?\\d+)-(\\d+)-(\\d+)-(\\d+).tsfile$";
+    private static final String FILE_NAME_PATTERN = "(\\d+)-(\\d+)-(\\d+)-(\\d+).tsfile$";
     private static final Pattern FILE_NAME_MATCHER = Pattern.compile(TsFileName.FILE_NAME_PATTERN);
 
     private long time;
