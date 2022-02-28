@@ -38,6 +38,9 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -58,7 +61,7 @@ import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
  * to avoid unnecessary object creations and file openings.
  */
 public class MergeResource {
-
+  private static Logger logger = LoggerFactory.getLogger(MergeResource.class);
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles = new ArrayList<>();
 
@@ -68,6 +71,7 @@ public class MergeResource {
   private Map<TsFileResource, Map<String, Pair<Long, Long>>> startEndTimeCache =
       new HashMap<>(); // pair<startTime, endTime>
   private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
+  private Map<PartialPath, Long> latestTimeMap = new HashMap<>();
 
   private long timeLowerBound = Long.MIN_VALUE;
 
@@ -308,6 +312,17 @@ public class MergeResource {
     long newStartTime = startEndTimePair.left > startTime ? startTime : startEndTimePair.left;
     deviceStartEndTimePairMap.put(device, new Pair<>(newStartTime, startEndTimePair.right));
     startEndTimeCache.put(tsFileResource, deviceStartEndTimePairMap);
+  }
+
+  public synchronized void checkPointValid(PartialPath path, long time) {
+    if (latestTimeMap.containsKey(path)) {
+      long latestTime = latestTimeMap.get(path);
+      if (latestTime > time) {
+        logger.error("Merge time error, path is {}", path);
+        System.exit(-1);
+      }
+    }
+    latestTimeMap.put(path, time);
   }
 
   public void updateEndTime(TsFileResource tsFileResource, String device, long endTime) {

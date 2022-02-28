@@ -28,12 +28,23 @@ import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
+import org.apache.iotdb.tsfile.file.MetaMarker;
+import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.ForceAppendTsFileWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -44,6 +55,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -174,6 +186,76 @@ public class MergeFileTask {
           System.exit(-1);
         }
         devicesTimeRangeMap.put(device, maxEndTimeForThisFile);
+      }
+    }
+
+    Map<String, Long> measurementLatestTimeMap = new HashMap<>();
+    for (TsFileResource seqFile : resource.getSeqFiles()) {
+      String currentDevice = "";
+      String currentSeries = "";
+      TsFileIOWriter fileWriter = resource.getMergeFileWriter(seqFile, false);
+      try (TsFileSequenceReader reader =
+          new TsFileSequenceReader(fileWriter.getFile().getAbsolutePath())) {
+        reader.readHeadMagic();
+        reader.readTailMagic();
+        // Sequential reading of one ChunkGroup now follows this order:
+        // first the CHUNK_GROUP_HEADER, then SeriesChunks (headers and data) in one ChunkGroup
+        // Because we do not know how many chunks a ChunkGroup may have, we should read one byte
+        // (the
+        // marker) ahead and judge accordingly.
+        reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
+        byte marker;
+        while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
+          switch (marker) {
+            case MetaMarker.CHUNK_HEADER:
+            case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
+              ChunkHeader header = reader.readChunkHeader(marker);
+              currentSeries = currentDevice + "." + header.getMeasurementID();
+              Decoder defaultTimeDecoder =
+                  Decoder.getDecoderByType(
+                      TSEncoding.valueOf(
+                          TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+                      TSDataType.INT64);
+              Decoder valueDecoder =
+                  Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
+              int dataSize = header.getDataSize();
+              while (dataSize > 0) {
+                valueDecoder.reset();
+                PageHeader pageHeader =
+                    reader.readPageHeader(
+                        header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
+                ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+                PageReader reader1 =
+                    new PageReader(
+                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
+                BatchData batchData = reader1.getAllSatisfiedPageData();
+                while (batchData.hasCurrent()) {
+                  if (measurementLatestTimeMap.containsKey(currentSeries)) {
+                    if (measurementLatestTimeMap.get(currentSeries) >= batchData.currentTime()) {
+                      logger.error(
+                          "merge error while checking files. series is {}, file is {}",
+                          currentSeries,
+                          seqFile);
+                      System.exit(-1);
+                    }
+                  }
+                  measurementLatestTimeMap.put(currentSeries, batchData.currentTime());
+                  batchData.next();
+                }
+                dataSize -= pageHeader.getSerializedPageSize();
+              }
+              break;
+            case MetaMarker.CHUNK_GROUP_HEADER:
+              ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
+              currentDevice = chunkGroupHeader.getDeviceID();
+              break;
+            case MetaMarker.OPERATION_INDEX_RANGE:
+              reader.readPlanIndex();
+              break;
+            default:
+              MetaMarker.handleUnexpectedMarker(marker);
+          }
+        }
       }
     }
   }
