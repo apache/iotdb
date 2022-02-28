@@ -1785,27 +1785,40 @@ public class MTreeService implements Serializable {
     return result;
   }
 
-  public boolean isTemplateSetOnMTree(String templateName) {
+  public boolean isTemplateSetOnMTree(String templateName) throws MetadataException {
     // check whether template has been set
     Deque<IMNode> nodeStack = new ArrayDeque<>();
     nodeStack.push(root);
 
     // DFT traverse on MTree
-    while (nodeStack.size() != 0) {
-      IMNode curNode = nodeStack.pop();
-      if (curNode.getUpperTemplate() != null) {
-        if (curNode.getUpperTemplate().getName().equals(templateName)) {
-          return true;
+    try {
+      while (nodeStack.size() != 0) {
+        IMNode curNode = nodeStack.pop();
+        if (curNode.getUpperTemplate() != null) {
+          if (curNode.getUpperTemplate().getName().equals(templateName)) {
+            return true;
+          }
+          // curNode set to other templates, cut this branch
         }
-        // curNode set to other templates, cut this branch
+
+        // no template on curNode, push children to stack
+        IMNodeIterator iterator = store.getChildrenIterator(curNode);
+        try {
+          while (iterator.hasNext()) {
+            nodeStack.push(iterator.next());
+          }
+        } finally {
+          iterator.close();
+        }
       }
 
-      // no template on curNode, push children to stack
-      for (IMNode child : curNode.getChildren().values()) {
-        nodeStack.push(child);
+      return false;
+    } finally {
+      while (nodeStack.size() != 0) {
+        IMNode curNode = nodeStack.pop();
+        unPinMNode(curNode);
       }
     }
-    return false;
   }
 
   /**
@@ -1824,15 +1837,20 @@ public class MTreeService implements Serializable {
       return cur.getSchemaTemplate().getName();
     }
 
+    IMNode child;
     for (int i = 1; i < pathNodes.length; i++) {
-      if (cur.isMeasurement() || !cur.hasChild(pathNodes[i])) {
+      child = cur.getChild(pathNodes[i]);
+      if (cur.isMeasurement() || child == null) {
+        unPinPath(cur);
         return null;
       }
-      cur = cur.getChild(pathNodes[i]);
+      cur = child;
       if (cur.getSchemaTemplate() != null) {
+        unPinPath(cur);
         return cur.getSchemaTemplate().getName();
       }
     }
+    unPinPath(cur);
     return null;
   }
 

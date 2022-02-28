@@ -2428,8 +2428,8 @@ public class MManager {
     // check whether any template has been set on designated path
     if (mtree.getTemplateOnPath(plan.getPrefixPath()) == null) {
       throw new MetadataException(
-              String.format(
-                      "Path [%s] has not been set any template.", plan.getPrefixPath().toString()));
+          String.format(
+              "Path [%s] has not been set any template.", plan.getPrefixPath().toString()));
     }
 
     IMNode node;

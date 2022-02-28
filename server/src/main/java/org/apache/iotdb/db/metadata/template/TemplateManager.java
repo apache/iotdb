@@ -149,7 +149,7 @@ public class TemplateManager {
     return templateMap.keySet();
   }
 
-  public void checkTemplateCompatible(Template template, IMNode node) throws MetadataException {
+  public void checkIsTemplateCompatible(Template template, IMNode node) throws MetadataException {
     if (node.getSchemaTemplate() != null) {
       if (node.getSchemaTemplate().equals(template)) {
         throw new DuplicatedTemplateException(template.getName());
