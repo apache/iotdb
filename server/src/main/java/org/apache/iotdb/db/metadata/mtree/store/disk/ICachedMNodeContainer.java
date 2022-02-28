@@ -37,6 +37,8 @@ public interface ICachedMNodeContainer extends IMNodeContainer {
 
   boolean isExpelled();
 
+  boolean hasChildInNewChildBuffer(String name);
+
   boolean hasChildInBuffer(String name);
 
   Iterator<IMNode> getChildrenIterator();

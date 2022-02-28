@@ -209,6 +209,17 @@ public class CachedMTreeStore implements IMTreeStore {
         }
       }
 
+      ICachedMNodeContainer container = getCachedMNodeContainer(parent);
+      if (!container.isVolatile() && !container.hasChildInNewChildBuffer(childName)) {
+        // the container has been persisted and this child is not a new child, which means the child
+        // has been persisted and should be deleted from disk
+        try {
+          file.deleteMNode(deletedMNode);
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+
       parent.deleteChild(childName);
       if (cacheStrategy.isCached(deletedMNode)) {
         List<IMNode> removedMNodes = cacheStrategy.remove(deletedMNode);
@@ -217,13 +228,6 @@ public class CachedMTreeStore implements IMTreeStore {
             memManager.releasePinnedMemResource(removedMNode);
           }
           memManager.releaseMemResource(removedMNode);
-        }
-      }
-      if (!getCachedMNodeContainer(parent).isVolatile()) {
-        try {
-          file.deleteMNode(deletedMNode);
-        } catch (IOException e) {
-          throw new MetadataException(e);
         }
       }
 
@@ -304,6 +308,7 @@ public class CachedMTreeStore implements IMTreeStore {
     memManager.clear();
     if (file != null) {
       try {
+        file.clear();
         file.close();
       } catch (MetadataException | IOException e) {
         logger.error(String.format("Error occurred during SchemaFile clear, %s", e.getMessage()));
