@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.integration;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
