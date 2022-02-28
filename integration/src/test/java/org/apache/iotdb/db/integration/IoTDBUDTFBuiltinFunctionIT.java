@@ -353,4 +353,164 @@ public class IoTDBUDTFBuiltinFunctionIT {
       fail(throwable.getMessage());
     }
   }
+
+  @Test
+  public void testContinuouslySatisfies() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg.d2.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d2.s2 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d2.s3 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d2.s4 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d2.s5 with datatype=BOOLEAN,encoding=PLAIN");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    // create timeseries with only 0,1 values
+    String[] ZERO_ONE_SQL = {
+      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (0, 0, 0, 0, 0, false)",
+      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (1, 1, 1, 1, 1, true)",
+      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (2, 1, 1, 1, 1, true)",
+      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (3, 0, 0, 0, 0, false)",
+      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (4, 1, 1, 1, 1, true)",
+      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (5, 0, 0, 0, 0, false)",
+      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (6, 0, 0, 0, 0, false)",
+      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (7, 1, 1, 1, 1, true)",
+    };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (String dataGenerationSql : ZERO_ONE_SQL) {
+        statement.execute(dataGenerationSql);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    // test ZERO_DURATION
+    // result should be (0,0),(3,0),(5,1)
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      int[] timestamps = {0, 3, 5};
+      int[] durations = {0, 0, 1};
+      String functionName = "zero_duration";
+      ResultSet resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.sg.d2",
+                  functionName, functionName, functionName, functionName, functionName));
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 5, columnCount);
+
+      for (int i = 0; i < timestamps.length; ++i) {
+        resultSet.next();
+        long expectedTimestamp = timestamps[i];
+        long actualTimestamp = Long.parseLong(resultSet.getString(1));
+        assertEquals(expectedTimestamp, actualTimestamp);
+
+        long expectedDuration = durations[i];
+        for (int j = 0; j < 5; ++j) {
+          long actualDuration = Long.parseLong(resultSet.getString(2 + j));
+          assertEquals(expectedDuration, actualDuration);
+        }
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    // test NON_ZERO_DURATION
+    // result should be (1,1),(4,0),(7,0)
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String functionName = "non_zero_duration";
+      int[] timestamps = {1, 4, 7};
+      int[] durations = {1, 0, 0};
+      ResultSet resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.sg.d2",
+                  functionName, functionName, functionName, functionName, functionName));
+
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 5, columnCount);
+
+      for (int i = 0; i < timestamps.length; ++i) {
+        resultSet.next();
+        long expectedTimestamp = timestamps[i];
+        long actualTimestamp = Long.parseLong(resultSet.getString(1));
+        assertEquals(expectedTimestamp, actualTimestamp);
+
+        long expectedDuration = durations[i];
+        for (int j = 0; j < 5; ++j) {
+          long actualDuration = Long.parseLong(resultSet.getString(2 + j));
+          assertEquals(expectedDuration, actualDuration);
+        }
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    // test ZERO_COUNT
+    // result should be (0,1),(3,1),(5,2)
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String functionName = "zero_count";
+      int[] timestamps = {0, 3, 5};
+      int[] durations = {1, 1, 2};
+      ResultSet resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.sg.d2",
+                  functionName, functionName, functionName, functionName, functionName));
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 5, columnCount);
+
+      for (int i = 0; i < timestamps.length; ++i) {
+        resultSet.next();
+        long expectedTimestamp = timestamps[i];
+        long actualTimestamp = Long.parseLong(resultSet.getString(1));
+        assertEquals(expectedTimestamp, actualTimestamp);
+
+        long expectedDuration = durations[i];
+        for (int j = 0; j < 5; ++j) {
+          long actualDuration = Long.parseLong(resultSet.getString(2 + j));
+          assertEquals(expectedDuration, actualDuration);
+        }
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    // test NON_ZERO_COUNT
+    // result should be (1,2),(4,1),(7,1)
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String functionName = "non_zero_count";
+      int[] timestamps = {1, 4, 7};
+      int[] durations = {2, 1, 1};
+      ResultSet resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.sg.d2",
+                  functionName, functionName, functionName, functionName, functionName));
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 5, columnCount);
+
+      for (int i = 0; i < timestamps.length; ++i) {
+        resultSet.next();
+        long expectedTimestamp = timestamps[i];
+        long actualTimestamp = Long.parseLong(resultSet.getString(1));
+        assertEquals(expectedTimestamp, actualTimestamp);
+
+        long expectedDuration = durations[i];
+        for (int j = 0; j < 5; ++j) {
+          long actualDuration = Long.parseLong(resultSet.getString(2 + j));
+          assertEquals(expectedDuration, actualDuration);
+        }
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
 }
