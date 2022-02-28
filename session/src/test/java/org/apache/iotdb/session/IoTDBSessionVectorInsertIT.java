@@ -271,7 +271,6 @@ public class IoTDBSessionVectorInsertIT {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR1, schemaList);
-    tablet.setAligned(true);
     long timestamp = 0;
 
     for (long row = 0; row < 100; row++) {

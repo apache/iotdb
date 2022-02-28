@@ -227,7 +227,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   private boolean checkIsSeqFilesValid() {
     for (Integer seqIdx : tmpSelectedSeqFiles) {
       if (resource.getSeqFiles().get(seqIdx).isCompactionCandidate()
-          || resource.getSeqFiles().get(seqIdx).isCompacting()) {
+          || resource.getSeqFiles().get(seqIdx).isCompacting()
+          || !resource.getSeqFiles().get(seqIdx).isClosed()) {
         return false;
       }
     }
