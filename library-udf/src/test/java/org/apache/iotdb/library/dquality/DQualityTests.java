@@ -152,7 +152,7 @@ public class DQualityTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      Assert.assertTrue(result >= -0.0D && result <= 1.0D);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
