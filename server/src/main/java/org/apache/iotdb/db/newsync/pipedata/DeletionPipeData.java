@@ -56,7 +56,7 @@ public class DeletionPipeData extends PipeData {
   public static DeletionPipeData deserialize(DataInputStream stream)
       throws IOException, IllegalPathException {
     long serialNumber = stream.readLong();
-  Deletion deletion = Deletion.deserializeWithoutFileOffset(stream);
+    Deletion deletion = Deletion.deserializeWithoutFileOffset(stream);
     return new DeletionPipeData(deletion, serialNumber);
   }
 

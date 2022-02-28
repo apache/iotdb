@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.newsync.pipedata.queue;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -5,10 +23,10 @@ import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.utils.FileUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -16,9 +34,9 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,6 +51,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
   /** input */
   private long lastMaxSerialNumber;
+
   private BlockingDeque<PipeData> inputDeque;
 
   private BlockingDeque<Long> pipeLogStartNumber;
@@ -41,6 +60,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
   /** output */
   private final Object waitLock = new Object();
+
   private BlockingDeque<PipeData> outputDeque;
 
   private long pullSerialNumber;
@@ -98,7 +118,10 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     try {
       List<PipeData> recoverPipeData = parsePipeLog(writingPipeLog);
       int recoverPipeDataSize = recoverPipeData.size();
-      lastMaxSerialNumber = recoverPipeData.get(recoverPipeDataSize - 1).getSerialNumber();
+      lastMaxSerialNumber =
+          recoverPipeDataSize == 0
+              ? pipeLogStartNumber.peekLast() - 1
+              : recoverPipeData.get(recoverPipeDataSize - 1).getSerialNumber();
     } catch (IOException e) {
       logger.error(
           String.format(
@@ -112,19 +135,11 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       return;
     }
 
-    try {
-      BufferedReader br = new BufferedReader(new FileReader(commitLog));
-      long lineIndex = 0;
-      String readLine;
-      while ((readLine = br.readLine()) != null) {
-        lineIndex += 1;
-        try {
-          commitSerialNumber = Long.parseLong(readLine);
-        } catch (NumberFormatException e) {
-          logger.warn(String.format("Can not parse Long in line %s, skip it.", lineIndex));
-        }
+    try (RandomAccessFile raf = new RandomAccessFile(commitLog, "r")) {
+      if (raf.length() >= Integer.BYTES) {
+        raf.seek(raf.length() - Integer.BYTES);
+        commitSerialNumber = raf.readInt();
       }
-      br.close();
     } catch (IOException e) {
       logger.error(
           String.format(
@@ -143,11 +158,12 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     try {
       List<PipeData> recoverPipeData = parsePipeLog(readingPipeLog);
       int recoverPipeDataSize = recoverPipeData.size();
-      for (int i = 0; i < recoverPipeDataSize; i++) {
-        outputDeque.offer(recoverPipeData.get(i));
-      }
-      while (!outputDeque.isEmpty() && outputDeque.peek().getSerialNumber() <= commitSerialNumber) {
-        outputDeque.poll();
+      for (int i = recoverPipeDataSize - 1; i >= 0; --i) {
+        PipeData pipeData = recoverPipeData.get(i);
+        if (pipeData.getSerialNumber() <= commitSerialNumber) {
+          break;
+        }
+        outputDeque.addFirst(pipeData);
       }
     } catch (IOException e) {
       logger.error(
@@ -216,36 +232,32 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     if (!outputDeque.isEmpty()) {
       return outputDeque.poll();
     } else if (outputDeque != inputDeque) {
-      if (pipeLogStartNumber.size() > 1) {
-        long writingPipeLogStartNumber = -1;
-        List<Long> pullPipeLogStartNumber = new ArrayList<>();
-        while (!pipeLogStartNumber.isEmpty()) {
-          long number = pipeLogStartNumber.poll();
-          pullPipeLogStartNumber.add(number);
-          if (number > serialNumber) {
-            break;
-          }
-          writingPipeLogStartNumber = number;
+      long writingPipeLogStartNumber = -1;
+      List<Long> pullPipeLogStartNumber = new ArrayList<>();
+      while (!pipeLogStartNumber.isEmpty()) {
+        long number = pipeLogStartNumber.poll();
+        pullPipeLogStartNumber.add(number);
+        if (number > serialNumber) {
+          break;
         }
-        int size = pullPipeLogStartNumber.size();
-        for (int i = size - 1; i >= 0; --i) {
-          pipeLogStartNumber.addFirst(pullPipeLogStartNumber.get(i));
-        }
+        writingPipeLogStartNumber = number;
+      }
+      int size = pullPipeLogStartNumber.size();
+      for (int i = size - 1; i >= 0; --i) {
+        pipeLogStartNumber.addFirst(pullPipeLogStartNumber.get(i));
+      }
 
-        if (writingPipeLogStartNumber == pipeLogStartNumber.peekLast()) {
-          outputDeque = inputDeque;
-        } else {
-          List<PipeData> parsePipeData =
-              parsePipeLog(
-                  new File(pipeLogDir, SyncConstant.getPipeLogName(writingPipeLogStartNumber)));
-          int parsePipeDataSize = parsePipeData.size();
-          outputDeque = new LinkedBlockingDeque<>();
-          for (int i = 0; i < parsePipeDataSize; i++) {
-            outputDeque.offer(parsePipeData.get(i));
-          }
-        }
-      } else {
+      if (writingPipeLogStartNumber == pipeLogStartNumber.peekLast() && inputDeque != null) {
         outputDeque = inputDeque;
+      } else {
+        List<PipeData> parsePipeData =
+            parsePipeLog(
+                new File(pipeLogDir, SyncConstant.getPipeLogName(writingPipeLogStartNumber)));
+        int parsePipeDataSize = parsePipeData.size();
+        outputDeque = new LinkedBlockingDeque<>();
+        for (int i = 0; i < parsePipeDataSize; i++) {
+          outputDeque.offer(parsePipeData.get(i));
+        }
       }
       return outputDeque.poll();
     }
@@ -290,8 +302,8 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
         if (pipeData == null) {
           waitLock.wait();
           waitLock.notifyAll();
+          pipeData = pullOnePipeData(pullSerialNumber);
         }
-        pipeData = pullOnePipeData(pullSerialNumber);
       }
     } catch (IOException e) {
       logger.error(
@@ -356,8 +368,8 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
             new BufferedWriter(new FileWriter(new File(pipeLogDir, SyncConstant.COMMIT_LOG_NAME)));
         currentCommitLogSize = 0;
       }
-      commitLogWriter.write(String.valueOf(commitSerialNumber));
       commitLogWriter.newLine();
+      commitLogWriter.write(String.valueOf(commitSerialNumber));
       commitLogWriter.flush();
       currentCommitLogSize += Long.BYTES;
       if (currentCommitLogSize >= SyncConstant.DEFAULT_PIPE_LOG_SIZE_IN_BYTE) {

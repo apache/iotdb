@@ -25,7 +25,6 @@ import java.io.File;
 /** Util for path generation in sync module */
 public class SyncPathUtil {
   /** sender */
-
   public static String getSenderPipeDir(String pipeName, long createTime) {
     return IoTDBDescriptor.getInstance().getConfig().getNewSyncDir()
         + File.separator

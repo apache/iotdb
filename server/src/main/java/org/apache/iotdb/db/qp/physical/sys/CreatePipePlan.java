@@ -98,8 +98,12 @@ public class CreatePipePlan extends PhysicalPlan {
     builder.append(dataStartTimestamp).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
     builder.append(pipeAttributes.size()).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
     for (int i = 0; i < pipeAttributes.size(); i++) {
-      builder.append(pipeAttributes.get(i).left).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
-      builder.append(pipeAttributes.get(i).right).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
+      builder
+          .append(pipeAttributes.get(i).left)
+          .append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
+      builder
+          .append(pipeAttributes.get(i).right)
+          .append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
     }
     return builder.toString();
   }
