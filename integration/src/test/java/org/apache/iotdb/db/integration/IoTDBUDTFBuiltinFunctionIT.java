@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.integration;
 
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -349,6 +350,36 @@ public class IoTDBUDTFBuiltinFunctionIT {
         assertEquals(expected[i], actual.toString());
       }
       resultSet.close();
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testOnOffFunction(){
+    Double[] thresholds = {Double.MAX_VALUE, -1.0, 0.0, 1.0, Double.MAX_VALUE};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+         Statement statement = connection.createStatement()) {
+      for(Double threshold: thresholds){
+        ResultSet resultSet =
+            statement.executeQuery(
+                String.format(
+                    "select on_off(s1,'threshold'='%f'), on_off(s2,'threshold'='%f'), on_off(s3,'threshold'='%f'), on_off(s4,'threshold'='%f') from root.sg.d1",
+                    threshold, threshold, threshold, threshold));
+
+        int columnCount = resultSet.getMetaData().getColumnCount();
+        assertEquals(1 + 4, columnCount);
+
+        for (int i = 0; i < INSERTION_SQLS.length; ++i) {
+          resultSet.next();
+          for (int j = 0; j < 4; ++j) {
+            Boolean expected = i >= threshold;
+            Boolean actual = Boolean.parseBoolean(resultSet.getString(2 + j));
+            assertEquals(expected, actual);
+          }
+        }
+        resultSet.close();
+      }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
