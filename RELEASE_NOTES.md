@@ -52,7 +52,7 @@
 * [IOTDB-1986] Support select UDF as alisa clauses 
 * [IOTDB-1989] Spark-IoTDB-connector support inserting data
 * [IOTDB-2131] Support previous, linear, constant value fill funtion New fill
-* [ISSUE-3811] Provide a data type column for the last query dataset 
+* [ISSUE-3811] Provide a data type column for the last query dataset
 * add rabbitmq example
 
 ## Improvements
