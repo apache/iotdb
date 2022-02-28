@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 import org.apache.iotdb.db.metadata.mnode.*;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -60,13 +61,14 @@ public class RecordUtils {
    *   <li>1 short (2 bytes): recLen, length of record (remove it may reduce space overhead while a
    *       bit slower)
    *   <li>1 long (8 bytes): glbIndex, combined index to its children records
-   *   <li>1 byte: templateIndex, index for template
+   *   <li>1 int (4 byte): templateIndex, hash code of template, occupies only 1 byte before
    * </ul>
    *
-   * -- bitwise flags --
+   * -- bitwise flags (1 byte) --
    *
    * <ul>
-   *   <li>1 bit: usingTemplate, whether using template 1 bit: isAligned
+   *   <li>1 bit : usingTemplate, whether using template
+   *   <li>1 bit : isAligned
    * </ul>
    *
    * @param node
@@ -75,7 +77,7 @@ public class RecordUtils {
   private static ByteBuffer internal2Buffer(IMNode node) {
     byte nodeType = 0;
     boolean isAligned = false;
-    short recLen = (short) 1 + 2 + 8 + 1 + 1;
+    short recLen = (short) 1 + 2 + 8 + 4 + 1;
 
     if (node.isEntity()) {
       nodeType = 1;
@@ -87,7 +89,7 @@ public class RecordUtils {
     ReadWriteIOUtils.write(recLen, buffer);
     ReadWriteIOUtils.write(
         ICachedMNodeContainer.getCachedMNodeContainer(node).getSegmentAddress(), buffer);
-    ReadWriteIOUtils.write(convertTemplate2Byte(node.getSchemaTemplate()), buffer);
+    ReadWriteIOUtils.write(convertTemplate2Int(node.getSchemaTemplate()), buffer);
 
     // encode bitwise flag
     byte useAndAligned = encodeInternalStatus(node.isUseTemplate(), isAligned);
@@ -105,7 +107,7 @@ public class RecordUtils {
    * <ul>
    *   <li>1 byte: nodeType, as above
    *   <li>1 short (2 bytes): recLength, length of whole record
-   *   <li>1 long (8 bytes): tagIndex, related to tag module
+   *   <li>1 long (8 bytes): tagIndex, value of the offset within a measurement
    *   <li>1 long (8 bytes): schemaBytes, including datatype/compressionType/encoding and so on
    *   <li>var length string (4+var_length bytes): alias
    * </ul>
@@ -144,7 +146,7 @@ public class RecordUtils {
 
       short recLen = ReadWriteIOUtils.readShort(buffer);
       long segAddr = ReadWriteIOUtils.readLong(buffer);
-      byte templateIndex = ReadWriteIOUtils.readByte(buffer);
+      int templateHash = ReadWriteIOUtils.readInt(buffer);
       byte bitFlag = ReadWriteIOUtils.readByte(buffer);
 
       boolean usingTemplate = usingTemplate(bitFlag);
@@ -160,7 +162,7 @@ public class RecordUtils {
       ICachedMNodeContainer.getCachedMNodeContainer(resNode).setSegmentAddress(segAddr);
       resNode.setUseTemplate(usingTemplate);
 
-      return paddingTemplate(resNode, templateIndex);
+      return paddingTemplate(resNode, templateHash);
     } else {
       // measurement node
       short recLenth = ReadWriteIOUtils.readShort(buffer);
@@ -259,14 +261,21 @@ public class RecordUtils {
   // region padding with IMNode
   /** These 2 convert methods are coupling with tag, template module respectively. */
   private static long convertTags2Long(IMeasurementMNode node) {
-    return 0L;
+    return node.getOffset();
   }
 
-  private static byte convertTemplate2Byte(Template temp) {
-    return 0;
+  private static int convertTemplate2Int(Template temp) {
+    return temp == null ? 0 : temp.getName().hashCode();
   }
 
-  private static IMNode paddingTemplate(IMNode node, byte templateIndex) {
+  private static IMNode paddingTemplate(IMNode node, int templateHashCode) {
+    // TODO: persistent of template need better implementation
+    for (Template temp : TemplateManager.getInstance().getTemplateMap().values()) {
+      if (temp.getName().hashCode() == templateHashCode) {
+        node.setSchemaTemplate(temp);
+        return node;
+      }
+    }
     return node;
   }
 
@@ -291,7 +300,9 @@ public class RecordUtils {
             TSEncoding.values()[encoding],
             CompressionType.values()[compressor]);
 
-    return MeasurementMNode.getMeasurementMNode(null, nodeName, schema, alias);
+    IMNode res = MeasurementMNode.getMeasurementMNode(null, nodeName, schema, alias);
+    res.getAsMeasurementMNode().setOffset(tagIndex);
+    return res;
   }
 
   // endregion
