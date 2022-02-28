@@ -1826,7 +1826,7 @@ public class MTreeService implements Serializable {
    *
    * @return null if no template has been set on path
    */
-  public String getTemplateOnPath(PartialPath path) throws IllegalPathException {
+  public String getTemplateOnPath(PartialPath path) throws MetadataException {
     String[] pathNodes = path.getNodes();
     if (!pathNodes[0].equals(IoTDBConstant.PATH_ROOT)) {
       throw new IllegalPathException(path.toString());
@@ -1839,7 +1839,7 @@ public class MTreeService implements Serializable {
 
     IMNode child;
     for (int i = 1; i < pathNodes.length; i++) {
-      child = cur.getChild(pathNodes[i]);
+      child = store.getChild(cur, pathNodes[i]);
       if (cur.isMeasurement() || child == null) {
         unPinPath(cur);
         return null;
