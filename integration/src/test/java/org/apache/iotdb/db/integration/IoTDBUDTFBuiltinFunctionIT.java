@@ -355,11 +355,11 @@ public class IoTDBUDTFBuiltinFunctionIT {
   }
 
   @Test
-  public void testOnOffFunction(){
+  public void testOnOffFunction() {
     Double[] thresholds = {Double.MAX_VALUE, -1.0, 0.0, 1.0, Double.MAX_VALUE};
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
-      for(Double threshold: thresholds){
+        Statement statement = connection.createStatement()) {
+      for (Double threshold : thresholds) {
         ResultSet resultSet =
             statement.executeQuery(
                 String.format(
