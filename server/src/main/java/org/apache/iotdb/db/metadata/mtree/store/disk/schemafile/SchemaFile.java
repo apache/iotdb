@@ -667,7 +667,7 @@ public class SchemaFile implements ISchemaFile {
 
         // release object
         pageInstCache.remove(entry.getKey());
-        if (removeCnt == 0) {
+        if (removeCnt <= 0) {
           return;
         }
       }
