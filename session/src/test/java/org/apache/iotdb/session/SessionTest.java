@@ -46,7 +46,9 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -481,7 +483,46 @@ public class SessionTest {
     template.addToTemplate(iNodeVector);
 
     session.createSchemaTemplate(template);
-    session.setSchemaTemplate("template1", "root.sg.1");
+    session.setSchemaTemplate("template1", "root.sg.d1");
+
+    session.createTimeseries(
+        "root.sg2.d1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+    session.createTimeseries(
+        "root.sg2.d2", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+    session.createTimeseries(
+        "root.sg2.d3", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+
+    try {
+      session.setSchemaTemplate("template1", "root.sg2.*");
+    } catch (StatementExecutionException e) {
+      assertEquals(
+          "315: [PATH_ILLEGAL(315)] Exception occurred: executeStatement failed. root.sg2.* is not a legal path, because template cannot be set on a path with wildcard.",
+          e.getMessage());
+    }
+
+    session.setSchemaTemplate("template1", "root.sg.d2");
+    session.setSchemaTemplate("template1", "root.sg.d3");
+    session.setSchemaTemplate("template1", "root.sg.d4");
+
+    try {
+      session.unsetSchemaTemplate("root.sg2.*", "template1");
+    } catch (StatementExecutionException e) {
+      assertEquals(
+          "315: [PATH_ILLEGAL(315)] Exception occurred: executeStatement failed. root.sg2.* is not a legal path, because template cannot be unset on a path with wildcard.",
+          e.getMessage());
+    }
+
+    Set<String> checkSet = new HashSet<>();
+    checkSet.add("root.sg.d1");
+    checkSet.add("root.sg.d2");
+    checkSet.add("root.sg.d3");
+    checkSet.add("root.sg.d4");
+    List<String> res = session.showPathsTemplateSetOn("template1");
+    assertEquals(checkSet.size(), res.size());
+    for (String s : res) {
+      checkSet.remove(s);
+    }
+    assertTrue(checkSet.isEmpty());
   }
 
   @Test

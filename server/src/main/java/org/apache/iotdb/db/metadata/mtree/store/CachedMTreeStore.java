@@ -61,8 +61,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private IMNode root;
 
-  private ExecutorService flushTask =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("MTreeFlushThread");;
+  private ExecutorService flushTask;
   private boolean hasFlushTask = false;
 
   private ReadWriteLock readWriteLock = new ReentrantReadWriteLock(); // default writer preferential
@@ -75,6 +74,7 @@ public class CachedMTreeStore implements IMTreeStore {
     file = SFManager.getInstance();
     root = file.init();
     cacheStrategy.pinMNode(root);
+    flushTask = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("MTreeFlushThread");
   }
 
   @Override
@@ -209,6 +209,17 @@ public class CachedMTreeStore implements IMTreeStore {
         }
       }
 
+      ICachedMNodeContainer container = getCachedMNodeContainer(parent);
+      if (!container.isVolatile() && !container.hasChildInNewChildBuffer(childName)) {
+        // the container has been persisted and this child is not a new child, which means the child
+        // has been persisted and should be deleted from disk
+        try {
+          file.deleteMNode(deletedMNode);
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+
       parent.deleteChild(childName);
       if (cacheStrategy.isCached(deletedMNode)) {
         List<IMNode> removedMNodes = cacheStrategy.remove(deletedMNode);
@@ -217,13 +228,6 @@ public class CachedMTreeStore implements IMTreeStore {
             memManager.releasePinnedMemResource(removedMNode);
           }
           memManager.releaseMemResource(removedMNode);
-        }
-      }
-      if (!getCachedMNodeContainer(parent).isVolatile()) {
-        try {
-          file.deleteMNode(deletedMNode);
-        } catch (IOException e) {
-          throw new MetadataException(e);
         }
       }
 
@@ -295,22 +299,22 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public void clear() {
-    writeLock.lock();
-    try {
-      root = null;
-      cacheStrategy.clear();
-      memManager.clear();
-      if (file != null) {
-        try {
-          file.close();
-        } catch (MetadataException | IOException e) {
-          logger.error(String.format("Error occurred during SchemaFile clear, %s", e.getMessage()));
-        }
-      }
-      file = null;
-    } finally {
-      writeLock.unlock();
+    if (flushTask != null) {
+      flushTask.shutdown();
+      flushTask = null;
     }
+    root = null;
+    cacheStrategy.clear();
+    memManager.clear();
+    if (file != null) {
+      try {
+        file.clear();
+        file.close();
+      } catch (MetadataException | IOException e) {
+        logger.error(String.format("Error occurred during SchemaFile clear, %s", e.getMessage()));
+      }
+    }
+    file = null;
   }
 
   private void tryExecuteMemoryRelease() {

@@ -184,6 +184,7 @@ public class MManager {
 
   private boolean isRecovering;
   private boolean initialized;
+  private boolean isClearing;
   private boolean allowToCreateNewSeries = true;
 
   private AtomicLong totalSeriesNumber = new AtomicLong();
@@ -243,7 +244,11 @@ public class MManager {
         Caffeine.newBuilder()
             .maximumSize(cacheSize)
             .removalListener(
-                (PartialPath path, IMNode node, RemovalCause cause) -> mtree.unPinMNode(node))
+                (PartialPath path, IMNode node, RemovalCause cause) -> {
+                  if (!isClearing) {
+                    mtree.unPinMNode(node);
+                  }
+                })
             .build(
                 new com.github.benmanes.caffeine.cache.CacheLoader<PartialPath, IMNode>() {
                   @Override
@@ -437,12 +442,13 @@ public class MManager {
 
   /** function for clearing MTree */
   public synchronized void clear() {
+    isClearing = true;
     try {
-      if (this.mtree != null) {
-        this.mtree.clear();
-      }
       if (this.mNodeCache != null) {
         this.mNodeCache.invalidateAll();
+      }
+      if (this.mtree != null) {
+        this.mtree.clear();
       }
       this.totalSeriesNumber.set(0);
       this.templateManager.clear();
@@ -463,6 +469,7 @@ public class MManager {
     } catch (IOException e) {
       logger.error("Cannot close metadata log writer, because:", e);
     }
+    isClearing = false;
   }
 
   public void operation(PhysicalPlan plan) throws IOException, MetadataException {
@@ -2007,6 +2014,7 @@ public class MManager {
 
     // 1. get device node, set using template if accessed.
     boolean mountedNodeFound = false;
+    boolean isDeviceInTemplate = false;
     // check every measurement path
     for (String measurementId : measurementList) {
       PartialPath fullPath = devicePath.concatNode(measurementId);
@@ -2025,6 +2033,9 @@ public class MManager {
           mtree.unPinMNode(mountedNode);
         }
         mountedNodeFound = true;
+        if (index < devicePath.getNodeLength() - 1) {
+          isDeviceInTemplate = true;
+        }
       }
     }
     // get logical device node, may be in template. will be multiple if overlap is allowed.
@@ -2055,7 +2066,7 @@ public class MManager {
         try {
           // get MeasurementMNode, auto create if absent
           Pair<IMNode, IMeasurementMNode> pair =
-              getMeasurementMNodeForInsertPlan(plan, i, deviceMNode);
+              getMeasurementMNodeForInsertPlan(plan, i, deviceMNode, isDeviceInTemplate);
           deviceMNode = pair.left;
           measurementMNode = pair.right;
 
@@ -2111,16 +2122,22 @@ public class MManager {
   }
 
   private Pair<IMNode, IMeasurementMNode> getMeasurementMNodeForInsertPlan(
-      InsertPlan plan, int loc, IMNode deviceMNode) throws MetadataException {
+      InsertPlan plan, int loc, IMNode deviceMNode, boolean isDeviceInTemplate)
+      throws MetadataException {
     PartialPath devicePath = plan.getDevicePath();
     String[] measurementList = plan.getMeasurements();
     String measurement = measurementList[loc];
-    IMeasurementMNode measurementMNode = getMeasurementMNode(deviceMNode, measurement);
-    if (measurementMNode == null) {
-      measurementMNode = findMeasurementInTemplate(deviceMNode, measurement);
+    IMeasurementMNode measurementMNode = null;
+    if (isDeviceInTemplate) {
+      measurementMNode = deviceMNode.getChild(measurement).getAsMeasurementMNode();
+    } else {
+      measurementMNode = getMeasurementMNode(deviceMNode, measurement);
+      if (measurementMNode == null) {
+        measurementMNode = findMeasurementInTemplate(deviceMNode, measurement);
+      }
     }
     if (measurementMNode == null) {
-      if (!config.isAutoCreateSchemaEnabled()) {
+      if (!config.isAutoCreateSchemaEnabled() || isDeviceInTemplate) {
         throw new PathNotExistException(devicePath + PATH_SEPARATOR + measurement);
       } else {
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
@@ -2418,6 +2435,13 @@ public class MManager {
   }
 
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
+    // check whether any template has been set on designated path
+    if (mtree.getTemplateOnPath(plan.getPrefixPath()) == null) {
+      throw new MetadataException(
+          String.format(
+              "Path [%s] has not been set any template.", plan.getPrefixPath().toString()));
+    }
+
     IMNode node;
     // the order of SetUsingSchemaTemplatePlan and AutoCreateDeviceMNodePlan cannot be guaranteed
     // when writing concurrently, so we need a auto-create mechanism here
@@ -2434,6 +2458,12 @@ public class MManager {
   }
 
   IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
+    // check whether any template has been set on designated path
+    if (node.getUpperTemplate() == null) {
+      throw new MetadataException(
+          String.format("Path [%s] has not been set any template.", node.getFullPath()));
+    }
+
     // this operation may change mtree structure and node type
     // invoke mnode.setUseTemplate is invalid
 

@@ -1496,11 +1496,12 @@ public class MTreeService implements Serializable {
    *
    * <p>Check route 3: If template has direct measurement and mounted node is Entity,
    *
-   * <p>route 3.1: mounted node has no measurement child, then its alignment will be set as the
-   * template.
-   *
-   * <p>route 3.2: mounted node has measurement child, then alignment of it and template should be
-   * identical, otherwise cast a exception.
+   * <ul>
+   *   <p>route 3.1: mounted node has no measurement child, then its alignment will be set as the
+   *   template.
+   *   <p>route 3.2: mounted node has measurement child, then alignment of it and template should be
+   *   identical, otherwise cast a exception.
+   * </ul>
    *
    * @return return the node competent to be mounted.
    */
@@ -1784,27 +1785,73 @@ public class MTreeService implements Serializable {
     return result;
   }
 
-  public boolean isTemplateSetOnMTree(String templateName) {
+  public boolean isTemplateSetOnMTree(String templateName) throws MetadataException {
     // check whether template has been set
     Deque<IMNode> nodeStack = new ArrayDeque<>();
     nodeStack.push(root);
 
     // DFT traverse on MTree
-    while (nodeStack.size() != 0) {
-      IMNode curNode = nodeStack.pop();
-      if (curNode.getUpperTemplate() != null) {
-        if (curNode.getUpperTemplate().getName().equals(templateName)) {
-          return true;
+    try {
+      while (nodeStack.size() != 0) {
+        IMNode curNode = nodeStack.pop();
+        if (curNode.getUpperTemplate() != null) {
+          if (curNode.getUpperTemplate().getName().equals(templateName)) {
+            return true;
+          }
+          // curNode set to other templates, cut this branch
         }
-        // curNode set to other templates, cut this branch
+
+        // no template on curNode, push children to stack
+        IMNodeIterator iterator = store.getChildrenIterator(curNode);
+        try {
+          while (iterator.hasNext()) {
+            nodeStack.push(iterator.next());
+          }
+        } finally {
+          iterator.close();
+        }
       }
 
-      // no template on curNode, push children to stack
-      for (IMNode child : curNode.getChildren().values()) {
-        nodeStack.push(child);
+      return false;
+    } finally {
+      while (nodeStack.size() != 0) {
+        IMNode curNode = nodeStack.pop();
+        unPinMNode(curNode);
       }
     }
-    return false;
+  }
+
+  /**
+   * Get template name on give path if any node of it has been set a template
+   *
+   * @return null if no template has been set on path
+   */
+  public String getTemplateOnPath(PartialPath path) throws MetadataException {
+    String[] pathNodes = path.getNodes();
+    if (!pathNodes[0].equals(IoTDBConstant.PATH_ROOT)) {
+      throw new IllegalPathException(path.toString());
+    }
+    IMNode cur = root;
+
+    if (cur.getSchemaTemplate() != null) {
+      return cur.getSchemaTemplate().getName();
+    }
+
+    IMNode child;
+    for (int i = 1; i < pathNodes.length; i++) {
+      child = store.getChild(cur, pathNodes[i]);
+      if (cur.isMeasurement() || child == null) {
+        unPinPath(cur);
+        return null;
+      }
+      cur = child;
+      if (cur.getSchemaTemplate() != null) {
+        unPinPath(cur);
+        return cur.getSchemaTemplate().getName();
+      }
+    }
+    unPinPath(cur);
+    return null;
   }
 
   // endregion

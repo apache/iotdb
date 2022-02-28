@@ -226,6 +226,11 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
+  public boolean hasChildInNewChildBuffer(String name) {
+    return containsKey(newChildBuffer, name);
+  }
+
+  @Override
   public boolean hasChildInBuffer(String name) {
     return containsKey(updatedChildBuffer, name) || containsKey(newChildBuffer, name);
   }
