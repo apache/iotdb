@@ -4,10 +4,11 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.SchemaFileNotExists;
-import org.apache.iotdb.db.exception.metadata.SegmentNotFoundException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 
@@ -16,10 +17,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -57,44 +61,63 @@ public class SFManager implements ISchemaFileManager {
   }
 
   // region Interfaces
-
-  /**
-   * Load all schema files under target directory, return the recovered tree.
-   *
-   * @return a deep copy tree corresponding to files.
-   */
+  @Override
   public IMNode init() throws MetadataException, IOException {
     loadSchemaFiles();
     return getUpperMTree();
   }
 
-  /**
-   * Get storage group name of the parameter node, write the node with non-negative segment address
-   * into corresponding file.
-   *
-   * @param node cannot be a MeasurementMNode
-   */
+  @Override
   public void writeMNode(IMNode node) throws MetadataException, IOException {
-    IMNode sgNode = getStorageGroupNode(node);
-    String sgName = sgNode.getFullPath();
-
-    // if SG has no file in map, load from disk; if no file on disk, init one
-    if (!schemaFiles.containsKey(sgName)) {
-      if (loadSchemaFileInst(sgName) == null) {
-        initNewSchemaFile(sgName, sgNode.getAsStorageGroupMNode().getDataTTL());
+    // write a node above and not equals storage group
+    if (getStorageGroupNode(node) == null) {
+      // TODO: hotfix for decoupling upper tree nodes from input or output nodes
+      SchemaFile.setNodeAddress(appendUpperTree(node.getPartialPath().getNodes()), 0L);
+      SchemaFile.setNodeAddress(node, 0L);
+      for (IMNode child : node.getChildren().values()) {
+        // FIXME: it may wipe out existed page content !
+        // with non-sgChild, append Internal directly
+        // sgChild with cache, continue directly
+        // sgChild with no cache, init if load null. load method will load from disk but not create
+        if (child.isStorageGroup()) {
+          if (!schemaFiles.containsKey(child.getFullPath())
+              && loadSchemaFileInst(child.getFullPath()) == null) {
+            initNewSchemaFile(
+                child.getFullPath(), child.getAsStorageGroupMNode().getDataTTL(), child.isEntity());
+            appendStorageGroupNode(child);
+          }
+        } else {
+          SchemaFile.setNodeAddress(appendUpperTree(child.getPartialPath().getNodes()), 0L);
+          SchemaFile.setNodeAddress(child, 0L);
+        }
       }
-      appendStorageGroupNode(sgNode);
-    }
+    } else {
+      IMNode sgNode = getStorageGroupNode(node);
+      String sgName = sgNode.getFullPath();
 
-    schemaFiles.get(sgName).writeMNode(node);
+      // if SG has no file in map, load from disk; if no file on disk, init one
+      if (!schemaFiles.containsKey(sgName)) {
+        if (loadSchemaFileInst(sgName) == null) {
+          initNewSchemaFile(
+              sgName, sgNode.getAsStorageGroupMNode().getDataTTL(), sgNode.isEntity());
+        }
+        appendStorageGroupNode(sgNode);
+      }
+
+      // FIXME: convert StorageGroupNode to StorageGroupEntityNode or otherwise, if necessary
+      IMNode sgNodeOnUpperTree = getNodeOnUpperTree(sgNode.getPartialPath().getNodes());
+      if (sgNode.isEntity()) {
+        MNodeUtils.setToEntity(sgNodeOnUpperTree);
+      } else {
+        if (sgNodeOnUpperTree.isEntity()) {
+          MNodeUtils.setToInternal(sgNodeOnUpperTree.getAsEntityMNode());
+        }
+      }
+
+      schemaFiles.get(sgName).writeMNode(node);
+    }
   }
 
-  /**
-   * If a storage group node, remove corresponding file and prune upper tree, otherwise remove
-   * record of the node as well as segment of it if not measurement.
-   *
-   * @param node arbitrary instance implements IMNode
-   */
   @Override
   public void deleteMNode(IMNode node) throws MetadataException, IOException {
     if (node.isStorageGroup()) {
@@ -102,13 +125,20 @@ public class SFManager implements ISchemaFileManager {
       removeSchemaFile(node.getFullPath());
       pruneStorageGroupNode(node);
     } else {
-      // delete inside a schema file
-      loadAndUpdateUpperTree(node);
-      schemaFiles.get(getStorageGroupNode(node).getFullPath()).delete(node);
+      IMNode sgNode = getStorageGroupNode(node);
+      if (sgNode == null) {
+        // delete node above storage group
+        removeDescendantFiles(node);
+        node.getParent().deleteChild(node.getName());
+      } else {
+        // delete inside a schema file
+        loadAndUpdateUpperTree(node);
+        schemaFiles.get(getStorageGroupNode(node).getFullPath()).delete(node);
+      }
     }
   }
 
-  /** Close corresponding files and get a new upper tree. */
+  @Override
   public void close() throws MetadataException, IOException {
     for (ISchemaFile file : schemaFiles.values()) {
       file.close();
@@ -117,8 +147,11 @@ public class SFManager implements ISchemaFileManager {
     root = new InternalMNode(null, MetadataConstant.ROOT);
   }
 
-  /** Close corresponding schema file of the sgNode. */
-  public void close(IMNode sgNode) throws MetadataException, IOException {
+  /**
+   * Close corresponding schema file of the sgNode. <br>
+   * Notice: This method expires upper tree from MEM.
+   */
+  void close(IMNode sgNode) throws MetadataException, IOException {
     if (!sgNode.isStorageGroup()) {
       throw new MetadataException(
           String.format(
@@ -133,6 +166,7 @@ public class SFManager implements ISchemaFileManager {
     pruneStorageGroupNode(sgNode);
   }
 
+  @Override
   public void sync() throws MetadataException, IOException {
     for (ISchemaFile file : schemaFiles.values()) {
       file.sync();
@@ -145,29 +179,67 @@ public class SFManager implements ISchemaFileManager {
     }
   }
 
+  @Override
   public void clear() throws MetadataException, IOException {
     for (ISchemaFile file : schemaFiles.values()) {
       file.clear();
     }
   }
 
+  @Override
   public IMNode getChildNode(IMNode parent, String childName)
       throws MetadataException, IOException {
-    loadAndUpdateUpperTree(parent);
-    return schemaFiles
-        .get(getStorageGroupNode(parent).getFullPath())
-        .getChildNode(parent, childName);
-  }
+    if (getStorageGroupNode(parent) == null) {
+      return MockSFManager.cloneMNode(
+          getNodeOnUpperTree(parent.getPartialPath().getNodes()).getChild(childName));
+    }
 
-  public Iterator<IMNode> getChildren(IMNode parent) throws MetadataException, IOException {
     loadAndUpdateUpperTree(parent);
     try {
+      IMNode res =
+          schemaFiles
+              .get(getStorageGroupNode(parent).getFullPath())
+              .getChildNode(parent, childName);
+      return MockSFManager.cloneMNode(res);
+    } catch (MetadataException e) {
+      // TODO 1: handle get child by alias with a smarter way
+      // TODO 2: it will hide exceptions even not for non-child case, which is not reasonable
+      Iterator<IMNode> allChildren = getChildren(parent);
+      while (allChildren.hasNext()) {
+        IMNode cur = allChildren.next();
+        if (cur.isMeasurement()
+            && cur.getAsMeasurementMNode().getAlias() != null
+            && cur.getAsMeasurementMNode().getAlias().equals(childName)) {
+          return MockSFManager.cloneMNode(cur);
+        }
+      }
+      return null;
+    }
+  }
+
+  @Override
+  public Iterator<IMNode> getChildren(IMNode parent) throws MetadataException, IOException {
+    if (getStorageGroupNode(parent) == null) {
+      List<IMNode> resSet = new ArrayList<>();
+      for (IMNode resNode :
+          getNodeOnUpperTree(parent.getPartialPath().getNodes()).getChildren().values()) {
+        resSet.add(MockSFManager.cloneMNode(resNode));
+      }
+      // return
+      // getNodeOnUpperTree(parent.getPartialPath().getNodes()).getChildren().values().iterator();
+      return resSet.iterator();
+    }
+
+    try {
+      loadAndUpdateUpperTree(parent);
       return schemaFiles.get(getStorageGroupNode(parent).getFullPath()).getChildren(parent);
-    } catch (SegmentNotFoundException e) {
+    } catch (MetadataException e) {
       // throw wrapped exception since class above SFManager shall not perceive page or segment
       // inside schema file
-      throw new MetadataException(
-          String.format("Node [%s] does not exists in schema file.", parent.getFullPath()));
+      // throw new MetadataException(
+      //     String.format("Node [%s] does not exists in schema file.", parent.getFullPath()));
+      // TODO: same problem with getChildNode method
+      return Collections.emptyIterator();
     }
   }
 
@@ -199,8 +271,11 @@ public class SFManager implements ISchemaFileManager {
         if (node.isStorageGroup()) {
           // on an upper tree, storage group node has no child
           rNode =
-              new StorageGroupMNode(
-                  rCur, node.getName(), node.getAsStorageGroupMNode().getDataTTL());
+              node.isEntity()
+                  ? new StorageGroupEntityMNode(
+                      rCur, node.getName(), node.getAsStorageGroupMNode().getDataTTL())
+                  : new StorageGroupMNode(
+                      rCur, node.getName(), node.getAsStorageGroupMNode().getDataTTL());
         } else {
           rNode = new InternalMNode(rCur, node.getName());
           stack.push(node);
@@ -240,9 +315,9 @@ public class SFManager implements ISchemaFileManager {
     }
   }
 
-  private ISchemaFile initNewSchemaFile(String sgName, long dataTTL)
+  private ISchemaFile initNewSchemaFile(String sgName, long dataTTL, boolean isEntity)
       throws MetadataException, IOException {
-    schemaFiles.put(sgName, SchemaFile.initSchemaFile(sgName, dataTTL));
+    schemaFiles.put(sgName, SchemaFile.initSchemaFile(sgName, dataTTL, isEntity));
     return schemaFiles.get(sgName);
   }
 
@@ -258,7 +333,8 @@ public class SFManager implements ISchemaFileManager {
   private void restoreStorageGroup(String[] nodes) throws MetadataException, IOException {
     String sgName = String.join(IoTDBConstant.PATH_SEPARATOR + "", nodes);
     ISchemaFile fileInst = SchemaFile.loadSchemaFile(sgName);
-    appendStorageGroupNode(nodes, fileInst.init().getAsStorageGroupMNode().getDataTTL());
+    appendStorageGroupNode(
+        nodes, fileInst.init().getAsStorageGroupMNode().getDataTTL(), fileInst.init().isEntity());
     schemaFiles.put(sgName, fileInst);
   }
 
@@ -267,9 +343,7 @@ public class SFManager implements ISchemaFileManager {
     while (cur != null && !cur.isStorageGroup()) {
       cur = cur.getParent();
     }
-    if (cur == null) {
-      throw new MetadataException("No storage group on path: " + node.getFullPath());
-    }
+    // return null if above storage group
     return cur;
   }
 
@@ -280,10 +354,13 @@ public class SFManager implements ISchemaFileManager {
    */
   private void appendStorageGroupNode(IMNode sgNode) throws MetadataException {
     appendStorageGroupNode(
-        sgNode.getPartialPath().getNodes(), sgNode.getAsStorageGroupMNode().getDataTTL());
+        sgNode.getPartialPath().getNodes(),
+        sgNode.getAsStorageGroupMNode().getDataTTL(),
+        sgNode.isEntity());
   }
 
-  private void appendStorageGroupNode(String[] nodes, long dataTTL) throws MetadataException {
+  private void appendStorageGroupNode(String[] nodes, long dataTTL, boolean isEntity)
+      throws MetadataException {
     if (!nodes[0].equals(root.getName())) {
       throw new MetadataException(
           "Schema File with invalid name: "
@@ -304,7 +381,11 @@ public class SFManager implements ISchemaFileManager {
                 cur.getFullPath()));
       }
     }
-    cur.addChild(new StorageGroupMNode(cur, nodes[nodes.length - 1], dataTTL));
+    cur.addChild(
+        isEntity
+            ? new StorageGroupEntityMNode(cur, nodes[nodes.length - 1], dataTTL)
+            : new StorageGroupMNode(cur, nodes[nodes.length - 1], dataTTL));
+    SchemaFile.setNodeAddress(cur.getChild(nodes[nodes.length - 1]), 0L);
   }
 
   /**
@@ -324,11 +405,63 @@ public class SFManager implements ISchemaFileManager {
     }
     IMNode par = cur.getParent();
     par.deleteChild(cur.getName());
+
+    // delete branch with non-storage-group
     while (par != root && par.getChildren().size() == 0) {
-      cur = par;
-      par.deleteChild(cur.getName());
-      par = par.getParent();
+      cur = par.getParent();
+      cur.deleteChild(par.getName());
+      par = cur;
     }
+  }
+
+  private IMNode appendUpperTree(String[] pathNodes) throws MetadataException {
+    IMNode cur = root;
+    if (!cur.getName().equals(pathNodes[0])) {
+      throw new MetadataException("Path [%s] has incorrect root.");
+    }
+    for (int i = 1; i < pathNodes.length; i++) {
+      if (!cur.hasChild(pathNodes[i])) {
+        if (cur.isStorageGroup()) {
+          throw new MetadataException(
+              String.format(
+                  "Path [%s] cannot be a prefix and a storage group at same time.",
+                  cur.getFullPath()));
+        }
+        cur.addChild(new InternalMNode(cur, pathNodes[i]));
+      }
+      cur = cur.getChild(pathNodes[i]);
+    }
+    return cur;
+  }
+
+  private void removeDescendantFiles(IMNode node) throws MetadataException, IOException {
+    // parameter node shall not be a storage group
+    // remove all descendant schema files, remains upper none child node  unmodified.
+    Deque<IMNode> stack = new ArrayDeque<>();
+    stack.push(node);
+    while (stack.size() != 0) {
+      IMNode cur = stack.pop();
+      if (cur.isStorageGroup()) {
+        String sgName = cur.getFullPath();
+        removeSchemaFile(sgName);
+      } else {
+        stack.addAll(cur.getChildren().values());
+      }
+    }
+  }
+
+  private IMNode getNodeOnUpperTree(String[] pathNodes) throws MetadataException {
+    IMNode cur = root;
+    if (!cur.getName().equals(pathNodes[0])) {
+      throw new MetadataException("Path [%s] has incorrect root.");
+    }
+    for (int i = 1; i < pathNodes.length; i++) {
+      if (!cur.hasChild(pathNodes[i])) {
+        return null;
+      }
+      cur = cur.getChild(pathNodes[i]);
+    }
+    return cur;
   }
 
   private String getFilePath(String sgName) {

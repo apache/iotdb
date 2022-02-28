@@ -115,14 +115,15 @@ public class RecordUtils {
   private static ByteBuffer measurement2Buffer(IMeasurementMNode node) {
     byte nodeType = 4;
 
-    int bufferLength = 1 + 2 + 8 + 8 + (node.getAlias().getBytes().length + 4);
+    int bufferLength = 1 + 2 + 8 + 8;
+    bufferLength += node.getAlias() == null ? 4 : (node.getAlias().getBytes().length + 4);
     ByteBuffer buffer = ByteBuffer.allocate(bufferLength);
 
     ReadWriteIOUtils.write(nodeType, buffer);
     ReadWriteIOUtils.write((short) bufferLength, buffer);
     ReadWriteIOUtils.write(convertTags2Long(node), buffer);
     ReadWriteIOUtils.write(convertSchema2Long(node), buffer);
-    ReadWriteIOUtils.write(node.getAlias(), buffer);
+    ReadWriteIOUtils.write(node.getAlias() == null ? "" : node.getAlias(), buffer);
     return buffer;
   }
 
@@ -216,7 +217,12 @@ public class RecordUtils {
     IMNode node = buffer2Node("unspecified", buffer);
     if (node.isMeasurement()) {
       builder.append("measurementNode, ");
-      builder.append(String.format("alias: %s, ", node.getAsMeasurementMNode().getAlias()));
+      builder.append(
+          String.format(
+              "alias: %s, ",
+              node.getAsMeasurementMNode().getAlias() == null
+                  ? ""
+                  : node.getAsMeasurementMNode().getAlias()));
       builder.append(
           String.format("type: %s, ", node.getAsMeasurementMNode().getDataType("").toString()));
       builder.append(

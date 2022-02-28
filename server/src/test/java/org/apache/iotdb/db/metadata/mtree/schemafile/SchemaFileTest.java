@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
@@ -280,7 +281,7 @@ public class SchemaFileTest {
       IMNode child = new InternalMNode(upperNode, name);
       upperNode = child;
     }
-    IMNode internalNode = new EntityMNode(upperNode, "vRoot1");
+    IMNode internalNode = new StorageGroupEntityMNode(upperNode, "vRoot1", 0L);
 
     for (int idx = 0; idx < size; idx++) {
       String measurementId = "mid" + idx;
@@ -318,7 +319,7 @@ public class SchemaFileTest {
   private IMNode getFlatTree(int flatSize, String id) {
     IMNode root = new InternalMNode(null, "root");
     IMNode test = new InternalMNode(root, "test");
-    IMNode internalNode = new EntityMNode(null, "vRoot1");
+    IMNode internalNode = new StorageGroupEntityMNode(null, "vRoot1", 0L);
 
     for (int idx = 0; idx < flatSize; idx++) {
       String measurementId = id + idx;
@@ -336,7 +337,7 @@ public class SchemaFileTest {
   private IMNode getVerticalTree(int height, String id) {
     IMNode trueRoot = new InternalMNode(null, "root");
     trueRoot.addChild(new InternalMNode(trueRoot, "sgvt"));
-    IMNode root = new EntityMNode(null, "vt");
+    IMNode root = new StorageGroupEntityMNode(null, "vt", 0L);
     int cnt = 0;
     IMNode cur = root;
     while (cnt < height) {

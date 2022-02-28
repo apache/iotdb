@@ -31,7 +31,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.IMemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.MemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFileManager;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.MockSFManager;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SFManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +71,7 @@ public class CachedMTreeStore implements IMTreeStore {
   @Override
   public void init() throws MetadataException, IOException {
     MNodeContainers.IS_DISK_MODE = true;
-    file = new MockSFManager();
+    file = SFManager.getInstance();
     root = file.init();
     cacheStrategy.pinMNode(root);
     flushTask = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("MTreeFlushThread");
@@ -371,15 +371,23 @@ public class CachedMTreeStore implements IMTreeStore {
     IMNode parent;
     Iterator<IMNode> iterator;
     Iterator<IMNode> bufferIterator;
-    boolean isIteratingDisk = true;
+    boolean isIteratingDisk;
     IMNode nextNode;
 
     CachedMNodeIterator(IMNode parent) throws MetadataException, IOException {
       readLock.lock();
       try {
         this.parent = parent;
-        bufferIterator = getCachedMNodeContainer(parent).getChildrenBufferIterator();
-        this.iterator = file.getChildren(parent);
+        ICachedMNodeContainer container = getCachedMNodeContainer(parent);
+        bufferIterator = container.getChildrenBufferIterator();
+        if (!container.isVolatile()) {
+          this.iterator = file.getChildren(parent);
+          isIteratingDisk = true;
+        } else {
+          iterator = bufferIterator;
+          isIteratingDisk = false;
+        }
+
       } catch (Throwable e) {
         readLock.unlock();
         throw e;
