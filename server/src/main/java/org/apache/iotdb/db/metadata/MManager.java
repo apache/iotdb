@@ -2425,6 +2425,13 @@ public class MManager {
   }
 
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
+    // check whether any template has been set on designated path
+    if (mtree.getTemplateOnPath(plan.getPrefixPath()) == null) {
+      throw new MetadataException(
+              String.format(
+                      "Path [%s] has not been set any template.", plan.getPrefixPath().toString()));
+    }
+
     IMNode node;
     // the order of SetUsingSchemaTemplatePlan and AutoCreateDeviceMNodePlan cannot be guaranteed
     // when writing concurrently, so we need a auto-create mechanism here
@@ -2441,6 +2448,12 @@ public class MManager {
   }
 
   IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
+    // check whether any template has been set on designated path
+    if (node.getUpperTemplate() == null) {
+      throw new MetadataException(
+          String.format("Path [%s] has not been set any template.", node.getFullPath()));
+    }
+
     // this operation may change mtree structure and node type
     // invoke mnode.setUseTemplate is invalid
 

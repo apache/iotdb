@@ -97,6 +97,8 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
         InnerSpaceCompactionUtils.getCrossSpaceFileSelector(budget, mergeResource);
     try {
       List[] mergeFiles = fileSelector.select();
+      // avoid pending tasks holds the metadata and streams
+      mergeResource.clear();
       if (mergeFiles.length == 0) {
         if (mergeResource.getUnseqFiles().size() > 0) {
           // still have unseq files but cannot be selected
@@ -111,11 +113,6 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
           "select files for cross compaction, sequence files: {}, unsequence files {}",
           mergeFiles[0],
           mergeFiles[1]);
-      // avoid pending tasks holds the metadata and streams
-      mergeResource.clear();
-      // do not cache metadata until true candidates are chosen, or too much metadata will be
-      // cached during selection
-      mergeResource.setCacheDeviceMeta(true);
 
       if (mergeFiles[0].size() > 0 && mergeFiles[1].size() > 0) {
         mergeFiles[0].forEach(x -> ((TsFileResource) x).setCompactionCandidate(true));

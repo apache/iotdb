@@ -58,24 +58,20 @@ public class IoTDBSyntaxConventionIT {
       "'string'",
       "'\"string\"'",
       "'\"\"string\"\"'",
-      "'str''ing'",
       "'\\'string'",
       "\"string\"",
       "\"'string'\"",
       "\"''string''\"",
-      "\"str\"\"ing\"",
       "\"\\\"string\""
     };
     String[] resultData = {
       "string",
       "\"string\"",
       "\"\"string\"\"",
-      "str'ing",
       "'string",
       "string",
       "'string'",
       "''string''",
-      "str\"ing",
       "\"string"
     };
 
@@ -98,7 +94,7 @@ public class IoTDBSyntaxConventionIT {
         Assert.assertEquals(resultData[cnt], resultSet.getString("root.sg1.d1.s1"));
         cnt++;
       }
-      Assert.assertEquals(10, cnt);
+      Assert.assertEquals(8, cnt);
 
       for (int i = 0; i < insertData.length; i++) {
         String querySql = String.format("SELECT s1 FROM root.sg1.d1 WHERE s1 = %s", insertData[i]);
@@ -223,7 +219,7 @@ public class IoTDBSyntaxConventionIT {
   public void testIllegalExpression4() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.`'a'` INT64");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.'a' INT64");
       try {
         statement.execute("SELECT 'a' FROM root.sg1.d1");
         fail();
@@ -239,7 +235,22 @@ public class IoTDBSyntaxConventionIT {
   @Test
   public void testNodeName() {
     String[] createNodeNames = {
-      "`select`", "'select'", "\"select\"", "`a+b`", "'a+b'", "\"a+b\"", "'a.b'", "\"a.b\""
+      "`select`",
+      "'select'",
+      "\"select\"",
+      "`a+b`",
+      "'a+b'",
+      "\"a+b\"",
+      "'a.b'",
+      "\"a.b\"",
+      "\"a'.'b\"",
+      "\"a.\"",
+      "\".a\"",
+      "'a.'",
+      "'.a'",
+      "`\\\"a`",
+      "`a\\\"`",
+      "\"a\\\".\\\"b\""
     };
     String[] selectNodeNames = {
       "`select`",
@@ -249,10 +260,33 @@ public class IoTDBSyntaxConventionIT {
       "`'a+b'`",
       "`\"a+b\"`",
       "`'a.b'`",
-      "`\"a.b\"`"
+      "`\"a.b\"`",
+      "`\"a'.'b\"`",
+      "`\"a.\"`",
+      "`\".a\"`",
+      "`'a.'`",
+      "`'.a'`",
+      "`\\\"a`",
+      "`a\\\"`",
+      "`\"a\\\".\\\"b\"`"
     };
     String[] resultNodeNames = {
-      "select", "'select'", "\"select\"", "a+b", "'a+b'", "\"a+b\"", "'a.b'", "\"a.b\""
+      "select",
+      "'select'",
+      "\"select\"",
+      "a+b",
+      "'a+b'",
+      "\"a+b\"",
+      "'a.b'",
+      "\"a.b\"",
+      "\"a'.'b\"",
+      "\"a.\"",
+      "\".a\"",
+      "'a.'",
+      "'.a'",
+      "\\\"a",
+      "a\\\"",
+      "\"a\\\".\\\"b\""
     };
     String[] resultTimeseries = {
       "root.sg1.d1.select",
@@ -262,7 +296,15 @@ public class IoTDBSyntaxConventionIT {
       "root.sg1.d1.'a+b'",
       "root.sg1.d1.\"a+b\"",
       "root.sg1.d1.'a.b'",
-      "root.sg1.d1.\"a.b\""
+      "root.sg1.d1.\"a.b\"",
+      "root.sg1.d1.\"a'.'b\"",
+      "root.sg1.d1.\"a.\"",
+      "root.sg1.d1.\".a\"",
+      "root.sg1.d1.'a.'",
+      "root.sg1.d1.'.a'",
+      "root.sg1.d1.\\\"a",
+      "root.sg1.d1.a\\\"",
+      "root.sg1.d1.\"a\\\".\\\"b\""
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -306,12 +348,121 @@ public class IoTDBSyntaxConventionIT {
   }
 
   @Test
-  public void testIllegalNodeName1() {
+  public void testIllegalNodeName() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.`a.b` TEXT");
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.`a.b` TEXT");
+        fail();
+      } catch (SQLException ignored) {
+      }
+      try {
+        statement.execute("CREATE TIMESERIES root.sg.d1.`\"a`.s1 TEXT");
+        fail();
+      } catch (SQLException ignored) {
+      }
+      try {
+        statement.execute("CREATE TIMESERIES root.sg.d1.`a\"`.s1 TEXT");
+        fail();
+      } catch (SQLException ignored) {
+      }
+      try {
+        statement.execute("CREATE TIMESERIES root.sg.d1.`'a`.s1 TEXT");
+        fail();
+      } catch (SQLException ignored) {
+      }
+      try {
+        statement.execute("CREATE TIMESERIES root.sg.d1.`a'`.s1 TEXT");
+        fail();
+      } catch (SQLException ignored) {
+      }
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.\"a\".b\" TEXT");
+        fail();
+      } catch (SQLException ignored) {
+      }
+      try {
+        statement.execute("CREATE TIMESERIES root.sg.`\"a`.`\"` TEXT");
+        fail();
+      } catch (SQLException ignored) {
+      }
+      try {
+        statement.execute("CREATE TIMESERIES root.sg.`\"ab`.`cd\"` TEXT");
+        fail();
+      } catch (SQLException ignored) {
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
       fail();
-    } catch (SQLException ignored) {
+    }
+  }
+
+  @Test
+  public void testIdentifier() {
+    String[] createIdentifiers = {
+      "id",
+      "ID",
+      "id0",
+      "_id",
+      "0id",
+      "233",
+      "`ab!`",
+      "`\"ab\"`",
+      "`\\\"ac\\\"`",
+      "`'ab'`",
+      "`a.b`",
+      "`a\\`b`"
+    };
+    String[] resultIdentifiers = {
+      "id", "ID", "id0", "_id", "0id", "233", "ab!", "\"ab\"", "\"ac\"", "'ab'", "a.b", "a`b"
+    };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int i = 0; i < createIdentifiers.length; i++) {
+        String createTemplateSql =
+            String.format(
+                "create schema template %s (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
+                createIdentifiers[i]);
+        System.out.println("CREATE TEMPLATE: " + createTemplateSql);
+        statement.execute(createTemplateSql);
+      }
+
+      boolean hasResult = statement.execute("SHOW TEMPLATES");
+      Assert.assertTrue(hasResult);
+      Set<String> expectedResult = new HashSet<>(Arrays.asList(resultIdentifiers));
+
+      ResultSet resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        Assert.assertTrue(expectedResult.contains(resultSet.getString("template name")));
+        expectedResult.remove(resultSet.getString("template name"));
+      }
+      Assert.assertEquals(0, expectedResult.size());
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testIllegaltIdentifier() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.execute(
+            "create schema template ab! (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
+        fail();
+      } catch (SQLException ignored) {
+      }
+      try {
+        statement.execute(
+            "create schema template `a`b` (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
+        fail();
+      } catch (SQLException ignored) {
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
     }
   }
 }

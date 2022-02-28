@@ -101,29 +101,22 @@ public class ErrorHandlingUtils {
 
     Throwable t = e instanceof ExecutionException ? e.getCause() : e;
     if (t instanceof QueryTimeoutRuntimeException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(t.getMessage(), t);
       return RpcUtils.getStatus(TSStatusCode.TIME_OUT, rootCause.getMessage());
     } else if (t instanceof ParseCancellationException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_PARSING_SQL_ERROR, t);
       return RpcUtils.getStatus(
           TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + rootCause.getMessage());
     } else if (t instanceof SQLParserException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_CHECK_METADATA_ERROR, t);
       return RpcUtils.getStatus(
           TSStatusCode.METADATA_ERROR, INFO_CHECK_METADATA_ERROR + rootCause.getMessage());
     } else if (t instanceof QueryProcessException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, t);
       return RpcUtils.getStatus(
           TSStatusCode.QUERY_PROCESS_ERROR, INFO_QUERY_PROCESS_ERROR + rootCause.getMessage());
     } else if (t instanceof QueryInBatchStatementException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_NOT_ALLOWED_IN_BATCH_ERROR, t);
       return RpcUtils.getStatus(
           TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + rootCause.getMessage());
     } else if (t instanceof IoTDBException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, t);
       return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), rootCause.getMessage());
     } else if (t instanceof TsFileRuntimeException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, t);
       return RpcUtils.getStatus(TSStatusCode.TSFILE_PROCESSOR_ERROR, rootCause.getMessage());
     }
     return null;

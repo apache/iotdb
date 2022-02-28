@@ -36,16 +36,18 @@ public class TsFileIdentifier {
   private final boolean sequence;
   private final String filename;
   public static final String INFO_SEPARATOR = " ";
+  // Notice: Do not change the offset of info
   public static final int FILE_NAME_OFFSET_IN_PATH = 1;
   public static final int TIME_PARTITION_OFFSET_IN_PATH = 2;
   public static final int VIRTUAL_SG_OFFSET_IN_PATH = 3;
   public static final int LOGICAL_SG_OFFSET_IN_PATH = 4;
   public static final int SEQUENCE_OFFSET_IN_PATH = 5;
+
   public static final int LOGICAL_SG_OFFSET_IN_LOG = 0;
   public static final int VIRTUAL_SG_OFFSET_IN_LOG = 1;
   public static final int TIME_PARTITION_OFFSET_IN_LOG = 2;
-  public static final int SEQUENCE_OFFSET_IN_LOG = 3;
-  public static final int FILE_NAME_OFFSET_IN_LOG = 4;
+  public static final int FILE_NAME_OFFSET_IN_LOG = 3;
+  public static final int SEQUENCE_OFFSET_IN_LOG = 4;
 
   private TsFileIdentifier(
       String logicalStorageGroupName,
@@ -105,8 +107,30 @@ public class TsFileIdentifier {
         splittedFileInfo[LOGICAL_SG_OFFSET_IN_LOG],
         splittedFileInfo[VIRTUAL_SG_OFFSET_IN_LOG],
         splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG],
-        Boolean.parseBoolean(splittedFileInfo[SEQUENCE_OFFSET_IN_LOG]),
+        splittedFileInfo[SEQUENCE_OFFSET_IN_LOG].equals("sequence"),
         splittedFileInfo[FILE_NAME_OFFSET_IN_LOG]);
+  }
+
+  /**
+   * This function generates an instance of CompactionFileIdentifier by parsing the old info string
+   * from previous version (<0.13) of a tsfile(usually recorded in a compaction.log), such as
+   * “root.test.sg 0 0 1-1-0-0.tsfile true"
+   */
+  public static TsFileIdentifier getFileIdentifierFromOldInfoString(String oldInfoString) {
+    String[] splittedFileInfo = oldInfoString.split(INFO_SEPARATOR);
+    int length = splittedFileInfo.length;
+    if (length != 5) {
+      throw new RuntimeException(
+          String.format(
+              "String %s is not a legal file info string from previous version (<0.13)",
+              oldInfoString));
+    }
+    return new TsFileIdentifier(
+        splittedFileInfo[LOGICAL_SG_OFFSET_IN_LOG],
+        splittedFileInfo[VIRTUAL_SG_OFFSET_IN_LOG],
+        splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG],
+        Boolean.parseBoolean(splittedFileInfo[FILE_NAME_OFFSET_IN_LOG]),
+        splittedFileInfo[SEQUENCE_OFFSET_IN_LOG]);
   }
 
   @Override
@@ -119,9 +143,9 @@ public class TsFileIdentifier {
         INFO_SEPARATOR,
         timePartitionId,
         INFO_SEPARATOR,
-        sequence,
+        filename,
         INFO_SEPARATOR,
-        filename);
+        sequence ? "sequence" : "unsequence");
   }
 
   @Override

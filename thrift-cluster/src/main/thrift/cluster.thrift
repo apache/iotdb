@@ -266,6 +266,14 @@ struct GetAllPathsResult {
   1: required list<string> paths
   2: required list<byte> dataTypes
   3: optional list<string> aliasList
+  4: required list<bool> underAlignedEntity
+}
+
+struct MeasurementSchemaRequest {
+  1: required long queryId
+  2: required RaftNode header
+  3: required Node requester
+  4: required binary planBinary
 }
 
 
@@ -418,7 +426,7 @@ service TSDataService extends RaftService {
 
   set<string> getChildNodePathInNextLevel(1: RaftNode header, 2: string path)
 
-  binary getAllMeasurementSchema(1: RaftNode header, 2: binary planBinary)
+  binary getAllMeasurementSchema(1:MeasurementSchemaRequest request)
 
   list<binary> getAggrResult(1:GetAggrResultRequest request)
 

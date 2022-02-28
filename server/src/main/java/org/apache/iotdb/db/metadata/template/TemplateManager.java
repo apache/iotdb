@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
@@ -148,12 +149,25 @@ public class TemplateManager {
     return templateMap.keySet();
   }
 
-  public void checkIsTemplateCompatible(Template template, IMNode node) throws MetadataException {
+  public void checkTemplateCompatible(Template template, IMNode node) throws MetadataException {
     if (node.getSchemaTemplate() != null) {
       if (node.getSchemaTemplate().equals(template)) {
         throw new DuplicatedTemplateException(template.getName());
       } else {
         throw new MetadataException("Specified node already has template");
+      }
+    }
+
+    // check alignment
+    if (node.isEntity() && (node.getAsEntityMNode().isAligned() != template.isDirectAligned())) {
+      for (IMNode dNode : template.getDirectNodes()) {
+        if (dNode.isMeasurement()) {
+          throw new MetadataException(
+              String.format(
+                  "Template[%s] and mounted node[%s] has different alignment.",
+                  template.getName(),
+                  node.getFullPath() + IoTDBConstant.PATH_SEPARATOR + dNode.getFullPath()));
+        }
       }
     }
   }
