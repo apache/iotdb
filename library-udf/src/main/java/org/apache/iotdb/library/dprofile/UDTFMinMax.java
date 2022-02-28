@@ -49,7 +49,7 @@ public class UDTFMinMax implements UDTF {
         .validate(
             x -> ((String) x).equalsIgnoreCase("batch") || ((String) x).equalsIgnoreCase("stream"),
             "Parameter \"compute\" is illegal. Please use \"batch\" (for default) or \"stream\".",
-            validator.getParameters().getStringOrDefault("compute", ""))
+            validator.getParameters().getStringOrDefault("compute", "batch"))
         .validate(
             params -> (double) params[0] < (double) params[1],
             "parameter $min$ should be smaller than $max$.",

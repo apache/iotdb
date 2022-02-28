@@ -53,7 +53,7 @@ public class UDTFZScore implements UDTF {
         .validate(
             x -> ((String) x).equalsIgnoreCase("batch") || ((String) x).equalsIgnoreCase("stream"),
             "Parameter \"compute\" is illegal. Please use \"batch\" (for default) or \"stream\".",
-            validator.getParameters().getStringOrDefault("compute", ""))
+            validator.getParameters().getStringOrDefault("compute", "batch"))
         .validate(
             x -> ((Double) x) > 0,
             "Parameter \"sd\" is illegal. It should be larger than 0.",
