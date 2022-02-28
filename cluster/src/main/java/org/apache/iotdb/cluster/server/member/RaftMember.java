@@ -260,6 +260,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
 
     startBackGroundThreads();
+    setSkipElection(false);
     logger.info("{} started", name);
   }
 
