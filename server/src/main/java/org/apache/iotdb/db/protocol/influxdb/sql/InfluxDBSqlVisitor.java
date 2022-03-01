@@ -68,7 +68,7 @@ public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<Operator> {
     InfluxFromComponent influxFromComponent = new InfluxFromComponent();
 
     for (InfluxDBSqlParser.NodeNameContext nodeName : fromClause.nodeName()) {
-      influxFromComponent.addNodeName(nodeName.getText());
+      influxFromComponent.addName(nodeName.getText());
     }
     queryOp.setFromComponent(influxFromComponent);
   }

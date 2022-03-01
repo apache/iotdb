@@ -28,11 +28,11 @@ public class InfluxFromComponent extends org.apache.iotdb.db.qp.logical.crud.Fro
 
   public InfluxFromComponent() {}
 
-  public void addNodeName(String name) {
+  public void addName(String name) {
     nameList.add(name);
   }
 
-  public List<String> getNodeName() {
+  public List<String> getNodeList() {
     return nameList;
   }
 }

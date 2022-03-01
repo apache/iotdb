@@ -39,7 +39,7 @@ public class InfluxDBLogicalGeneratorTest {
     InfluxTimeSeriesOperand influxTimeSeriesOperand =
         (InfluxTimeSeriesOperand) resultColumnList.get(0).getExpression();
     assertEquals(influxTimeSeriesOperand.getName(), "*");
-    assertEquals(operator.getFromComponent().getNodeName().get(0), "h2o_feet");
+    assertEquals(operator.getFromComponent().getNodeList().get(0), "h2o_feet");
     assertNull(operator.getWhereComponent());
   }
 
