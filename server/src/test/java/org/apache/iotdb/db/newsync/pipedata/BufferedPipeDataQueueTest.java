@@ -427,4 +427,84 @@ public class BufferedPipeDataQueueTest {
       Assert.fail();
     }
   }
+
+  @Test
+  public void testOfferWhileTaking() {
+    try {
+      DataOutputStream outputStream =
+          new DataOutputStream(
+              new FileOutputStream(new File(pipeLogDir, SyncConstant.COMMIT_LOG_NAME), true));
+      outputStream.writeLong(1);
+      outputStream.close();
+      List<PipeData> pipeDataList = new ArrayList<>();
+      // pipelog1: 0~3
+      DataOutputStream pipeLogOutput1 =
+          new DataOutputStream(
+              new FileOutputStream(
+                  new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(0)), false));
+      for (int i = 0; i < 4; i++) {
+        PipeData pipeData = new TsFilePipeData("fake" + i, i);
+        pipeDataList.add(pipeData);
+        pipeData.serialize(pipeLogOutput1);
+      }
+      pipeLogOutput1.close();
+      // pipelog2: 4~10
+      DataOutputStream pipeLogOutput2 =
+          new DataOutputStream(
+              new FileOutputStream(
+                  new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(4)), false));
+      for (int i = 4; i < 8; i++) {
+        PipeData pipeData =
+            new DeletionPipeData(new Deletion(new PartialPath("fake" + i), 0, 99), i);
+        pipeDataList.add(pipeData);
+        pipeData.serialize(pipeLogOutput2);
+      }
+      for (int i = 8; i < 11; i++) {
+        PipeData pipeData =
+            new SchemaPipeData(new SetStorageGroupPlan(new PartialPath("fake" + i)), i);
+        pipeDataList.add(pipeData);
+        pipeData.serialize(pipeLogOutput2);
+      }
+      pipeLogOutput2.close();
+      ;
+      // recovery
+      BufferedPipeDataQueue pipeDataQueue = new BufferedPipeDataQueue(pipeLogDir.getPath());
+      Assert.assertEquals(1, pipeDataQueue.getCommitSerialNumber());
+      Assert.assertEquals(10, pipeDataQueue.getLastMaxSerialNumber());
+
+      // take
+      List<PipeData> pipeDataTakeList = new ArrayList<>();
+      ExecutorService es1 = Executors.newSingleThreadExecutor();
+      es1.execute(
+          () -> {
+            while (true) {
+              try {
+                pipeDataTakeList.add(pipeDataQueue.take());
+                pipeDataQueue.commit();
+              } catch (InterruptedException e) {
+                break;
+              }
+            }
+          });
+      // offer
+      for (int i = 11; i < 20; i++) {
+        pipeDataQueue.offer(
+            new DeletionPipeData(new Deletion(new PartialPath("fake" + i), 0, 0), i));
+      }
+      try {
+        Thread.sleep(3000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      es1.shutdownNow();
+      Assert.assertEquals(18, pipeDataTakeList.size());
+      for (int i = 0; i < 9; i++) {
+        Assert.assertEquals(pipeDataList.get(i + 2), pipeDataTakeList.get(i));
+      }
+      pipeDataQueue.clear();
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
+  }
 }
