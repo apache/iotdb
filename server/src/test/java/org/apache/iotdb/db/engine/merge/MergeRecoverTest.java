@@ -339,6 +339,7 @@ public class MergeRecoverTest extends MergeTest {
                       + ".tsfile"));
       Assert.assertTrue(file.createNewFile());
       TsFileResource tsFileResource = new TsFileResource(file);
+      prepareFile(tsFileResource, i * 10, 10, i * 10);
       tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i);
       tsFileResource.setMaxPlanIndex(i);
@@ -352,8 +353,6 @@ public class MergeRecoverTest extends MergeTest {
       deletion = new Deletion(new PartialPath("root.sg1.d1", "s0"), 1, 200, 300);
       tsFileResource.getModFile().write(deletion);
       tsFileResource.getModFile().close();
-
-      prepareFile(tsFileResource, i * 10, 10, i * 10);
     }
 
     // create source unseq files
@@ -371,6 +370,7 @@ public class MergeRecoverTest extends MergeTest {
                       + ".tsfile"));
       Assert.assertTrue(file.createNewFile());
       TsFileResource tsFileResource = new TsFileResource(file);
+      prepareFile(tsFileResource, i * 10, 5, i * 10);
       tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i);
       tsFileResource.setMaxPlanIndex(i);
@@ -384,8 +384,6 @@ public class MergeRecoverTest extends MergeTest {
       deletion = new Deletion(new PartialPath("root.sg1.d1", "s0"), 1, 200, 300);
       tsFileResource.getModFile().write(deletion);
       tsFileResource.getModFile().close();
-
-      prepareFile(tsFileResource, i * 10, 5, i * 10);
     }
 
     // create .merge files
