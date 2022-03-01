@@ -1,6 +1,8 @@
 package org.apache.iotdb.db.query.distribution.operator;
 
-import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.db.query.distribution.common.Tablet;
+import org.apache.iotdb.db.query.distribution.common.TraversalOrder;
+import org.apache.iotdb.db.query.distribution.common.WithoutPolicy;
 
 /**
  * TimeJoinOperator is responsible for join two or more series.
@@ -9,7 +11,15 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
  *
  * Children type: [SeriesScanOperator]
  */
-public class TimeJoinOperator extends ExecOperator<RowRecord> {
+public class TimeJoinOperator extends ExecOperator<Tablet> {
+
+    // This parameter indicates the order when executing multiway merge sort.
+    private TraversalOrder mergeOrder;
+
+    // The policy to decide whether a row should be discarded
+    // The without policy is able to be push down to the TimeJoinOperator because we can know whether a row contains
+    // null or not in this operator the situation won't be changed by the downstream operators.
+    private WithoutPolicy withoutPolicy;
 
     @Override
     public boolean hasNext() {
@@ -17,7 +27,7 @@ public class TimeJoinOperator extends ExecOperator<RowRecord> {
     }
 
     @Override
-    public RowRecord getNextBatch() {
+    public Tablet getNextBatch() {
         return null;
     }
 }
