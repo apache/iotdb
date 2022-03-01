@@ -147,7 +147,7 @@ public class SchemaFileTest {
   public void testReadFromFlat() throws MetadataException, IOException {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1", 11111L);
 
-    Iterator<IMNode> ite = getTreeBFT(getFlatTree(10, "aa"));
+    Iterator<IMNode> ite = getTreeBFT(getFlatTree(50000, "aa"));
     while (ite.hasNext()) {
       IMNode cur = ite.next();
       if (!cur.isMeasurement()) {
@@ -157,8 +157,8 @@ public class SchemaFileTest {
 
     IMNode node = new InternalMNode(null, "a");
     ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(0L);
-    IMNode target = sf.getChildNode(node, "aa1");
-    Assert.assertEquals("aa1als", target.getAsMeasurementMNode().getAlias());
+    IMNode target = sf.getChildNode(node, "aa199");
+    Assert.assertEquals("aa199als", target.getAsMeasurementMNode().getAlias());
     sf.close();
   }
 
