@@ -86,7 +86,7 @@ public abstract class MetricService {
       if (mf.getClass()
           .getName()
           .toLowerCase()
-          .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
+          .contains(metricConfig.getMonitorType().name().toLowerCase())) {
         metricManager = mf;
         break;
       }
@@ -112,7 +112,7 @@ public abstract class MetricService {
               .getClass()
               .getName()
               .toLowerCase()
-              .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
+              .contains(metricConfig.getMonitorType().name().toLowerCase())) {
         reporter.setMetricManager(metricManager);
         compositeReporter.addReporter(reporter);
       }

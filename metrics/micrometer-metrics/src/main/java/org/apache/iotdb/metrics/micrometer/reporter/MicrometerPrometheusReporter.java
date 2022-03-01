@@ -102,7 +102,7 @@ public class MicrometerPrometheusReporter implements Reporter {
 
   @Override
   public ReporterType getReporterType() {
-    return ReporterType.prometheus;
+    return ReporterType.PROMETHEUS;
   }
 
   @Override

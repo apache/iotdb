@@ -381,10 +381,10 @@ public class MicrometerMetricManager implements MetricManager {
       return;
     }
     switch (metric) {
-      case jvm:
+      case JVM:
         enableJvmMetrics();
         break;
-      case logback:
+      case LOGBACK:
         enableLogbackMetrics();
         break;
       default:

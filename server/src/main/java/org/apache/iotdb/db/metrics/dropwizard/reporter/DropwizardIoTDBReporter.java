@@ -64,7 +64,7 @@ public class DropwizardIoTDBReporter implements Reporter {
 
   @Override
   public ReporterType getReporterType() {
-    return ReporterType.iotdb;
+    return ReporterType.IOTDB;
   }
 
   @Override

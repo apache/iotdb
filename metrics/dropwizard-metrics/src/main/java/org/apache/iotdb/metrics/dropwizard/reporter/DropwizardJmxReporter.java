@@ -67,7 +67,7 @@ public class DropwizardJmxReporter implements Reporter {
 
   @Override
   public ReporterType getReporterType() {
-    return ReporterType.jmx;
+    return ReporterType.JMX;
   }
 
   @Override

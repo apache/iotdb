@@ -404,7 +404,7 @@ public class DropwizardMetricManager implements MetricManager {
       return;
     }
     switch (metric) {
-      case jvm:
+      case JVM:
         enableJvmMetrics();
         break;
       default:
