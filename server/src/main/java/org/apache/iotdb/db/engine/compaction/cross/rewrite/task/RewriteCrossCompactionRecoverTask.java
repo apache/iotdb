@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogAnalyzer;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -34,8 +36,6 @@ import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,7 +83,14 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
             compactionLogFile);
         RewriteCrossSpaceCompactionLogAnalyzer logAnalyzer =
             new RewriteCrossSpaceCompactionLogAnalyzer(compactionLogFile);
-        logAnalyzer.analyze();
+        if (compactionLogFile
+            .getName()
+            .equals(RewriteCrossSpaceCompactionLogger.COMPACTION_LOG_NAME_FEOM_OLD)) {
+          // log from previous version (<0.13)
+          logAnalyzer.analyzeOldCrossCompactionLog();
+        } else {
+          logAnalyzer.analyze();
+        }
         List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
         List<TsFileIdentifier> targetFileIdentifiers = logAnalyzer.getTargetFileInfos();
 

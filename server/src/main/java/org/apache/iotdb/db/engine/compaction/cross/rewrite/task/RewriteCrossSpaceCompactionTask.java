@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
@@ -32,8 +33,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,10 +43,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.MAGIC_STRING;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_SEQ_FILES;
+import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_SOURCE_FILES;
 import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_TARGET_FILES;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_UNSEQ_FILES;
 
 public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactionTask {
   private static final Logger logger =
@@ -141,8 +138,8 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         new RewriteCrossSpaceCompactionLogger(logFile)) {
       // print the path of the temporary file first for priority check during recovery
       compactionLogger.logFiles(targetTsfileResourceList, STR_TARGET_FILES);
-      compactionLogger.logFiles(selectedSeqTsFileResourceList, STR_SEQ_FILES);
-      compactionLogger.logFiles(selectedUnSeqTsFileResourceList, STR_UNSEQ_FILES);
+      compactionLogger.logFiles(selectedSeqTsFileResourceList, STR_SOURCE_FILES);
+      compactionLogger.logFiles(selectedUnSeqTsFileResourceList, STR_SOURCE_FILES);
       CompactionUtils.compact(
           selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
 
@@ -150,7 +147,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
 
       // indicates that the cross compaction is complete and the result can be reused during a
       // restart recovery
-      compactionLogger.logStringInfo(MAGIC_STRING);
       compactionLogger.close();
 
       CompactionUtils.combineModsInCompaction(

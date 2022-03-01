@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.recover;
 
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import java.io.BufferedWriter;
@@ -35,16 +34,15 @@ public class RewriteCrossSpaceCompactionLogger implements AutoCloseable {
   public static final String COMPACTION_LOG_NAME = "cross-compaction.log";
   public static final String COMPACTION_LOG_NAME_FEOM_OLD = "merge.log";
 
-  public static final String STR_SEQ_FILES = "seqFiles";
-  public static final String STR_TARGET_FILES = "targetFiles";
-  public static final String STR_UNSEQ_FILES = "unseqFiles";
-  public static final String MAGIC_STRING = "crossSpaceCompaction";
+  public static final String STR_SOURCE_FILES = "source";
+  public static final String STR_TARGET_FILES = "target";
+  public static final String STR_SEQ_FILES_FROM_OLD = "seqFiles";
+  public static final String STR_UNSEQ_FILES_FROM_OLD = "unseqFiles";
 
   private BufferedWriter logStream;
 
   public RewriteCrossSpaceCompactionLogger(File logFile) throws IOException {
     logStream = new BufferedWriter(new FileWriter(logFile, true));
-    logStringInfo(MAGIC_STRING);
   }
 
   @Override
@@ -52,25 +50,14 @@ public class RewriteCrossSpaceCompactionLogger implements AutoCloseable {
     logStream.close();
   }
 
-  public void logStringInfo(String logInfo) throws IOException {
-    logStream.write(logInfo);
-    logStream.newLine();
-    logStream.flush();
-  }
-
-  public void logFiles(CrossSpaceMergeResource resource) throws IOException {
-    logFiles(resource.getSeqFiles(), STR_SEQ_FILES);
-    logFiles(resource.getUnseqFiles(), STR_UNSEQ_FILES);
-  }
-
   public void logFiles(List<TsFileResource> seqFiles, String flag) throws IOException {
-    logStream.write(flag);
-    logStream.newLine();
     for (TsFileResource tsFileResource : seqFiles) {
       logStream.write(
-          TsFileIdentifier.getFileIdentifierFromFilePath(
-                  tsFileResource.getTsFile().getAbsolutePath())
-              .toString());
+          flag
+              + TsFileIdentifier.INFO_SEPARATOR
+              + TsFileIdentifier.getFileIdentifierFromFilePath(
+                      tsFileResource.getTsFile().getAbsolutePath())
+                  .toString());
       logStream.newLine();
     }
     logStream.flush();

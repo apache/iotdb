@@ -43,11 +43,11 @@ public class TsFileIdentifier {
   public static final int LOGICAL_SG_OFFSET_IN_PATH = 4;
   public static final int SEQUENCE_OFFSET_IN_PATH = 5;
 
-  public static final int LOGICAL_SG_OFFSET_IN_LOG = 0;
-  public static final int VIRTUAL_SG_OFFSET_IN_LOG = 1;
-  public static final int TIME_PARTITION_OFFSET_IN_LOG = 2;
-  public static final int FILE_NAME_OFFSET_IN_LOG = 3;
-  public static final int SEQUENCE_OFFSET_IN_LOG = 4;
+  public static final int SEQUENCE_OFFSET_IN_LOG = 0;
+  public static final int LOGICAL_SG_OFFSET_IN_LOG = 1;
+  public static final int VIRTUAL_SG_OFFSET_IN_LOG = 2;
+  public static final int TIME_PARTITION_OFFSET_IN_LOG = 3;
+  public static final int FILE_NAME_OFFSET_IN_LOG = 4;
 
   private TsFileIdentifier(
       String logicalStorageGroupName,
@@ -126,26 +126,26 @@ public class TsFileIdentifier {
               oldInfoString));
     }
     return new TsFileIdentifier(
-        splittedFileInfo[LOGICAL_SG_OFFSET_IN_LOG],
-        splittedFileInfo[VIRTUAL_SG_OFFSET_IN_LOG],
-        splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG],
-        Boolean.parseBoolean(splittedFileInfo[FILE_NAME_OFFSET_IN_LOG]),
-        splittedFileInfo[SEQUENCE_OFFSET_IN_LOG]);
+        splittedFileInfo[LOGICAL_SG_OFFSET_IN_LOG - 1],
+        splittedFileInfo[VIRTUAL_SG_OFFSET_IN_LOG - 1],
+        splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG - 1],
+        Boolean.parseBoolean(splittedFileInfo[SEQUENCE_OFFSET_IN_LOG + 4]),
+        splittedFileInfo[FILE_NAME_OFFSET_IN_LOG - 1]);
   }
 
   @Override
   public String toString() {
     return String.format(
         "%s%s%s%s%s%s%s%s%s",
+        sequence ? "sequence" : "unsequence",
+        INFO_SEPARATOR,
         logicalStorageGroupName,
         INFO_SEPARATOR,
         virtualStorageGroupId,
         INFO_SEPARATOR,
         timePartitionId,
         INFO_SEPARATOR,
-        filename,
-        INFO_SEPARATOR,
-        sequence ? "sequence" : "unsequence");
+        filename);
   }
 
   @Override

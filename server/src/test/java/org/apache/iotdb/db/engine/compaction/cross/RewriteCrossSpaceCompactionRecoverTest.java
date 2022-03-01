@@ -34,7 +34,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -46,10 +45,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.MAGIC_STRING;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_SEQ_FILES;
+import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_SOURCE_FILES;
 import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_TARGET_FILES;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_UNSEQ_FILES;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.COMPACTION_LOG_NAME;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -91,10 +88,9 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     RewriteCrossSpaceCompactionLogger compactionLogger =
         new RewriteCrossSpaceCompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
-    compactionLogger.logFiles(seqResources, STR_SEQ_FILES);
-    compactionLogger.logFiles(unseqResources, STR_UNSEQ_FILES);
+    compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
+    compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
-    compactionLogger.logStringInfo(MAGIC_STRING);
     compactionLogger.close();
     new RewriteCrossCompactionRecoverTask(
             COMPACTION_LOG_NAME,
@@ -160,10 +156,9 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     RewriteCrossSpaceCompactionLogger compactionLogger =
         new RewriteCrossSpaceCompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
-    compactionLogger.logFiles(seqResources, STR_SEQ_FILES);
-    compactionLogger.logFiles(unseqResources, STR_UNSEQ_FILES);
+    compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
+    compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
-    compactionLogger.logStringInfo(MAGIC_STRING);
     compactionLogger.close();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     new RewriteCrossCompactionRecoverTask(
@@ -230,12 +225,11 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     RewriteCrossSpaceCompactionLogger compactionLogger =
         new RewriteCrossSpaceCompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
-    compactionLogger.logFiles(seqResources, STR_SEQ_FILES);
-    compactionLogger.logFiles(unseqResources, STR_UNSEQ_FILES);
+    compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
+    compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     seqResources.get(0).getTsFile().delete();
-    compactionLogger.logStringInfo(MAGIC_STRING);
     compactionLogger.close();
     new RewriteCrossCompactionRecoverTask(
             COMPACTION_LOG_NAME,
@@ -301,11 +295,10 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     RewriteCrossSpaceCompactionLogger compactionLogger =
         new RewriteCrossSpaceCompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
-    compactionLogger.logFiles(seqResources, STR_SEQ_FILES);
-    compactionLogger.logFiles(unseqResources, STR_UNSEQ_FILES);
+    compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
+    compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    compactionLogger.logStringInfo(MAGIC_STRING);
     compactionLogger.close();
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
@@ -406,10 +399,9 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     RewriteCrossSpaceCompactionLogger compactionLogger =
         new RewriteCrossSpaceCompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
-    compactionLogger.logFiles(seqResources, STR_SEQ_FILES);
-    compactionLogger.logFiles(unseqResources, STR_UNSEQ_FILES);
+    compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
+    compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
-    compactionLogger.logStringInfo(MAGIC_STRING);
     compactionLogger.close();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     for (int i = 0; i < seqResources.size(); i++) {

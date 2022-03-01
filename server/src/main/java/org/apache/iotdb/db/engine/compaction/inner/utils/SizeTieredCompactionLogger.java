@@ -59,8 +59,7 @@ public class SizeTieredCompactionLogger {
   }
 
   public void logFileInfo(String prefix, File file) throws IOException {
-    logStream.write(prefix);
-    logStream.newLine();
+    logStream.write(prefix + TsFileIdentifier.INFO_SEPARATOR);
     logStream.write(
         TsFileIdentifier.getFileIdentifierFromFilePath(file.getAbsolutePath()).toString());
     logStream.newLine();
@@ -68,8 +67,7 @@ public class SizeTieredCompactionLogger {
   }
 
   public void logFile(String prefix, File file) throws IOException {
-    logStream.write(prefix);
-    logStream.newLine();
+    logStream.write(prefix + TsFileIdentifier.INFO_SEPARATOR);
     logStream.write(file.getPath());
     logStream.newLine();
     logStream.flush();

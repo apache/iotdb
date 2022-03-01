@@ -27,21 +27,18 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.InvalidPropertiesFormatException;
 import java.util.List;
 
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.MAGIC_STRING;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_SEQ_FILES;
+import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_SEQ_FILES_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_SOURCE_FILES;
 import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_TARGET_FILES;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_UNSEQ_FILES;
+import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_UNSEQ_FILES_FROM_OLD;
 
 public class RewriteCrossSpaceCompactionLogAnalyzer {
 
   private final File logFile;
   private final List<TsFileIdentifier> sourceFileInfos = new ArrayList<>();
   private final List<TsFileIdentifier> targetFileInfos = new ArrayList<>();
-  private boolean isFirstMagicStringExisted = false;
-  private boolean isEndMagicStringExisted = false;
   private boolean isLogFromOld = false;
 
   public RewriteCrossSpaceCompactionLogAnalyzer(File logFile) {
@@ -52,59 +49,35 @@ public class RewriteCrossSpaceCompactionLogAnalyzer {
   public void analyze() throws IOException {
     String currLine;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
-      if ((currLine = bufferedReader.readLine()) != null) {
-        switch (currLine) {
-          case MAGIC_STRING:
-            // compaction log of version 0.13
-            isFirstMagicStringExisted = true;
-            analyzeLog(bufferedReader);
-            break;
-          case STR_SEQ_FILES:
-            // compaction log of version < 0.13
-            isLogFromOld = true;
-            analyzeOldLog(bufferedReader);
-            break;
-          default:
-            throw new InvalidPropertiesFormatException(
-                "Unsupported string in cross space log :" + logFile.getAbsolutePath());
+      while ((currLine = bufferedReader.readLine()) != null) {
+        String fileInfo;
+        if (currLine.startsWith(STR_SOURCE_FILES)) {
+          fileInfo = currLine.replace(STR_SOURCE_FILES + TsFileIdentifier.INFO_SEPARATOR, "");
+          analyzeFilePath(false, fileInfo);
+        } else {
+          fileInfo = currLine.replace(STR_TARGET_FILES + TsFileIdentifier.INFO_SEPARATOR, "");
+          analyzeFilePath(true, fileInfo);
         }
       }
     }
   }
 
-  /** Analyze cross space compaction log of version 0.13. */
-  private void analyzeLog(BufferedReader bufferedReader) throws IOException {
-    String currLine;
-    boolean isTargetFile = false;
-    while ((currLine = bufferedReader.readLine()) != null) {
-      switch (currLine) {
-        case MAGIC_STRING:
-          isEndMagicStringExisted = true;
-          break;
-        case STR_TARGET_FILES:
-          isTargetFile = true;
-          break;
-        case STR_SEQ_FILES:
-        case STR_UNSEQ_FILES:
-          isTargetFile = false;
-          break;
-        default:
-          analyzeFilePath(isTargetFile, currLine);
-          break;
-      }
-    }
-  }
-
   /** Analyze cross space compaction log of previous version (<0.13). */
-  private void analyzeOldLog(BufferedReader bufferedReader) throws IOException {
+  public void analyzeOldCrossCompactionLog() throws IOException {
+    isLogFromOld = true;
     String currLine;
     boolean isSeqSource = true;
-    while ((currLine = bufferedReader.readLine()) != null) {
-      if (currLine.equals(STR_UNSEQ_FILES)) {
-        isSeqSource = false;
-        continue;
+    try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
+      while ((currLine = bufferedReader.readLine()) != null) {
+        if (currLine.equals(STR_UNSEQ_FILES_FROM_OLD)) {
+          isSeqSource = false;
+          continue;
+        } else if (currLine.equals(STR_SEQ_FILES_FROM_OLD)) {
+          isSeqSource = true;
+          continue;
+        }
+        analyzeOldFilePath(isSeqSource, currLine);
       }
-      analyzeOldFilePath(isSeqSource, currLine);
     }
   }
 
@@ -134,14 +107,6 @@ public class RewriteCrossSpaceCompactionLogAnalyzer {
 
   public List<TsFileIdentifier> getTargetFileInfos() {
     return targetFileInfos;
-  }
-
-  public boolean isEndMagicStringExisted() {
-    return isEndMagicStringExisted;
-  }
-
-  public boolean isFirstMagicStringExisted() {
-    return isFirstMagicStringExisted;
   }
 
   public boolean isLogFromOld() {
