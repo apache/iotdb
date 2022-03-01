@@ -106,6 +106,7 @@ public class MergeRecoverTest extends MergeTest {
   @Test
   public void testRecoverWithSomeSourceFilesLost() throws IOException, MetadataException {
     sourceSeqFiles.get(0).getTsFile().delete();
+    tsFileManagement.remove(sourceSeqFiles.get(0), true);
     RecoverMergeTask recoverMergeTask =
         new RecoverMergeTask(
             tsFileManagement,
@@ -154,6 +155,8 @@ public class MergeRecoverTest extends MergeTest {
         .moveFile(
             new File(sourceSeqFiles.get(0).getTsFilePath() + TsFileResource.RESOURCE_SUFFIX),
             new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX));
+    tsFileManagement.remove(sourceSeqFiles.get(0), true);
+    tsFileManagement.add(new TsFileResource(targetFile), true);
     targetFile = modifyTsFileNameUnseqMergCnt(sourceSeqFiles.get(1).getTsFile());
     FSFactoryProducer.getFSFactory().moveFile(sourceSeqFiles.get(1).getTsFile(), targetFile);
     // sg recover will serialize resouce file
@@ -162,6 +165,8 @@ public class MergeRecoverTest extends MergeTest {
       FileLoaderUtils.updateTsFileResource(reader, targetTsFileResouce);
     }
     targetTsFileResouce.serialize();
+    tsFileManagement.remove(sourceSeqFiles.get(1), true);
+    tsFileManagement.add(targetTsFileResouce, true);
 
     RecoverMergeTask recoverMergeTask =
         new RecoverMergeTask(
@@ -207,7 +212,10 @@ public class MergeRecoverTest extends MergeTest {
               new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX),
               new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX));
       resource.remove();
+      tsFileManagement.remove(resource, true);
+      tsFileManagement.add(new TsFileResource(targetFile), true);
     }
+
     RecoverMergeTask recoverMergeTask =
         new RecoverMergeTask(
             tsFileManagement,
@@ -252,9 +260,12 @@ public class MergeRecoverTest extends MergeTest {
               new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX),
               new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX));
       resource.remove();
+      tsFileManagement.remove(resource, true);
+      tsFileManagement.add(new TsFileResource(targetFile), true);
     }
     for (TsFileResource resource : sourceUnseqFiles) {
       resource.remove();
+      tsFileManagement.remove(resource, false);
     }
     RecoverMergeTask recoverMergeTask =
         new RecoverMergeTask(
