@@ -81,15 +81,7 @@ public class MetricName {
 
   @Override
   public String toString() {
-    return "MetricName{"
-        + "name='"
-        + name
-        + "'"
-        + ", metricLevel="
-        + metricLevel.name()
-        + ", tags="
-        + tags
-        + '}';
+    return "MetricName{" + "name='" + name + "'" + ", tags=" + tags + '}';
   }
 
   public String getName() {
