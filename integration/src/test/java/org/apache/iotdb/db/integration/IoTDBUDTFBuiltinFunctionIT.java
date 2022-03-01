@@ -383,4 +383,38 @@ public class IoTDBUDTFBuiltinFunctionIT {
       fail(throwable.getMessage());
     }
   }
+
+  @Test
+  public void testInRange() {
+    Double[] lowers = {-1.0, 0.0, 1.5, 2.0, 4.0};
+    Double[] uppers = {0.0, 2.0, 4.5, 2.0, 1.0};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int k = 0; k < lowers.length; ++k) {
+        Double lower = lowers[k];
+        Double upper = uppers[k];
+        ResultSet resultSet =
+            statement.executeQuery(
+                String.format(
+                    "select in_range(s1,'upper'='%f','lower'='%f'), in_range(s2,'upper'='%f','lower'='%f'), "
+                        + "in_range(s3,'upper'='%f','lower'='%f'), in_range(s4,'upper'='%f','lower'='%f') from root.sg.d1",
+                    upper, lower, upper, lower, upper, lower, upper, lower));
+
+        int columnCount = resultSet.getMetaData().getColumnCount();
+        assertEquals(1 + 4, columnCount);
+
+        for (int i = 0; i < INSERTION_SQLS.length; ++i) {
+          resultSet.next();
+          for (int j = 0; j < 4; ++j) {
+            Boolean expected = (i >= lower && i <= upper);
+            Boolean actual = Boolean.parseBoolean(resultSet.getString(2 + j));
+            assertEquals(expected, actual);
+          }
+        }
+        resultSet.close();
+      }
+    } catch (SQLException e) {
+      assertTrue(e.getMessage().contains("Upper can not be smaller than lower."));
+    }
+  }
 }
