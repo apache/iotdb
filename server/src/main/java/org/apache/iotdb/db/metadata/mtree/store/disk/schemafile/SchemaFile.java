@@ -753,9 +753,9 @@ public class SchemaFile implements ISchemaFile {
             child.getAsMeasurementMNode().getAlias() == null
                 ? 4
                 : child.getAsMeasurementMNode().getAlias().getBytes().length + 4;
-        totalSize += 24; // slightly larger than actually size
+        totalSize += 24; // slightly larger than actually HEADER size
       } else {
-        totalSize += 14; // slightly larger
+        totalSize += 16; // slightly larger
       }
     }
     return (short) totalSize;
