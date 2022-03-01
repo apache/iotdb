@@ -31,7 +31,7 @@ metricReporterList:
 monitorType: dropwizard
 
 # Level of metric level, options: [core, important, normal, all]
-metricLevel: all
+metricLevel: normal
 
 # Predefined metric, options: [jvm, logback], logback are not supported in dropwizard
 predefinedMetrics:
