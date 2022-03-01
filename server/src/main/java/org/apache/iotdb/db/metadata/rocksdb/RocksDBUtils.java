@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.rocksdb;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -35,13 +37,38 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ALIAS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ATTRIBUTES;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_TTL;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_VERSION;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_FLAG;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ESCAPE_PATH_SEPARATOR;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_ALIAS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_ATTRIBUTES;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_SET_TTL;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ALIAS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_INTERNAL;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.PATH_SEPARATOR;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT_CHAR;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT_STRING;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
 
 public class RocksDBUtils {
 
@@ -443,5 +470,74 @@ public class RocksDBUtils {
       lastChar = c;
     }
     return stringBuilder.toString();
+  }
+
+  // eg. root.a.*.**.b.**.c
+  public static List<String[]> replaceMultiWildcard(String[] nodes, int maxLevel)
+      throws IllegalPathException {
+    List<String[]> allResult = new ArrayList<>();
+    List<Integer> multiWildcardPosition = new ArrayList<>();
+    for (int i = 0; i < nodes.length; i++) {
+      if (MULTI_LEVEL_PATH_WILDCARD.equals(nodes[i])) {
+        multiWildcardPosition.add(i);
+      }
+    }
+    if (multiWildcardPosition.isEmpty()) {
+      allResult.add(nodes);
+    } else if (multiWildcardPosition.size() == 1) {
+      for (int i = 1; i <= maxLevel - nodes.length + 1; i++) {
+        String[] clone = nodes.clone();
+        clone[multiWildcardPosition.get(0)] = replaceWildcard(i);
+        allResult.add(newStringArray(clone));
+      }
+    } else {
+      List<int[]> result =
+          getAllCompoundMode(maxLevel - multiWildcardPosition.size(), multiWildcardPosition.size());
+      for (int[] value : result) {
+        String[] clone = nodes.clone();
+        for (int i = 0; i < value.length; i++) {
+          clone[multiWildcardPosition.get(i)] = replaceWildcard(value[i]);
+        }
+        allResult.add(newStringArray(clone));
+      }
+    }
+    return allResult;
+  }
+
+  private static String[] newStringArray(String[] oldArray) throws IllegalPathException {
+    StringBuilder stringBuilder = new StringBuilder();
+    for (String str : oldArray) {
+      stringBuilder.append(PATH_SEPARATOR).append(str);
+    }
+    return MetaUtils.splitPathToDetachedPath(stringBuilder.substring(1));
+  }
+
+  private static String replaceWildcard(int num) {
+    StringBuilder stringBuilder = new StringBuilder();
+    for (int i = 0; i < num; i++) {
+      stringBuilder.append(RockDBConstants.PATH_SEPARATOR).append(ONE_LEVEL_PATH_WILDCARD);
+    }
+    return stringBuilder.substring(1);
+  }
+
+  private static List<int[]> getAllCompoundMode(int sum, int n) {
+    if (n <= 2) {
+      List<int[]> result = new ArrayList<>();
+      for (int i = 1; i < sum; i++) {
+        result.add(new int[] {i, sum - i});
+      }
+      return result;
+    }
+    List<int[]> allResult = new ArrayList<>();
+    for (int i = 1; i <= sum - n + 1; i++) {
+      List<int[]> temp = getAllCompoundMode(sum - i, n - 1);
+      for (int[] value : temp) {
+        int[] result = new int[value.length + 1];
+        result[0] = i;
+        System.arraycopy(value, 0, result, 1, value.length);
+        allResult.add(result);
+      }
+    }
+    return allResult;
   }
 }
