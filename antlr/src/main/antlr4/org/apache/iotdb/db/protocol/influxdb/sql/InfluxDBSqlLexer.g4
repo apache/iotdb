@@ -220,40 +220,21 @@ EXPONENT : INT ('e'|'E') ('+'|'-')? INT ;
  */
 
 /** Allow unicode rule/token names */
-ID : FIRST_NAME_CHAR NAME_CHAR*;
+ID : NAME_CHAR+
+   ;
 
-fragment
-NAME_CHAR
-    :   'A'..'Z'
-    |   'a'..'z'
-    |   '0'..'9'
-    |   '_'
-    |   '-'
-    |   ':'
-    |   '/'
-    |   '@'
-    |   '#'
-    |   '$'
-    |   '%'
-    |   '&'
-    |   '+'
-    |   CN_CHAR
-    ;
-
-fragment
-FIRST_NAME_CHAR
-    :   'A'..'Z'
-    |   'a'..'z'
-    |   '0'..'9'
-    |   '_'
-    |   '/'
-    |   '@'
-    |   '#'
-    |   '$'
-    |   '%'
-    |   '&'
-    |   '+'
-    |   CN_CHAR
+fragment NAME_CHAR
+    : 'A'..'Z'
+    | 'a'..'z'
+    | '0'..'9'
+    | '_'
+    | ':'
+    | '@'
+    | '#'
+    | '$'
+    | '{'
+    | '}'
+    | CN_CHAR
     ;
 
 fragment CN_CHAR

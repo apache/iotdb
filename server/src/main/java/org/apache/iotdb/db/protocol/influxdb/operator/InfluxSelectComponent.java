@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.protocol.influxdb.operator;
 
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
-import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxNodeExpression;
+import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxTimeSeriesOperand;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
@@ -66,7 +66,7 @@ public final class InfluxSelectComponent
         hasAggregationFunction = true;
       }
     }
-    if (expression instanceof InfluxNodeExpression) {
+    if (expression instanceof InfluxTimeSeriesOperand) {
       hasCommonQuery = true;
     }
     influxInfluxResultColumns.add(resultColumn);

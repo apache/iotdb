@@ -24,24 +24,24 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.io.IOException;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class InfluxNodeExpression extends Expression {
+public class InfluxTimeSeriesOperand extends TimeSeriesOperand {
 
   protected String name;
 
-  public InfluxNodeExpression(String name) {
+  public InfluxTimeSeriesOperand(String name) {
     this.name = name;
   }
 
@@ -78,22 +78,12 @@ public class InfluxNodeExpression extends Expression {
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
       LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException {
+      throws QueryProcessException {
     return null;
-  }
-
-  @Override
-  protected boolean isConstantOperandInternal() {
-    return isConstantOperandCache;
   }
 
   @Override
   public List<Expression> getExpressions() {
     return Collections.singletonList(this);
-  }
-
-  @Override
-  protected String getExpressionStringInternal() {
-    return "Node name: " + name;
   }
 }

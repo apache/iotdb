@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.sql;
 
-import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxNodeExpression;
+import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxTimeSeriesOperand;
 import org.apache.iotdb.db.protocol.influxdb.operator.*;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -152,41 +152,55 @@ public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<InfluxOpera
   }
 
   private Expression parseExpression(InfluxDBSqlParser.ExpressionContext context) {
-    // unary
-    if (context.functionName != null) {
-      return parseFunctionExpression(context);
-    }
-    if (context.nodeName() != null) {
-      return new InfluxNodeExpression(context.nodeName().getText());
+    // LR_BRACKET unaryInBracket=expression RR_BRACKET
+    if (context.unaryInBracket != null) {
+      return parseExpression(context.unaryInBracket);
     }
 
-    if (context.literal != null) {
-      return new InfluxNodeExpression(context.literal.getText());
-    }
-    if (context.unary != null) {
+    // (PLUS | MINUS) unaryAfterSign=expression
+    if (context.unaryAfterSign != null) {
       return context.MINUS() != null
           ? new NegationExpression(parseExpression(context.expression(0)))
           : parseExpression(context.expression(0));
     }
 
-    // binary
-    Expression leftExpression = parseExpression(context.leftExpression);
-    Expression rightExpression = parseExpression(context.rightExpression);
-    if (context.STAR() != null) {
-      return new MultiplicationExpression(leftExpression, rightExpression);
+    // leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
+    // leftExpression=expression (PLUS | MINUS) rightExpression=expression
+    if (context.leftExpression != null && context.rightExpression != null) {
+      Expression leftExpression = parseExpression(context.leftExpression);
+      Expression rightExpression = parseExpression(context.rightExpression);
+      if (context.STAR() != null) {
+        return new MultiplicationExpression(leftExpression, rightExpression);
+      }
+      if (context.DIV() != null) {
+        return new DivisionExpression(leftExpression, rightExpression);
+      }
+      if (context.MOD() != null) {
+        return new ModuloExpression(leftExpression, rightExpression);
+      }
+      if (context.PLUS() != null) {
+        return new AdditionExpression(leftExpression, rightExpression);
+      }
+      if (context.MINUS() != null) {
+        return new SubtractionExpression(leftExpression, rightExpression);
+      }
     }
-    if (context.DIV() != null) {
-      return new DivisionExpression(leftExpression, rightExpression);
+
+    // functionName=nodeName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
+    if (context.functionName != null) {
+      return parseFunctionExpression(context);
     }
-    if (context.MOD() != null) {
-      return new ModuloExpression(leftExpression, rightExpression);
+
+    // nodeName
+    if (context.nodeName() != null) {
+      return new InfluxTimeSeriesOperand(context.nodeName().getText());
     }
-    if (context.PLUS() != null) {
-      return new AdditionExpression(leftExpression, rightExpression);
+
+    // literal
+    if (context.literal != null) {
+      return new InfluxTimeSeriesOperand(context.literal.getText());
     }
-    if (context.MINUS() != null) {
-      return new SubtractionExpression(leftExpression, rightExpression);
-    }
+
     throw new UnsupportedOperationException();
   }
 

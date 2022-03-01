@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.sql;
 
-import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxNodeExpression;
+import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxTimeSeriesOperand;
 import org.apache.iotdb.db.protocol.influxdb.operator.*;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 
@@ -35,9 +35,9 @@ public class InfluxDBLogicalGeneratorTest {
         (InfluxQueryOperator) InfluxDBLogicalGenerator.generate("SELECT * FROM h2o_feet");
     List<ResultColumn> resultColumnList = operator.getSelectComponent().getInfluxResultColumns();
     assertEquals(resultColumnList.size(), 1);
-    InfluxNodeExpression influxNodeExpression =
-        (InfluxNodeExpression) resultColumnList.get(0).getExpression();
-    assertEquals(influxNodeExpression.getName(), "*");
+    InfluxTimeSeriesOperand influxTimeSeriesOperand =
+        (InfluxTimeSeriesOperand) resultColumnList.get(0).getExpression();
+    assertEquals(influxTimeSeriesOperand.getName(), "*");
     assertEquals(operator.getFromComponent().getNodeName().get(0), "h2o_feet");
     assertNull(operator.getWhereComponent());
   }
@@ -49,9 +49,9 @@ public class InfluxDBLogicalGeneratorTest {
             InfluxDBLogicalGenerator.generate("SELECT a,b,c FROM h2o_feet where a>1 and b<1");
     List<ResultColumn> resultColumnList = operator.getSelectComponent().getInfluxResultColumns();
     assertEquals(resultColumnList.size(), 3);
-    InfluxNodeExpression influxNodeExpression =
-        (InfluxNodeExpression) resultColumnList.get(0).getExpression();
-    assertEquals(influxNodeExpression.getName(), "a");
+    InfluxTimeSeriesOperand influxTimeSeriesOperand =
+        (InfluxTimeSeriesOperand) resultColumnList.get(0).getExpression();
+    assertEquals(influxTimeSeriesOperand.getName(), "a");
     InfluxWhereComponent influxWhereComponent = operator.getWhereComponent();
     InfluxFilterOperator filterOperator =
         (InfluxFilterOperator) influxWhereComponent.getFilterOperator();

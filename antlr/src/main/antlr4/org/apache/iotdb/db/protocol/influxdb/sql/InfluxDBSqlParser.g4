@@ -44,8 +44,8 @@ resultColumn
    ;
 
 expression
-   : LR_BRACKET unary=expression RR_BRACKET
-   | (PLUS | MINUS) unary=expression
+   : LR_BRACKET unaryInBracket=expression RR_BRACKET
+   | (PLUS | MINUS) unaryAfterSign=expression
    | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
    | leftExpression=expression (PLUS | MINUS) rightExpression=expression
    | functionName=nodeName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
