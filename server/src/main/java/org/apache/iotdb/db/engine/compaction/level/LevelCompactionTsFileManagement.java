@@ -35,6 +35,7 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -154,7 +155,17 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       TimeSeriesMetadataCache.getInstance().clear();
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       seqFile.setDeleted(true);
-      seqFile.delete();
+      FileUtils.moveFile(
+          seqFile.getTsFile(),
+          new File(
+              seqFile.getTsFile().getAbsolutePath().replace(".tsfile", ".compaction-old-file")));
+      FileUtils.moveFile(
+          new File(seqFile.getTsFile().getAbsolutePath() + ".resource"),
+          new File(
+              seqFile
+                  .getTsFile()
+                  .getAbsolutePath()
+                  .replace(".tsfile", ".compaction-old-file.resource")));
     } catch (IOException e) {
       logger.error(e.getMessage(), e);
     } finally {

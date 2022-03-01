@@ -141,14 +141,14 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
 
     totalCost = 0;
 
-    int unseqIndex = 0;
+    int unseqIndex = resource.getUnseqFiles().size() - 1;
     long startTime = System.currentTimeMillis();
     long timeConsumption = 0;
     long timeLimit = IoTDBDescriptor.getInstance().getConfig().getMergeFileSelectionTimeBudget();
     if (timeLimit < 0) {
       timeLimit = Long.MAX_VALUE;
     }
-    while (unseqIndex < resource.getUnseqFiles().size() && timeConsumption < timeLimit) {
+    while (unseqIndex >= 0 && timeConsumption < timeLimit) {
       // select next unseq files
       TsFileResource unseqFile = resource.getUnseqFiles().get(unseqIndex);
 
@@ -172,7 +172,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
       }
 
       tmpSelectedSeqFiles.clear();
-      unseqIndex++;
+      unseqIndex--;
       timeConsumption = System.currentTimeMillis() - startTime;
     }
     for (int i = 0; i < seqSelected.length; i++) {
@@ -180,6 +180,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
         selectedSeqFiles.add(resource.getSeqFiles().get(i));
       }
     }
+    System.out.println();
   }
 
   private boolean updateSelectedFiles(long newCost, TsFileResource unseqFile) {
@@ -232,15 +233,13 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
    * @param unseqFile the tsFileResource of unseqFile to be compacted
    */
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
-    int tmpSelectedNum = 0;
     for (String deviceId : unseqFile.getDevices()) {
       long unseqStartTime = unseqFile.getStartTime(deviceId);
       long unseqEndTime = unseqFile.getEndTime(deviceId);
 
-      boolean noMoreOverlap = false;
-      for (int i = 0; i < resource.getSeqFiles().size() && !noMoreOverlap; i++) {
+      for (int i = 0; i < resource.getSeqFiles().size(); i++) {
         TsFileResource seqFile = resource.getSeqFiles().get(i);
-        if (!seqFile.getDevices().contains(deviceId)) {
+        if (!seqFile.getDevices().contains(deviceId) || tmpSelectedSeqFiles.contains(i)) {
           continue;
         }
 
@@ -253,26 +252,18 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
           if (tmpSelectedSeqFiles.size() == 0) {
             tmpSelectedSeqFiles.add(i);
           }
-          noMoreOverlap = true;
         } else if (!seqFile.isClosed()) {
           // we cannot make sure whether unclosed file has overlap or not, so we just add it.
           tmpSelectedSeqFiles.add(i);
-          tmpSelectedNum++;
         } else if (unseqEndTime <= seqEndTime) {
           // if time range in unseq file is 10-20, seq file is 15-25, then select this seq file and
           // there is no more overlap later.
           tmpSelectedSeqFiles.add(i);
-          tmpSelectedNum++;
-          noMoreOverlap = true;
         } else if (unseqStartTime <= seqEndTime) {
           // if time range in unseq file is 10-20, seq file is 0-15, then select this seq file and
           // there may be overlap later.
           tmpSelectedSeqFiles.add(i);
-          tmpSelectedNum++;
         }
-      }
-      if (tmpSelectedNum + seqSelectedNum == resource.getSeqFiles().size()) {
-        break;
       }
     }
   }

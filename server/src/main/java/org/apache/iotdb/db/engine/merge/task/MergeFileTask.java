@@ -153,41 +153,38 @@ public class MergeFileTask {
 
   void checkResourceValid() throws IOException {
     // device -> [startTime, endTime]
-    Map<String, Long> devicesTimeRangeMap = new HashMap<>();
-    for (TsFileResource seqFile : resource.getSeqFiles()) {
-      TsFileIOWriter fileWriter = resource.getMergeFileWriter(seqFile, false);
-      Map<String, List<ChunkMetadata>> deviceChunkMetadataListMap =
-          fileWriter.getDeviceChunkMetadataMap();
-      for (Entry<String, List<ChunkMetadata>> entry : deviceChunkMetadataListMap.entrySet()) {
-        String device = entry.getKey();
-        if (!device.equals("root.Baoshan.670107E20.00")) {
-          continue;
-        }
-        List<ChunkMetadata> metadata = entry.getValue();
-
-        long maxEndTimeForThisFile = Long.MIN_VALUE;
-        long minStartTimeForThisFile = Long.MAX_VALUE;
-        for (ChunkMetadata chunkMetadata : metadata) {
-          if (chunkMetadata.getEndTime() > maxEndTimeForThisFile) {
-            maxEndTimeForThisFile = chunkMetadata.getEndTime();
-          }
-          if (chunkMetadata.getStartTime() < minStartTimeForThisFile) {
-            minStartTimeForThisFile = chunkMetadata.getStartTime();
-          }
-        }
-
-        if (devicesTimeRangeMap.containsKey(device)
-            && devicesTimeRangeMap.get(device) > minStartTimeForThisFile) {
-          logger.error(
-              "merge error occurs. seq file is {}, unseq file is {}, device is {}",
-              resource.getSeqFiles(),
-              resource.getUnseqFiles(),
-              device);
-          System.exit(-1);
-        }
-        devicesTimeRangeMap.put(device, maxEndTimeForThisFile);
-      }
-    }
+    //    Map<String, Long> devicesTimeRangeMap = new HashMap<>();
+    //    for (TsFileResource seqFile : resource.getSeqFiles()) {
+    //      TsFileIOWriter fileWriter = resource.getMergeFileWriter(seqFile, false);
+    //      Map<String, List<ChunkMetadata>> deviceChunkMetadataListMap =
+    //          fileWriter.getDeviceChunkMetadataMap();
+    //      for (Entry<String, List<ChunkMetadata>> entry : deviceChunkMetadataListMap.entrySet()) {
+    //        String device = entry.getKey();
+    //        List<ChunkMetadata> metadata = entry.getValue();
+    //
+    //        long maxEndTimeForThisFile = Long.MIN_VALUE;
+    //        long minStartTimeForThisFile = Long.MAX_VALUE;
+    //        for (ChunkMetadata chunkMetadata : metadata) {
+    //          if (chunkMetadata.getEndTime() > maxEndTimeForThisFile) {
+    //            maxEndTimeForThisFile = chunkMetadata.getEndTime();
+    //          }
+    //          if (chunkMetadata.getStartTime() < minStartTimeForThisFile) {
+    //            minStartTimeForThisFile = chunkMetadata.getStartTime();
+    //          }
+    //        }
+    //
+    //        if (devicesTimeRangeMap.containsKey(device)
+    //            && devicesTimeRangeMap.get(device) > minStartTimeForThisFile) {
+    //          logger.error(
+    //              "merge error occurs. seq file is {}, unseq file is {}, device is {}",
+    //              resource.getSeqFiles(),
+    //              resource.getUnseqFiles(),
+    //              device);
+    //          System.exit(-1);
+    //        }
+    //        devicesTimeRangeMap.put(device, maxEndTimeForThisFile);
+    //      }
+    //    }
 
     Map<String, Long> measurementLatestTimeMap = new HashMap<>();
     for (TsFileResource seqFile : resource.getSeqFiles()) {
@@ -256,6 +253,8 @@ public class MergeFileTask {
               MetaMarker.handleUnexpectedMarker(marker);
           }
         }
+      } catch (IOException e) {
+
       }
     }
   }
@@ -475,11 +474,17 @@ public class MergeFileTask {
       seqFile.serialize();
       logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-
       // change tsFile name
-      if (!seqFile.getTsFile().delete()) {
-        logger.warn("fail to delete {}", seqFile.getTsFile());
-      }
+      fsFactory.moveFile(
+          seqFile.getTsFile(),
+          new File(seqFile.getTsFile().getAbsolutePath().replace(".tsfile", ".merge-old-files")));
+      fsFactory.moveFile(
+          new File(seqFile.getTsFilePath() + ".resource"),
+          new File(
+              seqFile
+                  .getTsFile()
+                  .getAbsolutePath()
+                  .replace(".tsfile", ".merge-old-files.resource")));
       fsFactory.deleteIfExists(
           new File(seqFile.getTsFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
       File nextMergeVersionFile = modifyTsFileNameUnseqMergCnt(seqFile.getTsFile());

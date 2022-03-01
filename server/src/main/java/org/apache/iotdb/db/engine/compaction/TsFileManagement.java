@@ -36,6 +36,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -363,7 +364,20 @@ public abstract class TsFileManagement {
     for (TsFileResource unseqFile : unseqFiles) {
       unseqFile.writeLock();
       try {
+        FileUtils.moveFile(
+            unseqFile.getTsFile(),
+            new File(
+                unseqFile.getTsFile().getAbsolutePath().replace(".tsfile", ".merge-old-file")));
+        FileUtils.moveFile(
+            new File(unseqFile.getTsFilePath() + ".resource"),
+            new File(
+                unseqFile
+                    .getTsFile()
+                    .getAbsolutePath()
+                    .replace(".tsfile", ".merge-old-file.resource")));
         unseqFile.remove();
+      } catch (IOException e) {
+        logger.error("exception occurs ", e);
       } finally {
         unseqFile.writeUnlock();
       }
