@@ -30,7 +30,7 @@ import java.util.Set;
 @SuppressWarnings("unused") // some fields are for future features
 public class SQLConstant {
 
-  private SQLConstant() {
+  public SQLConstant() {
     // forbidding instantiation
   }
 

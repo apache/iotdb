@@ -54,21 +54,31 @@ public class InfluxTimeSeriesOperand extends TimeSeriesOperand {
   }
 
   @Override
-  public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {}
+  public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
+    // influxdb don't need to do it.
+  }
 
   @Override
   public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
-      throws LogicalOptimizeException {}
+      throws LogicalOptimizeException {
+    // influxdb don't need to do it.
+  }
 
   @Override
-  public void collectPaths(Set<PartialPath> pathSet) {}
+  public void collectPaths(Set<PartialPath> pathSet) {
+    // influxdb don't need to do it.
+  }
 
   @Override
   public void constructUdfExecutors(
-      Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {}
+      Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
+    // influxdb don't need to do it.
+  }
 
   @Override
-  public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {}
+  public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
+    // influxdb don't need to do it.
+  }
 
   @Override
   public IntermediateLayer constructIntermediateLayer(
@@ -79,6 +89,7 @@ public class InfluxTimeSeriesOperand extends TimeSeriesOperand {
       Map<Expression, TSDataType> expressionDataTypeMap,
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException {
+    // influxdb don't need to do it.
     return null;
   }
 
