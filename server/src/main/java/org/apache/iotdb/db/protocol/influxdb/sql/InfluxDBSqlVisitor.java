@@ -22,6 +22,7 @@ import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxTimeSeriesOp
 import org.apache.iotdb.db.protocol.influxdb.operator.*;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
@@ -33,17 +34,17 @@ import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 
-public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<InfluxOperator> {
+public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<Operator> {
 
   private InfluxQueryOperator queryOp;
 
   @Override
-  public InfluxOperator visitSingleStatement(InfluxDBSqlParser.SingleStatementContext ctx) {
+  public Operator visitSingleStatement(InfluxDBSqlParser.SingleStatementContext ctx) {
     return visit(ctx.statement());
   }
 
   @Override
-  public InfluxOperator visitSelectStatement(InfluxDBSqlParser.SelectStatementContext ctx) {
+  public Operator visitSelectStatement(InfluxDBSqlParser.SelectStatementContext ctx) {
     queryOp = new InfluxQueryOperator();
     parseSelectClause(ctx.selectClause());
     parseFromClause(ctx.fromClause());

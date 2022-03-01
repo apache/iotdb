@@ -19,8 +19,9 @@
 package org.apache.iotdb.db.protocol.influxdb.operator;
 
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.logical.Operator;
 
-public class InfluxQueryOperator extends InfluxOperator {
+public class InfluxQueryOperator extends Operator {
 
   protected InfluxSelectComponent influxSelectComponent;
   protected InfluxFromComponent influxFromComponent;
