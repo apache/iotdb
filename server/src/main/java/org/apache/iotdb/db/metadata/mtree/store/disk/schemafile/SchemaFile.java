@@ -185,7 +185,7 @@ public class SchemaFile implements ISchemaFile {
       curPage = getPageInstance(pageIndex);
     }
 
-    // Write new child
+    // Flush new child
     for (Map.Entry<String, IMNode> entry :
         ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildBuffer().entrySet()) {
 
@@ -253,7 +253,7 @@ public class SchemaFile implements ISchemaFile {
       }
     }
 
-    // Write updated child
+    // Flush updated child
     for (Map.Entry<String, IMNode> entry :
         ICachedMNodeContainer.getCachedMNodeContainer(node).getUpdatedChildBuffer().entrySet()) {
       // Translate child into reocrd
@@ -528,8 +528,17 @@ public class SchemaFile implements ISchemaFile {
   // endregion
   // region Segment Address Operation
 
+  /**
+   * <p>It might be a weird but influential method. It searches for the real segment address with address from parental node and child name.
+   *
+   * <p>For now, it examines segments one by one with target child name, which has Operation(n).
+   *
+   * @param curSegAddr segment address from parental node
+   * @param recKey target child name
+   */
   private long getTargetSegmentAddress(long curSegAddr, String recKey)
       throws IOException, MetadataException {
+    // TODO: improve efficiency
     ISchemaPage curPage = getPageInstance(getPageIndex(curSegAddr));
     short curSegId = getSegIndex(curSegAddr);
 
