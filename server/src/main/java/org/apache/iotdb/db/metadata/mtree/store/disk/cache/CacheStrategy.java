@@ -57,18 +57,14 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContaine
  *       </ol>
  * </ol>
  */
-public class CacheStrategy implements ICacheStrategy {
-
-  // The nodes in nodeCache are all evictable and may be selected to be evicted during cache
-  // eviction.
-  private volatile Map<CacheEntry, IMNode> nodeCache = new ConcurrentHashMap<>();
+public abstract class CacheStrategy implements ICacheStrategy {
 
   // The nodeBuffer helps to quickly locate the volatile subtree
   private volatile Map<CacheEntry, IMNode> nodeBuffer = new ConcurrentHashMap<>();
 
   @Override
   public boolean isCached(IMNode node) {
-    return node.getCacheEntry() != null;
+    return getCacheEntry(node) != null;
   }
 
   /**
@@ -78,11 +74,7 @@ public class CacheStrategy implements ICacheStrategy {
    * @param node
    */
   @Override
-  public void updateCacheStatusAfterMemoryRead(IMNode node) {
-    if (nodeCache.containsKey(node.getCacheEntry())) {
-      // todo update cache status for node selection during eviction
-    }
-  }
+  public abstract void updateCacheStatusAfterMemoryRead(IMNode node);
 
   /**
    * The node read from disk should be cached and added to nodeCache and the cache of its belonging
@@ -92,9 +84,9 @@ public class CacheStrategy implements ICacheStrategy {
    */
   @Override
   public void updateCacheStatusAfterDiskRead(IMNode node) {
-    CacheEntry cacheEntry = node.getCacheEntry();
+    CacheEntry cacheEntry = getCacheEntry(node);
     getBelongedContainer(node).addChildToCache(node);
-    nodeCache.putIfAbsent(cacheEntry, node);
+    addToNodeCache(cacheEntry, node);
   }
 
   /**
@@ -105,7 +97,7 @@ public class CacheStrategy implements ICacheStrategy {
    */
   @Override
   public void updateCacheStatusAfterAppend(IMNode node) {
-    CacheEntry cacheEntry = node.getCacheEntry();
+    CacheEntry cacheEntry = getCacheEntry(node);
     cacheEntry.setVolatile(true);
     getBelongedContainer(node).appendMNode(node);
     addNodeToBuffer(node);
@@ -119,12 +111,12 @@ public class CacheStrategy implements ICacheStrategy {
    */
   @Override
   public void updateCacheStatusAfterUpdate(IMNode node) {
-    CacheEntry cacheEntry = node.getCacheEntry();
+    CacheEntry cacheEntry = getCacheEntry(node);
     if (!cacheEntry.isVolatile()) {
       cacheEntry.setVolatile(true);
       getBelongedContainer(node).updateMNode(node.getName());
       synchronized (node) {
-        nodeCache.remove(cacheEntry);
+        removeFromNodeCache(cacheEntry);
       }
       addNodeToBuffer(node);
     }
@@ -140,13 +132,13 @@ public class CacheStrategy implements ICacheStrategy {
     IMNode parent = node.getParent();
     CacheEntry cacheEntry;
     while (parent != null) {
-      cacheEntry = parent.getCacheEntry();
-      if (nodeCache.containsKey(cacheEntry)) {
+      cacheEntry = getCacheEntry(parent);
+      if (isInNodeCache(cacheEntry)) {
         synchronized (parent) {
-          if (nodeCache.containsKey(cacheEntry)) {
+          if (isInNodeCache(cacheEntry)) {
             // the ancestors of volatile node should not stay in nodeCache in which the node will be
             // evicted
-            nodeCache.remove(cacheEntry);
+            removeFromNodeCache(cacheEntry);
             parent = parent.getParent();
           } else {
             break;
@@ -157,12 +149,13 @@ public class CacheStrategy implements ICacheStrategy {
       }
     }
     parent = node.getParent();
-    cacheEntry = parent.getCacheEntry();
+    cacheEntry = getCacheEntry(parent);
     if (!cacheEntry.isVolatile()) {
       // make sure that the nodeBuffer contains all the root node of volatile subTree
       // give that root.sg.d.s, if root, sg and d have been persisted and s are volatile, then d
       // will be added to nodeBuffer
       nodeBuffer.put(cacheEntry, parent);
+      nodeBuffer.remove(getCacheEntry(node));
     }
   }
 
@@ -176,8 +169,8 @@ public class CacheStrategy implements ICacheStrategy {
   @Override
   public void updateCacheStatusAfterPersist(IMNode node) {
     IMNode tmp = node;
-    while (tmp.getParent() != null && !nodeCache.containsKey(tmp.getCacheEntry())) {
-      nodeCache.put(tmp.getCacheEntry(), tmp);
+    while (tmp.getParent() != null && !isInNodeCache(getCacheEntry(tmp))) {
+      addToNodeCache(getCacheEntry(tmp), tmp);
       tmp = tmp.getParent();
     }
     ICachedMNodeContainer container = getCachedMNodeContainer(node);
@@ -193,10 +186,10 @@ public class CacheStrategy implements ICacheStrategy {
   }
 
   private void updateCacheStatusAfterPersist(IMNode node, ICachedMNodeContainer container) {
-    CacheEntry cacheEntry = node.getCacheEntry();
+    CacheEntry cacheEntry = getCacheEntry(node);
     cacheEntry.setVolatile(false);
     container.moveMNodeToCache(node.getName());
-    nodeCache.put(cacheEntry, node);
+    addToNodeCache(cacheEntry, node);
   }
 
   /**
@@ -209,7 +202,9 @@ public class CacheStrategy implements ICacheStrategy {
   public List<IMNode> collectVolatileMNodes() {
     List<IMNode> nodesToPersist = new ArrayList<>();
     for (IMNode node : nodeBuffer.values()) {
-      collectVolatileNodes(node, nodesToPersist);
+      if (node.getParent() != null && !nodeBuffer.containsKey(getCacheEntry(node.getParent()))) {
+        collectVolatileNodes(node, nodesToPersist);
+      }
     }
     nodeBuffer.clear();
     return nodesToPersist;
@@ -219,7 +214,7 @@ public class CacheStrategy implements ICacheStrategy {
     CacheEntry cacheEntry;
     boolean isCollected = false;
     for (IMNode child : node.getChildren().values()) {
-      cacheEntry = child.getCacheEntry();
+      cacheEntry = getCacheEntry(child);
       if (cacheEntry == null || !cacheEntry.isVolatile()) {
         continue;
       }
@@ -242,12 +237,12 @@ public class CacheStrategy implements ICacheStrategy {
     if (cacheEntry.isVolatile()) {
       nodeBuffer.remove(cacheEntry);
     } else {
-      nodeCache.remove(cacheEntry);
+      removeFromNodeCache(cacheEntry);
     }
   }
 
   private void removeRecursively(IMNode node, List<IMNode> removedMNodes) {
-    CacheEntry cacheEntry = node.getCacheEntry();
+    CacheEntry cacheEntry = getCacheEntry(node);
     if (cacheEntry == null) {
       return;
     }
@@ -267,22 +262,27 @@ public class CacheStrategy implements ICacheStrategy {
   @Override
   public synchronized List<IMNode> evict() {
     IMNode node = null;
+    CacheEntry cacheEntry = null;
     List<IMNode> evictedMNodes = new ArrayList<>();
-    for (CacheEntry cacheEntry : nodeCache.keySet()) {
-      if (!cacheEntry.isPinned()) {
-        node = nodeCache.get(cacheEntry);
-        // the operation that may change the cache status of a node should be synchronized
-        synchronized (node) {
-          if (!cacheEntry.isPinned() && nodeCache.containsKey(cacheEntry)) {
-            getBelongedContainer(node).evictMNode(node.getName());
-            nodeCache.remove(node.getCacheEntry());
-            node.setCacheEntry(null);
-            evictedMNodes.add(node);
-            break;
-          }
+    boolean isSuccess = false;
+    while (!isSuccess) {
+      node = getPotentialNodeTobeEvicted();
+      if (node == null) {
+        break;
+      }
+      cacheEntry = getCacheEntry(node);
+      // the operation that may change the cache status of a node should be synchronized
+      synchronized (node) {
+        if (!cacheEntry.isPinned() && isInNodeCache(cacheEntry)) {
+          getBelongedContainer(node).evictMNode(node.getName());
+          removeFromNodeCache(getCacheEntry(node));
+          node.setCacheEntry(null);
+          evictedMNodes.add(node);
+          isSuccess = true;
         }
       }
     }
+
     if (node != null) {
       collectEvictedMNodes(node, evictedMNodes);
     }
@@ -291,7 +291,7 @@ public class CacheStrategy implements ICacheStrategy {
 
   private void collectEvictedMNodes(IMNode node, List<IMNode> evictedMNodes) {
     for (IMNode child : node.getChildren().values()) {
-      nodeCache.remove(child.getCacheEntry());
+      removeFromNodeCache(getCacheEntry(child));
       child.setCacheEntry(null);
       evictedMNodes.add(child);
       collectEvictedMNodes(child, evictedMNodes);
@@ -308,15 +308,14 @@ public class CacheStrategy implements ICacheStrategy {
    */
   @Override
   public void pinMNode(IMNode node) {
-    CacheEntry cacheEntry = node.getCacheEntry();
+    CacheEntry cacheEntry = getCacheEntry(node);
     if (cacheEntry == null) {
-      cacheEntry = new CacheEntry();
-      node.setCacheEntry(cacheEntry);
+      cacheEntry = initCacheEntryForNode(node);
     }
     if (!cacheEntry.isPinned()) {
       IMNode parent = node.getParent();
       if (parent != null) {
-        parent.getCacheEntry().pin();
+        getCacheEntry(parent).pin();
       }
     }
     cacheEntry.pin();
@@ -333,7 +332,7 @@ public class CacheStrategy implements ICacheStrategy {
   @Override
   public List<IMNode> unPinMNode(IMNode node) {
     List<IMNode> releasedMNodes = new ArrayList<>();
-    CacheEntry cacheEntry = node.getCacheEntry();
+    CacheEntry cacheEntry = getCacheEntry(node);
     cacheEntry.unPin();
     if (!cacheEntry.isPinned()) {
       releasedMNodes.add(node);
@@ -341,7 +340,7 @@ public class CacheStrategy implements ICacheStrategy {
       while (parent != null) {
         node = parent;
         parent = node.getParent();
-        cacheEntry = node.getCacheEntry();
+        cacheEntry = getCacheEntry(node);
         cacheEntry.unPin();
         if (cacheEntry.isPinned()) {
           break;
@@ -354,13 +353,33 @@ public class CacheStrategy implements ICacheStrategy {
 
   @Override
   public boolean isPinned(IMNode node) {
-    CacheEntry cacheEntry = node.getCacheEntry();
+    CacheEntry cacheEntry = getCacheEntry(node);
     return cacheEntry != null && cacheEntry.isPinned();
   }
 
   @Override
   public void clear() {
-    nodeCache.clear();
+    clearNodeCache();
     nodeBuffer.clear();
   }
+
+  protected CacheEntry getCacheEntry(IMNode node) {
+    return node.getCacheEntry();
+  }
+
+  protected CacheEntry initCacheEntryForNode(IMNode node) {
+    CacheEntry cacheEntry = new CacheEntry();
+    node.setCacheEntry(cacheEntry);
+    return cacheEntry;
+  }
+
+  protected abstract boolean isInNodeCache(CacheEntry cacheEntry);
+
+  protected abstract void addToNodeCache(CacheEntry cacheEntry, IMNode node);
+
+  protected abstract void removeFromNodeCache(CacheEntry cacheEntry);
+
+  protected abstract IMNode getPotentialNodeTobeEvicted();
+
+  protected abstract void clearNodeCache();
 }

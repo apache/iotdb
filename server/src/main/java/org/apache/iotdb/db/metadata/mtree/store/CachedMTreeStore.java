@@ -26,9 +26,9 @@ import org.apache.iotdb.db.metadata.mnode.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeContainers;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.IMemManager;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.LRUCacheStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.MemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFileManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SFManager;
@@ -55,7 +55,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private IMemManager memManager = new MemManager();
 
-  private ICacheStrategy cacheStrategy = new CacheStrategy();
+  private ICacheStrategy cacheStrategy = new LRUCacheStrategy();
 
   private ISchemaFileManager file;
 
