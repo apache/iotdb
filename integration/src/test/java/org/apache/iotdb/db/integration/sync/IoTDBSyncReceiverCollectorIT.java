@@ -122,12 +122,18 @@ public class IoTDBSyncReceiverCollectorIT {
     if (!pipeLogDir1.exists()) {
       pipeLogDir1.mkdirs();
     }
-    BufferedWriter commitLogWriter =
-        new BufferedWriter(new FileWriter(new File(pipeLogDir1, SyncConstant.COMMIT_LOG_NAME)));
-    commitLogWriter.write(String.valueOf(-1));
-    commitLogWriter.newLine();
-    commitLogWriter.flush();
-    commitLogWriter.close();
+    DataOutputStream outputStream =
+        new DataOutputStream(
+            new FileOutputStream(new File(pipeLogDir1, SyncConstant.COMMIT_LOG_NAME), true));
+    outputStream.writeLong(-1);
+    outputStream.close();
+    //    BufferedWriter commitLogWriter =
+    //        new BufferedWriter(new FileWriter(new File(pipeLogDir1,
+    // SyncConstant.COMMIT_LOG_NAME)));
+    //    commitLogWriter.newLine();
+    //    commitLogWriter.write(String.valueOf(-1));
+    //    commitLogWriter.flush();
+    //    commitLogWriter.close();
     int serialNum = 0;
     File pipeLog1 = new File(pipeLogDir1.getPath(), SyncConstant.getPipeLogName(serialNum));
     DataOutputStream pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog1, false));
@@ -211,6 +217,11 @@ public class IoTDBSyncReceiverCollectorIT {
             if (pipeDataQueue.getCommitSerialNumber() == finalSerialNum) {
               break;
             }
+            try {
+              Thread.sleep(100);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
           }
           latch.countDown();
         });
@@ -287,12 +298,18 @@ public class IoTDBSyncReceiverCollectorIT {
       pipeLogDir2.mkdirs();
     }
     // 2.1 prepare for pipe1
-    BufferedWriter commitLogWriter =
-        new BufferedWriter(new FileWriter(new File(pipeLogDir1, SyncConstant.COMMIT_LOG_NAME)));
-    commitLogWriter.write(String.valueOf(-1));
-    commitLogWriter.newLine();
-    commitLogWriter.flush();
-    commitLogWriter.close();
+    DataOutputStream outputStream =
+        new DataOutputStream(
+            new FileOutputStream(new File(pipeLogDir1, SyncConstant.COMMIT_LOG_NAME), true));
+    outputStream.writeLong(-1);
+    outputStream.close();
+    //    BufferedWriter commitLogWriter =
+    //        new BufferedWriter(new FileWriter(new File(pipeLogDir1,
+    // SyncConstant.COMMIT_LOG_NAME)));
+    //    commitLogWriter.newLine();
+    //    commitLogWriter.write(String.valueOf(-1));
+    //    commitLogWriter.flush();
+    //    commitLogWriter.close();
     int serialNum1 = 0;
     File pipeLog1 = new File(pipeLogDir1.getPath(), SyncConstant.getPipeLogName(serialNum1));
     DataOutputStream pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog1, false));
@@ -341,14 +358,23 @@ public class IoTDBSyncReceiverCollectorIT {
 
     // 2.2 prepare for pipe2
     int serialNum2 = 0;
-    commitLogWriter =
-        new BufferedWriter(new FileWriter(new File(pipeLogDir2, SyncConstant.COMMIT_LOG_NAME)));
-    commitLogWriter.write(String.valueOf(-1));
-    commitLogWriter.newLine();
-    commitLogWriter.flush();
-    commitLogWriter.close();
+    outputStream =
+        new DataOutputStream(
+            new FileOutputStream(new File(pipeLogDir2, SyncConstant.COMMIT_LOG_NAME), true));
+    outputStream.writeLong(-1);
+    outputStream.close();
+    //    commitLogWriter =
+    //        new BufferedWriter(new FileWriter(new File(pipeLogDir2,
+    // SyncConstant.COMMIT_LOG_NAME)));
+    //    commitLogWriter.newLine();
+    //    commitLogWriter.write(String.valueOf(-1));
+    //    commitLogWriter.flush();
+    //    commitLogWriter.close();
     pipeLog1 = new File(pipeLogDir2.getPath(), SyncConstant.getPipeLogName(serialNum2));
     pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog1, false));
+    pipeData =
+        new SchemaPipeData(new SetStorageGroupPlan(new PartialPath("root.sg1")), serialNum2++);
+    pipeData.serialize(pipeLogOutput);
     pipeData =
         new SchemaPipeData(
             new CreateAlignedTimeSeriesPlan(
@@ -374,9 +400,6 @@ public class IoTDBSyncReceiverCollectorIT {
                     CompressionType.SNAPPY),
                 null),
             serialNum2++);
-    pipeData.serialize(pipeLogOutput);
-    pipeData =
-        new SchemaPipeData(new SetStorageGroupPlan(new PartialPath("root.sg1")), serialNum2++);
     pipeData.serialize(pipeLogOutput);
     pipeLogOutput.close();
     pipeLog2 = new File(pipeLogDir2.getPath(), SyncConstant.getPipeLogName(serialNum2));
@@ -412,19 +435,29 @@ public class IoTDBSyncReceiverCollectorIT {
     // 5. if all pipeData has been loaded into IoTDB, check result
     CountDownLatch latch = new CountDownLatch(2);
     ExecutorService es1 = Executors.newSingleThreadExecutor();
-    int finalSerialNum1 = serialNum1;
-    int finalSerialNum2 = serialNum2;
+    int finalSerialNum1 = serialNum1 - 1;
+    int finalSerialNum2 = serialNum2 - 1;
     es1.execute(
         () -> {
           while (true) {
             if (pipeDataQueue1.getCommitSerialNumber() == finalSerialNum1) {
               break;
             }
+            try {
+              Thread.sleep(100);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
           }
           latch.countDown();
           while (true) {
             if (pipeDataQueue2.getCommitSerialNumber() == finalSerialNum2) {
               break;
+            }
+            try {
+              Thread.sleep(100);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
             }
           }
           latch.countDown();

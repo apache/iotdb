@@ -74,6 +74,10 @@ public class PipeDataTest {
       Assert.assertEquals(pipeData3, PipeData.deserialize(inputStream));
       inputStream.close();
       outputStream.close();
+
+      Assert.assertEquals(pipeData1, PipeData.deserialize(pipeData1.serialize()));
+      Assert.assertEquals(pipeData2, PipeData.deserialize(pipeData2.serialize()));
+      Assert.assertEquals(pipeData3, PipeData.deserialize(pipeData3.serialize()));
     } catch (Exception e) {
       logger.error(e.getMessage());
       Assert.fail();

@@ -133,6 +133,7 @@ public class Collector {
           ReceiverManager.getInstance()
               .writePipeMessage(
                   pipeName, remoteIp, createTime, new PipeMessage(PipeMessage.MsgType.WARN, msg));
+          pipeDataQueue.commit();
         } catch (Exception e) {
           // unbearable exception
           // TODO: should drop this pipe?
