@@ -210,6 +210,9 @@ metricReporterList:
 # Type of monitor frame, options: [micrometer, dropwizard]
 monitorType: micrometer
 
+# Level of metric level, options: [core, important, normal, all]
+metricLevel: all
+
 # Predefined metric, options: [jvm, logback], logback are not supported in dropwizard
 predefinedMetrics:
   - jvm
@@ -222,8 +225,6 @@ pushPeriodInSecond: 5
 #                                                      #
 # if the reporter is prometheus,                       #
 # then the following must be set.                      #
-# if you use dropwizard, all below                     #
-# should be the config of pushgateway                  #
 #                                                      #
 ########################################################
 prometheusReporterConfig:
@@ -235,9 +236,8 @@ Then you can get metrics data as follows
 
 1. Enable metrics switch in ```iotdb-metric.yml```
 2. You can just stay other config params as default.
-3. If you use the `monitorType: dropwizard` framework, please start the pushgateway in the corresponding location of `prometheusReporterConfig` before starting IoTDB
-4. Start/Restart your IoTDB server/cluster
-5. Open your browser or use the ```curl``` command to request ```http://servier_ip:9091/metrics```，then you will get metrics data like follows:
+3. Start/Restart your IoTDB server/cluster
+4. Open your browser or use the ```curl``` command to request ```http://servier_ip:9091/metrics```，then you will get metrics data like follows:
 
 ```
 ...

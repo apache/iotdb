@@ -30,15 +30,19 @@ metricReporterList:
   # MicrometerMetricManager MicrometerMetricReporter
 monitorType: dropwizard
 
-pushPeriodInSecond: 5
+# Level of metric level, options: [core, important, normal, all]
+metricLevel: all
 
+# Predefined metric, options: [jvm, logback], logback are not supported in dropwizard
+predefinedMetrics:
+  - jvm
+
+pushPeriodInSecond: 5
 
 ########################################################
 #                                                      #
 # if the reporter is prometheus,                       #
 # then the following must be set.                      #
-# if you use dropwizard, all below                     #
-# should be the config of pushgateway                  #
 #                                                      #
 ########################################################
 prometheusReporterConfig:

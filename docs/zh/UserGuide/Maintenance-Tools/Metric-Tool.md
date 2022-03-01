@@ -208,6 +208,9 @@ metricReporterList:
 # 底层使用的metric架构，可选参数：[micrometer, dropwizard]
 monitorType: micrometer
 
+# 初始化metric的级别，可选参数: [core, important, normal, all]
+metricLevel: all
+
 # 预定义的指标集, 可选参数: [jvm, logback], 其中logback在dropwizard中不支持
 predefinedMetrics:
    - jvm
@@ -220,8 +223,6 @@ pushPeriodInSecond: 5
 #                                                      #
 # if the reporter is prometheus,                       #
 # then the following must be set.                      #
-# if you use dropwizard, all below                     #
-# should be the config of pushgateway                  #
 #                                                      #
 ########################################################
 prometheusReporterConfig:
@@ -231,10 +232,9 @@ prometheusReporterConfig:
 
 然后按照下面的操作获取metrics数据
 1. 打开配置文件中的metric开关
-2. 其他参数默认不动即可
-3. 如果使用`monitorType: dropwizard`框架，在启动IoTDB前请先在`prometheusReporterConfig`的对应位置启动pushgateway
-4. 启动IoTDB
-5. 打开浏览器或者用```curl``` 访问 ```http://servier_ip:9091/metrics```, 就能看到metric数据了:
+2. 其他参数使用默认配置即可
+3. 启动IoTDB
+4. 打开浏览器或者用```curl``` 访问 ```http://servier_ip:9091/metrics```, 就能看到metric数据了:
 
 ```
 ...
