@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.metrics.impl;
 
-import org.apache.iotdb.metrics.enums.OutPutFormat;
 import org.apache.iotdb.metrics.type.Rate;
 
 public class DoNothingRate implements Rate {
@@ -56,10 +55,5 @@ public class DoNothingRate implements Rate {
   @Override
   public void mark(long n) {
     // do nothing
-  }
-
-  @Override
-  public StringBuffer toString(OutPutFormat format) {
-    return null;
   }
 }

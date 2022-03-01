@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.metrics.micrometer.type;
 
-import org.apache.iotdb.metrics.enums.OutPutFormat;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
@@ -51,10 +50,5 @@ public class MicrometerTimer implements Timer {
   @Override
   public Rate getImmutableRate() {
     return micrometerRate;
-  }
-
-  @Override
-  public StringBuffer toString(OutPutFormat format) {
-    return null;
   }
 }

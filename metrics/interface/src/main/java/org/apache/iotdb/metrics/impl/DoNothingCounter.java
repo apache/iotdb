@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.metrics.impl;
 
-import org.apache.iotdb.metrics.enums.OutPutFormat;
 import org.apache.iotdb.metrics.type.Counter;
 
 public class DoNothingCounter implements Counter {
@@ -36,10 +35,5 @@ public class DoNothingCounter implements Counter {
   @Override
   public long count() {
     return 0;
-  }
-
-  @Override
-  public StringBuffer toString(OutPutFormat format) {
-    return null;
   }
 }

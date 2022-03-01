@@ -25,6 +25,7 @@ import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class MetricConfig {
@@ -43,7 +44,8 @@ public class MetricConfig {
 
   private MetricLevel metricLevel = MetricLevel.normal;
 
-  private List<PredefinedMetric> predefinedMetrics = Arrays.asList(PredefinedMetric.jvm);
+  private List<PredefinedMetric> predefinedMetrics =
+      Collections.singletonList(PredefinedMetric.jvm);
 
   /** the config of prometheus reporter */
   private PrometheusReporterConfig prometheusReporterConfig = new PrometheusReporterConfig();

@@ -17,20 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics;
+package org.apache.iotdb.metrics.dropwizard.reporter;
 
-import org.apache.iotdb.metrics.utils.ReporterType;
+enum MetricType {
+  COUNTER("counter"),
+  GAUGE("gauge"),
+  SUMMARY("summary"),
+  HISTOGRAM("histogram"),
+  UNTYPED("untyped");
 
-public interface Reporter {
-  /** Start reporter */
-  boolean start();
+  private final String text;
 
-  /** Stop reporter */
-  boolean stop();
+  MetricType(String text) {
+    this.text = text;
+  }
 
-  /** Get type of reporter */
-  ReporterType getReporterType();
-
-  /** Set metric manager */
-  void setMetricManager(MetricManager metricManager);
+  public String getText() {
+    return text;
+  }
 }

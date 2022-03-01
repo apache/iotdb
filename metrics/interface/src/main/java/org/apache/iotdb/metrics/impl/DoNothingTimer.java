@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.metrics.impl;
 
-import org.apache.iotdb.metrics.enums.OutPutFormat;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
@@ -40,10 +39,5 @@ public class DoNothingTimer implements Timer {
   @Override
   public Rate getImmutableRate() {
     return new DoNothingRate();
-  }
-
-  @Override
-  public StringBuffer toString(OutPutFormat format) {
-    return null;
   }
 }

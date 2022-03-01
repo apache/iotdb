@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.metrics.dropwizard.type;
 
-import org.apache.iotdb.metrics.enums.OutPutFormat;
 import org.apache.iotdb.metrics.type.Gauge;
 
 import java.util.concurrent.TimeUnit;
@@ -69,10 +68,5 @@ public class DropwizardGauge implements Gauge {
 
   public com.codahale.metrics.Gauge<Long> getDropwizardCachedGauge() {
     return dropwizardCachedGauge;
-  }
-
-  @Override
-  public StringBuffer toString(OutPutFormat format) {
-    return null;
   }
 }

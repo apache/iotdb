@@ -22,7 +22,7 @@ package org.apache.iotdb.db.metrics.micrometer.reporter;
 import org.apache.iotdb.db.metrics.micrometer.registry.IoTDBMeterRegistry;
 import org.apache.iotdb.db.metrics.micrometer.registry.IoTDBRegistryConfig;
 import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.Reporter;
+import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import io.micrometer.core.instrument.Clock;
