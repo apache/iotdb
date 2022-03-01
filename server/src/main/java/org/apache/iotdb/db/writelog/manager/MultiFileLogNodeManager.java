@@ -149,6 +149,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       } catch (IOException e) {
         logger.error("failed to close {}", node, e);
       }
+      node.release();
     }
     nodeMap.clear();
     logger.info("LogNodeManager closed.");

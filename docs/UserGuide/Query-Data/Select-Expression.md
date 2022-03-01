@@ -336,9 +336,8 @@ Total line number = 4
 It costs 0.078s
 ```
 
-
 ### Condition Functions
-Condition functions are used to check whether timeseries data points satisfy some specific condition.
+Condition functions are used to check whether timeseries data points satisfy some specific condition. 
 
 They return BOOLEANs.
 

@@ -29,8 +29,10 @@ import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
+import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.handlers.caller.ShowTimeSeriesHandler;
@@ -1078,6 +1080,9 @@ public class CMManager extends MManager {
         if (withAlias && matchedPath != null) {
           matchedPath.setMeasurementAlias(result.aliasList.get(i));
         }
+        if (matchedPath != null) {
+          matchedPath.setUnderAlignedEntity(result.getUnderAlignedEntity().get(i));
+        }
       }
       return measurementPaths;
     } else {
@@ -1543,7 +1548,7 @@ public class CMManager extends MManager {
     if (group.contains(metaGroupMember.getThisNode())) {
       showLocalTimeseries(group, plan, context, handler);
     } else {
-      showRemoteTimeseries(group, plan, handler);
+      showRemoteTimeseries(group, plan, context, handler);
     }
   }
 
@@ -1590,11 +1595,14 @@ public class CMManager extends MManager {
   }
 
   private void showRemoteTimeseries(
-      PartitionGroup group, ShowTimeSeriesPlan plan, ShowTimeSeriesHandler handler) {
+      PartitionGroup group,
+      ShowTimeSeriesPlan plan,
+      QueryContext context,
+      ShowTimeSeriesHandler handler) {
     ByteBuffer resultBinary = null;
     for (Node node : group) {
       try {
-        resultBinary = showRemoteTimeseries(node, group, plan);
+        resultBinary = showRemoteTimeseries(context, node, group, plan);
         if (resultBinary != null) {
           break;
         }
@@ -1603,6 +1611,9 @@ public class CMManager extends MManager {
       } catch (InterruptedException e) {
         logger.error("Interrupted when getting timeseries schemas in node {}.", node, e);
         Thread.currentThread().interrupt();
+      } finally {
+        // record the queried node to release resources later
+        ((RemoteQueryContext) context).registerRemoteNode(node, group.getHeader());
       }
     }
 
@@ -1650,32 +1661,41 @@ public class CMManager extends MManager {
     }
   }
 
-  private ByteBuffer showRemoteTimeseries(Node node, PartitionGroup group, ShowTimeSeriesPlan plan)
+  private ByteBuffer showRemoteTimeseries(
+      QueryContext context, Node node, PartitionGroup group, ShowTimeSeriesPlan plan)
       throws IOException, TException, InterruptedException {
     ByteBuffer resultBinary;
 
+    // prepare request
+    MeasurementSchemaRequest request;
+    try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+      plan.serialize(dataOutputStream);
+      request =
+          new MeasurementSchemaRequest(
+              context.getQueryId(),
+              group.getHeader(),
+              node,
+              ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+    }
+
+    // execute remote query
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
           ClusterIoTDB.getInstance()
               .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-      resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(), plan);
+      resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, request);
     } else {
       SyncDataClient syncDataClient = null;
-      try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+      try {
         syncDataClient =
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-        try {
-          plan.serialize(dataOutputStream);
-          resultBinary =
-              syncDataClient.getAllMeasurementSchema(
-                  group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-        } catch (TException e) {
-          // the connection may be broken, close it to avoid it being reused
-          syncDataClient.close();
-          throw e;
-        }
+        resultBinary = syncDataClient.getAllMeasurementSchema(request);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
       } finally {
         if (syncDataClient != null) {
           syncDataClient.returnSelf();
@@ -1722,6 +1742,7 @@ public class CMManager extends MManager {
     List<String> retPaths = new ArrayList<>();
     List<Byte> dataTypes = new ArrayList<>();
     List<String> alias = withAlias ? new ArrayList<>() : null;
+    List<Boolean> underAlignedEntity = new ArrayList<>();
 
     for (String path : paths) {
       List<MeasurementPath> allTimeseriesPathWithAlias =
@@ -1732,6 +1753,7 @@ public class CMManager extends MManager {
         if (withAlias) {
           alias.add(timeseriesPathWithAlias.getMeasurementAlias());
         }
+        underAlignedEntity.add(timeseriesPathWithAlias.isUnderAlignedEntity());
       }
     }
 
@@ -1739,6 +1761,7 @@ public class CMManager extends MManager {
     getAllPathsResult.setPaths(retPaths);
     getAllPathsResult.setDataTypes(dataTypes);
     getAllPathsResult.setAliasList(alias);
+    getAllPathsResult.setUnderAlignedEntity(underAlignedEntity);
     return getAllPathsResult;
   }
 
