@@ -29,19 +29,23 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_SEQ_FILES_FROM_OLD;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_SOURCE_FILES;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_TARGET_FILES;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_UNSEQ_FILES_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.CompactionLogger.STR_SEQ_FILES_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.CompactionLogger.STR_SOURCE_FILES;
+import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.CompactionLogger.STR_SOURCE_FILES_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.CompactionLogger.STR_TARGET_FILES;
+import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.CompactionLogger.STR_TARGET_FILES_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.CompactionLogger.STR_UNSEQ_FILES_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.SEQUENCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.UNSEQUENCE_NAME;
 
-public class RewriteCrossSpaceCompactionLogAnalyzer {
+public class CompactionLogAnalyzer {
 
   private final File logFile;
   private final List<TsFileIdentifier> sourceFileInfos = new ArrayList<>();
   private final List<TsFileIdentifier> targetFileInfos = new ArrayList<>();
   private boolean isLogFromOld = false;
 
-  public RewriteCrossSpaceCompactionLogAnalyzer(File logFile) {
+  public CompactionLogAnalyzer(File logFile) {
     this.logFile = logFile;
   }
 
@@ -57,6 +61,31 @@ public class RewriteCrossSpaceCompactionLogAnalyzer {
         } else {
           fileInfo = currLine.replace(STR_TARGET_FILES + TsFileIdentifier.INFO_SEPARATOR, "");
           analyzeFilePath(true, fileInfo);
+        }
+      }
+    }
+  }
+
+  public void analyzeOldInnerCompactionLog() throws IOException {
+    isLogFromOld = true;
+    String currLine;
+    boolean isSeqSource = true;
+    try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
+      while ((currLine = bufferedReader.readLine()) != null) {
+        switch (currLine) {
+          case STR_SOURCE_FILES_FROM_OLD:
+            currLine = bufferedReader.readLine();
+            sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromOldInfoString(currLine));
+            break;
+          case STR_TARGET_FILES_FROM_OLD:
+            currLine = bufferedReader.readLine();
+            targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromOldInfoString(currLine));
+            break;
+          case SEQUENCE_NAME:
+          case UNSEQUENCE_NAME:
+            break;
+          default:
+            break;
         }
       }
     }

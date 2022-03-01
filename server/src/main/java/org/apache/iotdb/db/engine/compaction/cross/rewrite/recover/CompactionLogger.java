@@ -29,19 +29,21 @@ import java.io.IOException;
 import java.util.List;
 
 /** MergeLogger records the progress of a merge in file "merge.log" as text lines. */
-public class RewriteCrossSpaceCompactionLogger implements AutoCloseable {
+public class CompactionLogger implements AutoCloseable {
 
   public static final String COMPACTION_LOG_NAME = "cross-compaction.log";
   public static final String COMPACTION_LOG_NAME_FEOM_OLD = "merge.log";
 
   public static final String STR_SOURCE_FILES = "source";
   public static final String STR_TARGET_FILES = "target";
+  public static final String STR_SOURCE_FILES_FROM_OLD = "info-source";
+  public static final String STR_TARGET_FILES_FROM_OLD = "info-target";
   public static final String STR_SEQ_FILES_FROM_OLD = "seqFiles";
   public static final String STR_UNSEQ_FILES_FROM_OLD = "unseqFiles";
 
   private BufferedWriter logStream;
 
-  public RewriteCrossSpaceCompactionLogger(File logFile) throws IOException {
+  public CompactionLogger(File logFile) throws IOException {
     logStream = new BufferedWriter(new FileWriter(logFile, true));
   }
 
@@ -50,8 +52,8 @@ public class RewriteCrossSpaceCompactionLogger implements AutoCloseable {
     logStream.close();
   }
 
-  public void logFiles(List<TsFileResource> seqFiles, String flag) throws IOException {
-    for (TsFileResource tsFileResource : seqFiles) {
+  public void logFiles(List<TsFileResource> tsFiles, String flag) throws IOException {
+    for (TsFileResource tsFileResource : tsFiles) {
       logStream.write(
           flag
               + TsFileIdentifier.INFO_SEPARATOR

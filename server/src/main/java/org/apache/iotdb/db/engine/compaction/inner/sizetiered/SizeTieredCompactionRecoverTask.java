@@ -21,9 +21,9 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
-import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -98,11 +98,15 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
             logicalStorageGroupName,
             virtualStorageGroup,
             compactionLogFile);
-        SizeTieredCompactionLogAnalyzer logAnalyzer =
-            new SizeTieredCompactionLogAnalyzer(compactionLogFile);
-        logAnalyzer.analyze();
+        CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(compactionLogFile);
+        if (compactionLogFile.getName().startsWith(tsFileManager.getStorageGroupName())) {
+          // log from previous version (<0.13)
+          logAnalyzer.analyzeOldInnerCompactionLog();
+        } else {
+          logAnalyzer.analyze();
+        }
         List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
-        TsFileIdentifier targetFileIdentifier = logAnalyzer.getTargetFileInfo();
+        TsFileIdentifier targetFileIdentifier = logAnalyzer.getTargetFileInfos().get(0);
 
         // compaction log file is incomplete
         if (targetFileIdentifier == null || sourceFileIdentifiers.isEmpty()) {

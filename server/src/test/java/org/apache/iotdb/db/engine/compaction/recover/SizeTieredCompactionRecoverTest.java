@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
@@ -353,11 +354,9 @@ public class SizeTieredCompactionRecoverTest {
     }
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
-    SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
-    for (TsFileResource resource : sourceFiles) {
-      logger.logFile(SizeTieredCompactionLogger.SOURCE_NAME, resource.getTsFile());
-    }
-    logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
+    CompactionLogger logger = new CompactionLogger(new File(logFilePath));
+    logger.logFiles(sourceFiles, CompactionLogger.STR_SOURCE_FILES);
+    logger.logFiles(Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
     logger.close();
     InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);

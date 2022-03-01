@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
@@ -39,9 +40,6 @@ import java.io.File;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.SOURCE_INFO;
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.TARGET_INFO;
 
 /**
  * SizeTiredCompactionTask compact several inner space files selected by {@link
@@ -105,15 +103,13 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
                 + File.separator
                 + targetTsFileResource.getTsFile().getName()
                 + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
-    SizeTieredCompactionLogger sizeTieredCompactionLogger = null;
+    CompactionLogger sizeTieredCompactionLogger = null;
     try {
-      sizeTieredCompactionLogger = new SizeTieredCompactionLogger(logFile.getPath());
-
-      for (TsFileResource resource : selectedTsFileResourceList) {
-        sizeTieredCompactionLogger.logFileInfo(SOURCE_INFO, resource.getTsFile());
-      }
-      sizeTieredCompactionLogger.logSequence(sequence);
-      sizeTieredCompactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
+      sizeTieredCompactionLogger = new CompactionLogger(logFile);
+      sizeTieredCompactionLogger.logFiles(
+          selectedTsFileResourceList, CompactionLogger.STR_SOURCE_FILES);
+      sizeTieredCompactionLogger.logFiles(
+          Collections.singletonList(targetTsFileResource), CompactionLogger.STR_TARGET_FILES);
       LOGGER.info(
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
 
