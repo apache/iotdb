@@ -59,6 +59,7 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -74,9 +75,23 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.ConcurrentModificationException;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.*;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -352,15 +367,15 @@ public class StorageEngine implements IService {
   @Override
   public void stop() {
     for (StorageGroupManager storageGroupManager : processorMap.values()) {
-      storageGroupManager.stopCompactionSchedulerPool();
+      storageGroupManager.stopSchedulerPool();
     }
     syncCloseAllProcessor();
-    stopTimedService(ttlCheckThread, ThreadName.TTL_CHECK_SERVICE.getName());
-    stopTimedService(
-        seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_SEQ_MEMTABLE.getName());
-    stopTimedService(
-        unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE.getName());
-    stopTimedService(tsFileTimedCloseCheckThread, ThreadName.TIMED_CLOSE_TSFILE.getName());
+    ThreadUtils.stopThreadPool(ttlCheckThread, ThreadName.TTL_CHECK_SERVICE);
+    ThreadUtils.stopThreadPool(
+        seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_SEQ_MEMTABLE);
+    ThreadUtils.stopThreadPool(
+        unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE);
+    ThreadUtils.stopThreadPool(tsFileTimedCloseCheckThread, ThreadName.TIMED_CLOSE_TSFILE);
     recoveryThreadPool.shutdownNow();
     for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
       this.releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroup);
@@ -368,25 +383,11 @@ public class StorageEngine implements IService {
     processorMap.clear();
   }
 
-  private void stopTimedService(ScheduledExecutorService pool, String poolName) {
-    if (pool != null) {
-      pool.shutdownNow();
-      try {
-        pool.awaitTermination(60, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        logger.warn("{} still doesn't exit after 60s", poolName);
-        Thread.currentThread().interrupt();
-        throw new StorageEngineFailureException(
-            String.format("StorageEngine failed to stop because of %s.", poolName), e);
-      }
-    }
-  }
-
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
     try {
       for (StorageGroupManager storageGroupManager : processorMap.values()) {
-        storageGroupManager.stopCompactionSchedulerPool();
+        storageGroupManager.stopSchedulerPool();
       }
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
@@ -860,6 +861,7 @@ public class StorageEngine implements IService {
     StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);
     storageGroupManager.deleteStorageGroupSystemFolder(
         systemDir + File.pathSeparator + storageGroupPath);
+    storageGroupManager.stopSchedulerPool();
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
