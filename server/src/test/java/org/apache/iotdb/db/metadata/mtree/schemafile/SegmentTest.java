@@ -48,7 +48,7 @@ public class SegmentTest {
 
   @Test
   public void flatTreeInsert() throws RecordDuplicatedException {
-    Segment sf = new Segment(450);
+    Segment sf = new Segment(500);
     IMNode rNode = virtualFlatMTree(10);
     for (IMNode node : rNode.getChildren().values()) {
       int res = sf.insertRecord(node.getName(), RecordUtils.node2Buffer(node));

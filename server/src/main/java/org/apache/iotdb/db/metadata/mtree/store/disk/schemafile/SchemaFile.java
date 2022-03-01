@@ -67,7 +67,7 @@ public class SchemaFile implements ISchemaFile {
 
   public static int PAGE_LENGTH = 16 * 1024; // 16 kib for default
   public static short PAGE_HEADER_SIZE = 16;
-  public static int PAGE_CACHE_SIZE = 48; // size of page cache
+  public static int PAGE_CACHE_SIZE = 64; // size of page cache
   public static int ROOT_INDEX = 0; // index of header page
   // 32 bit for page pointer, maximum .pmt file as 2^(32+14) bytes, 64 TiB
   public static int INDEX_LENGTH = 4;
@@ -619,7 +619,7 @@ public class SchemaFile implements ISchemaFile {
   private ISchemaPage getMinApplicablePageInMem(short size) throws IOException {
     for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
       if (entry.getValue().isCapableForSize(size)) {
-        return entry.getValue();
+        return pageInstCache.get(entry.getKey());
       }
     }
     return allocateNewPage();
@@ -658,18 +658,24 @@ public class SchemaFile implements ISchemaFile {
 
   private void addPageToCache(int pageIndex, ISchemaPage page) throws IOException {
     pageInstCache.put(pageIndex, page);
-    if (pageInstCache.size() >= PAGE_CACHE_SIZE - 1) {
-      int removeCnt = (int) (0.2 * PAGE_CACHE_SIZE);
+    if (pageInstCache.size() >= PAGE_CACHE_SIZE) {
+      int removeCnt =
+          (int) (0.2 * pageInstCache.size()) > 0 ? (int) (0.2 * pageInstCache.size()) : 1;
+      List<Integer> rmvIdx = new ArrayList<>();
+
       for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
         removeCnt--;
         entry.getValue().syncPageBuffer();
         flushPageToFile(entry.getValue());
 
-        // release object
-        pageInstCache.remove(entry.getKey());
-        if (removeCnt == 0) {
-          return;
+        rmvIdx.add(entry.getKey());
+        if (removeCnt <= 0) {
+          break;
         }
+      }
+
+      for (Integer i : rmvIdx) {
+        pageInstCache.remove(i);
       }
     }
   }
