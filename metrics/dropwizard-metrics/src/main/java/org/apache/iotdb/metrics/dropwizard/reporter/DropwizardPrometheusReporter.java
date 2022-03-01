@@ -93,7 +93,6 @@ public class DropwizardPrometheusReporter implements Reporter {
   public boolean stop() {
     if (httpServer != null) {
       try {
-        // TODO check whether remove metric
         httpServer.disposeNow();
         httpServer = null;
       } catch (Exception e) {
