@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
@@ -282,11 +283,11 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   @Override
   public void getAllMeasurementSchema(
-      RaftNode header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler) {
+      MeasurementSchemaRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
     new Thread(
             () -> {
-              new DataAsyncService(dataGroupMemberMap.get(header))
-                  .getAllMeasurementSchema(header, planBinary, resultHandler);
+              new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
+                  .getAllMeasurementSchema(request, resultHandler);
             })
         .start();
   }

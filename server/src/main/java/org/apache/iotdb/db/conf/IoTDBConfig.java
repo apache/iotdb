@@ -573,7 +573,7 @@ public class IoTDBConfig {
   private long mergeIntervalSec = 0L;
 
   /** The limit of compaction merge can reach per second */
-  private int compactionWriteThroughputMbPerSec = 30;
+  private int compactionWriteThroughputMbPerSec = 16;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
@@ -751,7 +751,7 @@ public class IoTDBConfig {
   private long startUpNanosecond = System.nanoTime();
 
   /** Unit: byte */
-  private int thriftMaxFrameSize = 67108864;
+  private int thriftMaxFrameSize = 536870912;
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 

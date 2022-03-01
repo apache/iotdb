@@ -615,20 +615,7 @@ public class TSServiceImpl implements TSIService.Iface {
                   SESSION_MANAGER.getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
-        Future<TSExecuteStatementResp> resp =
-            QueryTaskManager.getInstance()
-                .submit(
-                    new QueryTask(
-                        physicalPlan,
-                        startTime,
-                        req.sessionId,
-                        req.statement,
-                        req.statementId,
-                        req.timeout,
-                        req.fetchSize,
-                        req.jdbcQuery,
-                        req.enableRedirectQuery));
-        return resp.get();
+        return submitQueryTask(physicalPlan, startTime, req);
       } else {
         return executeUpdateStatement(
             statement,
@@ -667,20 +654,7 @@ public class TSServiceImpl implements TSIService.Iface {
                   SESSION_MANAGER.getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
-        Future<TSExecuteStatementResp> resp =
-            QueryTaskManager.getInstance()
-                .submit(
-                    new QueryTask(
-                        physicalPlan,
-                        startTime,
-                        req.sessionId,
-                        req.statement,
-                        req.statementId,
-                        req.timeout,
-                        req.fetchSize,
-                        req.jdbcQuery,
-                        req.enableRedirectQuery));
-        return resp.get();
+        return submitQueryTask(physicalPlan, startTime, req);
       } else {
         return RpcUtils.getTSExecuteStatementResp(
             TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
@@ -788,6 +762,28 @@ public class TSServiceImpl implements TSIService.Iface {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, OperationType.EXECUTE_LAST_DATA_QUERY));
     }
+  }
+
+  private TSExecuteStatementResp submitQueryTask(
+      PhysicalPlan physicalPlan, long startTime, TSExecuteStatementReq req) throws Exception {
+    QueryTask queryTask =
+        new QueryTask(
+            physicalPlan,
+            startTime,
+            req.sessionId,
+            req.statement,
+            req.statementId,
+            req.timeout,
+            req.fetchSize,
+            req.jdbcQuery,
+            req.enableRedirectQuery);
+    TSExecuteStatementResp resp;
+    if (physicalPlan instanceof ShowQueryProcesslistPlan) {
+      resp = queryTask.call();
+    } else {
+      resp = QueryTaskManager.getInstance().submit(queryTask).get();
+    }
+    return resp;
   }
 
   private TSExecuteStatementResp executeQueryPlan(
