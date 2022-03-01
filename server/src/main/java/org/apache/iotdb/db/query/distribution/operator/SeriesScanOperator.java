@@ -2,7 +2,9 @@ package org.apache.iotdb.db.query.distribution.operator;
 
 import org.apache.iotdb.db.query.distribution.common.SeriesBatchData;
 import org.apache.iotdb.db.query.distribution.common.TraversalOrder;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 /**
@@ -42,6 +44,14 @@ public class SeriesScanOperator extends ExecOperator<SeriesBatchData> {
 
     @Override
     public SeriesBatchData getNextBatch() {
+        return null;
+    }
+
+    // This method will only be invoked by SeriesAggregateOperator
+    // It will return the statistics of the series in given time range
+    // When calculate the statistics, the operator should use the most optimized way to do that. In other words, using
+    // raw data is the final way to do that.
+    public Statistics<?> getNextStatisticBetween(TimeRange timeRange) {
         return null;
     }
 }
