@@ -23,6 +23,7 @@ import org.apache.iotdb.db.protocol.influxdb.operator.*;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
@@ -49,8 +50,8 @@ public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<Operator> {
     parseSelectClause(ctx.selectClause());
     parseFromClause(ctx.fromClause());
     if (ctx.whereClause() != null) {
-      InfluxWhereComponent influxWhereComponent = parseWhereClause(ctx.whereClause());
-      queryOp.setWhereComponent(influxWhereComponent);
+      WhereComponent whereComponent = parseWhereClause(ctx.whereClause());
+      queryOp.setWhereComponent(whereComponent);
     }
     return queryOp;
   }
@@ -72,10 +73,10 @@ public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<Operator> {
     queryOp.setFromComponent(influxFromComponent);
   }
 
-  private InfluxWhereComponent parseWhereClause(InfluxDBSqlParser.WhereClauseContext ctx) {
+  private WhereComponent parseWhereClause(InfluxDBSqlParser.WhereClauseContext ctx) {
     InfluxFilterOperator whereOp = new InfluxFilterOperator();
     whereOp.addChildOperator(parseOrExpression(ctx.orExpression()));
-    return new InfluxWhereComponent(whereOp.getChildren().get(0));
+    return new WhereComponent(whereOp.getChildren().get(0));
   }
 
   private InfluxFilterOperator parseOrExpression(InfluxDBSqlParser.OrExpressionContext ctx) {

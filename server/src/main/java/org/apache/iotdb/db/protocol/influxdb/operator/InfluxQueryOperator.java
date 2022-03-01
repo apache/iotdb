@@ -20,12 +20,13 @@ package org.apache.iotdb.db.protocol.influxdb.operator;
 
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 
 public class InfluxQueryOperator extends Operator {
 
   protected InfluxSelectComponent influxSelectComponent;
   protected InfluxFromComponent influxFromComponent;
-  protected InfluxWhereComponent influxWhereComponent;
+  protected WhereComponent whereComponent;
 
   public InfluxQueryOperator() {
     super(SQLConstant.TOK_QUERY);
@@ -47,11 +48,11 @@ public class InfluxQueryOperator extends Operator {
     this.influxFromComponent = influxFromComponent;
   }
 
-  public InfluxWhereComponent getWhereComponent() {
-    return influxWhereComponent;
+  public WhereComponent getWhereComponent() {
+    return whereComponent;
   }
 
-  public void setWhereComponent(InfluxWhereComponent influxWhereComponent) {
-    this.influxWhereComponent = influxWhereComponent;
+  public void setWhereComponent(WhereComponent whereComponent) {
+    this.whereComponent = whereComponent;
   }
 }

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.protocol.influxdb.sql;
 
 import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxTimeSeriesOperand;
 import org.apache.iotdb.db.protocol.influxdb.operator.*;
+import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 
 import org.junit.Test;
@@ -52,9 +53,8 @@ public class InfluxDBLogicalGeneratorTest {
     InfluxTimeSeriesOperand influxTimeSeriesOperand =
         (InfluxTimeSeriesOperand) resultColumnList.get(0).getExpression();
     assertEquals(influxTimeSeriesOperand.getName(), "a");
-    InfluxWhereComponent influxWhereComponent = operator.getWhereComponent();
-    InfluxFilterOperator filterOperator =
-        (InfluxFilterOperator) influxWhereComponent.getFilterOperator();
+    WhereComponent whereComponent = operator.getWhereComponent();
+    InfluxFilterOperator filterOperator = (InfluxFilterOperator) whereComponent.getFilterOperator();
     assertEquals(filterOperator.getFilterType().toString(), "KW_AND");
     assertEquals(filterOperator.getChildren().size(), 2);
     InfluxBasicFunctionOperator basicFunctionOperator =
