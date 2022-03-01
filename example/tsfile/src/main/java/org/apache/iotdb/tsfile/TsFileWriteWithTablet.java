@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.record.NonAlignedTablet;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -69,7 +70,7 @@ public class TsFileWriteWithTablet {
         writeMeasurementScheams.add(measurementSchemas.get(0));
         writeMeasurementScheams.add(measurementSchemas.get(1));
         writeMeasurementScheams.add(measurementSchemas.get(2));
-        writeWithTablet(tsFileWriter, DEVICE_1, writeMeasurementScheams, 10000, 0, 0);
+        writeWithNonAlignedTablet(tsFileWriter, DEVICE_1, writeMeasurementScheams, 10000, 0, 0);
       }
     } catch (Exception e) {
       logger.error("meet error in TsFileWrite with tablet", e);
@@ -104,6 +105,35 @@ public class TsFileWriteWithTablet {
     }
     // write
     if (tablet.rowSize != 0) {
+      tsFileWriter.write(tablet);
+      tablet.reset();
+    }
+  }
+
+  private static void writeWithNonAlignedTablet(
+      TsFileWriter tsFileWriter,
+      String deviceId,
+      List<MeasurementSchema> schemas,
+      long rowNum,
+      long startTime,
+      long startValue)
+      throws IOException, WriteProcessException {
+    NonAlignedTablet tablet = new NonAlignedTablet(deviceId, schemas);
+
+    long sensorNum = schemas.size();
+    for (long r = 0; r < rowNum; r++, startValue++) {
+      for (int i = 0; i < sensorNum; i++) {
+        tablet.addValue(
+            schemas.get(i).getMeasurementId(), startTime++, new Binary("testString........."));
+      }
+      // write
+      if (tablet.maxRowSize == tablet.getMaxRowNumber()) {
+        tsFileWriter.write(tablet);
+        tablet.reset();
+      }
+    }
+    // write
+    if (tablet.maxRowSize != 0) {
       tsFileWriter.write(tablet);
       tablet.reset();
     }

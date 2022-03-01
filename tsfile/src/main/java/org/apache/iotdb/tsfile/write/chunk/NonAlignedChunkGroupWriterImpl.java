@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.record.NonAlignedTablet;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -124,6 +125,77 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
       }
       if (hasOneColumnWritten) {
         pointCount++;
+      }
+    }
+    return pointCount;
+  }
+
+  public int write(NonAlignedTablet tablet) throws WriteProcessException {
+    int pointCount = 0;
+    List<MeasurementSchema> timeseries = tablet.getSchemas();
+    for (int column = 0; column < timeseries.size(); column++) {
+      String measurementId = timeseries.get(column).getMeasurementId();
+      int rowSize = tablet.rowSize[column];
+      pointCount = Math.max(pointCount, rowSize);
+      long[] timestamps = tablet.timestamps[column];
+      switch (timeseries.get(column).getType()) {
+        case INT32:
+          int[] intValues = (int[]) tablet.values[column];
+          for (int row = 0; row < rowSize; row++) {
+            long time = timestamps[row];
+            checkIsHistoryData(measurementId, time);
+            chunkWriters.get(measurementId).write(time, intValues[row]);
+            lastTimeMap.put(measurementId, time);
+          }
+          break;
+        case INT64:
+          long[] longValues = (long[]) tablet.values[column];
+          for (int row = 0; row < rowSize; row++) {
+            long time = timestamps[row];
+            checkIsHistoryData(measurementId, time);
+            chunkWriters.get(measurementId).write(time, longValues[row]);
+            lastTimeMap.put(measurementId, time);
+          }
+          break;
+        case FLOAT:
+          float[] floatValues = (float[]) tablet.values[column];
+          for (int row = 0; row < rowSize; row++) {
+            long time = timestamps[row];
+            checkIsHistoryData(measurementId, time);
+            chunkWriters.get(measurementId).write(time, floatValues[row]);
+            lastTimeMap.put(measurementId, time);
+          }
+          break;
+        case DOUBLE:
+          double[] doubleValues = (double[]) tablet.values[column];
+          for (int row = 0; row < rowSize; row++) {
+            long time = timestamps[row];
+            checkIsHistoryData(measurementId, time);
+            chunkWriters.get(measurementId).write(time, doubleValues[row]);
+            lastTimeMap.put(measurementId, time);
+          }
+          break;
+        case BOOLEAN:
+          boolean[] booleanValues = (boolean[]) tablet.values[column];
+          for (int row = 0; row < rowSize; row++) {
+            long time = timestamps[row];
+            checkIsHistoryData(measurementId, time);
+            chunkWriters.get(measurementId).write(time, booleanValues[row]);
+            lastTimeMap.put(measurementId, time);
+          }
+          break;
+        case TEXT:
+          Binary[] binaryValues = (Binary[]) tablet.values[column];
+          for (int row = 0; row < rowSize; row++) {
+            long time = timestamps[row];
+            checkIsHistoryData(measurementId, time);
+            chunkWriters.get(measurementId).write(time, binaryValues[row]);
+            lastTimeMap.put(measurementId, time);
+          }
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", timeseries.get(column).getType()));
       }
     }
     return pointCount;

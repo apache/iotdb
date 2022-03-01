@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkGroupWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkGroupWriter;
 import org.apache.iotdb.tsfile.write.chunk.NonAlignedChunkGroupWriterImpl;
+import org.apache.iotdb.tsfile.write.record.NonAlignedTablet;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -380,6 +381,24 @@ public class TsFileWriter implements AutoCloseable {
     }
   }
 
+  private void checkIsTimeseriesExist(NonAlignedTablet tablet) throws WriteProcessException {
+    IChunkGroupWriter groupWriter = tryToInitialGroupWriter(tablet.deviceId, false);
+
+    Path devicePath = new Path(tablet.deviceId);
+    List<MeasurementSchema> schemas = tablet.getSchemas();
+    if (schema.containsDevice(devicePath)) {
+      checkIsAllMeasurementsInGroup(schema.getSeriesSchema(devicePath), schemas, false);
+      groupWriter.tryToAddSeriesWriter(schemas);
+    } else if (schema.getSchemaTemplates() != null && schema.getSchemaTemplates().size() == 1) {
+      MeasurementGroup measurementGroup =
+          schema.getSchemaTemplates().entrySet().iterator().next().getValue();
+      checkIsAllMeasurementsInGroup(measurementGroup, schemas, false);
+      groupWriter.tryToAddSeriesWriter(schemas);
+    } else {
+      throw new NoMeasurementException("input devicePath is invalid: " + devicePath);
+    }
+  }
+
   /**
    * If it's aligned, then all measurementSchemas should be contained in the measurementGroup, or it
    * will throw exception. If it's nonAligned, then remove the measurementSchema that is not
@@ -510,6 +529,15 @@ public class TsFileWriter implements AutoCloseable {
     checkIsTimeseriesExist(tablet, false);
     // get corresponding ChunkGroupWriter and write this Tablet
     recordCount += groupWriters.get(tablet.deviceId).write(tablet);
+    return checkMemorySizeAndMayFlushChunks();
+  }
+
+  public boolean write(NonAlignedTablet tablet) throws IOException, WriteProcessException {
+    // make sure the ChunkGroupWriter for this Tablet exist
+    checkIsTimeseriesExist(tablet);
+    // get corresponding ChunkGroupWriter and write this Tablet
+    recordCount +=
+        ((NonAlignedChunkGroupWriterImpl) groupWriters.get(tablet.deviceId)).write(tablet);
     return checkMemorySizeAndMayFlushChunks();
   }
 
