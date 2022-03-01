@@ -23,18 +23,15 @@ import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.utils.FileUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
@@ -65,7 +62,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
   private long pullSerialNumber;
   private long commitSerialNumber;
-  private BufferedWriter commitLogWriter;
+  private DataOutputStream commitLogWriter;
   private long currentCommitLogSize;
 
   public BufferedPipeDataQueue(String pipeLogDir) {
@@ -132,13 +129,16 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
   private void recoverCommitSerialNumber() {
     File commitLog = new File(pipeLogDir, SyncConstant.COMMIT_LOG_NAME);
     if (!commitLog.exists()) {
+      if (!pipeLogStartNumber.isEmpty()) {
+        commitSerialNumber = pipeLogStartNumber.peek() - 1;
+      }
       return;
     }
 
     try (RandomAccessFile raf = new RandomAccessFile(commitLog, "r")) {
-      if (raf.length() >= Integer.BYTES) {
-        raf.seek(raf.length() - Integer.BYTES);
-        commitSerialNumber = raf.readInt();
+      if (raf.length() >= Long.BYTES) {
+        raf.seek(raf.length() - Long.BYTES);
+        commitSerialNumber = raf.readLong();
       }
     } catch (IOException e) {
       logger.error(
@@ -175,6 +175,10 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
   public long getLastMaxSerialNumber() {
     return lastMaxSerialNumber;
+  }
+
+  public long getCommitSerialNumber() {
+    return commitSerialNumber;
   }
 
   /** input */
@@ -232,27 +236,17 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     if (!outputDeque.isEmpty()) {
       return outputDeque.poll();
     } else if (outputDeque != inputDeque) {
-      long writingPipeLogStartNumber = -1;
-      List<Long> pullPipeLogStartNumber = new ArrayList<>();
-      while (!pipeLogStartNumber.isEmpty()) {
-        long number = pipeLogStartNumber.poll();
-        pullPipeLogStartNumber.add(number);
-        if (number > serialNumber) {
-          break;
-        }
-        writingPipeLogStartNumber = number;
-      }
-      int size = pullPipeLogStartNumber.size();
-      for (int i = size - 1; i >= 0; --i) {
-        pipeLogStartNumber.addFirst(pullPipeLogStartNumber.get(i));
+      if (pipeLogStartNumber.isEmpty()) {
+        return null;
       }
 
-      if (writingPipeLogStartNumber == pipeLogStartNumber.peekLast() && inputDeque != null) {
+      if (serialNumber > pipeLogStartNumber.peekLast()) {
+        return null;
+      } else if (serialNumber == pipeLogStartNumber.peekLast() && inputDeque != null) {
         outputDeque = inputDeque;
       } else {
         List<PipeData> parsePipeData =
-            parsePipeLog(
-                new File(pipeLogDir, SyncConstant.getPipeLogName(writingPipeLogStartNumber)));
+            parsePipeLog(new File(pipeLogDir, SyncConstant.getPipeLogName(serialNumber)));
         int parsePipeDataSize = parsePipeData.size();
         outputDeque = new LinkedBlockingDeque<>();
         for (int i = 0; i < parsePipeDataSize; i++) {
@@ -296,12 +290,13 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
   public PipeData take() throws InterruptedException {
     PipeData pipeData = null;
     try {
-      pullSerialNumber = commitSerialNumber + 1;
       synchronized (waitLock) {
+        pullSerialNumber = commitSerialNumber + 1;
         pipeData = pullOnePipeData(pullSerialNumber);
         if (pipeData == null) {
           waitLock.wait();
           waitLock.notifyAll();
+          pullSerialNumber = commitSerialNumber + 1;
           pipeData = pullOnePipeData(pullSerialNumber);
         }
       }
@@ -365,11 +360,11 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     try {
       if (commitLogWriter == null) {
         commitLogWriter =
-            new BufferedWriter(new FileWriter(new File(pipeLogDir, SyncConstant.COMMIT_LOG_NAME)));
+            new DataOutputStream(
+                new FileOutputStream(new File(pipeLogDir, SyncConstant.COMMIT_LOG_NAME)));
         currentCommitLogSize = 0;
       }
-      commitLogWriter.newLine();
-      commitLogWriter.write(String.valueOf(commitSerialNumber));
+      commitLogWriter.writeLong(commitSerialNumber);
       commitLogWriter.flush();
       currentCommitLogSize += Long.BYTES;
       if (currentCommitLogSize >= SyncConstant.DEFAULT_PIPE_LOG_SIZE_IN_BYTE) {
@@ -417,8 +412,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
   public static List<PipeData> parsePipeLog(File file) throws IOException {
     List<PipeData> pipeData = new ArrayList<>();
-    DataInputStream inputStream = new DataInputStream(new FileInputStream(file));
-    try {
+    try (DataInputStream inputStream = new DataInputStream(new FileInputStream(file))) {
       while (true) {
         pipeData.add(PipeData.deserialize(inputStream));
       }
@@ -427,8 +421,6 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     } catch (IllegalPathException e) {
       logger.error(String.format("Parsing pipeLog %s error, because %s", file.getPath(), e));
       throw new IOException(e);
-    } finally {
-      inputStream.close();
     }
     return pipeData;
   }
