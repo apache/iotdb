@@ -112,7 +112,7 @@
         <maven.assembly.version>3.1.1</maven.assembly.version>
         <scala.library.version>2.11</scala.library.version>
         <scala.version>2.11.12</scala.version>
-        <hadoop2.version>2.7.3</hadoop2.version>
+        <hadoop2.version>2.7.7</hadoop2.version>
         <hive2.version>2.3.6</hive2.version>
         <junit.version>4.13.2</junit.version>
         <slf4j.version>1.7.12</slf4j.version>
