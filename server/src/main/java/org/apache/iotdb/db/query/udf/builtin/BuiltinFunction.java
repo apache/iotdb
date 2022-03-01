@@ -55,6 +55,7 @@ public enum BuiltinFunction {
   BOTTOM_K("BOTTOM_K", UDTFBottomK.class),
   CAST("CAST", UDTFCast.class),
   ZERO_DURATION("ZERO_DURATION", UDTFZeroDuration.class),
+  ON_OFF("ON_OFF", UDTFOnOff.class),
   NON_ZERO_DURATION("NON_ZERO_DURATION", UDTFNonZeroDuration.class),
   ZERO_COUNT("ZERO_COUNT", UDTFZeroCount.class),
   NON_ZERO_COUNT("NON_ZERO_COUNT", UDTFNonZeroCount.class),

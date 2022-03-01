@@ -336,6 +336,51 @@ Total line number = 4
 It costs 0.078s
 ```
 
+
+### Condition Functions
+Condition functions are used to check whether timeseries data points satisfy some specific condition.
+
+They return BOOLEANs.
+
+Currently, IoTDB supports the following condition functions:
+
+| Function Name |Allowed Input Series Data Types| Required Attributes                | Output Series Data Type | Series Data Type  Description                                           |
+|---------------|-------------------------------|------------------------------------|-------------------------|-------------------------------------------------------------------------|
+| ON_OFF        | INT32 / INT64 / FLOAT / DOUBLE| `threshold`: a double type variate | BOOLEAN                            | Return `true` if data point `value >= threshold` , else return `false`. |
+
+Example Data:
+```
+IoTDB> select ts from root.test;
++-----------------------------+------------+
+|                         Time|root.test.ts|
++-----------------------------+------------+
+|1970-01-01T08:00:00.001+08:00|           1|
+|1970-01-01T08:00:00.002+08:00|           2|
+|1970-01-01T08:00:00.003+08:00|           3|
+|1970-01-01T08:00:00.004+08:00|           4|
++-----------------------------+------------+
+
+```
+SQL:
+```sql
+select ts, on_off(ts, 'threshold'='2') from root.test;
+```
+
+Output:
+```
+IoTDB> select ts, on_off(ts, 'threshold'='2') from root.test;
++-----------------------------+------------+-------------------------------------+
+|                         Time|root.test.ts|on_off(root.test.ts, "threshold"="2")|
++-----------------------------+------------+-------------------------------------+
+|1970-01-01T08:00:00.001+08:00|           1|                                false|
+|1970-01-01T08:00:00.002+08:00|           2|                                 true|
+|1970-01-01T08:00:00.003+08:00|           3|                                 true|
+|1970-01-01T08:00:00.004+08:00|           4|                                 true|
++-----------------------------+------------+-------------------------------------+
+
+```
+
+
 ### Continuous Interval Functions
 The continuous interval functions are used to query all continuous intervals that meet specified conditions.
 They can be divided into two categories according to return value:
