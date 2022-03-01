@@ -23,7 +23,7 @@ import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 
 public class InfluxFilterOperator extends org.apache.iotdb.db.qp.logical.crud.FilterOperator {
 
-  String keyName;
+  String filterName;
 
   public InfluxFilterOperator() {
     super();
@@ -33,12 +33,12 @@ public class InfluxFilterOperator extends org.apache.iotdb.db.qp.logical.crud.Fi
     super(filterType);
   }
 
-  public String getKeyName() {
-    return keyName;
+  public String getFilterName() {
+    return filterName;
   }
 
-  public void setKeyName(String keyName) {
-    this.keyName = keyName;
+  public void setFilterName(String filterName) {
+    this.filterName = filterName;
   }
 
   public int compareTo(InfluxFilterOperator o) {

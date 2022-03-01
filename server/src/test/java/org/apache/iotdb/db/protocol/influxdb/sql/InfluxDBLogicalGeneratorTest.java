@@ -60,7 +60,7 @@ public class InfluxDBLogicalGeneratorTest {
     InfluxBasicFunctionOperator basicFunctionOperator =
         (InfluxBasicFunctionOperator) filterOperator.getChildren().get(0);
     assertEquals(basicFunctionOperator.getValue(), "1");
-    assertEquals(basicFunctionOperator.getKeyName(), "a");
+    assertEquals(basicFunctionOperator.getFilterName(), "a");
     assertNull(basicFunctionOperator.getFilterType());
   }
 }

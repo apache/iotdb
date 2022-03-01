@@ -28,7 +28,7 @@ public class InfluxBasicFunctionOperator extends InfluxFunctionOperator {
   public InfluxBasicFunctionOperator(
       FilterConstant.FilterType filterType, String keyName, String value) {
     super(filterType);
-    this.keyName = keyName;
+    this.filterName = keyName;
     this.value = value;
   }
 
