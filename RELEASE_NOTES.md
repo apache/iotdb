@@ -84,6 +84,7 @@
 * [IOTDB-2176] Limit target chunk size when performing inner space compaction
 * [IOTDB-2193] Reduce unnecessary lock operations of RaftLogManager to improve writing performance 
 * [IOTDB-2195] Control the concurrent query execution thread
+* [IOTDB-2632] Set compaction_write_throughput_mb_per_sec to 16 by default
 * [ISSUE-3445] New compaction strategy and compaction scheduling strategy
 * [ISSUE-3856] refine exception handling logic in commitTo in RaftLogManager
 * [Cluster] No need to shake hands with itself when one node restart 

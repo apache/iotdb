@@ -901,7 +901,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| The write rate of all compaction tasks in MB/s |
 |Type| Int32 |
-|Default| 30 |
+|Default| 16 |
 |Effective|After restart system|
 
 ### Insertion
