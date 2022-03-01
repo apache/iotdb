@@ -57,9 +57,7 @@ public class DropwizardPrometheusReporter implements Reporter {
         HttpServer.create()
             .idleTimeout(Duration.ofMillis(30_000L))
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
-            .port(
-                Integer.parseInt(
-                    metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort()))
+            .port(Integer.parseInt(metricConfig.getPrometheusExporterPort()))
             .route(
                 routes ->
                     routes.get(
@@ -68,8 +66,7 @@ public class DropwizardPrometheusReporter implements Reporter {
             .bindNow();
 
     LOGGER.info(
-        "http server for metrics stated, listen on {}",
-        metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort());
+        "http server for metrics started, listen on {}", metricConfig.getPrometheusExporterPort());
     return true;
   }
 

@@ -47,8 +47,8 @@ public class MetricConfig {
   private List<PredefinedMetric> predefinedMetrics =
       Collections.singletonList(PredefinedMetric.jvm);
 
-  /** the config of prometheus reporter */
-  private PrometheusReporterConfig prometheusReporterConfig = new PrometheusReporterConfig();
+  /** the http server's port for prometheus exporter to get metric data. */
+  private String prometheusExporterPort = "9091";
 
   public void copy(MetricConfig newMetricConfig) {
     enableMetric = newMetricConfig.getEnableMetric();
@@ -56,7 +56,7 @@ public class MetricConfig {
     metricReporterList = newMetricConfig.getMetricReporterList();
     metricLevel = newMetricConfig.getMetricLevel();
     predefinedMetrics = newMetricConfig.getPredefinedMetrics();
-    prometheusReporterConfig = newMetricConfig.getPrometheusReporterConfig();
+    prometheusExporterPort = newMetricConfig.getPrometheusExporterPort();
   }
 
   public Boolean getEnableMetric() {
@@ -91,14 +91,6 @@ public class MetricConfig {
     this.metricReporterList = metricReporterList;
   }
 
-  public PrometheusReporterConfig getPrometheusReporterConfig() {
-    return prometheusReporterConfig;
-  }
-
-  public void setPrometheusReporterConfig(PrometheusReporterConfig prometheusReporterConfig) {
-    this.prometheusReporterConfig = prometheusReporterConfig;
-  }
-
   public MetricLevel getMetricLevel() {
     return metricLevel;
   }
@@ -115,39 +107,12 @@ public class MetricConfig {
     this.predefinedMetrics = predefinedMetrics;
   }
 
-  /** the following is prometheus related config. */
-  public static class PrometheusReporterConfig {
-    private String prometheusExporterUrl = "http://localhost";
-    /** the http server's port for prometheus exporter to get metric data. */
-    private String prometheusExporterPort = "9091";
+  public String getPrometheusExporterPort() {
+    return prometheusExporterPort;
+  }
 
-    public String getPrometheusExporterUrl() {
-      return prometheusExporterUrl;
-    }
-
-    public void setPrometheusExporterUrl(String prometheusExporterUrl) {
-      this.prometheusExporterUrl = prometheusExporterUrl;
-    }
-
-    public String getPrometheusExporterPort() {
-      return prometheusExporterPort;
-    }
-
-    public void setPrometheusExporterPort(String prometheusExporterPort) {
-      this.prometheusExporterPort = prometheusExporterPort;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (!(obj instanceof PrometheusReporterConfig)) {
-        return false;
-      }
-      PrometheusReporterConfig anotherPrometheusReporterConfig = (PrometheusReporterConfig) obj;
-      return prometheusExporterUrl.equals(
-              anotherPrometheusReporterConfig.getPrometheusExporterPort())
-          && prometheusExporterPort.equals(
-              anotherPrometheusReporterConfig.getPrometheusExporterUrl());
-    }
+  public void setPrometheusExporterPort(String prometheusExporterPort) {
+    this.prometheusExporterPort = prometheusExporterPort;
   }
 
   @Override
@@ -162,6 +127,6 @@ public class MetricConfig {
         && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
         && predefinedMetrics.equals(anotherMetricConfig.getPredefinedMetrics())
-        && prometheusReporterConfig.equals(anotherMetricConfig.getPrometheusReporterConfig());
+        && prometheusExporterPort.equals(anotherMetricConfig.getPrometheusExporterPort());
   }
 }

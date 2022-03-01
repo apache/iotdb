@@ -32,7 +32,7 @@ public enum MetricLevel {
     this.level = level;
   }
 
-  public static boolean isHigher(MetricLevel level1, MetricLevel level2) {
+  public static boolean higherOrEqual(MetricLevel level1, MetricLevel level2) {
     return level1.level >= level2.level;
   }
 }

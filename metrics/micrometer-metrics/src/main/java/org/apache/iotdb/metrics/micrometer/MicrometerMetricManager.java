@@ -479,6 +479,6 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public boolean isEnable(MetricLevel metricLevel) {
-    return isEnable() && MetricLevel.isHigher(metricLevel, metricConfig.getMetricLevel());
+    return isEnable() && MetricLevel.higherOrEqual(metricLevel, metricConfig.getMetricLevel());
   }
 }
