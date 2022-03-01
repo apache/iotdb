@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.cross.rewrite.recover;
+package org.apache.iotdb.db.engine.compaction.utils.log;
 
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;

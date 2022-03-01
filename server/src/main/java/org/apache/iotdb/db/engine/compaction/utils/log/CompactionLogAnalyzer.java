@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.cross.rewrite.recover;
+package org.apache.iotdb.db.engine.compaction.utils.log;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
@@ -29,14 +29,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.CompactionLogger.STR_SEQ_FILES_FROM_OLD;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.CompactionLogger.STR_SOURCE_FILES;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.CompactionLogger.STR_SOURCE_FILES_FROM_OLD;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.CompactionLogger.STR_TARGET_FILES;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.CompactionLogger.STR_TARGET_FILES_FROM_OLD;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.CompactionLogger.STR_UNSEQ_FILES_FROM_OLD;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.SEQUENCE_NAME;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.UNSEQUENCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SEQ_FILES_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SOURCE_FILES;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SOURCE_FILES_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_TARGET_FILES;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_TARGET_FILES_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_UNSEQ_FILES_FROM_OLD;
 
 public class CompactionLogAnalyzer {
 
