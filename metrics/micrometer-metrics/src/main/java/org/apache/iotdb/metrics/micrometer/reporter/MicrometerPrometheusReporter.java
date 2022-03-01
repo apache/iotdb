@@ -74,7 +74,7 @@ public class MicrometerPrometheusReporter implements Reporter {
                             response.sendString(Mono.just(prometheusMeterRegistry.scrape()))))
             .bindNow();
     LOGGER.info(
-        "http server for metrics stated, listen on {}", metricConfig.getPrometheusExporterPort());
+        "http server for metrics started, listen on {}", metricConfig.getPrometheusExporterPort());
     return true;
   }
 
