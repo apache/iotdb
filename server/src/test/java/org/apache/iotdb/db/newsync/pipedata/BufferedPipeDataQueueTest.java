@@ -149,6 +149,12 @@ public class BufferedPipeDataQueueTest {
       e.printStackTrace();
     }
     es1.shutdownNow();
+    try {
+      Thread.sleep(500);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
     Assert.assertEquals(1, pipeDatas.size());
     pipeDataQueue.clear();
   }
@@ -175,6 +181,12 @@ public class BufferedPipeDataQueueTest {
       e.printStackTrace();
     }
     es1.shutdownNow();
+    try {
+      Thread.sleep(500);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
     Assert.assertEquals(1, pipeDatas.size());
     Assert.assertEquals(pipeData, pipeDatas.get(0));
     pipeDataQueue.clear();
@@ -256,6 +268,12 @@ public class BufferedPipeDataQueueTest {
         e.printStackTrace();
       }
       es1.shutdownNow();
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
       Assert.assertEquals(10, pipeDataTakeList.size());
       for (int i = 0; i < 10; i++) {
         Assert.assertEquals(pipeDataList.get(i + 2), pipeDataTakeList.get(i));
@@ -337,6 +355,12 @@ public class BufferedPipeDataQueueTest {
         e.printStackTrace();
       }
       es1.shutdownNow();
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
       Assert.assertEquals(9, pipeDataTakeList.size());
       for (int i = 0; i < 9; i++) {
         Assert.assertEquals(pipeDataList.get(i + 2), pipeDataTakeList.get(i));
@@ -413,6 +437,12 @@ public class BufferedPipeDataQueueTest {
         e.printStackTrace();
       }
       es1.shutdownNow();
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
       Assert.assertEquals(9, pipeDataTakeList.size());
       for (int i = 0; i < 9; i++) {
         Assert.assertEquals(pipeDataList.get(i + 2), pipeDataTakeList.get(i));
@@ -493,6 +523,12 @@ public class BufferedPipeDataQueueTest {
         e.printStackTrace();
       }
       es1.shutdownNow();
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
       Assert.assertEquals(18, pipeDataTakeList.size());
       for (int i = 0; i < 9; i++) {
         Assert.assertEquals(pipeDataList.get(i + 2), pipeDataTakeList.get(i));
