@@ -250,6 +250,59 @@ public class MergeRecoverTest extends MergeTest {
   }
 
   @Test
+  public void testRecoverWithAllSourceSeqFilesAndSomeUnseqFilesLost()
+      throws IOException, MetadataException {
+    for (TsFileResource resource : sourceSeqFiles) {
+      File targetFile = modifyTsFileNameUnseqMergCnt(resource.getTsFile());
+      FSFactoryProducer.getFSFactory()
+          .moveFile(new File(resource.getTsFilePath() + MergeTask.MERGE_SUFFIX), targetFile);
+      FSFactoryProducer.getFSFactory()
+          .moveFile(
+              new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX),
+              new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX));
+      resource.remove();
+      tsFileManagement.remove(resource, true);
+      tsFileManagement.add(new TsFileResource(targetFile), true);
+    }
+    for (int i = 0; i < 3; i++) {
+      TsFileResource resource = sourceUnseqFiles.get(i);
+      resource.remove();
+      tsFileManagement.remove(resource, false);
+    }
+    RecoverMergeTask recoverMergeTask =
+        new RecoverMergeTask(
+            tsFileManagement,
+            TestConstant.SEQUENCE_DATA_DIR,
+            tsFileManagement::mergeEndAction,
+            "recoverTest",
+            true,
+            "root.sg1");
+    recoverMergeTask.recoverMerge();
+    for (TsFileResource seqResource : tmpSourceSeqFiles) {
+      Assert.assertFalse(seqResource.getTsFile().exists());
+      Assert.assertFalse(
+          new File(seqResource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
+      Assert.assertFalse(new File(seqResource.getTsFilePath() + MergeTask.MERGE_SUFFIX).exists());
+      File targetFile = modifyTsFileNameUnseqMergCnt(seqResource.getTsFile());
+      Assert.assertTrue(targetFile.exists());
+      Assert.assertTrue(new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX).exists());
+      Assert.assertFalse(seqResource.getModFile().exists());
+      ModificationFile targetModsFile =
+          new ModificationFile(targetFile.getPath() + ModificationFile.FILE_SUFFIX);
+      Assert.assertTrue(targetModsFile.exists());
+      Assert.assertEquals(2, targetModsFile.getModifications().size());
+    }
+    for (TsFileResource unseqResource : tmpSourceUnseqFiles) {
+      Assert.assertFalse(unseqResource.getTsFile().exists());
+      Assert.assertFalse(
+          new File(unseqResource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
+      Assert.assertFalse(unseqResource.getModFile().exists());
+    }
+    Assert.assertFalse(mergingModsFile.exists());
+    Assert.assertFalse(logFile.exists());
+  }
+
+  @Test
   public void testRecoverWithAllSourceFilesLost() throws IOException, MetadataException {
     for (TsFileResource resource : sourceSeqFiles) {
       File targetFile = modifyTsFileNameUnseqMergCnt(resource.getTsFile());

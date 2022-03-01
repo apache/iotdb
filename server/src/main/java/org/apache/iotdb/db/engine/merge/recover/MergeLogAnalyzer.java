@@ -155,16 +155,6 @@ public class MergeLogAnalyzer {
         }
       }
       if (!currentFileFound) {
-        mergeUnseqFiles.add(
-            new TsFileResource(
-                new File(
-                    resource
-                        .getSeqFiles()
-                        .get(0)
-                        .getTsFile()
-                        .getParent()
-                        .replace("unsequence", "sequence"),
-                    MergeFileInfo.getFileInfoFromString(currLine).filename)));
         allSourceFileExists = false;
       }
     }
