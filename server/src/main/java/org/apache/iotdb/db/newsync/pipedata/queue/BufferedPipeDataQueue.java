@@ -38,9 +38,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
 
 public class BufferedPipeDataQueue implements PipeDataQueue {
@@ -66,12 +64,6 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
   private long commitSerialNumber;
   private DataOutputStream commitLogWriter;
   private long currentCommitLogSize;
-
-  private static Map<String, BufferedPipeDataQueue> instances = new ConcurrentHashMap<>();
-
-  public static BufferedPipeDataQueue getInstance(String pipeLogDir) {
-    return instances.computeIfAbsent(pipeLogDir, i -> new BufferedPipeDataQueue(pipeLogDir));
-  }
 
   public BufferedPipeDataQueue(String pipeLogDir) {
     this.pipeLogDir = pipeLogDir;
