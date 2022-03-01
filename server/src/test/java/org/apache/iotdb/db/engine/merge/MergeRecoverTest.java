@@ -138,6 +138,13 @@ public class MergeRecoverTest extends MergeTest {
     }
     Assert.assertFalse(mergingModsFile.exists());
     Assert.assertFalse(logFile.exists());
+    Assert.assertEquals(10, tsFileManagement.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManagement.getTsFileList(false).size());
+    for (int i = 0; i < tsFileManagement.getTsFileList(true).size(); i++) {
+      Assert.assertEquals(
+          tsFileManagement.getTsFileList(true).get(i).getTsFilePath(),
+          modifyTsFileNameUnseqMergCnt(tmpSourceSeqFiles.get(i).getTsFile()).getPath());
+    }
   }
 
   /**
@@ -199,6 +206,13 @@ public class MergeRecoverTest extends MergeTest {
     }
     Assert.assertFalse(mergingModsFile.exists());
     Assert.assertFalse(logFile.exists());
+    Assert.assertEquals(10, tsFileManagement.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManagement.getTsFileList(false).size());
+    for (int i = 0; i < tsFileManagement.getTsFileList(true).size(); i++) {
+      Assert.assertEquals(
+          tsFileManagement.getTsFileList(true).get(i).getTsFilePath(),
+          modifyTsFileNameUnseqMergCnt(tmpSourceSeqFiles.get(i).getTsFile()).getPath());
+    }
   }
 
   @Test
@@ -247,6 +261,13 @@ public class MergeRecoverTest extends MergeTest {
     }
     Assert.assertFalse(mergingModsFile.exists());
     Assert.assertFalse(logFile.exists());
+    Assert.assertEquals(10, tsFileManagement.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManagement.getTsFileList(false).size());
+    for (int i = 0; i < tsFileManagement.getTsFileList(true).size(); i++) {
+      Assert.assertEquals(
+          tsFileManagement.getTsFileList(true).get(i).getTsFilePath(),
+          modifyTsFileNameUnseqMergCnt(tmpSourceSeqFiles.get(i).getTsFile()).getPath());
+    }
   }
 
   @Test
@@ -300,6 +321,13 @@ public class MergeRecoverTest extends MergeTest {
     }
     Assert.assertFalse(mergingModsFile.exists());
     Assert.assertFalse(logFile.exists());
+    Assert.assertEquals(10, tsFileManagement.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManagement.getTsFileList(false).size());
+    for (int i = 0; i < tsFileManagement.getTsFileList(true).size(); i++) {
+      Assert.assertEquals(
+          tsFileManagement.getTsFileList(true).get(i).getTsFilePath(),
+          modifyTsFileNameUnseqMergCnt(tmpSourceSeqFiles.get(i).getTsFile()).getPath());
+    }
   }
 
   @Test
@@ -351,6 +379,13 @@ public class MergeRecoverTest extends MergeTest {
     }
     Assert.assertFalse(mergingModsFile.exists());
     Assert.assertFalse(logFile.exists());
+    Assert.assertEquals(10, tsFileManagement.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManagement.getTsFileList(false).size());
+    for (int i = 0; i < tsFileManagement.getTsFileList(true).size(); i++) {
+      Assert.assertEquals(
+          tsFileManagement.getTsFileList(true).get(i).getTsFilePath(),
+          modifyTsFileNameUnseqMergCnt(tmpSourceSeqFiles.get(i).getTsFile()).getPath());
+    }
   }
 
   @Test
@@ -385,6 +420,18 @@ public class MergeRecoverTest extends MergeTest {
     }
     Assert.assertFalse(mergingModsFile.exists());
     Assert.assertFalse(logFile.exists());
+    Assert.assertEquals(10, tsFileManagement.getTsFileList(true).size());
+    Assert.assertEquals(5, tsFileManagement.getTsFileList(false).size());
+    for (int i = 0; i < tsFileManagement.getTsFileList(true).size(); i++) {
+      Assert.assertEquals(
+          tsFileManagement.getTsFileList(true).get(i).getTsFilePath(),
+          tmpSourceSeqFiles.get(i).getTsFilePath());
+    }
+    for (int i = 0; i < tsFileManagement.getTsFileList(false).size(); i++) {
+      Assert.assertEquals(
+          tsFileManagement.getTsFileList(false).get(i).getTsFilePath(),
+          tmpSourceUnseqFiles.get(i).getTsFilePath());
+    }
   }
 
   private void createFiles() throws IOException, IllegalPathException, WriteProcessException {
