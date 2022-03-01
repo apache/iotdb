@@ -1,7 +1,7 @@
 package org.apache.iotdb.db.query.distribution.operator;
 
-import org.apache.iotdb.db.query.distribution.common.DeviceMergeOrder;
 import org.apache.iotdb.db.query.distribution.common.Tablet;
+import org.apache.iotdb.db.query.distribution.common.TraversalOrder;
 
 import java.util.List;
 import java.util.Map;
@@ -17,7 +17,7 @@ import java.util.Map;
  */
 public class DeviceMergeOperator extends ExecOperator<Tablet> {
     // The result output order that this operator
-    private DeviceMergeOrder mergeOrder;
+    private TraversalOrder mergeOrder;
 
     // Owned devices
     private List<String> ownedDeviceNameList;

@@ -21,9 +21,10 @@ public class SeriesScanOperator extends ExecOperator<SeriesBatchData> {
     // The path of the target series which will be scanned.
     private Path seriesPath;
 
-    // The order to traverse the series by timestamp.
-    // The default order is ASC, which means "order by timestamp asc"
-    private TraversalOrder scanOrder = TraversalOrder.ASC;
+    // The order to traverse the data.
+    // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
+    // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
+    private TraversalOrder scanOrder = TraversalOrder.TIMESTAMP_ASC;
 
     // Filter data in current series.
     private Filter filter;
