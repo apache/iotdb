@@ -101,37 +101,43 @@ public class ReceiverManager {
 
   public void writePipeMessage(
       String pipeName, String remoteIp, long createTime, PipeMessage message) {
-    // TODO: 加锁
-    String pipeIdentifier = SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
-    try {
-      log.writePipeMsg(pipeIdentifier, message);
-    } catch (IOException e) {
-      logger.error(
-          "Can not write pipe message {} from {} to disk because {}",
-          message,
-          pipeIdentifier,
-          e.getMessage());
+    if (pipeInfoMap.containsKey(pipeName) && pipeInfoMap.get(pipeName).containsKey(remoteIp)) {
+      synchronized (pipeInfoMap.get(pipeName).get(remoteIp)) {
+        String pipeIdentifier =
+            SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
+        try {
+          log.writePipeMsg(pipeIdentifier, message);
+        } catch (IOException e) {
+          logger.error(
+              "Can not write pipe message {} from {} to disk because {}",
+              message,
+              pipeIdentifier,
+              e.getMessage());
+        }
+        pipeMessageMap.computeIfAbsent(pipeIdentifier, i -> new ArrayList<>()).add(message);
+      }
     }
-    pipeMessageMap.computeIfAbsent(pipeIdentifier, i -> new ArrayList<>()).add(message);
   }
 
   public List<PipeMessage> getPipeMessages(String pipeName, String remoteIp, long createTime) {
-    // TODO: 加锁
-    String pipeIdentifier = SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
-    try {
-      log.readPipeMsg(pipeIdentifier);
-    } catch (IOException e) {
-      logger.error(
-          "Can not read pipe message about {} from disk because {}",
-          pipeIdentifier,
-          e.getMessage());
-    }
-    List<PipeMessage> res;
-    if (pipeMessageMap.containsKey(pipeIdentifier)) {
-      res = pipeMessageMap.get(pipeIdentifier);
-      pipeMessageMap.remove(pipeIdentifier);
-    } else {
-      res = new ArrayList<>();
+    List<PipeMessage> res = new ArrayList<>();
+    if (pipeInfoMap.containsKey(pipeName) && pipeInfoMap.get(pipeName).containsKey(remoteIp)) {
+      synchronized (pipeInfoMap.get(pipeName).get(remoteIp)) {
+        String pipeIdentifier =
+            SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
+        try {
+          log.readPipeMsg(pipeIdentifier);
+        } catch (IOException e) {
+          logger.error(
+              "Can not read pipe message about {} from disk because {}",
+              pipeIdentifier,
+              e.getMessage());
+        }
+        if (pipeMessageMap.containsKey(pipeIdentifier)) {
+          res = pipeMessageMap.get(pipeIdentifier);
+          pipeMessageMap.remove(pipeIdentifier);
+        }
+      }
     }
     return res;
   }
