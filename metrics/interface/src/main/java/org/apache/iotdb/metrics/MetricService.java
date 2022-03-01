@@ -60,11 +60,10 @@ public abstract class MetricService {
     // start reporter
     compositeReporter.startAll();
 
+    logger.info("Start predefined metric:" + metricConfig.getPredefinedMetrics());
     for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
       enablePredefinedMetric(predefinedMetric);
     }
-    logger.info("Start predefined metric:" + metricConfig.getPredefinedMetrics());
-
     logger.info("Start metric at level: " + metricConfig.getMetricLevel().name());
 
     collectFileSystemInfo();

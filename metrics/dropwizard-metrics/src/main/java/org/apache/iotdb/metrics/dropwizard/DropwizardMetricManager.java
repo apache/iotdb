@@ -400,7 +400,7 @@ public class DropwizardMetricManager implements MetricManager {
 
   @Override
   public void enablePredefinedMetric(PredefinedMetric metric) {
-    if (!isEnable) {
+    if (!isEnable()) {
       return;
     }
     switch (metric) {
