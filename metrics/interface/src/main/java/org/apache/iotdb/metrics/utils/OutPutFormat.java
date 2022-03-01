@@ -17,22 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.enums;
+package org.apache.iotdb.metrics.utils;
 
-public enum MetricLevel {
-  all(0),
-  normal(1),
-  important(2),
-  core(3);
+public enum OutPutFormat {
+  PROMETHEUS,
+  JSON;
 
-  /** Level of metric */
-  int level;
-
-  MetricLevel(int level) {
-    this.level = level;
-  }
-
-  public static boolean higherOrEqual(MetricLevel level1, MetricLevel level2) {
-    return level1.level >= level2.level;
+  @Override
+  public String toString() {
+    return name();
   }
 }

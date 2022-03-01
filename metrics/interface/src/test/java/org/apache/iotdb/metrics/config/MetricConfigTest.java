@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.apache.iotdb.metrics.enums.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
@@ -54,7 +54,7 @@ public class MetricConfigTest {
     List<ReporterType> lists = metricConfig.getMetricReporterList();
     Assert.assertEquals(lists.size(), 2);
     Assert.assertEquals(metricConfig.getPrometheusExporterPort(), "9091");
-    Assert.assertEquals(MetricLevel.normal, metricConfig.getMetricLevel());
+    Assert.assertEquals(MetricLevel.NORMAL, metricConfig.getMetricLevel());
     List<PredefinedMetric> predefinedMetrics = metricConfig.getPredefinedMetrics();
     Assert.assertEquals(predefinedMetrics.size(), 1);
   }

@@ -35,8 +35,8 @@ import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.enums.MetricLevel;
 import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
@@ -300,7 +300,7 @@ public class CompactionTaskManager implements IService {
             .getMetricManager()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
-                MetricLevel.normal,
+                MetricLevel.NORMAL,
                 Tag.NAME.toString(),
                 "compaction_" + taskType,
                 Tag.STATUS.toString(),

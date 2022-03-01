@@ -25,7 +25,7 @@ import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.enums.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -137,7 +137,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
           .count(
               1,
               Metric.CLUSTER_ELECT.toString(),
-              MetricLevel.normal,
+              MetricLevel.NORMAL,
               Tag.NAME.toString(),
               raftMember.getThisNode().internalIp,
               Tag.STATUS.toString(),

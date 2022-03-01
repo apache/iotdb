@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.metrics;
 
-import org.apache.iotdb.metrics.enums.MetricLevel;
 import org.apache.iotdb.metrics.type.*;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import java.util.List;

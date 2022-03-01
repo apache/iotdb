@@ -30,7 +30,7 @@ import org.apache.iotdb.metrics.MetricService;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.enums.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,7 +84,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
     String walDir = DirectoryManager.getInstance().getWALFolder();
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.normal,
+        MetricLevel.NORMAL,
         walDir,
         FileUtils::getDirSize,
         Tag.NAME.toString(),
@@ -93,7 +93,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.normal,
+        MetricLevel.NORMAL,
         dataDirs,
         value ->
             Stream.of(value)
@@ -107,7 +107,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "seq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.normal,
+        MetricLevel.NORMAL,
         dataDirs,
         value ->
             Stream.of(value)
@@ -121,7 +121,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "unseq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.normal,
+        MetricLevel.NORMAL,
         walDir,
         value -> {
           File walFolder = new File(value);
@@ -134,7 +134,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "wal");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.normal,
+        MetricLevel.NORMAL,
         dataDirs,
         value ->
             Stream.of(value)
@@ -150,7 +150,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "seq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.normal,
+        MetricLevel.NORMAL,
         dataDirs,
         value ->
             Stream.of(value)

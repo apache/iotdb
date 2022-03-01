@@ -20,21 +20,20 @@
 # whether enable the module
 enableMetric: false
 
-# Multiple reporter, options: [jmx, prometheus, iotdb], iotdb is off by default
+# Multiple reporter, options: [JMX, PROMETHEUS, IOTDB], IOTDB is off by default
 metricReporterList:
-  - jmx
-  - prometheus
+  - JMX
+  - PROMETHEUS
 
-# Type of monitor frame, options: [micrometer, dropwizard]
-monitorType: micrometer
+# Type of monitor frame, options: [MICROMETER, DROPWIZARD]
+monitorType: MICROMETER
 
-# Level of metric level, options: [core, important, normal, all]
-metricLevel: normal
+# Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
+metricLevel: ALL
 
-# Predefined metric, options: [jvm, logback], logback are not supported in dropwizard
+# Predefined metric, options: [JVM, LOGBACK], logback are not supported in dropwizard
 predefinedMetrics:
-  - jvm
-  - logback
+  - JVM
 
 # Period time of push, only valid for dropwizard
 pushPeriodInSecond: 5

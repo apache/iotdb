@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.type;
 
-import org.apache.iotdb.metrics.enums.OutPutFormat;
+import org.apache.iotdb.metrics.utils.OutPutFormat;
 
 public interface IMetric {
   /** format metric into string */

@@ -22,7 +22,7 @@ import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.enums.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 /** The TsFileProcessorInfo records the memory cost of this TsFileProcessor. */
 public class TsFileProcessorInfo {
@@ -47,7 +47,7 @@ public class TsFileProcessorInfo {
           .getMetricManager()
           .getOrCreateGauge(
               Metric.MEM.toString(),
-              MetricLevel.normal,
+              MetricLevel.NORMAL,
               Tag.NAME.toString(),
               "chunkMetaData_"
                   + storageGroupInfo.getVirtualStorageGroupProcessor().getLogicalStorageGroupName())
@@ -64,7 +64,7 @@ public class TsFileProcessorInfo {
           .getMetricManager()
           .getOrCreateGauge(
               Metric.MEM.toString(),
-              MetricLevel.normal,
+              MetricLevel.NORMAL,
               Tag.NAME.toString(),
               "chunkMetaData_"
                   + storageGroupInfo.getVirtualStorageGroupProcessor().getLogicalStorageGroupName())
@@ -80,7 +80,7 @@ public class TsFileProcessorInfo {
           .getMetricManager()
           .getOrCreateGauge(
               Metric.MEM.toString(),
-              MetricLevel.normal,
+              MetricLevel.NORMAL,
               Tag.NAME.toString(),
               "chunkMetaData_"
                   + storageGroupInfo.getVirtualStorageGroupProcessor().getLogicalStorageGroupName())

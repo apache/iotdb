@@ -33,7 +33,7 @@ import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.enums.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -174,7 +174,7 @@ public abstract class AbstractMemTable implements IMemTable {
           .count(
               pointsInserted,
               Metric.QUANTITY.toString(),
-              MetricLevel.normal,
+              MetricLevel.NORMAL,
               Tag.NAME.toString(),
               METRIC_POINT_IN);
     }
@@ -220,7 +220,7 @@ public abstract class AbstractMemTable implements IMemTable {
           .count(
               pointsInserted,
               Metric.QUANTITY.toString(),
-              MetricLevel.normal,
+              MetricLevel.NORMAL,
               Tag.NAME.toString(),
               METRIC_POINT_IN);
     }
@@ -243,7 +243,7 @@ public abstract class AbstractMemTable implements IMemTable {
             .count(
                 pointsInserted,
                 Metric.QUANTITY.toString(),
-                MetricLevel.normal,
+                MetricLevel.NORMAL,
                 Tag.NAME.toString(),
                 METRIC_POINT_IN);
       }
@@ -269,7 +269,7 @@ public abstract class AbstractMemTable implements IMemTable {
             .count(
                 pointsInserted,
                 Metric.QUANTITY.toString(),
-                MetricLevel.normal,
+                MetricLevel.NORMAL,
                 Tag.NAME.toString(),
                 METRIC_POINT_IN);
       }

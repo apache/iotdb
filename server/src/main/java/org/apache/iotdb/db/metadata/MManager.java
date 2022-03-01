@@ -92,7 +92,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.enums.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -306,7 +306,7 @@ public class MManager {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.MEM.toString(),
-              MetricLevel.normal,
+              MetricLevel.NORMAL,
               mtree,
               RamUsageEstimator::sizeOf,
               Tag.NAME.toString(),
@@ -319,7 +319,7 @@ public class MManager {
         .getMetricManager()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
-            MetricLevel.normal,
+            MetricLevel.NORMAL,
             totalSeriesNumber,
             AtomicLong::get,
             Tag.NAME.toString(),
@@ -329,7 +329,7 @@ public class MManager {
         .getMetricManager()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
-            MetricLevel.normal,
+            MetricLevel.NORMAL,
             mtree,
             tree -> {
               try {
@@ -346,7 +346,7 @@ public class MManager {
         .getMetricManager()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
-            MetricLevel.normal,
+            MetricLevel.NORMAL,
             mtree,
             tree -> {
               try {

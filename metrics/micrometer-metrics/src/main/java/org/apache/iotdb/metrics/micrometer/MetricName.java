@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
-import org.apache.iotdb.metrics.enums.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tags;

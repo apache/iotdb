@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.apache.iotdb.metrics.enums.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MonitorType;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -36,16 +36,16 @@ public class MetricConfig {
   private Integer pushPeriodInSecond = 5;
 
   /** The of monitor frame */
-  private MonitorType monitorType = MonitorType.micrometer;
+  private MonitorType monitorType = MonitorType.MICROMETER;
 
   /** provide or push metric data to remote system, could be jmx, prometheus, iotdb, etc. */
   private List<ReporterType> metricReporterList =
-      Arrays.asList(ReporterType.jmx, ReporterType.prometheus);
+      Arrays.asList(ReporterType.JMX, ReporterType.PROMETHEUS);
 
-  private MetricLevel metricLevel = MetricLevel.normal;
+  private MetricLevel metricLevel = MetricLevel.NORMAL;
 
   private List<PredefinedMetric> predefinedMetrics =
-      Collections.singletonList(PredefinedMetric.jvm);
+      Collections.singletonList(PredefinedMetric.JVM);
 
   /** the http server's port for prometheus exporter to get metric data. */
   private String prometheusExporterPort = "9091";

@@ -46,7 +46,7 @@ import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.enums.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.collections4.map.MultiKeyMap;
@@ -127,7 +127,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
           .gauge(
               count,
               Metric.CLUSTER_NODE_LEADER_COUNT.toString(),
-              MetricLevel.normal,
+              MetricLevel.NORMAL,
               Tag.NAME.toString(),
               node.internalIp);
     }
@@ -156,7 +156,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
           .gauge(
               isAlive ? 1 : 0,
               Metric.CLUSTER_NODE_STATUS.toString(),
-              MetricLevel.normal,
+              MetricLevel.NORMAL,
               Tag.NAME.toString(),
               node.internalIp);
     }
