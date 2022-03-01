@@ -127,13 +127,6 @@ public class IoTDBSyncReceiverCollectorIT {
             new FileOutputStream(new File(pipeLogDir1, SyncConstant.COMMIT_LOG_NAME), true));
     outputStream.writeLong(-1);
     outputStream.close();
-    //    BufferedWriter commitLogWriter =
-    //        new BufferedWriter(new FileWriter(new File(pipeLogDir1,
-    // SyncConstant.COMMIT_LOG_NAME)));
-    //    commitLogWriter.newLine();
-    //    commitLogWriter.write(String.valueOf(-1));
-    //    commitLogWriter.flush();
-    //    commitLogWriter.close();
     int serialNum = 0;
     File pipeLog1 = new File(pipeLogDir1.getPath(), SyncConstant.getPipeLogName(serialNum));
     DataOutputStream pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog1, false));
@@ -303,13 +296,6 @@ public class IoTDBSyncReceiverCollectorIT {
             new FileOutputStream(new File(pipeLogDir1, SyncConstant.COMMIT_LOG_NAME), true));
     outputStream.writeLong(-1);
     outputStream.close();
-    //    BufferedWriter commitLogWriter =
-    //        new BufferedWriter(new FileWriter(new File(pipeLogDir1,
-    // SyncConstant.COMMIT_LOG_NAME)));
-    //    commitLogWriter.newLine();
-    //    commitLogWriter.write(String.valueOf(-1));
-    //    commitLogWriter.flush();
-    //    commitLogWriter.close();
     int serialNum1 = 0;
     File pipeLog1 = new File(pipeLogDir1.getPath(), SyncConstant.getPipeLogName(serialNum1));
     DataOutputStream pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog1, false));
@@ -363,13 +349,6 @@ public class IoTDBSyncReceiverCollectorIT {
             new FileOutputStream(new File(pipeLogDir2, SyncConstant.COMMIT_LOG_NAME), true));
     outputStream.writeLong(-1);
     outputStream.close();
-    //    commitLogWriter =
-    //        new BufferedWriter(new FileWriter(new File(pipeLogDir2,
-    // SyncConstant.COMMIT_LOG_NAME)));
-    //    commitLogWriter.newLine();
-    //    commitLogWriter.write(String.valueOf(-1));
-    //    commitLogWriter.flush();
-    //    commitLogWriter.close();
     pipeLog1 = new File(pipeLogDir2.getPath(), SyncConstant.getPipeLogName(serialNum2));
     pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog1, false));
     pipeData =
