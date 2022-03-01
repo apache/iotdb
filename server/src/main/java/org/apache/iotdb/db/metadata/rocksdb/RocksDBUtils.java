@@ -485,14 +485,16 @@ public class RocksDBUtils {
     if (multiWildcardPosition.isEmpty()) {
       allResult.add(nodes);
     } else if (multiWildcardPosition.size() == 1) {
-      for (int i = 1; i <= maxLevel - nodes.length + 1; i++) {
+      for (int i = 1; i <= maxLevel - nodes.length + 2; i++) {
         String[] clone = nodes.clone();
         clone[multiWildcardPosition.get(0)] = replaceWildcard(i);
         allResult.add(newStringArray(clone));
       }
     } else {
       List<int[]> result =
-          getAllCompoundMode(maxLevel - multiWildcardPosition.size(), multiWildcardPosition.size());
+          getAllCompoundMode(
+              maxLevel - (nodes.length - multiWildcardPosition.size() - 1),
+              multiWildcardPosition.size());
       for (int[] value : result) {
         String[] clone = nodes.clone();
         for (int i = 0; i < value.length; i++) {
