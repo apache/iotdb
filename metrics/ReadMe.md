@@ -104,10 +104,10 @@ System.setProperty("IOTDB_CONF", "metrics/dropwizard-metrics/src/test/resources"
 | properties         | meaning                                               | example                |
 | ------------------ | ----------------------------------------------------- | ---------------------- |
 | enableMetric       | whether enable the module                             | true                   |
-| metricReporterList | the list of reporter                                  | jmx, prometheus        |
-| predefinedMetrics  | predefined set of metrics                             | jmx, logback           |
-| metricLevel | the init level of metrics| all, normal, important, core |
-| monitorType        | The type of monitor manager                           | dropwizard, micrometer |
+| metricReporterList | the list of reporter                                  | JMX, PROMETHEUS        |
+| predefinedMetrics  | predefined set of metrics                             | JMX, LOGBACK           |
+| metricLevel | the init level of metrics| ALL, NORMAL, IMPORTANT, CORE |
+| monitorType        | The type of monitor manager                           | DROPWIZARD, MICROMETER |
 | pushPeriodInSecond | the period time of push(used for prometheus, unit: s) | 5                      |
 
 ## 3.2. Module Use Guide

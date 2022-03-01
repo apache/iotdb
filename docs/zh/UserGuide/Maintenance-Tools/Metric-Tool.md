@@ -136,7 +136,7 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | cluster_elect_total       | name="{{ip}}",status="fail/win" | 节点参与选举的次数及结果                                     | cluster_elect_total{name="127.0.0.1",status="win",} 1.0      |
 
 ### 4.4. IoTDB 预定义指标集
-用户可以在`iotdb-metric.yml`文件中，修改`predefinedMetrics`的值来启用预定义指标集，其中`logback`在`dropwizard`中不支持。
+用户可以在`iotdb-metric.yml`文件中，修改`predefinedMetrics`的值来启用预定义指标集，其中`LOGBACK`在`dropwizard`中不支持。
 
 #### 4.4.1. JVM
 
@@ -200,21 +200,20 @@ metric采集默认是关闭的，需要先到conf/iotdb-metric.yml中打开后�
 # 是否启动监控模块，默认为false
 enableMetric: false
 
-# 数据提供方式，对外部通过jmx和prometheus协议提供metrics的数据, 可选参数：[jmx, prometheus, iotdb],iotdb是默认关闭的。
+# 数据提供方式，对外部通过jmx和prometheus协议提供metrics的数据, 可选参数：[JMX, PROMETHEUS, IOTDB],IOTDB是默认关闭的。
 metricReporterList:
-   - jmx
-   - prometheus
+  - JMX
+  - PROMETHEUS
 
-# 底层使用的metric架构，可选参数：[micrometer, dropwizard]
-monitorType: micrometer
+# 底层使用的metric架构，可选参数：[MICROMETER, DROPWIZARD]
+monitorType: MICROMETER
 
-# 初始化metric的级别，可选参数: [core, important, normal, all]
-metricLevel: all
+# 初始化metric的级别，可选参数: [CORE, IMPORTANT, NORMAL, ALL]
+metricLevel: NORMAL
 
-# 预定义的指标集, 可选参数: [jvm, logback], 其中logback在dropwizard中不支持
+# 预定义的指标集, 可选参数: [JVM, LOGBACK], 其中LOGBACK在dropwizard中不支持
 predefinedMetrics:
-   - jvm
-   - logback
+  - JVM
 
 # 数据推送时间，该参数只对 monitorType=dropwizard生效
 pushPeriodInSecond: 5

@@ -138,7 +138,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | cluster_elect_total       | name="{{ip}}",status="fail/win" | The count and result (won or failed) of elections the node participated in. | cluster_elect_total{name="127.0.0.1",status="win",} 1.0      |
 
 ### 4.4. IoTDB PreDefined Metrics Set
-Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file to enable the predefined set of metrics, which `logback` does not support in `dropwizard`.
+Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file to enable the predefined set of metrics, which `LOGBACK` does not support in `dropwizard`.
 
 #### 4.4.1. JVM
 
@@ -202,34 +202,26 @@ The metrics collection switch is disabled by default，you need to enable it fro
 # whether enable the module
 enableMetric: false
 
-# Multiple reporter, options: [jmx, prometheus, iotdb]. iotdb is off by default.
+# Multiple reporter, options: [JMX, PROMETHEUS, IOTDB], IOTDB is off by default
 metricReporterList:
-  - jmx
-  - prometheus
+  - JMX
+  - PROMETHEUS
 
-# Type of monitor frame, options: [micrometer, dropwizard]
-monitorType: micrometer
+# Type of monitor frame, options: [MICROMETER, DROPWIZARD]
+monitorType: MICROMETER
 
-# Level of metric level, options: [core, important, normal, all]
-metricLevel: all
+# Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
+metricLevel: NORMAL
 
-# Predefined metric, options: [jvm, logback], logback are not supported in dropwizard
+# Predefined metric, options: [JVM, LOGBACK], LOGBACK are not supported in dropwizard
 predefinedMetrics:
-  - jvm
-  - logback
+  - JVM
 
 # Period time of push, only valid for dropwizard
 pushPeriodInSecond: 5
 
-########################################################
-#                                                      #
-# if the reporter is prometheus,                       #
-# then the following must be set.                      #
-#                                                      #
-########################################################
-prometheusReporterConfig:
-  prometheusExporterUrl: http://localhost
-  prometheusExporterPort: 9091
+# The http server's port for prometheus exporter to get metric data.
+prometheusExporterPort: 9091
 ```
 
 Then you can get metrics data as follows
