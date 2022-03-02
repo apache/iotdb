@@ -67,7 +67,7 @@ public class SchemaFile implements ISchemaFile {
 
   public static int PAGE_LENGTH = 16 * 1024; // 16 kib for default
   public static short PAGE_HEADER_SIZE = 16;
-  public static int PAGE_CACHE_SIZE = 64; // size of page cache
+  public static int PAGE_CACHE_SIZE = 1024; // size of page cache
   public static int ROOT_INDEX = 0; // index of header page
   // 32 bit for page pointer, maximum .pmt file as 2^(32+14) bytes, 64 TiB
   public static int INDEX_LENGTH = 4;
