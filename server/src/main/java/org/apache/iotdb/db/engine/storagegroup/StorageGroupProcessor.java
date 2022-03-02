@@ -673,6 +673,7 @@ public class StorageGroupProcessor {
 
   private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) throws IOException {
     boolean needsCheckTsFile = true;
+    List<TsFileResource> resourcesToBeInserted = new ArrayList<>();
     for (int i = tsFiles.size() - 1; i >= 0; i--) {
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
@@ -694,7 +695,7 @@ public class StorageGroupProcessor {
           writer =
               recoverPerformer.recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
           tsFileResource.setClosed(true);
-          tsFileManagement.add(tsFileResource, isSeq);
+          resourcesToBeInserted.add(tsFileResource);
           continue;
         } else {
           writer =
@@ -769,8 +770,22 @@ public class StorageGroupProcessor {
           tsFileProcessor.getTsFileProcessorInfo().addTSPMemCost(chunkMetadataSize);
         }
       }
-      tsFileManagement.add(tsFileResource, isSeq);
+      resourcesToBeInserted.add(tsFileResource);
     }
+    resourcesToBeInserted.sort(
+        (o1, o2) -> {
+          try {
+            TsFileResource.TsFileName nameOfO1 =
+                TsFileResource.getTsFileName(o1.getTsFile().getName());
+            TsFileResource.TsFileName nameOfO2 =
+                TsFileResource.getTsFileName(o2.getTsFile().getName());
+            return Long.compare(nameOfO1.getVersion(), nameOfO2.getVersion());
+          } catch (IOException e) {
+            logger.error("Exception occurs when sorting tsfile list", e);
+            return 0;
+          }
+        });
+    tsFileManagement.addAll(resourcesToBeInserted, isSeq);
   }
 
   // ({systemTime}-{versionNum}-{mergeNum}.tsfile)
