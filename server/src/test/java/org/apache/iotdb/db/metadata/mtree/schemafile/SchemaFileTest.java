@@ -256,6 +256,7 @@ public class SchemaFileTest {
     Assert.assertEquals(11111L, nsf.init().getAsStorageGroupMNode().getDataTTL());
 
     printSF(nsf);
+    nsf.close();
   }
 
   private void printSF(ISchemaFile file) throws IOException, MetadataException {

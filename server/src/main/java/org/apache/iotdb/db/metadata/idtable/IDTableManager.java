@@ -91,6 +91,20 @@ public class IDTableManager {
     return null;
   }
 
+  /**
+   * get id table by storage group path
+   *
+   * @param sgPath storage group path
+   * @return id table belongs to path's storage group
+   */
+  public synchronized IDTable getIDTableDirectly(String sgPath) {
+    return idTableMap.computeIfAbsent(
+        sgPath,
+        storageGroupPath ->
+            new IDTableHashmapImpl(
+                SystemFileFactory.INSTANCE.getFile(systemDir + File.separator + storageGroupPath)));
+  }
+
   /** clear id table map */
   public void clear() throws IOException {
     for (IDTable idTable : idTableMap.values()) {

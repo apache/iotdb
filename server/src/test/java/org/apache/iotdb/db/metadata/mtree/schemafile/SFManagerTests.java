@@ -173,6 +173,8 @@ public class SFManagerTests {
     for (IMNode rNode : res) {
       assertEquals("y", rNode.getName());
     }
+
+    sfManager.close();
   }
 
   // region Tools to build a tree

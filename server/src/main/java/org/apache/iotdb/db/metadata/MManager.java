@@ -1057,6 +1057,11 @@ public class MManager {
    * path, may contain wildcard.
    */
   public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
+    // todo this is for test assistance, refactor this to support massive timeseries
+    if (pathPattern.getFullPath().equals("root.**")
+        && templateManager.getAllTemplateName().isEmpty()) {
+      return (int) totalSeriesNumber.get();
+    }
     return getAllTimeseriesCount(pathPattern, false);
   }
 

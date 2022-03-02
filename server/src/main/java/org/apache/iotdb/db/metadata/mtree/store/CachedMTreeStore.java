@@ -26,9 +26,9 @@ import org.apache.iotdb.db.metadata.mnode.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeContainers;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.IMemManager;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.LRUCacheStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.MemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFileManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SFManager;
@@ -55,7 +55,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private IMemManager memManager = new MemManager();
 
-  private ICacheStrategy cacheStrategy = new CacheStrategy();
+  private ICacheStrategy cacheStrategy = new LRUCacheStrategy();
 
   private ISchemaFileManager file;
 
@@ -98,6 +98,18 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
+  /**
+   * Get the target child node from parent. The parent must be pinned before invoking this method.
+   * The method will try to get child node from cache. If there's no matched node in cache or the
+   * node is not cached, which means it has been evicted, then this method will retrieve child node
+   * from schemaFile The returned child node will be pinned. If there's no matched child with the
+   * given name, this method will return null.
+   *
+   * @param parent parent node
+   * @param name the name or alias of the target child
+   * @return the pinned child node
+   * @throws MetadataException
+   */
   @Override
   public IMNode getChild(IMNode parent, String name) throws MetadataException {
     readLock.lock();
@@ -150,7 +162,7 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
-  // get iterator will take readLock, must call iterator.close after usage
+  // getChildrenIterator will take readLock, must call iterator.close() after usage
   @Override
   public IMNodeIterator getChildrenIterator(IMNode parent) throws MetadataException {
     try {
@@ -179,6 +191,18 @@ public class CachedMTreeStore implements IMTreeStore {
     parent.addAlias(alias, child);
   }
 
+  /**
+   * This method will delete a node from MTree, which means the corresponding subTree will be
+   * deleted. Before deletion, the measurementMNode in this subtree should be collected for updating
+   * statistics in MManager. The deletion will delete subtree in schemaFile first and then delete
+   * the node from memory. The target node and its ancestors should be pinned before invoking this
+   * problem.
+   *
+   * @param parent the parent node of the target node
+   * @param childName the name of the target node
+   * @return the collected MeasurementMNode in the deleted subtree
+   * @throws MetadataException
+   */
   @Override
   public List<IMeasurementMNode> deleteChild(IMNode parent, String childName)
       throws MetadataException {
@@ -240,7 +264,12 @@ public class CachedMTreeStore implements IMTreeStore {
     parent.deleteAliasChild(alias);
   }
 
-  // must pin first
+  /**
+   * The upside modification on node in MTree or MManager should be sync to MTreeStore explicitly.
+   * Must pin the node first before update
+   *
+   * @param node the modified node
+   */
   @Override
   public void updateMNode(IMNode node) {
     readLock.lock();
@@ -251,12 +280,20 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
+  /**
+   * Pin MNode in memory makes the pinned node and its ancestors not be evicted during cache
+   * eviction. The pinned MNode will occupy memory resource, thus this method will check the memory
+   * status which may trigger cache eviction or flushing.
+   *
+   * @param node
+   */
   @Override
   public void pin(IMNode node) {
     pinMNodeInMemory(node);
   }
 
   private void pinMNodeInMemory(IMNode node) {
+    // the operation that changes the node's cache status should be synchronized
     synchronized (node) {
       if (!cacheStrategy.isPinned(node)) {
         if (cacheStrategy.isCached(node)) {
@@ -272,6 +309,14 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
+  /**
+   * UnPin MNode release the node from this thread/task's usage. If none thread/task is using this
+   * node or pinning this node, it will be able to evict this node from memory. Since unpin changes
+   * the node's status, the memory status will be checked and cache eviction and flushing may be
+   * tirgger.
+   *
+   * @param node
+   */
   @Override
   public void unPin(IMNode node) {
     if (!cacheStrategy.isCached(node)) {
@@ -297,6 +342,7 @@ public class CachedMTreeStore implements IMTreeStore {
   @Override
   public void createSnapshot() throws IOException {}
 
+  /** clear all the data of MTreeStore in memory and disk. */
   @Override
   public void clear() {
     if (flushTask != null) {
@@ -317,6 +363,11 @@ public class CachedMTreeStore implements IMTreeStore {
     file = null;
   }
 
+  /**
+   * Execute cache eviction until the memory status is under safe mode or no node could be evicted.
+   * If the memory status is still full, which means the nodes in memory are all volatile nodes, new
+   * added or updated, fire flush task.
+   */
   private void tryExecuteMemoryRelease() {
     executeMemoryRelease();
     if (memManager.isExceedCapacity()) {
@@ -326,6 +377,10 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
+  /**
+   * Keep fetching evictable nodes from cacheStrategy until the memory status is under safe mode or
+   * no node could be evicted. Update the memory status after evicting each node.
+   */
   private void executeMemoryRelease() {
     List<IMNode> evictedMNodes;
     while (memManager.isExceedThreshold()) {
@@ -347,6 +402,7 @@ public class CachedMTreeStore implements IMTreeStore {
     flushTask.submit(this::flushVolatileNodes);
   }
 
+  /** Sync all volatile nodes to schemaFile and execute memory release after flush. */
   private void flushVolatileNodes() {
     writeLock.lock();
     try {
@@ -371,6 +427,10 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
+  /**
+   * Since any node R/W operation may change the memory status, thus it should be controlled during
+   * iterating child nodes.
+   */
   private class CachedMNodeIterator implements IMNodeIterator {
 
     IMNode parent;
