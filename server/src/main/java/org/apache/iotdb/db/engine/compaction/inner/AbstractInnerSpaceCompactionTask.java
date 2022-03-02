@@ -110,6 +110,7 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
 
     for (TsFileResource resource : selectedTsFileResourceList) {
       resource.setCompacting(true);
+      resource.setCompactionCandidate(false);
     }
     return true;
   }

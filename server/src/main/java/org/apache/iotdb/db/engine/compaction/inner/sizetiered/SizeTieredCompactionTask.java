@@ -247,6 +247,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
 
     for (TsFileResource resource : selectedTsFileResourceList) {
       resource.setCompacting(true);
+      resource.setCompactionCandidate(false);
     }
     return true;
   }
