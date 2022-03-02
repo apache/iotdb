@@ -144,7 +144,6 @@ public class Segment implements ISegment {
     pairLength = (short) newPairLength;
 
     int tarIdx = 0;
-    // TODO: implement binary search further
 
     int head = 0;
     int tail = keyAddressList.size() - 1;
@@ -152,14 +151,14 @@ public class Segment implements ISegment {
     if (tail == -1) {
       // no element
       tarIdx = 0;
-    } else if (tail == 0){
+    } else if (tail == 0) {
       // only one element
       if (keyAddressList.get(0).left.compareTo(key) == 0) {
         throw new RecordDuplicatedException(key);
       }
       tarIdx = keyAddressList.get(0).left.compareTo(key) > 0 ? 0 : 1;
     } else if (keyAddressList.get(head).left.compareTo(key) == 0
-    || keyAddressList.get(tail).left.compareTo(key) == 0) {
+        || keyAddressList.get(tail).left.compareTo(key) == 0) {
       throw new RecordDuplicatedException(key);
     } else if (keyAddressList.get(head).left.compareTo(key) > 0) {
       tarIdx = 0;
@@ -174,12 +173,12 @@ public class Segment implements ISegment {
         }
 
         if (keyAddressList.get(pivot).left.compareTo(key) == 0
-        || keyAddressList.get(pivot + 1).left.compareTo(key) == 0) {
+            || keyAddressList.get(pivot + 1).left.compareTo(key) == 0) {
           throw new RecordDuplicatedException(key);
         }
 
         if (keyAddressList.get(pivot).left.compareTo(key) < 0
-        && keyAddressList.get(pivot + 1).left.compareTo(key) > 0) {
+            && keyAddressList.get(pivot + 1).left.compareTo(key) > 0) {
           tarIdx = pivot + 1;
           break;
         }
@@ -204,19 +203,6 @@ public class Segment implements ISegment {
         }
       }
     }
-
-    // for (int idx = 0; idx < keyAddressList.size(); idx++) {
-    //   if (keyAddressList.get(idx).left.compareTo(key) == 0) {
-    //     throw new RecordDuplicatedException(key);
-    //   }
-    //   if (keyAddressList.get(idx).left.compareTo(key) > 0) {
-    //     tarIdx = idx;
-    //     break;
-    //   }
-    //   if (idx == keyAddressList.size() - 1) {
-    //     tarIdx = idx + 1;
-    //   }
-    // }
 
     keyAddressList.add(tarIdx, new Pair<>(key, (short) recordStartAddr));
 

@@ -529,7 +529,8 @@ public class SchemaFile implements ISchemaFile {
   // region Segment Address Operation
 
   /**
-   * <p>It might be a weird but influential method. It searches for the real segment address with address from parental node and child name.
+   * It might be a weird but influential method. It searches for the real segment address with
+   * address from parental node and child name.
    *
    * <p>For now, it examines segments one by one with target child name, which has Operation(n).
    *
