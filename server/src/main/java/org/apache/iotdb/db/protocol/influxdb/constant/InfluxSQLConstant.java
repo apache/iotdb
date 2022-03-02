@@ -31,14 +31,11 @@ public class InfluxSQLConstant extends SQLConstant {
   public static final String MAX = "max";
   public static final String MIN = "min";
   public static final String FIRST = "first";
-  public static final String LAST = "last";
-  public static final String COUNT = "count";
   public static final String MEAN = "mean";
   public static final String MEDIAN = "median";
   public static final String MODE = "mode";
   public static final String SPREAD = "spread";
   public static final String STDDEV = "stddev";
-  public static final String SUM = "sum";
   private static final Set<String> NATIVE_FUNCTION_NAMES =
       new HashSet<>(
           Arrays.asList(MIN, MAX, FIRST, LAST, MEAN, COUNT, MEDIAN, MODE, SPREAD, STDDEV, SUM));

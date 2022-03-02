@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.protocol.influxdb.operator;
 
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
-import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxTimeSeriesOperand;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -66,7 +66,7 @@ public final class InfluxSelectComponent
         hasAggregationFunction = true;
       }
     }
-    if (expression instanceof InfluxTimeSeriesOperand) {
+    if (expression instanceof TimeSeriesOperand) {
       hasCommonQuery = true;
     }
     influxInfluxResultColumns.add(resultColumn);
