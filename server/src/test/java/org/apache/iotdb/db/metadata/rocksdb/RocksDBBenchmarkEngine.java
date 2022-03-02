@@ -8,7 +8,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -30,20 +29,19 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.metadata.rocksdb.RocksDBReadWriteHandler.ROCKSDB_PATH;
 
-public class RocksDBTestEngine {
+public class RocksDBBenchmarkEngine {
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static final int BIN_CAPACITY = 100 * 1000;
 
-  private MLogWriter logWriter;
   private File logFile;
   public static List<List<CreateTimeSeriesPlan>> timeSeriesSet = new ArrayList<>();
   public static Set<String> measurementPathSet = new HashSet<>();
   public static Set<String> innerPathSet = new HashSet<>();
   public static List<SetStorageGroupPlan> storageGroups = new ArrayList<>();
 
-  public RocksDBTestEngine() {
+  public RocksDBBenchmarkEngine() {
     String schemaDir = config.getSchemaDir();
     String logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
@@ -58,10 +56,10 @@ public class RocksDBTestEngine {
           storageGroups, timeSeriesSet, measurementPathSet, innerPathSet);
       /** rocksdb benchmark * */
       MRocksDBManager rocksDBManager = new MRocksDBManager();
-      MRocksDBTest mRocksDBTest = new MRocksDBTest(rocksDBManager);
-      mRocksDBTest.testStorageGroupCreation(storageGroups);
-      mRocksDBTest.testTimeSeriesCreation(timeSeriesSet);
-      RocksDBTestUtils.printReport(mRocksDBTest.benchmarkResults, "rocksDB");
+      MRocksDBBenchmark mRocksDBBenchmark = new MRocksDBBenchmark(rocksDBManager);
+      mRocksDBBenchmark.testStorageGroupCreation(storageGroups);
+      mRocksDBBenchmark.testTimeSeriesCreation(timeSeriesSet);
+      RocksDBTestUtils.printReport(mRocksDBBenchmark.benchmarkResults, "rocksDB");
       RocksDBTestUtils.printMemInfo("Benchmark finished");
     } catch (IOException | MetadataException e) {
       logger.error("Error happened when run benchmark", e);
@@ -70,8 +68,6 @@ public class RocksDBTestEngine {
 
   public void prepareBenchmark() throws IOException {
     long time = System.currentTimeMillis();
-    logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG + ".temp");
-    logWriter.setLogNum(0);
     if (!logFile.exists()) {
       throw new FileNotFoundException("we need a mlog.bin to init the benchmark test");
     }

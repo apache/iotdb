@@ -92,7 +92,7 @@ public class RocksDBReadWriteHandler {
     Options options = new Options();
     options.setCreateIfMissing(true);
     options.setAllowMmapReads(true);
-    options.setRowCache(new LRUCache(900000));
+    options.setRowCache(new LRUCache(9000000));
     options.setDbWriteBufferSize(16 * 1024 * 1024);
 
     org.rocksdb.Logger rocksDBLogger = new RockDBLogger(options, logger);
