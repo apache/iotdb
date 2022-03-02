@@ -18,12 +18,15 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -43,6 +46,9 @@ import java.util.Map;
 
 public abstract class QueryPlan extends PhysicalPlan {
 
+  public static final String WITHOUT_NULL_FILTER_ERROR_MESSAGE =
+      "The without null columns don't match the columns queried.If has alias, please use the alias.";
+
   protected List<ResultColumn> resultColumns = null;
   protected List<MeasurementPath> paths = null;
 
@@ -54,6 +60,8 @@ public abstract class QueryPlan extends PhysicalPlan {
   private boolean ascending = true;
 
   private Map<String, Integer> pathToIndex = new HashMap<>();
+
+  private Set<Integer> withoutNullColumnsIndex = new HashSet<>();
 
   private boolean enableRedirect = false;
   private boolean enableTracing = false;
@@ -67,6 +75,14 @@ public abstract class QueryPlan extends PhysicalPlan {
   public QueryPlan() {
     super(Operator.OperatorType.QUERY);
     setQuery(true);
+  }
+
+  public void addWithoutNullColumnIndex(Integer index) {
+    withoutNullColumnsIndex.add(index);
+  }
+
+  public Set<Integer> getWithoutNullColumnsIndex() {
+    return withoutNullColumnsIndex;
   }
 
   public abstract void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException;

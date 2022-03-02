@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.qp.logical.crud;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
+import org.apache.iotdb.db.query.expression.Expression;
 
 public class SpecialClauseComponent {
 
@@ -34,6 +37,8 @@ public class SpecialClauseComponent {
   // if true, we don't need the row whose all columns are null
   protected boolean withoutAllNull;
 
+  protected List<Expression> withoutNullColumns = new ArrayList<>();
+
   protected GroupByLevelController groupByLevelController;
   protected int[] levels;
 
@@ -41,6 +46,19 @@ public class SpecialClauseComponent {
   protected boolean isAlignByTime = true;
 
   public SpecialClauseComponent() {}
+
+  public void addWithoutNullColumn(Expression e) {
+    withoutNullColumns.add(e);
+  }
+
+  public List<Expression> getWithoutNullColumns() {
+    return withoutNullColumns;
+  }
+
+  public void setWithoutNullColumns(
+      List<Expression> withoutNullColumns) {
+    this.withoutNullColumns = withoutNullColumns;
+  }
 
   public int getRowLimit() {
     return rowLimit;

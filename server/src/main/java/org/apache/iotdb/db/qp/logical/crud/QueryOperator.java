@@ -356,8 +356,25 @@ public class QueryOperator extends Operator {
     }
   }
 
-  protected void convertSpecialClauseValues(QueryPlan queryPlan) {
+  protected void convertSpecialClauseValues(QueryPlan queryPlan)
+      throws QueryProcessException{
     if (specialClauseComponent != null) {
+      for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
+        if (queryPlan.getPathToIndex().containsKey(expression.getExpressionString())) {
+          queryPlan.addWithoutNullColumnIndex(queryPlan.getPathToIndex()
+              .get(expression.getExpressionString()));
+        } else {
+          String withoutNullColumn = expression.getExpressionString();
+          // may be alias
+          String[] s = withoutNullColumn.split("\\.");
+          if (queryPlan.getPathToIndex().containsKey(s[s.length - 1])) {
+            queryPlan.addWithoutNullColumnIndex(queryPlan.getPathToIndex()
+                .get(s[s.length - 1]));
+          } else {
+            throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
+          }
+        }
+      }
       queryPlan.setWithoutAllNull(specialClauseComponent.isWithoutAllNull());
       queryPlan.setWithoutAnyNull(specialClauseComponent.isWithoutAnyNull());
       queryPlan.setRowLimit(specialClauseComponent.getRowLimit());

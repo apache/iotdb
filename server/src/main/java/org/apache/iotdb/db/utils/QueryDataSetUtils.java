@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
+import java.util.Set;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -66,14 +67,54 @@ public class QueryDataSetUtils {
     for (int i = 0; i < fetchSize; i++) {
       if (queryDataSet.hasNext()) {
         RowRecord rowRecord = queryDataSet.next();
-        // filter rows whose columns are null according to the rule
-        if ((queryDataSet.isWithoutAllNull() && rowRecord.isAllNull())
-            || (queryDataSet.isWithoutAnyNull() && rowRecord.hasNullField())) {
-          // if the current RowRecord doesn't satisfy, we should also decrease AlreadyReturnedRowNum
-          queryDataSet.decreaseAlreadyReturnedRowNum();
-          i--;
-          continue;
+        Set<Integer> withoutNullColumnsIndex = queryDataSet.getWithoutNullColumnsIndex();
+        if (withoutNullColumnsIndex.isEmpty()) {
+          // filter rows whose columns are null according to the rule
+          if ((queryDataSet.isWithoutAllNull() && rowRecord.isAllNull())
+              || (queryDataSet.isWithoutAnyNull() && rowRecord.hasNullField())) {
+            // if the current RowRecord doesn't satisfy, we should also decrease AlreadyReturnedRowNum
+            queryDataSet.decreaseAlreadyReturnedRowNum();
+            i--;
+            continue;
+          }
+        } else {
+          boolean anyNullFlag = false, allNullFlag = true;
+          int index = 0;
+          for (Field field : rowRecord.getFields()) {
+            if (!withoutNullColumnsIndex.contains(index)) {
+              index ++;
+              continue;
+            }
+
+            index ++;
+            if (field == null || field.getDataType() == null) {
+              anyNullFlag = true;
+              if (queryDataSet.isWithoutAnyNull()) {
+                break;
+              }
+            } else {
+              allNullFlag = false;
+              if (queryDataSet.isWithoutAllNull()) {
+                break;
+              }
+            }
+          }
+
+          if (anyNullFlag && queryDataSet.isWithoutAnyNull()) {
+            // if the current RowRecord doesn't satisfy, we should also decrease AlreadyReturnedRowNum
+            queryDataSet.decreaseAlreadyReturnedRowNum();
+            i--;
+            continue;
+          }
+
+          if (allNullFlag && queryDataSet.isWithoutAllNull()) {
+            // if the current RowRecord doesn't satisfy, we should also decrease AlreadyReturnedRowNum
+            queryDataSet.decreaseAlreadyReturnedRowNum();
+            i--;
+            continue;
+          }
         }
+
         if (watermarkEncoder != null) {
           rowRecord = watermarkEncoder.encodeRecord(rowRecord);
         }

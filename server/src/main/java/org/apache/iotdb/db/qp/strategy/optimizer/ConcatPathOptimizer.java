@@ -39,6 +39,7 @@ import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.IoTDB;
 
@@ -100,7 +101,23 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     for (ResultColumn suffixColumn : queryOperator.getSelectComponent().getResultColumns()) {
       suffixColumn.concat(prefixPaths, resultColumns);
     }
+
+    // has without null columns
+    if (queryOperator.getSpecialClauseComponent() != null
+          && !queryOperator.getSpecialClauseComponent().getWithoutNullColumns().isEmpty()) {
+      List<Expression> withoutNullColumns = new ArrayList<>();
+      for (Expression expression : queryOperator.getSpecialClauseComponent().getWithoutNullColumns()) {
+        concatWithoutNullColumns(prefixPaths, expression, withoutNullColumns);
+      }
+      queryOperator.getSpecialClauseComponent().setWithoutNullColumns(withoutNullColumns);
+    }
     queryOperator.getSelectComponent().setResultColumns(resultColumns);
+  }
+
+  private void concatWithoutNullColumns(List<PartialPath> prefixPaths, Expression expression, List<Expression> withoutNullColumns) {
+    List<Expression> resultExpressions = new ArrayList<>();
+    expression.concat(prefixPaths, resultExpressions);
+    withoutNullColumns.addAll(resultExpressions);
   }
 
   private void removeWildcardsInSelectPaths(QueryOperator queryOperator)

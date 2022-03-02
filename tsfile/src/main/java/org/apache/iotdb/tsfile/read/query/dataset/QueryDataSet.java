@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.tsfile.read.query.dataset;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
@@ -47,6 +50,8 @@ public abstract class QueryDataSet {
 
   /** Only if all columns are null, we don't need that row */
   protected boolean withoutAllNull;
+
+  protected Set<Integer> withoutNullColumnsIndex = new HashSet<>();
 
   protected int columnNum;
 
@@ -107,17 +112,59 @@ public abstract class QueryDataSet {
     }
   }
 
+  public Set<Integer> getWithoutNullColumnsIndex() {
+    return withoutNullColumnsIndex;
+  }
+
+  public void setWithoutNullColumnsIndex(Set<Integer> withoutNullColumnsIndex) {
+    this.withoutNullColumnsIndex = withoutNullColumnsIndex;
+  }
+
   public boolean hasNext() throws IOException {
     // proceed to the OFFSET row by skipping rows
     while (rowOffset > 0) {
       if (hasNextWithoutConstraint()) {
         RowRecord rowRecord = nextWithoutConstraint(); // DO NOT use next()
-        // filter rows whose columns are null according to the rule
-        if ((withoutAllNull && rowRecord.isAllNull())
-            || (withoutAnyNull && rowRecord.hasNullField())) {
-          continue;
+        if (withoutNullColumnsIndex.isEmpty()) {
+          // filter rows whose columns are null according to the rule
+          if ((withoutAllNull && rowRecord.isAllNull())
+              || (withoutAnyNull && rowRecord.hasNullField())) {
+            continue;
+          }
+          rowOffset--;
+        } else {
+          boolean anyNullFlag = false, allNullFlag = true;
+          int index = 0;
+          for (Field field : rowRecord.getFields()) {
+            if (!withoutNullColumnsIndex.contains(index)) {
+              index ++;
+              continue;
+            }
+
+            index ++;
+            if (field == null || field.getDataType() == null) {
+              anyNullFlag = true;
+              if (withoutAnyNull) {
+                break;
+              }
+            } else {
+              allNullFlag = false;
+              if (withoutAllNull) {
+                break;
+              }
+            }
+          }
+
+          if (anyNullFlag && withoutAnyNull) {
+            continue;
+          }
+
+          if (allNullFlag && withoutAllNull) {
+            continue;
+          }
+
+          rowOffset --;
         }
-        rowOffset--;
       } else {
         return false;
       }

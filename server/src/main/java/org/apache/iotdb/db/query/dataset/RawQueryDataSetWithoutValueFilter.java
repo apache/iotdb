@@ -311,7 +311,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
 
       long minTime = timeHeap.pollFirst();
 
-      if (withoutAnyNull && filterRowRecord(seriesNum, minTime)) {
+      if ((withoutAnyNull || withoutAllNull) && filterRowRecord(seriesNum, minTime)) {
         continue;
       }
 
@@ -509,35 +509,72 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     return tsQueryDataSet;
   }
 
-  /** if any column in the row record is null, we filter it. */
+//  /** if any column in the row record is null, we filter it. */
+  /** if columns in the row record match the condition of null value filter, we filter it. */
   private boolean filterRowRecord(int seriesNum, long minTime)
       throws IOException, InterruptedException {
-    boolean hasNull = false;
+    boolean hasNull = false, isAllNull = true;
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+      if (!withoutNullColumnsIndex.isEmpty()
+          && !withoutNullColumnsIndex.contains(seriesIndex)) {
+        continue;
+      }
       if (cachedBatchDataArray[seriesIndex] == null
           || !cachedBatchDataArray[seriesIndex].hasCurrent()
           || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
         hasNull = true;
       } else {
         if (TSDataType.VECTOR == cachedBatchDataArray[seriesIndex].getDataType()) {
+          boolean nullFlag = false;
           for (TsPrimitiveType primitiveVal : cachedBatchDataArray[seriesIndex].getVector()) {
             if (primitiveVal == null) {
               hasNull = true;
+              nullFlag = true;
               break;
             }
           }
+
+          if (!nullFlag) {
+            isAllNull = false;
+            if (isWithoutAllNull()) {
+              break;
+            }
+          }
+        } else {
+          isAllNull = false;
         }
       }
-      if (hasNull) {
+      if (hasNull && isWithoutAnyNull()) {
+        break;
+      }
+
+      if (!hasNull) {
+        isAllNull = false;
+      }
+
+      if (!isAllNull && isWithoutAllNull()) {
         break;
       }
     }
-    if (hasNull) {
+    if (hasNull && isWithoutAnyNull()) {
       for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
         if (cachedBatchDataArray[seriesIndex] != null
             && cachedBatchDataArray[seriesIndex].hasCurrent()
             && cachedBatchDataArray[seriesIndex].currentTime() == minTime) {
           prepareForNext(seriesIndex);
+        }
+      }
+      return true;
+    }
+
+    if (isAllNull && isWithoutAllNull()) {
+      if (!withoutNullColumnsIndex.isEmpty()) {
+        for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+          if (cachedBatchDataArray[seriesIndex] != null
+              && cachedBatchDataArray[seriesIndex].hasCurrent()
+              && cachedBatchDataArray[seriesIndex].currentTime() == minTime) {
+            prepareForNext(seriesIndex);
+          }
         }
       }
       return true;
