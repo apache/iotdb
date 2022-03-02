@@ -25,14 +25,10 @@ import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
 
 /** this class maintains information from select clause. */
 public final class InfluxSelectComponent
     extends org.apache.iotdb.db.qp.logical.crud.SelectComponent {
-
-  private List<ResultColumn> influxInfluxResultColumns = new ArrayList<>();
 
   private boolean hasAggregationFunction = false;
   private boolean hasSelectorFunction = false;
@@ -69,15 +65,7 @@ public final class InfluxSelectComponent
     if (expression instanceof TimeSeriesOperand) {
       hasCommonQuery = true;
     }
-    influxInfluxResultColumns.add(resultColumn);
-  }
-
-  public List<ResultColumn> getInfluxResultColumns() {
-    return influxInfluxResultColumns;
-  }
-
-  public void setInfluxResultColumns(List<ResultColumn> resultColumns) {
-    this.influxInfluxResultColumns = resultColumns;
+    resultColumns.add(resultColumn);
   }
 
   public boolean isHasAggregationFunction() {

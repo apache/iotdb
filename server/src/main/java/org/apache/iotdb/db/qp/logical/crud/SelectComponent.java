@@ -38,7 +38,7 @@ public class SelectComponent {
   private boolean hasTimeSeriesGeneratingFunction = false;
   private boolean hasUserDefinedAggregationFunction = false;
 
-  private List<ResultColumn> resultColumns = new ArrayList<>();
+  protected List<ResultColumn> resultColumns = new ArrayList<>();
 
   private List<PartialPath> pathsCache;
   private List<String> aggregationFunctionsCache;

@@ -36,7 +36,7 @@ public class InfluxDBLogicalGeneratorTest {
   public void testParserSql1() {
     InfluxQueryOperator operator =
         (InfluxQueryOperator) InfluxDBLogicalGenerator.generate("SELECT * FROM h2o_feet");
-    List<ResultColumn> resultColumnList = operator.getSelectComponent().getInfluxResultColumns();
+    List<ResultColumn> resultColumnList = operator.getSelectComponent().getResultColumns();
     assertEquals(resultColumnList.size(), 1);
     TimeSeriesOperand timeSeriesOperand =
         (TimeSeriesOperand) resultColumnList.get(0).getExpression();
@@ -50,7 +50,7 @@ public class InfluxDBLogicalGeneratorTest {
     InfluxQueryOperator operator =
         (InfluxQueryOperator)
             InfluxDBLogicalGenerator.generate("SELECT a,b,c FROM h2o_feet where a>1 and b<1");
-    List<ResultColumn> resultColumnList = operator.getSelectComponent().getInfluxResultColumns();
+    List<ResultColumn> resultColumnList = operator.getSelectComponent().getResultColumns();
     assertEquals(resultColumnList.size(), 3);
     TimeSeriesOperand timeSeriesOperand =
         (TimeSeriesOperand) resultColumnList.get(0).getExpression();
