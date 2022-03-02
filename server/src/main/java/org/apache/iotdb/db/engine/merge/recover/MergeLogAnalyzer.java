@@ -110,6 +110,11 @@ public class MergeLogAnalyzer {
         }
       }
       if (!currentFileFound) {
+        mergeSeqFiles.add(
+            new TsFileResource(
+                new File(
+                    resource.getSeqFiles().get(0).getTsFile().getParent(),
+                    MergeFileInfo.getFileInfoFromString(currLine).filename)));
         allSourceFileExists = false;
       }
     }
@@ -150,6 +155,16 @@ public class MergeLogAnalyzer {
         }
       }
       if (!currentFileFound) {
+        mergeUnseqFiles.add(
+            new TsFileResource(
+                new File(
+                    resource
+                        .getSeqFiles()
+                        .get(0)
+                        .getTsFile()
+                        .getParent()
+                        .replace("sequence", "unsequence"),
+                    MergeFileInfo.getFileInfoFromString(currLine).filename)));
         allSourceFileExists = false;
       }
     }

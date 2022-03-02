@@ -106,6 +106,7 @@ public class MergeRecoverTest extends MergeTest {
   @Test
   public void testRecoverWithSomeSourceFilesLost() throws IOException, MetadataException {
     sourceSeqFiles.get(0).getTsFile().delete();
+    tsFileManagement.remove(sourceSeqFiles.get(0), true);
     RecoverMergeTask recoverMergeTask =
         new RecoverMergeTask(
             tsFileManagement,
@@ -137,6 +138,13 @@ public class MergeRecoverTest extends MergeTest {
     }
     Assert.assertFalse(mergingModsFile.exists());
     Assert.assertFalse(logFile.exists());
+    Assert.assertEquals(10, tsFileManagement.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManagement.getTsFileList(false).size());
+    for (int i = 0; i < tsFileManagement.getTsFileList(true).size(); i++) {
+      Assert.assertEquals(
+          tsFileManagement.getTsFileList(true).get(i).getTsFilePath(),
+          modifyTsFileNameUnseqMergCnt(tmpSourceSeqFiles.get(i).getTsFile()).getPath());
+    }
   }
 
   /**
@@ -154,6 +162,8 @@ public class MergeRecoverTest extends MergeTest {
         .moveFile(
             new File(sourceSeqFiles.get(0).getTsFilePath() + TsFileResource.RESOURCE_SUFFIX),
             new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX));
+    tsFileManagement.remove(sourceSeqFiles.get(0), true);
+    tsFileManagement.add(new TsFileResource(targetFile), true);
     targetFile = modifyTsFileNameUnseqMergCnt(sourceSeqFiles.get(1).getTsFile());
     FSFactoryProducer.getFSFactory().moveFile(sourceSeqFiles.get(1).getTsFile(), targetFile);
     // sg recover will serialize resouce file
@@ -162,6 +172,8 @@ public class MergeRecoverTest extends MergeTest {
       FileLoaderUtils.updateTsFileResource(reader, targetTsFileResouce);
     }
     targetTsFileResouce.serialize();
+    tsFileManagement.remove(sourceSeqFiles.get(1), true);
+    tsFileManagement.add(targetTsFileResouce, true);
 
     RecoverMergeTask recoverMergeTask =
         new RecoverMergeTask(
@@ -194,6 +206,13 @@ public class MergeRecoverTest extends MergeTest {
     }
     Assert.assertFalse(mergingModsFile.exists());
     Assert.assertFalse(logFile.exists());
+    Assert.assertEquals(10, tsFileManagement.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManagement.getTsFileList(false).size());
+    for (int i = 0; i < tsFileManagement.getTsFileList(true).size(); i++) {
+      Assert.assertEquals(
+          tsFileManagement.getTsFileList(true).get(i).getTsFilePath(),
+          modifyTsFileNameUnseqMergCnt(tmpSourceSeqFiles.get(i).getTsFile()).getPath());
+    }
   }
 
   @Test
@@ -207,6 +226,69 @@ public class MergeRecoverTest extends MergeTest {
               new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX),
               new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX));
       resource.remove();
+      tsFileManagement.remove(resource, true);
+      tsFileManagement.add(new TsFileResource(targetFile), true);
+    }
+
+    RecoverMergeTask recoverMergeTask =
+        new RecoverMergeTask(
+            tsFileManagement,
+            TestConstant.SEQUENCE_DATA_DIR,
+            tsFileManagement::mergeEndAction,
+            "recoverTest",
+            true,
+            "root.sg1");
+    recoverMergeTask.recoverMerge();
+    for (TsFileResource seqResource : tmpSourceSeqFiles) {
+      Assert.assertFalse(seqResource.getTsFile().exists());
+      Assert.assertFalse(
+          new File(seqResource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
+      Assert.assertFalse(new File(seqResource.getTsFilePath() + MergeTask.MERGE_SUFFIX).exists());
+      File targetFile = modifyTsFileNameUnseqMergCnt(seqResource.getTsFile());
+      Assert.assertTrue(targetFile.exists());
+      Assert.assertTrue(new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX).exists());
+      Assert.assertFalse(seqResource.getModFile().exists());
+      ModificationFile targetModsFile =
+          new ModificationFile(targetFile.getPath() + ModificationFile.FILE_SUFFIX);
+      Assert.assertTrue(targetModsFile.exists());
+      Assert.assertEquals(2, targetModsFile.getModifications().size());
+    }
+    for (TsFileResource unseqResource : tmpSourceUnseqFiles) {
+      Assert.assertFalse(unseqResource.getTsFile().exists());
+      Assert.assertFalse(
+          new File(unseqResource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
+      Assert.assertFalse(unseqResource.getModFile().exists());
+    }
+    Assert.assertFalse(mergingModsFile.exists());
+    Assert.assertFalse(logFile.exists());
+    Assert.assertEquals(10, tsFileManagement.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManagement.getTsFileList(false).size());
+    for (int i = 0; i < tsFileManagement.getTsFileList(true).size(); i++) {
+      Assert.assertEquals(
+          tsFileManagement.getTsFileList(true).get(i).getTsFilePath(),
+          modifyTsFileNameUnseqMergCnt(tmpSourceSeqFiles.get(i).getTsFile()).getPath());
+    }
+  }
+
+  @Test
+  public void testRecoverWithAllSourceSeqFilesAndSomeUnseqFilesLost()
+      throws IOException, MetadataException {
+    for (TsFileResource resource : sourceSeqFiles) {
+      File targetFile = modifyTsFileNameUnseqMergCnt(resource.getTsFile());
+      FSFactoryProducer.getFSFactory()
+          .moveFile(new File(resource.getTsFilePath() + MergeTask.MERGE_SUFFIX), targetFile);
+      FSFactoryProducer.getFSFactory()
+          .moveFile(
+              new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX),
+              new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX));
+      resource.remove();
+      tsFileManagement.remove(resource, true);
+      tsFileManagement.add(new TsFileResource(targetFile), true);
+    }
+    for (int i = 0; i < 3; i++) {
+      TsFileResource resource = sourceUnseqFiles.get(i);
+      resource.remove();
+      tsFileManagement.remove(resource, false);
     }
     RecoverMergeTask recoverMergeTask =
         new RecoverMergeTask(
@@ -239,6 +321,13 @@ public class MergeRecoverTest extends MergeTest {
     }
     Assert.assertFalse(mergingModsFile.exists());
     Assert.assertFalse(logFile.exists());
+    Assert.assertEquals(10, tsFileManagement.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManagement.getTsFileList(false).size());
+    for (int i = 0; i < tsFileManagement.getTsFileList(true).size(); i++) {
+      Assert.assertEquals(
+          tsFileManagement.getTsFileList(true).get(i).getTsFilePath(),
+          modifyTsFileNameUnseqMergCnt(tmpSourceSeqFiles.get(i).getTsFile()).getPath());
+    }
   }
 
   @Test
@@ -252,9 +341,12 @@ public class MergeRecoverTest extends MergeTest {
               new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX),
               new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX));
       resource.remove();
+      tsFileManagement.remove(resource, true);
+      tsFileManagement.add(new TsFileResource(targetFile), true);
     }
     for (TsFileResource resource : sourceUnseqFiles) {
       resource.remove();
+      tsFileManagement.remove(resource, false);
     }
     RecoverMergeTask recoverMergeTask =
         new RecoverMergeTask(
@@ -287,6 +379,13 @@ public class MergeRecoverTest extends MergeTest {
     }
     Assert.assertFalse(mergingModsFile.exists());
     Assert.assertFalse(logFile.exists());
+    Assert.assertEquals(10, tsFileManagement.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManagement.getTsFileList(false).size());
+    for (int i = 0; i < tsFileManagement.getTsFileList(true).size(); i++) {
+      Assert.assertEquals(
+          tsFileManagement.getTsFileList(true).get(i).getTsFilePath(),
+          modifyTsFileNameUnseqMergCnt(tmpSourceSeqFiles.get(i).getTsFile()).getPath());
+    }
   }
 
   @Test
@@ -321,6 +420,18 @@ public class MergeRecoverTest extends MergeTest {
     }
     Assert.assertFalse(mergingModsFile.exists());
     Assert.assertFalse(logFile.exists());
+    Assert.assertEquals(10, tsFileManagement.getTsFileList(true).size());
+    Assert.assertEquals(5, tsFileManagement.getTsFileList(false).size());
+    for (int i = 0; i < tsFileManagement.getTsFileList(true).size(); i++) {
+      Assert.assertEquals(
+          tsFileManagement.getTsFileList(true).get(i).getTsFilePath(),
+          tmpSourceSeqFiles.get(i).getTsFilePath());
+    }
+    for (int i = 0; i < tsFileManagement.getTsFileList(false).size(); i++) {
+      Assert.assertEquals(
+          tsFileManagement.getTsFileList(false).get(i).getTsFilePath(),
+          tmpSourceUnseqFiles.get(i).getTsFilePath());
+    }
   }
 
   private void createFiles() throws IOException, IllegalPathException, WriteProcessException {
@@ -339,6 +450,7 @@ public class MergeRecoverTest extends MergeTest {
                       + ".tsfile"));
       Assert.assertTrue(file.createNewFile());
       TsFileResource tsFileResource = new TsFileResource(file);
+      prepareFile(tsFileResource, i * 10, 10, i * 10);
       tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i);
       tsFileResource.setMaxPlanIndex(i);
@@ -352,8 +464,6 @@ public class MergeRecoverTest extends MergeTest {
       deletion = new Deletion(new PartialPath("root.sg1.d1", "s0"), 1, 200, 300);
       tsFileResource.getModFile().write(deletion);
       tsFileResource.getModFile().close();
-
-      prepareFile(tsFileResource, i * 10, 10, i * 10);
     }
 
     // create source unseq files
@@ -371,6 +481,7 @@ public class MergeRecoverTest extends MergeTest {
                       + ".tsfile"));
       Assert.assertTrue(file.createNewFile());
       TsFileResource tsFileResource = new TsFileResource(file);
+      prepareFile(tsFileResource, i * 10, 5, i * 10);
       tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i);
       tsFileResource.setMaxPlanIndex(i);
@@ -384,8 +495,6 @@ public class MergeRecoverTest extends MergeTest {
       deletion = new Deletion(new PartialPath("root.sg1.d1", "s0"), 1, 200, 300);
       tsFileResource.getModFile().write(deletion);
       tsFileResource.getModFile().close();
-
-      prepareFile(tsFileResource, i * 10, 5, i * 10);
     }
 
     // create .merge files
