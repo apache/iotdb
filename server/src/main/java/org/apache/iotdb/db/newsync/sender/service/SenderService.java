@@ -63,15 +63,14 @@ public class SenderService implements IService {
     senderLogger = new SenderLogger();
   }
 
+  private static class SenderServiceHolder {
+    private static final SenderService INSTANCE = new SenderService();
+
+    private SenderServiceHolder() {}
+  }
+
   public static SenderService getInstance() {
-    if (senderService == null) {
-      synchronized (SenderService.class) {
-        if (senderService == null) {
-          senderService = new SenderService();
-        }
-      }
-    }
-    return senderService;
+    return SenderService.SenderServiceHolder.INSTANCE;
   }
 
   /** pipesink * */
