@@ -30,8 +30,9 @@ import java.util.Set;
 @SuppressWarnings("unused") // some fields are for future features
 public class SQLConstant {
 
-  public SQLConstant() {
+  public SQLConstant() throws InstantiationException {
     // forbidding instantiation
+    throw new InstantiationException();
   }
 
   private static final String[] SINGLE_ROOT_ARRAY = {"root", "**"};

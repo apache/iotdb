@@ -42,8 +42,9 @@ public class InfluxSQLConstant extends SQLConstant {
   private static final Set<String> NATIVE_SELECTOR_FUNCTION_NAMES =
       new HashSet<>(Arrays.asList(MIN, MAX, FIRST, LAST));
 
-  public InfluxSQLConstant() {
+  public InfluxSQLConstant() throws InstantiationException {
     // forbidding instantiation
+    super();
   }
 
   public static Set<String> getNativeFunctionNames() {
