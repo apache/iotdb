@@ -21,9 +21,9 @@ package org.apache.iotdb.db.newsync.pipedata;
 
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.receiver.load.ILoader;
 import org.apache.iotdb.db.newsync.receiver.load.TsFileLoader;
-import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -45,6 +45,10 @@ public class TsFilePipeData extends PipeData {
 
   public TsFilePipeData(String tsFilePath, long serialNumber) {
     super(serialNumber);
+    this.tsFilePath = tsFilePath;
+  }
+
+  public void setTsFilePath(String tsFilePath) {
     this.tsFilePath = tsFilePath;
   }
 
@@ -77,30 +81,6 @@ public class TsFilePipeData extends PipeData {
     }
   }
 
-  private boolean waitForTsFileClose() {
-    for (int i = 0; i < SenderConf.defaultWaitingForTsFileRetryNumber; i++) {
-      if (isTsFileClosed()) {
-        return true;
-      }
-      try {
-        Thread.sleep(SenderConf.defaultWaitingForTsFileCloseMilliseconds);
-      } catch (InterruptedException e) {
-        logger.warn(String.format("Be Interrupted when waiting for tsfile %s closed", tsFilePath));
-      }
-      logger.info(
-          String.format(
-              "Waiting for tsfile %s close, retry %d / %d.",
-              tsFilePath, (i + 1), SenderConf.defaultWaitingForTsFileRetryNumber));
-    }
-    return false;
-  }
-
-  private boolean isTsFileClosed() {
-    File tsFile = new File(tsFilePath).getAbsoluteFile();
-    File resource = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
-    return resource.exists();
-  }
-
   public List<File> getTsFiles() throws FileNotFoundException {
     File tsFile = new File(tsFilePath).getAbsoluteFile();
     File resource = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
@@ -118,6 +98,30 @@ public class TsFilePipeData extends PipeData {
       files.add(mods);
     }
     return files;
+  }
+
+  private boolean waitForTsFileClose() {
+    for (int i = 0; i < SyncConstant.DEFAULT_WAITING_FOR_TSFILE_RETRY_NUMBER; i++) {
+      if (isTsFileClosed()) {
+        return true;
+      }
+      try {
+        Thread.sleep(SyncConstant.DEFAULT_WAITING_FOR_TSFILE_CLOSE_MILLISECONDS);
+      } catch (InterruptedException e) {
+        logger.warn(String.format("Be Interrupted when waiting for tsfile %s closed", tsFilePath));
+      }
+      logger.info(
+          String.format(
+              "Waiting for tsfile %s close, retry %d / %d.",
+              tsFilePath, (i + 1), SyncConstant.DEFAULT_WAITING_FOR_TSFILE_RETRY_NUMBER));
+    }
+    return false;
+  }
+
+  private boolean isTsFileClosed() {
+    File tsFile = new File(tsFilePath).getAbsoluteFile();
+    File resource = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+    return resource.exists();
   }
 
   @Override

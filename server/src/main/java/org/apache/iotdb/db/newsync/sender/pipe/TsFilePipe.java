@@ -27,13 +27,14 @@ import org.apache.iotdb.db.engine.storagegroup.virtualSg.StorageGroupManager;
 import org.apache.iotdb.db.exception.PipeException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.newsync.conf.SyncConstant;
+import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
-import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
-import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLog;
 import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLogAnalyzer;
+import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLogger;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -64,7 +65,7 @@ public class TsFilePipe implements Pipe {
   private final boolean syncDelOp;
 
   private final ExecutorService singleExecutorService;
-  private final TsFilePipeLog pipeLog;
+  private final TsFilePipeLogger pipeLog;
   private final ReentrantLock collectRealTimeDataLock;
 
   private BlockingDeque<PipeData> pipeDataDeque;
@@ -81,7 +82,7 @@ public class TsFilePipe implements Pipe {
     this.dataStartTime = dataStartTime;
     this.syncDelOp = syncDelOp;
 
-    this.pipeLog = new TsFilePipeLog(this);
+    this.pipeLog = new TsFilePipeLogger(this);
     this.singleExecutorService =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
             ThreadName.PIPE_SERVICE.getName() + "-" + name);
@@ -106,7 +107,7 @@ public class TsFilePipe implements Pipe {
   public synchronized void start() throws PipeException {
     if (status == PipeStatus.DROP) {
       throw new PipeException(
-          String.format("Can not start pipe %s, because the pipe is drop.", name));
+          String.format("Can not start pipe %s, because the pipe has been drop.", name));
     } else if (status == PipeStatus.RUNNING) {
       return;
     }
@@ -128,7 +129,9 @@ public class TsFilePipe implements Pipe {
       status = PipeStatus.RUNNING;
     } catch (IOException e) {
       logger.error(
-          String.format("Clear pipe dir %s error, because %s.", SenderConf.getPipeDir(this), e));
+          String.format(
+              "Clear pipe dir %s error, because %s.",
+              SyncPathUtil.getSenderPipeDir(name, createTime), e));
       throw new PipeException("Start error, can not clear pipe log.");
     }
   }
@@ -384,7 +387,7 @@ public class TsFilePipe implements Pipe {
     while (!pipeDataDeque.isEmpty() && pipeDataDeque.peek().getSerialNumber() <= serialNumber) {
       PipeData data = pipeDataDeque.poll();
       try {
-        pipeLog.removePipeData(pipeDataDeque.poll().getSerialNumber());
+        pipeLog.removePipeData(data);
       } catch (IOException e) {
         logger.warn(
             String.format(
@@ -432,7 +435,7 @@ public class TsFilePipe implements Pipe {
     singleExecutorService.shutdown();
 
     try {
-      Thread.sleep(SenderConf.defaultWaitingForDeregisterMilliseconds);
+      Thread.sleep(SyncConstant.DEFAULT_WAITING_FOR_DEREGISTER_MILLISECONDS);
     } catch (InterruptedException e) {
       logger.warn(
           String.format(

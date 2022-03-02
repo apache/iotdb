@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.newsync.sender.recovery;
 
 import org.apache.iotdb.db.exception.PipeException;
-import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
+import org.apache.iotdb.db.newsync.conf.SyncConstant;
+import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
 import org.apache.iotdb.db.newsync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.newsync.sender.service.SenderService;
@@ -48,7 +49,7 @@ public class SenderLogAnalyzer {
   private Pipe.PipeStatus runningPipeStatus;
 
   public SenderLogAnalyzer() throws IOException {
-    senderLog = new File(SenderConf.senderLog);
+    senderLog = new File(SyncPathUtil.getSysDir(), SyncConstant.SENDER_LOG_NAME);
     if (!senderLog.exists()) {
       senderLog.createNewFile();
     }
@@ -67,7 +68,7 @@ public class SenderLogAnalyzer {
     try {
       while ((readLine = br.readLine()) != null) {
         lineNumber += 1;
-        parseStrings = readLine.split(SenderConf.senderLogSplitCharacter);
+        parseStrings = readLine.split(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
         Operator.OperatorType type = Operator.OperatorType.valueOf(parseStrings[0]);
 
         switch (type) {

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,13 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.newsync.utils;
+package org.apache.iotdb.db.newsync.pipedata.queue;
 
-public class SyncConstant {
-  public static final String SYNC_SYS_DIR = "sys";
-  public static final String RECEIVER_DIR = "receiver";
-  public static final String RECEIVER_LOG_NAME = "receiverService.log";
-  public static final String PIPELOG_DIR_NAME = "pipe-log";
-  public static final String FILEDATA_DIR_NAME = "file-data";
-  public static final String COLLECTOR_SUFFIX = ".collector";
+import org.apache.iotdb.db.newsync.pipedata.PipeData;
+
+import java.util.List;
+
+public interface PipeDataQueue {
+  boolean offer(PipeData data);
+
+  List<PipeData> pull(long serialNumber);
+
+  PipeData take() throws InterruptedException;
+
+  void commit();
+
+  void clear();
 }

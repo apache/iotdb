@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
+import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -74,7 +74,7 @@ public class CreatePipePlan extends PhysicalPlan {
   }
 
   public static CreatePipePlan parseString(String parsedString) throws IOException {
-    String[] attributes = parsedString.split(SenderConf.planSplitCharacter);
+    String[] attributes = parsedString.split(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
     if (attributes.length < 4) {
       throw new IOException("Parsing CreatePipePlan error. Attributes is less than expected.");
     }
@@ -93,13 +93,17 @@ public class CreatePipePlan extends PhysicalPlan {
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
-    builder.append(pipeName).append(SenderConf.planSplitCharacter);
-    builder.append(pipeSinkName).append(SenderConf.planSplitCharacter);
-    builder.append(dataStartTimestamp).append(SenderConf.planSplitCharacter);
-    builder.append(pipeAttributes.size()).append(SenderConf.planSplitCharacter);
+    builder.append(pipeName).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
+    builder.append(pipeSinkName).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
+    builder.append(dataStartTimestamp).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
+    builder.append(pipeAttributes.size()).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
     for (int i = 0; i < pipeAttributes.size(); i++) {
-      builder.append(pipeAttributes.get(i).left).append(SenderConf.planSplitCharacter);
-      builder.append(pipeAttributes.get(i).right).append(SenderConf.planSplitCharacter);
+      builder
+          .append(pipeAttributes.get(i).left)
+          .append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
+      builder
+          .append(pipeAttributes.get(i).right)
+          .append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
     }
     return builder.toString();
   }
