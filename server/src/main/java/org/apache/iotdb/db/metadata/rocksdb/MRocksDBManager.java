@@ -109,12 +109,27 @@ import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_NODE_VALUE;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_ALIGNED;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_SET_TTL;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
+import static org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils.getAllCompoundMode;
+import static org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils.newStringArray;
+import static org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils.replaceWildcard;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -940,19 +955,57 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-
-    return getKeyNumByPrefix(pathPattern, NODE_TYPE_MEASUREMENT, isPrefixMatch).size();
+    return getCountByNodeType(new Character[] {NODE_TYPE_MEASUREMENT}, pathPattern.getNodes());
   }
 
-  public void traverseByPatternPath(PartialPath pathPattern) {
-    String[] nodes = pathPattern.getNodes();
+  // eg. root.a.*.**.b.**.c
+  public void replaceMultiWildcard(
+      String[] nodes, int maxLevel, Consumer<String> consumer, Character[] nodeTypeArray)
+      throws IllegalPathException {
+    List<Integer> multiWildcardPosition = new ArrayList<>();
+    for (int i = 0; i < nodes.length; i++) {
+      if (MULTI_LEVEL_PATH_WILDCARD.equals(nodes[i])) {
+        multiWildcardPosition.add(i);
+      }
+    }
+    if (multiWildcardPosition.isEmpty()) {
+      traverseByPatternPath(nodes, consumer, nodeTypeArray);
+    } else if (multiWildcardPosition.size() == 1) {
+      for (int i = 1; i <= maxLevel - nodes.length + 2; i++) {
+        String[] clone = nodes.clone();
+        clone[multiWildcardPosition.get(0)] = replaceWildcard(i);
+        traverseByPatternPath(newStringArray(clone), consumer, nodeTypeArray);
+      }
+    } else {
+      for (int sum = multiWildcardPosition.size();
+          sum <= maxLevel - (nodes.length - multiWildcardPosition.size() - 1);
+          sum++) {
+        List<int[]> result = getAllCompoundMode(sum, multiWildcardPosition.size());
+        for (int[] value : result) {
+          String[] clone = nodes.clone();
+          for (int i = 0; i < value.length; i++) {
+            clone[multiWildcardPosition.get(i)] = replaceWildcard(value[i]);
+          }
+          traverseByPatternPath(newStringArray(clone), consumer, nodeTypeArray);
+        }
+      }
+    }
+  }
+
+  public void traverseByPatternPath(
+      String[] nodes, Consumer<String> consumer, Character[] nodeTypeArray) {
+    //    String[] nodes = pathPattern.getNodes();
 
     int startIndex = 0;
     List<String[]> scanKeys = new ArrayList<>();
 
     int indexOfPrefix = indexOfFirstWildcard(nodes, startIndex);
     if (indexOfPrefix >= nodes.length) {
-      System.out.println("matched key: " + pathPattern.getFullPath());
+      StringBuilder stringBuilder = new StringBuilder();
+      for (int i = 0; i < nodes.length; i++) {
+        stringBuilder.append(RockDBConstants.PATH_SEPARATOR).append(nodes[i]);
+      }
+      consumer.accept(stringBuilder.substring(1));
       return;
     }
 
@@ -979,7 +1032,7 @@ public class MRocksDBManager implements IMetaManager {
               prefixNodes -> {
                 String levelPrefix =
                     RocksDBUtils.getLevelPathPrefix(prefixNodes, prefixNodes.length - 1, level);
-                Arrays.stream(ALL_NODE_TYPE_ARRAY)
+                Arrays.stream(nodeTypeArray)
                     .parallel()
                     .forEach(
                         x -> {
@@ -993,6 +1046,7 @@ public class MRocksDBManager implements IMetaManager {
                             if (RocksDBUtils.suffixMatch(iterator.key(), suffixToMatch)) {
                               if (lastIteration) {
                                 System.out.println("matched key: " + new String(iterator.key()));
+                                consumer.accept(new String(iterator.key()));
                               } else {
                                 tempNodes.add(RocksDBUtils.toMetaNodes(iterator.key()));
                               }
@@ -1120,7 +1174,21 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return getKeyNumByPrefix(pathPattern, NODE_TYPE_ENTITY, isPrefixMatch).size();
+    return getCountByNodeType(new Character[] {NODE_TYPE_ENTITY}, pathPattern.getNodes());
+  }
+
+  private int getCountByNodeType(Character[] nodetype, String[] nodes) throws IllegalPathException {
+    AtomicInteger atomicInteger = new AtomicInteger(0);
+    Consumer<String> consumer =
+        new Consumer<String>() {
+          @Override
+          public void accept(String s) {
+            atomicInteger.incrementAndGet();
+          }
+        };
+
+    replaceMultiWildcard(nodes, MAX_PATH_DEPTH, consumer, nodetype);
+    return atomicInteger.get();
   }
 
   @Override
@@ -1136,7 +1204,7 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return getKeyNumByPrefix(pathPattern, NODE_TYPE_SG, isPrefixMatch).size();
+    return getCountByNodeType(new Character[] {NODE_TYPE_SG}, pathPattern.getNodes());
   }
 
   /**

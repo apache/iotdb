@@ -216,7 +216,7 @@ public class MRocksDBUnitTest {
           path, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, null);
     }
 
-    mRocksDBManager.traverseByPatternPath(new PartialPath("root.sg.d1.*"));
+    //    mRocksDBManager.traverseByPatternPath(new PartialPath("root.sg.d1.*"));
   }
 
   @After
