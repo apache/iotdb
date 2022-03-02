@@ -9,12 +9,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-public class RocksDBTestTask<T> {
+public class RocksDBBenchmarkTask<T> {
   private Collection<T> dataSet;
   private int workCount;
   private int timeoutInMin;
 
-  RocksDBTestTask(Collection<T> dataSet, int workCount, int timeoutInMin) {
+  RocksDBBenchmarkTask(Collection<T> dataSet, int workCount, int timeoutInMin) {
     this.dataSet = dataSet;
     this.workCount = workCount;
     this.timeoutInMin = timeoutInMin;

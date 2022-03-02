@@ -13,20 +13,20 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-public class MRocksDBTest {
+public class MRocksDBBenchmark {
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private MRocksDBManager rocksDBManager;
 
-  public MRocksDBTest(MRocksDBManager rocksDBManager) {
+  public MRocksDBBenchmark(MRocksDBManager rocksDBManager) {
     this.rocksDBManager = rocksDBManager;
   }
 
-  public List<RocksDBTestTask.BenchmarkResult> benchmarkResults = new ArrayList<>();
+  public List<RocksDBBenchmarkTask.BenchmarkResult> benchmarkResults = new ArrayList<>();
 
   public void testStorageGroupCreation(List<SetStorageGroupPlan> storageGroups) {
-    RocksDBTestTask<SetStorageGroupPlan> task =
-        new RocksDBTestTask<>(storageGroups, RocksDBTestUtils.WRITE_CLIENT_NUM, 100);
-    RocksDBTestTask.BenchmarkResult result =
+    RocksDBBenchmarkTask<SetStorageGroupPlan> task =
+        new RocksDBBenchmarkTask<>(storageGroups, RocksDBTestUtils.WRITE_CLIENT_NUM, 100);
+    RocksDBBenchmarkTask.BenchmarkResult result =
         task.runWork(
             setStorageGroupPlan -> {
               try {
@@ -42,12 +42,12 @@ public class MRocksDBTest {
 
   public void testTimeSeriesCreation(List<List<CreateTimeSeriesPlan>> timeSeriesSet)
       throws IOException {
-    RocksDBTestTask<List<CreateTimeSeriesPlan>> task =
-        new RocksDBTestTask<>(timeSeriesSet, RocksDBTestUtils.WRITE_CLIENT_NUM, 100);
-    RocksDBTestTask.BenchmarkResult result =
+    RocksDBBenchmarkTask<List<CreateTimeSeriesPlan>> task =
+        new RocksDBBenchmarkTask<>(timeSeriesSet, RocksDBTestUtils.WRITE_CLIENT_NUM, 100);
+    RocksDBBenchmarkTask.BenchmarkResult result =
         task.runBatchWork(
             createTimeSeriesPlans -> {
-              RocksDBTestTask.TaskResult taskResult = new RocksDBTestTask.TaskResult();
+              RocksDBBenchmarkTask.TaskResult taskResult = new RocksDBBenchmarkTask.TaskResult();
               createTimeSeriesPlans.stream()
                   .forEach(
                       ts -> {
@@ -92,9 +92,9 @@ public class MRocksDBTest {
   //  }
 
   public void testNodeChildrenQuery(Collection<String> queryTsSet) {
-    RocksDBTestTask<String> task =
-        new RocksDBTestTask<>(queryTsSet, RocksDBTestUtils.WRITE_CLIENT_NUM, 10000);
-    RocksDBTestTask.BenchmarkResult result =
+    RocksDBBenchmarkTask<String> task =
+        new RocksDBBenchmarkTask<>(queryTsSet, RocksDBTestUtils.WRITE_CLIENT_NUM, 10000);
+    RocksDBBenchmarkTask.BenchmarkResult result =
         task.runWork(
             s -> {
               try {
@@ -121,8 +121,8 @@ public class MRocksDBTest {
     List<PartialPath> level4 = rocksDBManager.getNodesListInGivenLevel(null, 4);
     List<PartialPath> level5 = rocksDBManager.getNodesListInGivenLevel(null, 5);
     long totalCount = level1.size() + level2.size() + level3.size() + level4.size() + level5.size();
-    RocksDBTestTask.BenchmarkResult result =
-        new RocksDBTestTask.BenchmarkResult(
+    RocksDBBenchmarkTask.BenchmarkResult result =
+        new RocksDBBenchmarkTask.BenchmarkResult(
             "levelScan", totalCount, 0, System.currentTimeMillis() - start);
     benchmarkResults.add(result);
   }

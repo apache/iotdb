@@ -22,6 +22,7 @@ package org.apache.iotdb.db.metadata.rocksdb;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.AcquireLockTimeoutException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
@@ -118,17 +119,8 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_NODE_VALUE;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_ALIGNED;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_SCHEMA;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_SET_TTL;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils.*;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -386,7 +378,6 @@ public class MRocksDBManager implements IMetaManager {
     Holder<byte[]> holder = new Holder<>();
     Lock lock = locksPool.get(levelPath);
     if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-      Thread.sleep(5);
       lockedLocks.push(lock);
       try {
         CheckKeyResult checkResult = readWriteHandler.keyExistByAllTypes(levelPath, holder);
@@ -402,12 +393,12 @@ public class MRocksDBManager implements IMetaManager {
           }
         } else {
           if (start == nodes.length) {
-            throw new PathAlreadyExistException("Measurement node already exists");
+            throw new PathAlreadyExistException(levelPath);
           }
 
           if (checkResult.getResult(RocksDBMNodeType.MEASUREMENT)
               || checkResult.getResult(RocksDBMNodeType.ALISA)) {
-            throw new PathAlreadyExistException("Path contains measurement node");
+            throw new PathAlreadyExistException(levelPath);
           }
 
           if (start == nodes.length - 1) {
@@ -440,7 +431,7 @@ public class MRocksDBManager implements IMetaManager {
       while (!lockedLocks.isEmpty()) {
         lockedLocks.pop().unlock();
       }
-      throw new MetadataException("acquire lock timeout: " + levelPath);
+      throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
     }
   }
 
@@ -481,7 +472,7 @@ public class MRocksDBManager implements IMetaManager {
           lock.unlock();
         }
       } else {
-        throw new MetadataException("acquire lock timeout: " + levelPath);
+        throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
       }
     } else {
       readWriteHandler.executeBatch(batch);
@@ -559,7 +550,7 @@ public class MRocksDBManager implements IMetaManager {
               throw new PathAlreadyExistException(lockKey);
             }
           } else {
-            throw new MetadataException("acquire lock timeout: " + lockKey);
+            throw new AcquireLockTimeoutException("acquire lock timeout: " + lockKey);
           }
         }
         readWriteHandler.executeBatch(batch);
@@ -633,7 +624,7 @@ public class MRocksDBManager implements IMetaManager {
       while (!lockedLocks.isEmpty()) {
         lockedLocks.pop().unlock();
       }
-      throw new MetadataException("acquire lock timeout: " + levelPath);
+      throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
     }
   }
 
@@ -679,7 +670,7 @@ public class MRocksDBManager implements IMetaManager {
             lock.unlock();
           }
         } else {
-          throw new MetadataException("acquire lock timeout, " + p.getFullPath());
+          throw new AcquireLockTimeoutException("acquire lock timeout, " + p.getFullPath());
         }
 
         // delete parent node if is empty
@@ -713,7 +704,7 @@ public class MRocksDBManager implements IMetaManager {
               curLock.unlock();
             }
           } else {
-            throw new MetadataException("acquire lock timeout, " + curNode.getFullPath());
+            throw new AcquireLockTimeoutException("acquire lock timeout, " + curNode.getFullPath());
           }
         }
         // TODO: trigger engine update
@@ -819,7 +810,7 @@ public class MRocksDBManager implements IMetaManager {
             lock.unlock();
           }
         } else {
-          throw new MetadataException("acquire lock timeout: " + levelKey);
+          throw new AcquireLockTimeoutException("acquire lock timeout: " + levelKey);
         }
       }
     } catch (RocksDBException | InterruptedException e) {
@@ -901,7 +892,7 @@ public class MRocksDBManager implements IMetaManager {
           lock.unlock();
         }
       } else {
-        throw new MetadataException("acquire lock timeout: " + levelPath);
+        throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
       }
     } catch (InterruptedException | RocksDBException e) {
       throw new MetadataException(e);
@@ -1817,7 +1808,7 @@ public class MRocksDBManager implements IMetaManager {
                 }
                 batch.put(newAliasKey, RocksDBUtils.buildAliasNodeValue(originKey));
               } else {
-                throw new MetadataException("acquire lock timeout: " + newAliasLevel);
+                throw new AcquireLockTimeoutException("acquire lock timeout: " + newAliasLevel);
               }
 
               if (StringUtils.isNotEmpty(mNode.getAlias()) && !mNode.getAlias().equals(alias)) {
@@ -1836,7 +1827,7 @@ public class MRocksDBManager implements IMetaManager {
                   }
                   batch.delete(oldAliasKey);
                 } else {
-                  throw new MetadataException("acquire lock timeout: " + oldAliasLevel);
+                  throw new AcquireLockTimeoutException("acquire lock timeout: " + oldAliasLevel);
                 }
               }
               // TODO: need application lock
@@ -1877,7 +1868,7 @@ public class MRocksDBManager implements IMetaManager {
           rawKeyLock.unlock();
         }
       } else {
-        throw new MetadataException("acquire lock timeout: " + levelPath);
+        throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
       }
     } catch (RocksDBException | InterruptedException e) {
       throw new MetadataException(e);
@@ -1918,7 +1909,7 @@ public class MRocksDBManager implements IMetaManager {
           lock.unlock();
         }
       } else {
-        throw new MetadataException("acquire lock timeout: " + levelPath);
+        throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
       }
     } catch (RocksDBException | InterruptedException e) {
       throw new MetadataException(e);
@@ -1967,7 +1958,7 @@ public class MRocksDBManager implements IMetaManager {
           lock.unlock();
         }
       } else {
-        throw new MetadataException("acquire lock timeout: " + levelPath);
+        throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
       }
     } catch (RocksDBException | InterruptedException e) {
       throw new MetadataException(e);
@@ -2022,7 +2013,7 @@ public class MRocksDBManager implements IMetaManager {
           lock.unlock();
         }
       } else {
-        throw new MetadataException("acquire lock timeout: " + levelPath);
+        throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
       }
     } catch (RocksDBException | InterruptedException e) {
       throw new MetadataException(e);
@@ -2070,7 +2061,7 @@ public class MRocksDBManager implements IMetaManager {
           lock.unlock();
         }
       } else {
-        throw new MetadataException("acquire lock timeout: " + levelPath);
+        throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
       }
       if (!readWriteHandler.keyExist(key, holder)) {
         throw new PathNotExistException(path.getFullPath());
@@ -2125,7 +2116,7 @@ public class MRocksDBManager implements IMetaManager {
           lock.unlock();
         }
       } else {
-        throw new MetadataException("acquire lock timeout: " + levelPath);
+        throw new AcquireLockTimeoutException("acquire lock timeout: " + levelPath);
       }
     } catch (RocksDBException | InterruptedException e) {
       throw new MetadataException(e);

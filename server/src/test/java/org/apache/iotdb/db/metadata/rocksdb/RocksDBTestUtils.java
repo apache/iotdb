@@ -37,13 +37,14 @@ public class RocksDBTestUtils {
         stageInfo, Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
   }
 
-  public static void printReport(List<RocksDBTestTask.BenchmarkResult> results, String category) {
+  public static void printReport(
+      List<RocksDBBenchmarkTask.BenchmarkResult> results, String category) {
     System.out.println(
         String.format(
             "\n\n#################################%s benchmark statistics#################################",
             category));
     System.out.println(String.format("%25s %15s %10s %15s", "", "success", "fail", "cost-in-ms"));
-    for (RocksDBTestTask.BenchmarkResult result : results) {
+    for (RocksDBBenchmarkTask.BenchmarkResult result : results) {
       System.out.println(
           String.format(
               "%25s %15d %10d %15d",
