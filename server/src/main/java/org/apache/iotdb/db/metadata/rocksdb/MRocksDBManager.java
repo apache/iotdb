@@ -113,6 +113,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
@@ -1458,28 +1459,10 @@ public class MRocksDBManager implements IMetaManager {
    */
   @Override
   public Map<PartialPath, Long> getStorageGroupsTTL() {
-    Map<PartialPath, Long> allStorageGroupAndTTL = new HashMap<>();
-    RocksIterator iterator = readWriteHandler.iterator(null);
-
-    for (iterator.seek(new byte[] {NODE_TYPE_SG}); iterator.isValid(); iterator.next()) {
-      if (iterator.key()[0] != (NODE_TYPE_SG)) {
-        break;
-      }
-      byte[] value = iterator.value();
-      String key = new String(iterator.key());
-      Object ttl = RocksDBUtils.parseNodeValue(value, RockDBConstants.FLAG_SET_TTL);
-      // initialize a value
-      if (ttl == null) {
-        ttl = 0L;
-      }
-      try {
-        allStorageGroupAndTTL.put(
-            new PartialPath(RocksDBUtils.getPathByInnerName(key)), (Long) ttl);
-      } catch (IllegalPathException e) {
-        throw new RuntimeException(e);
-      }
-    }
-    return allStorageGroupAndTTL;
+    List<IStorageGroupMNode> sgNodes = getAllStorageGroupNodes();
+    return sgNodes.stream()
+        .collect(
+            Collectors.toMap(IStorageGroupMNode::getPartialPath, IStorageGroupMNode::getDataTTL));
   }
   // endregion
 
@@ -1623,21 +1606,16 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     try {
-      byte[] value =
-          readWriteHandler.get(
-              null,
-              RocksDBUtils.convertPartialPathToInner(
-                      fullPath.getFullPath(), fullPath.getNodeLength(), NODE_TYPE_MEASUREMENT)
-                  .getBytes());
-      if (value == null) {
-        throw new MetadataException("can not find this measurement:" + fullPath.getFullPath());
-      }
-      Object schema = RocksDBUtils.parseNodeValue(value, DATA_BLOCK_TYPE_SCHEMA);
-      if (schema != null) {
-        return (MeasurementSchema) schema;
+      String levelKey =
+          RocksDBUtils.getLevelPath(fullPath.getNodes(), fullPath.getNodeLength() - 1);
+      Holder<byte[]> holder = new Holder<>();
+      if (readWriteHandler.keyExistByType(levelKey, RocksDBMNodeType.MEASUREMENT, holder)) {
+        IMeasurementSchema schema =
+            (MeasurementSchema)
+                RocksDBUtils.parseNodeValue(holder.getValue(), DATA_BLOCK_TYPE_SCHEMA);
+        return schema;
       } else {
-        throw new MetadataException(
-            String.format("Schema of this measurement [%s] is null !", fullPath.getFullPath()));
+        throw new PathNotExistException(fullPath.getFullPath());
       }
     } catch (RocksDBException e) {
       throw new MetadataException(e);
@@ -1693,24 +1671,7 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
       throws MetadataException {
-    String innerName =
-        RocksDBUtils.convertPartialPathToInner(
-            path.getFullPath(), path.getNodeLength(), NODE_TYPE_SG);
-    byte[] value;
-    try {
-      value = readWriteHandler.get(null, innerName.getBytes());
-    } catch (RocksDBException e) {
-      throw new MetadataException(e);
-    }
-    if (value == null) {
-      throw new StorageGroupNotSetException(
-          String.format("Can not find storage group by path : %s", path.getFullPath()));
-    }
-    Object ttl = RocksDBUtils.parseNodeValue(value, RockDBConstants.FLAG_SET_TTL);
-    if (ttl == null) {
-      ttl = config.getDefaultTTL();
-    }
-    return new RStorageGroupMNode(path.getFullPath(), (Long) ttl);
+    return getStorageGroupNodeByPath(path);
   }
 
   /** Get storage group node by path. the give path don't need to be storage group path. */
