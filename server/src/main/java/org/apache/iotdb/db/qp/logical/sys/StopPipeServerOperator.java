@@ -27,7 +27,7 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 public class StopPipeServerOperator extends Operator {
   public StopPipeServerOperator(int tokenIntType) {
     super(tokenIntType);
-    operatorType = OperatorType.START_PIPE_SERVER;
+    operatorType = OperatorType.STOP_PIPE_SERVER;
   }
 
   @Override

@@ -81,7 +81,7 @@ public class SchemaPipeData extends PipeData {
   @Override
   public void sendToTransport() {
     // senderTransport(getBytes(), this);
-    System.out.println(this);
+    // System.out.println(this);
   }
 
   @Override
