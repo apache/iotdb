@@ -98,6 +98,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -1047,7 +1048,8 @@ public class MRocksDBManager implements IMetaManager {
                             if (RocksDBUtils.suffixMatch(iterator.key(), suffixToMatch)) {
                               if (lastIteration) {
                                 System.out.println("matched key: " + new String(iterator.key()));
-                                consumer.accept(new String(iterator.key()));
+                                consumer.accept(
+                                    RocksDBUtils.getPathByInnerName(new String(iterator.key())));
                               } else {
                                 tempNodes.add(RocksDBUtils.toMetaNodes(iterator.key()));
                               }
@@ -1180,13 +1182,7 @@ public class MRocksDBManager implements IMetaManager {
 
   private int getCountByNodeType(Character[] nodetype, String[] nodes) throws IllegalPathException {
     AtomicInteger atomicInteger = new AtomicInteger(0);
-    Consumer<String> consumer =
-        new Consumer<String>() {
-          @Override
-          public void accept(String s) {
-            atomicInteger.incrementAndGet();
-          }
-        };
+    Consumer<String> consumer = s -> atomicInteger.incrementAndGet();
 
     replaceMultiWildcard(nodes, MAX_PATH_DEPTH, consumer, nodetype);
     return atomicInteger.get();
@@ -1433,7 +1429,22 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return new ArrayList<>(getMatchedPathWithNodeType(isPrefixMatch, pathPattern, NODE_TYPE_SG));
+    List<PartialPath> allPath = new ArrayList<>();
+    getMatchedPathByNodeType(pathPattern.getNodes(), new Character[] {NODE_TYPE_SG}, allPath);
+    return allPath;
+  }
+
+  private void getMatchedPathByNodeType(
+      String[] nodes, Character[] nodetype, Collection<PartialPath> collection)
+      throws IllegalPathException {
+    List<String> allResult = Collections.synchronizedList(new ArrayList<>());
+    Consumer<String> consumer = allResult::add;
+
+    replaceMultiWildcard(nodes, MAX_PATH_DEPTH, consumer, nodetype);
+
+    for (String path : allResult) {
+      collection.add(new PartialPath(path));
+    }
   }
 
   /** Get all storage group paths */
@@ -1497,7 +1508,10 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return getMatchedPathWithNodeType(isPrefixMatch, pathPattern, NODE_TYPE_ENTITY);
+
+    Set<PartialPath> allPath = new HashSet<>();
+    getMatchedPathByNodeType(pathPattern.getNodes(), new Character[] {NODE_TYPE_SG}, allPath);
+    return allPath;
   }
 
   private Set<PartialPath> getMatchedPathWithNodeType(
