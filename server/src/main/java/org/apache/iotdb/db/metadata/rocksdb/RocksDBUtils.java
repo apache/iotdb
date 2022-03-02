@@ -43,7 +43,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ALIAS;
@@ -472,41 +471,7 @@ public class RocksDBUtils {
     return stringBuilder.toString();
   }
 
-  // eg. root.a.*.**.b.**.c
-  public static List<String[]> replaceMultiWildcard(String[] nodes, int maxLevel)
-      throws IllegalPathException {
-    List<String[]> allResult = new ArrayList<>();
-    List<Integer> multiWildcardPosition = new ArrayList<>();
-    for (int i = 0; i < nodes.length; i++) {
-      if (MULTI_LEVEL_PATH_WILDCARD.equals(nodes[i])) {
-        multiWildcardPosition.add(i);
-      }
-    }
-    if (multiWildcardPosition.isEmpty()) {
-      allResult.add(nodes);
-    } else if (multiWildcardPosition.size() == 1) {
-      for (int i = 1; i <= maxLevel - nodes.length + 2; i++) {
-        String[] clone = nodes.clone();
-        clone[multiWildcardPosition.get(0)] = replaceWildcard(i);
-        allResult.add(newStringArray(clone));
-      }
-    } else {
-      List<int[]> result =
-          getAllCompoundMode(
-              maxLevel - (nodes.length - multiWildcardPosition.size() - 1),
-              multiWildcardPosition.size());
-      for (int[] value : result) {
-        String[] clone = nodes.clone();
-        for (int i = 0; i < value.length; i++) {
-          clone[multiWildcardPosition.get(i)] = replaceWildcard(value[i]);
-        }
-        allResult.add(newStringArray(clone));
-      }
-    }
-    return allResult;
-  }
-
-  private static String[] newStringArray(String[] oldArray) throws IllegalPathException {
+  public static String[] newStringArray(String[] oldArray) throws IllegalPathException {
     StringBuilder stringBuilder = new StringBuilder();
     for (String str : oldArray) {
       stringBuilder.append(PATH_SEPARATOR).append(str);
@@ -514,7 +479,7 @@ public class RocksDBUtils {
     return MetaUtils.splitPathToDetachedPath(stringBuilder.substring(1));
   }
 
-  private static String replaceWildcard(int num) {
+  public static String replaceWildcard(int num) {
     StringBuilder stringBuilder = new StringBuilder();
     for (int i = 0; i < num; i++) {
       stringBuilder.append(RockDBConstants.PATH_SEPARATOR).append(ONE_LEVEL_PATH_WILDCARD);
@@ -522,7 +487,7 @@ public class RocksDBUtils {
     return stringBuilder.substring(1);
   }
 
-  private static List<int[]> getAllCompoundMode(int sum, int n) {
+  public static List<int[]> getAllCompoundMode(int sum, int n) {
     if (n <= 2) {
       List<int[]> result = new ArrayList<>();
       for (int i = 1; i < sum; i++) {
