@@ -44,8 +44,6 @@ public class TimeSeriesOperand extends Expression {
 
   protected PartialPath path;
 
-  public TimeSeriesOperand() {}
-
   public TimeSeriesOperand(PartialPath path) {
     this.path = path;
   }

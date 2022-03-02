@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.operator;
 
-import org.apache.iotdb.db.qp.logical.crud.FromComponent;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 
 public class InfluxQueryOperator extends QueryOperator {
 
@@ -36,21 +34,5 @@ public class InfluxQueryOperator extends QueryOperator {
 
   public void setSelectComponent(InfluxSelectComponent influxSelectComponent) {
     this.influxSelectComponent = influxSelectComponent;
-  }
-
-  public FromComponent getFromComponent() {
-    return fromComponent;
-  }
-
-  public void setFromComponent(FromComponent fromComponent) {
-    this.fromComponent = fromComponent;
-  }
-
-  public WhereComponent getWhereComponent() {
-    return whereComponent;
-  }
-
-  public void setWhereComponent(WhereComponent whereComponent) {
-    this.whereComponent = whereComponent;
   }
 }
