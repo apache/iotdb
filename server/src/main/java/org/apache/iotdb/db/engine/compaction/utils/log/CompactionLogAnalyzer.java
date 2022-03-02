@@ -29,14 +29,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.SEQUENCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.UNSEQUENCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.SEQUENCE_NAME_FROM_OLD;
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SEQ_FILES_FROM_OLD;
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SOURCE_FILES;
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SOURCE_FILES_FROM_OLD;
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_TARGET_FILES;
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_TARGET_FILES_FROM_OLD;
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_UNSEQ_FILES_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.UNSEQUENCE_NAME_FROM_OLD;
 
 public class CompactionLogAnalyzer {
 
@@ -81,8 +81,8 @@ public class CompactionLogAnalyzer {
             currLine = bufferedReader.readLine();
             targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromOldInfoString(currLine));
             break;
-          case SEQUENCE_NAME:
-          case UNSEQUENCE_NAME:
+          case SEQUENCE_NAME_FROM_OLD:
+          case UNSEQUENCE_NAME_FROM_OLD:
             break;
           default:
             break;

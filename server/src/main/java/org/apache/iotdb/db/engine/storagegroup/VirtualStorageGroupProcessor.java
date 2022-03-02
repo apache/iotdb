@@ -121,7 +121,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.COMPACTION_LOG_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.INNER_COMPACTION_LOG_NAME;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -652,7 +652,7 @@ public class VirtualStorageGroupProcessor {
         FSFactoryProducer.getFSFactory()
             .getFile(
                 storageGroupSysDir.getAbsolutePath(),
-                logicalStorageGroupName + COMPACTION_LOG_NAME);
+                logicalStorageGroupName + INNER_COMPACTION_LOG_NAME);
     if (logFile.exists()) {
       IoTDBDescriptor.getInstance()
           .getConfig()

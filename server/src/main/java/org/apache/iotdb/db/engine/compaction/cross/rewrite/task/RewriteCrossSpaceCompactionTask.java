@@ -22,8 +22,8 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionExceptionHandler;
-import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -133,13 +133,13 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
                 + File.separator
                 + targetTsfileResourceList.get(0).getTsFile().getName()
                 + PATH_SEPARATOR
-                + CompactionLogger.COMPACTION_LOG_NAME);
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME);
 
     try (CompactionLogger compactionLogger = new CompactionLogger(logFile)) {
       // print the path of the temporary file first for priority check during recovery
-      compactionLogger.logFiles(targetTsfileResourceList, STR_TARGET_FILES);
       compactionLogger.logFiles(selectedSeqTsFileResourceList, STR_SOURCE_FILES);
       compactionLogger.logFiles(selectedUnSeqTsFileResourceList, STR_SOURCE_FILES);
+      compactionLogger.logFiles(targetTsfileResourceList, STR_TARGET_FILES);
       CompactionUtils.compact(
           selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
 

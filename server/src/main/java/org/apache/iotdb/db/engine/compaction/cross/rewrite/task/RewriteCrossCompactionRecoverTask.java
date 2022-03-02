@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
@@ -36,6 +35,8 @@ import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,7 +83,9 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
             fullStorageGroupName,
             compactionLogFile);
         CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(compactionLogFile);
-        if (compactionLogFile.getName().equals(CompactionLogger.COMPACTION_LOG_NAME_FEOM_OLD)) {
+        if (compactionLogFile
+            .getName()
+            .equals(CompactionLogger.CROSS_COMPACTION_LOG_NAME_FEOM_OLD)) {
           // log from previous version (<0.13)
           logAnalyzer.analyzeOldCrossCompactionLog();
         } else {
@@ -174,14 +177,14 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
                   .replace(
                       IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX,
                       TsFileConstant.TSFILE_SUFFIX));
-      TsFileResource targetResource;
+      TsFileResource targetResource = null;
       if (tmpTargetFile != null) {
         targetResource = new TsFileResource(tmpTargetFile);
-      } else {
+      } else if (targetFile != null) {
         targetResource = new TsFileResource(targetFile);
       }
 
-      if (!targetResource.remove()) {
+      if (targetResource != null && !targetResource.remove()) {
         // failed to remove tmp target tsfile
         // system should not carry out the subsequent compaction in case of data redundant
         LOGGER.warn(
@@ -221,6 +224,18 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
       File sourceFile = sourceFileIdentifier.getFileFromDataDirs();
       if (sourceFile != null) {
         remainSourceTsFileResources.add(new TsFileResource(sourceFile));
+      } else {
+        // if source file does not exist, its resource file may still exist, so delete it.
+        File resourceFile =
+            getFileFromDataDirs(
+                sourceFileIdentifier.getFilePath() + TsFileResource.RESOURCE_SUFFIX);
+        if (resourceFile != null && !resourceFile.delete()) {
+          LOGGER.error(
+              "{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+              fullStorageGroupName,
+              resourceFile);
+          handleSuccess = false;
+        }
       }
       // delete .compaction.mods file and .mods file of all source files
       File compactionModFile =
@@ -401,7 +416,7 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
     return true;
   }
 
-  public void appendCompactionModificationsFromOld(
+  public static void appendCompactionModificationsFromOld(
       TsFileResource resource, ModificationFile compactionModsFile) throws IOException {
 
     if (compactionModsFile != null) {

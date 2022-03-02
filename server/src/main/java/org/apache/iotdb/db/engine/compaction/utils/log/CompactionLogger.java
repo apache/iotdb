@@ -31,15 +31,19 @@ import java.util.List;
 /** MergeLogger records the progress of a merge in file "merge.log" as text lines. */
 public class CompactionLogger implements AutoCloseable {
 
-  public static final String COMPACTION_LOG_NAME = "cross-compaction.log";
-  public static final String COMPACTION_LOG_NAME_FEOM_OLD = "merge.log";
+  public static final String CROSS_COMPACTION_LOG_NAME = "cross-compaction.log";
+  public static final String CROSS_COMPACTION_LOG_NAME_FEOM_OLD = "merge.log";
+  public static final String INNER_COMPACTION_LOG_NAME = ".compaction.log";
 
   public static final String STR_SOURCE_FILES = "source";
   public static final String STR_TARGET_FILES = "target";
+
   public static final String STR_SOURCE_FILES_FROM_OLD = "info-source";
   public static final String STR_TARGET_FILES_FROM_OLD = "info-target";
   public static final String STR_SEQ_FILES_FROM_OLD = "seqFiles";
   public static final String STR_UNSEQ_FILES_FROM_OLD = "unseqFiles";
+  public static final String SEQUENCE_NAME_FROM_OLD = "sequence";
+  public static final String UNSEQUENCE_NAME_FROM_OLD = "unsequence";
 
   private BufferedWriter logStream;
 
@@ -68,7 +72,7 @@ public class CompactionLogger implements AutoCloseable {
   public static File[] findCrossSpaceCompactionLogs(String directory) {
     File timePartitionDir = new File(directory);
     if (timePartitionDir.exists()) {
-      return timePartitionDir.listFiles((dir, name) -> name.endsWith(COMPACTION_LOG_NAME));
+      return timePartitionDir.listFiles((dir, name) -> name.endsWith(CROSS_COMPACTION_LOG_NAME));
     } else {
       return new File[0];
     }

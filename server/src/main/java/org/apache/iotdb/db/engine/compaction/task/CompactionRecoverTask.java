@@ -103,7 +103,7 @@ public class CompactionRecoverTask {
         new File(
             tsFileManager.getStorageGroupDir()
                 + File.separator
-                + CompactionLogger.COMPACTION_LOG_NAME_FEOM_OLD);
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_FEOM_OLD);
     if (mergeLogFromOldVersion.exists()) {
       logger.info("calling cross compaction task to recover from previous version.");
       IoTDBDescriptor.getInstance()
