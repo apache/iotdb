@@ -25,7 +25,6 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.integration.env.ConfigFactory;
 import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -36,7 +35,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -80,44 +78,43 @@ public class StringTests {
   }
 
   private static void generateData() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1) values(%d,%s)",
               100, "[192.168.0.1] [SUCCESS]"));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1) values(%d,%s)",
               200, "[192.168.0.24] [SUCCESS]"));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1) values(%d,%s)",
               300, "[192.168.0.2] [FAIL]"));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1) values(%d,%s)",
               400, "[192.168.0.5] [SUCCESS]"));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1) values(%d,%s)",
               500, "[192.168.0.124] [SUCCESS]"));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1) values(%d,%s)", 100, "A,B,A+,B-"));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1) values(%d,%s)", 200, "A,A+,A,B+"));
-      statement.execute(
+      statement.addBatch(
           String.format("insert into root.vehicle.d2(timestamp,s1) values(%d,%s)", 300, "B+,B,B"));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1) values(%d,%s)", 400, "A+,A,A+,A"));
-      statement.execute(
+      statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1) values(%d,%s)", 500, "A,B-,B,B"));
+      statement.executeBatch();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -155,6 +152,7 @@ public class StringTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -169,6 +167,7 @@ public class StringTests {
       Assert.assertEquals("192.168.0.2", result3);
       Assert.assertEquals("192.168.0.5", result4);
       Assert.assertEquals("192.168.0.124", result5);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -181,6 +180,7 @@ public class StringTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -195,6 +195,7 @@ public class StringTests {
       Assert.assertEquals("[cluster-2] [FAIL]", result3);
       Assert.assertEquals("[cluster-5] [SUCCESS]", result4);
       Assert.assertEquals("[cluster-124] [SUCCESS]", result5);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -206,6 +207,7 @@ public class StringTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       int result1 = resultSet.getInt(1);
       resultSet.next();
       int result2 = resultSet.getInt(1);
@@ -220,6 +222,7 @@ public class StringTests {
       Assert.assertEquals(3, result3);
       Assert.assertEquals(4, result4);
       Assert.assertEquals(4, result5);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -232,6 +235,7 @@ public class StringTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
       String result1 = resultSet.getString(1);
       resultSet.next();
       String result2 = resultSet.getString(1);
@@ -246,6 +250,7 @@ public class StringTests {
       Assert.assertEquals("B+/B/B", result3);
       Assert.assertEquals("A+/A/A+,A", result4);
       Assert.assertEquals("A/B-/B,B", result5);
+      Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
