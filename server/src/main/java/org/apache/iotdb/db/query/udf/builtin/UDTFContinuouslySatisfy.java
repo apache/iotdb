@@ -33,21 +33,18 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
-import java.util.ArrayList;
 
 public abstract class UDTFContinuouslySatisfy implements UDTF {
-  protected Long min;
-  protected Long max;
-  protected Long defaultMax = Long.MAX_VALUE;
-  protected Long defaultMin = 0L;
+  protected long min;
+  protected long max;
   protected TSDataType dataType;
-  protected Long satisfyValueCount;
-  protected Long satisfyValueLastTime;
-  protected Long satisfyValueStartTime;
+  protected long satisfyValueCount;
+  protected long satisfyValueLastTime;
+  protected long satisfyValueStartTime;
+  protected Pair<Long, Long> interval;
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
-    setDefaultValue();
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(
@@ -60,23 +57,17 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
         .validate(
             args -> (Long) args[1] >= (Long) args[0],
             "max can not be smaller than min.",
-            validator.getParameters().getLongOrDefault("min", defaultMin),
-            validator.getParameters().getLongOrDefault("max", defaultMax))
+            validator.getParameters().getLongOrDefault("min", getDefaultMin()),
+            validator.getParameters().getLongOrDefault("max", getDefaultMax()))
         .validate(
-            min -> (Long) min >= defaultMin,
-            "min can not be smaller than " + defaultMin + ".",
-            validator.getParameters().getLongOrDefault("min", defaultMin));
+            min -> (Long) min >= getDefaultMin(),
+            "min can not be smaller than " + getDefaultMin() + ".",
+            validator.getParameters().getLongOrDefault("min", getDefaultMin()));
   }
 
-  protected abstract void setDefaultValue();
+  protected abstract long getDefaultMin();
 
-  protected void setDefaultMax(Long defaultMax) {
-    this.defaultMax = defaultMax;
-  }
-
-  protected void setDefaultMin(Long defaultMin) {
-    this.defaultMin = defaultMin;
-  }
+  protected abstract long getDefaultMax();
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
@@ -84,11 +75,10 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
     satisfyValueCount = 0L;
     satisfyValueStartTime = 0L;
     satisfyValueLastTime = -1L;
-    intervals = new ArrayList<>(0);
 
     dataType = parameters.getDataType(0);
-    min = parameters.getLongOrDefault("min", defaultMin);
-    max = parameters.getLongOrDefault("max", defaultMax);
+    min = parameters.getLongOrDefault("min", getDefaultMin());
+    max = parameters.getLongOrDefault("max", getDefaultMax());
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(TSDataType.INT64);
@@ -97,30 +87,32 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector)
       throws IOException, UDFInputSeriesDataTypeNotValidException {
+    boolean needAddNewRecord;
     switch (dataType) {
       case INT32:
-        transformInt(row.getTime(), row.getInt(0));
+        needAddNewRecord = transformInt(row.getTime(), row.getInt(0));
         break;
       case INT64:
-        transformLong(row.getTime(), row.getLong(0));
+        needAddNewRecord = transformLong(row.getTime(), row.getLong(0));
         break;
       case FLOAT:
-        transformFloat(row.getTime(), row.getFloat(0));
+        needAddNewRecord = transformFloat(row.getTime(), row.getFloat(0));
         break;
       case DOUBLE:
-        transformDouble(row.getTime(), row.getDouble(0));
+        needAddNewRecord = transformDouble(row.getTime(), row.getDouble(0));
         break;
       case BOOLEAN:
-        transformBoolean(row.getTime(), row.getBoolean(0));
+        needAddNewRecord = transformBoolean(row.getTime(), row.getBoolean(0));
         break;
       default:
         // This will not happen
         throw new UDFInputSeriesDataTypeNotValidException(
             0, dataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
     }
+    if (needAddNewRecord) collector.putLong(interval.left, interval.right);
   }
 
-  protected void transformDouble(long time, double value) {
+  protected boolean transformDouble(long time, double value) {
     if (satisfyDouble(value) && satisfyValueCount == 0L) {
       satisfyValueCount++;
       satisfyValueStartTime = time;
@@ -130,13 +122,16 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
       satisfyValueLastTime = time;
     } else {
       if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
-        intervals.add(new Pair<>(satisfyValueStartTime, getRecord()));
+        interval = new Pair<>(satisfyValueStartTime, getRecord());
+        satisfyValueCount = 0L;
+        return true;
       }
       satisfyValueCount = 0L;
     }
+    return false;
   }
 
-  protected void transformFloat(long time, float value) {
+  protected boolean transformFloat(long time, float value) {
     if (satisfyFloat(value) && satisfyValueCount == 0L) {
       satisfyValueCount++;
       satisfyValueStartTime = time;
@@ -146,13 +141,16 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
       satisfyValueLastTime = time;
     } else {
       if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
-        intervals.add(new Pair<>(satisfyValueStartTime, getRecord()));
+        interval = new Pair<>(satisfyValueStartTime, getRecord());
+        satisfyValueCount = 0L;
+        return true;
       }
       satisfyValueCount = 0L;
     }
+    return false;
   }
 
-  protected void transformLong(long time, long value) {
+  protected boolean transformLong(long time, long value) {
     if (satisfyLong(value) && satisfyValueCount == 0L) {
       satisfyValueCount++;
       satisfyValueStartTime = time;
@@ -162,13 +160,16 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
       satisfyValueLastTime = time;
     } else {
       if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
-        intervals.add(new Pair<>(satisfyValueStartTime, getRecord()));
+        interval = new Pair<>(satisfyValueStartTime, getRecord());
+        satisfyValueCount = 0L;
+        return true;
       }
       satisfyValueCount = 0L;
     }
+    return false;
   }
 
-  protected void transformInt(long time, int value) {
+  protected boolean transformInt(long time, int value) {
     if (satisfyInt(value) && satisfyValueCount == 0L) {
       satisfyValueCount++;
       satisfyValueStartTime = time;
@@ -178,13 +179,16 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
       satisfyValueLastTime = time;
     } else {
       if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
-        intervals.add(new Pair<>(satisfyValueStartTime, getRecord()));
+        interval = new Pair<>(satisfyValueStartTime, getRecord());
+        satisfyValueCount = 0L;
+        return true;
       }
       satisfyValueCount = 0L;
     }
+    return false;
   }
 
-  protected void transformBoolean(long time, boolean value) {
+  protected boolean transformBoolean(long time, boolean value) {
     if (satisfyBoolean(value) && satisfyValueCount == 0L) {
       satisfyValueCount++;
       satisfyValueStartTime = time;
@@ -194,10 +198,13 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
       satisfyValueLastTime = time;
     } else {
       if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
-        intervals.add(new Pair<>(satisfyValueStartTime, getRecord()));
+        interval = new Pair<>(satisfyValueStartTime, getRecord());
+        satisfyValueCount = 0L;
+        return true;
       }
       satisfyValueCount = 0L;
     }
+    return false;
   }
 
   protected abstract Long getRecord();
@@ -211,9 +218,10 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
       case FLOAT:
       case DOUBLE:
       case BOOLEAN:
-        if (satisfyValueCount != 0) {
-          if (getRecord() >= min && getRecord() <= max)
-            intervals.add(new Pair<>(satisfyValueStartTime, getRecord()));
+        if (satisfyValueCount > 0) {
+          if (getRecord() >= min && getRecord() <= max) {
+            collector.putLong(satisfyValueStartTime, getRecord());
+          }
         }
         break;
       default:
@@ -221,12 +229,7 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
         throw new UDFInputSeriesDataTypeNotValidException(
             0, dataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
     }
-    for (Pair<Long, Long> pair : intervals) {
-      collector.putLong(pair.left, pair.right);
-    }
   }
-
-  protected ArrayList<Pair<Long, Long>> intervals;
 
   protected abstract boolean satisfyInt(int value);
 

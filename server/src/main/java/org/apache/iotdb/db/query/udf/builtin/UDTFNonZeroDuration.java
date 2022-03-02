@@ -22,9 +22,13 @@ package org.apache.iotdb.db.query.udf.builtin;
 public class UDTFNonZeroDuration extends UDTFContinuouslySatisfy {
 
   @Override
-  protected void setDefaultValue() {
-    setDefaultMax(Long.MAX_VALUE);
-    setDefaultMin(0L);
+  protected long getDefaultMin() {
+    return 0;
+  }
+
+  @Override
+  protected long getDefaultMax() {
+    return Long.MAX_VALUE;
   }
 
   @Override
