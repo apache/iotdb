@@ -96,7 +96,6 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         compactionLogFile);
     try {
       if (compactionLogFile.exists()) {
-        boolean isRecoverFromOldVersion = false;
         LOGGER.info(
             "{}-{} [Compaction][Recover] inner space compaction log file {} exists, start to recover it",
             logicalStorageGroupName,
@@ -105,7 +104,6 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(compactionLogFile);
         if (compactionLogFile.getName().startsWith(tsFileManager.getStorageGroupName())) {
           // log from previous version (<0.13)
-          isRecoverFromOldVersion = true;
           logAnalyzer.analyzeOldInnerCompactionLog();
         } else {
           logAnalyzer.analyze();
@@ -175,7 +173,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
                   true);
         } else {
           handleSuccess = handleWithoutAllSourceFilesExist(sourceFileIdentifiers);
-          if (isRecoverFromOldVersion) {
+          if (logAnalyzer.isLogFromOld()) {
             appendCompactionModificationsFromOld(targetResource);
           }
         }

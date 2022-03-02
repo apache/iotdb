@@ -66,6 +66,7 @@ public class CompactionLogAnalyzer {
     }
   }
 
+  /** Analyze inner space compaction log of previous version (<0.13). */
   public void analyzeOldInnerCompactionLog() throws IOException {
     isLogFromOld = true;
     String currLine;

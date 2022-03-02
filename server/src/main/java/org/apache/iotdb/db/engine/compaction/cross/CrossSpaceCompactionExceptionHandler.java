@@ -85,8 +85,7 @@ public class CrossSpaceCompactionExceptionHandler {
                 seqResourceList,
                 unseqResourceList,
                 targetResourceList,
-                lostSourceFiles,
-                logFile);
+                lostSourceFiles);
       }
 
       if (!handleSuccess) {
@@ -191,8 +190,7 @@ public class CrossSpaceCompactionExceptionHandler {
       List<TsFileResource> seqFileList,
       List<TsFileResource> unseqFileList,
       List<TsFileResource> targetFileList,
-      List<TsFileResource> lostSourceFiles,
-      File logFile)
+      List<TsFileResource> lostSourceFiles)
       throws IOException {
     if (!checkIsTargetFilesComplete(targetFileList, lostSourceFiles, storageGroup)) {
       return false;
