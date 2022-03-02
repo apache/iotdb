@@ -67,12 +67,11 @@ public class DeletionPipeData extends PipeData {
 
   @Override
   public void sendToTransport() {
-    ByteArrayOutputStream bytesStream = new ByteArrayOutputStream();
-    DataOutputStream stream = new DataOutputStream(bytesStream);
-    try {
+    try (ByteArrayOutputStream bytesStream = new ByteArrayOutputStream();
+        DataOutputStream stream = new DataOutputStream(bytesStream)) {
       serialize(stream);
       // senderTransport(bytesStream.toArray, this);
-      System.out.println(this);
+      // System.out.println(this);
     } catch (IOException e) {
       logger.warn(
           String.format(

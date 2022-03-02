@@ -3189,10 +3189,13 @@ public class VirtualStorageGroupProcessor {
   /** sync methods */
   public void registerSyncDataCollector(TsFilePipe tsFilePipe) {
     writeLock("Register collector for sync");
-    this.syncDataCollector = tsFilePipe;
-    registerTsFileResourceList(tsFileManager.getTsFileList(true), tsFilePipe);
-    registerTsFileResourceList(tsFileManager.getTsFileList(false), tsFilePipe);
-    writeUnlock();
+    try {
+      this.syncDataCollector = tsFilePipe;
+      registerTsFileResourceList(tsFileManager.getTsFileList(true), tsFilePipe);
+      registerTsFileResourceList(tsFileManager.getTsFileList(false), tsFilePipe);
+    } finally {
+      writeUnlock();
+    }
   }
 
   private void registerTsFileResourceList(
@@ -3216,12 +3219,16 @@ public class VirtualStorageGroupProcessor {
   public List<Pair<File, Long>> collectDataForSync(TsFilePipe tsFilePipe, long dataStartTime) {
     List<Pair<File, Long>> historyTsFiles = new ArrayList<>();
     writeLock("Collect data for sync");
-    this.syncDataCollector = tsFilePipe;
-    List<TsFileResource> seqTsFileResource = tsFileManager.getTsFileList(true);
-    List<TsFileResource> unseqTsFileResource = tsFileManager.getTsFileList(false);
-    collectTsFiles(seqTsFileResource, historyTsFiles, dataStartTime);
-    collectTsFiles(unseqTsFileResource, historyTsFiles, dataStartTime);
-    writeUnlock();
+    try {
+      this.syncDataCollector = tsFilePipe;
+      List<TsFileResource> seqTsFileResource = tsFileManager.getTsFileList(true);
+      List<TsFileResource> unseqTsFileResource = tsFileManager.getTsFileList(false);
+      collectTsFiles(seqTsFileResource, historyTsFiles, dataStartTime);
+      collectTsFiles(unseqTsFileResource, historyTsFiles, dataStartTime);
+    } finally {
+      writeUnlock();
+    }
+
     return historyTsFiles;
   }
 
