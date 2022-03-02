@@ -58,9 +58,9 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
 
   @Override
   public void write(long timestamp, Object value) throws IOException {
+    writeDataPoint(timestamp, value);
     updateDeviceStartAndEndTime(targetTsFileResource, timestamp);
     checkChunkSizeAndMayOpenANewChunk(fileWriter);
-    writeDataPoint(timestamp, value);
     isEmptyFile = false;
   }
 

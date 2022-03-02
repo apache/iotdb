@@ -1199,23 +1199,7 @@ public class IoTDBSizeTieredCompactionIT {
       }
       long totalWaitingTime = 0;
       statement.execute("MERGE");
-      while (CompactionTaskManager.getInstance().getFinishTaskNum() - originFinishCount < 2) {
-        try {
-          Thread.sleep(100);
-        } catch (InterruptedException e) {
-
-        }
-        totalWaitingTime += 100;
-        if (totalWaitingTime % 1000 == 0) {
-          LOGGER.warn("Has waiting for {} seconds", totalWaitingTime / 1000);
-        }
-        if (totalWaitingTime > 120_000) {
-          Assert.fail();
-          break;
-        }
-      }
-      statement.execute("MERGE");
-      while (CompactionTaskManager.getInstance().getFinishTaskNum() - originFinishCount < 3) {
+      while (CompactionTaskManager.getInstance().getFinishTaskNum() - originFinishCount < 1) {
         try {
           Thread.sleep(100);
         } catch (InterruptedException e) {
@@ -1283,7 +1267,7 @@ public class IoTDBSizeTieredCompactionIT {
         statement.execute("FLUSH");
       }
       int totalWaitingTime = 0;
-      while (CompactionTaskManager.getInstance().getFinishTaskNum() - originCompactionNum < 2) {
+      while (CompactionTaskManager.getInstance().getFinishTaskNum() - originCompactionNum < 1) {
         try {
           Thread.sleep(100);
         } catch (InterruptedException e) {

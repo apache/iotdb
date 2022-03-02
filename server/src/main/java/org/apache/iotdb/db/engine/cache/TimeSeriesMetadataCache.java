@@ -157,7 +157,9 @@ public class TimeSeriesMetadataCache {
       }
       TimeseriesMetadata timeseriesMetadata =
           reader.readTimeseriesMetadata(new Path(key.device, key.measurement), false);
-      return timeseriesMetadata.getStatistics().getCount() == 0 ? null : timeseriesMetadata;
+      return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
+          ? null
+          : timeseriesMetadata;
     }
 
     TimeseriesMetadata timeseriesMetadata = lruCache.getIfPresent(key);

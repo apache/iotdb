@@ -81,4 +81,20 @@ public class IoTDBSyntaxConventionVersionAdaptionIT {
       fail();
     }
   }
+
+  @Test
+  public void testExpression3() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg1.d1.\"a\" with datatype = INT64");
+      boolean hasResult = statement.execute("SELECT \"a\" FROM root.sg1.d1");
+      Assert.assertTrue(hasResult);
+
+      ResultSet resultSet = statement.getResultSet();
+      Assert.assertFalse(resultSet.next());
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
 }

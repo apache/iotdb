@@ -80,7 +80,7 @@ public class JlineUtils {
             + "-"
             + port
             + "-"
-            + username;
+            + username.hashCode();
     builder.variable(LineReader.HISTORY_FILE, new File(historyFilePath));
 
     // TODO: since the lexer doesn't produce tokens for quotation marks, disable the highlighter to

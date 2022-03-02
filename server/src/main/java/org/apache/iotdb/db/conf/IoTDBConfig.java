@@ -54,20 +54,17 @@ public class IoTDBConfig {
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
 
-  // e.g., a31+/$%#&[]{}3e4
-  private static final String ID_MATCHER =
-      "([a-zA-Z0-9/\"'`[ ],:@#$%&{}()*=?!~\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
-
   private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\-\\u2E80-\\u9FFF]+)";
+  public static final Pattern STORAGE_GROUP_PATTERN = Pattern.compile(STORAGE_GROUP_MATCHER);
+
+  // e.g., a31+/$%#&[]{}3e4, "a.b", 'a.b'
+  private static final String NODE_NAME_MATCHER = "([^\n\t]+)";
 
   // e.g.,  .s1
-  private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
+  private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + NODE_NAME_MATCHER;
 
-  // TODO : need to match the rule of antlr grammar
   private static final String NODE_MATCHER =
-      "([" + PATH_SEPARATOR + "])?" + ID_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
-
-  public static final Pattern STORAGE_GROUP_PATTERN = Pattern.compile(STORAGE_GROUP_MATCHER);
+      "([" + PATH_SEPARATOR + "])?" + NODE_NAME_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
@@ -191,6 +188,12 @@ public class IoTDBConfig {
    * Unit: byte
    */
   private int mlogBufferSize = 1024 * 1024;
+
+  /**
+   * The cycle when metadata log is periodically forced to be written to disk(in milliseconds) If
+   * set this parameter to 0 it means call channel.force(true) after every each operation
+   */
+  private long syncMlogPeriodInMs = 100;
 
   /**
    * The size of log buffer for every trigger management operation plan. If the size of a trigger
@@ -353,11 +356,11 @@ public class IoTDBConfig {
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
 
-  /** Only compact the sequence files */
+  /** Enable inner space copaction for sequence files */
   private boolean enableSeqSpaceCompaction = true;
 
-  /** Only compact the unsequence files */
-  private boolean enableUnseqSpaceCompaction = false;
+  /** Enable inner space copaction for unsequence files */
+  private boolean enableUnseqSpaceCompaction = true;
 
   /** Compact the unsequence files into the overlapped sequence files */
   private boolean enableCrossSpaceCompaction = true;
@@ -382,7 +385,7 @@ public class IoTDBConfig {
    * cross space compaction, eliminate the unsequence files first BALANCE: alternate two compaction
    * types
    */
-  private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
+  private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
 
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
@@ -419,13 +422,6 @@ public class IoTDBConfig {
 
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
   private long compactionSubmissionIntervalInMs = 60_000L;
-
-  /**
-   * The max open file num in each unseq compaction task. We use the unseq file num as the open file
-   * num # This parameters have to be much smaller than the permitted max open file num of each
-   * process controlled by operator system(65535 in most system).
-   */
-  private int maxOpenFileNumInCrossSpaceCompaction = 100;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
@@ -577,7 +573,7 @@ public class IoTDBConfig {
   private long mergeIntervalSec = 0L;
 
   /** The limit of compaction merge can reach per second */
-  private int compactionWriteThroughputMbPerSec = 8;
+  private int compactionWriteThroughputMbPerSec = 16;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
@@ -755,7 +751,7 @@ public class IoTDBConfig {
   private long startUpNanosecond = System.nanoTime();
 
   /** Unit: byte */
-  private int thriftMaxFrameSize = 67108864;
+  private int thriftMaxFrameSize = 536870912;
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
@@ -783,6 +779,9 @@ public class IoTDBConfig {
   /** the number of virtual storage groups per user-defined storage group */
   private int virtualStorageGroupNum = 1;
 
+  /** the interval to log recover progress of each vsg when starting iotdb */
+  private long recoveryLogIntervalInMs = 5_000L;
+
   private String adminName = "root";
 
   private String adminPassword = "root";
@@ -797,6 +796,13 @@ public class IoTDBConfig {
    * whether create mapping file of id table. This file can map device id in tsfile to device path
    */
   private boolean enableIDTableLogFile = false;
+
+  /** Encryption provider class */
+  private String encryptDecryptProvider =
+      "org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt";
+
+  /** Encryption provided class parameter */
+  private String encryptDecryptProviderParameter;
 
   public IoTDBConfig() {
     // empty constructor
@@ -1417,7 +1423,7 @@ public class IoTDBConfig {
     return crossCompactionMemoryBudget;
   }
 
-  void setCrossCompactionMemoryBudget(long crossCompactionMemoryBudget) {
+  public void setCrossCompactionMemoryBudget(long crossCompactionMemoryBudget) {
     this.crossCompactionMemoryBudget = crossCompactionMemoryBudget;
   }
 
@@ -1685,14 +1691,6 @@ public class IoTDBConfig {
 
   public void setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
     this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
-  }
-
-  public int getMaxOpenFileNumInCrossSpaceCompaction() {
-    return maxOpenFileNumInCrossSpaceCompaction;
-  }
-
-  public void setMaxOpenFileNumInCrossSpaceCompaction(int maxOpenFileNumInCrossSpaceCompaction) {
-    this.maxOpenFileNumInCrossSpaceCompaction = maxOpenFileNumInCrossSpaceCompaction;
   }
 
   public long getCrossCompactionFileSelectionTimeBudget() {
@@ -2287,6 +2285,14 @@ public class IoTDBConfig {
     this.virtualStorageGroupNum = virtualStorageGroupNum;
   }
 
+  public long getRecoveryLogIntervalInMs() {
+    return recoveryLogIntervalInMs;
+  }
+
+  public void setRecoveryLogIntervalInMs(long recoveryLogIntervalInMs) {
+    this.recoveryLogIntervalInMs = recoveryLogIntervalInMs;
+  }
+
   public boolean isRpcAdvancedCompressionEnable() {
     return rpcAdvancedCompressionEnable;
   }
@@ -2302,6 +2308,14 @@ public class IoTDBConfig {
 
   public void setMlogBufferSize(int mlogBufferSize) {
     this.mlogBufferSize = mlogBufferSize;
+  }
+
+  public long getSyncMlogPeriodInMs() {
+    return syncMlogPeriodInMs;
+  }
+
+  public void setSyncMlogPeriodInMs(long syncMlogPeriodInMs) {
+    this.syncMlogPeriodInMs = syncMlogPeriodInMs;
   }
 
   public int getTlogBufferSize() {
@@ -2494,5 +2508,21 @@ public class IoTDBConfig {
 
   public void setEnableIDTableLogFile(boolean enableIDTableLogFile) {
     this.enableIDTableLogFile = enableIDTableLogFile;
+  }
+
+  public String getEncryptDecryptProvider() {
+    return encryptDecryptProvider;
+  }
+
+  public void setEncryptDecryptProvider(String encryptDecryptProvider) {
+    this.encryptDecryptProvider = encryptDecryptProvider;
+  }
+
+  public String getEncryptDecryptProviderParameter() {
+    return encryptDecryptProviderParameter;
+  }
+
+  public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
+    this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
   }
 }

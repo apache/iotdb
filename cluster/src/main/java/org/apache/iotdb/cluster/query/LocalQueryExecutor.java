@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.query.reader.mult.IMultBatchReader;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
@@ -53,7 +54,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
@@ -602,16 +602,15 @@ public class LocalQueryExecutor {
     }
   }
 
-  public ByteBuffer getAllMeasurementSchema(ByteBuffer planBuffer)
+  public ByteBuffer getAllMeasurementSchema(MeasurementSchemaRequest request)
       throws CheckConsistencyException, IOException, MetadataException {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
-    ShowTimeSeriesPlan plan = (ShowTimeSeriesPlan) PhysicalPlan.Factory.create(planBuffer);
+    ShowTimeSeriesPlan plan = (ShowTimeSeriesPlan) PhysicalPlan.Factory.create(request.planBinary);
     List<ShowTimeSeriesResult> allTimeseriesSchema;
-    allTimeseriesSchema =
-        getCMManager()
-            .showLocalTimeseries(
-                plan, new QueryContext(SessionManager.getInstance().requestQueryId(false)));
+    RemoteQueryContext queryContext =
+        queryManager.getQueryContext(request.getRequester(), request.getQueryId());
+    allTimeseriesSchema = getCMManager().showLocalTimeseries(plan, queryContext);
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {

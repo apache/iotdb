@@ -256,6 +256,42 @@ public class TemplateTest {
         "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
   }
 
+  private CreateTemplatePlan getDirectAlignedTemplate() {
+    List<List<String>> measurementList = new ArrayList<>();
+    List<String> measurements = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      measurements.add("vs" + i);
+    }
+    measurementList.add(measurements);
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    dataTypeList.add(dataTypes);
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      encodings.add(TSEncoding.RLE);
+    }
+    encodingList.add(encodings);
+
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    List<CompressionType> compressorList = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      compressorList.add(CompressionType.SNAPPY);
+    }
+    compressionTypes.add(compressorList);
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("vector");
+
+    return new CreateTemplatePlan(
+        "templateDA", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+  }
+
   /**
    * Test for show templates, including all templates, paths set or using designated template
    *
@@ -329,6 +365,19 @@ public class TemplateTest {
   }
 
   @Test
+  public void testShowAllSchemas() throws MetadataException {
+    MManager manager = IoTDB.metaManager;
+    CreateTemplatePlan plan1 = getTreeTemplatePlan();
+    CreateTemplatePlan plan2 = getCreateTemplatePlan();
+    manager.createSchemaTemplate(plan1);
+    manager.createSchemaTemplate(plan2);
+    assertEquals(4, manager.getSchemasInTemplate("treeTemplate", "").size());
+    assertEquals(2, manager.getSchemasInTemplate("treeTemplate", "GPS").size());
+    assertEquals(11, manager.getSchemasInTemplate("template1", "").size());
+    assertEquals(10, manager.getSchemasInTemplate("template1", "vector").size());
+  }
+
+  @Test
   public void testDropTemplate() throws MetadataException {
     MManager manager = IoTDB.metaManager;
     CreateTemplatePlan plan1 = getTreeTemplatePlan();
@@ -365,6 +414,45 @@ public class TemplateTest {
     assertEquals("[template1, treeTemplate]", manager.getAllTemplates().toString());
     manager.dropSchemaTemplate(new DropTemplatePlan("template1"));
     manager.dropSchemaTemplate(new DropTemplatePlan("treeTemplate"));
+  }
+
+  @Test
+  public void testTemplateAlignment() throws MetadataException {
+    MManager manager = IoTDB.metaManager;
+    manager.createTimeseries(
+        new PartialPath("root.laptop.d0"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.GZIP,
+        null);
+    manager.createTimeseries(
+        new PartialPath("root.laptop.d1.s1"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.GZIP,
+        null);
+    manager.createTimeseries(
+        new PartialPath("root.laptop.d1.s2"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.GZIP,
+        null);
+    manager.createTimeseries(
+        new PartialPath("root.laptop.d1.ss.t1"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.GZIP,
+        null);
+
+    manager.createSchemaTemplate(getDirectAlignedTemplate());
+    try {
+      manager.setSchemaTemplate(new SetTemplatePlan("templateDA", "root.laptop.d1"));
+      fail();
+    } catch (Exception e) {
+      assertEquals(
+          "Template[templateDA] and mounted node[root.laptop.d1.vs0] has different alignment.",
+          e.getMessage());
+    }
   }
 
   private InsertRowPlan getInsertRowPlan(String prefixPath, String measurement)

@@ -92,7 +92,7 @@ public class TsFileResource {
   /** time index */
   protected ITimeIndex timeIndex;
 
-  /** time index type, fileTimeIndex = 0, deviceTimeIndex = 1 */
+  /** time index type, V012FileTimeIndex = 0, deviceTimeIndex = 1, fileTimeIndex = 2 */
   private byte timeIndexType;
 
   private ModificationFile modFile;
@@ -101,7 +101,8 @@ public class TsFileResource {
 
   protected volatile boolean closed = false;
   private volatile boolean deleted = false;
-  volatile boolean isMerging = false;
+  volatile boolean isCompacting = false;
+  volatile boolean compactionCandidate = false;
 
   private TsFileLock tsFileLock = new TsFileLock();
 
@@ -165,7 +166,7 @@ public class TsFileResource {
     this.modFile = other.modFile;
     this.closed = other.closed;
     this.deleted = other.deleted;
-    this.isMerging = other.isMerging;
+    this.isCompacting = other.isCompacting;
     this.pathToChunkMetadataListMap = other.pathToChunkMetadataListMap;
     this.pathToReadOnlyMemChunkMap = other.pathToReadOnlyMemChunkMap;
     this.pathToTimeSeriesMetadataMap = other.pathToTimeSeriesMetadataMap;
@@ -271,6 +272,13 @@ public class TsFileResource {
         }
       }
     }
+
+    // upgrade from v0.12 to v0.13, we need to rewrite the TsFileResource if the previous time index
+    // is file time index
+    if (timeIndexType == 0) {
+      timeIndexType = 2;
+      serialize();
+    }
   }
 
   /** deserialize tsfile resource from old file */
@@ -284,7 +292,7 @@ public class TsFileResource {
       for (int i = 0; i < size; i++) {
         String path = ReadWriteIOUtils.readString(inputStream);
         long time = ReadWriteIOUtils.readLong(inputStream);
-        deviceMap.put(path, i);
+        deviceMap.put(path.intern(), i);
         startTimesArray[i] = time;
       }
       size = ReadWriteIOUtils.readInt(inputStream);
@@ -312,27 +320,12 @@ public class TsFileResource {
     }
   }
 
-  /** read version number, used for checking compatibility of TsFileResource in the future */
-  private byte readVersionNumber(InputStream inputStream) throws IOException {
-    return ReadWriteIOUtils.readBytes(inputStream, 1)[0];
-  }
-
   public void updateStartTime(String device, long time) {
     timeIndex.updateStartTime(device, time);
   }
 
-  // used in merge, refresh all start time
-  public void putStartTime(String device, long time) {
-    timeIndex.putStartTime(device, time);
-  }
-
   public void updateEndTime(String device, long time) {
     timeIndex.updateEndTime(device, time);
-  }
-
-  // used in merge, refresh all end time
-  public void putEndTime(String device, long time) {
-    timeIndex.putEndTime(device, time);
   }
 
   public boolean resourceFileExists() {
@@ -427,11 +420,15 @@ public class TsFileResource {
   }
 
   public Set<String> getDevices() {
-    return timeIndex.getDevices(file.getPath());
+    return timeIndex.getDevices(file.getPath(), this);
   }
 
-  public boolean endTimeEmpty() {
-    return timeIndex.endTimeEmpty();
+  /**
+   * Whether this TsFileResource contains this device, if false, it must not contain this device, if
+   * true, it may or may not contain this device
+   */
+  public boolean mayContainsDevice(String device) {
+    return timeIndex.mayContainsDevice(device);
   }
 
   public boolean isClosed() {
@@ -497,6 +494,10 @@ public class TsFileResource {
 
   public boolean tryWriteLock() {
     return tsFileLock.tryWriteLock();
+  }
+
+  public boolean tryReadLock() {
+    return tsFileLock.tryReadLock();
   }
 
   void doUpgrade() {
@@ -586,17 +587,28 @@ public class TsFileResource {
     this.deleted = deleted;
   }
 
-  public boolean isMerging() {
-    return isMerging;
+  public boolean isCompacting() {
+    return isCompacting;
   }
 
-  public void setMerging(boolean merging) {
-    isMerging = merging;
+  public void setCompacting(boolean compacting) {
+    isCompacting = compacting;
   }
 
-  /** check if any of the device lives over the given time bound */
+  public boolean isCompactionCandidate() {
+    return compactionCandidate;
+  }
+
+  public void setCompactionCandidate(boolean compactionCandidate) {
+    this.compactionCandidate = compactionCandidate;
+  }
+
+  /**
+   * check if any of the device lives over the given time bound. If the file is not closed, then
+   * return true.
+   */
   public boolean stillLives(long timeLowerBound) {
-    return timeIndex.stillLives(timeLowerBound);
+    return !isClosed() || timeIndex.stillLives(timeLowerBound);
   }
 
   public boolean isDeviceIdExist(String deviceId) {
@@ -610,7 +622,7 @@ public class TsFileResource {
       return isSatisfied(timeFilter, isSeq, ttl, debug);
     }
 
-    if (!getDevices().contains(deviceId)) {
+    if (!mayContainsDevice(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);
@@ -672,7 +684,7 @@ public class TsFileResource {
       return false;
     }
 
-    if (!getDevices().contains(deviceId)) {
+    if (!mayContainsDevice(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);
@@ -954,7 +966,7 @@ public class TsFileResource {
     long endTime = timeIndex.getMaxEndTime();
     // replace the DeviceTimeIndex with FileTimeIndex
     timeIndex = new FileTimeIndex(startTime, endTime);
-    timeIndexType = 0;
+    timeIndexType = 2;
     return ramSize - timeIndex.calculateRamSize();
   }
 
@@ -965,5 +977,10 @@ public class TsFileResource {
           path.generateTimeSeriesMetadata(
               pathToReadOnlyMemChunkMap.get(path), pathToChunkMetadataListMap.get(path)));
     }
+  }
+
+  /** @return is this tsfile resource in a TsFileResourceList */
+  public boolean isFileInList() {
+    return prev != null || next != null;
   }
 }

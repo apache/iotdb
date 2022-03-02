@@ -32,6 +32,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.util.Objects;
+
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 /**
@@ -51,8 +53,6 @@ public class SchemaEntry implements ILastCacheContainer {
 
   private TsPrimitiveType lastValue;
 
-  private long flushTime;
-
   /** This static field will not occupy memory */
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -66,7 +66,18 @@ public class SchemaEntry implements ILastCacheContainer {
     schema |= (((long) compressionType.serialize()) << 16);
 
     lastTime = Long.MIN_VALUE;
-    flushTime = Long.MIN_VALUE;
+  }
+
+  // used in recover
+  public SchemaEntry(
+      TSDataType dataType, TSEncoding encoding, CompressionType compressionType, long diskPos) {
+    schema |= dataType.serialize();
+    schema |= (((long) encoding.serialize()) << 8);
+    schema |= (((long) compressionType.serialize()) << 16);
+
+    lastTime = Long.MIN_VALUE;
+
+    schema |= (diskPos << 25);
   }
 
   public SchemaEntry(
@@ -75,13 +86,13 @@ public class SchemaEntry implements ILastCacheContainer {
       CompressionType compressionType,
       IDeviceID deviceID,
       PartialPath fullPath,
+      boolean isAligned,
       IDiskSchemaManager IDiskSchemaManager) {
     schema |= dataType.serialize();
     schema |= (((long) encoding.serialize()) << 8);
     schema |= (((long) compressionType.serialize()) << 16);
 
     lastTime = Long.MIN_VALUE;
-    flushTime = Long.MIN_VALUE;
 
     // write log file
     if (config.isEnableIDTableLogFile()) {
@@ -89,10 +100,11 @@ public class SchemaEntry implements ILastCacheContainer {
           new DiskSchemaEntry(
               deviceID.toStringID(),
               fullPath.getFullPath(),
-              flushTime,
+              fullPath.getMeasurement(),
               dataType.serialize(),
               encoding.serialize(),
-              compressionType.serialize());
+              compressionType.serialize(),
+              isAligned);
       schema |= (IDiskSchemaManager.serialize(diskSchemaEntry) << 25);
     }
   }
@@ -124,10 +136,6 @@ public class SchemaEntry implements ILastCacheContainer {
     return CompressionType.deserialize((byte) (schema >> 16));
   }
 
-  public void updateLastedFlushTime(long lastFlushTime) {
-    flushTime = Math.max(flushTime, lastFlushTime);
-  }
-
   public boolean isUsingTrigger() {
     return ((schema >> 24) & 1) == 1;
   }
@@ -147,10 +155,6 @@ public class SchemaEntry implements ILastCacheContainer {
 
   public Object getLastValue() {
     return lastValue;
-  }
-
-  public long getFlushTime() {
-    return flushTime;
   }
 
   // region last cache
@@ -188,6 +192,25 @@ public class SchemaEntry implements ILastCacheContainer {
   @Override
   public boolean isEmpty() {
     return lastValue == null;
+  }
+
+  @Override
+  // Notice that we only compare schema
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof SchemaEntry)) {
+      return false;
+    }
+    SchemaEntry that = (SchemaEntry) o;
+    return schema == that.schema;
+  }
+
+  @Override
+  // Notice that we only compare schema
+  public int hashCode() {
+    return Objects.hash(schema);
   }
   // endregion
 }

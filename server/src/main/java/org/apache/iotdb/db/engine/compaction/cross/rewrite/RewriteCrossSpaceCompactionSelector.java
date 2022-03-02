@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTaskFactory;
@@ -41,7 +41,8 @@ import java.util.Iterator;
 import java.util.List;
 
 public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompactionSelector {
-  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public RewriteCrossSpaceCompactionSelector(
@@ -69,24 +70,10 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
-  public boolean selectAndSubmit() {
-    boolean taskSubmitted = false;
+  public void selectAndSubmit() {
     if ((CompactionTaskManager.currentTaskNum.get() >= config.getConcurrentCompactionThread())
-        || (!config.isEnableCrossSpaceCompaction())
-        || CompactionScheduler.isPartitionCompacting(
-            logicalStorageGroupName + "-" + virtualGroupId, timePartition)) {
-      if (CompactionTaskManager.currentTaskNum.get() >= config.getConcurrentCompactionThread()) {
-        LOGGER.debug("End selection because too many threads");
-      } else if (!config.isEnableCrossSpaceCompaction()) {
-        LOGGER.debug("End selection because cross compaction is not enable");
-      } else {
-        LOGGER.debug(
-            "End selection because {}-{} is compacting, task num in CompactionTaskManager is {}",
-            logicalStorageGroupName,
-            virtualGroupId,
-            CompactionTaskManager.currentTaskNum.get());
-      }
-      return false;
+        || (!config.isEnableCrossSpaceCompaction())) {
+      return;
     }
     Iterator<TsFileResource> seqIterator = sequenceFileList.iterator();
     Iterator<TsFileResource> unSeqIterator = unsequenceFileList.iterator();
@@ -99,10 +86,7 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
       unSeqFileList.add(unSeqIterator.next());
     }
     if (seqFileList.isEmpty() || unSeqFileList.isEmpty()) {
-      return false;
-    }
-    if (unSeqFileList.size() > config.getMaxCompactionCandidateFileNum()) {
-      unSeqFileList = unSeqFileList.subList(0, config.getMaxCompactionCandidateFileNum());
+      return;
     }
     long budget = config.getCrossCompactionMemoryBudget();
     long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
@@ -113,37 +97,35 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
         InnerSpaceCompactionUtils.getCrossSpaceFileSelector(budget, mergeResource);
     try {
       List[] mergeFiles = fileSelector.select();
+      // avoid pending tasks holds the metadata and streams
+      mergeResource.clear();
       if (mergeFiles.length == 0) {
-        LOGGER.warn(
-            "{} cannot select merge candidates under the budget {}",
-            logicalStorageGroupName,
-            budget);
-        return false;
+        if (mergeResource.getUnseqFiles().size() > 0) {
+          // still have unseq files but cannot be selected
+          LOGGER.warn(
+              "{} cannot select merge candidates under the budget {}",
+              logicalStorageGroupName,
+              budget);
+        }
+        return;
       }
       LOGGER.info(
           "select files for cross compaction, sequence files: {}, unsequence files {}",
           mergeFiles[0],
           mergeFiles[1]);
-      // avoid pending tasks holds the metadata and streams
-      mergeResource.clear();
-      // do not cache metadata until true candidates are chosen, or too much metadata will be
-      // cached during selection
-      mergeResource.setCacheDeviceMeta(true);
 
       if (mergeFiles[0].size() > 0 && mergeFiles[1].size() > 0) {
+        mergeFiles[0].forEach(x -> ((TsFileResource) x).setCompactionCandidate(true));
+        mergeFiles[1].forEach(x -> ((TsFileResource) x).setCompactionCandidate(true));
         AbstractCompactionTask compactionTask =
             taskFactory.createTask(
                 logicalStorageGroupName,
                 virtualGroupId,
                 timePartition,
-                storageGroupDir,
                 tsFileManager,
-                sequenceFileList,
-                unsequenceFileList,
                 mergeFiles[0],
                 mergeFiles[1]);
         CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
-        taskSubmitted = true;
         LOGGER.info(
             "{} [Compaction] submit a task with {} sequence file and {} unseq files",
             logicalStorageGroupName + "-" + virtualGroupId,
@@ -151,10 +133,8 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
             mergeResource.getUnseqFiles().size());
       }
 
-    } catch (MergeException | IOException e) {
+    } catch (MergeException | IOException | InterruptedException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }
-
-    return taskSubmitted;
   }
 }

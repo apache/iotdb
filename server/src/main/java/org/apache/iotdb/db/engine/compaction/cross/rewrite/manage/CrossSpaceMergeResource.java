@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
 public class CrossSpaceMergeResource {
 
   private List<TsFileResource> seqFiles;
-  private List<TsFileResource> unseqFiles;
+  private List<TsFileResource> unseqFiles = new ArrayList<>();
 
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
@@ -64,23 +64,36 @@ public class CrossSpaceMergeResource {
   private boolean cacheDeviceMeta = false;
 
   public CrossSpaceMergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    this.seqFiles = seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
-    this.unseqFiles = unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
+    this.seqFiles = seqFiles.stream().filter(this::filterSeqResource).collect(Collectors.toList());
+    filterUnseqResource(unseqFiles);
   }
 
-  /** If returns true, it means to participate in the merge */
-  private boolean filterResource(TsFileResource res) {
-    return res.getTsFile().exists()
-        && !res.isDeleted()
-        && (!res.isClosed() || res.stillLives(ttlLowerBound))
-        && !res.isMerging();
+  /** Fitler the seq files into the compaction. Seq files should be not deleted or over ttl. */
+  private boolean filterSeqResource(TsFileResource res) {
+    return !res.isDeleted() && res.stillLives(ttlLowerBound);
+  }
+
+  /**
+   * Filter the unseq files into the compaction. Unseq files should be not deleted or over ttl. To
+   * ensure that the compaction is correct, return as soon as it encounters the file being compacted
+   * or compaction candidate. Therefore, a cross space compaction can only be performed serially
+   * under a time partition in a VSG.
+   */
+  private void filterUnseqResource(List<TsFileResource> unseqResources) {
+    for (TsFileResource resource : unseqResources) {
+      if (resource.isCompacting() || resource.isCompactionCandidate() || !resource.isClosed()) {
+        return;
+      } else if (!resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
+        this.unseqFiles.add(resource);
+      }
+    }
   }
 
   public CrossSpaceMergeResource(
       Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long ttlLowerBound) {
     this.ttlLowerBound = ttlLowerBound;
-    this.seqFiles = seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
-    this.unseqFiles = unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
+    this.seqFiles = seqFiles.stream().filter(this::filterSeqResource).collect(Collectors.toList());
+    filterUnseqResource(unseqFiles);
   }
 
   public void clear() throws IOException {

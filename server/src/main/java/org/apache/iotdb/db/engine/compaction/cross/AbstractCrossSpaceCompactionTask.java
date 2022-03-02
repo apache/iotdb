@@ -58,23 +58,25 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
   @Override
   public boolean checkValidAndSetMerging() {
     for (TsFileResource resource : selectedSequenceFiles) {
-      if (resource.isMerging() || !resource.isClosed() || !resource.getTsFile().exists()) {
+      if (resource.isCompacting() || !resource.isClosed() || !resource.getTsFile().exists()) {
         return false;
       }
     }
 
     for (TsFileResource resource : selectedUnsequenceFiles) {
-      if (resource.isMerging() || !resource.isClosed() || !resource.getTsFile().exists()) {
+      if (resource.isCompacting() || !resource.isClosed() || !resource.getTsFile().exists()) {
         return false;
       }
     }
 
     for (TsFileResource resource : selectedSequenceFiles) {
-      resource.setMerging(true);
+      resource.setCompacting(true);
+      resource.setCompactionCandidate(false);
     }
 
     for (TsFileResource resource : selectedUnsequenceFiles) {
-      resource.setMerging(true);
+      resource.setCompacting(true);
+      resource.setCompactionCandidate(false);
     }
 
     return true;
@@ -91,5 +93,11 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
         .append(" , unseq file num is ")
         .append(selectedUnsequenceFiles.size())
         .toString();
+  }
+
+  @Override
+  public void resetCompactionCandidateStatusForAllSourceFiles() {
+    selectedSequenceFiles.forEach(x -> x.setCompactionCandidate(false));
+    selectedUnsequenceFiles.forEach(x -> x.setCompactionCandidate(false));
   }
 }
