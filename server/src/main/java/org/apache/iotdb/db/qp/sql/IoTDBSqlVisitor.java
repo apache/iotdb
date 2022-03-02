@@ -2146,7 +2146,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitCreatePipeSink(IoTDBSqlParser.CreatePipeSinkContext ctx) {
     CreatePipeSinkOperator operator =
-        new CreatePipeSinkOperator(ctx.pipeSinkName.getText(), ctx.pipeSinkType.getText());
+        new CreatePipeSinkOperator(
+            StringEscapeUtils.unescapeJava(ctx.pipeSinkName.getText()),
+            StringEscapeUtils.unescapeJava(ctx.pipeSinkType.getText()));
     if (ctx.syncAttributeClauses() != null) {
       operator.setPipeSinkAttributes(parseSyncAttributeClauses(ctx.syncAttributeClauses()));
     }
@@ -2167,7 +2169,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitDropPipeSink(IoTDBSqlParser.DropPipeSinkContext ctx) {
-    DropPipeSinkOperator operator = new DropPipeSinkOperator(ctx.pipeSinkName.getText());
+    DropPipeSinkOperator operator =
+        new DropPipeSinkOperator(StringEscapeUtils.unescapeJava(ctx.pipeSinkName.getText()));
     return operator;
   }
 
@@ -2175,7 +2178,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitShowPipeSink(IoTDBSqlParser.ShowPipeSinkContext ctx) {
     ShowPipeSinkOperator operator = new ShowPipeSinkOperator();
     if (ctx.pipeSinkName != null) {
-      operator.setPipeSinkName(ctx.pipeSinkName.getText());
+      operator.setPipeSinkName(StringEscapeUtils.unescapeJava(ctx.pipeSinkName.getText()));
     }
     return operator;
   }
@@ -2189,7 +2192,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitCreatePipe(IoTDBSqlParser.CreatePipeContext ctx) throws SQLParserException {
     CreatePipeOperator operator =
-        new CreatePipeOperator(ctx.pipeName.getText(), ctx.pipeSinkName.getText());
+        new CreatePipeOperator(
+            StringEscapeUtils.unescapeJava(ctx.pipeName.getText()),
+            StringEscapeUtils.unescapeJava(ctx.pipeSinkName.getText()));
 
     if (ctx.selectStatement() != null) {
       parseSelectStatementForPipe(ctx.selectStatement(), operator);
@@ -2204,24 +2209,24 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitShowPipe(IoTDBSqlParser.ShowPipeContext ctx) {
     ShowPipeOperator operator = new ShowPipeOperator();
     if (ctx.pipeName != null) {
-      operator.setPipeName(ctx.pipeName.getText());
+      operator.setPipeName(StringEscapeUtils.unescapeJava(ctx.pipeName.getText()));
     }
     return operator;
   }
 
   @Override
   public Operator visitStopPipe(IoTDBSqlParser.StopPipeContext ctx) {
-    return new StopPipeOperator(ctx.pipeName.getText());
+    return new StopPipeOperator(StringEscapeUtils.unescapeJava(ctx.pipeName.getText()));
   }
 
   @Override
   public Operator visitStartPipe(IoTDBSqlParser.StartPipeContext ctx) {
-    return new StartPipeOperator(ctx.pipeName.getText());
+    return new StartPipeOperator(StringEscapeUtils.unescapeJava(ctx.pipeName.getText()));
   }
 
   @Override
   public Operator visitDropPipe(IoTDBSqlParser.DropPipeContext ctx) {
-    return new DropPipeOperator(ctx.pipeName.getText());
+    return new DropPipeOperator(StringEscapeUtils.unescapeJava(ctx.pipeName.getText()));
   }
 
   private void parseSelectStatementForPipe(
@@ -2295,7 +2300,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitShowPipeServer(IoTDBSqlParser.ShowPipeServerContext ctx) {
     if (ctx.pipeName != null) {
-      return new ShowPipeServerOperator(ctx.pipeName.getText(), SQLConstant.TOK_SHOW_PIPE_SERVER);
+      return new ShowPipeServerOperator(
+          StringEscapeUtils.unescapeJava(ctx.pipeName.getText()), SQLConstant.TOK_SHOW_PIPE_SERVER);
     } else {
       return new ShowPipeServerOperator(SQLConstant.TOK_SHOW_PIPE_SERVER);
     }
