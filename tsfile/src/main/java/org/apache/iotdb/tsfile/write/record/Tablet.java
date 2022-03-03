@@ -63,8 +63,6 @@ public class Tablet {
   public int rowSize;
   /** the maximum number of rows for this tablet */
   private final int maxRowNumber;
-  /** whether this tablet store data of aligned timeseries or not */
-  private boolean isAligned;
 
   /**
    * Return a tablet with default specified row number. This is the standard constructor (all Tablet
@@ -300,13 +298,5 @@ public class Tablet {
         throw new UnSupportedDataTypeException(String.format(NOT_SUPPORT_DATATYPE, dataType));
     }
     return valueOccupation;
-  }
-
-  public boolean isAligned() {
-    return isAligned;
-  }
-
-  public void setAligned(boolean aligned) {
-    isAligned = aligned;
   }
 }

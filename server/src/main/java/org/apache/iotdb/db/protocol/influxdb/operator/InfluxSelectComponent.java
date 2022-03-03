@@ -19,20 +19,16 @@
 package org.apache.iotdb.db.protocol.influxdb.operator;
 
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
-import org.apache.iotdb.db.protocol.influxdb.expression.InfluxResultColumn;
-import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxFunctionExpression;
-import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxNodeExpression;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
 
 /** this class maintains information from select clause. */
 public final class InfluxSelectComponent
     extends org.apache.iotdb.db.qp.logical.crud.SelectComponent {
-
-  private List<InfluxResultColumn> influxInfluxResultColumns = new ArrayList<>();
 
   private boolean hasAggregationFunction = false;
   private boolean hasSelectorFunction = false;
@@ -45,10 +41,10 @@ public final class InfluxSelectComponent
     super((ZoneId) null);
   }
 
-  public void addResultColumn(InfluxResultColumn influxResultColumn) {
-    Expression expression = influxResultColumn.getExpression();
-    if (expression instanceof InfluxFunctionExpression) {
-      String functionName = ((InfluxFunctionExpression) expression).getFunctionName();
+  public void addResultColumn(ResultColumn resultColumn) {
+    Expression expression = resultColumn.getExpression();
+    if (expression instanceof FunctionExpression) {
+      String functionName = ((FunctionExpression) expression).getFunctionName();
       if (InfluxSQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase())) {
         if (hasFunction) {
           hasMoreFunction = true;
@@ -66,18 +62,10 @@ public final class InfluxSelectComponent
         hasAggregationFunction = true;
       }
     }
-    if (expression instanceof InfluxNodeExpression) {
+    if (expression instanceof TimeSeriesOperand) {
       hasCommonQuery = true;
     }
-    influxInfluxResultColumns.add(influxResultColumn);
-  }
-
-  public List<InfluxResultColumn> getInfluxResultColumns() {
-    return influxInfluxResultColumns;
-  }
-
-  public void setInfluxResultColumns(List<InfluxResultColumn> influxResultColumns) {
-    this.influxInfluxResultColumns = influxResultColumns;
+    resultColumns.add(resultColumn);
   }
 
   public boolean isHasAggregationFunction() {

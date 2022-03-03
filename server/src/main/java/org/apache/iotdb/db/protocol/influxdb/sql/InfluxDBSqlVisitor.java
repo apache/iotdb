@@ -18,34 +18,46 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.sql;
 
-import org.apache.iotdb.db.protocol.influxdb.expression.InfluxResultColumn;
-import org.apache.iotdb.db.protocol.influxdb.expression.binary.*;
-import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxFunctionExpression;
-import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxNegationExpression;
-import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxNodeExpression;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.protocol.influxdb.operator.*;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.logical.crud.FromComponent;
+import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
+import org.apache.iotdb.db.qp.sql.InfluxDBSqlParser;
+import org.apache.iotdb.db.qp.sql.InfluxDBSqlParserBaseVisitor;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
+import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
+import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
+import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.NegationExpression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
-public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<InfluxOperator> {
+public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<Operator> {
 
   private InfluxQueryOperator queryOp;
 
   @Override
-  public InfluxOperator visitSingleStatement(InfluxDBSqlParser.SingleStatementContext ctx) {
+  public Operator visitSingleStatement(InfluxDBSqlParser.SingleStatementContext ctx) {
     return visit(ctx.statement());
   }
 
   @Override
-  public InfluxOperator visitSelectStatement(InfluxDBSqlParser.SelectStatementContext ctx) {
+  public Operator visitSelectStatement(InfluxDBSqlParser.SelectStatementContext ctx) {
     queryOp = new InfluxQueryOperator();
     parseSelectClause(ctx.selectClause());
     parseFromClause(ctx.fromClause());
     if (ctx.whereClause() != null) {
-      InfluxWhereComponent influxWhereComponent = parseWhereClause(ctx.whereClause());
-      queryOp.setWhereComponent(influxWhereComponent);
+      WhereComponent whereComponent = parseWhereClause(ctx.whereClause());
+      queryOp.setWhereComponent(whereComponent);
     }
     return queryOp;
   }
@@ -59,30 +71,30 @@ public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<InfluxOpera
   }
 
   private void parseFromClause(InfluxDBSqlParser.FromClauseContext fromClause) {
-    InfluxFromComponent influxFromComponent = new InfluxFromComponent();
+    FromComponent fromComponent = new FromComponent();
 
     for (InfluxDBSqlParser.NodeNameContext nodeName : fromClause.nodeName()) {
-      influxFromComponent.addNodeName(nodeName.getText());
+      fromComponent.addPrefixTablePath(new PartialPath(nodeName.getText(), false));
     }
-    queryOp.setFromComponent(influxFromComponent);
+    queryOp.setFromComponent(fromComponent);
   }
 
-  private InfluxWhereComponent parseWhereClause(InfluxDBSqlParser.WhereClauseContext ctx) {
-    InfluxFilterOperator whereOp = new InfluxFilterOperator();
+  private WhereComponent parseWhereClause(InfluxDBSqlParser.WhereClauseContext ctx) {
+    FilterOperator whereOp = new FilterOperator();
     whereOp.addChildOperator(parseOrExpression(ctx.orExpression()));
-    return new InfluxWhereComponent(whereOp.getChildren().get(0));
+    return new WhereComponent(whereOp.getChildren().get(0));
   }
 
-  private InfluxFilterOperator parseOrExpression(InfluxDBSqlParser.OrExpressionContext ctx) {
+  private FilterOperator parseOrExpression(InfluxDBSqlParser.OrExpressionContext ctx) {
     if (ctx.andExpression().size() == 1) {
       return parseAndExpression(ctx.andExpression(0));
     }
-    InfluxFilterOperator binaryOp = new InfluxFilterOperator(FilterConstant.FilterType.KW_OR);
+    FilterOperator binaryOp = new FilterOperator(FilterConstant.FilterType.KW_OR);
     if (ctx.andExpression().size() > 2) {
       binaryOp.addChildOperator(parseAndExpression(ctx.andExpression(0)));
       binaryOp.addChildOperator(parseAndExpression(ctx.andExpression(1)));
       for (int i = 2; i < ctx.andExpression().size(); i++) {
-        InfluxFilterOperator operator = new InfluxFilterOperator(FilterConstant.FilterType.KW_OR);
+        FilterOperator operator = new FilterOperator(FilterConstant.FilterType.KW_OR);
         operator.addChildOperator(binaryOp);
         operator.addChildOperator(parseAndExpression(ctx.andExpression(i)));
         binaryOp = operator;
@@ -95,17 +107,17 @@ public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<InfluxOpera
     return binaryOp;
   }
 
-  private InfluxFilterOperator parseAndExpression(InfluxDBSqlParser.AndExpressionContext ctx) {
+  private FilterOperator parseAndExpression(InfluxDBSqlParser.AndExpressionContext ctx) {
     if (ctx.predicate().size() == 1) {
       return parsePredicate(ctx.predicate(0));
     }
-    InfluxFilterOperator binaryOp = new InfluxFilterOperator(FilterConstant.FilterType.KW_AND);
+    FilterOperator binaryOp = new FilterOperator(FilterConstant.FilterType.KW_AND);
     int size = ctx.predicate().size();
     if (size > 2) {
       binaryOp.addChildOperator(parsePredicate(ctx.predicate(0)));
       binaryOp.addChildOperator(parsePredicate(ctx.predicate(1)));
       for (int i = 2; i < size; i++) {
-        InfluxFilterOperator op = new InfluxFilterOperator(FilterConstant.FilterType.KW_AND);
+        FilterOperator op = new FilterOperator(FilterConstant.FilterType.KW_AND);
         op.addChildOperator(binaryOp);
         op.addChildOperator(parsePredicate(ctx.predicate(i)));
         binaryOp = op;
@@ -118,9 +130,9 @@ public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<InfluxOpera
     return binaryOp;
   }
 
-  private InfluxFilterOperator parsePredicate(InfluxDBSqlParser.PredicateContext ctx) {
+  private FilterOperator parsePredicate(InfluxDBSqlParser.PredicateContext ctx) {
     if (ctx.OPERATOR_NOT() != null) {
-      InfluxFilterOperator notOp = new InfluxFilterOperator(FilterConstant.FilterType.KW_NOT);
+      FilterOperator notOp = new FilterOperator(FilterConstant.FilterType.KW_NOT);
       notOp.addChildOperator(parseOrExpression(ctx.orExpression()));
       return notOp;
     } else if (ctx.LR_BRACKET() != null && ctx.OPERATOR_NOT() == null) {
@@ -140,56 +152,65 @@ public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<InfluxOpera
     }
   }
 
-  private InfluxResultColumn parseResultColumn(
+  private ResultColumn parseResultColumn(
       InfluxDBSqlParser.ResultColumnContext resultColumnContext) {
-    return new InfluxResultColumn(
+    return new ResultColumn(
         parseExpression(resultColumnContext.expression()),
-        resultColumnContext.AS() == null ? null : resultColumnContext.ID().getText());
+        resultColumnContext.AS() == null ? null : resultColumnContext.identifier().getText());
   }
 
   private Expression parseExpression(InfluxDBSqlParser.ExpressionContext context) {
-    // unary
-    if (context.functionName != null) {
-      return parseFunctionExpression(context);
-    }
-    if (context.nodeName() != null) {
-      return new InfluxNodeExpression(context.nodeName().getText());
+    // LR_BRACKET unaryInBracket=expression RR_BRACKET
+    if (context.unaryInBracket != null) {
+      return parseExpression(context.unaryInBracket);
     }
 
-    if (context.literal != null) {
-      return new InfluxNodeExpression(context.literal.getText());
-    }
-    if (context.unary != null) {
+    // (PLUS | MINUS) unaryAfterSign=expression
+    if (context.unaryAfterSign != null) {
       return context.MINUS() != null
-          ? new InfluxNegationExpression(parseExpression(context.expression(0)))
+          ? new NegationExpression(parseExpression(context.expression(0)))
           : parseExpression(context.expression(0));
     }
 
-    // binary
-    Expression leftExpression = parseExpression(context.leftExpression);
-    Expression rightExpression = parseExpression(context.rightExpression);
-    if (context.STAR() != null) {
-      return new InfluxMultiplicationExpression(leftExpression, rightExpression);
+    // leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
+    // leftExpression=expression (PLUS | MINUS) rightExpression=expression
+    if (context.leftExpression != null && context.rightExpression != null) {
+      Expression leftExpression = parseExpression(context.leftExpression);
+      Expression rightExpression = parseExpression(context.rightExpression);
+      if (context.STAR() != null) {
+        return new MultiplicationExpression(leftExpression, rightExpression);
+      }
+      if (context.DIV() != null) {
+        return new DivisionExpression(leftExpression, rightExpression);
+      }
+      if (context.MOD() != null) {
+        return new ModuloExpression(leftExpression, rightExpression);
+      }
+      if (context.PLUS() != null) {
+        return new AdditionExpression(leftExpression, rightExpression);
+      }
+      if (context.MINUS() != null) {
+        return new SubtractionExpression(leftExpression, rightExpression);
+      }
     }
-    if (context.DIV() != null) {
-      return new InfluxDivisionExpression(leftExpression, rightExpression);
+
+    // functionName=nodeName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
+    if (context.functionName != null) {
+      return parseFunctionExpression(context);
     }
-    if (context.MOD() != null) {
-      return new InfluxModuloExpression(leftExpression, rightExpression);
+
+    // nodeName || constant
+    if (context.nodeName() != null || context.constant() != null) {
+      return new TimeSeriesOperand(new PartialPath(context.nodeName().getText(), false));
     }
-    if (context.PLUS() != null) {
-      return new InfluxAdditionExpression(leftExpression, rightExpression);
-    }
-    if (context.MINUS() != null) {
-      return new InfluxSubtractionExpression(leftExpression, rightExpression);
-    }
+
     throw new UnsupportedOperationException();
   }
 
   private Expression parseFunctionExpression(InfluxDBSqlParser.ExpressionContext functionClause) {
 
-    InfluxFunctionExpression functionExpression =
-        new InfluxFunctionExpression(functionClause.functionName.getText());
+    FunctionExpression functionExpression =
+        new FunctionExpression(functionClause.functionName.getText());
 
     // expressions
     for (InfluxDBSqlParser.ExpressionContext expression : functionClause.expression()) {
@@ -252,23 +273,23 @@ public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<InfluxOpera
             timestampStr));
   }
 
-  private static InfluxFilterOperator parseBasicFunctionOperator(
-      InfluxDBSqlParser.PredicateContext ctx, String keyName) {
-    InfluxBasicFunctionOperator basic;
+  private static FilterOperator parseBasicFunctionOperator(
+      InfluxDBSqlParser.PredicateContext ctx, String pathName) {
+    BasicFunctionOperator basic;
     if (ctx.constant().dateExpression() != null) {
-      if (!keyName.equals(SQLConstant.RESERVED_TIME)) {
+      if (!pathName.equals(SQLConstant.RESERVED_TIME)) {
         throw new IllegalArgumentException("Date can only be used to time");
       }
       basic =
-          new InfluxBasicFunctionOperator(
+          new BasicFunctionOperator(
               FilterConstant.lexerToFilterType.get(ctx.comparisonOperator().type.getType()),
-              keyName,
+              new PartialPath(pathName, false),
               Long.toString(parseDateExpression(ctx.constant().dateExpression())));
     } else {
       basic =
-          new InfluxBasicFunctionOperator(
+          new BasicFunctionOperator(
               FilterConstant.lexerToFilterType.get(ctx.comparisonOperator().type.getType()),
-              keyName,
+              new PartialPath(pathName, false),
               ctx.constant().getText());
     }
     return basic;

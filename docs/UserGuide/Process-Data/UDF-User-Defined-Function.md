@@ -578,7 +578,7 @@ When you have prepared the UDF source code, test cases, and instructions, you ar
 
 ## Known Implementation UDF Libraries
 
-+ [IoTDB-Quality](https://thulab.github.io/iotdb-quality), a UDF library about data quality, including data profiling, data quality evalution and data repairing, etc.
++ [IoTDB-Quality](https://iotdb.apache.org/UserGuide/Master/UDF-Library/Quick-Start.html ), a UDF library about data quality, including data profiling, data quality evalution and data repairing, etc.
 
 
 ## Q&A

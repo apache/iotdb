@@ -19,35 +19,32 @@
 
 package org.apache.iotdb.db.protocol.influxdb.constant;
 
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
 /** this class contains several constants used in SQL. */
-public class InfluxSQLConstant {
+public class InfluxSQLConstant extends SQLConstant {
 
-  public static final String STAR = "*";
-  public static final String RESERVED_TIME = "time";
-  public static final String NOW_FUNC = "now()";
   public static final String MAX = "max";
   public static final String MIN = "min";
   public static final String FIRST = "first";
-  public static final String LAST = "last";
-  public static final String COUNT = "count";
   public static final String MEAN = "mean";
   public static final String MEDIAN = "median";
   public static final String MODE = "mode";
   public static final String SPREAD = "spread";
   public static final String STDDEV = "stddev";
-  public static final String SUM = "sum";
   private static final Set<String> NATIVE_FUNCTION_NAMES =
       new HashSet<>(
           Arrays.asList(MIN, MAX, FIRST, LAST, MEAN, COUNT, MEDIAN, MODE, SPREAD, STDDEV, SUM));
   private static final Set<String> NATIVE_SELECTOR_FUNCTION_NAMES =
       new HashSet<>(Arrays.asList(MIN, MAX, FIRST, LAST));
 
-  private InfluxSQLConstant() {
+  public InfluxSQLConstant() throws InstantiationException {
     // forbidding instantiation
+    super();
   }
 
   public static Set<String> getNativeFunctionNames() {
