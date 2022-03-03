@@ -20,6 +20,7 @@ package org.apache.iotdb.db.newsync.receiver.recovery;
 
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
+import org.apache.iotdb.db.newsync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
 
 import java.io.BufferedWriter;
@@ -29,13 +30,16 @@ import java.io.IOException;
 
 public class ReceiverLog {
   private BufferedWriter bw;
+  private BufferedWriter msg;
 
   public void init() throws IOException {
     File logFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_LOG_NAME);
+    File msgFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_MSG_LOG_NAME);
     if (!logFile.getParentFile().exists()) {
       logFile.getParentFile().mkdirs();
     }
     bw = new BufferedWriter(new FileWriter(logFile, true));
+    msg = new BufferedWriter(new FileWriter(msgFile, true));
   }
 
   public void startPipeServer() throws IOException {
@@ -72,6 +76,25 @@ public class ReceiverLog {
     writeLog(pipeName, remoteIp, PipeStatus.DROP);
   }
 
+  public void writePipeMsg(String pipeIdentifier, PipeMessage pipeMessage) throws IOException {
+    if (msg == null) {
+      init();
+    }
+    msg.write(
+        String.format("%s,%s,%s", pipeIdentifier, pipeMessage.getType(), pipeMessage.getMsg()));
+    msg.newLine();
+    msg.flush();
+  }
+
+  public void readPipeMsg(String pipeIdentifier) throws IOException {
+    if (msg == null) {
+      init();
+    }
+    msg.write(String.format("%s,read", pipeIdentifier));
+    msg.newLine();
+    msg.flush();
+  }
+
   private void writeLog(String pipeName, String remoteIp, PipeStatus status, long time)
       throws IOException {
     if (bw == null) {
@@ -93,5 +116,6 @@ public class ReceiverLog {
 
   public void close() throws IOException {
     bw.close();
+    msg.close();
   }
 }

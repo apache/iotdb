@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
+import org.apache.iotdb.db.newsync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
 import org.apache.iotdb.db.service.ServiceType;
 
@@ -29,37 +30,62 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ReceiverLogAnalyzer {
   private static final Logger logger = LoggerFactory.getLogger(ReceiverLogAnalyzer.class);
-  private static boolean pipeServerEnable =
-      false; // record recovery result of receiver server status
-  private static Map<String, Map<String, PipeInfo>> pipeInfoMap =
-      new HashMap<>(); // record recovery result of receiver server status
+  // record recovery result of receiver server status
+  private static boolean pipeServerEnable = false;
+  private static Map<String, Map<String, PipeInfo>> pipeInfoMap = new ConcurrentHashMap<>();
+  private static Map<String, List<PipeMessage>> pipeMessageMap = new ConcurrentHashMap<>();
 
   public static void scan() throws StartupException {
     logger.info("Start to recover all sync state for sync receiver.");
-    pipeInfoMap = new HashMap<>();
+    pipeInfoMap = new ConcurrentHashMap<>();
+    pipeMessageMap = new ConcurrentHashMap<>();
     pipeServerEnable = false;
-    File logFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_LOG_NAME);
-    try (BufferedReader loadReader = new BufferedReader(new FileReader(logFile))) {
+    File serviceLogFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_LOG_NAME);
+    try (BufferedReader loadReader = new BufferedReader(new FileReader(serviceLogFile))) {
       String line;
       int lineNum = 0;
       while ((line = loadReader.readLine()) != null) {
         lineNum++;
         try {
-          analyzeLog(line);
+          analyzeServiceLog(line);
         } catch (Exception e) {
-          logger.error("Receiver log recovery error: log file parse error at line " + lineNum);
+          logger.error(
+              "Receiver service log recovery error: log file parse error at line " + lineNum);
           logger.error(e.getMessage());
           throw new StartupException(
-              ServiceType.RECEIVER_SERVICE.getName(), "log file recover error at line " + lineNum);
+              ServiceType.RECEIVER_SERVICE.getName(),
+              "Receiver service log file recover error at line " + lineNum);
         }
       }
     } catch (IOException e) {
-      logger.info("Receiver log file not found");
+      logger.info("Receiver service log file not found");
+    }
+    File msgLogFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_MSG_LOG_NAME);
+    try (BufferedReader loadReader = new BufferedReader(new FileReader(msgLogFile))) {
+      String line;
+      int lineNum = 0;
+      while ((line = loadReader.readLine()) != null) {
+        lineNum++;
+        try {
+          analyzeMsgLog(line);
+        } catch (Exception e) {
+          logger.error("Receiver msg log recovery error: log file parse error at line " + lineNum);
+          logger.error(e.getMessage());
+          throw new StartupException(
+              ServiceType.RECEIVER_SERVICE.getName(),
+              "Receiver msg log file recover error at line " + lineNum);
+        }
+      }
+    } catch (IOException e) {
+      logger.info("Receiver msg log file not found");
     }
   }
 
@@ -71,12 +97,16 @@ public class ReceiverLogAnalyzer {
     return pipeInfoMap;
   }
 
+  public static Map<String, List<PipeMessage>> getPipeMessageMap() {
+    return pipeMessageMap;
+  }
+
   /**
-   * parse log line and load result
+   * parse service log line and load result
    *
    * @param logLine log line
    */
-  private static void analyzeLog(String logLine) {
+  private static void analyzeServiceLog(String logLine) {
     if (logLine.equals("on")) {
       pipeServerEnable = true;
     } else if (logLine.equals("off")) {
@@ -101,6 +131,24 @@ public class ReceiverLogAnalyzer {
       } else {
         pipeInfoMap.get(pipeName).get(remoteIp).setStatus(status);
       }
+    }
+  }
+
+  /**
+   * parse message log line and load result
+   *
+   * @param logLine log line
+   */
+  private static void analyzeMsgLog(String logLine) {
+    String[] items = logLine.split(",");
+    String pipeIdentifier = items[0];
+    if (items.length == 3) {
+      // write
+      PipeMessage message = new PipeMessage(PipeMessage.MsgType.valueOf(items[1]), items[2]);
+      pipeMessageMap.computeIfAbsent(pipeIdentifier, i -> new ArrayList<>()).add(message);
+    } else {
+      // read
+      pipeMessageMap.remove(pipeIdentifier);
     }
   }
 }

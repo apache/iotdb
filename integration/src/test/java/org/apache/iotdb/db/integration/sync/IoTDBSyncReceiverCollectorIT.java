@@ -22,13 +22,13 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.newsync.conf.BufferedPipeDataBlockingQueue;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
+import org.apache.iotdb.db.newsync.pipedata.queue.BufferedPipeDataQueue;
 import org.apache.iotdb.db.newsync.receiver.collector.Collector;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -50,9 +50,7 @@ import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -120,22 +118,18 @@ public class IoTDBSyncReceiverCollectorIT {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.envSetUp();
 
-    // 2. prepare pipelog and .collector to test fail recovery
+    // 2. prepare pipelog and pipeDataQueue
     if (!pipeLogDir1.exists()) {
       pipeLogDir1.mkdirs();
     }
-    File pipeLog1 = new File(pipeLogDir1.getPath(), String.valueOf(System.currentTimeMillis()));
-    File collectFile1 = new File(pipeLog1.getPath() + SyncConstant.COLLECTOR_SUFFIX);
-    DataOutputStream pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog1, false));
-    DataOutputStream collectOutput =
-        new DataOutputStream(new FileOutputStream(collectFile1, false));
+    DataOutputStream outputStream =
+        new DataOutputStream(
+            new FileOutputStream(new File(pipeLogDir1, SyncConstant.COMMIT_LOG_NAME), true));
+    outputStream.writeLong(-1);
+    outputStream.close();
     int serialNum = 0;
-    for (int i = 0; i < 5; i++) {
-      // skip first 5 pipeData
-      PipeData pipeData = new TsFilePipeData("", serialNum++);
-      pipeData.serialize(pipeLogOutput);
-      collectOutput.writeInt(i);
-    }
+    File pipeLog1 = new File(pipeLogDir1.getPath(), SyncConstant.getPipeLogName(serialNum));
+    DataOutputStream pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog1, false));
     List<PhysicalPlan> planList = new ArrayList<>();
     planList.add(new SetStorageGroupPlan(new PartialPath("root.vehicle")));
     planList.add(
@@ -183,18 +177,21 @@ public class IoTDBSyncReceiverCollectorIT {
       pipeData.serialize(pipeLogOutput);
     }
     pipeLogOutput.close();
-    collectOutput.close();
-    File pipeLog2 = new File(pipeLogDir1.getPath(), String.valueOf(System.currentTimeMillis() + 1));
+    File pipeLog2 = new File(pipeLogDir1.getPath(), SyncConstant.getPipeLogName(serialNum));
     pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog2, false));
     List<File> tsFiles = SyncTestUtil.getTsFilePaths(tmpDir);
     for (File f : tsFiles) {
       PipeData pipeData = new TsFilePipeData(f.getPath(), serialNum++);
       pipeData.serialize(pipeLogOutput);
     }
+    pipeLogOutput.close();
+
     Deletion deletion = new Deletion(new PartialPath("root.vehicle.**"), 0, 33, 38);
     PipeData pipeData = new DeletionPipeData(deletion, serialNum++);
-    pipeData.serialize(pipeLogOutput);
-    pipeLogOutput.close();
+    BufferedPipeDataQueue pipeDataQueue =
+        Collector.getPipeDataQueue(
+            SyncPathUtil.getReceiverPipeLogDir(pipeName1, remoteIp1, createdTime1));
+    pipeDataQueue.offer(pipeData);
 
     // 3. create and start collector
     Collector collector = new Collector();
@@ -206,12 +203,17 @@ public class IoTDBSyncReceiverCollectorIT {
     // 5. if all pipeData has been loaded into IoTDB, check result
     CountDownLatch latch = new CountDownLatch(1);
     ExecutorService es1 = Executors.newSingleThreadExecutor();
+    int finalSerialNum = serialNum - 1;
     es1.execute(
         () -> {
           while (true) {
-            File[] files = pipeLogDir1.listFiles();
-            if (files.length == 0) {
+            if (pipeDataQueue.getCommitSerialNumber() == finalSerialNum) {
               break;
+            }
+            try {
+              Thread.sleep(100);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
             }
           }
           latch.countDown();
@@ -261,7 +263,7 @@ public class IoTDBSyncReceiverCollectorIT {
     Thread.sleep(1000);
     Deletion deletion1 = new Deletion(new PartialPath("root.vehicle.**"), 0, 0, 99);
     PipeData pipeData1 = new DeletionPipeData(deletion1, serialNum++);
-    BufferedPipeDataBlockingQueue.getMock().offer(pipeData1);
+    pipeDataQueue.offer(pipeData1);
     Thread.sleep(1000);
     SyncTestUtil.checkResult(sql1, columnNames1, retArray1);
 
@@ -281,7 +283,7 @@ public class IoTDBSyncReceiverCollectorIT {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.envSetUp();
 
-    // 2. prepare pipelog and .collector to test fail recovery
+    // 2. prepare pipelog and pipeDataQueue
     if (!pipeLogDir1.exists()) {
       pipeLogDir1.mkdirs();
     }
@@ -289,18 +291,14 @@ public class IoTDBSyncReceiverCollectorIT {
       pipeLogDir2.mkdirs();
     }
     // 2.1 prepare for pipe1
-    File pipeLog1 = new File(pipeLogDir1.getPath(), String.valueOf(System.currentTimeMillis()));
-    File collectFile1 = new File(pipeLog1.getPath() + SyncConstant.COLLECTOR_SUFFIX);
+    DataOutputStream outputStream =
+        new DataOutputStream(
+            new FileOutputStream(new File(pipeLogDir1, SyncConstant.COMMIT_LOG_NAME), true));
+    outputStream.writeLong(-1);
+    outputStream.close();
+    int serialNum1 = 0;
+    File pipeLog1 = new File(pipeLogDir1.getPath(), SyncConstant.getPipeLogName(serialNum1));
     DataOutputStream pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog1, false));
-    DataOutputStream collectOutput =
-        new DataOutputStream(new FileOutputStream(collectFile1, false));
-    int serialNum = 0;
-    for (int i = 0; i < 5; i++) {
-      // skip first 5 pipeData
-      PipeData pipeData = new TsFilePipeData("", serialNum++);
-      pipeData.serialize(pipeLogOutput);
-      collectOutput.writeInt(i);
-    }
     List<PhysicalPlan> planList = new ArrayList<>();
     planList.add(new SetStorageGroupPlan(new PartialPath("root.vehicle")));
     planList.add(
@@ -320,35 +318,42 @@ public class IoTDBSyncReceiverCollectorIT {
             new PartialPath("root.vehicle.d1.s3"),
             new MeasurementSchema("s3", TSDataType.BOOLEAN, TSEncoding.PLAIN)));
     for (PhysicalPlan plan : planList) {
-      PipeData pipeData = new SchemaPipeData(plan, serialNum++);
+      PipeData pipeData = new SchemaPipeData(plan, serialNum1++);
       pipeData.serialize(pipeLogOutput);
     }
     pipeLogOutput.close();
-    collectOutput.close();
-    File pipeLog2 = new File(pipeLogDir1.getPath(), String.valueOf(System.currentTimeMillis() + 1));
+    File pipeLog2 = new File(pipeLogDir1.getPath(), SyncConstant.getPipeLogName(serialNum1));
     pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog2, false));
     List<File> tsFiles =
         SyncTestUtil.getTsFilePaths(new File(tmpDir, "sequence" + File.separator + "root.vehicle"));
     for (File f : tsFiles) {
-      PipeData pipeData = new TsFilePipeData(f.getPath(), serialNum++);
+      PipeData pipeData = new TsFilePipeData(f.getPath(), serialNum1++);
       pipeData.serialize(pipeLogOutput);
     }
     tsFiles =
         SyncTestUtil.getTsFilePaths(
             new File(tmpDir, "unsequence" + File.separator + "root.vehicle"));
     for (File f : tsFiles) {
-      PipeData pipeData = new TsFilePipeData(f.getPath(), serialNum++);
+      PipeData pipeData = new TsFilePipeData(f.getPath(), serialNum1++);
       pipeData.serialize(pipeLogOutput);
     }
     Deletion deletion = new Deletion(new PartialPath("root.vehicle.**"), 0, 33, 38);
-    PipeData pipeData = new DeletionPipeData(deletion, serialNum++);
+    PipeData pipeData = new DeletionPipeData(deletion, serialNum1++);
     pipeData.serialize(pipeLogOutput);
     pipeLogOutput.close();
 
     // 2.2 prepare for pipe2
-    serialNum = 0;
-    pipeLog1 = new File(pipeLogDir2.getPath(), String.valueOf(System.currentTimeMillis()));
+    int serialNum2 = 0;
+    outputStream =
+        new DataOutputStream(
+            new FileOutputStream(new File(pipeLogDir2, SyncConstant.COMMIT_LOG_NAME), true));
+    outputStream.writeLong(-1);
+    outputStream.close();
+    pipeLog1 = new File(pipeLogDir2.getPath(), SyncConstant.getPipeLogName(serialNum2));
     pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog1, false));
+    pipeData =
+        new SchemaPipeData(new SetStorageGroupPlan(new PartialPath("root.sg1")), serialNum2++);
+    pipeData.serialize(pipeLogOutput);
     pipeData =
         new SchemaPipeData(
             new CreateAlignedTimeSeriesPlan(
@@ -373,29 +378,32 @@ public class IoTDBSyncReceiverCollectorIT {
                     CompressionType.SNAPPY,
                     CompressionType.SNAPPY),
                 null),
-            serialNum++);
-    pipeData.serialize(pipeLogOutput);
-    pipeData =
-        new SchemaPipeData(new SetStorageGroupPlan(new PartialPath("root.sg1")), serialNum++);
+            serialNum2++);
     pipeData.serialize(pipeLogOutput);
     pipeLogOutput.close();
-    pipeLog2 = new File(pipeLogDir2.getPath(), String.valueOf(System.currentTimeMillis() + 1));
+    pipeLog2 = new File(pipeLogDir2.getPath(), SyncConstant.getPipeLogName(serialNum2));
     pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog2, false));
     tsFiles =
         SyncTestUtil.getTsFilePaths(new File(tmpDir, "sequence" + File.separator + "root.sg1"));
     for (File f : tsFiles) {
-      pipeData = new TsFilePipeData(f.getPath(), serialNum++);
+      pipeData = new TsFilePipeData(f.getPath(), serialNum2++);
       pipeData.serialize(pipeLogOutput);
     }
     tsFiles =
         SyncTestUtil.getTsFilePaths(new File(tmpDir, "unsequence" + File.separator + "root.sg1"));
     for (File f : tsFiles) {
-      pipeData = new TsFilePipeData(f.getPath(), serialNum++);
+      pipeData = new TsFilePipeData(f.getPath(), serialNum2++);
       pipeData.serialize(pipeLogOutput);
     }
     pipeLogOutput.close();
 
     // 3. create and start collector
+    BufferedPipeDataQueue pipeDataQueue1 =
+        Collector.getPipeDataQueue(
+            SyncPathUtil.getReceiverPipeLogDir(pipeName1, remoteIp1, createdTime1));
+    BufferedPipeDataQueue pipeDataQueue2 =
+        Collector.getPipeDataQueue(
+            SyncPathUtil.getReceiverPipeLogDir(pipeName2, remoteIp2, createdTime2));
     Collector collector = new Collector();
     collector.startCollect();
 
@@ -406,19 +414,29 @@ public class IoTDBSyncReceiverCollectorIT {
     // 5. if all pipeData has been loaded into IoTDB, check result
     CountDownLatch latch = new CountDownLatch(2);
     ExecutorService es1 = Executors.newSingleThreadExecutor();
+    int finalSerialNum1 = serialNum1 - 1;
+    int finalSerialNum2 = serialNum2 - 1;
     es1.execute(
         () -> {
           while (true) {
-            File[] files = pipeLogDir1.listFiles();
-            if (files.length == 0) {
+            if (pipeDataQueue1.getCommitSerialNumber() == finalSerialNum1) {
               break;
+            }
+            try {
+              Thread.sleep(100);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
             }
           }
           latch.countDown();
           while (true) {
-            File[] files = pipeLogDir2.listFiles();
-            if (files.length == 0) {
+            if (pipeDataQueue2.getCommitSerialNumber() == finalSerialNum2) {
               break;
+            }
+            try {
+              Thread.sleep(100);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
             }
           }
           latch.countDown();
@@ -468,8 +486,8 @@ public class IoTDBSyncReceiverCollectorIT {
     collector.stopPipe(pipeName2, remoteIp2, createdTime2);
     Thread.sleep(1000);
     Deletion deletion1 = new Deletion(new PartialPath("root.vehicle.**"), 0, 0, 99);
-    PipeData pipeData1 = new DeletionPipeData(deletion1, serialNum++);
-    BufferedPipeDataBlockingQueue.getMock().offer(pipeData1);
+    PipeData pipeData1 = new DeletionPipeData(deletion1, serialNum1++);
+    pipeDataQueue1.offer(pipeData1);
     Thread.sleep(1000);
     SyncTestUtil.checkResult(sql1, columnNames1, retArray1);
 
