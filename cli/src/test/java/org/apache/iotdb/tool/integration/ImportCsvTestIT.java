@@ -69,7 +69,10 @@ public class ImportCsvTestIT extends AbstractScript {
             "-pw",
             "root",
             "-f",
-            "./");
+            "./",
+            "&",
+            "exit",
+            "%^errorlevel%");
     testOutput(builder, output, 1);
   }
 
