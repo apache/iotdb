@@ -236,11 +236,20 @@ public class MemTableFlushTask {
               Pair<TVList, MeasurementSchema> encodingMessage =
                   (Pair<TVList, MeasurementSchema>) task;
               IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
-              writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
+              try {
+                writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
+              } catch (IllegalStateException e) {
+                LOGGER.error(
+                    "IllegalStateException in encoding stage, dataType is: {}",
+                    encodingMessage.right.getType(),
+                    e);
+                printTVList(encodingMessage.left, encodingMessage.right.getType());
+                throw e;
+              }
               seriesWriter.sealCurrentPage();
               seriesWriter.clearPageWriter();
               try {
-                ioTaskQueue.put(seriesWriter);
+                ioTaskQueue.put(new Pair<>((ChunkWriterImpl) seriesWriter, encodingMessage.left));
               } catch (InterruptedException e) {
                 LOGGER.error("Put task into ioTaskQueue Interrupted");
                 Thread.currentThread().interrupt();
@@ -285,13 +294,23 @@ public class MemTableFlushTask {
               this.writer.startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
             } else if (ioMessage instanceof TaskEnd) {
               break;
-            } else if (ioMessage instanceof IChunkWriter) {
-              ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
-              chunkWriter.writeToFileWriter(this.writer);
-            } else {
+            } else if (ioMessage instanceof EndChunkGroupIoTask) {
               this.writer.setMinPlanIndex(memTable.getMinPlanIndex());
               this.writer.setMaxPlanIndex(memTable.getMaxPlanIndex());
               this.writer.endChunkGroup();
+            } else {
+              Pair<ChunkWriterImpl, TVList> pair = (Pair<ChunkWriterImpl, TVList>) ioMessage;
+              ChunkWriterImpl chunkWriter = pair.left;
+              try {
+                chunkWriter.writeToFileWriter(this.writer);
+              } catch (IllegalStateException e) {
+                LOGGER.error(
+                    "IllegalStateException in io stage, dataType is: {}",
+                    chunkWriter.getDataType(),
+                    e);
+                printTVList(pair.right, chunkWriter.getDataType());
+                throw e;
+              }
             }
           } catch (IOException e) {
             LOGGER.error(
@@ -324,5 +343,42 @@ public class MemTableFlushTask {
     StartFlushGroupIOTask(String deviceId) {
       this.deviceId = deviceId;
     }
+  }
+
+  private static void printTVList(TVList tvList, TSDataType dataType) {
+    StringBuilder builder = new StringBuilder();
+    for (int i = 0; i < tvList.size(); i++) {
+      long time = tvList.getTime(i);
+
+      // skip duplicated data
+      if ((i + 1 < tvList.size() && (time == tvList.getTime(i + 1)))) {
+        continue;
+      }
+
+      switch (dataType) {
+        case BOOLEAN:
+          builder.append("{").append(time).append(",").append(tvList.getBoolean(i)).append("}");
+          break;
+        case INT32:
+          builder.append("{").append(time).append(",").append(tvList.getInt(i)).append("}");
+          break;
+        case INT64:
+          builder.append("{").append(time).append(",").append(tvList.getLong(i)).append("}");
+          break;
+        case FLOAT:
+          builder.append("{").append(time).append(",").append(tvList.getFloat(i)).append("}");
+          break;
+        case DOUBLE:
+          builder.append("{").append(time).append(",").append(tvList.getDouble(i)).append("}");
+          break;
+        case TEXT:
+          builder.append("{").append(time).append(",").append(tvList.getBinary(i)).append("}");
+          break;
+        default:
+          LOGGER.error("does not support data type: {}", dataType);
+          break;
+      }
+    }
+    LOGGER.error("TVList is: {}", builder);
   }
 }

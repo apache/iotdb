@@ -31,7 +31,7 @@ import java.nio.ByteBuffer;
 public class PageHeader {
 
   private int uncompressedSize;
-  private int compressedSize;
+  public int compressedSize;
   private Statistics statistics;
   private boolean modified;
 

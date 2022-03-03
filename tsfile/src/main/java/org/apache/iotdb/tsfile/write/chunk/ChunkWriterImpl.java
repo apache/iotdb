@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
@@ -40,6 +42,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
+import java.util.Arrays;
+import java.util.Collections;
 
 public class ChunkWriterImpl implements IChunkWriter {
 
@@ -308,7 +312,23 @@ public class ChunkWriterImpl implements IChunkWriter {
 
       // update statistics of this chunk
       numOfPages++;
+      if (this.statistics.getStartTime() == 0) {
+        logger.error(
+            "before merge statistics' startTime is 0: {}, pageWriter statistics: {}",
+            this.statistics,
+            pageWriter.getStatistics());
+        throw new IllegalStateException("before merge statistics' startTime is 0");
+      }
+
       this.statistics.mergeStatistics(pageWriter.getStatistics());
+
+      if (this.statistics.getStartTime() == 0) {
+        logger.error(
+            "after merge statistics' startTime is 0: {}, pageWriter statistics: {}",
+            this.statistics,
+            pageWriter.getStatistics());
+        throw new IllegalStateException("after merge statistics' startTime is 0");
+      }
     } catch (IOException e) {
       logger.error("meet error in pageWriter.writePageHeaderAndDataIntoBuff,ignore this page:", e);
     } finally {
@@ -448,6 +468,34 @@ public class ChunkWriterImpl implements IChunkWriter {
 
     // write all pages of this column
     writer.writeBytesToStream(pageBuffer);
+
+    ChunkHeader header =
+        new ChunkHeader(
+            measurementSchema.getMeasurementId(),
+            pageBuffer.size(),
+            measurementSchema.getType(),
+            compressor.getType(),
+            measurementSchema.getEncodingType(),
+            numOfPages);
+    try {
+      Chunk chunk =
+          new Chunk(
+              header,
+              ByteBuffer.wrap(pageBuffer.toByteArray()),
+              Collections.emptyList(),
+              statistics);
+      ChunkReader chunkReader = new ChunkReader(chunk, null);
+      while (chunkReader.hasNextSatisfiedPage()) {
+        chunkReader.nextPageData();
+      }
+    } catch (Throwable e) {
+      logger.error(
+          "Verify chunk failed, chunk statistics: {}, chunk header: {}, chunk data: {}",
+          this.statistics,
+          header,
+          Arrays.toString(pageBuffer.toByteArray()));
+      throw new IllegalStateException("Verify chunk failed");
+    }
 
     int dataSize = (int) (writer.getPos() - dataOffset);
     if (dataSize != pageBuffer.size()) {
