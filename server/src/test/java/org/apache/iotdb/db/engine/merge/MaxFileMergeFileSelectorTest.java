@@ -633,4 +633,73 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     Assert.assertEquals(3, result[0].size());
     Assert.assertEquals(2, result[1].size());
   }
+
+  @Test
+  public void testMultiFileOverlapWithOneFile()
+      throws IOException, WriteProcessException, MergeException {
+    List<TsFileResource> seqList = new ArrayList<>();
+    List<TsFileResource> unseqList = new ArrayList<>();
+    // 2 seq files [10, 20] [21, 40]
+    int seqFileNum = 2;
+    File file =
+        new File(
+            TestConstant.OUTPUT_DATA_DIR.concat(
+                1
+                    + "seq"
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 1
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + ".tsfile"));
+    TsFileResource firstResource = new TsFileResource(file);
+    firstResource.setClosed(true);
+    prepareFile(firstResource, 10, 10, 0);
+    seqList.add(firstResource);
+    file =
+        new File(
+            TestConstant.OUTPUT_DATA_DIR.concat(
+                2
+                    + "seq"
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 2
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + ".tsfile"));
+    TsFileResource secondResource = new TsFileResource(file);
+    secondResource.setClosed(true);
+    prepareFile(secondResource, 21, 20, 0);
+    seqList.add(secondResource);
+    int unseqFileNum = 2;
+    // 2 unseq files: [10, 13] [14, 34]
+    for (int i = 0; i < unseqFileNum; i++) {
+      file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  (3 + i)
+                      + "unseq"
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + (3 + i)
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setClosed(true);
+      unseqList.add(fileResource);
+    }
+    prepareFile(unseqList.get(0), 10, 3, 0);
+    prepareFile(unseqList.get(1), 14, 20, 10);
+
+    MergeResource resource = new MergeResource(seqList, unseqList);
+    IMergeFileSelector mergeFileSelector =
+        new MaxFileMergeFileSelector(resource, 500 * 1024 * 1024);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result[0].size());
+    Assert.assertEquals(2, result[1].size());
+  }
 }
