@@ -673,6 +673,7 @@ public class StorageGroupProcessor {
 
   private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) throws IOException {
     boolean needsCheckTsFile = true;
+    List<TsFileResource> resourcesToBeInserted = new ArrayList<>();
     for (int i = tsFiles.size() - 1; i >= 0; i--) {
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
@@ -694,7 +695,7 @@ public class StorageGroupProcessor {
           writer =
               recoverPerformer.recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
           tsFileResource.setClosed(true);
-          tsFileManagement.add(tsFileResource, isSeq);
+          resourcesToBeInserted.add(tsFileResource);
           continue;
         } else {
           writer =
@@ -769,7 +770,10 @@ public class StorageGroupProcessor {
           tsFileProcessor.getTsFileProcessorInfo().addTSPMemCost(chunkMetadataSize);
         }
       }
-      tsFileManagement.add(tsFileResource, isSeq);
+      resourcesToBeInserted.add(tsFileResource);
+    }
+    for (int i = resourcesToBeInserted.size() - 1; i >= 0; --i) {
+      tsFileManagement.add(resourcesToBeInserted.get(i), isSeq);
     }
   }
 
