@@ -34,7 +34,7 @@ public abstract class Log implements Comparable<Log> {
 
   // make this configurable or adaptive
   public static int DEFAULT_BUFFER_SIZE = 16 * 1024;
-  private long currLogIndex;
+  private volatile long currLogIndex = Long.MIN_VALUE;
   private long currLogTerm;
 
   // for async application

@@ -48,7 +48,10 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
@@ -72,7 +75,7 @@ public class LogDispatcher {
   RaftMember member;
   private ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
   private boolean useBatchInLogCatchUp = clusterConfig.isUseBatchInLogCatchUp();
-  List<BlockingQueue<SendLogRequest>> nodesLogQueues = new ArrayList<>();
+  Map<Node, BlockingQueue<SendLogRequest>> nodesLogQueues = new HashMap<>();
   ExecutorService executorService;
   private static ExecutorService serializationService =
       Executors.newFixedThreadPool(
@@ -90,7 +93,7 @@ public class LogDispatcher {
   void createQueueAndBindingThreads() {
     for (Node node : member.getAllNodes()) {
       if (!ClusterUtils.isNodeEquals(node, member.getThisNode())) {
-        nodesLogQueues.add(createQueueAndBindingThread(node));
+        nodesLogQueues.put(node, createQueueAndBindingThread(node));
       }
     }
   }
@@ -115,8 +118,8 @@ public class LogDispatcher {
 
     long startTime = Statistic.LOG_DISPATCHER_LOG_ENQUEUE.getOperationStartTime();
     request.getVotingLog().getLog().setEnqueueTime(System.nanoTime());
-    for (int i = 0; i < nodesLogQueues.size(); i++) {
-      BlockingQueue<SendLogRequest> nodeLogQueue = nodesLogQueues.get(i);
+    for (Entry<Node, BlockingQueue<SendLogRequest>> entry : nodesLogQueues.entrySet()) {
+      BlockingQueue<SendLogRequest> nodeLogQueue = entry.getValue();
       try {
         boolean addSucceeded;
         if (ClusterDescriptor.getInstance().getConfig().isWaitForSlowNode()) {
@@ -131,13 +134,17 @@ public class LogDispatcher {
 
         if (!addSucceeded) {
           logger.debug(
-              "Log queue[{}] of {} is full, ignore the request to this node", i, member.getName());
+              "Log queue[{}] of {} is full, ignore the request to this node",
+              entry.getKey(),
+              member.getName());
         } else {
           request.setEnqueueTime(System.nanoTime());
         }
       } catch (IllegalStateException e) {
         logger.debug(
-            "Log queue[{}] of {} is full, ignore the request to this node", i, member.getName());
+            "Log queue[{}] of {} is full, ignore the request to this node",
+            entry.getKey(),
+            member.getName());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
@@ -442,6 +449,9 @@ public class LogDispatcher {
       try {
         long operationStartTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
         for (int i = 0; i < retries; i++) {
+          if (client == null) {
+            client = member.getSyncClient(receiver);
+          }
           AppendEntryResult result = client.appendEntry(logRequest.appendEntryRequest);
           if (result.status == Response.RESPONSE_OUT_OF_WINDOW) {
             Thread.sleep(100);

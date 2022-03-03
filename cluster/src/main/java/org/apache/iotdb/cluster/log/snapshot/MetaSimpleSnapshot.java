@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
+import org.apache.iotdb.cluster.expr.ExprMember;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
@@ -236,6 +237,9 @@ public class MetaSimpleSnapshot extends Snapshot {
 
         synchronized (metaGroupMember.getLogManager()) {
           metaGroupMember.getLogManager().applySnapshot(snapshot);
+          if (metaGroupMember instanceof ExprMember) {
+            ((ExprMember) metaGroupMember).resetWindow(snapshot.lastLogIndex, snapshot.lastLogTerm);
+          }
         }
       }
     }

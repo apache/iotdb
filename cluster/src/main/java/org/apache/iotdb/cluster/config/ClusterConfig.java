@@ -185,6 +185,8 @@ public class ClusterConfig {
 
   private boolean useAsyncSequencing = true;
 
+  private int relaySenderNum = 8;
+
   /**
    * create a clusterConfig class. The internalIP will be set according to the server's hostname. If
    * there is something error for getting the ip of the hostname, then set the internalIp as
@@ -558,5 +560,13 @@ public class ClusterConfig {
 
   public void setUseAsyncSequencing(boolean useAsyncSequencing) {
     this.useAsyncSequencing = useAsyncSequencing;
+  }
+
+  public int getRelaySenderNum() {
+    return relaySenderNum;
+  }
+
+  public void setRelaySenderNum(int relaySenderNum) {
+    this.relaySenderNum = relaySenderNum;
   }
 }

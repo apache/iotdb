@@ -334,7 +334,7 @@ public class Timer {
      * method to avoid unnecessary calls when instrumenting is disabled.
      */
     public void calOperationCostTimeFromStart(long startTime) {
-      if (ENABLE_INSTRUMENTING && startTime != Long.MIN_VALUE) {
+      if (ENABLE_INSTRUMENTING && startTime != Long.MIN_VALUE && startTime != 0) {
         long consumed = System.nanoTime() - startTime;
         add(consumed);
         if (consumed >= warningThreshold && logger.isWarnEnabled()) {

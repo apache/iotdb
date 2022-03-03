@@ -956,7 +956,9 @@ public class MetaGroupMember extends RaftMember {
       addNodeLog.setNewNode(newNode);
 
       logManager.append(addNodeLog);
-      votingLogList.insert(votingLog);
+      if (getAllNodes().size() > 1) {
+        votingLogList.insert(votingLog);
+      }
     }
 
     int retryTime = 0;
@@ -1712,7 +1714,9 @@ public class MetaGroupMember extends RaftMember {
       removeNodeLog.setRemovedNode(target);
 
       logManager.append(removeNodeLog);
-      votingLogList.insert(votingLog);
+      if (getAllNodes().size() > 1) {
+        votingLogList.insert(votingLog);
+      }
     }
 
     int retryTime = 0;

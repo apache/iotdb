@@ -323,6 +323,21 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "wait_client_timeout_ms", String.valueOf(config.getWaitClientTimeoutMS()))));
 
+    config.setUseAsyncSequencing(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "use_async_sequencing", String.valueOf(config.isUseAsyncSequencing()))));
+
+    config.setUseIndirectBroadcasting(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "use_indirect_broadcasting", String.valueOf(config.isUseIndirectBroadcasting()))));
+
+    config.setRelaySenderNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "relay_sender_number", String.valueOf(config.getRelaySenderNum()))));
+
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));

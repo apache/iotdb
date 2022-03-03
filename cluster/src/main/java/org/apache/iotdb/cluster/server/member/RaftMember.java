@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogDispatcher;
 import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
 import org.apache.iotdb.cluster.log.LogParser;
+import org.apache.iotdb.cluster.log.LogRelay;
 import org.apache.iotdb.cluster.log.VotingLog;
 import org.apache.iotdb.cluster.log.catchup.CatchUpTask;
 import org.apache.iotdb.cluster.log.logtypes.FragmentedLog;
@@ -132,7 +133,6 @@ public abstract class RaftMember {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
   public static boolean USE_LOG_DISPATCHER = false;
-  public static boolean USE_INDIRECT_LOG_DISPATCHER = false;
   public static boolean ENABLE_WEAK_ACCEPTANCE = true;
   public static boolean ENABLE_COMMIT_RETURN = false;
   public static boolean USE_CRAFT = false;
@@ -279,6 +279,8 @@ public abstract class RaftMember {
 
   protected LogSequencer logSequencer;
 
+  protected LogRelay logRelay;
+
   protected RaftMember(
       String name,
       AsyncClientPool asyncPool,
@@ -345,6 +347,9 @@ public abstract class RaftMember {
     commitLogPool =
         Executors.newSingleThreadExecutor(
             new ThreadFactoryBuilder().setNameFormat(getName() + "-CommitLog%d").build());
+    if (ClusterDescriptor.getInstance().getConfig().isUseIndirectBroadcasting()) {
+      logRelay = new LogRelay(this);
+    }
   }
 
   public String getName() {
@@ -410,6 +415,10 @@ public abstract class RaftMember {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for commitLogPool to end", e);
       }
+    }
+
+    if (logRelay != null) {
+      logRelay.stop();
     }
     leader.set(ClusterConstant.EMPTY_NODE);
     catchUpService = null;
@@ -626,11 +635,11 @@ public abstract class RaftMember {
       throws UnknownLogTypeException {
     AppendEntryResult result = appendEntry(request);
     request.entry.rewind();
-    appendLogThreadPool.submit(() -> sendLogToSubFollowers(request, subFollowers));
+    logRelay.offer(request, subFollowers);
     return result;
   }
 
-  private void sendLogToSubFollowers(AppendEntryRequest request, List<Node> subFollowers) {
+  public void sendLogToSubFollowers(AppendEntryRequest request, List<Node> subFollowers) {
     request.setIsFromLeader(false);
     for (Node subFollower : subFollowers) {
       Client syncClient = null;
@@ -1162,7 +1171,9 @@ public abstract class RaftMember {
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
       logManager.append(log);
       votingLog = buildVotingLog(log);
-      votingLogList.insert(votingLog);
+      if (getAllNodes().size() > 1) {
+        votingLogList.insert(votingLog);
+      }
     }
     log.setCreateTime(System.nanoTime());
 
@@ -1612,7 +1623,7 @@ public abstract class RaftMember {
 
   public synchronized LogDispatcher getLogDispatcher() {
     if (logDispatcher == null) {
-      if (USE_INDIRECT_LOG_DISPATCHER) {
+      if (ClusterDescriptor.getInstance().getConfig().isUseIndirectBroadcasting()) {
         logDispatcher = new IndirectLogDispatcher(this);
       } else if (USE_CRAFT && allNodes.size() > 2) {
         logDispatcher = new FragmentedLogDispatcher(this);
@@ -1628,16 +1639,17 @@ public abstract class RaftMember {
     int stronglyAcceptedNodeNum = log.getStronglyAcceptedNodeIds().size();
     int weaklyAcceptedNodeNum = log.getWeaklyAcceptedNodeIds().size();
     int totalAccepted = stronglyAcceptedNodeNum + weaklyAcceptedNodeNum;
-    long nextTimeToPrint = 1000;
+    long nextTimeToPrint = 5000;
 
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;
-    while (stronglyAcceptedNodeNum < quorumSize
-        && (!ENABLE_WEAK_ACCEPTANCE
-            || (totalAccepted < quorumSize)
-            || votingLogList.size() > config.getMaxNumOfLogsInMem())
-        && alreadyWait < RaftServer.getWriteOperationTimeoutMS()
-        && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {
+    while (log.getLog().getCurrLogIndex() == Long.MIN_VALUE
+        || (stronglyAcceptedNodeNum < quorumSize
+            && (!ENABLE_WEAK_ACCEPTANCE
+                || (totalAccepted < quorumSize)
+                || votingLogList.size() > config.getMaxNumOfLogsInMem())
+            && alreadyWait < RaftServer.getWriteOperationTimeoutMS()
+            && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE))) {
       long singleWaitTime = 0;
       long singleWaitStart = System.nanoTime();
       try {
@@ -1645,7 +1657,6 @@ public abstract class RaftMember {
           log.getStronglyAcceptedNodeIds().wait(1);
         }
         singleWaitTime = (System.nanoTime() - singleWaitStart) / 1000000;
-        logger.debug("{} ends waiting", log);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Unexpected interruption when sending a log", e);
@@ -1695,11 +1706,12 @@ public abstract class RaftMember {
     int weaklyAcceptedNodeNum = log.getWeaklyAcceptedNodeIds().size();
     int totalAccepted = stronglyAcceptedNodeNum + weaklyAcceptedNodeNum;
 
-    if (stronglyAcceptedNodeNum < quorumSize
-        && (!ENABLE_WEAK_ACCEPTANCE
-            || (totalAccepted < quorumSize)
-            || votingLogList.size() > config.getMaxNumOfLogsInMem())
-        && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {
+    if (log.getLog().getCurrLogIndex() == Long.MIN_VALUE
+        || (stronglyAcceptedNodeNum < quorumSize
+            && (!ENABLE_WEAK_ACCEPTANCE
+                || (totalAccepted < quorumSize)
+                || votingLogList.size() > config.getMaxNumOfLogsInMem())
+            && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE))) {
       waitAppendResultLoop(log, quorumSize);
     }
 
@@ -2134,6 +2146,8 @@ public abstract class RaftMember {
       } finally {
         ClientUtils.putBackSyncClient(client);
       }
+    } else {
+      logger.debug("Skip sending {} because cannot get client of {}", log, node);
     }
   }
 

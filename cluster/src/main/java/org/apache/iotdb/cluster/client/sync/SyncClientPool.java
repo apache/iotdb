@@ -30,6 +30,8 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
@@ -90,13 +92,18 @@ public class SyncClientPool {
           try {
             client = syncClientFactory.getSyncClient(clusterNode, this);
           } catch (TTransportException e) {
-            logger.error("Cannot open transport for client {}", node, e);
+            if (!(e.getCause() instanceof ConnectException
+                || e.getCause() instanceof SocketTimeoutException)) {
+              logger.error("Cannot open transport for client {}", node, e);
+            }
             return null;
           }
           nodeClientNumMap.compute(
               clusterNode,
               (n, oldValue) -> {
-                if (oldValue == null) return 1;
+                if (oldValue == null) {
+                  return 1;
+                }
                 return oldValue + 1;
               });
           return client;

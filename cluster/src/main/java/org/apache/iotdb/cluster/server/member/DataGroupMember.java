@@ -625,8 +625,10 @@ public class DataGroupMember extends RaftMember {
 
       logManager.append(log);
       votingLog = buildVotingLog(log);
-      votingLogList.insert(votingLog);
-      logger.info("Send the close file request of {} to other nodes", log);
+      if (getAllNodes().size() > 1) {
+        votingLogList.insert(votingLog);
+        logger.info("Send the close file request of {} to other nodes", log);
+      }
     }
     try {
       return appendLogInGroup(votingLog);

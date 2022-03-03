@@ -62,7 +62,10 @@ public class LogCatchUpInBatchHandler implements AsyncMethodCallback<AppendEntry
     } else if (resp == RESPONSE_LOG_MISMATCH || resp == RESPONSE_WEAK_ACCEPT) {
       // this is not probably possible
       logger.error(
-          "{}: Log mismatch occurred when sending logs, whose size is {}", memberName, logs.size());
+          "{}: Log mismatch occurred when sending logs, whose size is {}, resp: {}",
+          memberName,
+          logs.size(),
+          resp);
       synchronized (appendSucceed) {
         appendSucceed.notifyAll();
       }

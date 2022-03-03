@@ -70,8 +70,10 @@ public class SynchronousSequencer implements LogSequencer {
 
       startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
       log.setCreateTime(System.nanoTime());
-      member.getVotingLogList().insert(sendLogRequest.getVotingLog());
-      member.getLogDispatcher().offer(sendLogRequest);
+      if (member.getAllNodes().size() > 1) {
+        member.getVotingLogList().insert(sendLogRequest.getVotingLog());
+        member.getLogDispatcher().offer(sendLogRequest);
+      }
       Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
     }
     return sendLogRequest;

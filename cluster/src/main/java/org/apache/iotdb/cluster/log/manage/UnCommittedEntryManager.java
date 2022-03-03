@@ -72,6 +72,20 @@ public class UnCommittedEntryManager {
     return -1;
   }
 
+  long maybeLastTerm() {
+    int entryNum = entries.size();
+    while (entryNum != 0) {
+      try {
+        return entries.get(entryNum - 1).getCurrLogTerm();
+      } catch (IndexOutOfBoundsException e) {
+        // the exception is thrown when there is a concurrent deletion, which is rare, so a retry
+        // is usually enough and it is not likely that we will get stuck here
+        entryNum = entries.size();
+      }
+    }
+    return -1;
+  }
+
   /**
    * Return the entry's term for given index. Note that the called should ensure index >= offset.
    *

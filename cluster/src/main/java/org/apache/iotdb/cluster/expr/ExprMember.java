@@ -79,8 +79,7 @@ public class ExprMember extends MetaGroupMember {
   public ExprMember(TProtocolFactory factory, Node thisNode, Coordinator coordinator)
       throws QueryProcessException {
     super(factory, thisNode, coordinator);
-    this.firstPosPrevIndex = logManager.getLastLogIndex();
-    this.prevTerms[0] = logManager.getLastLogTerm();
+    resetWindow(logManager.getLastLogIndex(), logManager.getLastLogTerm());
     bypassPool = Executors.newFixedThreadPool(LogDispatcher.bindingThreadNum);
   }
 
@@ -89,10 +88,19 @@ public class ExprMember extends MetaGroupMember {
     // do not start data groups in such experiments
   }
 
+  public void resetWindow(long firstPosPrevIndex, long firstPosPrevTerm) {
+    this.firstPosPrevIndex = firstPosPrevIndex;
+    this.prevTerms[0] = firstPosPrevTerm;
+    logWindow = new Log[windowCapacity];
+  }
+
   @Override
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     try {
       if (bypassRaft) {
+        if (allNodes.size() == 1) {
+          return StatusUtils.OK;
+        }
         CountDownLatch latch = new CountDownLatch(allNodes.size() / 2);
         int bufferSize = 4096;
         if (plan instanceof DummyPlan && !((DummyPlan) plan).isNeedForward()) {
@@ -130,7 +138,9 @@ public class ExprMember extends MetaGroupMember {
                     }));
           }
         }
-        latch.await();
+        if (allNodes.size() > 1) {
+          latch.await();
+        }
         return StatusUtils.OK;
       }
       long startTime = Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.getOperationStartTime();

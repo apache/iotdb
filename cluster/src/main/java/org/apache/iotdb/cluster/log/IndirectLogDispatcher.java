@@ -87,9 +87,9 @@ public class IndirectLogDispatcher extends LogDispatcher {
       }
     }
 
-    //    for (Node node : directToIndirectFollowerMap.keySet()) {
-    //      nodeLogQueues.add(createQueueAndBindingThread(node));
-    //    }
+    for (Node node : directToIndirectFollowerMap.keySet()) {
+      nodesLogQueues.put(node, createQueueAndBindingThread(node));
+    }
   }
 
   class DispatcherThread extends LogDispatcher.DispatcherThread {

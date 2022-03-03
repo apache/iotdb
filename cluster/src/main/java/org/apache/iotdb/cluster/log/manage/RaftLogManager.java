@@ -33,7 +33,6 @@ import org.apache.iotdb.cluster.log.StableEntryManager;
 import org.apache.iotdb.cluster.log.manage.serializable.LogManagerMeta;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.slf4j.Logger;
@@ -322,13 +321,11 @@ public abstract class RaftLogManager {
    * @return last entry's term
    */
   public long getLastLogTerm() {
-    long term = -1;
-    try {
-      term = getTerm(getLastLogIndex());
-    } catch (Exception e) {
-      logger.error("{}: unexpected error when getting the last term : {}", name, e.getMessage());
+    long last = getUnCommittedEntryManager().maybeLastTerm();
+    if (last != -1) {
+      return last;
     }
-    return term;
+    return getCommittedEntryManager().getLastTerm();
   }
 
   /**
@@ -637,7 +634,7 @@ public abstract class RaftLogManager {
             "{} should not go here, must be send to the follower, "
                 + "so the log has been serialized exclude single node mode",
             entry);
-        entry.setByteSize((int) RamUsageEstimator.sizeOf(entry));
+        // entry.setByteSize((int) RamUsageEstimator.sizeOf(entry));
       }
       newEntryMemSize += entry.getByteSize();
     }

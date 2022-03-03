@@ -108,8 +108,10 @@ public class AsynchronousSequencer implements LogSequencer {
         Statistic.LOG_DISPATCHER_FROM_RECEIVE_TO_CREATE.calOperationCostTimeFromStart(
             log.getReceiveTime());
         log.setCreateTime(System.nanoTime());
-        member.getVotingLogList().insert(sendLogRequest.getVotingLog());
-        member.getLogDispatcher().offer(sendLogRequest);
+        if (member.getAllNodes().size() > 1) {
+          member.getVotingLogList().insert(sendLogRequest.getVotingLog());
+          member.getLogDispatcher().offer(sendLogRequest);
+        }
         Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
         RAFT_SENDER_SEQUENCE_LOG.calOperationCostTimeFromStart(sequenceStartTime);
       }
@@ -130,6 +132,9 @@ public class AsynchronousSequencer implements LogSequencer {
         sequenceLogs(sendLogRequests);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
+        return;
+      } catch (Exception e) {
+        logger.error("Error in sequencer", e);
         return;
       }
     }

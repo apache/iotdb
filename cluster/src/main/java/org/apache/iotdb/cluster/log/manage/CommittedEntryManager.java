@@ -110,6 +110,17 @@ public class CommittedEntryManager {
     return getDummyIndex() + entries.size() - 1;
   }
 
+  Long getLastTerm() {
+    int lastIndex = entries.size() - 1;
+    while (true) {
+      try {
+        return entries.get(lastIndex).getCurrLogTerm();
+      } catch (IndexOutOfBoundsException e) {
+        lastIndex = entries.size() - 1;
+      }
+    }
+  }
+
   /**
    * Return the entries's size
    *

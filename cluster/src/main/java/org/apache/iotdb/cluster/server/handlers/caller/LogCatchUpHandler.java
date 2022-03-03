@@ -49,11 +49,20 @@ public class LogCatchUpHandler implements AsyncMethodCallback<AppendEntryResult>
   private String memberName;
   private RaftMember raftMember;
 
+  private void processStrongAccept() {
+    raftMember
+        .getVotingLogList()
+        .onStronglyAccept(log.getCurrLogIndex(), log.getCurrLogTerm(), follower.nodeIdentifier);
+  }
+
   @Override
   public void onComplete(AppendEntryResult response) {
     logger.debug("{}: Received a catch-up result of {} from {}", memberName, log, follower);
     long resp = response.status;
-    if (resp == RESPONSE_AGREE || resp == RESPONSE_STRONG_ACCEPT || resp == RESPONSE_WEAK_ACCEPT) {
+    if (resp == RESPONSE_AGREE || resp == RESPONSE_STRONG_ACCEPT) {
+      if (log.getCurrLogTerm() == raftMember.getTerm().get()) {
+        processStrongAccept();
+      }
       synchronized (appendSucceed) {
         appendSucceed.set(true);
         appendSucceed.notifyAll();
@@ -67,6 +76,11 @@ public class LogCatchUpHandler implements AsyncMethodCallback<AppendEntryResult>
         appendSucceed.set(true);
         appendSucceed.notifyAll();
       }
+    } else if (resp == RESPONSE_WEAK_ACCEPT) {
+      synchronized (appendSucceed) {
+        appendSucceed.notifyAll();
+      }
+      logger.warn("{}: Weak accept in {} catch-up with {}", memberName, follower, log);
     } else {
       // the follower's term has updated, which means a new leader is elected
       logger.debug("{}: Received a rejection because term is updated to: {}", memberName, resp);

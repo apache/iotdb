@@ -90,7 +90,7 @@ public class ExprServer extends MetaClusterServer {
     ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(50000);
     // ClusterDescriptor.getInstance().getConfig().setUseBatchInLogCatchUp(false);
     RaftMember.USE_LOG_DISPATCHER = true;
-    RaftMember.USE_INDIRECT_LOG_DISPATCHER = useIndirectDispatcher;
+    ClusterDescriptor.getInstance().getConfig().setUseIndirectBroadcasting(useIndirectDispatcher);
     LogDispatcher.bindingThreadNum = dispatcherThreadNum;
     LogDispatcher.maxBatchSize = maxBatchSize;
     ExprMember.bypassRaft = bypassRaft;
