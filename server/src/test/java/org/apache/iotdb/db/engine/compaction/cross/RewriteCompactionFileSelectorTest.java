@@ -801,7 +801,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     fileWriter.flushAllChunkGroups();
     fileWriter.close();
 
-    // unseq file: [6, 8]
+    // unseq file: [6, 14]
     File fourthFile =
         new File(
             TestConstant.OUTPUT_DATA_DIR.concat(
