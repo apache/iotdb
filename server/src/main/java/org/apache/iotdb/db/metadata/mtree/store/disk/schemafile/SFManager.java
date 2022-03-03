@@ -254,8 +254,6 @@ public class SFManager implements ISchemaFileManager {
     } catch (MetadataException e) {
       // throw wrapped exception since class above SFManager shall not perceive page or segment
       // inside schema file
-      // throw new MetadataException(
-      //     String.format("Node [%s] does not exists in schema file.", parent.getFullPath()));
       // TODO: same problem with getChildNode method
       return Collections.emptyIterator();
     }
@@ -423,13 +421,6 @@ public class SFManager implements ISchemaFileManager {
     }
     IMNode par = cur.getParent();
     par.deleteChild(cur.getName());
-
-    // delete branch with non-storage-group
-    while (par != root && par.getChildren().size() == 0) {
-      cur = par.getParent();
-      cur.deleteChild(par.getName());
-      par = cur;
-    }
   }
 
   private IMNode appendUpperTree(String[] pathNodes) throws MetadataException {
