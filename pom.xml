@@ -110,6 +110,7 @@
         <module>metrics</module>
         <module>integration</module>
         <!--        <module>library-udf</module>-->
+        <module>external-pipe-api</module>
     </modules>
     <!-- Properties Management -->
     <properties>

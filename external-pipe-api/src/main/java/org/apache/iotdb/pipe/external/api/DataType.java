@@ -15,34 +15,37 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.newsync.sender.pipe;
 
-import org.apache.iotdb.db.exception.PipeException;
-import org.apache.iotdb.db.pipe.external.ExternalPipeManager;
+package org.apache.iotdb.pipe.external.api;
 
-public interface Pipe {
-  void start() throws PipeException;
+public enum DataType {
+  BOOLEAN,
+  INT32,
+  INT64,
+  FLOAT,
+  DOUBLE,
+  TEXT,
+  VECTOR;
 
-  void stop() throws PipeException;
-
-  void drop();
-
-  String getName();
-
-  PipeSink getPipeSink();
-
-  long getCreateTime();
-
-  PipeStatus getStatus();
-
-  ExternalPipeManager getExternalPipeManager();
-
-  // a new pipe should be stop status
-  enum PipeStatus {
-    RUNNING,
-    STOP,
-    DROP
+  public static DataType fromTsDataType(byte tsDataType) {
+    switch (tsDataType) {
+      case 0:
+        return BOOLEAN;
+      case 1:
+        return INT32;
+      case 2:
+        return INT64;
+      case 3:
+        return FLOAT;
+      case 4:
+        return DOUBLE;
+      case 5:
+        return TEXT;
+      case 6:
+        return VECTOR;
+      default:
+        throw new IllegalArgumentException("Unrecognized TSDataType: " + tsDataType);
+    }
   }
 }

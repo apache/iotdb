@@ -90,8 +90,8 @@ public class ReceiverManagerTest {
       Assert.assertEquals(error, messages.get(0));
       manager.close();
     } catch (Exception e) {
-      Assert.fail();
       e.printStackTrace();
+      Assert.fail();
     }
   }
 }

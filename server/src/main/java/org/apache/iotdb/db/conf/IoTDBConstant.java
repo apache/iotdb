@@ -130,6 +130,8 @@ public class IoTDBConstant {
   public static final String COLUMN_PIPE_CREATE_TIME = "create time";
   public static final String COLUMN_PIPE2PIPESINK_NAME = "pipeSink";
   public static final String COLUMN_PIPE_STATUS = "status";
+  public static final String COLUMN_PIPE_ERRORS = "errors";
+  public static final String COLUMN_PIPE_PERF_INFO = "performance_info";
 
   // sync receiver
   public static final String COLUMN_PIPE_REMOTE_IP = "remote ip";
@@ -160,6 +162,9 @@ public class IoTDBConstant {
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
+
+  // sync-data sub-folder name
+  public static final String SYNCDATA_FOLDER_NAME = "sync";
 
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";

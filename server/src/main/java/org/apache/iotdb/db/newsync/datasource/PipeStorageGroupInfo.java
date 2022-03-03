@@ -17,32 +17,34 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.newsync.sender.pipe;
 
-import org.apache.iotdb.db.exception.PipeException;
-import org.apache.iotdb.db.pipe.external.ExternalPipeManager;
+package org.apache.iotdb.db.newsync.datasource;
 
-public interface Pipe {
-  void start() throws PipeException;
+public class PipeStorageGroupInfo {
+  private final String storageGroupName;
+  private long nextReadIndex;
+  // the data (index <= committedIndex) has been committed.
+  private long committedIndex;
 
-  void stop() throws PipeException;
+  public PipeStorageGroupInfo(String sgName, long committedIndex, long nextReadIndex) {
+    this.storageGroupName = sgName;
+    this.committedIndex = committedIndex;
+    this.nextReadIndex = nextReadIndex;
+  }
 
-  void drop();
+  public void setCommittedIndex(long committedIndex) {
+    this.committedIndex = committedIndex;
+  }
 
-  String getName();
+  public long getCommittedIndex() {
+    return committedIndex;
+  }
 
-  PipeSink getPipeSink();
+  public void setNextReadIndex(long nextReadIndex) {
+    this.nextReadIndex = nextReadIndex;
+  }
 
-  long getCreateTime();
-
-  PipeStatus getStatus();
-
-  ExternalPipeManager getExternalPipeManager();
-
-  // a new pipe should be stop status
-  enum PipeStatus {
-    RUNNING,
-    STOP,
-    DROP
+  public long getNextReadIndex() {
+    return nextReadIndex;
   }
 }

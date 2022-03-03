@@ -15,34 +15,39 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.newsync.sender.pipe;
 
-import org.apache.iotdb.db.exception.PipeException;
-import org.apache.iotdb.db.pipe.external.ExternalPipeManager;
+package org.apache.iotdb.db.pipe.external.operation;
 
-public interface Pipe {
-  void start() throws PipeException;
+/**
+ * Operations represents changes of the server's state, including metadata changes and data changes.
+ */
+public class Operation {
+  private final String storageGroup;
+  // The data rang is [startIndex, endIndex),
+  // i.e. valid data include startIndex and not include endIndex
+  private long startIndex;
+  private long endIndex;
 
-  void stop() throws PipeException;
+  public Operation(String storageGroup, long startIndex, long endIndex) {
+    this.storageGroup = storageGroup;
+    this.startIndex = startIndex;
+    this.endIndex = endIndex;
+  }
 
-  void drop();
+  public long getStartIndex() {
+    return startIndex;
+  }
 
-  String getName();
+  public long getEndIndex() {
+    return endIndex;
+  }
 
-  PipeSink getPipeSink();
+  public String getStorageGroup() {
+    return storageGroup;
+  }
 
-  long getCreateTime();
-
-  PipeStatus getStatus();
-
-  ExternalPipeManager getExternalPipeManager();
-
-  // a new pipe should be stop status
-  enum PipeStatus {
-    RUNNING,
-    STOP,
-    DROP
+  public long getDataCount() {
+    return endIndex - startIndex;
   }
 }

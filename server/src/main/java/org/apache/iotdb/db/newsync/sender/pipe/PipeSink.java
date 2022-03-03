@@ -20,9 +20,13 @@
 package org.apache.iotdb.db.newsync.sender.pipe;
 
 import org.apache.iotdb.db.exception.PipeSinkException;
+import org.apache.iotdb.db.pipe.external.ExternalPipePluginManager;
+import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.util.List;
 
 public interface PipeSink {
-  void setAttribute(String attr, String value) throws PipeSinkException;
+  void setAttribute(List<Pair<String, String>> params) throws PipeSinkException;
 
   String getName();
 
@@ -31,17 +35,24 @@ public interface PipeSink {
   String showAllAttributes();
 
   enum Type {
-    IoTDB;
+    IoTDB,
+    ExternalPipe
   }
 
   class PipeSinkFactory {
     public static PipeSink createPipeSink(String type, String name) {
       type = type.toLowerCase();
+
       if (Type.IoTDB.name().toLowerCase().equals(type)) {
         return new IoTDBPipeSink(name);
       }
+
+      if (ExternalPipePluginManager.getInstance().pluginExist(type)) {
+        return new ExternalPipeSink(name, type);
+      }
+
       throw new UnsupportedOperationException(
-          String.format("Do not support pipeSink type %s", type));
+          String.format("Do not support pipeSink type: %s.", type));
     }
   }
 }

@@ -49,7 +49,10 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.*;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CREATED_TIME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_NAME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_REMOTE_IP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_STATUS;
 
 public class ReceiverService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(ReceiverService.class);

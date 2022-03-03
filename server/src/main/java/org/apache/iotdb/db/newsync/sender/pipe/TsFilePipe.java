@@ -35,9 +35,12 @@ import org.apache.iotdb.db.newsync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLogAnalyzer;
 import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLogger;
+import org.apache.iotdb.db.pipe.external.ExternalPipeManager;
+import org.apache.iotdb.db.pipe.external.ExternalPipePluginManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -74,6 +77,9 @@ public class TsFilePipe implements Pipe {
   private PipeStatus status;
   private boolean isCollectingRealTimeData;
 
+  /* handle external Pipe */
+  private ExternalPipeManager externalPipeManager;
+
   public TsFilePipe(
       long createTime, String name, PipeSink pipeSink, long dataStartTime, boolean syncDelOp) {
     this.createTime = createTime;
@@ -107,7 +113,7 @@ public class TsFilePipe implements Pipe {
   public synchronized void start() throws PipeException {
     if (status == PipeStatus.DROP) {
       throw new PipeException(
-          String.format("Can not start pipe %s, because the pipe has been drop.", name));
+          String.format("Can not start pipe %s, because this pipe has been dropped.", name));
     } else if (status == PipeStatus.RUNNING) {
       return;
     }
@@ -124,8 +130,12 @@ public class TsFilePipe implements Pipe {
         isCollectingRealTimeData = true;
       }
 
-      singleExecutorService.submit(this::transport);
-      //
+      // == For transport Tsfile etc. to remote syncData server
+      // singleExecutorService.submit(this::transport);
+
+      // == start ExternalPipeProcessor for send data to external pip plugin
+      startExternalPipeManager();
+
       status = PipeStatus.RUNNING;
     } catch (IOException e) {
       logger.error(
@@ -354,21 +364,37 @@ public class TsFilePipe implements Pipe {
         //         pipeLog.removePipeData(data.getSerialNumber);
         //        data.sendToTransport();
         //        Thread.sleep(1000);
-        //        pipeLog.removePipeData(data.getSerialNumber());
+        //        pipeDataDeque.addFirst(data);
+        //        commit(data.getSerialNumber());
+        //        System.out.println(data);
       }
     } catch (Exception e) {
       logger.error(String.format("TsFile pipe %s stops transportng data, because %s.", name, e));
     }
   }
 
-  public List<PipeData> pull(long serialNumber) {
+  /**
+   * get pipeDataDeque's PipeData whose SerialNumber <= maxSerialNumber
+   *
+   * @param maxSerialNumber
+   * @return
+   */
+  public List<PipeData> pull(long maxSerialNumber) {
     if (pipeDataDeque.isEmpty()) {
       return null;
     }
     List<PipeData> pullPipeData = new ArrayList<>();
     PipeData data = pipeDataDeque.poll();
-    while (data.getSerialNumber() <= serialNumber) {
-      pullPipeData.add(data);
+    while (data.getSerialNumber() <= maxSerialNumber) {
+      if (PipeData.Type.TSFILE.equals(data.getType())) {
+        if (((TsFilePipeData) data).waitForTsFileClose()) {
+          pullPipeData.add(data);
+        } else {
+          logger.error(String.format("Pull TsFile pipe data %s error, can not close TsFile", data));
+        }
+      } else {
+        pullPipeData.add(data);
+      }
       if (pipeDataDeque.isEmpty()) {
         break;
       } else {
@@ -383,7 +409,14 @@ public class TsFilePipe implements Pipe {
     return pullPipeData;
   }
 
+  /**
+   * remore pipeDataDeque's data that is <= serialNumber
+   *
+   * @param serialNumber
+   */
   public void commit(long serialNumber) {
+    logger.debug("TsfilePipe commit(), serialNumber={}.", serialNumber);
+
     while (!pipeDataDeque.isEmpty() && pipeDataDeque.peek().getSerialNumber() <= serialNumber) {
       PipeData data = pipeDataDeque.poll();
       try {
@@ -397,11 +430,44 @@ public class TsFilePipe implements Pipe {
     }
   }
 
+  /** Start ExternalPipeProcessor who handle externalPipe */
+  private void startExternalPipeManager() throws PipeException {
+    if (!(pipeSink instanceof ExternalPipeSink)) {
+      logger.error(
+          String.format("startExternalPipeManager(), pipeSink is not ExternalPipeSink.", pipeSink));
+      return;
+    }
+
+    String pipeSinkTypeName = ((ExternalPipeSink) pipeSink).getPipeSinkTypeName();
+    IExternalPipeSinkWriterFactory externalPipeSinkWriterFactory =
+        ExternalPipePluginManager.getInstance().getWriteFactory(pipeSinkTypeName);
+    if (externalPipeSinkWriterFactory == null) {
+      logger.error(
+          String.format(
+              "startExternalPipeManager(), can not found ExternalPipe plugin for {}.",
+              pipeSinkTypeName));
+      throw new PipeException("Can not found ExternalPipe plugin for " + pipeSinkTypeName + ".");
+    }
+
+    if (externalPipeManager == null) {
+      externalPipeManager = new ExternalPipeManager(this);
+    }
+
+    try {
+      externalPipeManager.startExtPipe(
+          pipeSinkTypeName, ((ExternalPipeSink) pipeSink).getSinkParams());
+    } catch (IOException e) {
+      logger.error("Failed to start External Pipe: {}.", pipeSinkTypeName, e);
+      throw new PipeException(
+          "Failed to start External Pipe: " + pipeSinkTypeName + ". " + e.getMessage());
+    }
+  }
+
   @Override
   public synchronized void stop() throws PipeException {
     if (status == PipeStatus.DROP) {
       throw new PipeException(
-          String.format("Can not stop pipe %s, because the pipe is drop.", name));
+          String.format("Can not stop pipe %s, because the pipe has been dropped.", name));
     }
 
     if (!isCollectingRealTimeData) {
@@ -412,6 +478,16 @@ public class TsFilePipe implements Pipe {
     status = PipeStatus.STOP;
     synchronized (pipeDataDeque) {
       pipeDataDeque.notifyAll();
+    }
+
+    // == pause externalPipeProcessor's task
+    if (externalPipeManager != null) {
+      try {
+        String pipeSinkTypeName = ((ExternalPipeSink) pipeSink).getPipeSinkTypeName();
+        externalPipeManager.stopExtPipe(pipeSinkTypeName);
+      } catch (Exception e) {
+        throw new PipeException("Failed to stop externalPipeProcessor. " + e.getMessage());
+      }
     }
   }
 
@@ -425,6 +501,14 @@ public class TsFilePipe implements Pipe {
     synchronized (pipeDataDeque) {
       pipeDataDeque.notifyAll();
     }
+
+    // == drop ExternalPipeProcesser
+    if (externalPipeManager != null) {
+      String pipeSinkTypeName = ((ExternalPipeSink) pipeSink).getPipeSinkTypeName();
+      externalPipeManager.dropExtPipe(pipeSinkTypeName);
+      externalPipeManager = null;
+    }
+
     clear();
   }
 
@@ -470,5 +554,9 @@ public class TsFilePipe implements Pipe {
   @Override
   public synchronized PipeStatus getStatus() {
     return status;
+  }
+
+  public ExternalPipeManager getExternalPipeManager() {
+    return externalPipeManager;
   }
 }

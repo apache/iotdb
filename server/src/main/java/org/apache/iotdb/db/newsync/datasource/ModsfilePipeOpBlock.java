@@ -17,32 +17,37 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.newsync.sender.pipe;
 
-import org.apache.iotdb.db.exception.PipeException;
-import org.apache.iotdb.db.pipe.external.ExternalPipeManager;
+package org.apache.iotdb.db.newsync.datasource;
 
-public interface Pipe {
-  void start() throws PipeException;
+import org.apache.iotdb.db.pipe.external.operation.Operation;
 
-  void stop() throws PipeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-  void drop();
+public class ModsfilePipeOpBlock extends AbstractPipeOpBlock {
+  private static final Logger logger = LoggerFactory.getLogger(ModsfilePipeOpBlock.class);
 
-  String getName();
+  public ModsfilePipeOpBlock(String sg, String modsFileName) {
+    super(sg, -1);
+  }
 
-  PipeSink getPipeSink();
+  @Override
+  public long getDataCount() {
+    if (dataCount >= 0) {
+      return dataCount;
+    }
+    // ToDO:
+    return 0;
+  }
 
-  long getCreateTime();
+  @Override
+  public Operation getOperation(long index, long length) {
+    return null;
+  }
 
-  PipeStatus getStatus();
-
-  ExternalPipeManager getExternalPipeManager();
-
-  // a new pipe should be stop status
-  enum PipeStatus {
-    RUNNING,
-    STOP,
-    DROP
+  @Override
+  public void close() {
+    super.close();
   }
 }

@@ -101,9 +101,9 @@ public class SenderService implements IService {
     } catch (UnsupportedOperationException e) {
       throw new PipeSinkException(e.getMessage());
     }
-    for (Pair<String, String> pair : plan.getPipeSinkAttributes()) {
-      pipeSink.setAttribute(pair.left, pair.right);
-    }
+
+    pipeSink.setAttribute(plan.getPipeSinkAttributes());
+
     return pipeSink;
   }
 

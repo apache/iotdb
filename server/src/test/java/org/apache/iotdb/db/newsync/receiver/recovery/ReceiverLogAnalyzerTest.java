@@ -115,8 +115,8 @@ public class ReceiverLogAnalyzerTest {
       Assert.assertEquals(info, map.get(pipeIdentifier1).get(1));
       Assert.assertEquals(warn, map.get(pipeIdentifier1).get(2));
     } catch (Exception e) {
-      Assert.fail();
       e.printStackTrace();
+      Assert.fail();
     }
   }
 }

@@ -202,6 +202,10 @@ public class IoTDBConfig {
   /** default base dir, stores all IoTDB runtime files */
   private static final String DEFAULT_BASE_DIR = "data";
 
+  public String geBaseDir() {
+    return DEFAULT_BASE_DIR;
+  }
+
   /** System directory, including version file for each storage group and metadata */
   private String systemDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 

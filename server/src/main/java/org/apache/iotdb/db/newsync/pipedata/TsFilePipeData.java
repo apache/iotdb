@@ -42,14 +42,32 @@ public class TsFilePipeData extends PipeData {
   private static final Logger logger = LoggerFactory.getLogger(TsFilePipeData.class);
 
   private String tsFilePath;
+  private String storageGroupName;
 
   public TsFilePipeData(String tsFilePath, long serialNumber) {
     super(serialNumber);
-    this.tsFilePath = tsFilePath;
+    setTsFilePath(tsFilePath);
   }
 
   public void setTsFilePath(String tsFilePath) {
     this.tsFilePath = tsFilePath;
+    initStorageGroupName();
+  }
+
+  private void initStorageGroupName() {
+    if (tsFilePath == null) {
+      storageGroupName = null;
+      return;
+    }
+
+    String[] paths = tsFilePath.trim().split(File.separator);
+    if (paths.length < 4) {
+      logger.error(
+          "initStorageGroupName(), can not find storageGroupName in tsFilePath {}.", tsFilePath);
+      storageGroupName = null;
+    } else {
+      storageGroupName = paths[paths.length - 4];
+    }
   }
 
   @Override
@@ -100,7 +118,7 @@ public class TsFilePipeData extends PipeData {
     return files;
   }
 
-  private boolean waitForTsFileClose() {
+  public boolean waitForTsFileClose() {
     for (int i = 0; i < SyncConstant.DEFAULT_WAITING_FOR_TSFILE_RETRY_NUMBER; i++) {
       if (isTsFileClosed()) {
         return true;
@@ -122,6 +140,14 @@ public class TsFilePipeData extends PipeData {
     File tsFile = new File(tsFilePath).getAbsoluteFile();
     File resource = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
     return resource.exists();
+  }
+
+  public String getStorageGroupName() {
+    return storageGroupName;
+  }
+
+  public String getTsFilePath() {
+    return tsFilePath;
   }
 
   @Override
