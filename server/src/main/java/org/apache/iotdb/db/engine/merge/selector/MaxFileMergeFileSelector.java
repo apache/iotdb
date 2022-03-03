@@ -240,7 +240,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
       boolean noMoreOverlap = false;
       for (int i = 0; i < resource.getSeqFiles().size() && !noMoreOverlap; i++) {
         TsFileResource seqFile = resource.getSeqFiles().get(i);
-        if (!seqFile.getDevices().contains(deviceId)) {
+        if (tmpSelectedSeqFiles.contains(i) || !seqFile.getDevices().contains(deviceId)) {
           continue;
         }
 
@@ -257,22 +257,16 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
         } else if (!seqFile.isClosed()) {
           // we cannot make sure whether unclosed file has overlap or not, so we just add it.
           tmpSelectedSeqFiles.add(i);
-          tmpSelectedNum++;
         } else if (unseqEndTime <= seqEndTime) {
           // if time range in unseq file is 10-20, seq file is 15-25, then select this seq file and
           // there is no more overlap later.
           tmpSelectedSeqFiles.add(i);
-          tmpSelectedNum++;
           noMoreOverlap = true;
         } else if (unseqStartTime <= seqEndTime) {
           // if time range in unseq file is 10-20, seq file is 0-15, then select this seq file and
           // there may be overlap later.
           tmpSelectedSeqFiles.add(i);
-          tmpSelectedNum++;
         }
-      }
-      if (tmpSelectedNum + seqSelectedNum == resource.getSeqFiles().size()) {
-        break;
       }
     }
   }
