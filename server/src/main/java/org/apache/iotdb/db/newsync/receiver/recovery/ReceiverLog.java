@@ -116,5 +116,6 @@ public class ReceiverLog {
 
   public void close() throws IOException {
     bw.close();
+    msg.close();
   }
 }
