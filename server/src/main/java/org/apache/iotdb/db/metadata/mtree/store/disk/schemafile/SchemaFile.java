@@ -67,7 +67,7 @@ public class SchemaFile implements ISchemaFile {
 
   public static int PAGE_LENGTH = 16 * 1024; // 16 kib for default
   public static short PAGE_HEADER_SIZE = 16;
-  public static int PAGE_CACHE_SIZE = 1024; // size of page cache
+  public static int PAGE_CACHE_SIZE = IoTDBDescriptor.getInstance().getConfig().getPageCacheSizeInSchemaFile(); // size of page cache
   public static int ROOT_INDEX = 0; // index of header page
   // 32 bit for page pointer, maximum .pmt file as 2^(32+14) bytes, 64 TiB
   public static int INDEX_LENGTH = 4;
@@ -76,6 +76,8 @@ public class SchemaFile implements ISchemaFile {
   public static short SEG_OFF_DIG = 2;
   public static short SEG_MAX_SIZ = (short) (16 * 1024 - SchemaFile.PAGE_HEADER_SIZE - SEG_OFF_DIG);
   public static short[] SEG_SIZE_LST = {1024, 2 * 1024, 4 * 1024, 8 * 1024, SEG_MAX_SIZ};
+  public static short SEG_MIN_SIZ = IoTDBDescriptor.getInstance().getConfig().getMinimumSegmentInSchemaFile()
+      > SEG_MAX_SIZ ? SEG_MAX_SIZ : IoTDBDescriptor.getInstance().getConfig().getMinimumSegmentInSchemaFile();
   public static int SEG_INDEX_DIGIT = 16; // for type short
   public static long SEG_INDEX_MASK = 0xffffL; // to translate address
 
@@ -734,15 +736,15 @@ public class SchemaFile implements ISchemaFile {
     int childNum = node.getChildren().size();
     int tier = SchemaFile.SEG_SIZE_LST.length;
     if (childNum > 300) {
-      return SchemaFile.SEG_SIZE_LST[tier - 1];
+      return SchemaFile.SEG_SIZE_LST[tier - 1] > SchemaFile.SEG_MIN_SIZ ? SchemaFile.SEG_SIZE_LST[tier - 1] : SchemaFile.SEG_MIN_SIZ;
     } else if (childNum > 150) {
-      return SchemaFile.SEG_SIZE_LST[tier - 2];
+      return SchemaFile.SEG_SIZE_LST[tier - 2] > SchemaFile.SEG_MIN_SIZ ? SchemaFile.SEG_SIZE_LST[tier - 2] : SchemaFile.SEG_MIN_SIZ;
     } else if (childNum > 75) {
-      return SchemaFile.SEG_SIZE_LST[tier - 3];
+      return SchemaFile.SEG_SIZE_LST[tier - 3] > SchemaFile.SEG_MIN_SIZ ? SchemaFile.SEG_SIZE_LST[tier - 3] : SchemaFile.SEG_MIN_SIZ;
     } else if (childNum > 40) {
-      return SchemaFile.SEG_SIZE_LST[tier - 4];
+      return SchemaFile.SEG_SIZE_LST[tier - 4] > SchemaFile.SEG_MIN_SIZ ? SchemaFile.SEG_SIZE_LST[tier - 4] : SchemaFile.SEG_MIN_SIZ;
     } else if (childNum > 20) {
-      return SchemaFile.SEG_SIZE_LST[tier - 5];
+      return SchemaFile.SEG_SIZE_LST[tier - 5] > SchemaFile.SEG_MIN_SIZ ? SchemaFile.SEG_SIZE_LST[tier - 5] : SchemaFile.SEG_MIN_SIZ;
     }
     // for childNum < 20, count for actually
     int totalSize = Segment.SEG_HEADER_SIZE;
@@ -759,7 +761,7 @@ public class SchemaFile implements ISchemaFile {
         totalSize += 16; // slightly larger
       }
     }
-    return (short) totalSize;
+    return (short) totalSize > SchemaFile.SEG_MIN_SIZ ? (short) totalSize : SchemaFile.SEG_MIN_SIZ;
   }
 
   private long getPageAddress(int pageIndex) {

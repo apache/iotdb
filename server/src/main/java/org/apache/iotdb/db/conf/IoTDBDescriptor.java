@@ -723,6 +723,16 @@ public class IoTDBDescriptor {
                   "cached_metadata_size_in_persistent_mode",
                   String.valueOf(conf.getCachedMetadataSizeInPersistentMode()))));
 
+      conf.setMinimumSegmentInSchemaFile(
+          Short.parseShort(
+              properties.getProperty("minimum_schema_file_segment_in_bytes",
+                  String.valueOf(conf.getMinimumSegmentInSchemaFile()))));
+
+      conf.setPageCacheSizeInSchemaFile(
+          Short.parseShort(
+              properties.getProperty("page_cache_in_schema_file",
+                  String.valueOf(conf.getPageCacheSizeInSchemaFile()))));
+
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
         conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));

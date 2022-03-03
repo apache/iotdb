@@ -810,6 +810,12 @@ public class IoTDBConfig {
   /** the memory used for metadata cache when using persistent schema */
   private int cachedMetadataSizeInPersistentMode = 50000;
 
+  /** the minimum size (in bytes) of segment inside a schema file page */
+  private short minimumSegmentInSchemaFile = 0;
+
+  /** cache size for pages in one schema file */
+  private int pageCacheSizeInSchemaFile = 1024;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -2546,5 +2552,21 @@ public class IoTDBConfig {
 
   public void setCachedMetadataSizeInPersistentMode(int cachedMetadataSizeInPersistentMode) {
     this.cachedMetadataSizeInPersistentMode = cachedMetadataSizeInPersistentMode;
+  }
+
+  public short getMinimumSegmentInSchemaFile() {
+    return minimumSegmentInSchemaFile;
+  }
+
+  public void setMinimumSegmentInSchemaFile(short minimumSegmentInSchemaFile) {
+    this.minimumSegmentInSchemaFile = minimumSegmentInSchemaFile;
+  }
+
+  public int getPageCacheSizeInSchemaFile() {
+    return pageCacheSizeInSchemaFile;
+  }
+
+  public void setPageCacheSizeInSchemaFile(int pageCacheSizeInSchemaFile) {
+    this.pageCacheSizeInSchemaFile = pageCacheSizeInSchemaFile;
   }
 }
