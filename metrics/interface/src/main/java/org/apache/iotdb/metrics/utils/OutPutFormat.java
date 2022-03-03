@@ -17,20 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics;
+package org.apache.iotdb.metrics.utils;
 
-import org.apache.iotdb.metrics.utils.ReporterType;
+public enum OutPutFormat {
+  PROMETHEUS,
+  JSON;
 
-public interface Reporter {
-  /** Start reporter */
-  boolean start();
-
-  /** Stop reporter */
-  boolean stop();
-
-  /** Get type of reporter */
-  ReporterType getReporterType();
-
-  /** Set metric manager */
-  void setMetricManager(MetricManager metricManager);
+  @Override
+  public String toString() {
+    return name();
+  }
 }
