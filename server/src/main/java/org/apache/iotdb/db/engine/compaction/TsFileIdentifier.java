@@ -49,6 +49,12 @@ public class TsFileIdentifier {
   public static final int TIME_PARTITION_OFFSET_IN_LOG = 3;
   public static final int FILE_NAME_OFFSET_IN_LOG = 4;
 
+  private static final int LOGICAL_SG_OFFSET_IN_LOG_FROM_OLD = 0;
+  private static final int VIRTUAL_SG_OFFSET_IN_LOG_FROM_OLD = 1;
+  private static final int TIME_PARTITION_OFFSET_IN_LOG_FROM_OLD = 2;
+  private static final int FILE_NAME_OFFSET_IN_LOG_FROM_OLD = 3;
+  private static final int SEQUENCE_OFFSET_IN_LOG_FROM_OLD = 4;
+
   private TsFileIdentifier(
       String logicalStorageGroupName,
       String virtualStorageGroupId,
@@ -128,12 +134,12 @@ public class TsFileIdentifier {
               oldInfoString));
     }
     return new TsFileIdentifier(
-        splittedFileInfo[LOGICAL_SG_OFFSET_IN_LOG - 1],
-        splittedFileInfo[VIRTUAL_SG_OFFSET_IN_LOG - 1],
-        splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG - 1],
-        splittedFileInfo[SEQUENCE_OFFSET_IN_LOG + 4].equals("true")
-            || splittedFileInfo[SEQUENCE_OFFSET_IN_LOG + 4].equals("sequence"),
-        splittedFileInfo[FILE_NAME_OFFSET_IN_LOG - 1]);
+        splittedFileInfo[LOGICAL_SG_OFFSET_IN_LOG_FROM_OLD],
+        splittedFileInfo[VIRTUAL_SG_OFFSET_IN_LOG_FROM_OLD],
+        splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG_FROM_OLD],
+        splittedFileInfo[SEQUENCE_OFFSET_IN_LOG_FROM_OLD].equals("true")
+            || splittedFileInfo[SEQUENCE_OFFSET_IN_LOG_FROM_OLD].equals("sequence"),
+        splittedFileInfo[FILE_NAME_OFFSET_IN_LOG_FROM_OLD]);
   }
 
   @Override
