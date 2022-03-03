@@ -77,13 +77,21 @@ public class DropwizardPrometheusReporter implements Reporter {
     PrometheusTextWriter prometheusTextWriter = new PrometheusTextWriter(writer);
     DropwizardMetricsExporter dropwizardMetricsExporter =
         new DropwizardMetricsExporter(metricRegistry, prometheusTextWriter);
+    String result = "";
     try {
       dropwizardMetricsExporter.scrape();
+      result = writer.toString();
     } catch (IOException e) {
       // This actually never happens since StringWriter::write() doesn't throw any IOException
       throw new RuntimeException(e);
+    } finally {
+      try {
+        writer.close();
+      } catch (IOException e) {
+        // do nothing
+      }
     }
-    return writer.toString();
+    return result;
   }
 
   @Override
