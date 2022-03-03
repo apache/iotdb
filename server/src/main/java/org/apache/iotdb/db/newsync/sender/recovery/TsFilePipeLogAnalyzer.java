@@ -163,8 +163,7 @@ public class TsFilePipeLogAnalyzer {
 
   public static List<PipeData> parseFile(File file) throws IOException {
     List<PipeData> pipeData = new ArrayList<>();
-    DataInputStream inputStream = new DataInputStream(new FileInputStream(file));
-    try {
+    try (DataInputStream inputStream = new DataInputStream(new FileInputStream(file))) {
       while (true) {
         pipeData.add(PipeData.deserialize(inputStream));
       }
@@ -173,9 +172,8 @@ public class TsFilePipeLogAnalyzer {
     } catch (IllegalPathException e) {
       logger.error(String.format("Parsing pipeLog %s error, because %s", file.getPath(), e));
       throw new IOException(e);
-    } finally {
-      inputStream.close();
     }
+
     return pipeData;
   }
 }

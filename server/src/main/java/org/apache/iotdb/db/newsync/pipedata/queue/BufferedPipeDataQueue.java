@@ -21,6 +21,7 @@ package org.apache.iotdb.db.newsync.pipedata.queue;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
+import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.utils.FileUtils;
 
 import org.slf4j.Logger;
@@ -232,7 +233,8 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
   }
 
   /** output */
-  private synchronized PipeData pullOnePipeData(long serialNumber) throws IOException {
+  private synchronized PipeData pullOnePipeData(long lastSerialNumber) throws IOException {
+    long serialNumber = lastSerialNumber + 1;
     if (!outputDeque.isEmpty()) {
       return outputDeque.poll();
     } else if (outputDeque != inputDeque) {
@@ -264,19 +266,19 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
     pullSerialNumber = commitSerialNumber;
     while (pullSerialNumber < serialNumber) {
-      pullSerialNumber += 1;
       try {
         PipeData pullPipeData = pullOnePipeData(pullSerialNumber);
         if (pullPipeData != null) {
           resPipeData.add(pullPipeData);
+          pullSerialNumber = pullPipeData.getSerialNumber();
         } else {
-          pullSerialNumber -= 1;
           break;
         }
       } catch (IOException e) {
         logger.error(
             String.format(
-                "Pull pipe data serial number %s error, because %s.", pullSerialNumber, e));
+                "Pull pipe data serial number %s error, because %s.", pullSerialNumber + 1, e));
+        break;
       }
     }
 
@@ -291,13 +293,11 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     PipeData pipeData = null;
     try {
       synchronized (waitLock) {
-        pullSerialNumber = commitSerialNumber + 1;
-        pipeData = pullOnePipeData(pullSerialNumber);
+        pipeData = pullOnePipeData(commitSerialNumber);
         if (pipeData == null) {
           waitLock.wait();
           waitLock.notifyAll();
-          pullSerialNumber = commitSerialNumber + 1;
-          pipeData = pullOnePipeData(pullSerialNumber);
+          pipeData = pullOnePipeData(commitSerialNumber);
         }
       }
     } catch (IOException e) {
@@ -306,6 +306,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
               "Blocking pull pipe data number %s error, because %s", commitSerialNumber + 1, e));
     }
     outputDeque.addFirst(pipeData);
+    pullSerialNumber = pipeData.getSerialNumber();
     return pipeData;
   }
 
@@ -322,10 +323,10 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       try {
         PipeData commitData = pullOnePipeData(commitSerialNumber);
         if (PipeData.Type.TSFILE.equals(commitData.getType())) {
-          //          List<File> tsFiles = ((TsFilePipeData) commitData).getTsFiles();
-          //          for (File file : tsFiles) {
-          //            Files.deleteIfExists(file.toPath());
-          //          }
+          List<File> tsFiles = ((TsFilePipeData) commitData).getTsFiles();
+          for (File file : tsFiles) {
+            Files.deleteIfExists(file.toPath());
+          }
         }
       } catch (IOException e) {
         logger.error(
