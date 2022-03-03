@@ -54,6 +54,7 @@ public enum BuiltinFunction {
   TOP_K("TOP_K", UDTFTopK.class),
   BOTTOM_K("BOTTOM_K", UDTFBottomK.class),
   CAST("CAST", UDTFCast.class),
+  ON_OFF("ON_OFF", UDTFOnOff.class),
   ;
 
   private final String functionName;

@@ -71,10 +71,12 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
 
     for (TsFileResource resource : selectedSequenceFiles) {
       resource.setCompacting(true);
+      resource.setCompactionCandidate(false);
     }
 
     for (TsFileResource resource : selectedUnsequenceFiles) {
       resource.setCompacting(true);
+      resource.setCompactionCandidate(false);
     }
 
     return true;

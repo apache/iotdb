@@ -193,7 +193,7 @@ Time,Device,str(TEXT),int(INT32)
 
 * `-batch`:
   - 用于指定每一批插入的数据的点数。如果程序报了`org.apache.thrift.transport.TTransportException: Frame size larger than protect max size`这个错的话，就可以适当的调低这个参数。
-  - 例如: `-bs 100000`，`100000`是默认值。
+  - 例如: `-batch 100000`，`100000`是默认值。
 
 ### 运行示例
 

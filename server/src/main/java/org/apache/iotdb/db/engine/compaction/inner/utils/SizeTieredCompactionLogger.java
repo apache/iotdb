@@ -32,8 +32,8 @@ public class SizeTieredCompactionLogger {
   public static final String COMPACTION_LOG_NAME = ".compaction.log";
   public static final String SOURCE_NAME = "source";
   public static final String TARGET_NAME = "target";
-  public static final String SOURCE_INFO = "source_info";
-  public static final String TARGET_INFO = "target_info";
+  public static final String SOURCE_INFO = "info-source";
+  public static final String TARGET_INFO = "info-target";
   public static final String SEQUENCE_NAME = "sequence";
   public static final String UNSEQUENCE_NAME = "unsequence";
 

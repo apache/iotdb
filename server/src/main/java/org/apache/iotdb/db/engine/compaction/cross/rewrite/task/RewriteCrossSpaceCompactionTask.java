@@ -194,6 +194,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         return false;
       }
       tsFileResource.setCompacting(true);
+      tsFileResource.setCompactionCandidate(false);
     }
     return true;
   }

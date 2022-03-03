@@ -163,7 +163,7 @@ public class TsFileNameGenerator {
    * own tmp target file.
    *
    * @param seqResources
-   * @return tmp target file list, which is xxx.merge
+   * @return tmp target file list, which is xxx.cross
    * @throws IOException
    */
   public static List<TsFileResource> getCrossCompactionTargetFileResources(

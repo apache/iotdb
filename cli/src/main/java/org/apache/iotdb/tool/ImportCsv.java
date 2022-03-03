@@ -146,11 +146,11 @@ public class ImportCsv extends AbstractCsvTool {
     options.addOption(opTimeZone);
 
     Option opBatchPointSize =
-            Option.builder(BATCH_POINT_SIZE_ARGS)
-                    .argName(BATCH_POINT_SIZE_NAME)
-                    .hasArg()
-                    .desc("100000 (optional)")
-                    .build();
+        Option.builder(BATCH_POINT_SIZE_ARGS)
+            .argName(BATCH_POINT_SIZE_NAME)
+            .hasArg()
+            .desc("100000 (optional)")
+            .build();
     options.addOption(opBatchPointSize);
 
     return options;
@@ -164,7 +164,9 @@ public class ImportCsv extends AbstractCsvTool {
   private static void parseSpecialParams(CommandLine commandLine) {
     timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
     targetPath = commandLine.getOptionValue(FILE_ARGS);
-    batchPointSize = Integer.parseInt(commandLine.getOptionValue(BATCH_POINT_SIZE_ARGS));
+    if (commandLine.getOptionValue(BATCH_POINT_SIZE_ARGS) != null) {
+      batchPointSize = Integer.parseInt(commandLine.getOptionValue(BATCH_POINT_SIZE_ARGS));
+    }
     if (commandLine.getOptionValue(FAILED_FILE_ARGS) != null) {
       failedFileDirectory = commandLine.getOptionValue(FAILED_FILE_ARGS);
       File file = new File(failedFileDirectory);

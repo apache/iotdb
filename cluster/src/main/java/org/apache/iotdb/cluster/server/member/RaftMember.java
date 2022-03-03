@@ -235,8 +235,11 @@ public abstract class RaftMember implements RaftMemberMBean {
    */
   private LogDispatcher logDispatcher;
 
-  /** If this node can not be the leader, this parameter will be set true. */
-  private volatile boolean skipElection = false;
+  /**
+   * If this node can not be the leader, this parameter will be set true. This field must be true
+   * only after all necessary threads are ready
+   */
+  private volatile boolean skipElection = true;
 
   /**
    * localExecutor is used to directly execute plans like load configuration in the underlying IoTDB
@@ -260,6 +263,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
 
     startBackGroundThreads();
+    setSkipElection(false);
     logger.info("{} started", name);
   }
 
