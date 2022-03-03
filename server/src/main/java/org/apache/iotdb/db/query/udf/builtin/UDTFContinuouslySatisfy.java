@@ -109,104 +109,115 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
         throw new UDFInputSeriesDataTypeNotValidException(
             0, dataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
     }
-    if (needAddNewRecord) collector.putLong(interval.left, interval.right);
+    if (needAddNewRecord) {
+      collector.putLong(interval.left, interval.right);
+    }
   }
 
   protected boolean transformDouble(long time, double value) {
-    if (satisfyDouble(value) && satisfyValueCount == 0L) {
-      satisfyValueCount++;
-      satisfyValueStartTime = time;
-      satisfyValueLastTime = time;
-    } else if (satisfyDouble(value)) {
-      satisfyValueCount++;
-      satisfyValueLastTime = time;
-    } else {
-      if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
-        interval = new Pair<>(satisfyValueStartTime, getRecord());
-        satisfyValueCount = 0L;
-        return true;
+    if (satisfyDouble(value)) {
+      if (satisfyValueCount == 0L) {
+        satisfyValueCount++;
+        satisfyValueStartTime = time;
+        satisfyValueLastTime = time;
+      } else {
+        satisfyValueCount++;
+        satisfyValueLastTime = time;
       }
+    } else if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
+      interval = new Pair<>(satisfyValueStartTime, getRecord());
+      satisfyValueCount = 0L;
+      return true;
+    } else {
       satisfyValueCount = 0L;
     }
     return false;
   }
 
   protected boolean transformFloat(long time, float value) {
-    if (satisfyFloat(value) && satisfyValueCount == 0L) {
-      satisfyValueCount++;
-      satisfyValueStartTime = time;
-      satisfyValueLastTime = time;
-    } else if (satisfyFloat(value)) {
-      satisfyValueCount++;
-      satisfyValueLastTime = time;
-    } else {
-      if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
-        interval = new Pair<>(satisfyValueStartTime, getRecord());
-        satisfyValueCount = 0L;
-        return true;
+    if (satisfyFloat(value)) {
+      if (satisfyValueCount == 0L) {
+        satisfyValueCount++;
+        satisfyValueStartTime = time;
+        satisfyValueLastTime = time;
+      } else {
+        satisfyValueCount++;
+        satisfyValueLastTime = time;
       }
+    } else if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
+      interval = new Pair<>(satisfyValueStartTime, getRecord());
+      satisfyValueCount = 0L;
+      return true;
+    } else {
       satisfyValueCount = 0L;
     }
     return false;
   }
 
   protected boolean transformLong(long time, long value) {
-    if (satisfyLong(value) && satisfyValueCount == 0L) {
-      satisfyValueCount++;
-      satisfyValueStartTime = time;
-      satisfyValueLastTime = time;
-    } else if (satisfyLong(value)) {
-      satisfyValueCount++;
-      satisfyValueLastTime = time;
-    } else {
-      if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
-        interval = new Pair<>(satisfyValueStartTime, getRecord());
-        satisfyValueCount = 0L;
-        return true;
+    if (satisfyLong(value)) {
+      if (satisfyValueCount == 0L) {
+        satisfyValueCount++;
+        satisfyValueStartTime = time;
+        satisfyValueLastTime = time;
+      } else {
+        satisfyValueCount++;
+        satisfyValueLastTime = time;
       }
+    } else if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
+      interval = new Pair<>(satisfyValueStartTime, getRecord());
+      satisfyValueCount = 0L;
+      return true;
+    } else {
       satisfyValueCount = 0L;
     }
     return false;
   }
 
   protected boolean transformInt(long time, int value) {
-    if (satisfyInt(value) && satisfyValueCount == 0L) {
-      satisfyValueCount++;
-      satisfyValueStartTime = time;
-      satisfyValueLastTime = time;
-    } else if (satisfyInt(value)) {
-      satisfyValueCount++;
-      satisfyValueLastTime = time;
-    } else {
-      if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
-        interval = new Pair<>(satisfyValueStartTime, getRecord());
-        satisfyValueCount = 0L;
-        return true;
+    if (satisfyInt(value)) {
+      if (satisfyValueCount == 0L) {
+        satisfyValueCount++;
+        satisfyValueStartTime = time;
+        satisfyValueLastTime = time;
+      } else {
+        satisfyValueCount++;
+        satisfyValueLastTime = time;
       }
+    } else if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
+      interval = new Pair<>(satisfyValueStartTime, getRecord());
+      satisfyValueCount = 0L;
+      return true;
+    } else {
       satisfyValueCount = 0L;
     }
     return false;
   }
 
   protected boolean transformBoolean(long time, boolean value) {
-    if (satisfyBoolean(value) && satisfyValueCount == 0L) {
-      satisfyValueCount++;
-      satisfyValueStartTime = time;
-      satisfyValueLastTime = time;
-    } else if (satisfyBoolean(value)) {
-      satisfyValueCount++;
-      satisfyValueLastTime = time;
-    } else {
-      if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
-        interval = new Pair<>(satisfyValueStartTime, getRecord());
-        satisfyValueCount = 0L;
-        return true;
+    if (satisfyBoolean(value)) {
+      if (satisfyValueCount == 0L) {
+        satisfyValueCount++;
+        satisfyValueStartTime = time;
+        satisfyValueLastTime = time;
+      } else {
+        satisfyValueCount++;
+        satisfyValueLastTime = time;
       }
+    } else if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
+      interval = new Pair<>(satisfyValueStartTime, getRecord());
+      satisfyValueCount = 0L;
+      return true;
+    } else {
       satisfyValueCount = 0L;
     }
     return false;
   }
 
+  // To define the value you want to calculate.
+  // Return `satisfyValueCount`, for the number of data points in the interval
+  // Return `satisfyValueLastTime`, to get the interval start time and end time pair
+  // Return `satisfyValueLastTime - satisfyValueStartTime` for the interval duration
   protected abstract Long getRecord();
 
   @Override
