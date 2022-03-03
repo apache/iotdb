@@ -238,6 +238,8 @@ public class MemTableFlushTask {
               IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
               try {
                 writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
+                seriesWriter.sealCurrentPage();
+                seriesWriter.clearPageWriter();
               } catch (IllegalStateException e) {
                 LOGGER.error(
                     "IllegalStateException in encoding stage, dataType is: {}",
@@ -246,8 +248,6 @@ public class MemTableFlushTask {
                 printTVList(encodingMessage.left, encodingMessage.right.getType());
                 throw e;
               }
-              seriesWriter.sealCurrentPage();
-              seriesWriter.clearPageWriter();
               try {
                 ioTaskQueue.put(new Pair<>((ChunkWriterImpl) seriesWriter, encodingMessage.left));
               } catch (InterruptedException e) {
