@@ -70,7 +70,6 @@ public class CompactionLogAnalyzer {
   public void analyzeOldInnerCompactionLog() throws IOException {
     isLogFromOld = true;
     String currLine;
-    boolean isSeqSource = true;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
       while ((currLine = bufferedReader.readLine()) != null) {
         switch (currLine) {
@@ -81,6 +80,14 @@ public class CompactionLogAnalyzer {
           case STR_TARGET_FILES_FROM_OLD:
             currLine = bufferedReader.readLine();
             targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromOldInfoString(currLine));
+            break;
+          case STR_SOURCE_FILES:
+            currLine = bufferedReader.readLine();
+            sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromFilePath(currLine));
+            break;
+          case STR_TARGET_FILES:
+            currLine = bufferedReader.readLine();
+            targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromFilePath(currLine));
             break;
           case SEQUENCE_NAME_FROM_OLD:
           case UNSEQUENCE_NAME_FROM_OLD:
