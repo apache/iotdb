@@ -88,12 +88,15 @@ public class ResultColumn {
   /**
    * @param prefixPaths prefix paths in the from clause
    * @param resultColumns used to collect the result columns
+   * @param isGroupByLevel used to skip illegal alias judgement here. Because count(*) may be *
+   *     unfolded to more than one expression, but it still can be aggregated together later
    */
-  public void concat(List<PartialPath> prefixPaths, List<ResultColumn> resultColumns)
+  public void concat(
+      List<PartialPath> prefixPaths, List<ResultColumn> resultColumns, boolean isGroupByLevel)
       throws LogicalOptimizeException {
     List<Expression> resultExpressions = new ArrayList<>();
     expression.concat(prefixPaths, resultExpressions);
-    if (hasAlias() && 1 < resultExpressions.size()) {
+    if (!isGroupByLevel && hasAlias() && 1 < resultExpressions.size()) {
       throw new LogicalOptimizeException(
           String.format("alias '%s' can only be matched with one time series", alias));
     }
@@ -106,12 +109,15 @@ public class ResultColumn {
    * @param wildcardsRemover used to remove wildcards from {@code expression} and apply slimit &
    *     soffset control
    * @param resultColumns used to collect the result columns
+   * @param isGroupByLevel used to skip illegal alias judgement here. Because count(*) may be
+   *     unfolded to more than one expression, but it still can be aggregated together later
    */
-  public void removeWildcards(WildcardsRemover wildcardsRemover, List<ResultColumn> resultColumns)
+  public void removeWildcards(
+      WildcardsRemover wildcardsRemover, List<ResultColumn> resultColumns, boolean isGroupByLevel)
       throws LogicalOptimizeException {
     List<Expression> resultExpressions = new ArrayList<>();
     expression.removeWildcards(wildcardsRemover, resultExpressions);
-    if (hasAlias() && 1 < resultExpressions.size()) {
+    if (!isGroupByLevel && hasAlias() && 1 < resultExpressions.size()) {
       throw new LogicalOptimizeException(
           String.format("alias '%s' can only be matched with one time series", alias));
     }
@@ -143,6 +149,10 @@ public class ResultColumn {
 
   public String getResultColumnName() {
     return alias != null ? alias : expression.getExpressionString();
+  }
+
+  public String getExpressionString() {
+    return expression.getExpressionString();
   }
 
   public void setDataType(TSDataType dataType) {

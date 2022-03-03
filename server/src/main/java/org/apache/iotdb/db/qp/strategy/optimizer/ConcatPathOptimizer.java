@@ -98,7 +98,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<PartialPath> prefixPaths = queryOperator.getFromComponent().getPrefixPaths();
     List<ResultColumn> resultColumns = new ArrayList<>();
     for (ResultColumn suffixColumn : queryOperator.getSelectComponent().getResultColumns()) {
-      suffixColumn.concat(prefixPaths, resultColumns);
+      suffixColumn.concat(prefixPaths, resultColumns, queryOperator.isGroupByLevel());
     }
     queryOperator.getSelectComponent().setResultColumns(resultColumns);
   }
@@ -120,7 +120,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
     WildcardsRemover wildcardsRemover = new WildcardsRemover(queryOperator);
     for (ResultColumn resultColumn : queryOperator.getSelectComponent().getResultColumns()) {
-      resultColumn.removeWildcards(wildcardsRemover, resultColumns);
+      resultColumn.removeWildcards(wildcardsRemover, resultColumns, queryOperator.isGroupByLevel());
       if (groupByLevelController != null) {
         groupByLevelController.control(resultColumn, resultColumns);
       }
