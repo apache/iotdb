@@ -38,7 +38,6 @@ public class FloatStatistics extends Statistics<Float> {
   private double sumValue;
 
   static final int FLOAT_STATISTICS_FIXED_RAM_SIZE = 64;
-  private static final String FLOAT = "Float";
 
   @Override
   public TSDataType getType() {
@@ -148,7 +147,8 @@ public class FloatStatistics extends Statistics<Float> {
 
   @Override
   public long getSumLongValue() {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, FLOAT, "long sum"));
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.FLOAT, "long sum"));
   }
 
   @Override

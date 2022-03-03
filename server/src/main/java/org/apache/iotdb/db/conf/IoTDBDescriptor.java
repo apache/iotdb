@@ -238,6 +238,14 @@ public class IoTDBDescriptor {
         conf.setMlogBufferSize(mlogBufferSize);
       }
 
+      long forceMlogPeriodInMs =
+          Long.parseLong(
+              properties.getProperty(
+                  "sync_mlog_period_in_ms", Long.toString(conf.getSyncMlogPeriodInMs())));
+      if (forceMlogPeriodInMs > 0) {
+        conf.setSyncMlogPeriodInMs(forceMlogPeriodInMs);
+      }
+
       conf.setMultiDirStrategyClassName(
           properties.getProperty("multi_dir_strategy", conf.getMultiDirStrategyClassName()));
 
@@ -759,6 +767,15 @@ public class IoTDBDescriptor {
                   "insert_multi_tablet_enable_multithreading_column_threshold",
                   String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
 
+      conf.setEncryptDecryptProvider(
+          properties.getProperty(
+              "iotdb_server_encrypt_decrypt_provider", conf.getEncryptDecryptProvider()));
+
+      conf.setEncryptDecryptProviderParameter(
+          properties.getProperty(
+              "iotdb_server_encrypt_decrypt_provider_parameter",
+              conf.getEncryptDecryptProviderParameter()));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()
@@ -1273,6 +1290,12 @@ public class IoTDBDescriptor {
     logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForWrite());
     logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
 
+    conf.setMaxQueryDeduplicatedPathNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_deduplicated_path_num",
+                Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
+
     if (!conf.isMetaDataCacheEnable()) {
       return;
     }
@@ -1304,12 +1327,6 @@ public class IoTDBDescriptor {
         }
       }
     }
-
-    conf.setMaxQueryDeduplicatedPathNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_deduplicated_path_num",
-                Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

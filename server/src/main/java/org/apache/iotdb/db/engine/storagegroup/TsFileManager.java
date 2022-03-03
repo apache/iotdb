@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -83,11 +84,21 @@ public class TsFileManager {
   }
 
   public TsFileResourceList getSequenceListByTimePartition(long timePartition) {
-    return sequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
+    readLock();
+    try {
+      return sequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
+    } finally {
+      readUnlock();
+    }
   }
 
   public TsFileResourceList getUnsequenceListByTimePartition(long timePartition) {
-    return unsequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
+    readLock();
+    try {
+      return unsequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
+    } finally {
+      readUnlock();
+    }
   }
 
   public Iterator<TsFileResource> getIterator(boolean sequence) {
@@ -100,7 +111,7 @@ public class TsFileManager {
   }
 
   public void remove(TsFileResource tsFileResource, boolean sequence) {
-    readLock();
+    writeLock("remove");
     try {
       Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
       for (Map.Entry<Long, TsFileResourceList> entry : selectedMap.entrySet()) {
@@ -111,14 +122,19 @@ public class TsFileManager {
         }
       }
     } finally {
-      readUnlock();
+      writeUnlock();
     }
   }
 
   public void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
-    for (TsFileResource resource : tsFileResourceList) {
-      remove(resource, sequence);
-      TsFileResourceManager.getInstance().removeTsFileResource(resource);
+    writeLock("removeAll");
+    try {
+      for (TsFileResource resource : tsFileResourceList) {
+        remove(resource, sequence);
+        TsFileResourceManager.getInstance().removeTsFileResource(resource);
+      }
+    } finally {
+      writeLock("removeAll");
     }
   }
 
@@ -152,6 +168,18 @@ public class TsFileManager {
     }
   }
 
+  public void keepOrderInsert(TsFileResource tsFileResource, boolean sequence) throws IOException {
+    writeLock("keepOrderInsert");
+    try {
+      Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
+      selectedMap
+          .computeIfAbsent(tsFileResource.getTimePartition(), o -> new TsFileResourceList())
+          .keepOrderInsert(tsFileResource);
+    } finally {
+      writeUnlock();
+    }
+  }
+
   public void addForRecover(TsFileResource tsFileResource, boolean sequence) {
     if (sequence) {
       sequenceRecoverTsFileResources.add(tsFileResource);
@@ -166,6 +194,45 @@ public class TsFileManager {
       for (TsFileResource resource : tsFileResourceList) {
         add(resource, sequence);
       }
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  /** This method is called after compaction to update memory. */
+  public void replace(
+      List<TsFileResource> seqFileResources,
+      List<TsFileResource> unseqFileResources,
+      List<TsFileResource> targetFileResources,
+      long timePartition,
+      boolean isTargetSequence)
+      throws IOException {
+    writeLock("replace");
+    try {
+      for (TsFileResource tsFileResource : seqFileResources) {
+        if (sequenceFiles.get(timePartition).remove(tsFileResource)) {
+          TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
+        }
+      }
+      for (TsFileResource tsFileResource : unseqFileResources) {
+        if (unsequenceFiles.get(timePartition).remove(tsFileResource)) {
+          TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
+        }
+      }
+      if (isTargetSequence) {
+        // seq inner space compaction or cross space compaction
+        for (TsFileResource resource : targetFileResources) {
+          TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+          sequenceFiles.get(timePartition).keepOrderInsert(resource);
+        }
+      } else {
+        // unseq inner space compaction
+        for (TsFileResource resource : targetFileResources) {
+          TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+          unsequenceFiles.get(timePartition).keepOrderInsert(resource);
+        }
+      }
+
     } finally {
       writeUnlock();
     }

@@ -125,6 +125,7 @@ public class AuthorityChecker {
       case DELETE:
       case DROP_INDEX:
         return PrivilegeType.DELETE_TIMESERIES.ordinal();
+      case SHOW:
       case QUERY:
       case GROUP_BY_TIME:
       case QUERY_INDEX:

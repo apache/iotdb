@@ -35,7 +35,6 @@ public class BooleanStatistics extends Statistics<Boolean> {
   private long sumValue;
 
   static final int BOOLEAN_STATISTICS_FIXED_RAM_SIZE = 56;
-  private static final String BOOLEAN = "Boolean";
 
   @Override
   public TSDataType getType() {
@@ -106,12 +105,14 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   @Override
   public Boolean getMinValue() {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, BOOLEAN, "min"));
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.BOOLEAN, "min"));
   }
 
   @Override
   public Boolean getMaxValue() {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, BOOLEAN, "max"));
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.BOOLEAN, "max"));
   }
 
   @Override
@@ -126,7 +127,8 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   @Override
   public double getSumDoubleValue() {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, BOOLEAN, "double sum"));
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.BOOLEAN, "double sum"));
   }
 
   @Override

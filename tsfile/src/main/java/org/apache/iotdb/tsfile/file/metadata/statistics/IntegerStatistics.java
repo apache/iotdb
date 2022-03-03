@@ -38,7 +38,6 @@ public class IntegerStatistics extends Statistics<Integer> {
   private long sumValue;
 
   static final int INTEGER_STATISTICS_FIXED_RAM_SIZE = 64;
-  private static final String INTEGER = "Integer";
 
   @Override
   public TSDataType getType() {
@@ -143,7 +142,8 @@ public class IntegerStatistics extends Statistics<Integer> {
 
   @Override
   public double getSumDoubleValue() {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, INTEGER, "double sum"));
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.INT32, "double sum"));
   }
 
   @Override

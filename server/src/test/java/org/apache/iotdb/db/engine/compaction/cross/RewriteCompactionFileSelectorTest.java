@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
@@ -146,7 +147,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
-    assertEquals(2, result.length);
+    assertEquals(0, result.length);
     resource.clear();
   }
 
@@ -313,5 +314,328 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     } finally {
       removeFiles(seqList, unseqList);
     }
+  }
+
+  /**
+   * 5 source seq files: [11,11] [12,12] [13,13] [14,14] [15,15]<br>
+   * 10 source unseq files: [0,0] [1,1] ... [9,9]<br>
+   * selected seq file index: 1<br>
+   * selected unseq file index: 1 ~ 10
+   */
+  @Test
+  public void testUnseqFilesOverlappedWithOneSeqFile()
+      throws IOException, WriteProcessException, MergeException {
+    List<TsFileResource> seqList = new ArrayList<>();
+    List<TsFileResource> unseqList = new ArrayList<>();
+    // 5 seq files [11,11] [12,12] [13,13] ... [15,15]
+    int seqFileNum = 5;
+    for (int i = 11; i < seqFileNum + 11; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  10
+                      + "seq"
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setClosed(true);
+      prepareFile(fileResource, i, 1, i);
+      seqList.add(fileResource);
+    }
+    int unseqFileNum = 10;
+    // 10 unseq files [0,0] [1,1] ... [9,9]
+    for (int i = 0; i < unseqFileNum; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  10
+                      + "unseq"
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setClosed(true);
+      prepareFile(fileResource, i, 1, i);
+      unseqList.add(fileResource);
+    }
+
+    CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqList, unseqList);
+    Assert.assertEquals(5, resource.getSeqFiles().size());
+    Assert.assertEquals(10, resource.getUnseqFiles().size());
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, 500 * 1024 * 1024);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(1, result[0].size());
+    Assert.assertEquals(10, result[1].size());
+  }
+
+  /**
+   * 5 source seq files: [11,11] [12,12] [13,13] [14,14] [15,15]<br>
+   * 1 source unseq files: [0 ~ 9]<br>
+   * selected seq file index: 1<br>
+   * selected unseq file index: 1
+   */
+  @Test
+  public void testOneUnseqFileOverlappedWithOneSeqFile()
+      throws IOException, WriteProcessException, MergeException {
+    List<TsFileResource> seqList = new ArrayList<>();
+    List<TsFileResource> unseqList = new ArrayList<>();
+    // 5 seq files [11,11] [12,12] [13,13] ... [15,15]
+    int seqFileNum = 5;
+    for (int i = 11; i < seqFileNum + 11; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  10
+                      + "seq"
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setClosed(true);
+      prepareFile(fileResource, i, 1, i);
+      seqList.add(fileResource);
+    }
+    int unseqFileNum = 1;
+    // 1 unseq files [0~9]
+    for (int i = 0; i < unseqFileNum; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  10
+                      + "unseq"
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setClosed(true);
+      prepareFile(fileResource, i, 10, i);
+      unseqList.add(fileResource);
+    }
+
+    CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqList, unseqList);
+    Assert.assertEquals(5, resource.getSeqFiles().size());
+    Assert.assertEquals(1, resource.getUnseqFiles().size());
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, 500 * 1024 * 1024);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(1, result[0].size());
+    Assert.assertEquals(1, result[1].size());
+  }
+
+  /**
+   * 5 source seq files: [11,11] [12,12] [13,13] [14,14] [15,15]<br>
+   * 2 source unseq files: [7~9] [10~13]<br>
+   * selected seq file index: 1 2 3 <br>
+   * selected unseq file index: 1 2
+   */
+  @Test
+  public void testUnseqFilesOverlapped() throws IOException, WriteProcessException, MergeException {
+    List<TsFileResource> seqList = new ArrayList<>();
+    List<TsFileResource> unseqList = new ArrayList<>();
+    // 5 seq files [11,11] [12,12] [13,13] ... [15,15]
+    int seqFileNum = 5;
+    for (int i = 11; i < seqFileNum + 11; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  10
+                      + "seq"
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setClosed(true);
+      prepareFile(fileResource, i, 1, i);
+      seqList.add(fileResource);
+    }
+    int unseqFileNum = 2;
+    // 2 unseq files [7~9] [10~13]
+    for (int i = 0; i < unseqFileNum; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  10
+                      + "unseq"
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setClosed(true);
+      unseqList.add(fileResource);
+    }
+    prepareFile(unseqList.get(0), 7, 3, 7);
+    prepareFile(unseqList.get(1), 10, 4, 10);
+
+    CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqList, unseqList);
+    Assert.assertEquals(5, resource.getSeqFiles().size());
+    Assert.assertEquals(2, resource.getUnseqFiles().size());
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, 500 * 1024 * 1024);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(3, result[0].size());
+    Assert.assertEquals(2, result[1].size());
+  }
+
+  /**
+   * 5 source seq files: [11,11] [12,12] [13,13] [14,14] [15,15]<br>
+   * 4 source unseq files: [7~9] [10~13] [14~16] [17~18]<br>
+   * selected seq file index: 1 2 3 4 5<br>
+   * selected unseq file index: 1 2 3 4
+   */
+  @Test
+  public void testAllUnseqFilesOverlapped()
+      throws IOException, WriteProcessException, MergeException {
+    List<TsFileResource> seqList = new ArrayList<>();
+    List<TsFileResource> unseqList = new ArrayList<>();
+    // 5 seq files [11,11] [12,12] [13,13] ... [15,15]
+    int seqFileNum = 5;
+    for (int i = 11; i < seqFileNum + 11; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  10
+                      + "seq"
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setClosed(true);
+      prepareFile(fileResource, i, 1, i);
+      seqList.add(fileResource);
+    }
+    int unseqFileNum = 4;
+    // 4 unseq files [7~9] [10~13] [14~16] [17~18]
+    for (int i = 0; i < unseqFileNum; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  10
+                      + "unseq"
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setClosed(true);
+      unseqList.add(fileResource);
+    }
+    prepareFile(unseqList.get(0), 7, 3, 7);
+    prepareFile(unseqList.get(1), 10, 4, 10);
+    prepareFile(unseqList.get(2), 14, 3, 14);
+    prepareFile(unseqList.get(3), 17, 2, 17);
+
+    CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqList, unseqList);
+    Assert.assertEquals(5, resource.getSeqFiles().size());
+    Assert.assertEquals(4, resource.getUnseqFiles().size());
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, 500 * 1024 * 1024);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(5, result[0].size());
+    Assert.assertEquals(4, result[1].size());
+  }
+
+  /**
+   * 5 source seq files: [11,11] [12,12] [13,13] [14,14] [15,15]<br>
+   * 4 source unseq files: [7~9] [10~13] [14~16] [17~18]<br>
+   * while the forth seq file is not close.<br>
+   * selected seq file index: 1 2 3 <br>
+   * selected unseq file index: 1 2
+   */
+  @Test
+  public void testAllUnseqFilesOverlappedWithSeqFileOpen()
+      throws IOException, WriteProcessException, MergeException {
+    List<TsFileResource> seqList = new ArrayList<>();
+    List<TsFileResource> unseqList = new ArrayList<>();
+    // 5 seq files [11,11] [12,12] [13,13] ... [15,15]
+    int seqFileNum = 5;
+    for (int i = 11; i < seqFileNum + 11; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  10
+                      + "seq"
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setClosed(true);
+      prepareFile(fileResource, i, 1, i);
+      seqList.add(fileResource);
+    }
+    seqList.get(3).setClosed(false);
+    int unseqFileNum = 4;
+    // 4 unseq files [7~9] [10~13] [14~16] [17~18]
+    for (int i = 0; i < unseqFileNum; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  10
+                      + "unseq"
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setClosed(true);
+      unseqList.add(fileResource);
+    }
+    prepareFile(unseqList.get(0), 7, 3, 7);
+    prepareFile(unseqList.get(1), 10, 4, 10);
+    prepareFile(unseqList.get(2), 14, 3, 14);
+    prepareFile(unseqList.get(3), 17, 2, 17);
+
+    CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqList, unseqList);
+    Assert.assertEquals(5, resource.getSeqFiles().size());
+    Assert.assertEquals(4, resource.getUnseqFiles().size());
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, 500 * 1024 * 1024);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(3, result[0].size());
+    Assert.assertEquals(2, result[1].size());
   }
 }

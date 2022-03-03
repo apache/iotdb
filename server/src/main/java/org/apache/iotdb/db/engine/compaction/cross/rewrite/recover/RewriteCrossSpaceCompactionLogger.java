@@ -33,6 +33,7 @@ import java.util.List;
 public class RewriteCrossSpaceCompactionLogger implements AutoCloseable {
 
   public static final String COMPACTION_LOG_NAME = "cross-compaction.log";
+  public static final String COMPACTION_LOG_NAME_FEOM_OLD = "merge.log";
 
   public static final String STR_SEQ_FILES = "seqFiles";
   public static final String STR_TARGET_FILES = "targetFiles";

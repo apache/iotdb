@@ -73,6 +73,7 @@ import org.apache.iotdb.db.service.metrics.Operation;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -142,7 +143,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
@@ -158,7 +158,6 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNonQueryException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.tryCatchQueryException;
 
 /** Thrift RPC implementation at server side. */
 public class TSServiceImpl implements TSIService.Iface {
@@ -585,17 +584,12 @@ public class TSServiceImpl implements TSIService.Iface {
         }
       } catch (Exception e) {
         LOGGER.error("Error occurred when executing executeBatchStatement: ", e);
-        TSStatus status = tryCatchQueryException(e);
-        if (status != null) {
-          result.add(status);
+        TSStatus status =
+            onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT);
+        if (status.getCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
           isAllSuccessful = false;
-        } else {
-          result.add(
-              onNPEOrUnexpectedException(
-                  e,
-                  "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT,
-                  TSStatusCode.INTERNAL_SERVER_ERROR));
         }
+        result.add(status);
       }
     }
     addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
@@ -622,8 +616,7 @@ public class TSServiceImpl implements TSIService.Iface {
                   SESSION_MANAGER.getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
-        Future<TSExecuteStatementResp> resp = submitQueryTask(physicalPlan, startTime, req);
-        return resp.get();
+        return submitQueryTask(physicalPlan, startTime, req);
       } else {
         return executeUpdateStatement(
             statement,
@@ -662,8 +655,7 @@ public class TSServiceImpl implements TSIService.Iface {
                   SESSION_MANAGER.getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
-        Future<TSExecuteStatementResp> resp = submitQueryTask(physicalPlan, startTime, req);
-        return resp.get();
+        return submitQueryTask(physicalPlan, startTime, req);
       } else {
         return RpcUtils.getTSExecuteStatementResp(
             TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
@@ -773,8 +765,8 @@ public class TSServiceImpl implements TSIService.Iface {
     }
   }
 
-  private Future<TSExecuteStatementResp> submitQueryTask(
-      PhysicalPlan physicalPlan, long startTime, TSExecuteStatementReq req) {
+  private TSExecuteStatementResp submitQueryTask(
+      PhysicalPlan physicalPlan, long startTime, TSExecuteStatementReq req) throws Exception {
     QueryTask queryTask =
         new QueryTask(
             physicalPlan,
@@ -786,11 +778,11 @@ public class TSServiceImpl implements TSIService.Iface {
             req.fetchSize,
             req.jdbcQuery,
             req.enableRedirectQuery);
-    Future<TSExecuteStatementResp> resp;
+    TSExecuteStatementResp resp;
     if (physicalPlan instanceof ShowQueryProcesslistPlan) {
-      resp = Executors.newFixedThreadPool(1).submit(queryTask);
+      resp = queryTask.call();
     } else {
-      resp = QueryTaskManager.getInstance().submit(queryTask);
+      resp = QueryTaskManager.getInstance().submit(queryTask).get();
     }
     return resp;
   }
@@ -2015,9 +2007,13 @@ public class TSServiceImpl implements TSIService.Iface {
           req.getPrefixPath());
     }
 
-    SetTemplatePlan plan = new SetTemplatePlan(req.templateName, req.prefixPath);
-    TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
-    return status != null ? status : executeNonQueryPlan(plan);
+    try {
+      SetTemplatePlan plan = new SetTemplatePlan(req.templateName, req.prefixPath);
+      TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+      return status != null ? status : executeNonQueryPlan(plan);
+    } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.EXECUTE_STATEMENT, e.getErrorCode());
+    }
   }
 
   @Override
@@ -2034,9 +2030,13 @@ public class TSServiceImpl implements TSIService.Iface {
           req.getTemplateName());
     }
 
-    UnsetTemplatePlan plan = new UnsetTemplatePlan(req.prefixPath, req.templateName);
-    TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
-    return status != null ? status : executeNonQueryPlan(plan);
+    try {
+      UnsetTemplatePlan plan = new UnsetTemplatePlan(req.prefixPath, req.templateName);
+      TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
+      return status != null ? status : executeNonQueryPlan(plan);
+    } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.EXECUTE_STATEMENT, e.getErrorCode());
+    }
   }
 
   @Override
@@ -2078,12 +2078,15 @@ public class TSServiceImpl implements TSIService.Iface {
     if (CONFIG.isEnablePerformanceStat()) {
       MetricsService.getInstance()
           .getMetricManager()
-          .getOrCreateHistogram("operation_histogram", "name", operation.getName())
-          .update(System.currentTimeMillis() - startTime);
+          .histogram(
+              System.currentTimeMillis() - startTime,
+              "operation_histogram",
+              MetricLevel.NORMAL,
+              "name",
+              operation.getName());
       MetricsService.getInstance()
           .getMetricManager()
-          .getOrCreateCounter("operation_count", "name", operation.getName())
-          .inc();
+          .count(1, "operation_count", MetricLevel.NORMAL, "name", operation.getName());
     }
   }
 }

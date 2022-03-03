@@ -746,7 +746,6 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
-							['Process-Data/UDF-Library', 'UDF Library'],
 							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
 							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
 							['Process-Data/Triggers','Triggers'],
@@ -794,6 +793,22 @@ var config = {
 							['Cluster/Cluster-Setup','Cluster Setup'],
 							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
 						]
+					},
+					{
+					    title: 'UDF Library',
+					    sidebarDepth: 1,
+					    children: [
+					        ['UDF-Library/Quick-Start', 'Quick Start'],
+					        ['UDF-Library/Data-Profiling', 'Data Profiling'],
+					        ['UDF-Library/Anomaly-Detection', 'Anomaly Detection'],
+					        ['UDF-Library/Data-Matching', 'Data Matching'],
+					        ['UDF-Library/Frequency-Domain', 'Frequency Domain Analysis'],
+					        ['UDF-Library/Data-Quality', 'Data Quality'],
+					        ['UDF-Library/Data-Repairing', 'Data Repairing'],
+					        ['UDF-Library/Series-Discovery', 'Series Discovery'],
+                            ['UDF-Library/String-Processing', 'String Processing'],
+                            ['UDF-Library/M4', 'M4']
+					    ]
 					},
 					{
 						title: 'Reference',
@@ -906,7 +921,6 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
-							['Process-Data/UDF-Library', 'UDF Library'],
 							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
 							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
 							['Process-Data/Triggers','Triggers'],
@@ -957,95 +971,28 @@ var config = {
 						]
 					},
 					{
+					    title: 'UDF Library',
+					    sidebarDepth: 1,
+					    children: [
+					        ['UDF-Library/Quick-Start', 'Quick Start'],
+					        ['UDF-Library/Data-Profiling', 'Data Profiling'],
+					        ['UDF-Library/Anomaly-Detection', 'Anomaly Detection'],
+					        ['UDF-Library/Data-Matching', 'Data Matching'],
+					        ['UDF-Library/Frequency-Domain', 'Frequency Domain Analysis'],
+					        ['UDF-Library/Data-Quality', 'Data Quality'],
+					        ['UDF-Library/Data-Repairing', 'Data Repairing'],
+					        ['UDF-Library/Series-Discovery', 'Series Discovery'],
+                            ['UDF-Library/String-Processing', 'String Processing'],
+                            ['UDF-Library/M4', 'M4']
+					    ]
+					},
+					{
 						title: 'Reference',
 						children: [
 							['Reference/Config-Manual','Config Manual'],
 							['Reference/Keywords','Keywords'],
 							['Reference/Frequently-asked-questions','Frequently asked questions'],
 							['Reference/TSDB-Comparison','TSDB Comparison']
-						]
-					},
-				],
-				'/SystemDesign/': [
-					{
-						title: 'System design',
-						collapsable: false,
-					},
-					{
-						title: 'Architecture',
-						children: [
-							['Architecture/Architecture','Architecture']
-						]
-					},
-					{
-						title: 'TsFile',
-						children: [
-							['TsFile/TsFile','TsFile'],
-							['TsFile/Format','Format'],
-							['TsFile/Write','Write'],
-							['TsFile/Read','Read']
-						]
-					},
-					{
-						title: 'QueryEngine',
-						children: [
-							['QueryEngine/QueryEngine','QueryEngine'],
-							['QueryEngine/Planner','Planner'],
-							['QueryEngine/PlanExecutor','PlanExecutor'],
-							['QueryEngine/ResultSetConstruction','ResultSetConstruction']
-						]
-					},
-					{
-						title: 'SchemaManager',
-						children: [
-							['SchemaManager/SchemaManager','SchemaManager'],
-						]
-					},
-					{
-						title: 'StorageEngine',
-						children: [
-							['StorageEngine/StorageEngine','StorageEngine'],
-							['StorageEngine/WAL','WAL'],
-							['StorageEngine/FlushManager','FlushManager'],
-							['StorageEngine/MergeManager','MergeManager'],
-							['StorageEngine/DataPartition','DataPartition'],
-							['StorageEngine/DataManipulation','DataManipulation'],
-							['StorageEngine/Recover','Recover']
-						]
-					},
-					{
-						title: 'DataQuery',
-						children: [
-							['DataQuery/DataQuery','DataQuery'],
-							['DataQuery/QueryFundamentals','QueryFundamentals'],
-							['DataQuery/SeriesReader','SeriesReader'],
-							['DataQuery/RawDataQuery','RawDataQuery'],
-							['DataQuery/AggregationQuery','AggregationQuery'],
-							['DataQuery/GroupByQuery','GroupByQuery'],
-							['DataQuery/LastQuery','LastQuery'],
-							['DataQuery/AlignByDeviceQuery','AlignByDeviceQuery'],
-							['DataQuery/FillFunction','FillFunction'],
-							['DataQuery/GroupByFillQuery', 'GroupByFillQuery']
-						]
-					},
-					{
-						title: 'Tools',
-						children: [
-							['Tools/Sync','Sync']
-						]
-					},
-					{
-						title: 'Connector',
-						children: [
-							['Connector/Hive-TsFile','Hive-TsFile'],
-							['Connector/Spark-TsFile','Spark-TsFile'],
-							['Connector/Spark-IOTDB','Spark-IOTDB']
-						]
-					},
-					{
-						title: 'Client',
-						children: [
-							['Client/RPC','RPC']
 						]
 					},
 				],
@@ -1715,7 +1662,6 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
-							['Process-Data/UDF-Library', 'UDF 函数库'],
 							['Process-Data/Select-Into','查询写回(SELECT INTO)'],
 							['Process-Data/Continuous-Query','连续查询(CQ)'],
 							['Process-Data/Triggers','触发器'],
@@ -1765,6 +1711,22 @@ var config = {
 							['Cluster/Cluster-Setup-Example','集群搭建示例']
 						]
 					},
+					{
+                        title: 'UDF 资料库',
+                        sidebarDepth: 1,
+                        children: [
+                            ['UDF-Library/Quick-Start', '快速开始'],
+                            ['UDF-Library/Data-Profiling', '数据画像'],
+                            ['UDF-Library/Anomaly-Detection', '异常检测'],
+                            ['UDF-Library/Data-Matching', '数据匹配'],
+                            ['UDF-Library/Frequency-Domain', '频域分析'],
+                            ['UDF-Library/Data-Quality', '数据质量'],
+                            ['UDF-Library/Data-Repairing', '数据修复'],
+                            ['UDF-Library/Series-Discovery', '序列发现'],
+                            ['UDF-Library/String-Processing', '字符串处理'],
+                            ['UDF-Library/M4', 'M4']
+                        ]
+                    },
 					{
 						title: '参考',
 						children: [
@@ -1877,7 +1839,6 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
-							['Process-Data/UDF-Library', 'UDF 函数库'],
 							['Process-Data/Select-Into','查询写回(SELECT INTO)'],
 							['Process-Data/Continuous-Query','连续查询(CQ)'],
 							['Process-Data/Triggers','触发器'],
@@ -1928,6 +1889,22 @@ var config = {
 						]
 					},
 					{
+                        title: 'UDF 资料库',
+                        sidebarDepth: 1,
+                        children: [
+                            ['UDF-Library/Quick-Start', '快速开始'],
+                            ['UDF-Library/Data-Profiling', '数据画像'],
+                            ['UDF-Library/Anomaly-Detection', '异常检测'],
+                            ['UDF-Library/Data-Matching', '数据匹配'],
+                            ['UDF-Library/Frequency-Domain', '频域分析'],
+                            ['UDF-Library/Data-Quality', '数据质量'],
+                            ['UDF-Library/Data-Repairing', '数据修复'],
+                            ['UDF-Library/Series-Discovery', '序列发现'],
+                            ['UDF-Library/String-Processing', '字符串处理'],
+                            ['UDF-Library/M4', 'M4']
+                        ]
+                    },
+					{
 						title: '参考',
 						children: [
 							['Reference/Config-Manual','配置参数'],
@@ -1936,92 +1913,6 @@ var config = {
 							['Reference/TSDB-Comparison','时间序列数据库比较']
 						]
 					}
-				],
-				'/zh/SystemDesign/': [
-					{
-						title: '系统设计',
-						collapsable: false,
-					},
-					{
-						title: '应用概览',
-						children: [
-							['Architecture/Architecture','应用概览']
-						]
-					},
-					{
-						title: 'TsFile',
-						children: [
-							['TsFile/TsFile','TsFile'],
-							['TsFile/Format','格式'],
-							['TsFile/Write','写流程'],
-							['TsFile/Read','读流程']
-						]
-					},
-					{
-						title: '查询引擎',
-						children: [
-							['QueryEngine/QueryEngine','查询引擎'],
-							['QueryEngine/Planner','执行计划生成器'],
-							['QueryEngine/PlanExecutor','计划执行器'],
-							['QueryEngine/ResultSetConstruction','结果集构造']
-						]
-					},
-					{
-						title: '元数据管理',
-						children: [
-							['SchemaManager/SchemaManager','元数据管理']
-						]
-					},
-					{
-						title: '存储引擎',
-						children: [
-							['StorageEngine/FileLists','磁盘文件汇总'],
-							['StorageEngine/StorageEngine','存储引擎'],
-							['StorageEngine/WAL','写前日志'],
-							['StorageEngine/FlushManager','FlushManager'],
-							['StorageEngine/MergeManager','文件合并机制'],
-							['StorageEngine/DataPartition','数据分区'],
-							['StorageEngine/DataManipulation','数据增删改'],
-							['StorageEngine/Recover','重启恢复'],
-							['StorageEngine/Compaction','文件合并']
-						]
-					},
-					{
-						title: '数据查询',
-						children: [
-							['DataQuery/DataQuery','数据查询'],
-							['DataQuery/QueryFundamentals','查询基础介绍'],
-							['DataQuery/SeriesReader','查询基础组件'],
-							['DataQuery/RawDataQuery','原始数据查询'],
-							['DataQuery/AggregationQuery','聚合查询'],
-							['DataQuery/GroupByQuery','降采样查询'],
-							['DataQuery/LastQuery','最近时间戳 Last 查询'],
-							['DataQuery/AlignByDeviceQuery','按设备对齐查询'],
-							['DataQuery/FillFunction','空值填充'],
-							['DataQuery/GroupByFillQuery', '降采样补空值查询'],
-							['DataQuery/OrderByTimeQuery', '按时间倒序查询']
-						]
-					},
-					{
-						title: '工具',
-						children: [
-							['Tools/Sync','同步工具']
-						]
-					},
-					{
-						title: '连接器',
-						children: [
-							['Connector/Hive-TsFile','Hive-TsFile'],
-							['Connector/Spark-TsFile','Spark-TsFile'],
-							['Connector/Spark-IOTDB','Spark-IOTDB']
-						]
-					},
-					{
-						title: '客户端',
-						children: [
-							['Client/RPC','RPC']
-						]
-					},
 				],
 			}
 		  }

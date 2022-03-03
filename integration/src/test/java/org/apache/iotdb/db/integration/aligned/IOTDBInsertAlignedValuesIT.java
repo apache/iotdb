@@ -358,4 +358,15 @@ public class IOTDBInsertAlignedValuesIT {
     Assert.assertEquals(true, rs.getBoolean(2));
     st1.close();
   }
+
+  @Test
+  public void testInsertWithDuplicatedMeasurements() {
+    try (Statement st1 = connection.createStatement()) {
+      st1.execute(
+          "insert into root.t1.wf01.wt01(time, s3, status, status) aligned values(100, true, 20.1, 20.2)");
+      Assert.fail();
+    } catch (SQLException e) {
+      Assert.assertEquals("411: Insertion contains duplicated measurement: status", e.getMessage());
+    }
+  }
 }

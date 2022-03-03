@@ -37,7 +37,7 @@
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
             <artifactId>metrics-jvm</artifactId>
-            <version>4.1.2</version>
+            <version>${metrics.version}</version>
         </dependency>
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
@@ -49,6 +49,11 @@
             <artifactId>jersey-core</artifactId>
             <version>1.9</version>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.projectreactor.netty</groupId>
+            <artifactId>reactor-netty-http</artifactId>
+            <version>1.0.4</version>
         </dependency>
     </dependencies>
 </project>
