@@ -247,9 +247,7 @@ public class PageWriter {
         channel.write(pageData);
       }
     } else {
-      int previousPosition = pageBuffer.size();
       pageBuffer.write(compressedBytes, 0, compressedSize);
-      if (pageBuffer.size() - previousPosition == compressedSize) {}
     }
     logger.trace("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
     return sizeWithoutStatistic;
