@@ -402,6 +402,8 @@ public class DMatchTests {
       statement.execute("create function pearson as 'org.apache.iotdb.library.dmatch.UDAFPearson'");
       statement.execute("create function ptnsym as 'org.apache.iotdb.library.dmatch.UDTFPtnSym'");
       statement.execute("create function xcorr as 'org.apache.iotdb.library.dmatch.UDTFXcorr'");
+      statement.execute("create function mae as 'org.apache.iotdb.library.dmatch.UDAFMae'");
+      statement.execute("create function rmse as 'org.apache.iotdb.library.dmatch.UDAFRmse'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -818,6 +820,126 @@ public class DMatchTests {
       Assert.assertEquals(9.2, result7, 0.01);
       Assert.assertEquals(11.8, result8, 0.01);
       Assert.assertEquals(6.0, result9, 0.01);
+      Assert.assertFalse(resultSet.next());
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+  
+  @Test
+  public void testMae1() {
+    String sqlStr = "select mae(d1.s1,d1.s5) from root.vehicle";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(8.846153846153847, result1, 0.01);
+      Assert.assertFalse(resultSet.next());
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testMae2() {
+    String sqlStr = "select cov(d1.s2,d1.s6) from root.vehicle";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(8.846153846153847, result1, 0.01);
+      Assert.assertFalse(resultSet.next());
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testMae3() {
+    String sqlStr = "select cov(d1.s3,d1.s7) from root.vehicle";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(8.846153846153847, result1, 0.01);
+      Assert.assertFalse(resultSet.next());
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testMae4() {
+    String sqlStr = "select cov(d1.s4,d1.s8) from root.vehicle";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(8.846153846153847, result1, 0.01);
+      Assert.assertFalse(resultSet.next());
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testRmse1() {
+    String sqlStr = "select rmse(d1.s1,d1.s5) from root.vehicle";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(11.357816691600547, result1, 0.01);
+      Assert.assertFalse(resultSet.next());
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testRmse2() {
+    String sqlStr = "select rmse(d1.s2,d1.s6) from root.vehicle";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(11.357816691600547, result1, 0.01);
+      Assert.assertFalse(resultSet.next());
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testRmse3() {
+    String sqlStr = "select rmse(d1.s3,d1.s7) from root.vehicle";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(11.357816691600547, result1, 0.01);
+      Assert.assertFalse(resultSet.next());
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testRmse4() {
+    String sqlStr = "select rmse(d1.s4,d1.s8) from root.vehicle";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(11.357816691600547, result1, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
