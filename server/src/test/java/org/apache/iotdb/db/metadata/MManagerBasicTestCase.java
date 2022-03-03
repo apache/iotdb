@@ -500,6 +500,8 @@ public abstract class MManagerBasicTestCase {
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
+      // todo fix me while recover from schemaFile
+      manager.clear();
       MManager recoverManager = new MManager();
       recoverManager.initForMultiMManagerTest();
 
@@ -515,6 +517,7 @@ public abstract class MManagerBasicTestCase {
               .collect(Collectors.toSet()));
 
       recoverManager.clear();
+      manager.init();
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

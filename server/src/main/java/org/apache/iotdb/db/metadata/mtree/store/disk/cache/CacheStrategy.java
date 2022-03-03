@@ -150,7 +150,9 @@ public abstract class CacheStrategy implements ICacheStrategy {
     }
     parent = node.getParent();
     cacheEntry = getCacheEntry(parent);
-    if (!cacheEntry.isVolatile()) {
+    if (nodeBuffer.containsKey(cacheEntry)) {
+      nodeBuffer.remove(getCacheEntry(node));
+    } else if (!cacheEntry.isVolatile()) {
       // make sure that the nodeBuffer contains all the root node of volatile subTree
       // give that root.sg.d.s, if root, sg and d have been persisted and s are volatile, then d
       // will be added to nodeBuffer
@@ -202,9 +204,7 @@ public abstract class CacheStrategy implements ICacheStrategy {
   public List<IMNode> collectVolatileMNodes() {
     List<IMNode> nodesToPersist = new ArrayList<>();
     for (IMNode node : nodeBuffer.values()) {
-      if (node.getParent() == null || !nodeBuffer.containsKey(getCacheEntry(node.getParent()))) {
-        collectVolatileNodes(node, nodesToPersist);
-      }
+      collectVolatileNodes(node, nodesToPersist);
     }
     nodeBuffer.clear();
     return nodesToPersist;
