@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
  * CrossSpaceMergeResource manages files and caches of readers, writers, MeasurementSchemas and
  * modifications to avoid unnecessary object creations and file openings.
  */
-public class CrossSpaceMergeResource {
+public class CrossSpaceCompactionResource {
 
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles = new ArrayList<>();
@@ -63,7 +63,7 @@ public class CrossSpaceMergeResource {
 
   private boolean cacheDeviceMeta = false;
 
-  public CrossSpaceMergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+  public CrossSpaceCompactionResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = seqFiles.stream().filter(this::filterSeqResource).collect(Collectors.toList());
     filterUnseqResource(unseqFiles);
   }
@@ -89,7 +89,7 @@ public class CrossSpaceMergeResource {
     }
   }
 
-  public CrossSpaceMergeResource(
+  public CrossSpaceCompactionResource(
       Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long ttlLowerBound) {
     this.ttlLowerBound = ttlLowerBound;
     this.seqFiles = seqFiles.stream().filter(this::filterSeqResource).collect(Collectors.toList());
