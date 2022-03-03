@@ -772,20 +772,9 @@ public class StorageGroupProcessor {
       }
       resourcesToBeInserted.add(tsFileResource);
     }
-    resourcesToBeInserted.sort(
-        (o1, o2) -> {
-          try {
-            TsFileResource.TsFileName nameOfO1 =
-                TsFileResource.getTsFileName(o1.getTsFile().getName());
-            TsFileResource.TsFileName nameOfO2 =
-                TsFileResource.getTsFileName(o2.getTsFile().getName());
-            return Long.compare(nameOfO1.getVersion(), nameOfO2.getVersion());
-          } catch (IOException e) {
-            logger.error("Exception occurs when sorting tsfile list", e);
-            return 0;
-          }
-        });
-    tsFileManagement.addAll(resourcesToBeInserted, isSeq);
+    for (int i = resourcesToBeInserted.size() - 1; i >= 0; --i) {
+      tsFileManagement.add(resourcesToBeInserted.get(i), isSeq);
+    }
   }
 
   // ({systemTime}-{versionNum}-{mergeNum}.tsfile)
