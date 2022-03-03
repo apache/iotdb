@@ -310,25 +310,25 @@ public class ChunkWriterImpl implements IChunkWriter {
         pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer, false);
       }
 
-      // update statistics of this chunk
-      numOfPages++;
-      if (this.statistics.getStartTime() == 0) {
-        logger.error(
-            "before merge statistics' startTime is 0: {}, pageWriter statistics: {}",
-            this.statistics,
-            pageWriter.getStatistics());
-        throw new IllegalStateException("before merge statistics' startTime is 0");
-      }
+      //      numOfPages++;
+      //      if (this.statistics.getStartTime() == 0) {
+      //        logger.error(
+      //            "before merge statistics' startTime is 0: {}, pageWriter statistics: {}",
+      //            this.statistics,
+      //            pageWriter.getStatistics());
+      //        throw new IllegalStateException("before merge statistics' startTime is 0");
+      //      }
 
+      // update statistics of this chunk
       this.statistics.mergeStatistics(pageWriter.getStatistics());
 
-      if (this.statistics.getStartTime() == 0) {
-        logger.error(
-            "after merge statistics' startTime is 0: {}, pageWriter statistics: {}",
-            this.statistics,
-            pageWriter.getStatistics());
-        throw new IllegalStateException("after merge statistics' startTime is 0");
-      }
+      //      if (this.statistics.getStartTime() == 0) {
+      //        logger.error(
+      //            "after merge statistics' startTime is 0: {}, pageWriter statistics: {}",
+      //            this.statistics,
+      //            pageWriter.getStatistics());
+      //        throw new IllegalStateException("after merge statistics' startTime is 0");
+      //      }
     } catch (IOException e) {
       logger.error("meet error in pageWriter.writePageHeaderAndDataIntoBuff,ignore this page:", e);
     } finally {
