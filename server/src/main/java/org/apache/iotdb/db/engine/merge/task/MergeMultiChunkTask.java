@@ -509,7 +509,7 @@ public class MergeMultiChunkTask {
               chunk,
               chunkWriter,
               unseqReader,
-              isLastChunk ? resourceEndTime : currMeta.getEndTime(),
+              isLastChunk ? resourceEndTime + 1 : currMeta.getEndTime(),
               pathIdx);
       mergedChunkNum.incrementAndGet();
     }
@@ -650,7 +650,8 @@ public class MergeMultiChunkTask {
           ChunkMetadata currMeta = metaListEntry.current();
           boolean isLastChunk = !metaListEntry.hasNext();
           boolean chunkOverflowed =
-              MergeUtils.isChunkOverflowed(currTimeValuePairs[pathIdx], currMeta);
+              MergeUtils.isChunkOverflowed(
+                  currTimeValuePairs[pathIdx], currMeta, isLastChunk, endTimeOfCurrentResource);
           boolean chunkTooSmall =
               MergeUtils.isChunkTooSmall(
                   ptWrittens[pathIdx], currMeta, isLastChunk, minChunkPointNum);
