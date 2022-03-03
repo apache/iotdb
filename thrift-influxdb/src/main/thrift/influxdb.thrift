@@ -94,23 +94,25 @@ struct TSQueryReq{
 // WritePoints()
 // write points in influxdb
 struct TSQueryRsp{
-  1: required list<QueryResult> results
+  1: required TSStatus status
+
+  2: required list<TSQueryResult> results
+
+  3: required string error
+}
+
+struct TSQueryResult{
+  1: required list<TSSeries> series
 
   2: required string error
 }
 
-struct QueryResult{
-  1: required list<Series> series
-
-  2: required string error
-}
-
-struct Series {
+struct TSSeries {
   1: required string name
   2: required map<string,string> tags
   3: required list<string> columns
 
-  4: required list<list<binary>> error
+  4: required list<list<binary>> values
 }
 
 service InfluxDBService {

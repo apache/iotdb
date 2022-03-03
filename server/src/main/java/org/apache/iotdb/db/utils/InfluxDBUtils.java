@@ -30,7 +30,9 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryResult;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryRsp;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSSeries;
 
 import org.influxdb.dto.QueryResult;
 
@@ -124,5 +126,29 @@ public class InfluxDBUtils {
     result.setSeries(new ArrayList<>(Arrays.asList(series)));
     queryResult.setResults(new ArrayList<>(Arrays.asList(result)));
     return null;
+  }
+
+  public static QueryResult convertTSQueryResult(TSQueryRsp tsQueryRsp) {
+    QueryResult queryResult = new QueryResult();
+    List<QueryResult.Result> results = new ArrayList<>();
+    List<QueryResult.Series> serieList = new ArrayList<>();
+    for (TSQueryResult tsQueryResult : tsQueryRsp.results) {
+      QueryResult.Result result = new QueryResult.Result();
+      for (TSSeries tsSeries : tsQueryResult.series) {
+        QueryResult.Series series = new QueryResult.Series();
+        // TODO buffer to object
+        //        series.setValues(tsSeries.values);
+        series.setColumns(tsSeries.columns);
+        series.setName(tsSeries.name);
+        series.setTags(tsSeries.tags);
+        serieList.add(series);
+      }
+      result.setSeries(serieList);
+      result.setError(tsQueryResult.error);
+      results.add(result);
+    }
+    queryResult.setResults(results);
+    queryResult.setError(tsQueryRsp.error);
+    return queryResult;
   }
 }
