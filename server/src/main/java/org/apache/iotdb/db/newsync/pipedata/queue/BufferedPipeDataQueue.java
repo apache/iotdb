@@ -61,8 +61,8 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
   private BlockingDeque<PipeData> outputDeque;
 
-  private volatile long pullSerialNumber;
-  private volatile long commitSerialNumber;
+  private long pullSerialNumber;
+  private long commitSerialNumber;
   private DataOutputStream commitLogWriter;
   private long currentCommitLogSize;
 
@@ -238,7 +238,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     if (!outputDeque.isEmpty()) {
       return outputDeque.poll();
     } else if (outputDeque != inputDeque) {
-      if (pipeLogStartNumber.isEmpty()) {
+      if (pipeLogStartNumber.isEmpty() || lastSerialNumber == Long.MIN_VALUE) {
         return null;
       }
 
