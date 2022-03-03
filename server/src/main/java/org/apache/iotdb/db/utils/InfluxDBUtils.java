@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
-import org.apache.iotdb.db.protocol.influxdb.expression.InfluxResultColumn;
 import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxFunctionExpression;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxDBFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxDBFunctionFactory;
@@ -29,6 +28,7 @@ import org.apache.iotdb.db.protocol.influxdb.operator.InfluxSelectComponent;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryRsp;
 
@@ -87,7 +87,7 @@ public class InfluxDBUtils {
 
     List<InfluxDBFunction> functions = new ArrayList<>();
     String path = "root." + database + "." + measurement;
-    for (InfluxResultColumn resultColumn : selectComponent.getInfluxResultColumns()) {
+    for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
       Expression expression = resultColumn.getExpression();
       if (expression instanceof InfluxFunctionExpression) {
         String functionName = ((FunctionExpression) expression).getFunctionName();

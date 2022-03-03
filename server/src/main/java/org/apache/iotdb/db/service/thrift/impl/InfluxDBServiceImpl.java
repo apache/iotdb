@@ -161,7 +161,7 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
 
   private TSQueryRsp queryInfluxDB(
       String database, InfluxQueryOperator queryOperator, long sessionId) {
-    String measurement = queryOperator.getFromComponent().getNodeName().get(0);
+    String measurement = queryOperator.getFromComponent().getPrefixPaths().get(0).getFullPath();
     // The list of fields under the current measurement and the order of the specified rules
     Map<String, Integer> fieldOrders = new HashMap<>();
     Map<Integer, String> fieldOrdersReversed = new HashMap<>();
