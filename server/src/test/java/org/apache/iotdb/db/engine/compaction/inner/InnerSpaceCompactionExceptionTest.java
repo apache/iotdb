@@ -55,7 +55,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
     File logFile =
-        new File(targetResource.getTsFile().getPath() + CompactionLogger.INNER_COMPACTION_LOG_NAME);
+        new File(
+            targetResource.getTsFile().getPath()
+                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(logFile);
     compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
     compactionLogger.logFiles(
@@ -98,7 +100,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
     File logFile =
-        new File(targetResource.getTsFile().getPath() + CompactionLogger.INNER_COMPACTION_LOG_NAME);
+        new File(
+            targetResource.getTsFile().getPath()
+                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(logFile);
     compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
     compactionLogger.logFiles(
@@ -137,7 +141,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
     File logFile =
-        new File(targetResource.getTsFile().getPath() + CompactionLogger.INNER_COMPACTION_LOG_NAME);
+        new File(
+            targetResource.getTsFile().getPath()
+                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(logFile);
     compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
     compactionLogger.logFiles(
@@ -187,7 +193,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
     File logFile =
-        new File(targetResource.getTsFile().getPath() + CompactionLogger.INNER_COMPACTION_LOG_NAME);
+        new File(
+            targetResource.getTsFile().getPath()
+                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(logFile);
     compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
     compactionLogger.logFiles(
@@ -235,7 +243,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
     File logFile =
-        new File(targetResource.getTsFile().getPath() + CompactionLogger.INNER_COMPACTION_LOG_NAME);
+        new File(
+            targetResource.getTsFile().getPath()
+                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(logFile);
     compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
     compactionLogger.logFiles(
@@ -296,7 +306,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
     File logFile =
-        new File(targetResource.getTsFile().getPath() + CompactionLogger.INNER_COMPACTION_LOG_NAME);
+        new File(
+            targetResource.getTsFile().getPath()
+                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(logFile);
     compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
     compactionLogger.logFiles(
@@ -350,7 +362,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
     File logFile =
-        new File(targetResource.getTsFile().getPath() + CompactionLogger.INNER_COMPACTION_LOG_NAME);
+        new File(
+            targetResource.getTsFile().getPath()
+                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(logFile);
     compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
     compactionLogger.logFiles(

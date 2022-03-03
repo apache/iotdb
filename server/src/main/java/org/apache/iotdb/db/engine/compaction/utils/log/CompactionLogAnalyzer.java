@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.SEQUENCE_NAME_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_MERGE_START_FROM_OLD;
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SEQ_FILES_FROM_OLD;
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SOURCE_FILES;
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SOURCE_FILES_FROM_OLD;
@@ -112,6 +113,8 @@ public class CompactionLogAnalyzer {
         } else if (currLine.equals(STR_SEQ_FILES_FROM_OLD)) {
           isSeqSource = true;
           continue;
+        } else if (currLine.equals(STR_MERGE_START_FROM_OLD)) {
+          break;
         }
         analyzeOldFilePath(isSeqSource, currLine);
       }

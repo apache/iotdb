@@ -46,7 +46,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.INNER_COMPACTION_LOG_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX;
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SOURCE_FILES;
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_TARGET_FILES;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -83,9 +83,8 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + CompactionLogger.CROSS_COMPACTION_LOG_NAME);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
@@ -93,7 +92,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     compactionLogger.close();
     new RewriteCrossCompactionRecoverTask(
-            INNER_COMPACTION_LOG_NAME,
+            INNER_COMPACTION_LOG_NAME_SUFFIX,
             "0",
             0,
             compactionLogFile,
@@ -150,9 +149,8 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + CompactionLogger.CROSS_COMPACTION_LOG_NAME);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
@@ -168,7 +166,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     }
     compactionLogger.close();
     new RewriteCrossCompactionRecoverTask(
-            INNER_COMPACTION_LOG_NAME,
+            INNER_COMPACTION_LOG_NAME_SUFFIX,
             "0",
             0,
             compactionLogFile,
@@ -225,9 +223,8 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + CompactionLogger.CROSS_COMPACTION_LOG_NAME);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
@@ -236,7 +233,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     compactionLogger.close();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     new RewriteCrossCompactionRecoverTask(
-            INNER_COMPACTION_LOG_NAME,
+            INNER_COMPACTION_LOG_NAME_SUFFIX,
             "0",
             0,
             compactionLogFile,
@@ -293,9 +290,8 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + CompactionLogger.CROSS_COMPACTION_LOG_NAME);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
@@ -305,7 +301,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     seqResources.get(0).getTsFile().delete();
     compactionLogger.close();
     new RewriteCrossCompactionRecoverTask(
-            INNER_COMPACTION_LOG_NAME,
+            INNER_COMPACTION_LOG_NAME_SUFFIX,
             "0",
             0,
             compactionLogFile,
@@ -362,9 +358,8 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + CompactionLogger.CROSS_COMPACTION_LOG_NAME);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
@@ -392,7 +387,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     seqResources.get(0).remove();
 
     new RewriteCrossCompactionRecoverTask(
-            INNER_COMPACTION_LOG_NAME,
+            INNER_COMPACTION_LOG_NAME_SUFFIX,
             "0",
             0,
             compactionLogFile,
@@ -464,9 +459,8 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + CompactionLogger.CROSS_COMPACTION_LOG_NAME);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
@@ -493,7 +487,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     CompactionUtils.combineModsInCompaction(seqResources, unseqResources, targetResources);
 
     new RewriteCrossCompactionRecoverTask(
-            INNER_COMPACTION_LOG_NAME,
+            INNER_COMPACTION_LOG_NAME_SUFFIX,
             "0",
             0,
             compactionLogFile,
@@ -578,9 +572,8 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + CompactionLogger.CROSS_COMPACTION_LOG_NAME);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
@@ -613,7 +606,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     }
 
     new RewriteCrossCompactionRecoverTask(
-            INNER_COMPACTION_LOG_NAME,
+            INNER_COMPACTION_LOG_NAME_SUFFIX,
             "0",
             0,
             compactionLogFile,

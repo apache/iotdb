@@ -83,9 +83,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + CompactionLogger.CROSS_COMPACTION_LOG_NAME);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
@@ -153,9 +152,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + CompactionLogger.CROSS_COMPACTION_LOG_NAME);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
@@ -224,9 +222,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + CompactionLogger.CROSS_COMPACTION_LOG_NAME);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
@@ -305,9 +302,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + CompactionLogger.CROSS_COMPACTION_LOG_NAME);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
@@ -418,9 +414,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + CompactionLogger.CROSS_COMPACTION_LOG_NAME);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);

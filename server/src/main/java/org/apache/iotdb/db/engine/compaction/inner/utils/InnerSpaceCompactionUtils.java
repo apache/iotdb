@@ -246,7 +246,7 @@ public class InnerSpaceCompactionUtils {
     File timePartitionDir = new File(directory);
     if (timePartitionDir.exists()) {
       return timePartitionDir.listFiles(
-          (dir, name) -> name.endsWith(CompactionLogger.INNER_COMPACTION_LOG_NAME));
+          (dir, name) -> name.endsWith(CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX));
     } else {
       return new File[0];
     }

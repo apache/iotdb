@@ -46,8 +46,8 @@ public class CompactionClearUtils {
     deleteAllFilesInOneDirBySuffix("target", ModificationFile.FILE_SUFFIX);
     deleteAllFilesInOneDirBySuffix("target", IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX);
     deleteAllFilesInOneDirBySuffix("target", IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX);
-    deleteAllFilesInOneDirBySuffix("target", CompactionLogger.INNER_COMPACTION_LOG_NAME);
-    deleteAllFilesInOneDirBySuffix("target", CompactionLogger.CROSS_COMPACTION_LOG_NAME);
+    deleteAllFilesInOneDirBySuffix("target", CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
+    deleteAllFilesInOneDirBySuffix("target", CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     // clean cache
     if (IoTDBDescriptor.getInstance().getConfig().isMetaDataCacheEnable()) {
       ChunkCache.getInstance().clear();

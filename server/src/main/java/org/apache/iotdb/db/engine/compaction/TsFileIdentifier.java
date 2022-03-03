@@ -94,7 +94,8 @@ public class TsFileIdentifier {
 
   /**
    * This function generates an instance of CompactionFileIdentifier by parsing the info string of a
-   * tsfile(usually recorded in a compaction.log), such as “root.test.sg 0 0 true 1-1-0-0.tsfile"
+   * tsfile(usually recorded in a compaction.log), such as “sequence root.test.sg 0 0
+   * 0-0-0-0.tsfile"
    */
   public static TsFileIdentifier getFileIdentifierFromInfoString(String infoString) {
     String[] splittedFileInfo = infoString.split(INFO_SEPARATOR);
@@ -113,8 +114,9 @@ public class TsFileIdentifier {
 
   /**
    * This function generates an instance of CompactionFileIdentifier by parsing the old info string
-   * from previous version (<0.13) of a tsfile(usually recorded in a compaction.log), such as
-   * “root.test.sg 0 0 1-1-0-0.tsfile true"
+   * from previous version (<0.13) of a tsfile(usually recorded in a compaction.log). Such as
+   * “root.test.sg 0 0 1-1-0-0.tsfile true" from old cross space compaction log and "root.test.sg 0
+   * 0 1-1-0-0.tsfile sequence" from old inner space compaction log.
    */
   public static TsFileIdentifier getFileIdentifierFromOldInfoString(String oldInfoString) {
     String[] splittedFileInfo = oldInfoString.split(INFO_SEPARATOR);

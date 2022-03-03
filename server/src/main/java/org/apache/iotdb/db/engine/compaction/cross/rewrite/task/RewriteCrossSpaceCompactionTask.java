@@ -43,7 +43,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SOURCE_FILES;
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_TARGET_FILES;
 
@@ -132,8 +131,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
             selectedSeqTsFileResourceList.get(0).getTsFile().getParent()
                 + File.separator
                 + targetTsfileResourceList.get(0).getTsFile().getName()
-                + PATH_SEPARATOR
-                + CompactionLogger.CROSS_COMPACTION_LOG_NAME);
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
 
     try (CompactionLogger compactionLogger = new CompactionLogger(logFile)) {
       // print the path of the temporary file first for priority check during recovery

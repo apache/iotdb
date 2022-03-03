@@ -101,7 +101,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
             dataDirectory
                 + File.separator
                 + targetTsFileResource.getTsFile().getName()
-                + CompactionLogger.INNER_COMPACTION_LOG_NAME);
+                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger sizeTieredCompactionLogger = null;
     try {
       sizeTieredCompactionLogger = new CompactionLogger(logFile);

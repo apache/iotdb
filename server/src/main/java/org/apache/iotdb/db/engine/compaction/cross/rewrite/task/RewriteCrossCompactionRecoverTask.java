@@ -83,9 +83,7 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
             fullStorageGroupName,
             compactionLogFile);
         CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(compactionLogFile);
-        if (compactionLogFile
-            .getName()
-            .equals(CompactionLogger.CROSS_COMPACTION_LOG_NAME_FEOM_OLD)) {
+        if (isOldLog()) {
           // log from previous version (<0.13)
           logAnalyzer.analyzeOldCrossCompactionLog();
         } else {
@@ -457,5 +455,10 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
   @Override
   public boolean checkValidAndSetMerging() {
     return compactionLogFile.exists();
+  }
+
+  /** Return whether compaction log file is from previous version (<0.13). */
+  private boolean isOldLog() {
+    return compactionLogFile.getName().equals(CompactionLogger.CROSS_COMPACTION_LOG_NAME_FROM_OLD);
   }
 }

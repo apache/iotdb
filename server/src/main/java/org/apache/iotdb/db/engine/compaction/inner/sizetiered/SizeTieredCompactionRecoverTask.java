@@ -102,7 +102,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
             virtualStorageGroup,
             compactionLogFile);
         CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(compactionLogFile);
-        if (compactionLogFile.getName().startsWith(tsFileManager.getStorageGroupName())) {
+        if (isOldLog()) {
           // log from previous version (<0.13)
           logAnalyzer.analyzeOldInnerCompactionLog();
         } else {
@@ -315,5 +315,10 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
       RewriteCrossCompactionRecoverTask.appendCompactionModificationsFromOld(
           targetResource, compactionModsFile);
     }
+  }
+
+  /** Return whether compaction log file is from previous version (<0.13). */
+  private boolean isOldLog() {
+    return compactionLogFile.getName().startsWith(tsFileManager.getStorageGroupName());
   }
 }
