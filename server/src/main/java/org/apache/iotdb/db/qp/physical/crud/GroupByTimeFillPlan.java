@@ -20,11 +20,10 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.db.utils.TimeRangeIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Map;
-
-import static org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet.calcIntervalByMonth;
 
 public class GroupByTimeFillPlan extends GroupByTimePlan {
 
@@ -95,10 +94,10 @@ public class GroupByTimeFillPlan extends GroupByTimePlan {
       long extraStartTime, intervalNum;
       if (isSlidingStepByMonth) {
         intervalNum = (long) Math.ceil(queryRange / (double) (slidingStep));
-        extraStartTime = calcIntervalByMonth(startTime, intervalNum);
+        extraStartTime = TimeRangeIterator.calcIntervalByMonth(startTime, intervalNum);
         while (extraStartTime < minQueryStartTime) {
           intervalNum += 1;
-          extraStartTime = calcIntervalByMonth(startTime, intervalNum);
+          extraStartTime = TimeRangeIterator.calcIntervalByMonth(startTime, intervalNum);
         }
       } else {
         intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);
