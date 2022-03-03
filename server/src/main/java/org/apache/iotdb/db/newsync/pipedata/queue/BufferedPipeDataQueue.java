@@ -61,8 +61,8 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
   private BlockingDeque<PipeData> outputDeque;
 
-  private long pullSerialNumber;
-  private long commitSerialNumber;
+  private volatile long pullSerialNumber;
+  private volatile long commitSerialNumber;
   private DataOutputStream commitLogWriter;
   private long currentCommitLogSize;
 
@@ -189,7 +189,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       try {
         moveToNextPipeLog(pipeData.getSerialNumber());
       } catch (IOException e) {
-        logger.warn(String.format("Move to next pipe log %s error, because %s.", pipeData, e));
+        logger.error(String.format("Move to next pipe log %s error, because %s.", pipeData, e));
       }
     }
     if (!inputDeque.offer(pipeData)) {
