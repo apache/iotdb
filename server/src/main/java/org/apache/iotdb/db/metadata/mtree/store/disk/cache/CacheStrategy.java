@@ -202,7 +202,7 @@ public abstract class CacheStrategy implements ICacheStrategy {
   public List<IMNode> collectVolatileMNodes() {
     List<IMNode> nodesToPersist = new ArrayList<>();
     for (IMNode node : nodeBuffer.values()) {
-      if (node.getParent() != null && !nodeBuffer.containsKey(getCacheEntry(node.getParent()))) {
+      if (node.getParent() == null || !nodeBuffer.containsKey(getCacheEntry(node.getParent()))) {
         collectVolatileNodes(node, nodesToPersist);
       }
     }
