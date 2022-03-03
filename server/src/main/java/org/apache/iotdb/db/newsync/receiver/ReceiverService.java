@@ -23,8 +23,11 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.receiver.collector.Collector;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
+import org.apache.iotdb.db.newsync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
 import org.apache.iotdb.db.newsync.receiver.manager.ReceiverManager;
+import org.apache.iotdb.db.newsync.transfer.SyncRequest;
+import org.apache.iotdb.db.newsync.transfer.SyncResponse;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -46,10 +49,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CREATED_TIME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_NAME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_REMOTE_IP;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_STATUS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 
 public class ReceiverService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(ReceiverService.class);
@@ -88,6 +88,33 @@ public class ReceiverService implements IService {
       return false;
     }
     return true;
+  }
+
+  /** heartbeat RPC handle */
+  // TODO: define exception
+  // TODO: this is a mock interface
+  public SyncResponse recMsg(SyncRequest request) throws IOException {
+    switch (request.getCode()) {
+      case SyncRequest.HEARTBEAT:
+        List<PipeMessage> messages =
+            receiverManager.getPipeMessages(
+                request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
+        break;
+      case SyncRequest.CREATE:
+        createPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
+        break;
+      case SyncRequest.START:
+        startPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
+        break;
+      case SyncRequest.STOP:
+        stopPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
+        break;
+      case SyncRequest.DROP:
+        dropPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
+        break;
+    }
+    // TODO: complete implement
+    return null;
   }
 
   /** create and start a new pipe named pipeName */

@@ -48,7 +48,12 @@ public class SyncPathUtil {
   public static String getReceiverPipeDir(String pipeName, String remoteIp, long createTime) {
     return getReceiverDir()
         + File.separator
-        + String.format("%s-%d-%s", pipeName, createTime, remoteIp);
+        + getReceiverPipeFolderName(pipeName, remoteIp, createTime);
+  }
+
+  public static String getReceiverPipeFolderName(
+      String pipeName, String remoteIp, long createTime) {
+    return String.format("%s-%d-%s", pipeName, createTime, remoteIp);
   }
 
   public static String getReceiverDir() {

@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.newsync.receiver.load;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -43,12 +42,6 @@ public class SchemaLoader implements ILoader {
 
   @Override
   public void load() throws IOException, MetadataException {
-    try {
-      MManager.getInstance().operation(plan);
-    } catch (StorageGroupAlreadySetException e) {
-      logger.warn(
-          "Sync receiver try to set storage group {} that has already been set",
-          e.getStorageGroupPath());
-    }
+    MManager.getInstance().operation(plan);
   }
 }
