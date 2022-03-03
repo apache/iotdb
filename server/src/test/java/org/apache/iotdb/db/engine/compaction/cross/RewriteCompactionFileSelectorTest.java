@@ -51,7 +51,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
   @Test
   public void testFullSelection() throws MergeException, IOException {
-    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
@@ -82,7 +83,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
   @Test
   public void testNonSelection() throws MergeException, IOException {
-    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector = new RewriteCompactionFileSelector(resource, 1);
     List[] result = mergeFileSelector.select();
     assertEquals(0, result.length);
@@ -91,7 +93,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
   @Test
   public void testRestrictedSelection() throws MergeException, IOException {
-    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, 400000);
     List[] result = mergeFileSelector.select();
@@ -148,7 +151,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
     List<TsFileResource> newUnseqResources = new ArrayList<>();
     newUnseqResources.add(largeUnseqTsFileResource);
-    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, newUnseqResources);
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, newUnseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
@@ -239,7 +243,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     unseqResources.clear();
     unseqResources.add(largeUnseqTsFileResource);
 
-    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
@@ -676,8 +681,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     TsFileWriter fileWriter = new TsFileWriter(firstFile);
     for (String deviceId : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        fileWriter.registerTimeseries(
-            new Path(deviceId), measurementSchema);
+        fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
 
@@ -730,8 +734,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     fileWriter = new TsFileWriter(secondFile);
     for (String deviceId : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        fileWriter.registerTimeseries(
-            new Path(deviceId), measurementSchema);
+        fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
     for (long i = 11; i < 21; ++i) {
@@ -777,8 +780,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     fileWriter = new TsFileWriter(thirdFile);
     for (String deviceId : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        fileWriter.registerTimeseries(
-            new Path(deviceId), measurementSchema);
+        fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
     for (long i = 0; i < 2; ++i) {
@@ -824,8 +826,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     fileWriter = new TsFileWriter(fourthFile);
     for (String deviceId : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        fileWriter.registerTimeseries(
-            new Path(deviceId), measurementSchema);
+        fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
     for (long i = 6; i < 15; ++i) {
@@ -860,8 +861,10 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     fileWriter.flushAllChunkGroups();
     fileWriter.close();
 
-    CrossSpaceCompactionResource compactionResource = new CrossSpaceCompactionResource(seqList, unseqList);
-    RewriteCompactionFileSelector selector = new RewriteCompactionFileSelector(compactionResource, 500 * 1024 * 1024);
+    CrossSpaceCompactionResource compactionResource =
+        new CrossSpaceCompactionResource(seqList, unseqList);
+    RewriteCompactionFileSelector selector =
+        new RewriteCompactionFileSelector(compactionResource, 500 * 1024 * 1024);
     List[] result = selector.select();
     Assert.assertEquals(2, result[0].size());
     Assert.assertEquals(2, result[1].size());

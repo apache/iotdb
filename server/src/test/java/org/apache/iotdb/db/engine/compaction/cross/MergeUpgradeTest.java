@@ -79,7 +79,8 @@ public class MergeUpgradeTest {
 
   @Test
   public void testMergeUpgradeSelect() throws MergeException {
-    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
     RewriteCompactionFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
