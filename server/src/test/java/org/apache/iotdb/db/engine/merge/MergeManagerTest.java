@@ -144,7 +144,7 @@ public class MergeManagerTest extends MergeTest {
       private String progress = "0";
 
       public FakedSubMergeTask(int serialNum) {
-        super(new PriorityQueue<>(), null, null, null, null, null, null, false, serialNum);
+        super(new PriorityQueue<>(), null, null, null, null, null, null, false, 0, serialNum);
         this.serialNum = serialNum;
       }
 

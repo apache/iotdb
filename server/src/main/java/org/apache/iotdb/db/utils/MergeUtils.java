@@ -225,8 +225,14 @@ public class MergeUtils {
     }
   }
 
-  public static boolean isChunkOverflowed(TimeValuePair timeValuePair, ChunkMetadata metaData) {
-    return timeValuePair != null && timeValuePair.getTimestamp() <= metaData.getEndTime();
+  public static boolean isChunkOverflowed(
+      TimeValuePair timeValuePair,
+      ChunkMetadata metaData,
+      boolean isLastChunk,
+      long currentResourceEndTime) {
+    return timeValuePair != null
+        && (timeValuePair.getTimestamp() <= metaData.getEndTime()
+            || (isLastChunk && timeValuePair.getTimestamp() <= currentResourceEndTime));
   }
 
   public static boolean isChunkTooSmall(
