@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
-import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxFunctionExpression;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxDBFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxDBFunctionFactory;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxDBFunctionValue;
@@ -91,7 +90,7 @@ public class InfluxDBUtils {
     String path = "root." + database + "." + measurement;
     for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
       Expression expression = resultColumn.getExpression();
-      if (expression instanceof InfluxFunctionExpression) {
+      if (expression instanceof FunctionExpression) {
         String functionName = ((FunctionExpression) expression).getFunctionName();
         functions.add(
             InfluxDBFunctionFactory.generateFunctionBySession(

@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.function;
 
-import org.apache.iotdb.db.protocol.influxdb.expression.unary.InfluxNodeExpression;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 import java.util.List;
 
@@ -53,7 +53,7 @@ public abstract class InfluxDBFunction {
     if (expressionList == null) {
       throw new IllegalArgumentException("not support param");
     }
-    InfluxNodeExpression parmaExpression = (InfluxNodeExpression) expressionList.get(0);
-    return parmaExpression.getName();
+    TimeSeriesOperand parmaExpression = (TimeSeriesOperand) expressionList.get(0);
+    return parmaExpression.getPath().getFullPath();
   }
 }
