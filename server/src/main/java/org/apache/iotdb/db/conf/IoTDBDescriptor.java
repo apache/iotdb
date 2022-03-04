@@ -1411,6 +1411,11 @@ public class IoTDBDescriptor {
                 "cqlog_buffer_size", Integer.toString(conf.getCqlogBufferSize()))));
   }
 
+  private void loadMetadataConfig(Properties properties) {
+    conf.setMetadataManagerType(
+        properties.getProperty("meta_data_manager", conf.getMetadataManagerType().name()));
+  }
+
   /** Get default encode algorithm by data type */
   public TSEncoding getDefaultEncodingByType(TSDataType dataType) {
     switch (dataType) {

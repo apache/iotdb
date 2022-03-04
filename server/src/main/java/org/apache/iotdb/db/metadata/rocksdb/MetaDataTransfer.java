@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
@@ -51,11 +52,20 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class MetaDataTransfer {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaDataTransfer.class);
+
+  private static int DEFAULT_TRANSFER_THREAD_POOL_SIZE = 200;
+  private static int DEFAULT_TRANSFER_PLANS_BUFFER_SIZE = 100_000;
+
+  private ForkJoinPool forkJoinPool = new ForkJoinPool(DEFAULT_TRANSFER_THREAD_POOL_SIZE);
 
   private String mtreeSnapshotPath;
   private MRocksDBManager rocksDBManager;
@@ -77,12 +87,12 @@ public class MetaDataTransfer {
     try {
       MetaDataTransfer transfer = new MetaDataTransfer();
       transfer.doTransfer();
-    } catch (MetadataException | IOException e) {
+    } catch (MetadataException | IOException | ExecutionException | InterruptedException e) {
       e.printStackTrace();
     }
   }
 
-  public void doTransfer() throws IOException {
+  public void doTransfer() throws IOException, ExecutionException, InterruptedException {
     File failedFile = new File(failedMLogPath);
     if (failedFile.exists()) {
       failedFile.delete();
@@ -103,36 +113,34 @@ public class MetaDataTransfer {
 
     mtreeSnapshotPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT;
     File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
-    long time = System.currentTimeMillis();
     if (mtreeSnapshot.exists()) {
-      transferFromSnapshot(mtreeSnapshot);
-      logger.info("spend {} ms to transfer data from snapshot", System.currentTimeMillis() - time);
+      try {
+        doTransferFromSnapshot();
+      } catch (MetadataException e) {
+        logger.error("Fatal error, terminate data transfer!!!", e);
+      }
     }
 
-    time = System.currentTimeMillis();
     String logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
     File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
     // init the metadata from the operation log
     if (logFile.exists()) {
       try (MLogReader mLogReader = new MLogReader(schemaDir, MetadataConstant.METADATA_LOG); ) {
         transferFromMLog(mLogReader);
-        logger.info(
-            "spend {} ms to deserialize mtree from mlog.bin", System.currentTimeMillis() - time);
       } catch (Exception e) {
         throw new IOException("Failed to parser mlog.bin for err:" + e);
       }
     } else {
-      logger.info("no mlog.bin file find, skip transfer");
+      logger.info("No mlog.bin file find, skip data transfer");
     }
-
     mLogWriter.close();
 
-    logger.info(
-        "do transfer complete with {} plan failed. Failed plan are persisted in mlog.bin.transfer_failed",
-        failedPlanCount.get());
+    logger.info("Transfer metadata from MManager to MRocksDBManager complete!");
   }
 
-  private void transferFromMLog(MLogReader mLogReader) {
+  private void transferFromMLog(MLogReader mLogReader)
+      throws IOException, MetadataException, ExecutionException, InterruptedException {
+    long time = System.currentTimeMillis();
     int idx = 0;
     PhysicalPlan plan;
     List<PhysicalPlan> nonCollisionCollections = new ArrayList<>();
@@ -142,90 +150,107 @@ public class MetaDataTransfer {
         idx++;
       } catch (Exception e) {
         logger.error("Parse mlog error at lineNumber {} because:", idx, e);
-        break;
+        throw e;
       }
       if (plan == null) {
         continue;
       }
-      try {
-        switch (plan.getOperatorType()) {
-          case CREATE_TIMESERIES:
-          case CREATE_ALIGNED_TIMESERIES:
-          case AUTO_CREATE_DEVICE_MNODE:
-            nonCollisionCollections.add(plan);
-            if (nonCollisionCollections.size() > 100000) {
-              executeOperation(nonCollisionCollections, true);
-            }
-            break;
-          case DELETE_TIMESERIES:
-          case SET_STORAGE_GROUP:
-          case DELETE_STORAGE_GROUP:
-          case TTL:
-          case CHANGE_ALIAS:
-            executeOperation(nonCollisionCollections, true);
+
+      switch (plan.getOperatorType()) {
+        case CREATE_TIMESERIES:
+        case CREATE_ALIGNED_TIMESERIES:
+        case AUTO_CREATE_DEVICE_MNODE:
+          nonCollisionCollections.add(plan);
+          if (nonCollisionCollections.size() > 100000) {
+            executeBufferedOperation(nonCollisionCollections);
+          }
+          break;
+        case SET_STORAGE_GROUP:
+        case DELETE_TIMESERIES:
+        case DELETE_STORAGE_GROUP:
+        case TTL:
+        case CHANGE_ALIAS:
+          executeBufferedOperation(nonCollisionCollections);
+          try {
             rocksDBManager.operation(plan);
-            break;
-          case CHANGE_TAG_OFFSET:
-          case CREATE_TEMPLATE:
-          case DROP_TEMPLATE:
-          case APPEND_TEMPLATE:
-          case PRUNE_TEMPLATE:
-          case SET_TEMPLATE:
-          case ACTIVATE_TEMPLATE:
-          case UNSET_TEMPLATE:
-          case CREATE_CONTINUOUS_QUERY:
-          case DROP_CONTINUOUS_QUERY:
-            logger.error("unsupported operations {}", plan.toString());
-            break;
-          default:
-            logger.error("Unrecognizable command {}", plan.getOperatorType());
-        }
-      } catch (MetadataException | IOException e) {
-        logger.error("Can not operate cmd {} for err:", plan.getOperatorType(), e);
-        if (!(e instanceof StorageGroupAlreadySetException)
-            && !(e instanceof PathAlreadyExistException)
-            && !(e instanceof AliasAlreadyExistException)) {
-          persistFailedLog(plan);
+          } catch (IOException e) {
+            rocksDBManager.operation(plan);
+          } catch (MetadataException e) {
+            logger.error("Can not operate cmd {} for err:", plan.getOperatorType(), e);
+          }
+          break;
+        case CHANGE_TAG_OFFSET:
+        case CREATE_TEMPLATE:
+        case DROP_TEMPLATE:
+        case APPEND_TEMPLATE:
+        case PRUNE_TEMPLATE:
+        case SET_TEMPLATE:
+        case ACTIVATE_TEMPLATE:
+        case UNSET_TEMPLATE:
+        case CREATE_CONTINUOUS_QUERY:
+        case DROP_CONTINUOUS_QUERY:
+          logger.error("unsupported operations {}", plan.toString());
+          break;
+        default:
+          logger.error("Unrecognizable command {}", plan.getOperatorType());
+      }
+    }
+
+    executeBufferedOperation(nonCollisionCollections);
+
+    if (retryPlans.size() > 0) {
+      for (PhysicalPlan retryPlan : retryPlans) {
+        try {
+          rocksDBManager.operation(retryPlan);
+        } catch (IOException e) {
+          persistFailedLog(retryPlan);
+        } catch (MetadataException e) {
+          logger.error("Execute plan failed: {}", retryPlan.toString(), e);
+        } catch (Exception e) {
+          persistFailedLog(retryPlan);
         }
       }
     }
-    executeOperation(nonCollisionCollections, true);
-    if (retryPlans.size() > 0) {
-      executeOperation(retryPlans, false);
-    }
+    logger.info(
+        "Transfer data from mlog.bin complete after {}ms with {} errors",
+        System.currentTimeMillis() - time,
+        failedPlanCount.get());
   }
 
-  private void executeOperation(List<PhysicalPlan> plans, boolean needsToRetry) {
-    plans
-        .parallelStream()
-        .forEach(
-            x -> {
-              try {
-                rocksDBManager.operation(x);
-              } catch (IOException e) {
-                logger.error("failed to operate plan: {}", x.toString(), e);
-                retryPlans.add(x);
-              } catch (MetadataException e) {
-                logger.error("failed to operate plan: {}", x.toString(), e);
-                if (e instanceof AcquireLockTimeoutException && needsToRetry) {
-                  retryPlans.add(x);
-                } else {
-                  persistFailedLog(x);
-                }
-              } catch (Exception e) {
-                if (needsToRetry) {
-                  retryPlans.add(x);
-                } else {
-                  persistFailedLog(x);
-                }
-              }
-            });
-    logger.info("parallel executed {} operations", plans.size());
+  private void executeBufferedOperation(List<PhysicalPlan> plans)
+      throws ExecutionException, InterruptedException {
+    if (plans.size() <= 0) {
+      return;
+    }
+    forkJoinPool
+        .submit(
+            () -> {
+              plans
+                  .parallelStream()
+                  .forEach(
+                      x -> {
+                        try {
+                          rocksDBManager.operation(x);
+                        } catch (IOException e) {
+                          retryPlans.add(x);
+                        } catch (MetadataException e) {
+                          if (e instanceof AcquireLockTimeoutException) {
+                            retryPlans.add(x);
+                          } else {
+                            logger.error("Execute plan failed: {}", x.toString(), e);
+                          }
+                        } catch (Exception e) {
+                          retryPlans.add(x);
+                        }
+                      });
+            })
+        .get();
+    logger.debug("parallel executed {} operations", plans.size());
     plans.clear();
   }
 
   private void persistFailedLog(PhysicalPlan plan) {
-    logger.info("persist won't retry and failed plan: {}", plan.toString());
+    logger.info("persist failed plan: {}", plan.toString());
     failedPlanCount.incrementAndGet();
     try {
       switch (plan.getOperatorType()) {
@@ -275,20 +300,15 @@ public class MetaDataTransfer {
       }
     } catch (IOException e) {
       logger.error(
-          "fatal error, exception when persist failed plan, metadata transfer should be failed", e);
-    }
-  }
-
-  public void transferFromSnapshot(File mtreeSnapshot) {
-    try (MLogReader mLogReader = new MLogReader(mtreeSnapshot)) {
-      doTransferFromSnapshot(mLogReader);
-    } catch (IOException | MetadataException e) {
-      logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
+          "Fatal error, exception when persist failed plan, metadata transfer should be failed", e);
+      throw new RuntimeException("Terminate transfer as persist log fail.");
     }
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void doTransferFromSnapshot(MLogReader mLogReader) throws IOException, MetadataException {
+  private void doTransferFromSnapshot()
+      throws IOException, MetadataException, ExecutionException, InterruptedException {
+    logger.info("Start transfer data from snapshot");
     long start = System.currentTimeMillis();
     MTree mTree = new MTree();
     mTree.init();
@@ -316,15 +336,17 @@ public class MetaDataTransfer {
             });
 
     if (errorCount.get() > 0) {
-      logger.info("Fatal error. create some storage groups fail, terminate metadata transfer");
+      logger.error("Fatal error. Create some storage groups fail, terminate metadata transfer");
       return;
     }
 
     List<IMeasurementMNode> measurementMNodes = new ArrayList<>();
 
+    IMNode root = mTree.getNodeByPath(new PartialPath(new String[] {"root"}));
+    PartialPath matchAllPath = new PartialPath(new String[] {"root", "**"});
+
     MeasurementCollector collector =
-        new MeasurementCollector(
-            mTree.getNodeByPath(new PartialPath("root")), new PartialPath("root.**"), -1, -1) {
+        new MeasurementCollector(root, matchAllPath, -1, -1) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             measurementMNodes.add(node);
@@ -332,33 +354,70 @@ public class MetaDataTransfer {
         };
     collector.traverse();
 
-    measurementMNodes
-        .parallelStream()
-        .forEach(
-            mNode -> {
-              try {
-                rocksDBManager.createTimeSeries(
-                    mNode.getPartialPath(), mNode.getSchema(), mNode.getAlias(), null, null);
-              } catch (AcquireLockTimeoutException e) {
+    Queue<IMeasurementMNode> failCreatedNodes = new ConcurrentLinkedQueue<>();
+    AtomicInteger createdNodeCnt = new AtomicInteger(0);
+    AtomicInteger lastValue = new AtomicInteger(-1);
+    new Thread(
+            () -> {
+              while (lastValue.get() < createdNodeCnt.get()) {
+                try {
+                  lastValue.set(createdNodeCnt.get());
+                  Thread.sleep(10 * 1000);
+                  logger.info("created count: {}", createdNodeCnt.get());
+                } catch (InterruptedException e) {
+                  logger.error("timer thread error", e);
+                }
+              }
+            })
+        .start();
+
+    forkJoinPool
+        .submit(
+            () ->
+                measurementMNodes
+                    .parallelStream()
+                    .forEach(
+                        mNode -> {
+                          try {
+                            rocksDBManager.createTimeSeries(
+                                mNode.getPartialPath(),
+                                mNode.getSchema(),
+                                mNode.getAlias(),
+                                null,
+                                null);
+                            createdNodeCnt.incrementAndGet();
+                          } catch (AcquireLockTimeoutException e) {
+                            failCreatedNodes.add(mNode);
+                          } catch (MetadataException e) {
+                            logger.error(
+                                "create timeseries {} failed",
+                                mNode.getPartialPath().getFullPath(),
+                                e);
+                            errorCount.incrementAndGet();
+                          }
+                        }))
+        .get();
+
+    if (!failCreatedNodes.isEmpty()) {
+      failCreatedNodes.stream()
+          .forEach(
+              mNode -> {
                 try {
                   rocksDBManager.createTimeSeries(
                       mNode.getPartialPath(), mNode.getSchema(), mNode.getAlias(), null, null);
-                } catch (MetadataException metadataException) {
+                  createdNodeCnt.incrementAndGet();
+                } catch (Exception e) {
                   logger.error(
                       "create timeseries {} failed in retry",
                       mNode.getPartialPath().getFullPath(),
                       e);
                   errorCount.incrementAndGet();
                 }
-              } catch (MetadataException e) {
-                logger.error(
-                    "create timeseries {} failed", mNode.getPartialPath().getFullPath(), e);
-                errorCount.incrementAndGet();
-              }
-            });
+              });
+    }
 
     logger.info(
-        "metadata snapshot transfer complete after {}ms with {} errors",
+        "Transfer data from snapshot complete after {}ms with {} errors",
         System.currentTimeMillis() - start,
         errorCount.get());
   }
