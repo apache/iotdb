@@ -973,11 +973,24 @@ public class MRocksDBManager implements IMetaManager {
 
     int indexOfPrefix = indexOfFirstWildcard(nodes, startIndex);
     if (indexOfPrefix >= nodes.length) {
-      StringBuilder stringBuilder = new StringBuilder();
-      for (int i = 0; i < nodes.length; i++) {
-        stringBuilder.append(RockDBConstants.PATH_SEPARATOR).append(nodes[i]);
-      }
-      consumer.accept(stringBuilder.substring(1));
+      Arrays.stream(nodeTypeArray)
+          .parallel()
+          .forEach(
+              x -> {
+                String levelPrefix =
+                    RocksDBUtils.convertPartialPathToInnerByNodes(nodes, nodes.length - 1, x);
+                try {
+                  if (readWriteHandler.keyExist(levelPrefix.getBytes())) {
+                    StringBuilder stringBuilder = new StringBuilder();
+                    for (String node : nodes) {
+                      stringBuilder.append(RockDBConstants.PATH_SEPARATOR).append(node);
+                    }
+                    consumer.accept(stringBuilder.substring(1));
+                  }
+                } catch (RocksDBException e) {
+                  logger.error(e.getMessage());
+                }
+              });
       return;
     }
 
