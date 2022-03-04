@@ -17,11 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.dropwizard.reporter.prometheus;
+package org.apache.iotdb.metrics.reporter;
 
-final class TextFormat {
+import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
-  public static final String REQUEST_CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8";
+public interface Reporter {
+  /** Start reporter */
+  boolean start();
 
-  private TextFormat() {}
+  /** Stop reporter */
+  boolean stop();
+
+  /** Get type of reporter */
+  ReporterType getReporterType();
+
+  /** Set metric manager */
+  void setMetricManager(MetricManager metricManager);
 }

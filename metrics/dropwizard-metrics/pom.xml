@@ -50,5 +50,10 @@
             <version>1.9</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>io.projectreactor.netty</groupId>
+            <artifactId>reactor-netty-http</artifactId>
+            <version>1.0.4</version>
+        </dependency>
     </dependencies>
 </project>
