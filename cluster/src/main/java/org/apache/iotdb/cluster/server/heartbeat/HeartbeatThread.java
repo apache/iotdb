@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.heartbeat;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -28,11 +29,9 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.ElectionHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.HeartbeatHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 
 import org.apache.thrift.TException;
@@ -85,7 +84,7 @@ public class HeartbeatThread implements Runnable {
             // send heartbeats to the followers
             sendHeartbeats();
             synchronized (localMember.getHeartBeatWaitObject()) {
-              localMember.getHeartBeatWaitObject().wait(RaftServer.getHeartbeatIntervalMs());
+              localMember.getHeartBeatWaitObject().wait(ClusterConstant.getHeartbeatIntervalMs());
             }
             hasHadLeader = true;
             break;
@@ -93,8 +92,9 @@ public class HeartbeatThread implements Runnable {
             // check if heartbeat times out
             long heartbeatInterval =
                 System.currentTimeMillis() - localMember.getLastHeartbeatReceivedTime();
+
             long randomElectionTimeout =
-                RaftServer.getElectionTimeoutMs() + getElectionRandomWaitMs();
+                ClusterConstant.getElectionTimeoutMs() + getElectionRandomWaitMs();
             if (heartbeatInterval >= randomElectionTimeout) {
               // the leader is considered dead, an election will be started in the next loop
               logger.info("{}: The leader {} timed out", memberName, localMember.getLeader());
@@ -235,18 +235,19 @@ public class HeartbeatThread implements Runnable {
                   HeartBeatResponse heartBeatResponse = client.sendHeartbeat(req);
                   heartbeatHandler.onComplete(heartBeatResponse);
                 } catch (TTransportException e) {
-                  logger.warn(
-                      memberName
-                          + ": Cannot send heartbeat to node "
-                          + node.toString()
-                          + " due to network",
-                      e);
+                  if (ClusterIoTDB.getInstance().shouldPrintClientConnectionErrorStack()) {
+                    logger.warn(
+                        "{}: Cannot send heartbeat to node {} due to network", memberName, node, e);
+                  } else {
+                    logger.warn(
+                        "{}: Cannot send heartbeat to node {} due to network", memberName, node);
+                  }
                   client.getInputProtocol().getTransport().close();
                 } catch (Exception e) {
                   logger.warn(
                       memberName + ": Cannot send heart beat to node " + node.toString(), e);
                 } finally {
-                  ClientUtils.putBackSyncHeartbeatClient(client);
+                  localMember.returnSyncClient(client);
                 }
               }
             });
@@ -330,8 +331,8 @@ public class HeartbeatThread implements Runnable {
         logger.info(
             "{}: Wait for {}ms until election time out",
             memberName,
-            RaftServer.getElectionTimeoutMs());
-        localMember.getTerm().wait(RaftServer.getElectionTimeoutMs());
+            ClusterConstant.getElectionTimeoutMs());
+        localMember.getTerm().wait(ClusterConstant.getElectionTimeoutMs());
       } catch (InterruptedException e) {
         logger.info(
             "{}: Unexpected interruption when waiting the result of election {}",
@@ -431,7 +432,7 @@ public class HeartbeatThread implements Runnable {
                 } catch (Exception e) {
                   handler.onError(e);
                 } finally {
-                  ClientUtils.putBackSyncHeartbeatClient(client);
+                  localMember.returnSyncClient(client);
                 }
               }
             });

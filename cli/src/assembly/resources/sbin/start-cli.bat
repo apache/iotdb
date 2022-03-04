@@ -28,7 +28,7 @@ pushd %~dp0..
 if NOT DEFINED IOTDB_CLI_HOME set IOTDB_CLI_HOME=%CD%
 popd
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cli.WinCli
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cli.Cli
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------

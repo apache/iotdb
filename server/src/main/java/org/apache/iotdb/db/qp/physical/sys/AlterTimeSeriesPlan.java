@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
@@ -62,7 +62,7 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
 
   /** used only for deserialize */
   public AlterTimeSeriesPlan() {
-    super(false, OperatorType.ALTER_TIMESERIES);
+    super(OperatorType.ALTER_TIMESERIES);
   }
 
   public AlterTimeSeriesPlan(
@@ -72,7 +72,7 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
       String alias,
       Map<String, String> tagsMap,
       Map<String, String> attributesMap) {
-    super(false, Operator.OperatorType.ALTER_TIMESERIES);
+    super(Operator.OperatorType.ALTER_TIMESERIES);
     this.path = path;
     this.alterType = alterType;
     this.alterMap = alterMap;

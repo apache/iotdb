@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
+import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -47,6 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class MetaSyncService extends BaseSyncService implements TSMetaService.Iface {
 
@@ -59,20 +61,38 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
     this.metaGroupMember = metaGroupMember;
   }
 
+  // behavior of followers
   @Override
   public AppendEntryResult appendEntry(AppendEntryRequest request) throws TException {
-    if (metaGroupMember.getPartitionTable() == null) {
-      // this node lacks information of the cluster and refuse to work
-      logger.debug("This node is blind to the cluster and cannot accept logs");
-      return new AppendEntryResult(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE);
+    // if the metaGroupMember is not ready (e.g., as a follower the PartitionTable is loaded
+    // locally, but the partition table is not verified), we do not handle the RPC requests.
+    if (!metaGroupMember.isReady()) {
+      // the only special case is that the leader will send an empty entry for letting followers
+      // submit  previous log
+      // at this time, the partitionTable has been loaded but is not verified. So the PRC is not
+      // ready.
+      if (metaGroupMember.getPartitionTable() == null) {
+        // this node lacks information of the cluster and refuse to work
+        logger.debug("This node is blind to the cluster and cannot accept logs, {}", request);
+        return new AppendEntryResult(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE);
+      } else {
+        // do nothing because we consider if the partitionTable is loaded, then it is corrected.
+      }
     }
 
     return super.appendEntry(request);
   }
 
+  private static final String ERROR_MSG_META_NOT_READY = "The metadata not is not ready.";
+
   @Override
   public AddNodeResponse addNode(Node node, StartUpStatus startUpStatus) throws TException {
     AddNodeResponse addNodeResponse;
+    if (!metaGroupMember.isReady()) {
+      logger.debug(ERROR_MSG_META_NOT_READY);
+      throw new TException(ERROR_MSG_META_NOT_READY);
+    }
+
     try {
       addNodeResponse = metaGroupMember.addNode(node, startUpStatus);
     } catch (AddSelfException | LogExecutionException | CheckConsistencyException e) {
@@ -99,6 +119,7 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
 
   @Override
   public void sendSnapshot(SendSnapshotRequest request) throws TException {
+    // even the meta engine is not ready, we still need to catch up.
     try {
       metaGroupMember.receiveSnapshot(request);
     } catch (Exception e) {
@@ -108,6 +129,7 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
 
   @Override
   public CheckStatusResponse checkStatus(StartUpStatus startUpStatus) {
+    // this method is called before the meta engine is ready.
     return ClusterUtils.checkStatus(startUpStatus, metaGroupMember.getStartUpStatus());
   }
 
@@ -155,6 +177,11 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
 
   @Override
   public long removeNode(Node node) throws TException {
+    if (!metaGroupMember.isReady()) {
+      logger.debug(ERROR_MSG_META_NOT_READY);
+      throw new TException(ERROR_MSG_META_NOT_READY);
+    }
+
     long result;
     try {
       result = metaGroupMember.removeNode(node);
@@ -225,5 +252,20 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
   @Override
   public void handshake(Node sender) {
     metaGroupMember.handleHandshake(sender);
+  }
+
+  @Override
+  public AppendEntryResult appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers)
+      throws TException {
+    try {
+      return metaGroupMember.appendEntryIndirect(request, subReceivers);
+    } catch (UnknownLogTypeException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public void acknowledgeAppendEntry(AppendEntryResult ack) {
+    metaGroupMember.acknowledgeAppendLog(ack);
   }
 }

@@ -39,7 +39,7 @@ In addition, the storage engine includes asynchronous persistence and file merge
 
   Responsible for writing and accessing an IoTDB instance and managing all StorageGroupProsessor.
 
-* org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor
+* org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor
 
   Responsible for writing and accessing data within a time partition of a storage group. 
 

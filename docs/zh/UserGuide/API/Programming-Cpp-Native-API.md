@@ -27,8 +27,10 @@
 - Maven 3.5+
 - Flex
 - Bison 2.7+
-- Boost
+- Boost 1.56+
 - OpenSSL 1.0+
+- GCC 5.5.0+
+
 
 ### 安装方法
 
@@ -75,48 +77,35 @@ brew link boost
 
 Linux 下需要确保 g++已被安装。
 
-一条命令安装所有依赖库：
+Ubuntu 20:
 
-Debian/Ubuntu:
-
-```shell
-sudo apt-get install gcc g++ bison flex libboost-all-dev
-```
-
-CentOS:
+一条命令安装所有依赖库：  
 
 ```shell
-yum install gcc g++ bison flex boost-devel
+sudo apt-get install gcc-9 g++-9 libstdc++-9-dev bison flex libboost-all-dev libssl-dev zlib1g-dev
 ```
+
+CentOS 7.x:
+
+在centos 7.x里，可用yum命令安装部分依赖。  
+
+```shell
+sudo yum install bison flex openssl-devel
+```
+
+使用yum安装的GCC、boost版本过低，在编译时会报错，需自行安装或升级。  
 
 #### 在 Windows 上编译 Thrift
+
+- 编译构建环境
 
 保证你的 Windows 系统已经搭建好了完整的 C/C++的编译构建环境。可以是 MSVC，MinGW 等。
 
 如使用 MS Visual Studio，在安装时需要勾选 Visual Studio C/C++ IDE and compiler(supporting CMake, Clang, MinGW)。
 
-- Flex 和 Bison
+- CMake
 
-Windows 版的 Flex 和 Bison 可以从 SourceForge 下载：https://sourceforge.net/projects/winflexbison/
-
-下载后需要将可执行文件重命名为 flex.exe 和 bison.exe 以保证编译时能够被找到，添加可执行文件的目录到 PATH 环境变量中。
-
-- Boost
-
-Boost 官网下载新版本 Boost: https://www.boost.org/users/download/
-
-依次执行 bootstrap.bat 和 b2.exe，本地编译 boost
-
-```shell
-bootstrap.bat
-.\b2.exe
-```
-
-为了帮助 CMake 本地安装好的 Boost，在编译 client-cpp 的 mvn 命令中需添加： 
-
-`-Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}`
-
-#### CMake 生成器
+CMake 官网下载地址 https://cmake.org/download/
 
 CMake 需要根据不同编译平台使用不同的生成器。CMake 支持的生成器列表如下 (`cmake --help`的结果）：
 
@@ -152,32 +141,65 @@ CMake 需要根据不同编译平台使用不同的生成器。CMake 支持的�
 ```
 
 编译 client-cpp 时的 mvn 命令中添加 -Dcmake.generator="" 选项来指定使用的生成器名称。
+
  `mvn package -Dcmake.generator="Visual Studio 15 2017 [arch]"`
 
-#### 编译 C++ 客户端
+- Flex 和 Bison
 
-Maven 命令中添加"-P client-cpp" 选项编译 client-cpp 模块。client-cpp 需要依赖编译好的 thrift，即 compile-tools 模块。
+Windows 版的 Flex 和 Bison 可以从 SourceForge 下载：https://sourceforge.net/projects/winflexbison/
+
+下载后需要将可执行文件重命名为 flex.exe 和 bison.exe 以保证编译时能够被找到，添加可执行文件的目录到 PATH 环境变量中。
+
+- Boost
+
+Boost 官网下载地址 https://www.boost.org/users/download/
+
+依次执行 bootstrap.bat 和 b2.exe，本地编译 boost
+
+```shell
+bootstrap.bat
+b2.exe
+```
+
+为了帮助 CMake 本地安装好的 Boost，在编译 client-cpp 的 mvn 命令中需添加： 
+
+`-Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}`
+
+- openssl
+
+openssl 官网源码下载地址 https://www.openssl.org/source/
+
+二进制文件下载地址 http://slproweb.com/products/Win32OpenSSL.html
+
+- 增加环境变量
+
+在编译前，需要确定cmake,flex,bison,openssl都加入了PATH。
 
 #### 编译及测试
 
-完整的 C++客户端命令如下：
+Maven 命令中添加"-P client-cpp" 选项编译 client-cpp 模块。client-cpp 需要依赖编译好的 thrift，即 compile-tools 模块。
 
-`mvn  package -P compile-cpp  -pl example/client-cpp-example -am -DskipTest`
+- Mac , Linux 下，编译C++客户端完整命令如下：
 
-注意在 Windows 下需提前安装好 Boost，并添加以下 Maven 编译选项：
+`mvn package -P compile-cpp -pl example/client-cpp-example -am -DskipTest`
+
+- Windows下，编译C++客户端：
+
+编译前需额外添加Boost相关的参数：
+
+`-Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}` 
+
+需指定cmake的generator,例如：
+
+`-Dcmake.generator="Visual Studio 15 2017 [arch]"`
+
+完整编译C++客户端命令如下：
 
 ```shell
--Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}` 
+mvn package -P compile-cpp -pl client-cpp,server,example/client-cpp-example -am -Dcmake.generator="your cmake generator" -Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder} -DskipTests
 ```
 
-例如：
-
-```shell
-mvn package -P compile-cpp -pl client-cpp,server,example/client-cpp-example -am 
--D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib" -DskipTests
-```
-
-编译成功后，打包好的。zip 文件将位于："client-cpp/target/client-cpp-${project.version}-cpp-${os}.zip"
+编译成功后，打包好的 zip 文件将位于："client-cpp/target/client-cpp-${project.version}-cpp-${os}.zip"
 
 解压后的目录结构如下图所示 (Mac)：
 

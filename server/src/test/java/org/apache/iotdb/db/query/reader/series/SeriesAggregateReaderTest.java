@@ -19,16 +19,15 @@
 
 package org.apache.iotdb.db.query.reader.series;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -73,18 +72,18 @@ public class SeriesAggregateReaderTest {
   @Test
   public void aggregateTest() {
     try {
-      PartialPath path = new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0");
+      MeasurementPath path =
+          SchemaTestUtils.getMeasurementPath(SERIES_READER_TEST_SG + ".device0.sensor0");
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
-      QueryDataSource queryDataSource = new QueryDataSource(seqResources, unseqResources);
       SeriesAggregateReader seriesReader =
           new SeriesAggregateReader(
               path,
               allSensors,
               TSDataType.INT32,
               EnvironmentUtils.TEST_QUERY_CONTEXT,
-              queryDataSource,
-              null,
+              seqResources,
+              unseqResources,
               null,
               null,
               true);
@@ -133,7 +132,7 @@ public class SeriesAggregateReaderTest {
         }
       }
       assertEquals(500L, aggregateResult.getResult());
-    } catch (IOException | QueryProcessException | IllegalPathException e) {
+    } catch (IOException | QueryProcessException | MetadataException e) {
       e.printStackTrace();
       fail();
     }

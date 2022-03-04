@@ -24,13 +24,17 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -265,11 +269,8 @@ public class IoTDBSessionVectorInsertIT {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(
-        new VectorMeasurementSchema(
-            "vector",
-            new String[] {"s1", "s2"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR1, schemaList);
     tablet.setAligned(true);
@@ -278,19 +279,18 @@ public class IoTDBSessionVectorInsertIT {
     for (long row = 0; row < 100; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
-      tablet.addValue(schemaList.get(0).getSubMeasurementsList().get(0), rowIndex, row * 10 + 1L);
-      tablet.addValue(
-          schemaList.get(0).getSubMeasurementsList().get(1), rowIndex, (int) (row * 10 + 2));
+      tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, row * 10 + 1L);
+      tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (int) (row * 10 + 2));
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertTablet(tablet, true);
+        session.insertAlignedTablet(tablet, true);
         tablet.reset();
       }
       timestamp++;
     }
 
     if (tablet.rowSize != 0) {
-      session.insertTablet(tablet);
+      session.insertAlignedTablet(tablet);
       tablet.reset();
     }
   }
@@ -445,5 +445,72 @@ public class IoTDBSessionVectorInsertIT {
     }
     session.insertAlignedRecordsOfOneDevice(
         prefixPath, times, subMeasurementsList, typeList, valueList);
+  }
+
+  @Test
+  public void testInsertPartialAlignedTablet()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> multiMeasurementComponents = new ArrayList<>();
+    for (int i = 1; i <= 3; i++) {
+      multiMeasurementComponents.add("s" + i);
+    }
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT64);
+    dataTypes.add(TSDataType.DOUBLE);
+    dataTypes.add(TSDataType.INT64);
+    List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressors = new ArrayList<>();
+    for (int i = 1; i <= 3; i++) {
+      encodings.add(TSEncoding.PLAIN);
+      compressors.add(CompressionType.SNAPPY);
+    }
+    session.createAlignedTimeseries(
+        "root.sg.d", multiMeasurementComponents, dataTypes, encodings, compressors, null);
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.DOUBLE));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT));
+
+    Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
+
+    long timestamp = System.currentTimeMillis();
+
+    for (long row = 0; row < 15; row++) {
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, timestamp);
+      tablet.addValue("s1", rowIndex, 1L);
+      tablet.addValue("s2", rowIndex, 1D);
+      tablet.addValue("s3", rowIndex, new Binary("1"));
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        try {
+          session.insertAlignedTablet(tablet, true);
+        } catch (StatementExecutionException e) {
+          Assert.assertEquals(
+              "313: failed to insert measurements [s3] caused by DataType mismatch, Insert measurement s3 type TEXT, metadata tree type INT64",
+              e.getMessage());
+        }
+        tablet.reset();
+      }
+      timestamp++;
+    }
+
+    if (tablet.rowSize != 0) {
+      try {
+        session.insertAlignedTablet(tablet);
+      } catch (StatementExecutionException e) {
+        Assert.assertEquals(
+            "313: failed to insert measurements [s3] caused by DataType mismatch, Insert measurement s3 type TEXT, metadata tree type INT64",
+            e.getMessage());
+      }
+      tablet.reset();
+    }
+
+    SessionDataSet dataSet = session.executeQueryStatement("select s1, s2, s3 from root.sg.d");
+    while (dataSet.hasNext()) {
+      RowRecord rowRecord = dataSet.next();
+      Assert.assertEquals(1, rowRecord.getFields().get(0).getLongV());
+      Assert.assertEquals(1.0, rowRecord.getFields().get(1).getDoubleV(), 0.01);
+      Assert.assertEquals(null, rowRecord.getFields().get(2).getObjectValue(TSDataType.TEXT));
+    }
   }
 }

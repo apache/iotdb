@@ -29,7 +29,9 @@ import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.slf4j.Logger;
@@ -45,6 +47,7 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
   private Map<PartialPath, Long> storageGroupTTLMap;
   private Map<String, User> userMap;
   private Map<String, Role> roleMap;
+  private Map<String, Template> templateMap;
   private MetaGroupMember metaGroupMember;
   private long commitIndex;
   private long term;
@@ -65,6 +68,7 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
         IAuthorizer authorizer = BasicAuthorizer.getInstance();
         userMap = authorizer.getAllUsers();
         roleMap = authorizer.getAllRoles();
+        templateMap = TemplateManager.getInstance().getTemplateMap();
         commitIndex = getCommitLogIndex();
         term = getCommitLogTerm();
       } catch (AuthException e) {
@@ -77,7 +81,11 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
   public Snapshot getSnapshot(long minIndex) {
     MetaSimpleSnapshot snapshot =
         new MetaSimpleSnapshot(
-            storageGroupTTLMap, userMap, roleMap, metaGroupMember.getPartitionTable().serialize());
+            storageGroupTTLMap,
+            userMap,
+            roleMap,
+            templateMap,
+            metaGroupMember.getPartitionTable().serialize());
     snapshot.setLastLogIndex(commitIndex);
     snapshot.setLastLogTerm(term);
     return snapshot;

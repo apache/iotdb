@@ -21,7 +21,7 @@ package org.apache.iotdb.db.qp.logical.crud;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -104,9 +104,8 @@ public class FilterOperator implements Comparable<FilterOperator> {
     this.singlePath = singlePath;
   }
 
-  public boolean addChildOperator(FilterOperator op) {
+  public void addChildOperator(FilterOperator op) {
     childOperators.add(op);
-    return true;
   }
 
   public void setPathSet(Set<PartialPath> pathSet) {
@@ -286,7 +285,7 @@ public class FilterOperator implements Comparable<FilterOperator> {
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     if (singlePath != null) {
-      ret.singlePath = new PartialPath(singlePath.getNodes().clone());
+      ret.singlePath = singlePath.clone();
     }
     for (FilterOperator filterOperator : this.childOperators) {
       ret.addChildOperator(filterOperator.copy());

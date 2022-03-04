@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -36,11 +36,11 @@ public class SetSystemModePlan extends PhysicalPlan {
   private boolean isReadOnly;
 
   public SetSystemModePlan() {
-    super(false, OperatorType.SET_SYSTEM_MODE);
+    super(OperatorType.SET_SYSTEM_MODE);
   }
 
   public SetSystemModePlan(boolean isReadOnly) {
-    super(false, OperatorType.SET_SYSTEM_MODE);
+    super(OperatorType.SET_SYSTEM_MODE);
     this.isReadOnly = isReadOnly;
   }
 
@@ -62,7 +62,7 @@ public class SetSystemModePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.SET_SYSTEM_MODE.ordinal());
 
     ReadWriteIOUtils.write(isReadOnly, buffer);

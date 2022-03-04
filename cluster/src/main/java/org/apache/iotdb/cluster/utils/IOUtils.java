@@ -47,17 +47,19 @@ public class IOUtils {
     // TODO-Cluster: hold if the file is an unclosed TsFile
     File file = new File(filePath);
     if (!file.exists()) {
+      logger.warn("Reading a non-existing snapshot file {}", filePath);
       return ByteBuffer.allocate(0);
     }
 
     ByteBuffer result;
     boolean fileExhausted;
+    int len;
     try (BufferedInputStream bufferedInputStream =
         new BufferedInputStream(new FileInputStream(file))) {
       skipExactly(bufferedInputStream, offset);
       byte[] bytes = new byte[length];
       result = ByteBuffer.wrap(bytes);
-      int len = bufferedInputStream.read(bytes);
+      len = bufferedInputStream.read(bytes);
       result.limit(Math.max(len, 0));
       fileExhausted = bufferedInputStream.available() <= 0;
     }
@@ -65,6 +67,14 @@ public class IOUtils {
     if (fileExhausted) {
       try {
         Files.delete(file.toPath());
+        if (logger.isInfoEnabled()) {
+          logger.info(
+              "Snapshot file {} is exhausted, offset: {}, read length: {}, file length: {}",
+              filePath,
+              offset,
+              len,
+              file.length());
+        }
       } catch (IOException e) {
         logger.warn("Cannot delete an exhausted file {}", filePath, e);
       }

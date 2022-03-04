@@ -21,13 +21,12 @@ package org.apache.iotdb.db.engine.compaction.cross.inplace.task;
 
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeContext;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +36,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
@@ -54,7 +53,7 @@ public class CrossSpaceMergeTask implements Callable<Void> {
   CrossSpaceMergeResource resource;
   String storageGroupSysDir;
   String storageGroupName;
-  MergeLogger mergeLogger;
+  InplaceCompactionLogger inplaceCompactionLogger;
   CrossSpaceMergeContext mergeContext = new CrossSpaceMergeContext();
   int concurrentMergeSeriesNum;
   String taskName;
@@ -117,7 +116,7 @@ public class CrossSpaceMergeTask implements Callable<Void> {
     callback.call(
         Collections.emptyList(),
         Collections.emptyList(),
-        new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
+        new File(storageGroupSysDir, InplaceCompactionLogger.MERGE_LOG_NAME));
   }
 
   private void doMerge() throws IOException, MetadataException {
@@ -136,25 +135,21 @@ public class CrossSpaceMergeTask implements Callable<Void> {
     long startTime = System.currentTimeMillis();
     long totalFileSize =
         MergeUtils.collectFileSizes(resource.getSeqFiles(), resource.getUnseqFiles());
-    mergeLogger = new MergeLogger(storageGroupSysDir);
+    inplaceCompactionLogger = new InplaceCompactionLogger(storageGroupSysDir);
+    inplaceCompactionLogger.logFiles(resource);
 
-    mergeLogger.logFiles(resource);
-
-    Map<PartialPath, IMeasurementSchema> measurementSchemaMap =
-        IoTDB.metaManager.getAllMeasurementSchemaByPrefix(new PartialPath(storageGroupName));
-    List<PartialPath> unmergedSeries = new ArrayList<>(measurementSchemaMap.keySet());
-    resource.setMeasurementSchemaMap(measurementSchemaMap);
-
-    mergeLogger.logMergeStart();
+    Set<PartialPath> unmergedDevice =
+        IoTDB.metaManager.getMatchedDeviceByPrefix(new PartialPath(storageGroupName), true);
+    inplaceCompactionLogger.logMergeStart();
 
     chunkTask =
         new MergeMultiChunkTask(
             mergeContext,
             taskName,
-            mergeLogger,
+            inplaceCompactionLogger,
             resource,
             fullMerge,
-            unmergedSeries,
+            new ArrayList<>(unmergedDevice),
             concurrentMergeSeriesNum,
             storageGroupName);
     states = States.MERGE_CHUNKS;
@@ -166,7 +161,8 @@ public class CrossSpaceMergeTask implements Callable<Void> {
     }
 
     fileTask =
-        new MergeFileTask(taskName, mergeContext, mergeLogger, resource, resource.getSeqFiles());
+        new MergeFileTask(
+            taskName, mergeContext, inplaceCompactionLogger, resource, resource.getSeqFiles());
     states = States.MERGE_FILES;
     chunkTask = null;
     fileTask.mergeFiles();
@@ -182,18 +178,18 @@ public class CrossSpaceMergeTask implements Callable<Void> {
     if (logger.isInfoEnabled()) {
       double elapsedTime = (double) (System.currentTimeMillis() - startTime) / 1000.0;
       double byteRate = totalFileSize / elapsedTime / 1024 / 1024;
-      double seriesRate = unmergedSeries.size() / elapsedTime;
+      double deviceRate = unmergedDevice.size() / elapsedTime;
       double chunkRate = mergeContext.getTotalChunkWritten() / elapsedTime;
       double fileRate =
           (resource.getSeqFiles().size() + resource.getUnseqFiles().size()) / elapsedTime;
       double ptRate = mergeContext.getTotalPointWritten() / elapsedTime;
       logger.info(
-          "{} ends after {}s, byteRate: {}MB/s, seriesRate {}/s, chunkRate: {}/s, "
+          "{} ends after {}s, byteRate: {}MB/s, deviceRate {}/s, chunkRate: {}/s, "
               + "fileRate: {}/s, ptRate: {}/s",
           taskName,
           elapsedTime,
           byteRate,
-          seriesRate,
+          deviceRate,
           chunkRate,
           fileRate,
           ptRate);
@@ -206,8 +202,8 @@ public class CrossSpaceMergeTask implements Callable<Void> {
     resource.clear();
     mergeContext.clear();
 
-    if (mergeLogger != null) {
-      mergeLogger.close();
+    if (inplaceCompactionLogger != null) {
+      inplaceCompactionLogger.close();
     }
 
     for (TsFileResource seqFile : resource.getSeqFiles()) {
@@ -219,7 +215,7 @@ public class CrossSpaceMergeTask implements Callable<Void> {
       unseqFile.setMerging(false);
     }
 
-    File logFile = new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME);
+    File logFile = new File(storageGroupSysDir, InplaceCompactionLogger.MERGE_LOG_NAME);
     if (executeCallback) {
       // make sure merge.log is not deleted until unseqFiles are cleared so that when system
       // reboots, the undeleted files can be deleted again

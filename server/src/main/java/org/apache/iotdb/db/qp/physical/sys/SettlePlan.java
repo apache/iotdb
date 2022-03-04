@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -31,13 +31,13 @@ public class SettlePlan extends PhysicalPlan {
   boolean isSgPath;
 
   public SettlePlan(PartialPath sgPath) {
-    super(false, OperatorType.SETTLE);
+    super(OperatorType.SETTLE);
     this.sgPath = sgPath;
     setIsSgPath(true);
   }
 
   public SettlePlan(String tsFilePath) {
-    super(false, OperatorType.SETTLE);
+    super(OperatorType.SETTLE);
     this.tsFilePath = tsFilePath;
     setIsSgPath(false);
   }

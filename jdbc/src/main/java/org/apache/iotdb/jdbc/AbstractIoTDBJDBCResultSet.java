@@ -1186,7 +1186,9 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   abstract Object getObjectByName(String columnName) throws SQLException;
 
   public boolean isSetTracingInfo() {
-    if (ioTDBRpcTracingInfo == null) return false;
+    if (ioTDBRpcTracingInfo == null) {
+      return false;
+    }
     return ioTDBRpcTracingInfo.isSetTracingInfo();
   }
 

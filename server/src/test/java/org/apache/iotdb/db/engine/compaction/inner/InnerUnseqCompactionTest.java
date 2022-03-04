@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
@@ -33,7 +32,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -353,13 +352,9 @@ public class InnerUnseqCompactionTest {
               SizeTieredCompactionLogger sizeTieredCompactionLogger =
                   new SizeTieredCompactionLogger("target", COMPACTION_TEST_SG);
               InnerSpaceCompactionUtils.compact(
-                  targetTsFileResource,
-                  toMergeResources,
-                  COMPACTION_TEST_SG,
-                  sizeTieredCompactionLogger,
-                  new HashSet<>(),
-                  false);
-              SizeTieredCompactionTask.combineModsInCompaction(
+                  targetTsFileResource, toMergeResources, COMPACTION_TEST_SG, false);
+              InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
+              InnerSpaceCompactionUtils.combineModsInCompaction(
                   toMergeResources, targetTsFileResource);
               List<TsFileResource> targetTsFileResources = new ArrayList<>();
               targetTsFileResources.add(targetTsFileResource);

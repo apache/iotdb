@@ -73,6 +73,9 @@ public class ValuePageReader {
   }
 
   private void splitDataToBitmapAndValue(ByteBuffer pageData) {
+    if (!pageData.hasRemaining()) { // Empty Page
+      return;
+    }
     this.size = ReadWriteIOUtils.readInt(pageData);
     this.bitmap = new byte[(size + 7) / 8];
     pageData.get(bitmap);

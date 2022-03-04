@@ -23,17 +23,17 @@ import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 
 public class ClusterQueryUtils {
 
@@ -41,20 +41,6 @@ public class ClusterQueryUtils {
 
   private ClusterQueryUtils() {
     // util class
-  }
-
-  /**
-   * Check if the given path exists locally or can be pulled from a remote node.
-   *
-   * @param path
-   * @throws QueryProcessException
-   */
-  public static void checkPathExistence(String path) throws QueryProcessException {
-    try {
-      checkPathExistence(new PartialPath(path));
-    } catch (IllegalPathException e) {
-      throw new QueryProcessException(e);
-    }
   }
 
   public static void checkPathExistence(PartialPath path) throws QueryProcessException {
@@ -67,27 +53,15 @@ public class ClusterQueryUtils {
     }
   }
 
-  public static void checkPathExistence(List<PartialPath> paths) throws QueryProcessException {
-    for (PartialPath path : paths) {
-      checkPathExistence(path);
-    }
-  }
-
   /**
    * Generate path string list for RPC request.
    *
-   * <p>If vector path, return its vectorId with all subSensors. Else just return path string.
+   * <p>If vector path, return its vectorId with all subSensors. Else just return path string. TODO
+   * aligned path
    */
-  public static List<String> getPathStrListForRequest(Path path) {
-    if (path instanceof VectorPartialPath) {
-      List<String> pathWithSubSensors =
-          new ArrayList<>(((VectorPartialPath) path).getSubSensorsList().size() + 1);
-      pathWithSubSensors.add(path.getFullPath());
-      pathWithSubSensors.addAll(((VectorPartialPath) path).getSubSensorsList());
-      return pathWithSubSensors;
-    } else {
-      return Collections.singletonList(path.getFullPath());
-    }
+  public static String getPathStrListForRequest(Path path) {
+    // TODO aligned Path
+    return path.getFullPath();
   }
 
   /**
@@ -95,13 +69,14 @@ public class ClusterQueryUtils {
    *
    * <p>This method is corresponding to getPathStringListForRequest().
    */
-  public static PartialPath getAssembledPathFromRequest(List<String> pathString) {
+  public static MeasurementPath getAssembledPathFromRequest(String pathString, byte dataType) {
+    // TODO aligned path
     try {
-      if (pathString.size() == 1) {
-        return new PartialPath(pathString.get(0));
-      } else {
-        return new VectorPartialPath(pathString.get(0), pathString.subList(1, pathString.size()));
-      }
+      MeasurementPath matchedPath = new MeasurementPath(pathString);
+      matchedPath.setMeasurementSchema(
+          new UnaryMeasurementSchema(
+              matchedPath.getMeasurement(), TSDataType.deserialize(dataType)));
+      return matchedPath;
     } catch (IllegalPathException e) {
       logger.error("Failed to create partial path, fullPath is {}.", pathString, e);
       return null;

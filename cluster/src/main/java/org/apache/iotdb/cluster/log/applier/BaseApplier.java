@@ -34,7 +34,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -219,8 +219,12 @@ abstract class BaseApplier implements LogApplier {
           pullTimeseriesSchema(plan, dataGroupMember.getHeader());
           plan.recoverFromFailure();
           getQueryExecutor().processNonQuery(plan);
-        } else throw e;
-      } else throw e;
+        } else {
+          throw e;
+        }
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -236,7 +240,7 @@ abstract class BaseApplier implements LogApplier {
         MetaPuller.getInstance()
             .pullTimeSeriesSchemas(((BatchPlan) plan).getPrefixPaths(), ignoredGroup);
       } else {
-        PartialPath path = plan.getPrefixPath();
+        PartialPath path = plan.getDevicePath();
         MetaPuller.getInstance()
             .pullTimeSeriesSchemas(Collections.singletonList(path), ignoredGroup);
       }

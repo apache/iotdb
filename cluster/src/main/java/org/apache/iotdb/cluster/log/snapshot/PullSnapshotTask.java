@@ -30,7 +30,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -163,10 +162,10 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
       try {
         pullSnapshotResp = client.pullSnapshot(request);
       } catch (TException e) {
-        client.getInputProtocol().getTransport().close();
+        client.close();
         throw e;
       } finally {
-        ClientUtils.putBackSyncClient(client);
+        client.returnSelf();
       }
       result = new HashMap<>();
       for (Entry<Integer, ByteBuffer> integerByteBufferEntry :

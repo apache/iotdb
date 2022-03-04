@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.cluster.query.aggregate;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
@@ -32,12 +34,11 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -45,6 +46,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -155,7 +157,8 @@ public class ClusterAggregator {
     } else {
       // perform the aggregations locally
       DataGroupMember dataMember =
-          metaGroupMember.getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId());
+          metaGroupMember.getLocalDataMember(
+              partitionGroup.getHeader(), partitionGroup.getRaftId());
       LocalQueryExecutor localQueryExecutor = new LocalQueryExecutor(dataMember);
       try {
         logger.debug(
@@ -242,12 +245,16 @@ public class ClusterAggregator {
               results);
           return results;
         }
+      } catch (TApplicationException e) {
+        logger.error(
+            metaGroupMember.getName() + " query aggregation error " + path + " from " + node, e);
+        throw new StorageEngineException(e.getMessage());
       } catch (TException | IOException e) {
         logger.error(
-            "{}: Cannot query aggregation {} from {}", metaGroupMember.getName(), path, node, e);
+            metaGroupMember.getName() + " cannot query aggregation " + path + " from " + node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.error("{}: query {} interrupted from {}", metaGroupMember.getName(), path, node, e);
+        logger.error(metaGroupMember.getName() + " query interrupted " + path + " from " + node, e);
       }
     }
     throw new StorageEngineException(
@@ -256,25 +263,27 @@ public class ClusterAggregator {
 
   private List<ByteBuffer> getRemoteAggregateResult(Node node, GetAggrResultRequest request)
       throws IOException, TException, InterruptedException {
-    List<ByteBuffer> resultBuffers;
+    List<ByteBuffer> resultBuffers = null;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
-          metaGroupMember
-              .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       // each buffer is an AggregationResult
       resultBuffers = SyncClientAdaptor.getAggrResult(client, request);
     } else {
-      try (SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-        try {
-          resultBuffers = syncDataClient.getAggrResult(request);
-        } catch (TException e) {
-          // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
-          throw e;
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+        resultBuffers = syncDataClient.getAggrResult(request);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
         }
       }
     }

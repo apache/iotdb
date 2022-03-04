@@ -16,13 +16,14 @@
 # under the License.
 #
 
+
 class BitMap(object):
     BIT_UTIL = [1, 1 << 1, 1 << 2, 1 << 3, 1 << 4, 1 << 5, 1 << 6, 1 << 7]
 
     def __init__(self, size):
         self.__size = size
         self.bits = []
-        for i in range (size // 8 + 1):
+        for i in range(size // 8 + 1):
             self.bits.append(0)
 
     def mark(self, position):

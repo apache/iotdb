@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.cluster.log;
 
+import org.apache.iotdb.cluster.client.ClientManager;
+import org.apache.iotdb.cluster.client.ClientManager.Type;
 import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestSyncClient;
@@ -107,6 +109,41 @@ public class LogDispatcherTest {
           }
 
           @Override
+          public AsyncClient getAsyncClient(Node node) {
+            return new TestAsyncClient() {
+
+              @Override
+              public void appendEntry(
+                  AppendEntryRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler)
+                  throws TException {
+                try {
+                  if (!downNode.contains(node)) {
+                    resultHandler.onComplete(mockedAppendEntry(request));
+                  }
+                  resultHandler.onComplete(new AppendEntryResult(-1));
+                } catch (UnknownLogTypeException e) {
+                  throw new TException(e);
+                }
+              }
+
+              @Override
+              public void appendEntries(
+                  AppendEntriesRequest request,
+                  AsyncMethodCallback<AppendEntryResult> resultHandler)
+                  throws TException {
+                try {
+                  if (!downNode.contains(node)) {
+                    resultHandler.onComplete(mockedAppendEntries(request));
+                  }
+                  resultHandler.onComplete(new AppendEntryResult(-1));
+                } catch (UnknownLogTypeException e) {
+                  throw new TException(e);
+                }
+              }
+            };
+          }
+
+          @Override
           public Client getSyncClient(Node node) {
             return new TestSyncClient() {
               @Override
@@ -172,6 +209,7 @@ public class LogDispatcherTest {
     boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     LogDispatcher dispatcher = new LogDispatcher(raftMember);
+    raftMember.setClientManager(new ClientManager(true, Type.MetaGroupClient));
     try {
       List<Log> logs = TestUtils.prepareTestLogs(10);
       for (Log log : logs) {
@@ -269,7 +307,6 @@ public class LogDispatcherTest {
   @After
   public void tearDown() throws Exception {
     raftMember.stop();
-    raftMember.closeLogManager();
     EnvironmentUtils.cleanAllDir();
   }
 }

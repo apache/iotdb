@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -48,8 +49,7 @@ public class ElectionHandlerTest {
   }
 
   @After
-  public void tearDown() throws IOException {
-    member.closeLogManager();
+  public void tearDown() throws IOException, StorageEngineException {
     member.stop();
     EnvironmentUtils.cleanAllDir();
   }

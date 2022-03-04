@@ -36,13 +36,13 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
@@ -92,11 +92,6 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     hintRegistered = false;
     sourceMember =
         new TestDataGroupMember() {
-          @Override
-          public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-            return getAsyncClient(node);
-          }
-
           @Override
           public AsyncClient getAsyncClient(Node node) {
             try {
@@ -296,7 +291,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
       assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
-    StorageGroupProcessor processor =
+    VirtualStorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertEquals(9, processor.getPartitionMaxFileVersions(0));
     List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
@@ -329,8 +324,6 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
   @Override
   @After
   public void tearDown() throws Exception {
-    sourceMember.closeLogManager();
-    targetMember.closeLogManager();
     sourceMember.stop();
     targetMember.stop();
     super.tearDown();

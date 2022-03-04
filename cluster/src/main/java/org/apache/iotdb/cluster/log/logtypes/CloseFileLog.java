@@ -46,7 +46,7 @@ public class CloseFileLog extends Log {
 
   @Override
   public ByteBuffer serialize() {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(getDefaultBufferSize());
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       dataOutputStream.writeByte((byte) CLOSE_FILE.ordinal());
 

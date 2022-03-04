@@ -24,7 +24,8 @@ import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
@@ -33,7 +34,6 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +43,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
@@ -56,17 +55,8 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  public List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (PartialPath path : paths) {
-      dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
-    }
-    return dataTypes;
-  }
-
-  @Override
   public List<PartialPath> groupVectorPaths(List<PartialPath> paths) throws MetadataException {
-    return getCMManager().groupVectorPaths(paths);
+    return MetaUtils.groupAlignedPaths(paths);
   }
 
   @Override

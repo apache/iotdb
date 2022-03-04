@@ -39,7 +39,7 @@
         </dependencySet>
         <dependencySet>
             <includes>
-                <include>*:iotdb-grafana:war:*</include>
+                <include>*:iotdb-grafana-connector:war:*</include>
             </includes>
             <outputDirectory>tools/grafana/</outputDirectory>
             <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
@@ -51,6 +51,10 @@
         <!--            <outputDirectory>conf</outputDirectory>-->
         <!--            <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf</directory>-->
         <!--        </fileSet>-->
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
+        </fileSet>
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/sbin</directory>
@@ -87,7 +91,7 @@
     </fileSets>
     <files>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/grafana/src/main/resources/application.properties</source>
+            <source>${maven.multiModuleProjectDirectory}/grafana-connector/src/main/resources/application.properties</source>
             <destName>tools/grafana/application.properties</destName>
         </file>
         <file>

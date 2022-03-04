@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.service.thrift;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
@@ -64,11 +62,6 @@ public abstract class ThriftService implements IService {
     }
   }
 
-  public int getRPCPort() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return config.getRpcPort();
-  }
-
   public abstract ThriftService getImplementation();
 
   @Override
@@ -81,6 +74,17 @@ public abstract class ThriftService implements IService {
   public void stop() {
     stopService();
     JMXService.deregisterMBean(mbeanName);
+  }
+
+  boolean setSyncedImpl = false;
+  boolean setAsyncedImpl = false;
+
+  public void initSyncedServiceImpl(Object serviceImpl) {
+    setSyncedImpl = true;
+  }
+
+  public void initAsyncedServiceImpl(Object serviceImpl) {
+    setAsyncedImpl = true;
   }
 
   public abstract void initTProcessor()
@@ -106,6 +110,10 @@ public abstract class ThriftService implements IService {
     try {
       reset();
       initTProcessor();
+      if (!setSyncedImpl && !setAsyncedImpl) {
+        throw new StartupException(
+            getID().getName(), "At least one service implementataion should be set.");
+      }
       initThriftServiceThread();
       thriftServiceThread.setThreadStopLatch(stopLatch);
       thriftServiceThread.start();

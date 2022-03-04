@@ -133,7 +133,7 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
         && (rowLimit <= 0 || alreadyReturnedRowNumArray[transformedDataColumnIndex] < rowLimit)
         && reader.next()) {
 
-      if (offsetArray[transformedDataColumnIndex] == 0) {
+      if (offsetArray[transformedDataColumnIndex] == 0 && !reader.isCurrentNull()) {
 
         long timestamp = reader.currentTime();
         ReadWriteIOUtils.write(timestamp, timeBAOS);

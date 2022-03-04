@@ -20,7 +20,7 @@ package org.apache.iotdb.flink;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -91,7 +91,7 @@ public class TsFileUtils {
   public static String[] readTsFile(String tsFilePath, List<Path> paths) throws IOException {
     QueryExpression expression = QueryExpression.create(paths, null);
     TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
-    try (ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
+    try (TsFileReader readTsFile = new TsFileReader(reader)) {
       QueryDataSet queryDataSet = readTsFile.query(expression);
       List<String> result = new ArrayList<>();
       while (queryDataSet.hasNext()) {

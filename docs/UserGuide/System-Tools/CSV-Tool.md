@@ -173,7 +173,6 @@ Time,Device,str(TEXT),int(INT32)
 ```shell
 # Unix/OS X
 > tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
-
 # Windows
 > tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
 ```
@@ -181,7 +180,7 @@ Time,Device,str(TEXT),int(INT32)
 Description:
 
 * `-f`:
-  - the CSV file that you want to import
+  - the CSV file that you want to import, and it could be a file or a folder. If a folder is specified, all TXT and CSV files in the folder will be imported in batches.
   - example: `-f filename.csv`
 
 * `-fd`:
@@ -195,11 +194,10 @@ Description:
 > tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
 # or
 > tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
-
 # Windows
 > tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv
 # or
-> tools/import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed
+> tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed
 ```
 
 ### Note
@@ -208,3 +206,5 @@ Note that the following special characters in fields need to be checked before i
 
 1. `,` : fields containing `,` should be escaped by `\`.
 2. you can input time format like `yyyy-MM-dd'T'HH:mm:ss`, `yyy-MM-dd HH:mm:ss`, or `yyyy-MM-dd'T'HH:mm:ss.SSSZ`.
+3. a single CSV or TXT file should not exceed 2GB. If the size is larger than 2GB, you can divide the file into small files and import them in batches using parameter `-f` to specify the folder of small files.
+4. the `Time` column must be the first one.

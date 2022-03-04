@@ -52,10 +52,11 @@ public class TSFHiveRecordWriter implements FileSinkOperator.RecordWriter {
 
   @Override
   public void write(Writable writable) throws IOException {
-    if (!(writable instanceof HDFSTSRecord))
+    if (!(writable instanceof HDFSTSRecord)) {
       throw new IOException(
           "Expecting instance of HDFSTSRecord, but received"
               + writable.getClass().getCanonicalName());
+    }
     try {
       writer.write(((HDFSTSRecord) writable).convertToTSRecord());
     } catch (WriteProcessException e) {

@@ -36,7 +36,7 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -72,11 +72,6 @@ public abstract class DataSnapshotTest {
     dataGroupMember =
         new TestDataGroupMember() {
           @Override
-          public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-            return getAsyncClient(node);
-          }
-
-          @Override
           public AsyncClient getAsyncClient(Node node) {
             return new AsyncDataClient(null, null, null) {
               @Override
@@ -89,7 +84,8 @@ public abstract class DataSnapshotTest {
                         () -> {
                           if (addNetFailure && (failureCnt++) % failureFrequency == 0) {
                             // insert 1 failure in every 10 requests
-                            resultHandler.onError(new Exception("Faked network failure"));
+                            resultHandler.onError(
+                                new Exception("[Ignore me in Tests] Faked network failure"));
                             return;
                           }
                           try {
@@ -157,7 +153,7 @@ public abstract class DataSnapshotTest {
                   throws TException {
                 if (addNetFailure && (failureCnt++) % failureFrequency == 0) {
                   // simulate failures
-                  throw new TException("Faked network failure");
+                  throw new TException("[Ignore me in tests] Faked network failure");
                 }
                 try {
                   return IOUtils.readFile(filePath, offset, length);
@@ -191,8 +187,6 @@ public abstract class DataSnapshotTest {
   @After
   public void tearDown() throws Exception {
     config.setUseAsyncServer(isAsyncServer);
-    metaGroupMember.closeLogManager();
-    dataGroupMember.closeLogManager();
     metaGroupMember.stop();
     dataGroupMember.stop();
     EnvironmentUtils.cleanEnv();

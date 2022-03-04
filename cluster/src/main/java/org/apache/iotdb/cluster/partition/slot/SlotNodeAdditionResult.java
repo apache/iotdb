@@ -27,7 +27,7 @@ import java.util.Set;
 
 public class SlotNodeAdditionResult extends NodeAdditionResult {
 
-  /** What slots will the old data groups transfer to the new one. */
+  /** which slots will the old data groups transfer to the new one. */
   private Map<RaftNode, Set<Integer>> lostSlots;
 
   public Map<RaftNode, Set<Integer>> getLostSlots() {

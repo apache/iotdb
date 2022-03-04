@@ -297,7 +297,6 @@ public class Timer {
     int level;
     Statistic parent;
     List<Statistic> children = new ArrayList<>();
-    long warningThreshold = 30 * 1000 * 1000 * 1000L;
 
     Statistic(String className, String blockName, double scale, boolean valid, Statistic parent) {
       this.className = className;
@@ -337,14 +336,6 @@ public class Timer {
       if (ENABLE_INSTRUMENTING && startTime != Long.MIN_VALUE && startTime != 0) {
         long consumed = System.nanoTime() - startTime;
         add(consumed);
-        if (consumed >= warningThreshold && logger.isWarnEnabled()) {
-          logger.warn(
-              "Operation {}.{}.{} costs more than warning threshold: {}",
-              className,
-              blockName,
-              name(),
-              consumed);
-        }
       }
     }
 

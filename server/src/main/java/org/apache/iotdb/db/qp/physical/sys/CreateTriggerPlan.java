@@ -22,7 +22,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -55,7 +55,7 @@ public class CreateTriggerPlan extends PhysicalPlan {
   private boolean isStopped = false;
 
   public CreateTriggerPlan() {
-    super(false, OperatorType.CREATE_TRIGGER);
+    super(OperatorType.CREATE_TRIGGER);
     canBeSplit = false;
   }
 
@@ -65,7 +65,7 @@ public class CreateTriggerPlan extends PhysicalPlan {
       PartialPath fullPath,
       String className,
       Map<String, String> attributes) {
-    super(false, OperatorType.CREATE_TRIGGER);
+    super(OperatorType.CREATE_TRIGGER);
     this.triggerName = triggerName;
     this.event = event;
     this.fullPath = fullPath;
@@ -128,7 +128,7 @@ public class CreateTriggerPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.CREATE_TRIGGER.ordinal());
 
     putString(buffer, triggerName);

@@ -33,9 +33,9 @@ public abstract class Log implements Comparable<Log> {
       Comparator.comparingLong(Log::getCurrLogIndex).thenComparing(Log::getCurrLogTerm);
 
   // make this configurable or adaptive
-  public static int DEFAULT_BUFFER_SIZE = 16 * 1024;
-  private volatile long currLogIndex = Long.MIN_VALUE;
-  private long currLogTerm;
+  protected static final int DEFAULT_BUFFER_SIZE = 16 * 1024;
+  private long currLogIndex = Long.MIN_VALUE;
+  private long currLogTerm = -1;
 
   // for async application
   private volatile boolean applied;
@@ -49,6 +49,10 @@ public abstract class Log implements Comparable<Log> {
   private long sequenceStartTime;
 
   private int byteSize = 0;
+
+  public static int getDefaultBufferSize() {
+    return DEFAULT_BUFFER_SIZE;
+  }
 
   public abstract ByteBuffer serialize();
 

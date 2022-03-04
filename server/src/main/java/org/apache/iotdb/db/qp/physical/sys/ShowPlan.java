@@ -19,7 +19,7 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -35,9 +35,9 @@ public class ShowPlan extends PhysicalPlan {
   private boolean hasLimit;
 
   public ShowPlan(ShowContentType showContentType) {
-    super(true);
+    super(OperatorType.SHOW);
+    setQuery(true);
     this.showContentType = showContentType;
-    setOperatorType(OperatorType.SHOW);
   }
 
   public ShowPlan(ShowContentType showContentType, PartialPath path) {

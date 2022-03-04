@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.cluster.expr;
 
-import org.apache.iotdb.cluster.client.sync.SyncClientFactory;
-import org.apache.iotdb.cluster.client.sync.SyncClientPool;
-import org.apache.iotdb.cluster.client.sync.SyncMetaClient.FactorySync;
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.ClientManager;
+import org.apache.iotdb.cluster.client.ClientManager.Type;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -29,8 +29,8 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.db.qp.physical.sys.DummyPlan;
 
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -44,15 +44,14 @@ public class ExprBench {
   private int threadNum = 64;
   private int workloadSize = 64 * 1024;
   private int printInterval = 1000;
-  private SyncClientPool clientPool;
+  private ClientManager clientPool;
   private Node target;
   private int maxRequestNum;
   private ExecutorService pool = Executors.newCachedThreadPool();
 
   public ExprBench(Node target) {
     this.target = target;
-    SyncClientFactory factory = new FactorySync(new Factory());
-    clientPool = new SyncClientPool(factory);
+    clientPool = new ClientManager(false, Type.MetaGroupClient);
   }
 
   public void benchmark() {
@@ -60,7 +59,12 @@ public class ExprBench {
     for (int i = 0; i < threadNum; i++) {
       pool.submit(
           () -> {
-            Client client = clientPool.getClient(target);
+            Client client = null;
+            try {
+              client = clientPool.borrowSyncClient(target, ClientCategory.META);
+            } catch (IOException e) {
+              e.printStackTrace();
+            }
             ExecutNonQueryReq request = new ExecutNonQueryReq();
             DummyPlan plan = new DummyPlan();
             plan.setWorkload(new byte[workloadSize]);

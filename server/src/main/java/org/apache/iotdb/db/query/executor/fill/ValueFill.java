@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.db.query.executor.fill;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -33,6 +34,12 @@ public class ValueFill extends IFill implements Cloneable {
   private String value;
 
   private TsPrimitiveType tsPrimitiveType;
+
+  private String singleStringValue;
+
+  public ValueFill(String singleStringValue) {
+    this.singleStringValue = singleStringValue;
+  }
 
   public ValueFill(String value, TSDataType dataType) {
     this.value = value;
@@ -62,19 +69,54 @@ public class ValueFill extends IFill implements Cloneable {
       long queryTime,
       Set<String> deviceMeasurements,
       QueryContext context) {
-    this.queryTime = queryTime;
+    this.queryStartTime = queryTime;
   }
 
   @Override
   public TimeValuePair getFillResult() {
+    if (tsPrimitiveType != null) {
+      switch (dataType) {
+        case BOOLEAN:
+        case INT32:
+        case INT64:
+        case FLOAT:
+        case DOUBLE:
+        case TEXT:
+          return new TimeValuePair(queryStartTime, tsPrimitiveType);
+        default:
+          throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+      }
+    } else {
+      return null;
+    }
+  }
+
+  public TimeValuePair getSpecifiedFillResult(TSDataType dataType) throws QueryProcessException {
     switch (dataType) {
       case BOOLEAN:
+        // Fill only if the fill value is true or false
+        if (singleStringValue.equals("true")) {
+          return new TimeValuePair(queryStartTime, new TsPrimitiveType.TsBoolean(true));
+        } else if (singleStringValue.equals("false")) {
+          return new TimeValuePair(queryStartTime, new TsPrimitiveType.TsBoolean(false));
+        } else {
+          return null;
+        }
       case INT32:
+        return new TimeValuePair(
+            queryStartTime, new TsPrimitiveType.TsInt(Integer.parseInt(singleStringValue)));
       case INT64:
+        return new TimeValuePair(
+            queryStartTime, new TsPrimitiveType.TsLong(Long.parseLong(singleStringValue)));
       case FLOAT:
+        return new TimeValuePair(
+            queryStartTime, new TsPrimitiveType.TsFloat(Float.parseFloat(singleStringValue)));
       case DOUBLE:
+        return new TimeValuePair(
+            queryStartTime, new TsPrimitiveType.TsDouble(Double.parseDouble(singleStringValue)));
       case TEXT:
-        return new TimeValuePair(queryTime, tsPrimitiveType);
+        return new TimeValuePair(
+            queryStartTime, new TsPrimitiveType.TsBinary(Binary.valueOf(singleStringValue)));
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }

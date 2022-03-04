@@ -23,9 +23,11 @@ lexer grammar IoTDBSqlLexer;
  * 1. Whitespace
  */
 
+// Instead of discarding whitespace completely, send them to a channel invisable to the parser, so
+// that the lexer could still produce WS tokens for the CLI's highlighter.
 WS
     :
-    [ \u000B\t\r\n]+ -> skip
+    [ \u000B\t\r\n]+ -> channel(HIDDEN)
     ;
 
 
@@ -49,6 +51,10 @@ ALIAS
 
 ALIGN
     : A L I G N
+    ;
+
+ALIGNED
+    : A L I G N E D
     ;
 
 ALL
@@ -466,6 +472,10 @@ TAGS
 
 TASK
     : T A S K
+    ;
+
+TEMPLATE
+    : T E M P L A T E
     ;
 
 TIME
@@ -896,7 +906,7 @@ NAN_LITERAL
  */
 
 ID
-    : NAME_CHAR+
+    : FIRST_NAME_CHAR NAME_CHAR*
     | '"' (~('"' | '.') | '""')+ '"'
     | '`' (~('`' | '.') | '``')+ '`'
     ;
@@ -905,6 +915,19 @@ fragment NAME_CHAR
     : 'A'..'Z'
     | 'a'..'z'
     | '0'..'9'
+    | '_'
+    | ':'
+    | '@'
+    | '#'
+    | '$'
+    | '{'
+    | '}'
+    | CN_CHAR
+    ;
+
+fragment FIRST_NAME_CHAR
+    : 'A'..'Z'
+    | 'a'..'z'
     | '_'
     | ':'
     | '@'

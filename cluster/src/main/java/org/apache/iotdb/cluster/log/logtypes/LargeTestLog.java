@@ -38,7 +38,7 @@ public class LargeTestLog extends Log {
 
   @Override
   public ByteBuffer serialize() {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(getDefaultBufferSize());
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       dataOutputStream.writeByte((byte) TEST_LARGE_CONTENT.ordinal());
       dataOutputStream.writeLong(getCurrLogIndex());

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 /**
  * CountPlan is used to count time-series and count nodes. COUNT_TIMESERIES if using "COUNT

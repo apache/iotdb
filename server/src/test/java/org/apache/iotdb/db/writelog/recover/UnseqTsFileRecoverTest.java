@@ -28,7 +28,7 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.reader.chunk.ChunkDataIterator;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -107,7 +107,7 @@ public class UnseqTsFileRecoverTest {
             new PartialPath("root.sg.device" + i + IoTDBConstant.PATH_SEPARATOR + "sensor" + j);
         UnaryMeasurementSchema measurementSchema =
             new UnaryMeasurementSchema("sensor" + j, TSDataType.INT64, TSEncoding.PLAIN);
-        schema.registerTimeseries(path.toTSFilePath(), measurementSchema);
+        schema.registerTimeseries(new Path(path.toTSFilePath().getDevice()), measurementSchema);
         IoTDB.metaManager.createTimeseries(
             path,
             measurementSchema.getType(),
@@ -117,7 +117,7 @@ public class UnseqTsFileRecoverTest {
       }
     }
     schema.registerTimeseries(
-        new Path(("root.sg.device99"), ("sensor4")),
+        new Path(("root.sg.device99")),
         new UnaryMeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN));
     IoTDB.metaManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor4"),
@@ -126,7 +126,7 @@ public class UnseqTsFileRecoverTest {
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
     schema.registerTimeseries(
-        new Path(("root.sg.device99"), ("sensor2")),
+        new Path(("root.sg.device99")),
         new UnaryMeasurementSchema("sensor2", TSDataType.INT64, TSEncoding.PLAIN));
     IoTDB.metaManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor2"),
@@ -135,7 +135,7 @@ public class UnseqTsFileRecoverTest {
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
     schema.registerTimeseries(
-        new Path(("root.sg.device99"), ("sensor1")),
+        new Path(("root.sg.device99")),
         new UnaryMeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.PLAIN));
     IoTDB.metaManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor1"),
@@ -223,7 +223,7 @@ public class UnseqTsFileRecoverTest {
   @Test
   public void test() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer =
-        new TsFileRecoverPerformer(logNodePrefix, resource, false, false);
+        new TsFileRecoverPerformer(logNodePrefix, resource, false, false, null);
     performer
         .recover(
             true,

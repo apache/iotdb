@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.inplace.manage;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -42,7 +43,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -125,7 +125,7 @@ public class MergeManager implements IService, MergeManagerMBean {
               r -> new Thread(r, "MergeChunkSubThread-" + threadCnt.getAndIncrement()));
 
       taskCleanerThreadPool =
-          Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "MergeTaskCleaner"));
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("MergeTaskCleaner");
       taskCleanerThreadPool.scheduleAtFixedRate(this::cleanFinishedTask, 30, 30, TimeUnit.MINUTES);
       logger.info("MergeManager started");
     }

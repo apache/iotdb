@@ -22,7 +22,7 @@ package org.apache.iotdb.tsfile.read.query.timegenerator;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -89,8 +89,8 @@ public class TimeGeneratorReadEmptyTest {
             .setExpression(finalExpression);
 
     try (TsFileSequenceReader fileReader = new TsFileSequenceReader(tsfilePath)) {
-      ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(fileReader);
-      QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
+      TsFileReader tsFileReader = new TsFileReader(fileReader);
+      QueryDataSet dataSet = tsFileReader.query(queryExpression);
       int i = 0;
       while (dataSet.hasNext()) {
         dataSet.next();

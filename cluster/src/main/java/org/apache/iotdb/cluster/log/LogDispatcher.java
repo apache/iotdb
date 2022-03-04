@@ -35,12 +35,11 @@ import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -56,7 +55,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -73,20 +71,21 @@ public class LogDispatcher {
 
   private static final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
   RaftMember member;
-  private ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
+  private static final ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
   private boolean useBatchInLogCatchUp = clusterConfig.isUseBatchInLogCatchUp();
   Map<Node, BlockingQueue<SendLogRequest>> nodesLogQueues = new HashMap<>();
   ExecutorService executorService;
   private static ExecutorService serializationService =
-      Executors.newFixedThreadPool(
-          CommonUtils.getCpuCores() * 2,
-          new ThreadFactoryBuilder().setDaemon(true).setNameFormat("DispatcherEncoder-%d").build());
-  public static int bindingThreadNum = 1;
-  public static int maxBatchSize = 1;
+      IoTDBThreadPoolFactory.newFixedThreadPoolWithDaemonThread(
+          Runtime.getRuntime().availableProcessors(), "DispatcherEncoder");
+
+  public static int bindingThreadNum = clusterConfig.getDispatcherBindingThreadNum();
+  public static int maxBatchSize = 10;
 
   public LogDispatcher(RaftMember member) {
     this.member = member;
-    executorService = Executors.newCachedThreadPool();
+    executorService =
+        IoTDBThreadPoolFactory.newCachedThreadPool("LogDispatcher-" + member.getName());
     createQueueAndBindingThreads();
   }
 
@@ -264,7 +263,8 @@ public class LogDispatcher {
     private BlockingQueue<SendLogRequest> logBlockingDeque;
     protected List<SendLogRequest> currBatch = new ArrayList<>();
     private Peer peer;
-    Client client;
+    Client syncClient;
+    AsyncClient asyncClient;
 
     DispatcherThread(Node receiver, BlockingQueue<SendLogRequest> logBlockingDeque) {
       this.receiver = receiver;
@@ -273,7 +273,9 @@ public class LogDispatcher {
           member
               .getPeerMap()
               .computeIfAbsent(receiver, r -> new Peer(member.getLogManager().getLastLogIndex()));
-      client = member.getSyncClient(receiver);
+      if (!clusterConfig.isUseAsyncServer()) {
+        syncClient = member.getSyncClient(receiver);
+      }
     }
 
     @Override
@@ -342,23 +344,21 @@ public class LogDispatcher {
       }
       Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.calOperationCostTimeFromStart(startTime);
 
-      Client client = member.getSyncClient(receiver);
-      if (client == null) {
-        logger.error("No available client for {}", receiver);
-        return;
+      if (syncClient == null) {
+        syncClient = member.getSyncClient(receiver);
       }
       AsyncMethodCallback<AppendEntryResult> handler = new AppendEntriesHandler(currBatch);
       startTime = Timer.Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
       try {
-        AppendEntryResult result = client.appendEntries(request);
+        AppendEntryResult result = syncClient.appendEntries(request);
         Timer.Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(startTime);
         handler.onComplete(result);
       } catch (TException e) {
-        client.getInputProtocol().getTransport().close();
-        handler.onError(e);
+        syncClient.getInputProtocol().getTransport().close();
+        ClientUtils.putBackSyncClient(syncClient);
+        syncClient = member.getSyncClient(receiver);
         logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
-      } finally {
-        ClientUtils.putBackSyncClient(client);
+        handler.onError(e);
       }
     }
 
@@ -435,7 +435,7 @@ public class LogDispatcher {
       }
     }
 
-    void sendLog(SendLogRequest logRequest) {
+    void sendLogSync(SendLogRequest logRequest) {
       AppendNodeEntryHandler handler =
           member.getAppendNodeEntryHandler(
               logRequest.getVotingLog(),
@@ -445,14 +445,13 @@ public class LogDispatcher {
               peer,
               logRequest.quorumSize);
       // TODO add async interface
-      int retries = 50;
+      int retries = 5;
       try {
         long operationStartTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
         for (int i = 0; i < retries; i++) {
-          if (client == null) {
-            client = member.getSyncClient(receiver);
-          }
-          AppendEntryResult result = client.appendEntry(logRequest.appendEntryRequest);
+          logRequest.getVotingLog().getFailedNodeIds().remove(receiver.nodeIdentifier);
+          logRequest.getVotingLog().getStronglyAcceptedNodeIds().remove(Integer.MAX_VALUE);
+          AppendEntryResult result = syncClient.appendEntry(logRequest.appendEntryRequest);
           if (result.status == Response.RESPONSE_OUT_OF_WINDOW) {
             Thread.sleep(100);
           } else {
@@ -462,12 +461,40 @@ public class LogDispatcher {
           }
         }
       } catch (TException e) {
-        client.getInputProtocol().getTransport().close();
-        ClientUtils.putBackSyncClient(client);
-        client = member.getSyncClient(receiver);
+        syncClient.getInputProtocol().getTransport().close();
+        ClientUtils.putBackSyncClient(syncClient);
+        syncClient = member.getSyncClient(receiver);
         handler.onError(e);
       } catch (Exception e) {
         handler.onError(e);
+      }
+    }
+
+    private void sendLogAsync(SendLogRequest logRequest) {
+      AppendNodeEntryHandler handler =
+          member.getAppendNodeEntryHandler(
+              logRequest.getVotingLog(),
+              receiver,
+              logRequest.leaderShipStale,
+              logRequest.newLeaderTerm,
+              peer,
+              logRequest.quorumSize);
+
+      AsyncClient client = member.getAsyncClient(receiver);
+      if (client != null) {
+        try {
+          client.appendEntry(logRequest.appendEntryRequest, handler);
+        } catch (TException e) {
+          handler.onError(e);
+        }
+      }
+    }
+
+    void sendLog(SendLogRequest logRequest) {
+      if (clusterConfig.isUseAsyncServer()) {
+        sendLogAsync(logRequest);
+      } else {
+        sendLogSync(logRequest);
       }
     }
 

@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.utils;
 
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterConstant;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -32,16 +31,9 @@ import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.CommonUtils;
-import org.apache.iotdb.rpc.RpcTransportFactory;
 
-import org.apache.thrift.TProcessor;
-import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.server.TServer;
-import org.apache.thrift.server.TThreadPoolServer;
-import org.apache.thrift.transport.TServerTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,11 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class ClusterUtils {
 
@@ -275,43 +263,6 @@ public class ClusterUtils {
       // this node can't connect to those nodes, try in next turn
       return false;
     }
-  }
-
-  public static TServer createTThreadPoolServer(
-      TServerTransport socket,
-      String clientThreadPrefix,
-      TProcessor processor,
-      TProtocolFactory protocolFactory) {
-    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    int maxConcurrentClientNum =
-        Math.max(CommonUtils.getCpuCores(), config.getMaxConcurrentClientNum());
-    TThreadPoolServer.Args poolArgs =
-        new TThreadPoolServer.Args(socket)
-            .maxWorkerThreads(maxConcurrentClientNum)
-            .minWorkerThreads(CommonUtils.getCpuCores());
-
-    poolArgs.executorService(
-        new ThreadPoolExecutor(
-            poolArgs.minWorkerThreads,
-            poolArgs.maxWorkerThreads,
-            poolArgs.stopTimeoutVal,
-            poolArgs.stopTimeoutUnit,
-            new SynchronousQueue<>(),
-            new ThreadFactory() {
-              private AtomicLong threadIndex = new AtomicLong(0);
-
-              @Override
-              public Thread newThread(Runnable r) {
-                return new Thread(r, clientThreadPrefix + threadIndex.incrementAndGet());
-              }
-            }));
-    poolArgs.processor(processor);
-    poolArgs.protocolFactory(protocolFactory);
-    // async service requires FramedTransport
-    poolArgs.transportFactory(RpcTransportFactory.INSTANCE);
-
-    // run the thrift server in a separate thread so that the main thread is not blocked
-    return new TThreadPoolServer(poolArgs);
   }
 
   /**

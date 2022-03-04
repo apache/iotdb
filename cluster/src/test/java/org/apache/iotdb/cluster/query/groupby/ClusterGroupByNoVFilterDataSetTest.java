@@ -25,7 +25,8 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -34,6 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -44,6 +46,12 @@ import static org.junit.Assert.assertFalse;
 
 public class ClusterGroupByNoVFilterDataSetTest extends BaseQueryTest {
 
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+  }
+
   @Test
   public void test()
       throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
@@ -52,17 +60,13 @@ public class ClusterGroupByNoVFilterDataSetTest extends BaseQueryTest {
     try {
       GroupByTimePlan groupByPlan = new GroupByTimePlan();
       List<PartialPath> pathList = new ArrayList<>();
-      List<TSDataType> dataTypes = new ArrayList<>();
       List<String> aggregations = new ArrayList<>();
       for (int i = 0; i < 10; i++) {
-        pathList.add(new PartialPath(TestUtils.getTestSeries(i, 0)));
-        dataTypes.add(TSDataType.DOUBLE);
+        pathList.add(new MeasurementPath(TestUtils.getTestSeries(i, 0), TSDataType.DOUBLE));
         aggregations.add(SQLConstant.COUNT);
       }
       groupByPlan.setPaths(pathList);
       groupByPlan.setDeduplicatedPathsAndUpdate(pathList);
-      groupByPlan.setDataTypes(dataTypes);
-      groupByPlan.setDeduplicatedDataTypes(dataTypes);
       groupByPlan.setAggregations(aggregations);
       groupByPlan.setDeduplicatedAggregations(aggregations);
 
@@ -74,7 +78,7 @@ public class ClusterGroupByNoVFilterDataSetTest extends BaseQueryTest {
 
       ClusterGroupByNoVFilterDataSet dataSet =
           new ClusterGroupByNoVFilterDataSet(queryContext, groupByPlan, testMetaMember);
-
+      dataSet.initGroupBy(queryContext, groupByPlan);
       Object[][] answers =
           new Object[][] {
             new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},

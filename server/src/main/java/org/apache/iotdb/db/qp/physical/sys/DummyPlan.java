@@ -20,13 +20,14 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 
 public class DummyPlan extends PhysicalPlan {
@@ -35,12 +36,12 @@ public class DummyPlan extends PhysicalPlan {
   private boolean needForward;
 
   public DummyPlan() {
-    super(false, OperatorType.EMPTY);
+    super(OperatorType.EMPTY);
   }
 
   @Override
   public List<PartialPath> getPaths() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override

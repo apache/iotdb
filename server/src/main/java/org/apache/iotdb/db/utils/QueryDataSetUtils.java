@@ -47,8 +47,7 @@ public class QueryDataSetUtils {
   public static TSQueryDataSet convertQueryDataSetByFetchSize(
       QueryDataSet queryDataSet, int fetchSize, WatermarkEncoder watermarkEncoder)
       throws IOException {
-    List<TSDataType> dataTypes = queryDataSet.getDataTypes();
-    int columnNum = dataTypes.size();
+    int columnNum = queryDataSet.getColumnNum();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
     // one time column and each value column has a actual value buffer and a bitmap value to
     // indicate whether it is a null

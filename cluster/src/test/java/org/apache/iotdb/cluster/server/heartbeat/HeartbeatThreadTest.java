@@ -27,7 +27,6 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
-import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
@@ -35,7 +34,6 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -46,7 +44,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
@@ -80,11 +77,6 @@ public class HeartbeatThreadTest {
 
       @Override
       public AsyncClient getAsyncClient(Node node) {
-        return getClient(node);
-      }
-
-      @Override
-      public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
         return getClient(node);
       }
 
@@ -149,8 +141,8 @@ public class HeartbeatThreadTest {
   @Before
   public void setUp() throws Exception {
     ClusterConstant.setElectionMaxWaitMs(50L);
-    RaftServer.setHeartbeatIntervalMs(100L);
-    RaftServer.setElectionTimeoutMs(1000L);
+    ClusterConstant.setHeartbeatIntervalMs(100L);
+    ClusterConstant.setElectionTimeoutMs(1000L);
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     logManager = new TestLogManager(1);
@@ -177,17 +169,11 @@ public class HeartbeatThreadTest {
   @After
   public void tearDown() throws InterruptedException, IOException, StorageEngineException {
     logManager.close();
-    member.closeLogManager();
     member.stop();
     logManager = null;
     member = null;
     testThread.interrupt();
     testThread.join();
-    File dir = new File(SyncLogDequeSerializer.getLogDir(1));
-    for (File file : dir.listFiles()) {
-      file.delete();
-    }
-    dir.delete();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
     EnvironmentUtils.cleanAllDir();
   }
@@ -215,8 +201,8 @@ public class HeartbeatThreadTest {
 
   @Test
   public void testAsFollower() throws InterruptedException {
-    int prevTimeOut = RaftServer.getConnectionTimeoutInMS();
-    RaftServer.setConnectionTimeoutInMS(500);
+    int prevTimeOut = ClusterConstant.getConnectionTimeoutInMS();
+    ClusterConstant.setConnectionTimeoutInMS(500);
     member.setCharacter(NodeCharacter.FOLLOWER);
     member.setLastHeartbeatReceivedTime(System.currentTimeMillis());
     respondToElection = false;
@@ -227,7 +213,7 @@ public class HeartbeatThreadTest {
       testThread.interrupt();
       testThread.join();
     } finally {
-      RaftServer.setConnectionTimeoutInMS(prevTimeOut);
+      ClusterConstant.setConnectionTimeoutInMS(prevTimeOut);
     }
   }
 

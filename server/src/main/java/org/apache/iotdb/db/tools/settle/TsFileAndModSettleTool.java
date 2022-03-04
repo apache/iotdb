@@ -226,7 +226,7 @@ public class TsFileAndModSettleTool {
               new FileReader(
                   FSFactoryProducer.getFSFactory().getFile(SettleLog.getSettleLogPath())))) {
         String line = null;
-        while ((line = settleLogReader.readLine()) != null && !line.equals("")) {
+        while ((line = settleLogReader.readLine()) != null && !"".equals(line)) {
           String oldFilePath = line.split(SettleLog.COMMA_SEPERATOR)[0];
           int settleCheckStatus = Integer.parseInt(line.split(SettleLog.COMMA_SEPERATOR)[1]);
           if (settleCheckStatus == SettleCheckStatus.SETTLE_SUCCESS.getCheckStatus()) {
@@ -350,7 +350,9 @@ public class TsFileAndModSettleTool {
         }
       }
       // if the newPartition folder is empty, then it will be deleted
-      if (newPartitionDir.exists()) newPartitionDir.delete();
+      if (newPartitionDir.exists()) {
+        newPartitionDir.delete();
+      }
     }
   }
 

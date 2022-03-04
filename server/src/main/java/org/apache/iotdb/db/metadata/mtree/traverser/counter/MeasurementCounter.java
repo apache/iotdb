@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 // This method implements the measurement count function.
 // One MultiMeasurement will only be count once.

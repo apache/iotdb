@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -75,7 +75,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
       boolean isAligned)
       throws QueryProcessException {
     this();
-    this.prefixPath = prefixPath;
+    this.devicePath = prefixPath;
     rowPlans = new InsertRowPlan[insertTimes.length];
     rowPlanIndexList = new int[insertTimes.length];
     for (int i = 0; i < insertTimes.length; i++) {
@@ -108,7 +108,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   public InsertRowsOfOneDevicePlan(
       PartialPath prefixPath, InsertRowPlan[] rowPlans, int[] rowPlanIndexList) {
     this();
-    this.prefixPath = prefixPath;
+    this.devicePath = prefixPath;
     this.rowPlans = rowPlans;
     this.rowPlanIndexList = rowPlanIndexList;
   }
@@ -146,7 +146,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.BATCH_INSERT_ONE_DEVICE.ordinal();
     stream.writeByte((byte) type);
-    putString(stream, prefixPath.getFullPath());
+    putString(stream, devicePath.getFullPath());
 
     stream.writeInt(rowPlans.length);
     for (InsertRowPlan plan : rowPlans) {
@@ -159,11 +159,11 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.BATCH_INSERT_ONE_DEVICE.ordinal();
     buffer.put((byte) type);
 
-    putString(buffer, prefixPath.getFullPath());
+    putString(buffer, devicePath.getFullPath());
     buffer.putInt(rowPlans.length);
     for (InsertRowPlan plan : rowPlans) {
       buffer.putLong(plan.getTime());
@@ -176,11 +176,11 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    this.prefixPath = new PartialPath(readString(buffer));
+    this.devicePath = new PartialPath(readString(buffer));
     this.rowPlans = new InsertRowPlan[buffer.getInt()];
     for (int i = 0; i < rowPlans.length; i++) {
       rowPlans[i] = new InsertRowPlan();
-      rowPlans[i].setPrefixPath(prefixPath);
+      rowPlans[i].setDevicePath(devicePath);
       rowPlans[i].setTime(buffer.getLong());
       rowPlans[i].deserializeMeasurementsAndValues(buffer);
     }
@@ -201,7 +201,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
 
   @Override
   public String toString() {
-    return "deviceId: " + prefixPath + ", times: " + rowPlans.length;
+    return "deviceId: " + devicePath + ", times: " + rowPlans.length;
   }
 
   @Override
@@ -239,13 +239,14 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
     return isExecuted[i];
   }
 
+  @Override
   public Map<Integer, TSStatus> getResults() {
     return results;
   }
 
   @Override
   public List<PartialPath> getPrefixPaths() {
-    return Collections.singletonList(this.prefixPath);
+    return Collections.singletonList(this.devicePath);
   }
 
   @Override
@@ -276,7 +277,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
         && Arrays.equals(((InsertRowsOfOneDevicePlan) o).rowPlanIndexList, this.rowPlanIndexList)
         && Arrays.equals(((InsertRowsOfOneDevicePlan) o).rowPlans, this.rowPlans)
         && ((InsertRowsOfOneDevicePlan) o).results.equals(this.results)
-        && ((InsertRowsOfOneDevicePlan) o).getPrefixPath().equals(this.getPrefixPath());
+        && ((InsertRowsOfOneDevicePlan) o).getDevicePath().equals(this.getDevicePath());
   }
 
   @Override

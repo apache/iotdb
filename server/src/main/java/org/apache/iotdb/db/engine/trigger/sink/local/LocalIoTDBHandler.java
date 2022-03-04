@@ -26,7 +26,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -72,7 +72,7 @@ public class LocalIoTDBHandler implements Handler<LocalIoTDBConfiguration, Local
             TSFileDescriptor.getInstance().getConfig().getCompressor(),
             Collections.emptyMap());
       } else {
-        if (!IoTDB.metaManager.getSeriesSchema(device, measurement).getType().equals(dataType)) {
+        if (!IoTDB.metaManager.getSeriesType(path).equals(dataType)) {
           throw new SinkException(
               String.format("The data type of %s you provided was not correct.", path));
         }
@@ -85,7 +85,7 @@ public class LocalIoTDBHandler implements Handler<LocalIoTDBConfiguration, Local
       throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
     InsertRowPlan plan = new InsertRowPlan();
     plan.setNeedInferType(false);
-    plan.setPrefixPath(device);
+    plan.setDevicePath(device);
     plan.setMeasurements(measurements);
     plan.setDataTypes(dataTypes);
     plan.setTime(event.getTimestamp());

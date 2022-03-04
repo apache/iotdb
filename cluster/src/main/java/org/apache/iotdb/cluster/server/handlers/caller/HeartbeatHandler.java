@@ -54,7 +54,11 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
   public void onComplete(HeartBeatResponse resp) {
     long followerTerm = resp.getTerm();
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: Received a heartbeat response {}", memberName, followerTerm);
+      logger.debug(
+          "{}: Received a heartbeat response {} for last log index {}",
+          memberName,
+          followerTerm,
+          resp.getLastLogIndex());
     }
     if (followerTerm == RESPONSE_AGREE) {
       // current leadership is still valid
@@ -109,13 +113,13 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
         // some logs may be lost due to restart
         peer.setMatchIndex(lastLogIdx);
       }
-
-      // only start a catch up when the follower's lastLogIndex remains stall and unchanged for 3
+      // only start a catch up when the f
+      // ollower's lastLogIndex remains stall and unchanged for 3
       // heartbeats
       if (lastLogIdx == peer.getLastHeartBeatIndex()) {
         // the follower's lastLogIndex is unchanged, increase inconsistent counter
         int inconsistentNum = peer.incInconsistentHeartbeatNum();
-        if (inconsistentNum >= 500) {
+        if (inconsistentNum >= 5) {
           logger.info(
               "{}: catching up node {}, index-term: {}-{}/{}-{}, peer match index {}",
               memberName,

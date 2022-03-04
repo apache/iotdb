@@ -66,7 +66,7 @@ public class TsFileTestHelper {
       for (int i = 0; i < sensorNum; i++) {
         UnaryMeasurementSchema measurementSchema =
             new UnaryMeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
-        schema.registerTimeseries(new Path("device_1", "sensor_" + (i + 1)), measurementSchema);
+        schema.registerTimeseries(new Path("device_1"), measurementSchema);
         schemaList.add(measurementSchema);
       }
 

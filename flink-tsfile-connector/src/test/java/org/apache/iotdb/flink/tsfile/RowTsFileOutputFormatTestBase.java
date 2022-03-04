@@ -21,7 +21,7 @@ package org.apache.iotdb.flink.tsfile;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -106,7 +106,7 @@ public abstract class RowTsFileOutputFormatTestBase extends RowTsFileConnectorTe
   protected String[] readTsFile(String tsFilePath, List<Path> paths) throws IOException {
     QueryExpression expression = QueryExpression.create(paths, null);
     TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
-    ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader);
+    TsFileReader readTsFile = new TsFileReader(reader);
     QueryDataSet queryDataSet = readTsFile.query(expression);
     List<String> result = new ArrayList<>();
     while (queryDataSet.hasNext()) {

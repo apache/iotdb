@@ -65,15 +65,13 @@ public class ClusterQueryRouter extends QueryRouter {
 
   @Override
   protected GroupByWithoutValueFilterDataSet getGroupByWithoutValueFilterDataSet(
-      QueryContext context, GroupByTimePlan plan)
-      throws StorageEngineException, QueryProcessException {
+      QueryContext context, GroupByTimePlan plan) {
     return new ClusterGroupByNoVFilterDataSet(context, plan, metaGroupMember);
   }
 
   @Override
   protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(
-      QueryContext context, GroupByTimePlan plan)
-      throws StorageEngineException, QueryProcessException {
+      QueryContext context, GroupByTimePlan plan) {
     return new ClusterGroupByVFilterDataSet(context, plan, metaGroupMember);
   }
 

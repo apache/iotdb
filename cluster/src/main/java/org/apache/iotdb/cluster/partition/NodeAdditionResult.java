@@ -24,8 +24,8 @@ import java.util.List;
 
 public class NodeAdditionResult {
 
-  /** A new data group headed by the new node. */
-  private List<PartitionGroup> newGroupList = new ArrayList<>();
+  /** new data groups(multi raft) headed by the new node. */
+  private final List<PartitionGroup> newGroupList = new ArrayList<>();
 
   public List<PartitionGroup> getNewGroupList() {
     return newGroupList;

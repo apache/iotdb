@@ -78,6 +78,7 @@ IoTDB > DELETE STORAGE GROUP root.sgcc
 IoTDB > DELETE STORAGE GROUP root.**
 ```
 ## Timeseries Management
+
 ### Create Timeseries
 
 According to the storage model selected before, we can create corresponding timeseries in the two storage groups respectively. The SQL statements for creating timeseries are as follows:
@@ -91,6 +92,17 @@ IoTDB > create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encod
 IoTDB > create timeseries root.sgcc.wf03.wt01.temperature with datatype=FLOAT,encoding=RLE
 ```
 
+From v0.13, you can use a simplified version of the SQL statements to create timeseries:
+
+```
+IoTDB > create timeseries root.ln.wf01.wt01.status BOOLEAN encoding=PLAIN
+IoTDB > create timeseries root.ln.wf01.wt01.temperature FLOAT encoding=RLE
+IoTDB > create timeseries root.ln.wf02.wt02.hardware TEXT encoding=PLAIN
+IoTDB > create timeseries root.ln.wf02.wt02.status BOOLEAN encoding=PLAIN
+IoTDB > create timeseries root.sgcc.wf03.wt01.status BOOLEAN encoding=PLAIN
+IoTDB > create timeseries root.sgcc.wf03.wt01.temperature FLOAT encoding=RLE
+```
+
 Notice that when in the CREATE TIMESERIES statement the encoding method conflicts with the data type, the system gives the corresponding error prompt as shown below:
 
 ```
@@ -99,6 +111,18 @@ error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
 Please refer to [Encoding](../Data-Concept/Encoding.md) for correspondence between data type and encoding.
+
+### Create Aligned Timeseries (From v0.13)
+
+The SQL statement for creating a group of timeseries are as follows:
+
+```
+IoTDB> CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY)
+```
+
+You can set different datatype, encoding, and compression for the timeseries in a group of aligned timeseries
+
+It is not currently supported to set an alias, tag, and attribute for aligned timeseries.
 
 ### Delete Timeseries
 
@@ -110,19 +134,6 @@ The usage are as follows:
 IoTDB> delete timeseries root.ln.wf01.wt01.status
 IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
 IoTDB> delete timeseries root.ln.wf02.*
-```
-
-As for **aligned** timeseries, we could delete them by explicit declaration with parentheses.
-
-```
-IoTDB > delete timeseries root.sg.d1.(s1,s2)
-```
-
-Attention: Deleting part of aligned timeseries is **not supported** currently.
-
-```
-IoTDB > delete timeseries root.sg.d1.s1
-error: Not support deleting part of aligned timeseies!
 ```
 
 ### Show Timeseries
@@ -515,6 +526,44 @@ It costs 0.003s
 Total line number = 2
 It costs 0.001s
 ```
+
+## Schema Template
+
+IoTDB supports the schema template function, enabling different entities of the same type to share metadata, reduce the memory usage of metadata, and simplify the management of numerous entities and measurements.
+
+### Create Schema Template
+
+The SQL Statement for creating schema template is as follow:
+
+```
+IoTDB> create schema template temp1(GPS(lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla) compression=SNAPPY, status BOOLEAN encoding=PLAIN compression=SNAPPY)
+```
+
+### Set Schema Template
+
+The SQL Statement for setting schema template is as follow:
+
+```
+IoTDB> set schema template temp1 to root.ln.wf01
+```
+
+After setting the schema template, you can insert data into the timeseries. For example, suppose there's a storage group root.ln and temp1 has been set to root.ln.wf01, then timeseries like root.ln.wf01.GPS.lat and root.ln.wf01.status are available and data points can be inserted.
+
+**Attention**: Before inserting data, timeseries defined by the schema template will not be created. You can use the following SQL statement to create the timeseries before inserting data:
+
+```
+IoTDB> create timeseries of schema template on root.ln.wf01
+```
+
+### Uset Schema Template
+
+The SQL Statement for unsetting schema template is as follow:
+
+```
+IoTDB> unset schema template temp1 from root.beijing
+```
+
+**Attention**: Unsetting the template from entities, which have already inserted records using the template, is not supported.
 
 ## TTL
 

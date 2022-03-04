@@ -25,13 +25,18 @@ import org.apache.iotdb.db.exception.runtime.RPCServiceException;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 
+import org.apache.thrift.TBaseAsyncProcessor;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
+import org.apache.thrift.server.THsHaServer;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.server.TThreadPoolServer;
+import org.apache.thrift.server.TThreadedSelectorServer;
+import org.apache.thrift.transport.TNonblockingServerSocket;
+import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -40,6 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class ThriftServiceThread extends Thread {
 
@@ -51,8 +57,85 @@ public class ThriftServiceThread extends Thread {
   private String serviceName;
 
   private TProtocolFactory protocolFactory;
-  private TThreadPoolServer.Args poolArgs;
 
+  // currently, we can reuse the ProtocolFactory instance.
+  private static TCompactProtocol.Factory compactProtocolFactory = new TCompactProtocol.Factory();
+  private static TBinaryProtocol.Factory binaryProtocolFactory = new TBinaryProtocol.Factory();
+
+  private void initProtocolFactory(boolean compress) {
+    protocolFactory = getProtocolFactory(compress);
+  }
+
+  public static TProtocolFactory getProtocolFactory(boolean compress) {
+    if (compress) {
+      return compactProtocolFactory;
+    } else {
+      return binaryProtocolFactory;
+    }
+  }
+
+  private void catchFailedInitialization(TTransportException e) throws RPCServiceException {
+    close();
+    if (threadStopLatch == null) {
+      logger.debug("Stop Count Down latch is null");
+    } else {
+      logger.debug("Stop Count Down latch is {}", threadStopLatch.getCount());
+    }
+    if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
+      threadStopLatch.countDown();
+    }
+    logger.debug(
+        "{}: close TThreadPoolServer and TServerSocket for {}",
+        IoTDBConstant.GLOBAL_DB_NAME,
+        serviceName);
+    throw new RPCServiceException(
+        String.format(
+            "%s: failed to start %s, because ", IoTDBConstant.GLOBAL_DB_NAME, serviceName),
+        e);
+  }
+
+  /** for asynced ThriftService. */
+  @SuppressWarnings("squid:S107")
+  public ThriftServiceThread(
+      TBaseAsyncProcessor processor,
+      String serviceName,
+      String threadsName,
+      String bindAddress,
+      int port,
+      int maxWorkerThreads,
+      int timeoutSecond,
+      TServerEventHandler serverEventHandler,
+      boolean compress,
+      int connectionTimeoutInMS,
+      int maxReadBufferBytes,
+      ServerType serverType) {
+    initProtocolFactory(compress);
+    this.serviceName = serviceName;
+    try {
+      serverTransport = openNonblockingTransport(bindAddress, port, connectionTimeoutInMS);
+      switch (serverType) {
+        case SELECTOR:
+          TThreadedSelectorServer.Args poolArgs =
+              initAsyncedSelectorPoolArgs(
+                  processor, threadsName, maxWorkerThreads, timeoutSecond, maxReadBufferBytes);
+          poolServer = new TThreadedSelectorServer(poolArgs);
+          break;
+        case HSHA:
+          THsHaServer.Args poolArgs1 =
+              initAsyncedHshaPoolArgs(
+                  processor, threadsName, maxWorkerThreads, timeoutSecond, maxReadBufferBytes);
+          poolServer = new THsHaServer(poolArgs1);
+          break;
+        default:
+          logger.error("Unexpected serverType {}", serverType);
+      }
+      poolServer.setServerEventHandler(serverEventHandler);
+    } catch (TTransportException e) {
+      catchFailedInitialization(e);
+    }
+  }
+
+  /** for synced ThriftServiceThread */
   @SuppressWarnings("squid:S107")
   public ThriftServiceThread(
       TProcessor processor,
@@ -61,53 +144,84 @@ public class ThriftServiceThread extends Thread {
       String bindAddress,
       int port,
       int maxWorkerThreads,
-      int timeoutMs,
+      int timeoutSecond,
       TServerEventHandler serverEventHandler,
       boolean compress) {
-    if (compress) {
-      protocolFactory = new TCompactProtocol.Factory();
-    } else {
-      protocolFactory = new TBinaryProtocol.Factory();
-    }
+    initProtocolFactory(compress);
     this.serviceName = serviceName;
 
     try {
       serverTransport = openTransport(bindAddress, port);
-      poolArgs =
-          new TThreadPoolServer.Args(serverTransport)
-              .maxWorkerThreads(maxWorkerThreads)
-              .minWorkerThreads(CommonUtils.getCpuCores())
-              .stopTimeoutVal(timeoutMs);
-      poolArgs.executorService =
-          IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs, threadsName);
-      poolArgs.processor(processor);
-      poolArgs.protocolFactory(protocolFactory);
-      poolArgs.transportFactory(RpcTransportFactory.INSTANCE);
+      TThreadPoolServer.Args poolArgs =
+          initSyncedPoolArgs(processor, threadsName, maxWorkerThreads, timeoutSecond);
       poolServer = new TThreadPoolServer(poolArgs);
       poolServer.setServerEventHandler(serverEventHandler);
     } catch (TTransportException e) {
-      close();
-      if (threadStopLatch == null) {
-        logger.debug("Stop Count Down latch is null");
-      } else {
-        logger.debug("Stop Count Down latch is {}", threadStopLatch.getCount());
-      }
-      if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
-        threadStopLatch.countDown();
-      }
-      logger.debug(
-          "{}: close TThreadPoolServer and TServerSocket for {}",
-          IoTDBConstant.GLOBAL_DB_NAME,
-          serviceName);
-      throw new RPCServiceException(
-          String.format(
-              "%s: failed to start %s, because ", IoTDBConstant.GLOBAL_DB_NAME, serviceName),
-          e);
+      catchFailedInitialization(e);
     }
   }
 
+  private TThreadPoolServer.Args initSyncedPoolArgs(
+      TProcessor processor, String threadsName, int maxWorkerThreads, int timeoutSecond) {
+    TThreadPoolServer.Args poolArgs = new TThreadPoolServer.Args(serverTransport);
+    poolArgs
+        .maxWorkerThreads(maxWorkerThreads)
+        .minWorkerThreads(CommonUtils.getCpuCores())
+        .stopTimeoutVal(timeoutSecond);
+    poolArgs.executorService =
+        IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs, threadsName);
+    poolArgs.processor(processor);
+    poolArgs.protocolFactory(protocolFactory);
+    poolArgs.transportFactory(RpcTransportFactory.INSTANCE);
+    return poolArgs;
+  }
+
+  private TThreadedSelectorServer.Args initAsyncedSelectorPoolArgs(
+      TBaseAsyncProcessor processor,
+      String threadsName,
+      int maxWorkerThreads,
+      int timeoutSecond,
+      int maxReadBufferBytes) {
+    TThreadedSelectorServer.Args poolArgs =
+        new TThreadedSelectorServer.Args((TNonblockingServerTransport) serverTransport);
+    poolArgs.maxReadBufferBytes = maxReadBufferBytes;
+    poolArgs.selectorThreads(CommonUtils.getCpuCores());
+    poolArgs.executorService(
+        IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(
+            CommonUtils.getCpuCores(),
+            maxWorkerThreads,
+            timeoutSecond,
+            TimeUnit.SECONDS,
+            threadsName));
+    poolArgs.processor(processor);
+    poolArgs.protocolFactory(protocolFactory);
+    poolArgs.transportFactory(RpcTransportFactory.INSTANCE);
+    return poolArgs;
+  }
+
+  private THsHaServer.Args initAsyncedHshaPoolArgs(
+      TBaseAsyncProcessor processor,
+      String threadsName,
+      int maxWorkerThreads,
+      int timeoutSecond,
+      int maxReadBufferBytes) {
+    THsHaServer.Args poolArgs = new THsHaServer.Args((TNonblockingServerTransport) serverTransport);
+    poolArgs.maxReadBufferBytes = maxReadBufferBytes;
+    poolArgs.executorService(
+        IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(
+            CommonUtils.getCpuCores(),
+            maxWorkerThreads,
+            timeoutSecond,
+            TimeUnit.SECONDS,
+            threadsName));
+    poolArgs.processor(processor);
+    poolArgs.protocolFactory(protocolFactory);
+    poolArgs.transportFactory(RpcTransportFactory.INSTANCE);
+    return poolArgs;
+  }
+
   @SuppressWarnings("java:S2259")
-  public TServerTransport openTransport(String bindAddress, int port) throws TTransportException {
+  private TServerTransport openTransport(String bindAddress, int port) throws TTransportException {
     int maxRetry = 5;
     long retryIntervalMS = 5000;
     TTransportException lastExp = null;
@@ -124,7 +238,29 @@ public class ThriftServiceThread extends Thread {
         }
       }
     }
-    throw lastExp;
+    throw lastExp == null ? new TTransportException() : lastExp;
+  }
+
+  private TServerTransport openNonblockingTransport(
+      String bindAddress, int port, int connectionTimeoutInMS) throws TTransportException {
+    int maxRetry = 5;
+    long retryIntervalMS = 5000;
+    TTransportException lastExp = null;
+    for (int i = 0; i < maxRetry; i++) {
+      try {
+        return new TNonblockingServerSocket(
+            new InetSocketAddress(bindAddress, port), connectionTimeoutInMS);
+      } catch (TTransportException e) {
+        lastExp = e;
+        try {
+          Thread.sleep(retryIntervalMS);
+        } catch (InterruptedException interruptedException) {
+          Thread.currentThread().interrupt();
+          break;
+        }
+      }
+    }
+    throw lastExp == null ? new TTransportException() : lastExp;
   }
 
   public void setThreadStopLatch(CountDownLatch threadStopLatch) {
@@ -176,5 +312,10 @@ public class ThriftServiceThread extends Thread {
       return poolServer.isServing();
     }
     return false;
+  }
+
+  public enum ServerType {
+    SELECTOR,
+    HSHA
   }
 }

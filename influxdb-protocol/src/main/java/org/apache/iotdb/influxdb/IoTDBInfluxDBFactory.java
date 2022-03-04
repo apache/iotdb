@@ -28,7 +28,7 @@ import org.influxdb.InfluxDB;
 public enum IoTDBInfluxDBFactory {
   INSTANCE;
 
-  private IoTDBInfluxDBFactory() {}
+  IoTDBInfluxDBFactory() {}
 
   public static InfluxDB connect(String url, String username, String password) {
     ParameterUtils.checkNonEmptyString(url, "url");

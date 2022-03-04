@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
@@ -65,13 +66,7 @@ public class FirstValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(IBatchDataIterator batchIterator) {
-    if (hasFinalResult()) {
-      return;
-    }
-    if (batchIterator.hasNext()) {
-      setValue(batchIterator.currentValue());
-      timestamp = batchIterator.currentTime();
-    }
+    updateResultFromPageData(batchIterator, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
@@ -80,7 +75,7 @@ public class FirstValueAggrResult extends AggregateResult {
     if (hasFinalResult()) {
       return;
     }
-    if (batchIterator.hasNext()
+    if (batchIterator.hasNext(minBound, maxBound)
         && batchIterator.currentTime() < maxBound
         && batchIterator.currentTime() >= minBound) {
       setValue(batchIterator.currentValue());
@@ -113,16 +108,12 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+  public void updateResultUsingValues(long[] timestamps, int length, ValueIterator valueIterator) {
     if (hasFinalResult()) {
       return;
     }
-    for (int i = 0; i < length; i++) {
-      if (values[i] != null) {
-        setValue(values[i]);
-        timestamp = timestamps[i];
-        break;
-      }
+    if (valueIterator.hasNext()) {
+      setValue(valueIterator.next());
     }
   }
 

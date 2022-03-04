@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
@@ -95,8 +95,7 @@ public class RegexpOperator extends FunctionOperator {
 
   @Override
   public RegexpOperator copy() {
-    RegexpOperator ret =
-        new RegexpOperator(this.filterType, new PartialPath(singlePath.getNodes().clone()), value);
+    RegexpOperator ret = new RegexpOperator(this.filterType, singlePath.clone(), value);
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     ret.pathSet = pathSet;
@@ -105,9 +104,15 @@ public class RegexpOperator extends FunctionOperator {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     RegexpOperator that = (RegexpOperator) o;
     return Objects.equals(value, that.value);
   }

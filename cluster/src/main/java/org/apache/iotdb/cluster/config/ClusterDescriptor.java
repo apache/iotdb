@@ -151,11 +151,6 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "cluster_info_public_port", Integer.toString(config.getClusterInfoRpcPort()))));
 
-    config.setMaxConcurrentClientNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_concurrent_client_num", String.valueOf(config.getMaxConcurrentClientNum()))));
-
     config.setMultiRaftFactor(
         Integer.parseInt(
             properties.getProperty(
@@ -323,6 +318,23 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "wait_client_timeout_ms", String.valueOf(config.getWaitClientTimeoutMS()))));
 
+    config.setUseFollowerSlidingWindow(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "use_follower_sliding_window",
+                String.valueOf(config.isUseFollowerSlidingWindow()))));
+
+    config.setEnableWeakAcceptance(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_weak_acceptance", String.valueOf(config.isEnableWeakAcceptance()))));
+
+    config.setDispatcherBindingThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "dispatcher_binding_thread_num",
+                String.valueOf(config.getDispatcherBindingThreadNum()))));
+
     config.setUseAsyncSequencing(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -398,17 +410,12 @@ public class ClusterDescriptor {
 
   /**
    * This method is for setting hot modified properties of the cluster. Currently, we support
-   * max_concurrent_client_num, connection_timeout_ms, max_resolved_log_size
+   * connection_timeout_ms, max_resolved_log_size
    *
    * @param properties
    * @throws QueryProcessException
    */
   public void loadHotModifiedProps(Properties properties) {
-
-    config.setMaxConcurrentClientNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_concurrent_client_num", String.valueOf(config.getMaxConcurrentClientNum()))));
 
     config.setConnectionTimeoutInMS(
         Integer.parseInt(

@@ -27,7 +27,8 @@ import org.apache.iotdb.cluster.query.reader.EmptyReader;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -37,6 +38,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -49,10 +51,16 @@ import static org.junit.Assert.assertTrue;
 
 public class RemoteGroupByExecutorTest extends BaseQueryTest {
 
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+  }
+
   @Test
   public void testNoTimeFilter()
       throws QueryProcessException, IOException, StorageEngineException, IllegalPathException {
-    PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
+    PartialPath path = new MeasurementPath(TestUtils.getTestSeries(0, 0), TSDataType.DOUBLE);
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
@@ -110,7 +118,7 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
   @Test
   public void testTimeFilter()
       throws QueryProcessException, IOException, StorageEngineException, IllegalPathException {
-    PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
+    PartialPath path = new MeasurementPath(TestUtils.getTestSeries(0, 0), TSDataType.DOUBLE);
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));

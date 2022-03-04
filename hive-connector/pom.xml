@@ -171,22 +171,6 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-    <!-- org.pentaho:pentaho-aggdesigner-algorithm is removed from  repo.spring.io and we have to claim
-    to use https://public.nexus.pentaho.org or http://conjars.org/repo  -->
-    <repositories>
-        <repository>
-            <id>for_pentaho</id>
-            <name>public.nexus.pentaho.org</name>
-            <url>https://public.nexus.pentaho.org/repository/proxy-public-3rd-party-release</url>
-            <layout>default</layout>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
     <profiles>
         <profile>
             <id>get-jar-with-dependencies</id>

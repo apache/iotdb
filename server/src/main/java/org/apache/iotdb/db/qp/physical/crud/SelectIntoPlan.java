@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -37,11 +38,11 @@ public class SelectIntoPlan extends PhysicalPlan {
   private List<PartialPath> intoPaths;
 
   public SelectIntoPlan() {
-    super(false, OperatorType.SELECT_INTO);
+    super(OperatorType.SELECT_INTO);
   }
 
   public SelectIntoPlan(QueryPlan queryPlan, PartialPath fromPath, List<PartialPath> intoPaths) {
-    super(false, OperatorType.SELECT_INTO);
+    super(OperatorType.SELECT_INTO);
     this.queryPlan = queryPlan;
     this.fromPath = fromPath;
     this.intoPaths = intoPaths;
@@ -67,7 +68,7 @@ public class SelectIntoPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.SELECT_INTO.ordinal());
 
     queryPlan.serialize(buffer);
@@ -95,7 +96,7 @@ public class SelectIntoPlan extends PhysicalPlan {
 
   /** mainly for query auth. */
   @Override
-  public List<PartialPath> getPaths() {
+  public List<MeasurementPath> getPaths() {
     return queryPlan.getPaths();
   }
 

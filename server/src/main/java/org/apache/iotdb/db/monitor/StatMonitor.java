@@ -23,14 +23,15 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualStorageGroupManager;
+import org.apache.iotdb.db.engine.storagegroup.virtualSg.StorageGroupManager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.monitor.MonitorConstants.StatMeasurementConstants;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -47,6 +48,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -132,9 +134,13 @@ public class StatMonitor implements StatMonitorMBean, IService {
     try {
       for (int i = 0; i < globalSeries.size(); i++) {
         PartialPath globalMonitorPath = globalSeries.get(i);
-        TimeValuePair timeValuePair = getLastValue(globalMonitorPath);
-        if (timeValuePair != null) {
-          globalSeriesValue.set(i, timeValuePair.getValue().getLong());
+        if (mManager.isPathExist(globalMonitorPath)) {
+          IMeasurementSchema schema = mManager.getSeriesSchema(globalMonitorPath);
+          TimeValuePair timeValuePair =
+              getLastValue(new MeasurementPath(globalMonitorPath, schema));
+          if (timeValuePair != null) {
+            globalSeriesValue.set(i, timeValuePair.getValue().getLong());
+          }
         }
       }
 
@@ -144,16 +150,20 @@ public class StatMonitor implements StatMonitorMBean, IService {
           // for storage group which is not global, only TOTAL_POINTS is registered now
           PartialPath monitorSeriesPath =
               getStorageGroupMonitorSeries(storageGroupPath.getFullPath());
-          TimeValuePair timeValuePair = getLastValue(monitorSeriesPath);
-          if (timeValuePair != null) {
-            storageEngine
-                .getProcessorMap()
-                .get(storageGroupPath)
-                .setMonitorSeriesValue(timeValuePair.getValue().getLong());
+          if (mManager.isPathExist(monitorSeriesPath)) {
+            IMeasurementSchema schema = mManager.getSeriesSchema(monitorSeriesPath);
+            TimeValuePair timeValuePair =
+                getLastValue(new MeasurementPath(monitorSeriesPath, schema));
+            if (timeValuePair != null) {
+              storageEngine
+                  .getProcessorMap()
+                  .get(storageGroupPath)
+                  .setMonitorSeriesValue(timeValuePair.getValue().getLong());
+            }
           }
         }
       }
-    } catch (StorageEngineException | IOException | QueryProcessException e) {
+    } catch (StorageEngineException | IOException | QueryProcessException | MetadataException e) {
       logger.error("Load last value from disk error.", e);
     }
   }
@@ -238,13 +248,13 @@ public class StatMonitor implements StatMonitorMBean, IService {
   @Override
   public long getStorageGroupTotalPointsNum(String storageGroupName) {
     try {
-      VirtualStorageGroupManager virtualStorageGroupManager =
+      StorageGroupManager storageGroupManager =
           storageEngine.getProcessorMap().get(new PartialPath(storageGroupName));
-      if (virtualStorageGroupManager == null) {
+      if (storageGroupManager == null) {
         return 0;
       }
 
-      return virtualStorageGroupManager.getMonitorSeriesValue();
+      return storageGroupManager.getMonitorSeriesValue();
     } catch (IllegalPathException e) {
       logger.error(e.getMessage());
       return -1;

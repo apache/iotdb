@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.constant;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -185,6 +185,11 @@ public class SQLConstant {
 
   public static final int TOK_SETTLE = 111;
 
+  public static final int TOK_SCHEMA_TEMPLATE_CREATE = 112;
+  public static final int TOK_SCHEMA_TEMPLATE_SET = 113;
+  public static final int TOK_SCHEMA_TEMPLATE_ACTIVATE = 114;
+  public static final int TOK_SCHEMA_TEMPLATE_UNSET = 115;
+
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 
   public static String[] getSingleRootArray() {
@@ -257,6 +262,11 @@ public class SQLConstant {
     tokenNames.put(TOK_SELECT_INTO, "TOK_SELECT_INTO");
 
     tokenNames.put(TOK_SETTLE, "TOK_SETTLE");
+
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_CREATE, "TOK_SCHEMA_TEMPLATE_CREATE");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_SET, "TOK_SCHEMA_TEMPLATE_SET");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_ACTIVATE, "TOK_SCHEMA_TEMPLATE_ACTIVATE");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_UNSET, "TOK_SCHEMA_TEMPLATE_UNSET");
   }
 
   public static boolean isReservedPath(PartialPath pathStr) {

@@ -18,7 +18,7 @@
     under the License.
 
 -->
-## Spark-IoTDB
+# Spark-IoTDB
 ### version
 
 The versions required for Spark and Java are as follow:
@@ -45,8 +45,9 @@ mvn clean scala:compile compile install
     </dependency>
 ```
 
+## Read Data from IoTDB
 
-#### spark-shell user guide
+### spark-shell user guide
 
 ```
 spark-shell --jars spark-iotdb-connector-0.13.0-SNAPSHOT.jar,iotdb-jdbc-0.13.0-SNAPSHOT-jar-with-dependencies.jar
@@ -76,7 +77,7 @@ df.printSchema()
 df.show()
 ```
 
-#### Schema Inference
+### Schema Inference
 
 Take the following TsFile structure as an example: There are three Measurements in the TsFile schema: status, temperature, and hardware. The basic information of these three measurements is as follows:
 
@@ -114,7 +115,7 @@ You can also use narrow table form which as follows: (You can see part 4 about h
 |    5 | root.ln.wf02.wt01             | false                    | null                       | null                          |
 |    6 | root.ln.wf02.wt02             | null                     | ccc                        | null                          |
 
-#### Get narrow form of data
+### Get narrow form of data
 ```
 spark-shell --jars spark-iotdb-connector-0.13.0-SNAPSHOT.jar,iotdb-jdbc-0.13.0-SNAPSHOT-jar-with-dependencies.jar
 
@@ -127,7 +128,7 @@ df.printSchema()
 df.show()
 ```
 
-#### Java user guide
+### Java user guide
 
 ```
 import org.apache.spark.sql.Dataset;
@@ -158,3 +159,45 @@ public class Example {
 }
 ```
 
+## Write Data to IoTDB
+
+### User Guide
+``` scala
+// import narrow table
+val df = spark.createDataFrame(List(
+      (1L, "root.test.d0",1, 1L, 1.0F, 1.0D, true, "hello"),
+      (2L, "root.test.d0", 2, 2L, 2.0F, 2.0D, false, "world")))
+
+val dfWithColumn = df.withColumnRenamed("_1", "Time")
+    .withColumnRenamed("_2", "device_name")
+    .withColumnRenamed("_3", "s0")
+    .withColumnRenamed("_4", "s1")
+    .withColumnRenamed("_5", "s2")
+    .withColumnRenamed("_6", "s3")
+    .withColumnRenamed("_7", "s4")
+    .withColumnRenamed("_8", "s5")
+dfWithColumn
+    .write
+    .format("org.apache.iotdb.spark.db")
+    .option("url", "jdbc:iotdb://127.0.0.1:6667/")
+    .save
+    
+// import wide table
+val df = spark.createDataFrame(List(
+      (1L, 1, 1L, 1.0F, 1.0D, true, "hello"),
+      (2L, 2, 2L, 2.0F, 2.0D, false, "world")))
+
+val dfWithColumn = df.withColumnRenamed("_1", "Time")
+    .withColumnRenamed("_2", "root.test.d0.s0")
+    .withColumnRenamed("_3", "root.test.d0.s1")
+    .withColumnRenamed("_4", "root.test.d0.s2")
+    .withColumnRenamed("_5", "root.test.d0.s3")
+    .withColumnRenamed("_6", "root.test.d0.s4")
+    .withColumnRenamed("_7", "root.test.d0.s5")
+dfWithColumn.write.format("org.apache.iotdb.spark.db")
+    .option("url", "jdbc:iotdb://127.0.0.1:6667/")
+    .save
+```
+
+### Notes
+1. You can directly write data to IoTDB whatever the dataframe contains a wide table or a narrow table.

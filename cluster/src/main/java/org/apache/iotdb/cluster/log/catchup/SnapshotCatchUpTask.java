@@ -36,6 +36,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -113,27 +114,33 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
   }
 
   private boolean sendSnapshotSync(SendSnapshotRequest request) throws TException {
-    logger.info(
-        "{}: sending a snapshot request size={} to {}",
-        raftMember.getName(),
-        request.getSnapshotBytes().length,
-        node);
-    Client client = raftMember.getSyncClient(node);
-    if (client == null) {
-      return false;
-    }
-    try {
+    int retry = 5;
+    for (int i = 0; i < retry; i++) {
+      logger.info(
+          "{}: sending a snapshot request size={} to {}",
+          raftMember.getName(),
+          request.getSnapshotBytes().length,
+          node);
+
+      Client client = raftMember.getSyncClient(node);
+      if (client == null) {
+        return false;
+      }
+
       try {
         client.sendSnapshot(request);
         logger.info("{}: snapshot is sent to {}", raftMember.getName(), node);
         return true;
       } catch (TException e) {
-        client.getInputProtocol().getTransport().close();
-        throw e;
+        if (!(e.getCause() instanceof SocketTimeoutException)) {
+          client.getInputProtocol().getTransport().close();
+          throw e;
+        }
+      } finally {
+        ClientUtils.putBackSyncClient(client);
       }
-    } finally {
-      ClientUtils.putBackSyncClient(client);
     }
+    return false;
   }
 
   @Override

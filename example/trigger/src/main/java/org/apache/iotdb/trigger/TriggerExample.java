@@ -27,7 +27,7 @@ import org.apache.iotdb.db.engine.trigger.sink.local.LocalIoTDBHandler;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTConfiguration;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTEvent;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTHandler;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.windowing.configuration.SlidingSizeWindowConfiguration;
 import org.apache.iotdb.db.utils.windowing.handler.SlidingSizeWindowEvaluationHandler;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;

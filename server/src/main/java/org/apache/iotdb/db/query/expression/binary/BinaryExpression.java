@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.expression.binary;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,9 +54,35 @@ public abstract class BinaryExpression extends Expression {
     this.rightExpression = rightExpression;
   }
 
+  public Expression getLeftExpression() {
+    return leftExpression;
+  }
+
+  public Expression getRightExpression() {
+    return rightExpression;
+  }
+
+  @Override
+  public boolean isConstantOperandInternal() {
+    return leftExpression.isConstantOperand() && rightExpression.isConstantOperand();
+  }
+
   @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return true;
+    return !isUserDefinedAggregationFunctionExpression();
+  }
+
+  @Override
+  public boolean isUserDefinedAggregationFunctionExpression() {
+    return leftExpression.isPlainAggregationFunctionExpression()
+        || rightExpression.isPlainAggregationFunctionExpression()
+        || leftExpression.isUserDefinedAggregationFunctionExpression()
+        || rightExpression.isUserDefinedAggregationFunctionExpression();
+  }
+
+  @Override
+  public List<Expression> getExpressions() {
+    return Arrays.asList(leftExpression, rightExpression);
   }
 
   @Override
@@ -165,9 +192,12 @@ public abstract class BinaryExpression extends Expression {
               rightParentIntermediateLayer.constructPointReader());
       expressionDataTypeMap.put(this, transformer.getDataType());
 
+      // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
+      // yet. And since a ConstantLayerPointReader won't produce too much IO,
+      // SingleInputColumnSingleReferenceIntermediateLayer could be a better choice.
       expressionIntermediateLayerMap.put(
           this,
-          memoryAssigner.getReference(this) == 1
+          memoryAssigner.getReference(this) == 1 || isConstantOperand()
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
                   this, queryId, memoryBudgetInMB, transformer)
               : new SingleInputColumnMultiReferenceIntermediateLayer(
@@ -181,9 +211,21 @@ public abstract class BinaryExpression extends Expression {
       LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader);
 
   @Override
-  public final String toString() {
-    return String.format(
-        "%s %s %s", leftExpression.toString(), operator(), rightExpression.toString());
+  public final String getExpressionStringInternal() {
+    StringBuilder builder = new StringBuilder();
+    if (leftExpression instanceof BinaryExpression) {
+      builder.append("(").append(leftExpression.getExpressionString()).append(")");
+    } else {
+      builder.append(leftExpression.getExpressionString());
+    }
+    builder.append(" ").append(operator()).append(" ");
+    if (rightExpression instanceof BinaryExpression) {
+      builder.append("(").append(rightExpression.getExpressionString()).append(")");
+    } else {
+      builder.append(rightExpression.getExpressionString());
+    }
+
+    return builder.toString();
   }
 
   protected abstract String operator();

@@ -21,22 +21,31 @@ package org.apache.iotdb.db.query.executor.fill;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 import java.io.IOException;
+import java.util.Calendar;
 import java.util.Set;
 
 public abstract class IFill {
 
-  protected long queryTime;
+  protected long queryStartTime;
+  protected long queryEndTime;
   protected TSDataType dataType;
 
-  public IFill(TSDataType dataType, long queryTime) {
+  protected boolean isBeforeByMonth = false;
+  protected long beforeRange = 0;
+  protected boolean isAfterByMonth = false;
+  protected long afterRange = 0;
+
+  public IFill(TSDataType dataType, long queryStartTime) {
     this.dataType = dataType;
-    this.queryTime = queryTime;
+    this.queryStartTime = queryStartTime;
   }
 
   public IFill() {}
@@ -48,7 +57,8 @@ public abstract class IFill {
       TSDataType dataType,
       long queryTime,
       Set<String> deviceMeasurements,
-      QueryContext context);
+      QueryContext context)
+      throws QueryProcessException, StorageEngineException;
 
   public abstract TimeValuePair getFillResult()
       throws IOException, QueryProcessException, StorageEngineException;
@@ -61,13 +71,81 @@ public abstract class IFill {
     this.dataType = dataType;
   }
 
-  public void setQueryTime(long queryTime) {
-    this.queryTime = queryTime;
+  public void setQueryStartTime(long queryStartTime) {
+    this.queryStartTime = queryStartTime;
   }
 
-  public long getQueryTime() {
-    return queryTime;
+  public long getQueryStartTime() {
+    return queryStartTime;
+  }
+
+  public long getQueryEndTime() {
+    return queryEndTime;
   }
 
   abstract void constructFilter();
+
+  public boolean insideBeforeRange(long previous, long startTime) {
+    if (isBeforeByMonth) {
+      return previous
+          >= slideMonth(startTime, (int) (-beforeRange / GroupByEngineDataSet.MS_TO_MONTH));
+    } else {
+      return previous >= startTime - beforeRange;
+    }
+  }
+
+  public boolean insideAfterRange(long next, long startTime) {
+    if (isAfterByMonth) {
+      return next <= slideMonth(startTime, (int) (afterRange / GroupByEngineDataSet.MS_TO_MONTH));
+    } else {
+      return next <= startTime + afterRange;
+    }
+  }
+
+  public void convertRange(long startTime, long endTime) {
+    if (beforeRange > 0) {
+      if (isBeforeByMonth) {
+        queryStartTime =
+            slideMonth(startTime, (int) (-beforeRange / GroupByEngineDataSet.MS_TO_MONTH));
+      } else {
+        queryStartTime = startTime - beforeRange;
+      }
+    } else {
+      queryStartTime = startTime;
+    }
+
+    if (afterRange > 0) {
+      if (isAfterByMonth) {
+        queryEndTime = slideMonth(endTime, (int) (afterRange / GroupByEngineDataSet.MS_TO_MONTH));
+      } else {
+        queryEndTime = endTime + afterRange;
+      }
+    } else {
+      queryEndTime = endTime;
+    }
+  }
+
+  public long getBeforeRange() {
+    return beforeRange;
+  }
+
+  public void setBeforeRange(long beforeRange) {
+    this.beforeRange = beforeRange;
+  }
+
+  public long getAfterRange() {
+    return afterRange;
+  }
+
+  public void setAfterRange(long afterRange) {
+    this.afterRange = afterRange;
+  }
+
+  protected long slideMonth(long startTime, int monthNum) {
+    Calendar calendar = Calendar.getInstance();
+    calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
+    calendar.setTimeInMillis(startTime);
+    calendar.add(Calendar.MONTH, monthNum);
+    return calendar.getTimeInMillis();
+  }
 }

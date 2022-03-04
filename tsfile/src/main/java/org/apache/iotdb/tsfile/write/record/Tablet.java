@@ -23,8 +23,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -116,6 +114,10 @@ public class Tablet {
     this.prefixPath = prefixPath;
   }
 
+  public void setSchemas(List<IMeasurementSchema> schemas) {
+    this.schemas = schemas;
+  }
+
   public void addTimestamp(int rowIndex, long timestamp) {
     timestamps[rowIndex] = timestamp;
   }
@@ -123,13 +125,7 @@ public class Tablet {
   public void addValue(String measurementId, int rowIndex, Object value) {
     int indexOfSchema = measurementIndex.get(measurementId);
     IMeasurementSchema measurementSchema = schemas.get(indexOfSchema);
-    if (measurementSchema.getType().equals(TSDataType.VECTOR)) {
-      int indexInVector = measurementSchema.getSubMeasurementIndex(measurementId);
-      TSDataType dataType = measurementSchema.getSubMeasurementsTSDataTypeList().get(indexInVector);
-      addValueOfDataType(dataType, rowIndex, indexInVector, value);
-    } else {
-      addValueOfDataType(measurementSchema.getType(), rowIndex, indexOfSchema, value);
-    }
+    addValueOfDataType(measurementSchema.getType(), rowIndex, indexOfSchema, value);
   }
 
   private void addValueOfDataType(
@@ -214,36 +210,16 @@ public class Tablet {
     timestamps = new long[maxRowNumber];
 
     // calculate total value column size
-    int valueColumnsSize = 0;
-    for (IMeasurementSchema schema : schemas) {
-      if (schema instanceof VectorMeasurementSchema) {
-        valueColumnsSize += schema.getSubMeasurementsList().size();
-      } else {
-        valueColumnsSize++;
-      }
-    }
+    int valueColumnsSize = schemas.size();
 
     // value column
     values = new Object[valueColumnsSize];
     int columnIndex = 0;
     for (IMeasurementSchema schema : schemas) {
       TSDataType dataType = schema.getType();
-      if (dataType.equals(TSDataType.VECTOR)) {
-        columnIndex = buildVectorColumns((VectorMeasurementSchema) schema, columnIndex);
-      } else {
-        values[columnIndex] = createValueColumnOfDataType(dataType);
-        columnIndex++;
-      }
+      values[columnIndex] = createValueColumnOfDataType(dataType);
+      columnIndex++;
     }
-  }
-
-  private int buildVectorColumns(VectorMeasurementSchema schema, int idx) {
-    for (int i = 0; i < schema.getSubMeasurementsList().size(); i++) {
-      TSDataType dataType = schema.getSubMeasurementsTSDataTypeList().get(i);
-      values[idx] = createValueColumnOfDataType(dataType);
-      idx++;
-    }
-    return idx;
   }
 
   private Object createValueColumnOfDataType(TSDataType dataType) {
@@ -282,18 +258,9 @@ public class Tablet {
   public int getTotalValueOccupation() {
     int valueOccupation = 0;
     int columnIndex = 0;
-    for (int i = 0; i < schemas.size(); i++) {
-      IMeasurementSchema schema = schemas.get(i);
-      if (schema instanceof UnaryMeasurementSchema) {
-        valueOccupation += calOccupationOfOneColumn(schema.getType(), columnIndex);
-        columnIndex++;
-      } else {
-        for (int j = 0; j < schema.getSubMeasurementsTSDataTypeList().size(); j++) {
-          TSDataType dataType = schema.getSubMeasurementsTSDataTypeList().get(j);
-          valueOccupation += calOccupationOfOneColumn(dataType, columnIndex);
-          columnIndex++;
-        }
-      }
+    for (IMeasurementSchema schema : schemas) {
+      valueOccupation += calOccupationOfOneColumn(schema.getType(), columnIndex);
+      columnIndex++;
     }
     // add bitmap size if the tablet has bitMaps
     if (bitMaps != null) {

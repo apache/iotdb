@@ -49,13 +49,13 @@ public class TsFileWriteToHDFS {
     File f = FSFactoryProducer.getFSFactory().getFile(path);
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       tsFileWriter.registerTimeseries(
-          new Path(Constant.DEVICE_1, Constant.SENSOR_1),
+          new Path(Constant.DEVICE_1),
           new UnaryMeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
       tsFileWriter.registerTimeseries(
-          new Path(Constant.DEVICE_1, Constant.SENSOR_2),
+          new Path(Constant.DEVICE_1),
           new UnaryMeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
       tsFileWriter.registerTimeseries(
-          new Path(Constant.DEVICE_1, Constant.SENSOR_3),
+          new Path(Constant.DEVICE_1),
           new UnaryMeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
 
       // construct TSRecord

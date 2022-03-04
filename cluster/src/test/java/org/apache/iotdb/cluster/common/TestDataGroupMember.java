@@ -31,14 +31,14 @@ import java.util.Collections;
 public class TestDataGroupMember extends DataGroupMember {
 
   public TestDataGroupMember() {
-    super(new PartitionGroup(Collections.singletonList(TestUtils.getNode(0))));
+    super(
+        TestUtils.getNode(0), new PartitionGroup(Collections.singletonList(TestUtils.getNode(0))));
     setQueryManager(new ClusterQueryManager());
     this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null, "");
   }
 
   public TestDataGroupMember(Node thisNode, PartitionGroup allNodes) {
-    super(allNodes);
-    this.thisNode = thisNode;
+    super(thisNode, allNodes);
     this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null, "");
     setQueryManager(new ClusterQueryManager());
   }

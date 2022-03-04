@@ -31,7 +31,7 @@ import org.apache.iotdb.spark.tsfile.qp.Executor
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
 import org.apache.iotdb.tsfile.read.common.Field
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet
-import org.apache.iotdb.tsfile.read.{ReadOnlyTsFile, TsFileSequenceReader}
+import org.apache.iotdb.tsfile.read.{TsFileReader, TsFileSequenceReader}
 import org.apache.spark.TaskContext
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
@@ -108,7 +108,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
 
       val tsFileMetaData = reader.readFileMetadata
 
-      val readTsFile: ReadOnlyTsFile = new ReadOnlyTsFile(reader)
+      val readTsFile: TsFileReader = new TsFileReader(reader)
 
       Option(TaskContext.get()).foreach { taskContext => {
         taskContext.addTaskCompletionListener { _ => readTsFile.close() }
@@ -119,7 +119,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
 
       if (options.getOrElse(DefaultSource.isNarrowForm, "").equals("narrow_form")) {
         val deviceNames = reader.getAllDevices()
-        
+
         val measurementNames = new java.util.HashSet[String]()
 
         requiredSchema.foreach((field: StructField) => {

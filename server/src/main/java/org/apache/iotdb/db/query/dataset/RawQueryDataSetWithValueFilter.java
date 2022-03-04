@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -30,13 +30,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFInputDataSet {
+public class RawQueryDataSetWithValueFilter extends QueryDataSet implements IUDFInputDataSet {
 
   private final TimeGenerator timeGenerator;
   private final List<IReaderByTimestamp> seriesReaderByTimestampList;
   private final List<Boolean> cached;
 
-  private List<RowRecord> cachedRowRecords = new ArrayList<>();
+  private final List<RowRecord> cachedRowRecords = new ArrayList<>();
 
   /** Used for UDF. */
   private List<Object[]> cachedRowInObjects = new ArrayList<>();
@@ -118,14 +118,21 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
 
       // 3. use values in results to fill row record
       for (int j = 0; j < cachedTimeCnt; j++) {
-        if (results[j] == null) {
+        if (results == null || results[j] == null) {
           rowRecords[j].addField(null);
         } else {
-          hasField[j] = true;
           if (dataTypes.get(i) == TSDataType.VECTOR) {
             TsPrimitiveType[] result = (TsPrimitiveType[]) results[j];
-            rowRecords[j].addField(result[0].getValue(), result[0].getDataType());
+            for (TsPrimitiveType value : result) {
+              if (value == null) {
+                rowRecords[j].addField(null);
+              } else {
+                hasField[j] = true;
+                rowRecords[j].addField(value.getValue(), value.getDataType());
+              }
+            }
           } else {
+            hasField[j] = true;
             rowRecords[j].addField(results[j], dataTypes.get(i));
           }
         }
@@ -199,7 +206,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
 
       // 3. use values in results to fill row record
       for (int j = 0; j < cachedTimeCnt; j++) {
-        if (results[j] != null) {
+        if (results != null && results[j] != null) {
           hasField[j] = true;
           rowsInObject[j][i] = results[j];
         }

@@ -22,10 +22,12 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogTxtWriter;
 import org.apache.iotdb.db.metadata.logfile.MLogUpgrader;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.tag.TagLogFile;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -40,10 +42,18 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
 
 public class MLogUpgraderTest {
 
@@ -100,5 +110,67 @@ public class MLogUpgraderTest {
     Assert.assertEquals("root.sg.d.s", result.getName());
     Assert.assertEquals(tags, result.getTag());
     Assert.assertEquals(attributes, result.getAttribute());
+  }
+
+  @Test
+  public void testCreateSchemaTemplateSerializationAdaptation() throws IOException {
+    CreateTemplatePlan plan = getCreateTemplatePlan();
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataOutputStream dos = new DataOutputStream(baos);
+    plan.formerSerialize(dos);
+    byte[] byteArray = baos.toByteArray();
+    ByteBuffer buffer = ByteBuffer.wrap(byteArray);
+
+    assertEquals(PhysicalPlan.PhysicalPlanType.CREATE_TEMPLATE.ordinal(), buffer.get());
+
+    CreateTemplatePlan deserializedPlan = new CreateTemplatePlan();
+    deserializedPlan.deserialize(buffer);
+
+    assertEquals(plan.getCompressors().size(), deserializedPlan.getCompressors().size());
+    assertEquals(
+        plan.getMeasurements().get(0).get(0), deserializedPlan.getMeasurements().get(0).get(0));
+    assertEquals(plan.getDataTypes().size(), deserializedPlan.getDataTypes().size());
+  }
+
+  @SuppressWarnings("Duplicates")
+  private CreateTemplatePlan getCreateTemplatePlan() {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s11"));
+    List<String> measurements = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      measurements.add("vector.s" + i);
+    }
+    measurementList.add(measurements);
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    dataTypeList.add(dataTypes);
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      encodings.add(TSEncoding.RLE);
+    }
+    encodingList.add(encodings);
+
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    List<CompressionType> compressorList = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      compressorList.add(CompressionType.SNAPPY);
+    }
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
+    compressionTypes.add(compressorList);
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s21");
+    schemaNames.add("vector");
+
+    return new CreateTemplatePlan(
+        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
   }
 }

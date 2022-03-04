@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.trigger.sink.mqtt;
 
 import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 public class MQTTConfiguration implements Configuration {
 

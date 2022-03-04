@@ -22,12 +22,11 @@ import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +35,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 
-public abstract class MeasurementMNode extends MNode implements IMeasurementMNode {
+public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   private static final Logger logger = LoggerFactory.getLogger(MeasurementMNode.class);
 
@@ -44,6 +43,8 @@ public abstract class MeasurementMNode extends MNode implements IMeasurementMNod
   protected String alias;
   /** tag/attribute's start offset in tag file */
   private long offset = -1;
+  /** measurement's Schema for one timeseries represented by current leaf node */
+  private IMeasurementSchema schema;
   /** last value cache */
   private volatile ILastCacheContainer lastCacheContainer = null;
   /** registered trigger */
@@ -56,22 +57,13 @@ public abstract class MeasurementMNode extends MNode implements IMeasurementMNod
    */
   public static IMeasurementMNode getMeasurementMNode(
       IEntityMNode parent, String measurementName, IMeasurementSchema schema, String alias) {
-    if (schema == null) {
-      return new UnaryMeasurementMNode(parent, measurementName, null, alias);
-    } else if (schema instanceof UnaryMeasurementSchema) {
-      return new UnaryMeasurementMNode(
-          parent, measurementName, (UnaryMeasurementSchema) schema, alias);
-    } else if (schema instanceof VectorMeasurementSchema) {
-      return new MultiMeasurementMNode(
-          parent, measurementName, (VectorMeasurementSchema) schema, alias);
-    } else {
-      throw new RuntimeException("Undefined schema type.");
-    }
+    return new MeasurementMNode(parent, measurementName, schema, alias);
   }
 
   /** @param alias alias of measurementName */
-  MeasurementMNode(IMNode parent, String name, String alias) {
+  MeasurementMNode(IMNode parent, String name, IMeasurementSchema schema, String alias) {
     super(parent, name);
+    this.schema = schema;
     this.alias = alias;
   }
 
@@ -83,11 +75,22 @@ public abstract class MeasurementMNode extends MNode implements IMeasurementMNod
     return parent.getAsEntityMNode();
   }
 
+  /**
+   * get MeasurementPath of this node
+   *
+   * @return MeasurementPath
+   */
   @Override
-  public abstract IMeasurementSchema getSchema();
+  public MeasurementPath getMeasurementPath() {
+    MeasurementPath result = new MeasurementPath(super.getPartialPath(), schema);
+    result.setUnderAlignedEntity(getParent().isAligned());
+    return result;
+  }
 
   @Override
-  public abstract int getMeasurementCount();
+  public IMeasurementSchema getSchema() {
+    return schema;
+  }
 
   /**
    * get data type
@@ -96,7 +99,9 @@ public abstract class MeasurementMNode extends MNode implements IMeasurementMNod
    * @return measurement data type
    */
   @Override
-  public abstract TSDataType getDataType(String measurementId);
+  public TSDataType getDataType(String measurementId) {
+    return schema.getType();
+  }
 
   @Override
   public long getOffset() {
@@ -157,34 +162,6 @@ public abstract class MeasurementMNode extends MNode implements IMeasurementMNod
             null, plan.getName(), plan.getSchema(), plan.getAlias());
     node.setOffset(plan.getOffset());
     return node;
-  }
-
-  @Override
-  public boolean isUnaryMeasurement() {
-    return false;
-  }
-
-  @Override
-  public boolean isMultiMeasurement() {
-    return false;
-  }
-
-  @Override
-  public UnaryMeasurementMNode getAsUnaryMeasurementMNode() {
-    if (isUnaryMeasurement()) {
-      return (UnaryMeasurementMNode) this;
-    } else {
-      throw new UnsupportedOperationException("This is not an UnaryMeasurementMNode");
-    }
-  }
-
-  @Override
-  public MultiMeasurementMNode getAsMultiMeasurementMNode() {
-    if (isMultiMeasurement()) {
-      return (MultiMeasurementMNode) this;
-    } else {
-      throw new UnsupportedOperationException("This is not an MultiMeasurementMNode");
-    }
   }
 
   @Override
@@ -252,6 +229,9 @@ public abstract class MeasurementMNode extends MNode implements IMeasurementMNod
 
   @Override
   public void setSchemaTemplate(Template schemaTemplate) {}
+
+  @Override
+  public void setUseTemplate(boolean useTemplate) {}
 
   @Override
   public boolean isMeasurement() {

@@ -39,14 +39,14 @@ First explain the meaning of some important fields in AlignByDevicePlan:
 - `Map<String, IExpression> deviceToFilterMap`: This field is used to store the filter conditions corresponding to the device.
 - `Map<String, TSDataType> measurementDataTypeMap`：This field is used to record the actual data type of the time series for the actual query, and its key value does not contain the aggregate functions.
 - `Map<String, TSDataType> columnDataTypeMap`：This field is used to record the data type of each column in the result set. It's aim is to construct the header and output the result set, whose key value can contain aggregation functions.
-- `enum MeasurementType`：Three measurement types are recorded.  Measurements that do not exist in any device are of type `NonExist`; measurements with single or double quotes are of type` Constant`; measurements that exist are of type `Exist`.
+- `enum MeasurementType`：Record measurement types. Measurements that do not exist in any device are of type `NonExist`; measurements that exist are of type `Exist`.
 - `Map<String, MeasurementType> measurementTypeMap`: This field is used to record all measurement types in the query.
 - groupByTimePlan, fillQueryPlan, aggregationPlan：To avoid redundancy, these three execution plans are set as subclasses of RawDataQueryPlan and set as variables in AlignByDevicePlan.  If the query plan belongs to one of these three plans, the field is assigned and saved.
 
 Before explaining the specific implementation process, a relatively complete example is given first, and the following explanation will be used in conjunction with this example.
 
 ```sql
-SELECT s1, '1', *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 ALIGN BY DEVICE
+SELECT s1, *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 ALIGN BY DEVICE
 ```
 
 Among them, the time series in the system is:
@@ -86,11 +86,6 @@ It splices the suffix paths obtained in the SELECT statement with the prefix pat
     // Used to record the measurements corresponding to a suffix path.
     // See the following for an example
     Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
-    // If a constant. Recording, continue to the next suffix path
-    if (suffixPath.startWith("'"))) {
-      ...
-      continue;
-    }
 
     // If not constant, it will be spliced with each device to get a complete path
     for (String device : devices) {
@@ -178,7 +173,6 @@ The following example summarizes the variable information calculated through thi
 - measurement type `measurementTypeMap`：
   -  `s1 -> Exist`
   -  `s2 -> Exist`
-  -  `'1' -> Constant`
   -  `s5 -> NonExist`
 - Filter condition `deviceToFilterMap` for each device:
   -  `root.sg.d1 -> time = 1 AND root.sg.d1.s1 < 25`
@@ -267,6 +261,6 @@ The specific implementation logic is as follows:
 
 1. First get the next time-aligned `originRowRecord` from the result set.
 2. Create a new `RowRecord` with timestamp, add device columns to it, and first create a Map structure` currentColumnMap` of `measurementName-> Field` according to` executeColumns` and the obtained result.
-3. After that, you only need to traverse the deduplicated `measurements` list to determine its type. If the type is` Exist`, get the corresponding result from the `currentColumnMap` according to the measurementName. If not, set it to` null`; if it is `NonExist  `Type is set to` null` directly; if it is `Constant` type,` measureName` is used as the value of this column.
+3. After that, you only need to traverse the deduplicated `measurements` list to determine its type. If the type is` Exist`, get the corresponding result from the `currentColumnMap` according to the measurementName. If not, set it to` null`; if it is `NonExist  `Type is set to` null` directly.
 
 After writing the output data stream according to the transformed `RowRecord`, the result set can be returned.

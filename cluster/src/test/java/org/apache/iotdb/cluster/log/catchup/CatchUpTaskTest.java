@@ -100,11 +100,6 @@ public class CatchUpTaskTest {
         }
 
         @Override
-        public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-          return getAsyncClient(node);
-        }
-
-        @Override
         public AsyncClient getAsyncClient(Node node) {
           return new TestAsyncClient() {
             @Override
@@ -206,7 +201,6 @@ public class CatchUpTaskTest {
   public void tearDown() throws Exception {
     IoTDB.metaManager.clear();
     sender.stop();
-    sender.closeLogManager();
     EnvironmentUtils.cleanAllDir();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
   }

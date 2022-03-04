@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.log;
 
-import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -28,14 +27,15 @@ public class VotingLog {
   protected Log log;
   protected Set<Integer> stronglyAcceptedNodeIds;
   protected Set<Integer> weaklyAcceptedNodeIds;
+  protected Set<Integer> failedNodeIds;
   public AtomicLong acceptedTime;
-  public volatile ByteBuffer serializedCache;
 
   public VotingLog(Log log, int groupSize) {
     this.log = log;
     stronglyAcceptedNodeIds = new HashSet<>(groupSize);
     weaklyAcceptedNodeIds = new HashSet<>(groupSize);
     acceptedTime = new AtomicLong();
+    failedNodeIds = new HashSet<>(groupSize);
   }
 
   public VotingLog(VotingLog another) {
@@ -43,6 +43,7 @@ public class VotingLog {
     this.stronglyAcceptedNodeIds = another.stronglyAcceptedNodeIds;
     this.weaklyAcceptedNodeIds = another.weaklyAcceptedNodeIds;
     this.acceptedTime = another.acceptedTime;
+    this.failedNodeIds = another.failedNodeIds;
   }
 
   public Log getLog() {
@@ -72,5 +73,9 @@ public class VotingLog {
   @Override
   public String toString() {
     return log.toString();
+  }
+
+  public Set<Integer> getFailedNodeIds() {
+    return failedNodeIds;
   }
 }

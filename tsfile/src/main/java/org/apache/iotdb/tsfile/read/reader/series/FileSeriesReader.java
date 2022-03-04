@@ -18,14 +18,17 @@
  */
 package org.apache.iotdb.tsfile.read.reader.series;
 
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -41,8 +44,19 @@ public class FileSeriesReader extends AbstractFileSeriesReader {
 
   @Override
   protected void initChunkReader(IChunkMetadata chunkMetaData) throws IOException {
-    Chunk chunk = chunkLoader.loadChunk((ChunkMetadata) chunkMetaData);
-    this.chunkReader = new ChunkReader(chunk, filter);
+    if (chunkMetaData instanceof ChunkMetadata) {
+      Chunk chunk = chunkLoader.loadChunk((ChunkMetadata) chunkMetaData);
+      this.chunkReader = new ChunkReader(chunk, filter);
+    } else {
+      AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetaData;
+      Chunk timeChunk =
+          chunkLoader.loadChunk((ChunkMetadata) (alignedChunkMetadata.getTimeChunkMetadata()));
+      List<Chunk> valueChunkList = new ArrayList<>();
+      for (IChunkMetadata metadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+        valueChunkList.add(chunkLoader.loadChunk((ChunkMetadata) metadata));
+      }
+      this.chunkReader = new AlignedChunkReader(timeChunk, valueChunkList, filter);
+    }
   }
 
   @Override

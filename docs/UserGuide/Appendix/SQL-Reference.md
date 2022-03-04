@@ -67,33 +67,37 @@ Eg: IoTDB > DELETE STORAGE GROUP root.**
 ```
 
 * Create Timeseries Statement
-
 ```
 CREATE TIMESERIES <FullPath> WITH <AttributeClauses>
 alias
     : LR_BRACKET ID RR_BRACKET
     ;
 attributeClauses
-    : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
-    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
+    : DATATYPE OPERATOR_EQ <DataTypeValue> 
+    COMMA ENCODING OPERATOR_EQ <EncodingValue>
+    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ <CompressorValue>)?
     (COMMA property)*
     tagClause
     attributeClause
     ;
 attributeClause
-    : (ATTRIBUTES LR_BRACKET property (COMMA property)* RR_BRACKET)?
+    : ATTRIBUTES LR_BRACKET propertyClause (COMMA propertyClause)* RR_BRACKET
     ;
 tagClause
-    : (TAGS LR_BRACKET property (COMMA property)* RR_BRACKET)?
+    : TAGS LR_BRACKET propertyClause (COMMA propertyClause)* RR_BRACKET
+    ;
+propertyClause
+    : name=ID OPERATOR_EQ propertyValue
     ;
 DataTypeValue: BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
 EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF | REGULAR
 CompressorValue: UNCOMPRESSED | SNAPPY
-propertyValue: SDT | COMPDEV | COMPMINTIME | COMPMAXTIME
+AttributesType: SDT | COMPDEV | COMPMINTIME | COMPMAXTIME
+PropertyValue: ID | constant
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, COMPRESSOR=SNAPPY, MAX_POINT_NUMBER=3
-Eg: create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(unit=f, description='turbine this is a test1') attributes(H_Alarm=100, M_Alarm=50)
+Eg: CREATE TIMESERIES root.turbine.d0.s0(temperature) WITH DATATYPE=FLOAT, ENCODING=RLE, COMPRESSOR=SNAPPY tags(unit=f, description='turbine this is a test1') attributes(H_Alarm=100, M_Alarm=50)
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, LOSS=SDT, COMPDEV=0.01
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, LOSS=SDT, COMPDEV=0.01, COMPMINTIME=3
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, LOSS=SDT, COMPDEV=0.01, COMPMINTIME=2, COMPMAXTIME=15
@@ -104,25 +108,70 @@ Note: For SDT, it is optional to set compression minimum COMPMINTIME, which is t
 Note: For SDT, it is optional to set compression maximum COMPMAXTIME, which is the maximum time difference between stored values regardless of COMPDEV.
 ```
 
-* Create schema template
+* Create Timeseries Statement (Simplified version, from v0.13)
 ```
-CREATE schema template <TemplateName> WITH <AttributeClauses>
-attributeClauses
-    : (MEASUREMENT_NAME DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
-    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
-    (COMMA property)*)
+CREATE TIMESERIES <FullPath> <SimplifiedAttributeClauses>
+SimplifiedAttributeClauses
+    : <DataTypeValue> 
+    ENCODING OPERATOR_EQ <EncodingValue>
+    ((COMPRESSOR | COMPRESSION) OPERATOR_EQ <CompressorValue>)?
+    (COMMA property)*
+    tagClause
     attributeClause
     ;
-Eg: create schema template temp1(
-        (s1 INT32 with encoding=Gorilla, compression=SNAPPY),
-        (s2 FLOAT with encoding=RLE, compression=SNAPPY)
-       )  
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.status BOOLEAN ENCODING=PLAIN
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE COMPRESSOR=SNAPPY MAX_POINT_NUMBER=3
+Eg: CREATE TIMESERIES root.turbine.d0.s0(temperature) FLOAT ENCODING=RLE COMPRESSOR=SNAPPY tags(unit=f, description='turbine this is a test1') attributes(H_Alarm=100, M_Alarm=50)
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE LOSS=SDT COMPDEV=0.01
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE LOSS=SDT COMPDEV=0.01 COMPMINTIME=3
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE LOSS=SDT COMPDEV=0.01 COMPMINTIME=2 COMPMAXTIME=15
 ```
 
-* Set schema template
+* Create Aligned Timeseries Statement
 ```
-set schema template <TemplateName> to <STORAGE_GROUP_NAME>
-Eg: set schema template temp1 to root.beijing
+CREATE ALIGNED TIMESERIES <FullPath> alignedMeasurements
+alignedMeasurements
+    : LR_BRACKET nodeNameWithoutWildcard attributeClauses
+    (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET
+    ;
+Eg: CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(lat FLOAT ENCODING=GORILLA, lon FLOAT ENCODING=GORILLA COMPRESSOR=SNAPPY)
+Note: It is not supported to set different compression for a group of aligned timeseries.
+Note: It is not currently supported to set an alias, tag, and attribute for aligned timeseries.
+```
+
+* Create Schema Template Statement
+```
+CREATE SCHEMA TEMPLATE <TemplateName> LR_BRACKET <TemplateMeasurementClause> (COMMA plateMeasurementClause>)* RR_BRACKET
+templateMeasurementClause
+    : nodeNameWithoutWildcard attributeClauses #nonAlignedTemplateMeasurement
+    | alignedDevice=nodeNameWithoutWildcard LR_BRACKET nodeNameWithoutWildcard attributeClauses 
+    (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET #alignedTemplateMeasurement
+    ;
+Eg: CREATE SCHEMA TEMPLATE temp1(
+        s1 INT32 encoding=Gorilla, compression=SNAPPY,
+        vector1(
+            s1 INT32 encoding=Gorilla,
+            s2 FLOAT encoding=RLE, compression=SNAPPY)
+    )
+```
+
+* Set Schema Template Statement
+```
+SET SCHEMA TEMPLATE <TemplateName> TO <STORAGE_GROUP_NAME>
+Eg: SET SCHEMA TEMPLATE temp1 TO root.beijing
+```
+
+* Create Timeseries Of Schema Template Statement
+```
+CREATE TIMESERIES OF SCHEMA TEMPLATE ON <STORAGE_GROUP_NAME>
+Eg: CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.beijing
+```
+
+* Unset Schema Template Statement
+```
+UNSET SCHEMA TEMPLATE <TemplateName> FROM <STORAGE_GROUP_NAME>
+Eg: UNSET SCHEMA TEMPLATE temp1 FROM root.beijing
 ```
 
 * Delete Timeseries Statement

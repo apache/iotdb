@@ -21,7 +21,8 @@ package org.apache.iotdb.db.query.context;
 
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 
@@ -38,13 +39,14 @@ public class QueryContext {
    * The outer key is the path of a ModificationFile, the inner key in the name of a timeseries and
    * the value is the Modifications of a timeseries in this file.
    */
-  private Map<String, Map<String, List<Modification>>> filePathModCache = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, List<Modification>>> filePathModCache =
+      new ConcurrentHashMap<>();
   /**
    * The key is the path of a ModificationFile and the value is all Modifications in this file. We
    * use this field because each call of Modification.getModifications() return a copy of the
    * Modifications, and we do not want it to create multiple copies within a query.
    */
-  private Map<String, List<Modification>> fileModCache = new HashMap<>();
+  private final Map<String, List<Modification>> fileModCache = new HashMap<>();
 
   private long queryId;
 
@@ -52,6 +54,7 @@ public class QueryContext {
 
   private boolean debug;
   private boolean enableTracing = false;
+  private boolean ascending;
 
   /**
    * To reduce the cost of memory, we only keep the a certain size statement. For statement whose
@@ -109,6 +112,19 @@ public class QueryContext {
           }
           return finalPathModifications;
         });
+  }
+
+  /**
+   * Find the modifications of all aligned 'paths' in 'modFile'. If they are not in the cache, read
+   * them from 'modFile' and put then into the cache.
+   */
+  public List<List<Modification>> getPathModifications(ModificationFile modFile, AlignedPath path) {
+    int n = path.getMeasurementList().size();
+    List<List<Modification>> ans = new ArrayList<>(n);
+    for (int i = 0; i < n; i++) {
+      ans.add(getPathModifications(modFile, path.getPathWithMeasurement(i)));
+    }
+    return ans;
   }
 
   public long getQueryId() {
@@ -183,5 +199,13 @@ public class QueryContext {
 
   public boolean isInterrupted() {
     return isInterrupted;
+  }
+
+  public boolean isAscending() {
+    return ascending;
+  }
+
+  public void setAscending(boolean ascending) {
+    this.ascending = ascending;
   }
 }

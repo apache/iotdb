@@ -170,8 +170,7 @@ public class MergeUpgradeTest {
       long valueOffset)
       throws WriteProcessException, IOException {
     for (UnaryMeasurementSchema MeasurementSchema : measurementSchemas) {
-      fileWriter.registerTimeseries(
-          new Path(deviceName, MeasurementSchema.getMeasurementId()), MeasurementSchema);
+      fileWriter.registerTimeseries(new Path(deviceName), MeasurementSchema);
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       TSRecord record = new TSRecord(i, deviceName);

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 public class ShowContinuousQueriesResult extends ShowResult {
 

@@ -34,7 +34,7 @@ public enum InnerCompactionStrategy {
   SIZE_TIERED_COMPACTION;
 
   public static InnerCompactionStrategy getInnerCompactionStrategy(String name) {
-    if (name.equalsIgnoreCase("SIZE_TIERED_COMPACTION")) {
+    if ("SIZE_TIERED_COMPACTION".equalsIgnoreCase(name)) {
       return SIZE_TIERED_COMPACTION;
     }
     throw new RuntimeException("Illegal Compaction Strategy " + name);

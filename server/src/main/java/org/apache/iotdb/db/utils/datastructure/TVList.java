@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 public abstract class TVList {
 
@@ -82,35 +84,16 @@ public abstract class TVList {
     return null;
   }
 
-  public static TVList newVectorList(List<TSDataType> datatypes) {
-    return new VectorTVList(datatypes);
-  }
-
-  public static long tvListArrayMemSize(TSDataType type) {
+  public static long tvListArrayMemCost(TSDataType type) {
     long size = 0;
-    // time size
+    // time array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
-    // value size
+    // value array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
-    return size;
-  }
-
-  /**
-   * For Vector data type.
-   *
-   * @param types the types in the vector
-   * @return VectorTvListArrayMemSize
-   */
-  public static long vectorTvListArrayMemSize(List<TSDataType> types) {
-    long size = 0;
-    // time size
-    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
-    // index size
-    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 4L;
-    // value size
-    for (TSDataType type : types) {
-      size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
-    }
+    // two array headers mem size
+    size += NUM_BYTES_ARRAY_HEADER * 2;
+    // Object references size in ArrayList
+    size += NUM_BYTES_OBJECT_REF * 2;
     return size;
   }
 
@@ -163,7 +146,7 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putVector(long time, Object[] value) {
+  public void putAlignedValue(long time, Object[] value, int[] columnIndexArray) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -191,7 +174,8 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putVectors(long[] time, Object[] value, BitMap[] bitMaps, int start, int end) {
+  public void putAlignedValues(
+      long[] time, Object[] value, BitMap[] bitMaps, int[] columnIndexArray, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -219,7 +203,11 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public Object getVector(int index) {
+  public Object getAlignedValue(int index) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public Object getAlignedValue(int index, Integer floatPrecision, TSEncoding encoding) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -282,19 +270,12 @@ public abstract class TVList {
     if (newSize % ARRAY_SIZE != 0) {
       newArrayNum++;
     }
-    for (int releaseIdx = newArrayNum; releaseIdx < timestamps.size(); releaseIdx++) {
+    int oldArrayNum = timestamps.size();
+    for (int releaseIdx = newArrayNum; releaseIdx < oldArrayNum; releaseIdx++) {
       releaseLastTimeArray();
       releaseLastValueArray();
     }
-    if (getDataType() == TSDataType.VECTOR) {
-      return deletedNumber * ((VectorTVList) this).getTsDataTypes().size();
-    }
     return deletedNumber;
-  }
-
-  // TODO: THIS METHOLD IS FOR DELETING ONE COLUMN OF A VECTOR
-  public int delete(long lowerBound, long upperBound, int columnIndex) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   protected void cloneAs(TVList cloneList) {
@@ -547,18 +528,18 @@ public abstract class TVList {
     return new Ite(floatPrecision, encoding, size, deletionList);
   }
 
-  private class Ite implements IPointReader {
+  protected class Ite implements IPointReader {
 
-    private TimeValuePair cachedTimeValuePair;
-    private boolean hasCachedPair;
-    private int cur;
-    private Integer floatPrecision;
+    protected TimeValuePair cachedTimeValuePair;
+    protected boolean hasCachedPair;
+    protected int cur;
+    protected Integer floatPrecision;
     private TSEncoding encoding;
     private int deleteCursor = 0;
     /**
      * because TV list may be share with different query, each iterator has to record it's own size
      */
-    private int iteSize = 0;
+    protected int iteSize = 0;
     /** this field is effective only in the Tvlist in a RealOnlyMemChunk. */
     private List<TimeRange> deletionList;
 
@@ -579,30 +560,14 @@ public abstract class TVList {
         return true;
       }
 
-      List<Integer> timeDuplicatedVectorRowIndexList = null;
       while (cur < iteSize) {
         long time = getTime(cur);
         if (isPointDeleted(time) || (cur + 1 < size() && (time == getTime(cur + 1)))) {
-          // record the time duplicated row index list for vector type
-          if (getDataType() == TSDataType.VECTOR) {
-            if (timeDuplicatedVectorRowIndexList == null) {
-              timeDuplicatedVectorRowIndexList = new ArrayList<>();
-              timeDuplicatedVectorRowIndexList.add(getValueIndex(cur));
-            }
-            timeDuplicatedVectorRowIndexList.add(getValueIndex(cur + 1));
-          }
           cur++;
           continue;
         }
         TimeValuePair tvPair;
-        if (getDataType() == TSDataType.VECTOR && timeDuplicatedVectorRowIndexList != null) {
-          tvPair =
-              getTimeValuePairForTimeDuplicatedRows(
-                  timeDuplicatedVectorRowIndexList, time, floatPrecision, encoding);
-          timeDuplicatedVectorRowIndexList = null;
-        } else {
-          tvPair = getTimeValuePair(cur, time, floatPrecision, encoding);
-        }
+        tvPair = getTimeValuePair(cur, time, floatPrecision, encoding);
         cur++;
         if (tvPair.getValue() != null) {
           cachedTimeValuePair = tvPair;
@@ -614,7 +579,7 @@ public abstract class TVList {
       return false;
     }
 
-    private boolean isPointDeleted(long timestamp) {
+    protected boolean isPointDeleted(long timestamp) {
       while (deletionList != null && deleteCursor < deletionList.size()) {
         if (deletionList.get(deleteCursor).contains(timestamp)) {
           return true;

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.trigger.service;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
@@ -27,8 +28,10 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.idtable.IDTable;
+import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
@@ -81,6 +84,8 @@ public class TriggerRegistrationService implements IService {
   private static final String LIB_ROOT = IoTDBDescriptor.getInstance().getConfig().getTriggerDir();
 
   private final ConcurrentHashMap<String, TriggerExecutor> executors;
+
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private TriggerLogWriter logWriter;
 
@@ -153,6 +158,17 @@ public class TriggerRegistrationService implements IService {
 
     executors.put(plan.getTriggerName(), executor);
     measurementMNode.setTriggerExecutor(executor);
+
+    // update id table
+    if (config.isEnableIDTable()) {
+      try {
+        IDTable idTable =
+            IDTableManager.getInstance().getIDTable(plan.getFullPath().getDevicePath());
+        idTable.registerTrigger(plan.getFullPath(), measurementMNode);
+      } catch (MetadataException e) {
+        throw new TriggerManagementException(e.getMessage(), e);
+      }
+    }
   }
 
   public synchronized void deregister(DropTriggerPlan plan) throws TriggerManagementException {
@@ -184,7 +200,7 @@ public class TriggerRegistrationService implements IService {
     }
   }
 
-  private void doDeregister(DropTriggerPlan plan) {
+  private void doDeregister(DropTriggerPlan plan) throws TriggerManagementException {
     TriggerExecutor executor = executors.remove(plan.getTriggerName());
     executor.getMeasurementMNode().setTriggerExecutor(null);
 
@@ -196,6 +212,17 @@ public class TriggerRegistrationService implements IService {
 
     TriggerClassLoaderManager.getInstance()
         .deregister(executor.getRegistrationInformation().getClassName());
+
+    // update id table
+    if (config.isEnableIDTable()) {
+      try {
+        PartialPath fullPath = executor.getMeasurementMNode().getPartialPath();
+        IDTable idTable = IDTableManager.getInstance().getIDTable(fullPath.getDevicePath());
+        idTable.deregisterTrigger(fullPath, executor.getMeasurementMNode());
+      } catch (MetadataException e) {
+        throw new TriggerManagementException(e.getMessage(), e);
+      }
+    }
   }
 
   public void activate(StartTriggerPlan plan)

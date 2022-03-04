@@ -25,7 +25,7 @@
 
 ## 存储组恢复流程
 
-* org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.recover()
+* org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.recover()
 
 * 首先获得该存储组下所有以 .tsfile 结尾的数据文件，返回 TsFileResource，共有如下几个文件列表
 
@@ -58,7 +58,7 @@
 
 ## 恢复一个分区的（顺序/乱序） TsFile
 
-* org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.recoverTsFiles
+* org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.recoverTsFiles
 
 该方法主要负责遍历传进来的所有 TsFile，挨个进行恢复。
 

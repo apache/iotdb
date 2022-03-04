@@ -21,7 +21,6 @@ package org.apache.iotdb.db.sync.sender.transfer;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.SyncConnectionException;
@@ -37,14 +36,11 @@ import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogger;
 import org.apache.iotdb.db.utils.SyncUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.rpc.TConfigurationConst;
-import org.apache.iotdb.rpc.TSocketWrapper;
 import org.apache.iotdb.service.sync.thrift.ConfirmInfo;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.service.sync.thrift.SyncStatus;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -136,8 +132,6 @@ public class SyncClient implements ISyncClient {
   private SyncClient() {
     init();
   }
-
-  private TConfiguration tConfiguration = TConfigurationConst.defaultTConfiguration;
 
   public static SyncClient getInstance() {
     return InstanceHolder.INSTANCE;
@@ -276,12 +270,12 @@ public class SyncClient implements ISyncClient {
           dataDirs.length);
 
       config.update(dataDir);
+      checkRecovery();
       syncFileManager.getValidFiles(dataDir);
       allSG = syncFileManager.getAllSGs();
       lastLocalFilesMap = syncFileManager.getLastLocalFilesMap();
       deletedFilesMap = syncFileManager.getDeletedFilesMap();
       toBeSyncedFilesMap = syncFileManager.getToBeSyncedFilesMap();
-      checkRecovery();
       if (SyncUtils.isEmpty(deletedFilesMap) && SyncUtils.isEmpty(toBeSyncedFilesMap)) {
         logger.info("There has no data to sync in data dir {}", dataDir);
         continue;
@@ -315,9 +309,7 @@ public class SyncClient implements ISyncClient {
     RpcTransportFactory.setDefaultBufferCapacity(ioTDBConfig.getThriftDefaultBufferSize());
     RpcTransportFactory.setThriftMaxFrameSize(ioTDBConfig.getThriftMaxFrameSize());
     try {
-      transport =
-          RpcTransportFactory.INSTANCE.getTransport(
-              TSocketWrapper.wrap(tConfiguration, serverIp, serverPort, TIMEOUT_MS));
+      transport = RpcTransportFactory.INSTANCE.getTransport(serverIp, serverPort, TIMEOUT_MS);
       TProtocol protocol;
       if (ioTDBConfig.isRpcThriftCompressionEnable()) {
         protocol = new TCompactProtocol(transport);
@@ -344,7 +336,9 @@ public class SyncClient implements ISyncClient {
 
     try {
       establishConnection(config.getServerIp(), config.getServerPort());
-    } catch (SyncConnectionException e) {
+      confirmIdentity();
+      serviceClient.startSync();
+    } catch (SyncConnectionException | TException e) {
       logger.warn("Can not reconnect to receiver {}. Caused by ", config.getSyncReceiverName(), e);
       return false;
     }
@@ -359,7 +353,7 @@ public class SyncClient implements ISyncClient {
               socket.getLocalAddress().getHostAddress(),
               getOrCreateUUID(getUuidFile()),
               ioTDBConfig.getPartitionInterval(),
-              IoTDBConstant.MAJOR_VERSION);
+              ioTDBConfig.getIoTDBMajorVersion());
       SyncStatus status = serviceClient.check(info);
       if (status.code != SUCCESS_CODE) {
         throw new SyncConnectionException(
@@ -417,7 +411,6 @@ public class SyncClient implements ISyncClient {
       return;
     }
     int retryCount = 0;
-    serviceClient.initSyncData(MetadataConstant.METADATA_LOG);
     while (true) {
       if (retryCount > config.getMaxNumOfSyncFileRetry()) {
         throw new SyncConnectionException(
@@ -442,6 +435,8 @@ public class SyncClient implements ISyncClient {
     // start to sync file data and get digest of this file.
     try (FileInputStream fis = new FileInputStream(getSchemaLogFile());
         ByteArrayOutputStream bos = new ByteArrayOutputStream(SyncConstant.DATA_CHUNK_SIZE)) {
+      serviceClient.initSyncData(MetadataConstant.METADATA_LOG);
+
       long skipNum = fis.skip(schemaFilePos);
       if (skipNum != schemaFilePos) {
         logger.warn(
@@ -653,7 +648,7 @@ public class SyncClient implements ISyncClient {
   }
 
   /**
-   * Make snapshot<hard link> for new tsfile and its .restore file.
+   * Make snapshot hard link for new tsfile and its .restore file.
    *
    * @param file new tsfile to be synced
    */

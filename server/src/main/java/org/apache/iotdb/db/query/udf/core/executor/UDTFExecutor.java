@@ -32,10 +32,15 @@ import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.ZoneId;
 import java.util.Map;
 
 public class UDTFExecutor {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(UDTFExecutor.class);
 
   protected final FunctionExpression expression;
   protected final UDTFConfigurations configurations;
@@ -75,9 +80,14 @@ public class UDTFExecutor {
             configurations.getOutputDataType(), queryId, collectorMemoryBudgetInMB, 1);
   }
 
-  public void execute(Row row) throws QueryProcessException {
+  public void execute(Row row, boolean isCurrentRowNull) throws QueryProcessException {
     try {
-      udtf.transform(row, collector);
+      if (isCurrentRowNull) {
+        // A null row will never trigger any UDF computing
+        collector.putNull(row.getTime());
+      } else {
+        udtf.transform(row, collector);
+      }
     } catch (Exception e) {
       onError("transform(Row, PointCollector)", e);
     }
@@ -100,10 +110,13 @@ public class UDTFExecutor {
   }
 
   public void beforeDestroy() {
-    udtf.beforeDestroy();
+    if (udtf != null) {
+      udtf.beforeDestroy();
+    }
   }
 
   private void onError(String methodName, Exception e) throws QueryProcessException {
+    LOGGER.warn("Error occurred during executing UDTF", e);
     throw new QueryProcessException(
         String.format(
                 "Error occurred during executing UDTF#%s: %s", methodName, System.lineSeparator())

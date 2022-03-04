@@ -54,7 +54,7 @@ public class SessionManager {
   // (queryId -> QueryDataSet)
   private final Map<Long, QueryDataSet> queryIdToDataSet = new ConcurrentHashMap<>();
 
-  private SessionManager() {
+  protected SessionManager() {
     // singleton
   }
 

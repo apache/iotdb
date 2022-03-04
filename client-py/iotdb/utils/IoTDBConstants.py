@@ -28,6 +28,11 @@ class TSDataType(Enum):
     DOUBLE = 4
     TEXT = 5
 
+    # this method is implemented to avoid the issue reported by:
+    # https://bugs.python.org/issue30545
+    def __eq__(self, other) -> bool:
+        return self.value == other.value
+
 
 @unique
 class TSEncoding(Enum):
@@ -41,6 +46,12 @@ class TSEncoding(Enum):
     REGULAR = 7
     GORILLA = 8
 
+    # this method is implemented to avoid the issue reported by:
+    # https://bugs.python.org/issue30545
+    def __eq__(self, other) -> bool:
+        return self.value == other.value
+
+
 @unique
 class Compressor(Enum):
     UNCOMPRESSED = 0
@@ -51,3 +62,8 @@ class Compressor(Enum):
     PAA = 5
     PLA = 6
     LZ4 = 7
+
+    # this method is implemented to avoid the issue reported by:
+    # https://bugs.python.org/issue30545
+    def __eq__(self, other) -> bool:
+        return self.value == other.value

@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.IOException;
@@ -60,6 +60,8 @@ public interface IMNode extends Serializable {
   void setChildren(Map<String, IMNode> children);
 
   boolean isUseTemplate();
+
+  void setUseTemplate(boolean useTemplate);
 
   Template getUpperTemplate();
 

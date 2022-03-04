@@ -211,36 +211,135 @@ SessionDataSet executeQueryStatement(String sql)
 void executeNonQueryStatement(String sql)
 ```
 
-* 创建一个物理量模板
+* 物理量模板内部支持树状结构，可以通过先后创建 Template、InternalNode、MeasurementNode 三类的对象，并通过以下接口创建模板
 
+```java
+public void createSchemaTemplate(Template template);
+
+Class Template {
+    private String name;
+    private boolean directShareTime;
+    Map<String, Node> children;
+    public Template(String name, boolean isShareTime);
+    
+    public void addToTemplate(Node node);
+    public void deleteFromTemplate(String name);
+    public void setShareTime(boolean shareTime);
+}
+
+Abstract Class Node {
+    private String name;
+    public void addChild(Node node);
+    public void deleteChild(Node node);
+}
+
+Class InternalNode extends Node {
+    boolean shareTime;
+    Map<String, Node> children;
+    public void setShareTime(boolean shareTime);
+    public InternalNode(String name, boolean isShareTime);
+}
+
+Class MeasurementNode extends Node {
+    TSDataType dataType;
+    TSEncoding encoding;
+    CompressionType compressor;
+    public MeasurementNode(String name, 
+                           TSDataType dataType, 
+                           TSEncoding encoding,
+                          CompressionType compressor);
+}
 ```
-* name: 物理量模板名称
-* measurements: 工况名称列表，如果该工况是非对齐的，直接将其名称放入一个 list 中再放入 measurements 中，
-*               如果该工况是对齐的，将所有对齐工况名称放入一个 list 再放入 measurements 中
-* dataTypes: 数据类型名称列表，如果该工况是非对齐的，直接将其数据类型放入一个 list 中再放入 dataTypes 中，
-             如果该工况是对齐的，将所有对齐工况的数据类型放入一个 list 再放入 dataTypes 中
-* encodings: 编码类型名称列表，如果该工况是非对齐的，直接将其数据类型放入一个 list 中再放入 encodings 中，
-             如果该工况是对齐的，将所有对齐工况的编码类型放入一个 list 再放入 encodings 中
-* compressors: 压缩方式列表                          
-void createSchemaTemplate(
-      String templateName,
-      List<String> schemaName,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<CompressionType> compressors)
+
+通过这种方式创建物理量模板的代码示例如下：
+
+```java
+MeasurementNode nodeX = new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+MeasurementNode nodeY = new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+MeasurementNode nodeSpeed = new MeasurementNode("speed", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
+
+InternalNode internalGPS = new InternalNode("GPS", true);
+InternalNode internalVehicle = new InternalNode("vehicle", false);
+
+internalGPS.addChild(nodeX);
+internalGPS.addChild(nodeY);
+internalVehicle.addChild(GPS);
+internalVehicle.addChild(nodeSpeed);
+
+Template template = new Template("treeTemplateExample");
+template.addToTemplate(internalGPS);
+template.addToTemplate(internalVehicle);
+template.addToTemplate(nodeSpeed);
+
+createSchemaTemplate(template);
+```
+
+* 在创建概念物理量模板以后，还可以通过以下接口增加或删除模板内的物理量。请注意，已经挂载的模板不能删除内部的物理量。
+
+```java
+// 为指定模板新增一组对齐的物理量，若其父节点在模板中已经存在，且不要求对齐，则报错
+public void addAlignedMeasurementsInTemplate(String templateName,
+    						  String[] measurementsPath,
+                              TSDataType[] dataTypes,
+                              TSEncoding[] encodings,
+                              CompressionType[] compressors);
+
+// 为指定模板新增一个对齐物理量, 若其父节点在模板中已经存在，且不要求对齐，则报错
+public void addAlignedMeasurementInTemplate(String templateName,
+                                String measurementPath,
+                                TSDataType dataType,
+                                TSEncoding encoding,
+                                CompressionType compressor);
+
+
+// 为指定模板新增一个不对齐物理量, 若其父节在模板中已经存在，且要求对齐，则报错
+public void addUnalignedMeasurementInTemplate(String templateName,
+                                String measurementPath,
+                                TSDataType dataType,
+                                TSEncoding encoding,
+                                CompressionType compressor);
+                                
+// 为指定模板新增一组不对齐的物理量, 若其父节在模板中已经存在，且要求对齐，则报错
+public void addUnalignedMeasurementsIntemplate(String templateName,
+                                String[] measurementPaths,
+                                TSDataType[] dataTypes,
+                                TSEncoding[] encodings,
+                                CompressionType[] compressors);
+
+// 从指定模板中删除一个节点及其子树
+public void deleteNodeInTemplate(String templateName, String path);
+```
+
+* 对于已经创建的物理量模板，还可以通过以下接口查询模板信息：
+
+```java
+// 查询返回目前模板中所有物理量的数量
+public int countMeasurementsInTemplate(String templateName);
+
+// 检查模板内指定路径是否为物理量
+public boolean isMeasurementInTemplate(String templateName, String path);
+
+// 检查在指定模板内是否存在某路径
+public boolean isPathExistInTemplate(String templateName, String path);
+
+// 返回指定模板内所有物理量的路径
+public List<String> showMeasurementsInTemplate(String templateName);
+
+// 返回指定模板内某前缀路径下的所有物理量的路径
+public List<String> showMeasurementsInTemplate(String templateName, String pattern);
 ```
 
 * 将名为'templateName'的物理量模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的物理量模板
 
-``` 
+``` java
 void setSchemaTemplate(String templateName, String prefixPath)
 ```
 
-``` 
+``` java
 void unsetSchemaTemplate(String prefixPath, String templateName)
 ```
 
+* 请注意，如果一个子树中有多个孩子节点需要使用模板，可以在其共同父母节点上使用 setSchemaTemplate 。而只有在已有数据点插入模板对应的物理量时，模板才会被设置为激活状态，进而被 show timeseries 等查询检测到。
 * 卸载'prefixPath'路径下的名为'templateName'的物理量模板。你需要保证给定的路径'prefixPath'下需要有名为'templateName'的物理量模板。
 
 注意：目前不支持从曾经在'prefixPath'路径及其后代节点使用模板插入数据后（即使数据已被删除）卸载模板。

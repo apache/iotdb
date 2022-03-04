@@ -53,70 +53,51 @@ You can start multiple instances on a single machine by modifying the configurat
 
 ***iotdb-cluster.properties***
 
-seed\_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
-
-default\_replica\_num = 1
-
-internal\_meta\_port = 9003
-
-internal\_data\_port = 40010
-
+```
+seed_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
+default_replica_num = 1
+internal_meta_port = 9003
+internal_data_port = 40010
+```
 ***iotdb-engine.properties***
 
-rpc\_port=6667
-
-system\_dir=data/system
-data\_dirs=data/data
-wal\_dir=data/wal
-index\_root\_dir=data/index
-udf\_root\_dir=ext/udf
-tracing\_dir=data/tracing
+```
+rpc_port=6667
+```
 
 **Node2**:
 
 ***iotdb-cluster.properties***
 
-seed\_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
-
-default\_replica\_num = 1
-
-internal\_meta\_port = 9005
-
-internal\_data\_port = 40012
+```
+seed_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
+default_replica_num = 1
+internal_meta_port = 9005
+internal_data_port = 40012
+```
 
 ***iotdb-engine.properties***
 
-rpc\_port=6669
-
-system\_dir=node2/system
-data\_dirs=node2/data
-wal\_dir=node2/wal
-index\_root\_dir=node2/index
-udf\_root\_dir=node2/ext/udf
-tracing\_dir=node2/tracing
+```
+rpc_port=6669
+```
 
 **Node3**:
 
 ***iotdb-cluster.properties***
 
-seed\_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
-
-default\_replica\_num = 1
-
-internal\_meta\_port = 9007
-
-internal\_data\_port = 40014
+```
+seed_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
+default_replica_num = 1
+internal_meta_port = 9007
+internal_data_port = 40014
+```
 
 ***iotdb-engine.properties***
 
-rpc\_port=6671
-
-system\_dir=node3/system
-data\_dirs=node3/data
-wal\_dir=node3/wal
-index\_root\_dir=node3/index
-udf\_root\_dir=node3/ext/udf
-tracing\_dir=node3/tracing
+```
+rpc_port=6671
+```
 
 ### Compile from source code:
 
@@ -186,23 +167,66 @@ nohup ./sbin/start-node.sh ./node3_conf/ >/dev/null 2>&1 &
 ## Example of distributed configurations for 3 nodes and 3 replicas
 
 Suppose we need to deploy the distributed IoTDB on three physical nodes, A, B, and C, whose public network IP is *A\_public\_IP*, *B\_public\_IP*, and *C\_public\_IP*, and private network IP is *A\_private\_IP*, *B\_private\_IP*, and *C\_private\_IP*.
-Note: If there is no public network IP or private network IP, both can be set to the same, just need to ensure that the client can access the server.
+
+Note: If there is no public network IP or private network IP, both can be **set to the same**, just need to ensure that the client can access the server. The private ip corresponds to configuration item` internal_ ip `in iotdb-cluster.properties, and the public ip corresponds to configuration item` rpc_ address` in iotdb-engine.properties.
 
 ### Configurations
-
-**Each Node:**
+**NodeA**:
 
 ***iotdb-cluster.properties***
 
-seed\_nodes = *A\_private\_Ip*:9003,*B\_private\_Ip*:9003,*C\_private\_Ip*:9003
-
-default\_replica\_num = 3
-
-internal\_ip = *A\_private\_Ip* (or *B\_private\_Ip*, *C\_private\_Ip*)
+```
+seed_nodes = A_private_Ip:9003,B_private_Ip:9003,C_private_Ip:9003
+default_replica_num = 3
+internal_meta_port = 9003
+internal_data_port = 40010
+internal_ip = A_private_Ip
+```
 
 ***iotdb-engine.properties***
 
-rpc\_address = *A\_public\_Ip* (or *B\_private\_Ip*, *C\_public\_Ip*)
+```
+rpc_port = 6667
+rpc_address = A_public_ip 
+```
+
+**NodeB**:
+
+***iotdb-cluster.properties***
+
+```
+seed_nodes = A_private_Ip:9003,B_private_Ip:9003,C_private_Ip:9003
+default_replica_num = 3
+internal_meta_port = 9003
+internal_data_port = 40010
+internal_ip = B_private_Ip
+```
+
+***iotdb-engine.properties***
+
+```
+rpc_port = 6667
+rpc_address = B_public_ip 
+```
+
+**NodeC**:
+
+***iotdb-cluster.properties***
+
+```
+seed_nodes = A_private_Ip:9003,B_private_Ip:9003,C_private_Ip:9003
+default_replica_num = 3
+internal_meta_port = 9003
+internal_data_port = 40010
+internal_ip = C_private_Ip
+```
+
+***iotdb-engine.properties***
+
+```
+rpc_port = 6667
+rpc_address = C_public_ip 
+```
 
 ### Start IoTDB cluster
 
@@ -215,3 +239,55 @@ The operation steps are as follows:
 
 * Modify the configuration items.
 * Run sh sbin/start-node.sh on each of the three nodes (or run in the background).
+
+
+
+### Compile from source code:
+
+```
+mvn clean package -DskipTests
+chmod -R 777 ./cluster/target/
+cd cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/
+```
+### Use the official website release version:
+
+Download the release version:
+```
+curl -O https://downloads.apache.org/iotdb/0.12.4/apache-iotdb-0.12.4-cluster-bin.zip
+```
+
+Unzip the package:
+
+```
+unzip apache-iotdb-0.12.4-cluster-bin.zip
+```
+
+Enter IoTDB cluster root directory:
+
+```
+cd apache-iotdb-0.12.4-cluster-bin
+```
+
+Set default\_replica\_num = 3: default value of this configuration item is 3
+
+Set internal\_ip = private ip of node (e.g. 192.168.1.1)
+```
+sed -i -e 's/^internal_ip=127.0.0.1$/internal_ip=192.168.1.1/g' conf/iotdb-cluster.properties
+```
+Set seed\_node = A_private_Ip:9003,B_private_Ip:9003,C_private_Ip:9003 (e.g. private ip of all three nodes are 192.168.1.1,192.168.1.2,192.168.1.3)
+```
+sed -i -e 's/^seed_nodes=127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007$/seed_nodes=192.168.1.1:9003,192.168.1.2:9003,192.168.1.3:9003/g' conf/iotdb-cluster.properties
+```
+Set rpc\_address = public ip of node (e.g. 192.168.1.1)
+```
+sed -i -e 's/^rpc_address=127.0.0.1$/rpc_address=192.168.1.1/g' conf/iotdb-engine.properties
+```
+
+
+**You can modify the configuration items by yourself instead of using "sed" command**
+
+Start the three nodes with their configurations:
+
+```
+nohup ./sbin/start-node.sh >/dev/null 2>&1 &
+```

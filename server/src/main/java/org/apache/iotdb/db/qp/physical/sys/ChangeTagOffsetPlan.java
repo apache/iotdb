@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -36,11 +36,11 @@ public class ChangeTagOffsetPlan extends PhysicalPlan {
   private long offset;
 
   public ChangeTagOffsetPlan() {
-    super(false, Operator.OperatorType.CHANGE_TAG_OFFSET);
+    super(Operator.OperatorType.CHANGE_TAG_OFFSET);
   }
 
   public ChangeTagOffsetPlan(PartialPath partialPath, long offset) {
-    super(false, Operator.OperatorType.CHANGE_TAG_OFFSET);
+    super(Operator.OperatorType.CHANGE_TAG_OFFSET);
     path = partialPath;
     this.offset = offset;
   }
@@ -71,7 +71,7 @@ public class ChangeTagOffsetPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.CHANGE_TAG_OFFSET.ordinal();
     buffer.put((byte) type);
     putString(buffer, path.getFullPath());

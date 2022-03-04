@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
+import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -30,10 +32,10 @@ import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompac
 
 public class SizeTieredCompactionLogAnalyzer {
 
-  public static final String STR_DEVICE_OFFSET_SEPARATOR = " ";
-
   private File logFile;
   private List<String> sourceFiles = new ArrayList<>();
+  private List<TsFileIdentifier> sourceFileInfos = new ArrayList<>();
+  private TsFileIdentifier targetFileInfo = null;
   private String targetFile = null;
   private boolean isSeq = false;
 
@@ -47,13 +49,22 @@ public class SizeTieredCompactionLogAnalyzer {
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
       while ((currLine = bufferedReader.readLine()) != null) {
         switch (currLine) {
+            // we parse the compaction log with file path to keep compatible with 0.12
           case SOURCE_NAME:
             currLine = bufferedReader.readLine();
-            sourceFiles.add(currLine);
+            sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromFilePath(currLine));
             break;
           case TARGET_NAME:
             currLine = bufferedReader.readLine();
-            targetFile = currLine;
+            targetFileInfo = TsFileIdentifier.getFileIdentifierFromFilePath(currLine);
+            break;
+          case SOURCE_INFO:
+            currLine = bufferedReader.readLine();
+            sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromInfoString(currLine));
+            break;
+          case TARGET_INFO:
+            currLine = bufferedReader.readLine();
+            targetFileInfo = TsFileIdentifier.getFileIdentifierFromInfoString(currLine);
             break;
           case SEQUENCE_NAME:
             isSeq = true;
@@ -70,6 +81,14 @@ public class SizeTieredCompactionLogAnalyzer {
 
   public List<String> getSourceFiles() {
     return sourceFiles;
+  }
+
+  public List<TsFileIdentifier> getSourceFileInfos() {
+    return sourceFileInfos;
+  }
+
+  public TsFileIdentifier getTargetFileInfo() {
+    return targetFileInfo;
   }
 
   public String getTargetFile() {

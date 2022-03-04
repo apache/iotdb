@@ -179,6 +179,7 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
         }
         synchronized (dataGroupMember.getLogManager()) {
           dataGroupMember.getLogManager().applySnapshot(snapshot);
+          dataGroupMember.getLogAppender().reset();
         }
       }
     }

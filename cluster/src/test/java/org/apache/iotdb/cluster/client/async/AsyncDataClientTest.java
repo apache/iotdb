@@ -4,85 +4,78 @@
 
 package org.apache.iotdb.cluster.client.async;
 
-import org.apache.iotdb.cluster.client.async.AsyncDataClient.SingleManagerFactory;
-import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.client.BaseClientTest;
+import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.RaftServer;
 
-import org.apache.thrift.TException;
-import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.async.TAsyncClientManager;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
-import org.apache.thrift.transport.TNonblockingSocket;
-import org.junit.After;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TProtocolFactory;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
-
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-public class AsyncDataClientTest {
+public class AsyncDataClientTest extends BaseClientTest {
 
   private final ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-  private boolean isAsyncServer;
+  private TProtocolFactory protocolFactory;
 
   @Before
   public void setUp() {
-    isAsyncServer = config.isUseAsyncServer();
     config.setUseAsyncServer(true);
-  }
-
-  @After
-  public void tearDown() {
-    config.setUseAsyncServer(isAsyncServer);
+    protocolFactory =
+        config.isRpcThriftCompressionEnabled()
+            ? new TCompactProtocol.Factory()
+            : new TBinaryProtocol.Factory();
   }
 
   @Test
-  public void test() throws IOException, TException {
-    AsyncClientPool asyncClientPool = new AsyncClientPool(new SingleManagerFactory(new Factory()));
-    AsyncDataClient client;
-    Node node = TestUtils.getNode(0);
-    client =
-        new AsyncDataClient(
-            new Factory(),
-            new TAsyncClientManager(),
-            new TNonblockingSocket(
-                node.getInternalIp(), node.getDataPort(), RaftServer.getConnectionTimeoutInMS()));
-    assertTrue(client.isReady());
+  public void testDataClient() throws Exception {
 
-    client = (AsyncDataClient) asyncClientPool.getClient(TestUtils.getNode(0));
+    AsyncDataClient.AsyncDataClientFactory factory =
+        new AsyncDataClient.AsyncDataClientFactory(protocolFactory, ClientCategory.DATA);
 
-    assertEquals(TestUtils.getNode(0), client.getNode());
-
-    client.matchTerm(
-        0,
-        0,
-        TestUtils.getRaftNode(0, 0),
-        new AsyncMethodCallback<Boolean>() {
-          @Override
-          public void onComplete(Boolean aBoolean) {
-            // do nothing
-          }
-
-          @Override
-          public void onError(Exception e) {
-            // do nothing
-          }
-        });
-    assertFalse(client.isReady());
-
-    client.onError(new Exception());
-    assertNull(client.getCurrMethod());
-    assertFalse(client.isReady());
+    AsyncDataClient dataClient = factory.makeObject(defaultNode).getObject();
 
     assertEquals(
-        "DataClient{node=ClusterNode{ internalIp='192.168.0.0', metaPort=9003, nodeIdentifier=0, dataPort=40010, clientPort=6667, clientIp='0.0.0.0'}}",
-        client.toString());
+        "AsyncDataClient{node=Node(internalIp:localhost, metaPort:9003, nodeIdentifier:0, "
+            + "dataPort:40010, clientPort:0, clientIp:localhost),port=40010}",
+        dataClient.toString());
+    assertCheck(dataClient);
+    factory.close();
+  }
+
+  @Test
+  public void testDataHeartbeatClient() throws Exception {
+
+    AsyncDataClient.AsyncDataClientFactory factory =
+        new AsyncDataClient.AsyncDataClientFactory(protocolFactory, ClientCategory.DATA_HEARTBEAT);
+
+    AsyncDataClient dataClient = factory.makeObject(defaultNode).getObject();
+
+    assertEquals(
+        "AsyncDataHeartbeatClient{node=Node(internalIp:localhost, metaPort:9003, nodeIdentifier:0, "
+            + "dataPort:40010, clientPort:0, clientIp:localhost),port=40011}",
+        dataClient.toString());
+    assertCheck(dataClient);
+    factory.close();
+  }
+
+  private void assertCheck(AsyncDataClient dataClient) {
+    Assert.assertNotNull(dataClient);
+    assertTrue(dataClient.isReady());
+    assertTrue(dataClient.isValid());
+    Assert.assertEquals(dataClient.getNode(), defaultNode);
+
+    dataClient.setTimeout(ClusterConstant.getConnectionTimeoutInMS());
+    Assert.assertEquals(dataClient.getTimeout(), ClusterConstant.getConnectionTimeoutInMS());
+
+    dataClient.close();
+    Assert.assertNull(dataClient.getCurrMethod());
   }
 }

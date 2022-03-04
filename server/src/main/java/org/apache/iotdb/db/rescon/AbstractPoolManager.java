@@ -61,10 +61,18 @@ public abstract class AbstractPoolManager {
   }
 
   public int getWorkingTasksNumber() {
+    // in ITs, pool may be closed and therefore pool will be null
+    if (pool == null) {
+      return 0;
+    }
     return ((ThreadPoolExecutor) pool).getActiveCount();
   }
 
   public int getWaitingTasksNumber() {
+    // in ITs, pool may be closed and therefore pool will be null
+    if (pool == null) {
+      return 0;
+    }
     return ((ThreadPoolExecutor) pool).getQueue().size();
   }
 
@@ -73,6 +81,9 @@ public abstract class AbstractPoolManager {
   }
 
   public int getCorePoolSize() {
+    if (pool == null) {
+      return 0;
+    }
     return ((ThreadPoolExecutor) pool).getCorePoolSize();
   }
 

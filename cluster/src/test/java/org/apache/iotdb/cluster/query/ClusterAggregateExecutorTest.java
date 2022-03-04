@@ -24,7 +24,8 @@ import org.apache.iotdb.cluster.query.aggregate.ClusterAggregateExecutor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -38,9 +39,11 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -52,24 +55,23 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
 
   private ClusterAggregateExecutor executor;
 
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+  }
+
   @Test
   public void testNoFilter()
       throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     AggregationPlan plan = new AggregationPlan();
-    List<PartialPath> paths =
-        Arrays.asList(
-            new PartialPath(TestUtils.getTestSeries(0, 0)),
-            new PartialPath(TestUtils.getTestSeries(0, 1)),
-            new PartialPath(TestUtils.getTestSeries(0, 2)),
-            new PartialPath(TestUtils.getTestSeries(0, 3)),
-            new PartialPath(TestUtils.getTestSeries(0, 4)));
-    List<TSDataType> dataTypes =
-        Arrays.asList(
-            TSDataType.DOUBLE,
-            TSDataType.DOUBLE,
-            TSDataType.DOUBLE,
-            TSDataType.DOUBLE,
-            TSDataType.DOUBLE);
+    List<PartialPath> paths = new ArrayList<>();
+    paths.add(new MeasurementPath(TestUtils.getTestSeries(0, 0), TSDataType.DOUBLE));
+    paths.add(new MeasurementPath(TestUtils.getTestSeries(0, 1), TSDataType.DOUBLE));
+    paths.add(new MeasurementPath(TestUtils.getTestSeries(0, 2), TSDataType.DOUBLE));
+    paths.add(new MeasurementPath(TestUtils.getTestSeries(0, 3), TSDataType.DOUBLE));
+    paths.add(new MeasurementPath(TestUtils.getTestSeries(0, 4), TSDataType.DOUBLE));
+
     List<String> aggregations =
         Arrays.asList(
             SQLConstant.MIN_TIME,
@@ -79,8 +81,6 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
             SQLConstant.SUM);
     plan.setPaths(paths);
     plan.setDeduplicatedPathsAndUpdate(paths);
-    plan.setDataTypes(dataTypes);
-    plan.setDeduplicatedDataTypes(dataTypes);
     plan.setAggregations(aggregations);
     plan.setDeduplicatedAggregations(aggregations);
 
@@ -107,20 +107,12 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
   public void testFilter()
       throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
     AggregationPlan plan = new AggregationPlan();
-    List<PartialPath> paths =
-        Arrays.asList(
-            new PartialPath(TestUtils.getTestSeries(0, 0)),
-            new PartialPath(TestUtils.getTestSeries(0, 1)),
-            new PartialPath(TestUtils.getTestSeries(0, 2)),
-            new PartialPath(TestUtils.getTestSeries(0, 3)),
-            new PartialPath(TestUtils.getTestSeries(0, 4)));
-    List<TSDataType> dataTypes =
-        Arrays.asList(
-            TSDataType.DOUBLE,
-            TSDataType.DOUBLE,
-            TSDataType.DOUBLE,
-            TSDataType.DOUBLE,
-            TSDataType.DOUBLE);
+    List<PartialPath> paths = new ArrayList<>();
+    paths.add(new MeasurementPath(TestUtils.getTestSeries(0, 0), TSDataType.DOUBLE));
+    paths.add(new MeasurementPath(TestUtils.getTestSeries(0, 1), TSDataType.DOUBLE));
+    paths.add(new MeasurementPath(TestUtils.getTestSeries(0, 2), TSDataType.DOUBLE));
+    paths.add(new MeasurementPath(TestUtils.getTestSeries(0, 3), TSDataType.DOUBLE));
+    paths.add(new MeasurementPath(TestUtils.getTestSeries(0, 4), TSDataType.DOUBLE));
     List<String> aggregations =
         Arrays.asList(
             SQLConstant.MIN_TIME,
@@ -130,8 +122,6 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
             SQLConstant.SUM);
     plan.setPaths(paths);
     plan.setDeduplicatedPathsAndUpdate(paths);
-    plan.setDataTypes(dataTypes);
-    plan.setDeduplicatedDataTypes(dataTypes);
     plan.setAggregations(aggregations);
     plan.setDeduplicatedAggregations(aggregations);
     plan.setExpression(

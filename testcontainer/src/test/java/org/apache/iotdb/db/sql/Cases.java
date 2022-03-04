@@ -39,7 +39,6 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -48,11 +47,12 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -601,7 +601,7 @@ public abstract class Cases {
     } catch (Exception e) {
       Assert.assertTrue(
           e.getMessage()
-              .contains("Current system mode is read-only, does not support non-query operation"));
+              .contains("Database is read-only, and does not accept non-query operation now"));
     }
 
     writeStatement.execute(setWritable);
@@ -851,8 +851,6 @@ public abstract class Cases {
     for (long time = 1; time <= 3; time++) {
       session.insertAlignedRecord(
           "root.sg1.d1.v1", time, multiMeasurementComponents, types, values);
-      session.insertAlignedRecord(
-          "root.sg0.d1.v1", time, multiMeasurementComponents, types, values);
     }
     List<String> multiSeriesIds = new ArrayList<>();
     List<List<String>> multiMeasurementComponentsList = new ArrayList<>();
@@ -877,20 +875,14 @@ public abstract class Cases {
     multiSeriesIds.add("root.sg0.d2.v1");
     multiSeriesIds.add("root.sg0.d2.v1");
     multiSeriesIds.add("root.sg0.d2.v1");
-    session.insertAlignedRecords(
-        multiSeriesIds, times, multiMeasurementComponentsList, typeList, valueList);
 
     session.insertAlignedRecordsOfOneDevice(
         "root.sg5.d1.v1", times, multiMeasurementComponentsList, typeList, valueList);
-    session.insertAlignedRecordsOfOneDevice(
-        "root.sg0.d3.v1", times, multiMeasurementComponentsList, typeList, valueList);
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(
-        new VectorMeasurementSchema(
-            "vector",
-            new String[] {"s1", "s2", "s3"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.FLOAT}));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.FLOAT));
 
     Tablet tablet = new Tablet("root.sg6.d1.v1", schemaList);
     tablet.setAligned(true);
@@ -898,33 +890,25 @@ public abstract class Cases {
     for (long row = 1; row <= 3; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, row);
-      tablet.addValue(schemaList.get(0).getSubMeasurementsList().get(0), rowIndex, 1L);
-      tablet.addValue(schemaList.get(0).getSubMeasurementsList().get(1), rowIndex, 2);
-      tablet.addValue(schemaList.get(0).getSubMeasurementsList().get(2), rowIndex, 3.0f);
+      tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, 1L);
+      tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, 2);
+      tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, 3.0f);
     }
-    session.insertTablet(tablet, true);
-    tablet.setPrefixPath("root.sg0.d4.v1");
     session.insertTablet(tablet, true);
     tablet.reset();
 
     List<IMeasurementSchema> schemaList1 = new ArrayList<>();
-    schemaList1.add(
-        new VectorMeasurementSchema(
-            "vector6",
-            new String[] {"s1", "s2", "s3"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.FLOAT}));
+    schemaList1.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList1.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
+    schemaList1.add(new UnaryMeasurementSchema("s3", TSDataType.FLOAT));
     List<IMeasurementSchema> schemaList2 = new ArrayList<>();
-    schemaList2.add(
-        new VectorMeasurementSchema(
-            "vector7",
-            new String[] {"s1", "s2", "s3"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.FLOAT}));
+    schemaList2.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList2.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
+    schemaList2.add(new UnaryMeasurementSchema("s3", TSDataType.FLOAT));
     List<IMeasurementSchema> schemaList3 = new ArrayList<>();
-    schemaList3.add(
-        new VectorMeasurementSchema(
-            "vector8",
-            new String[] {"s1", "s2", "s3"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.FLOAT}));
+    schemaList3.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList3.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
+    schemaList3.add(new UnaryMeasurementSchema("s3", TSDataType.FLOAT));
 
     Tablet tablet1 = new Tablet("root.sg7.d1.v1", schemaList1, 100);
     Tablet tablet2 = new Tablet("root.sg8.d1.v1", schemaList2, 100);
@@ -938,7 +922,6 @@ public abstract class Cases {
     tabletMap.put("root.sg8.d1.v1", tablet2);
     tabletMap.put("root.sg9.d1.v1", tablet3);
 
-    // Method 1 to add tablet data
     for (long row = 1; row <= 3; row++) {
       int row1 = tablet1.rowSize++;
       int row2 = tablet2.rowSize++;
@@ -947,38 +930,16 @@ public abstract class Cases {
       tablet2.addTimestamp(row2, row);
       tablet3.addTimestamp(row3, row);
       for (int i = 0; i < 3; i++) {
-        tablet1.addValue(schemaList1.get(0).getSubMeasurementsList().get(i), row1, values.get(i));
-        tablet2.addValue(schemaList2.get(0).getSubMeasurementsList().get(i), row2, values.get(i));
-        tablet3.addValue(schemaList3.get(0).getSubMeasurementsList().get(i), row3, values.get(i));
+        tablet1.addValue(schemaList1.get(i).getMeasurementId(), row1, values.get(i));
+        tablet2.addValue(schemaList2.get(i).getMeasurementId(), row2, values.get(i));
+        tablet3.addValue(schemaList3.get(i).getMeasurementId(), row3, values.get(i));
       }
     }
     session.insertTablets(tabletMap, true);
 
     tabletMap.clear();
-    tablet1.setPrefixPath("root.sg0.d5.v1");
-    tablet2.setPrefixPath("root.sg0.d6.v1");
-    tablet3.setPrefixPath("root.sg0.d7.v1");
-    tabletMap.put("root.sg0.d5.v1", tablet1);
-    tabletMap.put("root.sg0.d6.v1", tablet2);
-    tabletMap.put("root.sg0.d7.v1", tablet3);
-    session.insertTablets(tabletMap, true);
-    tablet1.reset();
-    tablet2.reset();
-    tablet3.reset();
 
     for (Statement readStatement : readStatements) {
-      for (int d = 1; d <= 7; d++) {
-        ResultSet resultSet =
-            readStatement.executeQuery(String.format("SELECT * from root.sg0.d%d.v1", d));
-        for (long t = 1; t <= 3; t++) {
-          Assert.assertTrue(resultSet.next());
-          Assert.assertEquals(resultSet.getLong(1), t);
-          Assert.assertEquals(resultSet.getString(2), "1");
-          Assert.assertEquals(resultSet.getString(3), "2");
-          Assert.assertEquals(resultSet.getString(4), "3.0");
-        }
-      }
-
       for (int sg = 1; sg <= 9; sg++) {
         ResultSet resultSet =
             readStatement.executeQuery(String.format("SELECT * from root.sg%d.d1.v1", sg));

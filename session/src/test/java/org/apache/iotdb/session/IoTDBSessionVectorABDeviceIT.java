@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -39,8 +40,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class IoTDBSessionVectorABDeviceIT {
-  private static final String ROOT_SG1_D1_VECTOR1 = "root.sg1.d1.vector1";
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
+  private static final String ROOT_SG1_D2 = "root.sg1.d2";
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static Session session;
   private static int originCompactionThreadNum;
@@ -68,13 +69,12 @@ public class IoTDBSessionVectorABDeviceIT {
   public void subMeasurementAlignByDeviceTest() {
     try {
       SessionDataSet dataSet =
-          session.executeQueryStatement(
-              "select vector1.s1, vector1.s2 from root.sg1.d1 limit 1 align by device");
+          session.executeQueryStatement("select s1, s2 from root.sg1.d1 limit 1 align by device");
       assertEquals(4, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals("Device", dataSet.getColumnNames().get(1));
-      assertEquals("vector1.s1", dataSet.getColumnNames().get(2));
-      assertEquals("vector1.s2", dataSet.getColumnNames().get(3));
+      assertEquals("s1", dataSet.getColumnNames().get(2));
+      assertEquals("s2", dataSet.getColumnNames().get(3));
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         assertEquals(1, rowRecord.getTimestamp());
@@ -95,13 +95,13 @@ public class IoTDBSessionVectorABDeviceIT {
   public void vectorAlignByDeviceTest() {
     try {
       SessionDataSet dataSet =
-          session.executeQueryStatement(
-              "select vector1.* from root.sg1.d1 limit 1 align by device");
+          session.executeQueryStatement("select * from root.sg1.d1 limit 1 align by device");
       assertEquals(4, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals("Device", dataSet.getColumnNames().get(1));
-      assertEquals("vector1.s1", dataSet.getColumnNames().get(2));
-      assertEquals("vector1.s2", dataSet.getColumnNames().get(3));
+      assertEquals("s1", dataSet.getColumnNames().get(2));
+      assertEquals("s2", dataSet.getColumnNames().get(3));
+
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         assertEquals(1, rowRecord.getTimestamp());
@@ -119,29 +119,26 @@ public class IoTDBSessionVectorABDeviceIT {
   }
 
   @Test
-  /** Ignore until the tablet interface. */
+  /* Ignore until the tablet interface. */
   public void vectorAlignByDeviceWithWildcardTest() {
     try {
       SessionDataSet dataSet =
-          session.executeQueryStatement("select ** from root.sg1.d1 limit 1 align by device");
-      assertEquals(7, dataSet.getColumnNames().size());
+          session.executeQueryStatement("select * from root.sg1.* limit 1 align by device");
+      assertEquals(5, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals("Device", dataSet.getColumnNames().get(1));
-      assertEquals("s3", dataSet.getColumnNames().get(2));
-      assertEquals("s4", dataSet.getColumnNames().get(3));
-      assertEquals("s5", dataSet.getColumnNames().get(4));
-      assertEquals("vector1.s1", dataSet.getColumnNames().get(5));
-      assertEquals("vector1.s2", dataSet.getColumnNames().get(6));
+      assertEquals("s1", dataSet.getColumnNames().get(2));
+      assertEquals("s2", dataSet.getColumnNames().get(3));
 
+      long time = 1L;
+      String device = "root.sg1.d1";
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
-        assertEquals(1, rowRecord.getTimestamp());
-        assertEquals("root.sg1.d1", rowRecord.getFields().get(0).getBinaryV().toString());
-        assertEquals(2, rowRecord.getFields().get(4).getLongV());
-        assertEquals(3, rowRecord.getFields().get(5).getLongV());
-        assertEquals(4, rowRecord.getFields().get(1).getLongV());
-        assertEquals(5, rowRecord.getFields().get(2).getLongV());
-        assertEquals(6, rowRecord.getFields().get(3).getLongV());
+        assertEquals(time, rowRecord.getTimestamp());
+        assertEquals(device, rowRecord.getFields().get(0).getBinaryV().toString());
+        assertEquals(time + 1, rowRecord.getFields().get(1).getLongV());
+        assertEquals(time + 2, rowRecord.getFields().get(2).getLongV());
+        assertEquals("null", rowRecord.getFields().get(3).getStringValue());
         dataSet.next();
       }
 
@@ -152,15 +149,17 @@ public class IoTDBSessionVectorABDeviceIT {
     }
   }
 
+  // TODO: remove ignore after implementing aggregation
+  @Ignore
   @Test
   public void vectorAggregationAlignByDeviceTest() {
     try {
       SessionDataSet dataSet =
-          session.executeQueryStatement("select count(vector1.*) from root.sg1.d1 align by device");
+          session.executeQueryStatement("select count(*) from root.sg1.d1 align by device");
       assertEquals(3, dataSet.getColumnNames().size());
       assertEquals("Device", dataSet.getColumnNames().get(0));
-      assertEquals("count(vector1.s1)", dataSet.getColumnNames().get(1));
-      assertEquals("count(vector1.s2)", dataSet.getColumnNames().get(2));
+      assertEquals("count(s1)", dataSet.getColumnNames().get(1));
+      assertEquals("count(s2)", dataSet.getColumnNames().get(2));
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         assertEquals("root.sg1.d1", rowRecord.getFields().get(0).getBinaryV().toString());
@@ -186,11 +185,13 @@ public class IoTDBSessionVectorABDeviceIT {
     dataTypes.add(TSDataType.INT64);
     dataTypes.add(TSDataType.INT64);
     List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressors = new ArrayList<>();
     for (int i = 1; i <= 2; i++) {
       encodings.add(TSEncoding.RLE);
+      compressors.add(CompressionType.SNAPPY);
     }
     session.createAlignedTimeseries(
-        ROOT_SG1_D1_VECTOR1, measurements, dataTypes, encodings, CompressionType.SNAPPY, null);
+        ROOT_SG1_D1, measurements, dataTypes, encodings, compressors, null);
   }
 
   private static void prepareAlignedTimeSeriesData()
@@ -206,7 +207,7 @@ public class IoTDBSessionVectorABDeviceIT {
       List<Object> values = new ArrayList<>();
       values.add(time + 1);
       values.add(time + 2);
-      session.insertAlignedRecord(ROOT_SG1_D1_VECTOR1, time, measurements, types, values);
+      session.insertAlignedRecord(ROOT_SG1_D1, time, measurements, types, values);
     }
   }
 
@@ -214,9 +215,9 @@ public class IoTDBSessionVectorABDeviceIT {
       throws IoTDBConnectionException, StatementExecutionException {
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
     measurements.add("s3");
-    measurements.add("s4");
-    measurements.add("s5");
     types.add(TSDataType.INT64);
     types.add(TSDataType.INT64);
     types.add(TSDataType.INT64);
@@ -226,7 +227,7 @@ public class IoTDBSessionVectorABDeviceIT {
       values.add(time + 3L);
       values.add(time + 4L);
       values.add(time + 5L);
-      session.insertRecord(ROOT_SG1_D1, time, measurements, types, values);
+      session.insertRecord(ROOT_SG1_D2, time, measurements, types, values);
     }
   }
 }

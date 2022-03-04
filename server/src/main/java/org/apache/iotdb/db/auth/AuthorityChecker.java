@@ -23,7 +23,7 @@ import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 
 import org.slf4j.Logger;
@@ -49,7 +49,10 @@ public class AuthorityChecker {
    * @throws AuthException Authentication Exception
    */
   public static boolean check(
-      String username, List<PartialPath> paths, Operator.OperatorType type, String targetUser)
+      String username,
+      List<? extends PartialPath> paths,
+      Operator.OperatorType type,
+      String targetUser)
       throws AuthException {
     if (SUPER_USER.equals(username)) {
       return true;

@@ -75,7 +75,7 @@ public class PullSnapshotTaskDescriptor {
       dataOutputStream.writeInt(slot);
     }
 
-    dataOutputStream.writeInt(previousHolders.getId());
+    dataOutputStream.writeInt(previousHolders.getRaftId());
     dataOutputStream.writeInt(previousHolders.size());
     for (Node previousHolder : previousHolders) {
       NodeSerializeUtils.serialize(previousHolder, dataOutputStream);

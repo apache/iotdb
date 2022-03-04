@@ -53,4 +53,4 @@ jobs:
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
-        run: mvn -B clean post-integration-test -Dtest.port.closed=true -P '!testcontainer,!influxdb-protocol'
+        run: mvn -B clean verify -Dtest.port.closed=true -P '!testcontainer,!influxdb-protocol'

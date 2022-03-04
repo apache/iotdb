@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -134,21 +135,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "enable_monitor_series_write", Boolean.toString(conf.isEnableStatMonitor()))));
 
-      conf.setEnableMetricService(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_metric_service", Boolean.toString(conf.isEnableMetricService()))));
-
-      conf.setMetricsPort(
-          Integer.parseInt(
-              properties.getProperty("metrics_port", Integer.toString(conf.getMetricsPort()))));
-
-      conf.setQueryCacheSizeInMetric(
-          Integer.parseInt(
-              properties.getProperty(
-                  "query_cache_size_in_metric",
-                  Integer.toString(conf.getQueryCacheSizeInMetric()))));
-
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
       replaceHostnameWithIP();
 
@@ -167,6 +153,17 @@ public class IoTDBDescriptor {
       conf.setRpcPort(
           Integer.parseInt(
               properties.getProperty("rpc_port", Integer.toString(conf.getRpcPort()))));
+
+      conf.setEnableInfluxDBRpcService(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_influxdb_rpc_service",
+                  Boolean.toString(conf.isEnableInfluxDBRpcService()))));
+
+      conf.setInfluxDBRpcPort(
+          Integer.parseInt(
+              properties.getProperty(
+                  "influxdb_rpc_port", Integer.toString(conf.getInfluxDBRpcPort()))));
 
       conf.setTimestampPrecision(
           properties.getProperty("timestamp_precision", conf.getTimestampPrecision()));
@@ -376,7 +373,7 @@ public class IoTDBDescriptor {
       conf.setMaxOpenFileNumInCrossSpaceCompaction(
           Integer.parseInt(
               properties.getProperty(
-                  "max_open_file_num_in_each_unseq_compaction",
+                  "max_open_file_num_in_cross_space_compaction",
                   Integer.toString(conf.getMaxOpenFileNumInCrossSpaceCompaction()))));
 
       conf.setQueryTimeoutThreshold(
@@ -447,6 +444,22 @@ public class IoTDBDescriptor {
       if (conf.getConcurrentQueryThread() <= 0) {
         conf.setConcurrentQueryThread(Runtime.getRuntime().availableProcessors());
       }
+
+      conf.setConcurrentSubRawQueryThread(
+          Integer.parseInt(
+              properties.getProperty(
+                  "concurrent_sub_rawQuery_thread",
+                  Integer.toString(conf.getConcurrentSubRawQueryThread()))));
+
+      if (conf.getConcurrentSubRawQueryThread() <= 0) {
+        conf.setConcurrentSubRawQueryThread(Runtime.getRuntime().availableProcessors());
+      }
+
+      conf.setRawQueryBlockingQueueCapacity(
+          Integer.parseInt(
+              properties.getProperty(
+                  "raw_query_blocking_queue_capacity",
+                  Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
 
       conf.setmManagerCacheSize(
           Integer.parseInt(
@@ -556,21 +569,6 @@ public class IoTDBDescriptor {
               properties
                   .getProperty(
                       "enable_performance_stat", Boolean.toString(conf.isEnablePerformanceStat()))
-                  .trim()));
-
-      conf.setPerformanceStatDisplayInterval(
-          Long.parseLong(
-              properties
-                  .getProperty(
-                      "performance_stat_display_interval",
-                      Long.toString(conf.getPerformanceStatDisplayInterval()))
-                  .trim()));
-      conf.setPerformanceStatMemoryInKB(
-          Integer.parseInt(
-              properties
-                  .getProperty(
-                      "performance_stat_memory_in_kb",
-                      Integer.toString(conf.getPerformanceStatMemoryInKB()))
                   .trim()));
 
       int maxConcurrentClientNum =
@@ -707,6 +705,20 @@ public class IoTDBDescriptor {
         conf.setMaxPendingWindowEvaluationTasks(64);
       }
 
+      // id table related configuration
+      conf.setDeviceIDTransformationMethod(
+          properties.getProperty(
+              "device_id_transformation_method", conf.getDeviceIDTransformationMethod()));
+
+      conf.setEnableIDTable(
+          Boolean.parseBoolean(
+              properties.getProperty("enable_id_table", String.valueOf(conf.isEnableIDTable()))));
+
+      conf.setEnableIDTableLogFile(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_id_table_log_file", String.valueOf(conf.isEnableIDTableLogFile()))));
+
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
         conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
@@ -755,6 +767,12 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "select_into_insert_tablet_plan_row_limit",
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
+
+      conf.setInsertMultiTabletEnableMultithreadingColumnThreshold(
+          Integer.parseInt(
+              properties.getProperty(
+                  "insert_multi_tablet_enable_multithreading_column_threshold",
+                  String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
@@ -816,6 +834,9 @@ public class IoTDBDescriptor {
 
       // set tsfile-format config
       loadTsFileProps(properties);
+
+      // make RPCTransportFactory taking effect.
+      RpcTransportFactory.reInit();
 
       // UDF
       loadUDFProps(properties);
@@ -1262,12 +1283,14 @@ public class IoTDBDescriptor {
       long maxMemoryAvailable = conf.getAllocateMemoryForRead();
       if (proportionSum != 0) {
         try {
-          conf.setAllocateMemoryForChunkCache(
+          conf.setAllocateMemoryForBloomFilterCache(
               maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-          conf.setAllocateMemoryForTimeSeriesMetaDataCache(
+          conf.setAllocateMemoryForChunkCache(
               maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
-          conf.setAllocateMemoryForReadWithoutCache(
+          conf.setAllocateMemoryForTimeSeriesMetaDataCache(
               maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+          conf.setAllocateMemoryForReadWithoutCache(
+              maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
         } catch (Exception e) {
           throw new RuntimeException(
               "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
@@ -1275,10 +1298,13 @@ public class IoTDBDescriptor {
                   + queryMemoryAllocateProportion);
         }
       }
-
-      conf.setMaxQueryDeduplicatedPathNum(
-          Integer.parseInt(properties.getProperty("max_deduplicated_path_num")));
     }
+
+    conf.setMaxQueryDeduplicatedPathNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_deduplicated_path_num",
+                Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero
@@ -1297,6 +1323,11 @@ public class IoTDBDescriptor {
       conf.setUdfMemoryBudgetInMB(
           (float)
               Math.min(Float.parseFloat(memoryBudgetInMb), 0.2 * conf.getAllocateMemoryForRead()));
+    }
+
+    String groupByFillCacheSizeInMB = properties.getProperty("group_by_fill_cache_size_in_mb");
+    if (groupByFillCacheSizeInMB != null) {
+      conf.setGroupByFillCacheSizeInMB(Float.parseFloat(groupByFillCacheSizeInMB));
     }
 
     String readerTransformerCollectorMemoryProportion =

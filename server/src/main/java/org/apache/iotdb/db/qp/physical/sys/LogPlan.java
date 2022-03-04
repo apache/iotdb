@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.IOUtils;
 
@@ -34,17 +34,13 @@ public class LogPlan extends PhysicalPlan {
 
   private ByteBuffer log;
 
-  public LogPlan() {
-    super(false);
-  }
+  public LogPlan() {}
 
   public LogPlan(ByteBuffer log) {
-    super(false);
     this.log = log;
   }
 
   public LogPlan(LogPlan plan) {
-    super(false);
     this.log = IOUtils.clone(plan.log);
   }
 

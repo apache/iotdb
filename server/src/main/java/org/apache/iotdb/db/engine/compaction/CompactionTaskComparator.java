@@ -104,6 +104,6 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
     }
     // we prefer the task with more unsequence files
     // because this type of tasks reduce more unsequence files
-    return o1.getSelectedUnsequenceFiles().size() - o2.getSelectedUnsequenceFiles().size();
+    return o2.getSelectedUnsequenceFiles().size() - o1.getSelectedUnsequenceFiles().size();
   }
 }

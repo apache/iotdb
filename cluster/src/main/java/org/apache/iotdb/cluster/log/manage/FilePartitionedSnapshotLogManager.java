@@ -33,7 +33,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
@@ -53,6 +53,8 @@ import java.util.Map.Entry;
  * Different from PartitionedSnapshotLogManager, FilePartitionedSnapshotLogManager does not store
  * the committed in memory after snapshots, it considers the logs are contained in the TsFiles so it
  * will record every TsFiles in the slot instead.
+ *
+ * <p>FilePartitionedSnapshotLogManager is used for dataGroup
  */
 public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogManager<FileSnapshot> {
 

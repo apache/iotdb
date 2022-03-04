@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
-import org.apache.iotdb.cluster.expr.ExprMember;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
@@ -32,7 +31,9 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SerializeUtils;
 
@@ -55,12 +56,14 @@ public class MetaSimpleSnapshot extends Snapshot {
   private Map<PartialPath, Long> storageGroupTTLMap;
   private Map<String, User> userMap;
   private Map<String, Role> roleMap;
+  private Map<String, Template> templateMap;
   private ByteBuffer partitionTableBuffer;
 
   public MetaSimpleSnapshot() {
     storageGroupTTLMap = Collections.emptyMap();
     userMap = Collections.emptyMap();
     roleMap = Collections.emptyMap();
+    templateMap = Collections.emptyMap();
     partitionTableBuffer = null;
   }
 
@@ -68,10 +71,12 @@ public class MetaSimpleSnapshot extends Snapshot {
       Map<PartialPath, Long> storageGroupTTLMap,
       Map<String, User> userMap,
       Map<String, Role> roleMap,
+      Map<String, Template> templateMap,
       ByteBuffer partitionTableBuffer) {
     this.storageGroupTTLMap = storageGroupTTLMap;
     this.userMap = userMap;
     this.roleMap = roleMap;
+    this.templateMap = templateMap;
     this.partitionTableBuffer = partitionTableBuffer;
   }
 
@@ -85,6 +90,10 @@ public class MetaSimpleSnapshot extends Snapshot {
 
   public Map<String, Role> getRoleMap() {
     return roleMap;
+  }
+
+  public Map<String, Template> getTemplateMap() {
+    return templateMap;
   }
 
   public ByteBuffer getPartitionTableBuffer() {
@@ -105,14 +114,21 @@ public class MetaSimpleSnapshot extends Snapshot {
       dataOutputStream.writeInt(userMap.size());
       for (Map.Entry<String, User> entry : userMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
-        logger.info("A user into snapshot: {}", entry.getValue());
+        logger.debug("A user into snapshot: {}", entry.getValue());
         dataOutputStream.write(entry.getValue().serialize().array());
       }
 
       dataOutputStream.writeInt(roleMap.size());
       for (Map.Entry<String, Role> entry : roleMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
-        logger.info("A role into snapshot: {}", entry.getValue());
+        logger.debug("A role into snapshot: {}", entry.getValue());
+        dataOutputStream.write(entry.getValue().serialize().array());
+      }
+
+      dataOutputStream.writeInt(templateMap.size());
+      for (Map.Entry<String, Template> entry : templateMap.entrySet()) {
+        SerializeUtils.serialize(entry.getKey(), dataOutputStream);
+        logger.debug("A template into snapshot: {}", entry.getValue());
         dataOutputStream.write(entry.getValue().serialize().array());
       }
 
@@ -156,6 +172,15 @@ public class MetaSimpleSnapshot extends Snapshot {
       Role role = new Role();
       role.deserialize(buffer);
       roleMap.put(userName, role);
+    }
+
+    int templateSize = buffer.getInt();
+    templateMap = new HashMap<>(templateSize);
+    for (int i = 0; i < templateSize; i++) {
+      String templateName = SerializeUtils.deserializeString(buffer);
+      Template template = new Template();
+      template.deserialize(buffer);
+      templateMap.put(templateName, template);
     }
 
     setLastLogIndex(buffer.getLong());
@@ -231,15 +256,15 @@ public class MetaSimpleSnapshot extends Snapshot {
           logger.error(
               "{}: Cannot get authorizer instance, error is: ", metaGroupMember.getName(), e);
         }
+        // 4. accept template map
+        TemplateManager.getInstance().setTemplateMap(snapshot.templateMap);
 
-        // 4. accept partition table
-        metaGroupMember.acceptPartitionTable(snapshot.getPartitionTableBuffer(), true);
+        // 5. accept partition table
+        metaGroupMember.acceptVerifiedPartitionTable(snapshot.getPartitionTableBuffer(), true);
 
         synchronized (metaGroupMember.getLogManager()) {
           metaGroupMember.getLogManager().applySnapshot(snapshot);
-          if (metaGroupMember instanceof ExprMember) {
-            ((ExprMember) metaGroupMember).resetWindow(snapshot.lastLogIndex, snapshot.lastLogTerm);
-          }
+          metaGroupMember.getLogAppender().reset();
         }
       }
     }
@@ -273,12 +298,13 @@ public class MetaSimpleSnapshot extends Snapshot {
     return Objects.equals(storageGroupTTLMap, that.storageGroupTTLMap)
         && Objects.equals(userMap, that.userMap)
         && Objects.equals(roleMap, that.roleMap)
+        && Objects.equals(templateMap, that.templateMap)
         && Objects.equals(partitionTableBuffer, that.partitionTableBuffer);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroupTTLMap, userMap, roleMap, partitionTableBuffer);
+    return Objects.hash(storageGroupTTLMap, userMap, roleMap, templateMap, partitionTableBuffer);
   }
 
   public static class Factory implements SnapshotFactory<MetaSimpleSnapshot> {
@@ -298,6 +324,7 @@ public class MetaSimpleSnapshot extends Snapshot {
       metaSimpleSnapshot.partitionTableBuffer = origin.partitionTableBuffer.duplicate();
       metaSimpleSnapshot.roleMap = new HashMap<>(origin.roleMap);
       metaSimpleSnapshot.userMap = new HashMap<>(origin.userMap);
+      metaSimpleSnapshot.templateMap = new HashMap<>(origin.templateMap);
       metaSimpleSnapshot.storageGroupTTLMap = new HashMap<>(origin.storageGroupTTLMap);
       return metaSimpleSnapshot;
     }

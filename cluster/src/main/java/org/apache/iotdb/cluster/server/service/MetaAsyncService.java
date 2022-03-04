@@ -25,9 +25,11 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
+import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
@@ -45,9 +47,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class MetaAsyncService extends BaseAsyncService implements TSMetaService.AsyncIface {
 
+  private static final String ERROR_MSG_META_NOT_READY = "The metadata not is not ready.";
   private static final Logger logger = LoggerFactory.getLogger(MetaAsyncService.class);
 
   private MetaGroupMember metaGroupMember;
@@ -58,11 +62,19 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
   }
 
   @Override
-  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
-    if (metaGroupMember.getPartitionTable() == null) {
+  public void appendEntry(
+      AppendEntryRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
+    // if the metaGroupMember is not ready (e.g., as a follower the PartitionTable is loaded
+    // locally, but the partition table is not verified), we do not handle the RPC requests.
+    if (!metaGroupMember.isReady() && metaGroupMember.getPartitionTable() == null) {
+      // the only special case is that the leader will send an empty entry for letting followers
+      // submit previous log
+      // at this time, the partitionTable has been loaded but is not verified. So the PRC is not
+      // ready.
       // this node lacks information of the cluster and refuse to work
       logger.debug("This node is blind to the cluster and cannot accept logs");
-      resultHandler.onComplete(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE);
+      resultHandler.onComplete(
+          new AppendEntryResult().setStatus(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE));
       return;
     }
 
@@ -72,6 +84,11 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
   @Override
   public void addNode(
       Node node, StartUpStatus startUpStatus, AsyncMethodCallback<AddNodeResponse> resultHandler) {
+    if (!metaGroupMember.isReady()) {
+      logger.debug(ERROR_MSG_META_NOT_READY);
+      resultHandler.onError(new TException(ERROR_MSG_META_NOT_READY));
+      return;
+    }
     AddNodeResponse addNodeResponse = null;
     try {
       addNodeResponse = metaGroupMember.addNode(node, startUpStatus);
@@ -160,6 +177,11 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
 
   @Override
   public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) {
+    if (!metaGroupMember.isReady()) {
+      logger.debug(ERROR_MSG_META_NOT_READY);
+      resultHandler.onError(new TException(ERROR_MSG_META_NOT_READY));
+      return;
+    }
     long result;
     try {
       result = metaGroupMember.removeNode(node);
@@ -234,6 +256,25 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
   @Override
   public void handshake(Node sender, AsyncMethodCallback<Void> resultHandler) {
     metaGroupMember.handleHandshake(sender);
+    resultHandler.onComplete(null);
+  }
+
+  @Override
+  public void appendEntryIndirect(
+      AppendEntryRequest request,
+      List<Node> subReceivers,
+      AsyncMethodCallback<AppendEntryResult> resultHandler) {
+    try {
+      resultHandler.onComplete(metaGroupMember.appendEntryIndirect(request, subReceivers));
+    } catch (UnknownLogTypeException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void acknowledgeAppendEntry(
+      AppendEntryResult ack, AsyncMethodCallback<Void> resultHandler) {
+    metaGroupMember.acknowledgeAppendLog(ack);
     resultHandler.onComplete(null);
   }
 }

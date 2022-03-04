@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -36,11 +36,11 @@ public class CreateFunctionPlan extends PhysicalPlan {
   private String className;
 
   public CreateFunctionPlan() {
-    super(false, OperatorType.CREATE_FUNCTION);
+    super(OperatorType.CREATE_FUNCTION);
   }
 
   public CreateFunctionPlan(String udfName, String className) {
-    super(false, OperatorType.CREATE_FUNCTION);
+    super(OperatorType.CREATE_FUNCTION);
     this.udfName = udfName;
     this.className = className;
   }

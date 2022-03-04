@@ -101,6 +101,7 @@ Here is a list of Status Code and related message:
 |705|CONSISTENCY_FAILURE|Consistency check failure|
 |706|NO_CONNECTION|Can not get connection error|
 |707|NEED_REDIRECTION|Need direction|
+|800|CONFIG_ERROR|Configuration error|
 
 > All exceptions are refactored in latest version by extracting uniform message into exception classes. Different error codes are added to all exceptions. When an exception is caught and a higher-level exception is thrown, the error code will keep and pass so that users will know the detailed error reason.
 A base exception class "ProcessException" is also added to be extended by all exceptions.

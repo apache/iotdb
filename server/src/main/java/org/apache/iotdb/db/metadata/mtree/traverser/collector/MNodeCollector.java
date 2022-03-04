@@ -20,8 +20,8 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 // This class defines any node in MTree as potential target node.
 public abstract class MNodeCollector<T> extends CollectorTraverser<T> {

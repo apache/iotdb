@@ -22,6 +22,8 @@ public enum ThreadName {
   METRICS_SERVICE("Metrics-ServerServiceImpl"),
   RPC_SERVICE("RPC"),
   RPC_CLIENT("RPC-Client"),
+  INFLUXDB_SERVICE("Influxdb-Service"),
+  INFLUXDB_CLIENT("Influxdb-Client"),
   MERGE_SERVICE("Merge"),
   CLOSE_MERGE_SERVICE("Close-Merge"),
   CLOSE_MERGE_DAEMON("Close-Merge-Daemon"),
@@ -44,9 +46,22 @@ public enum ThreadName {
   LOAD_TSFILE("Load-TsFile"),
   TIME_COST_STATISTIC("TIME_COST_STATISTIC"),
   QUERY_SERVICE("Query"),
+  SUB_RAW_QUERY_SERVICE("Sub_RawQuery"),
+  INSERTION_SERVICE("MultithreadingInsertionPool"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   CONTINUOUS_QUERY_SERVICE("ContinuousQueryTaskPoolManager"),
-  CLUSTER_INFO_SERVICE("ClusterInfoClient");
+  CLUSTER_INFO_SERVICE("ClusterInfoClient"),
+  CLUSTER_RPC_SERVICE("ClusterRPC"),
+  CLUSTER_RPC_CLIENT("Cluster-RPC-Client"),
+  CLUSTER_META_RPC_SERVICE("ClusterMetaRPC"),
+  CLUSTER_META_RPC_CLIENT("ClusterMetaRPC-Client"),
+  CLUSTER_META_HEARTBEAT_RPC_SERVICE("ClusterMetaHeartbeatRPC"),
+  CLUSTER_META_HEARTBEAT_RPC_CLIENT("ClusterMetaHeartbeatRPC-Client"),
+  CLUSTER_DATA_RPC_SERVICE("ClusterDataRPC"),
+  CLUSTER_DATA_RPC_CLIENT("ClusterDataRPC-Client"),
+  CLUSTER_DATA_HEARTBEAT_RPC_SERVICE("ClusterDataHeartbeatRPC"),
+  CLUSTER_DATA_HEARTBEAT_RPC_CLIENT("ClusterDataHeartbeatRPC-Client"),
+  ;
 
   private final String name;
 

@@ -72,45 +72,45 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column < 1 || column > columnInfoList.size()) {
       throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
     }
-    if (operationType.equals("SHOW")) {
-      if (listColumns.get(0).equals("count")) {
+    if ("SHOW".equals(operationType)) {
+      if ("count".equals(listColumns.get(0))) {
         return system_database;
-      } else if (listColumns.get(0).equals("storage group")
+      } else if ("storage group".equals(listColumns.get(0))
           && listColumns.size() > 1
-          && listColumns.get(1).equals("ttl")) {
+          && "ttl".equals(listColumns.get(1))) {
         return "";
-      } else if (listColumns.get(0).trim().equals("version") && listColumns.size() == 1) {
+      } else if ("version".equals(listColumns.get(0).trim()) && listColumns.size() == 1) {
         return system;
-      } else if (listColumns.get(0).equals("storage group")
-          || listColumns.get(0).equals("devices")
-          || listColumns.get(0).equals("child paths")
-          || listColumns.get(0).equals("child nodes")
-          || listColumns.get(0).equals("timeseries")) {
+      } else if ("storage group".equals(listColumns.get(0))
+          || "devices".equals(listColumns.get(0))
+          || "child paths".equals(listColumns.get(0))
+          || "child nodes".equals(listColumns.get(0))
+          || "timeseries".equals(listColumns.get(0))) {
         return system_schmea;
       }
-    } else if (operationType.equals("LIST_USER")) {
+    } else if ("LIST_USER".equals(operationType)) {
       return system_user;
-    } else if (operationType.equals("LIST_ROLE")) {
+    } else if ("LIST_ROLE".equals(operationType)) {
       return system_role;
-    } else if (operationType.equals("LIST_USER_PRIVILEGE")) {
+    } else if ("LIST_USER_PRIVILEGE".equals(operationType)) {
       return system_auths;
-    } else if (operationType.equals("LIST_ROLE_PRIVILEGE")) {
+    } else if ("LIST_ROLE_PRIVILEGE".equals(operationType)) {
       return system_auths;
-    } else if (operationType.equals("LIST_USER_ROLES")) {
+    } else if ("LIST_USER_ROLES".equals(operationType)) {
       return system_role;
-    } else if (operationType.equals("LIST_ROLE_USERS")) {
+    } else if ("LIST_ROLE_USERS".equals(operationType)) {
       return system_user;
-    } else if (operationType.equals("QUERY")) {
-      if ((columnName.toLowerCase().equals("time") && columnInfoList.size() != 2)
-          || columnName.toLowerCase().equals("timeseries")
-          || columnName.toLowerCase().equals("device")) {
+    } else if ("QUERY".equals(operationType)) {
+      if (("time".equals(columnName.toLowerCase()) && columnInfoList.size() != 2)
+          || "timeseries".equals(columnName.toLowerCase())
+          || "device".equals(columnName.toLowerCase())) {
         return system_null;
       } else if (columnInfoList.size() >= 2
-          && columnInfoList.get(0).toLowerCase().equals("time")
-          && columnInfoList.get(1).toLowerCase().equals("device")) {
+          && "time".equals(columnInfoList.get(0).toLowerCase())
+          && "device".equals(columnInfoList.get(1).toLowerCase())) {
         return system_null;
       }
-    } else if (!operationType.equals("FILL")) {
+    } else if (!"FILL".equals(operationType)) {
       return system_null;
     }
     if (nonAlign) {
@@ -216,12 +216,12 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
       columnType = columnTypeList.get(column - 1);
     }
     String typeString = columnType.toUpperCase();
-    if (typeString.equals("BOOLEAN")
-        || typeString.equals("INT32")
-        || typeString.equals("INT64")
-        || typeString.equals("FLOAT")
-        || typeString.equals("DOUBLE")
-        || typeString.equals("TEXT")) {
+    if ("BOOLEAN".equals(typeString)
+        || "INT32".equals(typeString)
+        || "INT64".equals(typeString)
+        || "FLOAT".equals(typeString)
+        || "DOUBLE".equals(typeString)
+        || "TEXT".equals(typeString)) {
       return typeString;
     }
     return null;

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -36,7 +36,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.Assert;
@@ -143,11 +142,11 @@ public class SeriesReaderTestUtil {
       Assert.assertTrue(file.getParentFile().mkdirs());
     }
     TsFileWriter fileWriter = new TsFileWriter(file);
-    Map<String, IMeasurementSchema> template = new HashMap<>();
+    Map<String, UnaryMeasurementSchema> template = new HashMap<>();
     for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
       template.put(measurementSchema.getMeasurementId(), measurementSchema);
     }
-    fileWriter.registerSchemaTemplate("template0", template);
+    fileWriter.registerSchemaTemplate("template0", template, false);
     for (String deviceId : deviceIds) {
       fileWriter.registerDevice(deviceId, "template0");
     }
@@ -206,6 +205,5 @@ public class SeriesReaderTestUtil {
     }
 
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
-    FileReaderManager.getInstance().stop();
   }
 }

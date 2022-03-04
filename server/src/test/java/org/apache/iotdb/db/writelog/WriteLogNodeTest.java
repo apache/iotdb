@@ -21,7 +21,7 @@ package org.apache.iotdb.db.writelog;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -43,6 +43,8 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
@@ -298,6 +300,7 @@ public class WriteLogNodeTest {
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice.oversize");
     logNode.initBuffer(byteBuffers);
 
+    int neededSize = 0;
     InsertRowPlan bwInsertPlan =
         new InsertRowPlan(
             new PartialPath("root.logTestDevice.oversize"),
@@ -313,6 +316,11 @@ public class WriteLogNodeTest {
       logNode.write(bwInsertPlan);
     } catch (IOException e) {
       caught = true;
+      Pattern r = Pattern.compile("\\d+");
+      Matcher m = r.matcher(e.getMessage());
+      if (m.find()) {
+        neededSize = Integer.valueOf(m.group());
+      }
     }
     assertTrue(caught);
 
@@ -341,6 +349,99 @@ public class WriteLogNodeTest {
       caught = true;
     }
     assertFalse(caught);
+
+    ByteBuffer[] array = logNode.delete();
+    for (ByteBuffer byteBuffer : array) {
+      MmapUtil.clean((MappedByteBuffer) byteBuffer);
+    }
+
+    // try to set wal_buffer_size according to error message
+    IoTDBDescriptor.getInstance().getConfig().setWalBufferSize(neededSize);
+    WriteLogNode logNode2 = new ExclusiveWriteLogNode("root.logTestDevice.oversize");
+    logNode2.initBuffer(byteBuffers);
+    ByteBuffer[] byteBuffers2 = new ByteBuffer[2];
+    byteBuffers2[0] =
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    byteBuffers2[1] =
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    logNode2.initBuffer(byteBuffers2);
+    caught = false;
+    try {
+      logNode2.write(bwInsertPlan);
+    } catch (IOException e) {
+      caught = true;
+    }
+    assertFalse(caught);
+    array = logNode2.delete();
+    for (ByteBuffer byteBuffer : array) {
+      MmapUtil.clean((MappedByteBuffer) byteBuffer);
+    }
+
+    // try to set wal_buffer_size less than error message
+    IoTDBDescriptor.getInstance().getConfig().setWalBufferSize(neededSize - 1);
+    WriteLogNode logNode3 = new ExclusiveWriteLogNode("root.logTestDevice.oversize");
+    logNode3.initBuffer(byteBuffers);
+    ByteBuffer[] byteBuffers3 = new ByteBuffer[2];
+    byteBuffers3[0] =
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    byteBuffers3[1] =
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    logNode3.initBuffer(byteBuffers3);
+    caught = false;
+    try {
+      logNode3.write(bwInsertPlan);
+    } catch (IOException e) {
+      caught = true;
+    }
+    assertTrue(caught);
+    array = logNode3.delete();
+    for (ByteBuffer byteBuffer : array) {
+      MmapUtil.clean((MappedByteBuffer) byteBuffer);
+    }
+  }
+
+  @Test
+  public void testBufferOverflowAndRewrite() throws IOException, IllegalPathException {
+    String identifier = "root.logTestDevice";
+
+    InsertRowPlan insertPlan =
+        new InsertRowPlan(
+            new PartialPath(identifier),
+            100,
+            new String[] {"s1", "s2", "s3", "s4"},
+            new TSDataType[] {
+              TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN
+            },
+            new String[] {"1.0", "15", "str", "false"});
+
+    // get InsertRowPlan byte size
+    ByteBuffer tmpBuffer =
+        ByteBuffer.allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    insertPlan.serialize(tmpBuffer);
+    int size = tmpBuffer.position();
+    // allocate buffers
+    ByteBuffer[] byteBuffers = new ByteBuffer[2];
+    byteBuffers[0] = ByteBuffer.allocateDirect(size + 1);
+    byteBuffers[1] = ByteBuffer.allocateDirect(size + 1);
+    WriteLogNode logNode = new ExclusiveWriteLogNode(identifier);
+    logNode.initBuffer(byteBuffers);
+    // write InsertRowPlan to WAL buffer
+    logNode.write(insertPlan);
+    insertPlan.setTime(200);
+    logNode.write(insertPlan);
+
+    logNode.close();
+
+    File walFile =
+        new File(config.getWalDir() + File.separator + identifier + File.separator + "wal1");
+    assertTrue(walFile.exists());
+
+    ILogReader reader = logNode.getLogReader();
+    insertPlan.setTime(100);
+    assertEquals(insertPlan, reader.next());
+    insertPlan.setTime(200);
+    assertEquals(insertPlan, reader.next());
+    reader.close();
 
     ByteBuffer[] array = logNode.delete();
     for (ByteBuffer byteBuffer : array) {

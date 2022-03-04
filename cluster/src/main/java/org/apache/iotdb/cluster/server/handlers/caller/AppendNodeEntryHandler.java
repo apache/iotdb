@@ -35,6 +35,8 @@ import java.net.ConnectException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_OUT_OF_WINDOW;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_STRONG_ACCEPT;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_WEAK_ACCEPT;
 
@@ -55,9 +57,6 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
   protected Node receiver;
   protected Peer peer;
   protected int quorumSize;
-  // initialized as the quorum size, and decrease by 1 each time when we receive a rejection or
-  // an exception, upon decreased to zero, the request will be early-aborted
-  private int failedDecreasingCounter;
 
   // nano start time when the send begins
   private long sendStart = Long.MIN_VALUE;
@@ -79,7 +78,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       return;
     }
     logger.debug(
-        "{}: Append response {} from {} for {}", member.getName(), response, receiver, log);
+        "{}: Append response {} from {} for log {}", member.getName(), response, receiver, log);
     if (leaderShipStale.get()) {
       // someone has rejected this log because the leadership is stale
       return;
@@ -100,11 +99,12 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       // the leader ship is stale, wait for the new leader's heartbeat
       long prevReceiverTerm = receiverTerm.get();
       logger.debug(
-          "{}: Received a rejection from {} because term is stale: {}/{}",
+          "{}: Received a rejection from {} because term is stale: {}/{}, log: {}",
           member.getName(),
           receiver,
           prevReceiverTerm,
-          resp);
+          resp,
+          log);
       if (resp > prevReceiverTerm) {
         receiverTerm.set(resp);
       }
@@ -113,7 +113,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
         log.getStronglyAcceptedNodeIds().notifyAll();
       }
     } else if (resp == RESPONSE_WEAK_ACCEPT) {
-      synchronized (log.getStronglyAcceptedNodeIds()) {
+      synchronized (log) {
         log.getWeaklyAcceptedNodeIds().add(receiver.nodeIdentifier);
         if (log.getWeaklyAcceptedNodeIds().size() + log.getStronglyAcceptedNodeIds().size()
             >= quorumSize) {
@@ -123,8 +123,14 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       }
     } else {
       // e.g., Response.RESPONSE_LOG_MISMATCH
-      logger.debug(
-          "{}: The log {} is rejected by {} because: {}", member.getName(), log, receiver, resp);
+      if (resp == RESPONSE_LOG_MISMATCH || resp == RESPONSE_OUT_OF_WINDOW) {
+        logger.debug(
+            "{}: The log {} is rejected by {} because: {}", member.getName(), log, receiver, resp);
+      } else {
+        logger.warn(
+            "{}: The log {} is rejected by {} because: {}", member.getName(), log, receiver, resp);
+      }
+
       onFail();
     }
     // rejected because the receiver's logs are stale or the receiver has no cluster info, just
@@ -147,9 +153,9 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
   }
 
   private void onFail() {
-    synchronized (log.getStronglyAcceptedNodeIds()) {
-      failedDecreasingCounter--;
-      if (failedDecreasingCounter <= 0) {
+    synchronized (log) {
+      log.getFailedNodeIds().add(receiver.nodeIdentifier);
+      if (log.getFailedNodeIds().size() > quorumSize) {
         // quorum members have failed, there is no need to wait for others
         log.getStronglyAcceptedNodeIds().add(Integer.MAX_VALUE);
         log.getStronglyAcceptedNodeIds().notifyAll();
@@ -181,13 +187,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
     this.receiverTerm = receiverTerm;
   }
 
-  public int getQuorumSize() {
-    return quorumSize;
-  }
-
   public void setQuorumSize(int quorumSize) {
     this.quorumSize = quorumSize;
-    this.failedDecreasingCounter =
-        ClusterDescriptor.getInstance().getConfig().getReplicationNum() - quorumSize;
   }
 }

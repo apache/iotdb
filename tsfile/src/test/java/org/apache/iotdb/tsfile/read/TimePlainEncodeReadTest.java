@@ -48,14 +48,14 @@ import static org.junit.Assert.assertFalse;
 public class TimePlainEncodeReadTest {
 
   private static final String fileName = FileGenerator.outputDataFile;
-  private static ReadOnlyTsFile roTsFile = null;
+  private static TsFileReader roTsFile = null;
 
   @Before
   public void prepare() throws IOException {
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("PLAIN");
     FileGenerator.generateFile();
     TsFileSequenceReader reader = new TsFileSequenceReader(fileName);
-    roTsFile = new ReadOnlyTsFile(reader);
+    roTsFile = new TsFileReader(reader);
   }
 
   @After

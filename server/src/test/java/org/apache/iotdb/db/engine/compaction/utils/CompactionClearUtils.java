@@ -54,6 +54,5 @@ public class CompactionClearUtils {
       modsFile.delete();
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
-    FileReaderManager.getInstance().stop();
   }
 }

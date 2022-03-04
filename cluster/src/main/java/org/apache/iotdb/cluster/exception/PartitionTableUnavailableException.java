@@ -21,8 +21,10 @@ package org.apache.iotdb.cluster.exception;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
+import org.apache.thrift.TException;
+
 /** Raised when a node receives requests before the its partition table is set up. */
-public class PartitionTableUnavailableException extends Exception {
+public class PartitionTableUnavailableException extends TException {
 
   public PartitionTableUnavailableException(Node node) {
     super(String.format("Partition table of %s is not ready, cannot serve", node));

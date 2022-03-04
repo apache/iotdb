@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.utils.StatusUtils;
@@ -99,7 +99,7 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
     }
     prefixPaths = new ArrayList<>(insertRowPlanList.size());
     for (InsertRowPlan insertRowPlan : insertRowPlanList) {
-      prefixPaths.add(insertRowPlan.getPrefixPath());
+      prefixPaths.add(insertRowPlan.getDevicePath());
     }
     return prefixPaths;
   }
@@ -168,7 +168,7 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.BATCH_INSERT_ROWS.ordinal();
     buffer.put((byte) type);
     buffer.putInt(insertRowPlanList.size());
@@ -218,6 +218,7 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
     }
   }
 
+  @Override
   public Map<Integer, TSStatus> getResults() {
     return results;
   }
@@ -240,7 +241,7 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
   }
 
   public PartialPath getFirstDeviceId() {
-    return insertRowPlanList.get(0).getPrefixPath();
+    return insertRowPlanList.get(0).getDevicePath();
   }
 
   @Override

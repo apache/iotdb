@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 
@@ -40,7 +41,7 @@ public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
     if (hasFinalResult()) {
       return;
     }
-    if (batchIterator.hasNext()
+    if (batchIterator.hasNext(minBound, maxBound)
         && batchIterator.currentTime() < maxBound
         && batchIterator.currentTime() >= minBound) {
       updateMaxTimeResult(batchIterator.currentTime());
@@ -70,15 +71,12 @@ public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
   }
 
   @Override
-  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+  public void updateResultUsingValues(long[] timestamps, int length, ValueIterator valueIterator) {
     if (hasFinalResult()) {
       return;
     }
-    for (int i = 0; i < length; i++) {
-      if (values[i] != null) {
-        updateMaxTimeResult(timestamps[i]);
-        return;
-      }
+    if (valueIterator.hasNext()) {
+      updateMaxTimeResult(timestamps[valueIterator.getCurPos()]);
     }
   }
 

@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.client.sync;
 
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.snapshot.SnapshotFactory;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
@@ -39,7 +40,6 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelPathHandler;
@@ -52,7 +52,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -100,7 +100,7 @@ public class SyncClientAdaptor {
     asyncMetaClient.removeNode(nodeToRemove, handler);
     synchronized (responseRef) {
       if (responseRef.get() == null) {
-        responseRef.wait(RaftServer.getConnectionTimeoutInMS());
+        responseRef.wait(ClusterConstant.getConnectionTimeoutInMS());
       }
     }
     return responseRef.get();
@@ -116,7 +116,7 @@ public class SyncClientAdaptor {
       client.matchTerm(prevLogIndex, prevLogTerm, header, matchTermHandler);
       synchronized (resultRef) {
         if (resultRef.get() == null) {
-          resultRef.wait(RaftServer.getConnectionTimeoutInMS());
+          resultRef.wait(ClusterConstant.getConnectionTimeoutInMS());
         }
       }
       return resultRef.get();
@@ -135,7 +135,7 @@ public class SyncClientAdaptor {
     client.querySingleSeriesByTimestamp(request, handler);
     synchronized (result) {
       if (result.get() == null && handler.getException() == null) {
-        result.wait(RaftServer.getReadOperationTimeoutMS());
+        result.wait(ClusterConstant.getReadOperationTimeoutMS());
       }
     }
     return result.get();
@@ -159,7 +159,7 @@ public class SyncClientAdaptor {
     client.querySingleSeries(request, handler);
     synchronized (result) {
       if (result.get() == null && handler.getException() == null) {
-        result.wait(RaftServer.getReadOperationTimeoutMS());
+        result.wait(ClusterConstant.getReadOperationTimeoutMS());
       }
     }
     return result.get();
@@ -176,7 +176,7 @@ public class SyncClientAdaptor {
     client.getNodeList(header, schemaPattern, level, handler);
     synchronized (response) {
       if (response.get() == null) {
-        response.wait(RaftServer.getReadOperationTimeoutMS());
+        response.wait(ClusterConstant.getReadOperationTimeoutMS());
       }
     }
     return response.get();
@@ -193,7 +193,7 @@ public class SyncClientAdaptor {
     client.getChildNodeInNextLevel(header, path, handler);
     synchronized (response) {
       if (response.get() == null) {
-        response.wait(RaftServer.getReadOperationTimeoutMS());
+        response.wait(ClusterConstant.getReadOperationTimeoutMS());
       }
     }
     return response.get();
@@ -209,7 +209,7 @@ public class SyncClientAdaptor {
     client.getChildNodePathInNextLevel(header, path, handler);
     synchronized (response) {
       if (response.get() == null) {
-        response.wait(RaftServer.getReadOperationTimeoutMS());
+        response.wait(ClusterConstant.getReadOperationTimeoutMS());
       }
     }
     return response.get();
@@ -230,7 +230,7 @@ public class SyncClientAdaptor {
         header, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()), handler);
     synchronized (response) {
       if (response.get() == null) {
-        response.wait(RaftServer.getReadOperationTimeoutMS());
+        response.wait(ClusterConstant.getReadOperationTimeoutMS());
       }
     }
     return response.get();
@@ -244,7 +244,7 @@ public class SyncClientAdaptor {
     client.queryNodeStatus(handler);
     synchronized (resultRef) {
       if (resultRef.get() == null) {
-        resultRef.wait(RaftServer.getReadOperationTimeoutMS());
+        resultRef.wait(ClusterConstant.getReadOperationTimeoutMS());
       }
     }
     if (handler.getException() != null) {
@@ -261,7 +261,7 @@ public class SyncClientAdaptor {
     client.checkStatus(startUpStatus, handler);
     synchronized (resultRef) {
       if (resultRef.get() == null) {
-        resultRef.wait(RaftServer.getReadOperationTimeoutMS());
+        resultRef.wait(ClusterConstant.getReadOperationTimeoutMS());
       }
     }
     if (handler.getException() != null) {
@@ -298,7 +298,7 @@ public class SyncClientAdaptor {
             client.getNode(), pullSchemaRequest.getPrefixPaths(), measurementSchemas));
     synchronized (measurementSchemas) {
       if (measurementSchemas.get() == null) {
-        measurementSchemas.wait(RaftServer.getReadOperationTimeoutMS());
+        measurementSchemas.wait(ClusterConstant.getReadOperationTimeoutMS());
       }
     }
     return measurementSchemas.get();
@@ -315,7 +315,7 @@ public class SyncClientAdaptor {
 
     synchronized (timeseriesSchemas) {
       if (timeseriesSchemas.get() == null) {
-        timeseriesSchemas.wait(RaftServer.getReadOperationTimeoutMS());
+        timeseriesSchemas.wait(ClusterConstant.getReadOperationTimeoutMS());
       }
     }
     return timeseriesSchemas.get();
@@ -330,7 +330,7 @@ public class SyncClientAdaptor {
     client.getAggrResult(request, handler);
     synchronized (resultReference) {
       if (resultReference.get() == null) {
-        resultReference.wait(RaftServer.getReadOperationTimeoutMS());
+        resultReference.wait(ClusterConstant.getReadOperationTimeoutMS());
       }
     }
     if (handler.getException() != null) {
@@ -346,7 +346,7 @@ public class SyncClientAdaptor {
     GenericHandler<List<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
 
     client.getUnregisteredTimeseries(header, seriesPaths, handler);
-    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
+    return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 
   public static GetAllPathsResult getAllPaths(
@@ -357,7 +357,7 @@ public class SyncClientAdaptor {
         new GenericHandler<>(client.getNode(), remoteResult);
 
     client.getAllPaths(header, pathsToQuery, withAlias, handler);
-    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
+    return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 
   public static Integer getPathCount(
@@ -367,7 +367,7 @@ public class SyncClientAdaptor {
     GenericHandler<Integer> handler = new GenericHandler<>(client.getNode(), remoteResult);
 
     client.getPathCount(header, pathsToQuery, level, handler);
-    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
+    return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 
   public static Integer getDeviceCount(
@@ -377,7 +377,7 @@ public class SyncClientAdaptor {
     GenericHandler<Integer> handler = new GenericHandler<>(client.getNode(), remoteResult);
 
     client.getDeviceCount(header, pathsToQuery, handler);
-    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
+    return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 
   public static Set<String> getAllDevices(
@@ -387,7 +387,7 @@ public class SyncClientAdaptor {
     GenericHandler<Set<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
 
     client.getAllDevices(header, pathsToQuery, handler);
-    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
+    return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 
   public static ByteBuffer getDevices(AsyncDataClient client, RaftNode header, ShowDevicesPlan plan)
@@ -403,7 +403,7 @@ public class SyncClientAdaptor {
     client.getDevices(header, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()), handler);
     synchronized (handler) {
       if (response.get() == null) {
-        response.wait(RaftServer.getReadOperationTimeoutMS());
+        response.wait(ClusterConstant.getReadOperationTimeoutMS());
       }
     }
     return response.get();
@@ -415,7 +415,7 @@ public class SyncClientAdaptor {
     GenericHandler<Long> handler = new GenericHandler<>(client.getNode(), result);
 
     client.getGroupByExecutor(request, handler);
-    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
+    return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 
   public static ByteBuffer previousFill(AsyncDataClient client, PreviousFillRequest request)
@@ -424,7 +424,7 @@ public class SyncClientAdaptor {
     GenericHandler<ByteBuffer> nodeHandler = new GenericHandler<>(client.getNode(), resultRef);
 
     client.previousFill(request, nodeHandler);
-    return nodeHandler.getResult(RaftServer.getReadOperationTimeoutMS());
+    return nodeHandler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 
   public static TSStatus executeNonQuery(
@@ -440,7 +440,7 @@ public class SyncClientAdaptor {
     client.executeNonQueryPlan(req, new ForwardPlanHandler(status, plan, receiver));
     synchronized (status) {
       if (status.get() == null) {
-        status.wait(RaftServer.getWriteOperationTimeoutMS());
+        status.wait(ClusterConstant.getWriteOperationTimeoutMS());
       }
     }
     return status.get();
@@ -453,7 +453,7 @@ public class SyncClientAdaptor {
     GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), result);
 
     client.readFile(remotePath, offset, fetchSize, handler);
-    return handler.getResult(RaftServer.getWriteOperationTimeoutMS());
+    return handler.getResult(ClusterConstant.getWriteOperationTimeoutMS());
   }
 
   public static List<ByteBuffer> getGroupByResult(
@@ -463,7 +463,7 @@ public class SyncClientAdaptor {
     GenericHandler<List<ByteBuffer>> handler = new GenericHandler<>(client.getNode(), fetchResult);
 
     client.getGroupByResult(header, executorId, curStartTime, curEndTime, handler);
-    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
+    return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 
   public static ByteBuffer peekNextNotNullValue(
@@ -473,7 +473,7 @@ public class SyncClientAdaptor {
     GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), fetchResult);
 
     client.peekNextNotNullValue(header, executorId, curStartTime, curEndTime, handler);
-    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
+    return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 
   public static <T extends Snapshot> Map<Integer, T> pullSnapshot(
@@ -488,7 +488,7 @@ public class SyncClientAdaptor {
         request, new PullSnapshotHandler<>(snapshotRef, client.getNode(), slots, factory));
     synchronized (snapshotRef) {
       if (snapshotRef.get() == null) {
-        snapshotRef.wait(RaftServer.getReadOperationTimeoutMS());
+        snapshotRef.wait(ClusterConstant.getReadOperationTimeoutMS());
       }
     }
     return snapshotRef.get();
@@ -498,6 +498,7 @@ public class SyncClientAdaptor {
       AsyncDataClient client,
       List<PartialPath> seriesPaths,
       List<Integer> dataTypeOrdinals,
+      Filter timeFilter,
       QueryContext context,
       Map<String, Set<String>> deviceMeasurements,
       RaftNode header)
@@ -512,9 +513,11 @@ public class SyncClientAdaptor {
             deviceMeasurements,
             header,
             client.getNode());
-
+    if (timeFilter != null) {
+      request.setFilterBytes(SerializeUtils.serializeFilter(timeFilter));
+    }
     client.last(request, handler);
-    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
+    return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 
   public static boolean onSnapshotApplied(
@@ -524,6 +527,6 @@ public class SyncClientAdaptor {
     GenericHandler<Boolean> handler = new GenericHandler<>(client.getNode(), result);
 
     client.onSnapshotApplied(header, slots, handler);
-    return handler.getResult(RaftServer.getWriteOperationTimeoutMS());
+    return handler.getResult(ClusterConstant.getWriteOperationTimeoutMS());
   }
 }

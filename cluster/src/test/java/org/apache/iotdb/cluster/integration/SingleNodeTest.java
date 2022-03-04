@@ -36,10 +36,7 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class SingleNodeTest extends BaseSingleNodeTest {
 
@@ -55,10 +52,10 @@ public class SingleNodeTest extends BaseSingleNodeTest {
   @Override
   @After
   public void tearDown() throws Exception {
-    super.tearDown();
     if (session != null) {
       session.close();
     }
+    super.tearDown();
   }
 
   @Test

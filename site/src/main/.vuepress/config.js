@@ -667,11 +667,10 @@ var config = {
 						sidebarDepth: 2,
 						children: [
 							['Data-Concept/Data-Model-and-Terminology','Data Model and Terminology'],
-							['Data-Concept/Measurement-Template','Measurement Template'],
+							['Data-Concept/Schema-Template','Schema Template'],
 							['Data-Concept/Data-Type','Data Type'],
 							['Data-Concept/Encoding','Encoding'],
 							['Data-Concept/Compression','Compression'],
-							['Data-Concept/SDT','SDT'],
 							['Data-Concept/Auto-Create-MetaData','Auto Create Metadata'],
 							['Data-Concept/Time-Partition','Time Partition']
 						]
@@ -714,11 +713,19 @@ var config = {
 						title: 'Advanced Features',
 						children: [
 							['Advanced-Features/UDF-User-Defined-Function','UDF (User Defined Function)'],
-              ['Advanced-Features/Select-Into','Query Write-back (SELECT INTO)'],
-              ['Advanced-Features/Continuous-Query','CQ (Continuous Query)'],
+							['Advanced-Features/Select-Into','Query Write-back (SELECT INTO)'],
+							['Advanced-Features/Continuous-Query','CQ (Continuous Query)'],
 							['Advanced-Features/Triggers','Triggers'],
 							['Advanced-Features/Alerting','Alerting'],
 						]
+					},
+					{
+					    title: 'UDF Library',
+					    children: [
+					        ['Library-UDF/Get-Started', 'Get Started'],
+					        ['Library-UDF/Data-Quality', 'Data Quality'],
+					        ['Library-UDF/Data-Repair', 'Data Repairing']
+					    ]
 					},
 					{
 						title: 'Communication Service Protocol',
@@ -737,8 +744,8 @@ var config = {
 							['System-Tools/JMX-Tool','JMX Tool'],
 							['System-Tools/MLogParser-Tool','MLogParser Tool'],
 							['System-Tools/NodeTool','Node Tool'],
-							['System-Tools/Query-History-Visualization-Tool','Query History Visualization Tool'],
-							['System-Tools/Watermark-Tool','Watermark Tool']
+							['System-Tools/Watermark-Tool','Watermark Tool'],
+							['System-Tools/Metric-Tool','Metric Tool']
 						]
 					},
 					{
@@ -750,7 +757,7 @@ var config = {
 					{
 						title: 'Ecosystem Integration',
 						children: [
-							['Ecosystem Integration/Grafana','Grafana'],
+							['Ecosystem Integration/Grafana Connector','Grafana Connector'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
 							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
@@ -1465,11 +1472,10 @@ var config = {
 						sidebarDepth: 2,
 						children: [
 							['Data-Concept/Data-Model-and-Terminology','数据模型'],
-							['Data-Concept/Measurement-Template','物理量模板'],
+							['Data-Concept/Schema-Template','元数据模板'],
 							['Data-Concept/Data-Type','数据类型'],
 							['Data-Concept/Encoding','编码方式'],
 							['Data-Concept/Compression','压缩方式'],
-							['Data-Concept/SDT','旋转门压缩'],
 							['Data-Concept/Auto-Create-MetaData','自动创建元数据'],
 							['Data-Concept/Time-Partition','时间分区']
 						]
@@ -1504,6 +1510,7 @@ var config = {
 							['API/Programming-Python-Native-API','Python 原生接口'],
 							['API/Programming-Cpp-Native-API','C++ 原生接口'],
 							['API/Programming-Go-Native-API','Go 原生接口'],
+							['Communication-Service-Protocol/RestService','HTTP API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/Time-zone','时区'],
 							['API/InfluxDB-Protocol','InfluxDB 协议适配器（开发中)']
@@ -1513,17 +1520,26 @@ var config = {
 						title: '高级功能',
 						children: [
 							['Advanced-Features/UDF-User-Defined-Function','用户定义函数(UDF)'],
-              ['Advanced-Features/Select-Into','查询写回(SELECT INTO)'],
-              ['Advanced-Features/Continuous-Query','连续查询(CQ)'],
+							['Advanced-Features/Select-Into','查询写回(SELECT INTO)'],
+							['Advanced-Features/Continuous-Query','连续查询(CQ)'],
 							['Advanced-Features/Triggers','触发器'],
 							['Advanced-Features/Alerting','告警机制'],
 						]
+					},
+					{
+          				title: 'UDF 函数库',
+          				children: [
+          					['Library-UDF/Get-Started', '快速上手'],
+          					['Library-UDF/Data-Quality', '数据质量'],
+          					['Library-UDF/Data-Repair', '数据修复']
+          				]
 					},
 					{
 						title: '通信服务协议',
 						children: [
 							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
 							['Communication-Service-Protocol/Programming-MQTT','MQTT'],
+							['Communication-Service-Protocol/RestService','REST'],
 						]
 					},
 					{
@@ -1536,8 +1552,8 @@ var config = {
 							['System-Tools/JMX-Tool','JMX 工具'],
 							['System-Tools/MLogParser-Tool','Mlog解析工具'],
 							['System-Tools/NodeTool','节点工具'],
-							['System-Tools/Query-History-Visualization-Tool','查询历史可视化工具'],
 							['System-Tools/Watermark-Tool','水印工具'],
+							['System-Tools/Metric-Tool','监控工具']
 						]
 					},
 					{
@@ -1549,7 +1565,8 @@ var config = {
 					{
 						title: '系统集成',
 						children: [
-							['Ecosystem Integration/Grafana','Grafana-IoTDB'],
+							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
+							['Ecosystem Integration/Grafana Connector','Grafana Connector（不推荐）'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
 							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],

@@ -26,7 +26,8 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -40,6 +41,7 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -51,6 +53,12 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class ClusterTimeGeneratorTest extends BaseQueryTest {
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+  }
 
   @Test
   public void test()
@@ -66,8 +74,8 @@ public class ClusterTimeGeneratorTest extends BaseQueryTest {
               new SingleSeriesExpression(
                   new PartialPath(TestUtils.getTestSeries(1, 1)), ValueFilter.ltEq(8.0)));
       dataQueryPlan.setExpression(expression);
-      dataQueryPlan.addDeduplicatedPaths(new PartialPath(TestUtils.getTestSeries(0, 0)));
-      dataQueryPlan.addDeduplicatedPaths(new PartialPath(TestUtils.getTestSeries(1, 1)));
+      dataQueryPlan.addDeduplicatedPaths(new MeasurementPath(TestUtils.getTestSeries(0, 0)));
+      dataQueryPlan.addDeduplicatedPaths(new MeasurementPath(TestUtils.getTestSeries(1, 1)));
 
       ClusterTimeGenerator timeGenerator =
           new ClusterTimeGenerator(context, testMetaMember, dataQueryPlan, false);
@@ -95,7 +103,7 @@ public class ClusterTimeGeneratorTest extends BaseQueryTest {
               new PartialPath(TestUtils.getTestSeries(0, 0)),
               new AndFilter(valueFilter, timeFilter));
       dataQueryPlan.setExpression(expression);
-      dataQueryPlan.addDeduplicatedPaths(new PartialPath(TestUtils.getTestSeries(0, 0)));
+      dataQueryPlan.addDeduplicatedPaths(new MeasurementPath(TestUtils.getTestSeries(0, 0)));
 
       // capture the time filter used to create a reader
       AtomicReference<Filter> timeFilterRef = new AtomicReference<>(null);

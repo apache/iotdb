@@ -20,15 +20,13 @@ package org.apache.iotdb.db.qp.strategy;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
 
@@ -54,11 +52,7 @@ public class PhysicalGenerator {
     }
   }
 
-  public List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
-    return SchemaUtils.getSeriesTypesByPaths(paths);
-  }
-
   public List<PartialPath> groupVectorPaths(List<PartialPath> paths) throws MetadataException {
-    return IoTDB.metaManager.groupVectorPaths(paths);
+    return MetaUtils.groupAlignedPaths(paths);
   }
 }

@@ -44,7 +44,6 @@ public class ClusterConfig {
   private List<String> seedNodeUrls;
 
   @ClusterConsistent private boolean isRpcThriftCompressionEnabled = false;
-  private int maxConcurrentClientNum = 10000;
 
   @ClusterConsistent private int replicationNum = 1;
 
@@ -185,6 +184,12 @@ public class ClusterConfig {
 
   private boolean useAsyncSequencing = true;
 
+  private boolean useFollowerSlidingWindow = true;
+
+  private boolean enableWeakAcceptance = true;
+
+  private int dispatcherBindingThreadNum = 16;
+
   private int relaySenderNum = 8;
 
   /**
@@ -244,14 +249,6 @@ public class ClusterConfig {
 
   void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
     isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
-  }
-
-  public int getMaxConcurrentClientNum() {
-    return maxConcurrentClientNum;
-  }
-
-  void setMaxConcurrentClientNum(int maxConcurrentClientNum) {
-    this.maxConcurrentClientNum = maxConcurrentClientNum;
   }
 
   public List<String> getSeedNodeUrls() {
@@ -560,6 +557,30 @@ public class ClusterConfig {
 
   public void setUseAsyncSequencing(boolean useAsyncSequencing) {
     this.useAsyncSequencing = useAsyncSequencing;
+  }
+
+  public boolean isUseFollowerSlidingWindow() {
+    return useFollowerSlidingWindow;
+  }
+
+  public void setUseFollowerSlidingWindow(boolean useFollowerSlidingWindow) {
+    this.useFollowerSlidingWindow = useFollowerSlidingWindow;
+  }
+
+  public boolean isEnableWeakAcceptance() {
+    return enableWeakAcceptance;
+  }
+
+  public void setEnableWeakAcceptance(boolean enableWeakAcceptance) {
+    this.enableWeakAcceptance = enableWeakAcceptance;
+  }
+
+  public int getDispatcherBindingThreadNum() {
+    return dispatcherBindingThreadNum;
+  }
+
+  public void setDispatcherBindingThreadNum(int dispatcherBindingThreadNum) {
+    this.dispatcherBindingThreadNum = dispatcherBindingThreadNum;
   }
 
   public int getRelaySenderNum() {

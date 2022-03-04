@@ -44,6 +44,11 @@ public abstract class UDFQueryTransformer extends Transformer {
   }
 
   @Override
+  public boolean isConstantPointReader() {
+    return udfOutput.isConstantPointReader();
+  }
+
+  @Override
   protected boolean cacheValue() throws QueryProcessException, IOException {
     while (!cacheValueFromUDFOutput()) {
       if (!executeUDFOnce() && !terminate()) {
@@ -54,9 +59,13 @@ public abstract class UDFQueryTransformer extends Transformer {
   }
 
   protected final boolean cacheValueFromUDFOutput() throws QueryProcessException, IOException {
-    boolean hasNext = udfOutput.next();
-    if (hasNext) {
-      cachedTime = udfOutput.currentTime();
+    if (!udfOutput.next()) {
+      return false;
+    }
+    cachedTime = udfOutput.currentTime();
+    if (udfOutput.isCurrentNull()) {
+      currentNull = true;
+    } else {
       switch (udfOutputDataType) {
         case INT32:
           cachedInt = udfOutput.currentInt();
@@ -79,9 +88,9 @@ public abstract class UDFQueryTransformer extends Transformer {
         default:
           throw new UnSupportedDataTypeException(udfOutputDataType.toString());
       }
-      udfOutput.readyForNext();
     }
-    return hasNext;
+    udfOutput.readyForNext();
+    return true;
   }
 
   protected abstract boolean executeUDFOnce() throws QueryProcessException, IOException;

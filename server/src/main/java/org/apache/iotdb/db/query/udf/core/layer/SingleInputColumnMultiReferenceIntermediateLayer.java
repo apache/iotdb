@@ -71,6 +71,11 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       private int currentPointIndex = -1;
 
       @Override
+      public boolean isConstantPointReader() {
+        return parentLayerPointReader.isConstantPointReader();
+      }
+
+      @Override
       public boolean next() throws QueryProcessException, IOException {
         if (!hasCached
             && (currentPointIndex < tvList.size() - 1
@@ -129,6 +134,11 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       public Binary currentBinary() throws IOException {
         return tvList.getBinary(currentPointIndex);
       }
+
+      @Override
+      public boolean isCurrentNull() throws IOException {
+        return tvList.isNull(currentPointIndex);
+      }
     };
   }
 
@@ -177,6 +187,11 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       @Override
       public Row currentRow() {
         return row;
+      }
+
+      @Override
+      public boolean isCurrentNull() throws IOException {
+        return tvList.isNull(currentRowIndex);
       }
     };
   }

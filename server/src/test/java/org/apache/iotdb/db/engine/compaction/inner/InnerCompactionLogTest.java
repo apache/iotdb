@@ -23,8 +23,6 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.apache.commons.io.FileUtils;
@@ -45,7 +43,7 @@ public class InnerCompactionLogTest extends InnerCompactionTest {
 
   @Override
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataException {
+  public void setUp() throws Exception {
     tempSGDir = new File(TestConstant.getTestTsFileDir("root.compactionTest", 0, 0));
     if (!tempSGDir.exists()) {
       Assert.assertTrue(tempSGDir.mkdirs());

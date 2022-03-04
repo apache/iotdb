@@ -24,8 +24,9 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TConfigurationConst;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -45,6 +46,9 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
@@ -55,7 +59,6 @@ import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -63,7 +66,9 @@ import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class SessionConnection {
@@ -80,6 +85,9 @@ public class SessionConnection {
   private EndPoint endPoint;
   private List<EndPoint> endPointList = new ArrayList<>();
   private boolean enableRedirect = false;
+
+  private Map<String, List<UnconfirmedRequest>> groupUnconfirmedRequests = new HashMap<>();
+  private long latestTerm;
 
   // TestOnly
   public SessionConnection() {}
@@ -107,11 +115,7 @@ public class SessionConnection {
       transport =
           RpcTransportFactory.INSTANCE.getTransport(
               // as there is a try-catch already, we do not need to use TSocket.wrap
-              new TSocket(
-                  TConfigurationConst.defaultTConfiguration,
-                  endPoint.getIp(),
-                  endPoint.getPort(),
-                  session.connectionTimeoutInMs));
+              endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs);
       transport.open();
     } catch (TTransportException e) {
       throw new IoTDBConnectionException(e);
@@ -133,6 +137,7 @@ public class SessionConnection {
       TSOpenSessionResp openResp = client.openSession(openReq);
 
       RpcUtils.verifySuccess(openResp.getStatus());
+      logger.info("Connected to {}", endPoint);
 
       if (Session.protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         logger.warn(
@@ -185,6 +190,10 @@ public class SessionConnection {
         transport.close();
       }
     }
+  }
+
+  protected TSIService.Iface getClient() {
+    return client;
   }
 
   protected void setTimeZone(String zoneId)
@@ -366,16 +375,26 @@ public class SessionConnection {
   protected void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
+    TSExecuteStatementResp execResp;
     try {
       execReq.setEnableRedirectQuery(enableRedirect);
-      TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
-      RpcUtils.verifySuccess(execResp.getStatus());
+      execResp = client.executeUpdateStatement(execReq);
+      if (execResp.operationType != null && execResp.operationType.contains("INSERT")) {
+        verifyInsertionSuccess(execResp.getStatus(), execReq);
+      } else {
+        RpcUtils.verifySuccess(execResp.getStatus());
+      }
     } catch (TException e) {
       if (reconnect()) {
         try {
           execReq.setSessionId(sessionId);
           execReq.setStatementId(statementId);
-          RpcUtils.verifySuccess(client.executeUpdateStatement(execReq).status);
+          execResp = client.executeUpdateStatement(execReq);
+          if (execResp.operationType != null && execResp.operationType.contains("INSERT")) {
+            verifyInsertionSuccess(execResp.getStatus(), execReq);
+          } else {
+            RpcUtils.verifySuccess(execResp.getStatus());
+          }
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -464,13 +483,14 @@ public class SessionConnection {
   protected void insertRecord(TSInsertRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
+    request.setLatestTerm(latestTerm);
     try {
-      RpcUtils.verifySuccessWithRedirection(client.insertRecord(request));
+      verifyInsertionSuccessWithRedirection(client.insertRecord(request), request);
     } catch (TException e) {
       if (reconnect()) {
         try {
           request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.insertRecord(request));
+          verifyInsertionSuccess(client.insertRecord(request), request);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -483,13 +503,14 @@ public class SessionConnection {
   protected void insertRecord(TSInsertStringRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
+    request.setLatestTerm(latestTerm);
     try {
-      RpcUtils.verifySuccessWithRedirection(client.insertStringRecord(request));
+      verifyInsertionSuccessWithRedirection(client.insertStringRecord(request), request);
     } catch (TException e) {
       if (reconnect()) {
         try {
           request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.insertStringRecord(request));
+          verifyInsertionSuccess(client.insertStringRecord(request), request);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -502,14 +523,15 @@ public class SessionConnection {
   protected void insertRecords(TSInsertRecordsReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
+    request.setLatestTerm(latestTerm);
     try {
-      RpcUtils.verifySuccessWithRedirectionForMultiDevices(
-          client.insertRecords(request), request.getPrefixPaths());
+      verifyInsertionWithRedirectionForMultiDevices(
+          client.insertRecords(request), request.getPrefixPaths(), request);
     } catch (TException e) {
       if (reconnect()) {
         try {
           request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.insertRecords(request));
+          verifyInsertionSuccess(client.insertRecords(request), request);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -522,14 +544,15 @@ public class SessionConnection {
   protected void insertRecords(TSInsertStringRecordsReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
+    request.setLatestTerm(latestTerm);
     try {
-      RpcUtils.verifySuccessWithRedirectionForMultiDevices(
-          client.insertStringRecords(request), request.getPrefixPaths());
+      verifyInsertionWithRedirectionForMultiDevices(
+          client.insertStringRecords(request), request.getPrefixPaths(), request);
     } catch (TException e) {
       if (reconnect()) {
         try {
           request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.insertStringRecords(request));
+          verifyInsertionSuccess(client.insertStringRecords(request), request);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -542,13 +565,14 @@ public class SessionConnection {
   protected void insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
+    request.setLatestTerm(latestTerm);
     try {
-      RpcUtils.verifySuccessWithRedirection(client.insertRecordsOfOneDevice(request));
+      verifyInsertionSuccessWithRedirection(client.insertRecordsOfOneDevice(request), request);
     } catch (TException e) {
       if (reconnect()) {
         try {
           request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.insertRecordsOfOneDevice(request));
+          verifyInsertionSuccess(client.insertRecordsOfOneDevice(request), request);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -561,13 +585,14 @@ public class SessionConnection {
   protected void insertTablet(TSInsertTabletReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
+    request.setLatestTerm(latestTerm);
     try {
-      RpcUtils.verifySuccessWithRedirection(client.insertTablet(request));
+      verifyInsertionSuccessWithRedirection(client.insertTablet(request), request);
     } catch (TException e) {
       if (reconnect()) {
         try {
           request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.insertTablet(request));
+          verifyInsertionSuccess(client.insertTablet(request), request);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -580,14 +605,15 @@ public class SessionConnection {
   protected void insertTablets(TSInsertTabletsReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
+    request.setLatestTerm(latestTerm);
     try {
-      RpcUtils.verifySuccessWithRedirectionForMultiDevices(
-          client.insertTablets(request), request.getPrefixPaths());
+      verifyInsertionWithRedirectionForMultiDevices(
+          client.insertTablets(request), request.getPrefixPaths(), request);
     } catch (TException e) {
       if (reconnect()) {
         try {
           request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.insertTablets(request));
+          verifyInsertionSuccess(client.insertTablets(request), request);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -801,6 +827,66 @@ public class SessionConnection {
     }
   }
 
+  protected void appendSchemaTemplate(TSAppendSchemaTemplateReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccess(client.appendSchemaTemplate(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.appendSchemaTemplate(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
+  protected void pruneSchemaTemplate(TSPruneSchemaTemplateReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccess(client.pruneSchemaTemplate(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.pruneSchemaTemplate(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
+  protected TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req)
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSQueryTemplateResp execResp;
+    try {
+      execResp = client.querySchemaTemplate(req);
+      RpcUtils.verifySuccess(execResp.getStatus());
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          execResp = client.querySchemaTemplate(req);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+
+    RpcUtils.verifySuccess(execResp.getStatus());
+    return execResp;
+  }
+
   protected void setSchemaTemplate(TSSetSchemaTemplateReq request)
       throws IoTDBConnectionException, StatementExecutionException {
     request.setSessionId(sessionId);
@@ -855,8 +941,143 @@ public class SessionConnection {
     this.endPoint = endPoint;
   }
 
+  private void verifyInsertionSuccess(TSStatus status, Object request)
+      throws StatementExecutionException, IoTDBConnectionException {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      onStronglyAccepted(status.getMessage());
+    } else if (status.getCode() == TSStatusCode.WEAKLY_ACCEPTED.getStatusCode()) {
+      onWeaklyAccepted(status.getMessage(), request);
+    } else if (status.getCode() == TSStatusCode.LEADER_CHANGED.getStatusCode()) {
+      onLeaderChange(status.getMessage(), request);
+    } else {
+      RpcUtils.verifySuccess(status);
+    }
+  }
+
+  private void verifyInsertionSuccessWithRedirection(TSStatus status, Object request)
+      throws StatementExecutionException, RedirectException, IoTDBConnectionException {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      onStronglyAccepted(status.getMessage());
+    } else if (status.getCode() == TSStatusCode.WEAKLY_ACCEPTED.getStatusCode()) {
+      onWeaklyAccepted(status.getMessage(), request);
+    } else if (status.getCode() == TSStatusCode.LEADER_CHANGED.getStatusCode()) {
+      onLeaderChange(status.getMessage(), request);
+    } else {
+      RpcUtils.verifySuccessWithRedirection(status);
+    }
+  }
+
+  private void verifyInsertionWithRedirectionForMultiDevices(
+      TSStatus status, List<String> devices, Object request)
+      throws StatementExecutionException, RedirectException, IoTDBConnectionException {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      onStronglyAccepted(status.getMessage());
+    } else if (status.getCode() == TSStatusCode.WEAKLY_ACCEPTED.getStatusCode()) {
+      onWeaklyAccepted(status.getMessage(), request);
+    } else if (status.getCode() == TSStatusCode.LEADER_CHANGED.getStatusCode()) {
+      onLeaderChange(status.getMessage(), request);
+    } else {
+      RpcUtils.verifySuccessWithRedirectionForMultiDevices(status, devices);
+    }
+  }
+
+  private void onStronglyAccepted(String message) {
+    if (message == null) {
+      return;
+    }
+    try {
+      String[] split = message.split("-");
+      String raftGroupId = split[0];
+      long index = Long.parseLong(split[1]);
+      long term = Long.parseLong(split[2]);
+      List<UnconfirmedRequest> unconfirmedRequests =
+          groupUnconfirmedRequests.computeIfAbsent(raftGroupId, r -> new ArrayList<>());
+      if (!unconfirmedRequests.isEmpty() && unconfirmedRequests.get(0).term == term) {
+        unconfirmedRequests.removeIf(r -> r.index < index);
+      }
+      latestTerm = term;
+    } catch (IndexOutOfBoundsException | NumberFormatException e) {
+      // ignore
+    }
+  }
+
+  private void onWeaklyAccepted(String message, Object request) {
+    if (message == null || message.isEmpty()) {
+      return;
+    }
+    try {
+      String[] split = message.split("-");
+      String raftGroupId = split[0];
+      long index = Long.parseLong(split[1]);
+      long term = Long.parseLong(split[2]);
+      List<UnconfirmedRequest> unconfirmedRequests =
+          groupUnconfirmedRequests.computeIfAbsent(raftGroupId, r -> new ArrayList<>());
+      UnconfirmedRequest unconfirmedRequest = new UnconfirmedRequest();
+      unconfirmedRequest.index = index;
+      unconfirmedRequest.term = term;
+      unconfirmedRequest.request = request;
+      unconfirmedRequests.add(unconfirmedRequest);
+    } catch (IndexOutOfBoundsException | NumberFormatException e) {
+      // ignore
+    }
+  }
+
+  private void onLeaderChange(String message, Object request)
+      throws StatementExecutionException, IoTDBConnectionException {
+    if (message == null) {
+      return;
+    }
+    try {
+      String[] split = message.split("-");
+      String raftGroupId = split[0];
+      latestTerm = Long.parseLong(split[1]);
+      List<UnconfirmedRequest> unconfirmedRequests =
+          groupUnconfirmedRequests.computeIfAbsent(raftGroupId, r -> new ArrayList<>());
+      List<UnconfirmedRequest> tempUnconfirmedRequests = new ArrayList<>(unconfirmedRequests);
+      unconfirmedRequests.clear();
+      for (UnconfirmedRequest tempUnconfirmedRequest : tempUnconfirmedRequests) {
+        retryInsertion(tempUnconfirmedRequest.request);
+      }
+      retryInsertion(request);
+    } catch (IndexOutOfBoundsException | NumberFormatException | RedirectException e) {
+      // ignore
+    }
+  }
+
+  private void retryInsertion(Object request)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    if (request instanceof TSInsertRecordReq) {
+      insertRecord(((TSInsertRecordReq) request));
+    } else if (request instanceof TSInsertStringRecordReq) {
+      insertRecord(((TSInsertStringRecordReq) request));
+    } else if (request instanceof TSInsertRecordsReq) {
+      insertRecords(((TSInsertRecordsReq) request));
+    } else if (request instanceof TSInsertStringRecordsReq) {
+      insertRecords(((TSInsertStringRecordsReq) request));
+    } else if (request instanceof TSInsertRecordsOfOneDeviceReq) {
+      insertRecordsOfOneDevice(((TSInsertRecordsOfOneDeviceReq) request));
+    } else if (request instanceof TSInsertTabletReq) {
+      insertTablet(((TSInsertTabletReq) request));
+    } else if (request instanceof TSInsertTabletsReq) {
+      insertTablets(((TSInsertTabletsReq) request));
+    } else {
+      logger.error("Unknown request type during retry: {}", request);
+    }
+  }
+
   @Override
   public String toString() {
     return "SessionConnection{" + " endPoint=" + endPoint + "}";
+  }
+
+  static class UnconfirmedRequest {
+    private long index;
+    private long term;
+    private Object request;
+
+    @Override
+    public String toString() {
+      return index + "-" + term;
+    }
   }
 }

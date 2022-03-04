@@ -37,6 +37,11 @@ public abstract class ArithmeticBinaryTransformer extends Transformer {
   }
 
   @Override
+  public boolean isConstantPointReader() {
+    return leftPointReader.isConstantPointReader() && rightPointReader.isConstantPointReader();
+  }
+
+  @Override
   protected boolean cacheValue() throws QueryProcessException, IOException {
     if (!leftPointReader.next() || !rightPointReader.next()) {
       return false;
@@ -44,10 +49,14 @@ public abstract class ArithmeticBinaryTransformer extends Transformer {
     if (!cacheTime()) {
       return false;
     }
-    cachedDouble =
-        evaluate(
-            castCurrentValueToDoubleOperand(leftPointReader),
-            castCurrentValueToDoubleOperand(rightPointReader));
+    if (leftPointReader.isCurrentNull() || rightPointReader.isCurrentNull()) {
+      currentNull = true;
+    } else {
+      cachedDouble =
+          evaluate(
+              castCurrentValueToDoubleOperand(leftPointReader),
+              castCurrentValueToDoubleOperand(rightPointReader));
+    }
     leftPointReader.readyForNext();
     rightPointReader.readyForNext();
     return true;
@@ -60,6 +69,18 @@ public abstract class ArithmeticBinaryTransformer extends Transformer {
    * @return true if there has a timestamp that meets the requirements
    */
   private boolean cacheTime() throws IOException, QueryProcessException {
+    if (leftPointReader.isConstantPointReader() && rightPointReader.isConstantPointReader()) {
+      return true;
+    }
+    if (leftPointReader.isConstantPointReader()) {
+      cachedTime = rightPointReader.currentTime();
+      return true;
+    }
+    if (rightPointReader.isConstantPointReader()) {
+      cachedTime = leftPointReader.currentTime();
+      return true;
+    }
+
     long leftTime = leftPointReader.currentTime();
     long rightTime = rightPointReader.currentTime();
 

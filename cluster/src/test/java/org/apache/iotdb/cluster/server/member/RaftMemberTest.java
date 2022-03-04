@@ -35,13 +35,28 @@ import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
 
 public class RaftMemberTest extends BaseMember {
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+  }
+
+  @Override
+  @After
+  public void tearDown() throws Exception {
+    super.tearDown();
+  }
+
   @Test
   public void testsyncLeaderStrongConsistencyCheckFalse() {
     // 1. write request : Strong consistency level with syncLeader false
@@ -173,7 +188,7 @@ public class RaftMemberTest extends BaseMember {
 
   private DataGroupMember newDataGroupMemberWithSyncLeaderFalse(Node node, boolean syncLeader) {
     DataGroupMember newMember =
-        new TestDataGroupMember(node, partitionTable.getHeaderGroup(new RaftNode(node, 0))) {
+        new TestDataGroupMember(node, partitionTable.getPartitionGroup(new RaftNode(node, 0))) {
 
           @Override
           public boolean syncLeader(RaftMember.CheckConsistency checkConsistency) {
@@ -210,7 +225,7 @@ public class RaftMemberTest extends BaseMember {
 
   private DataGroupMember newDataGroupMemberWithSyncLeaderTrue(Node node, boolean syncLeader) {
     DataGroupMember newMember =
-        new TestDataGroupMember(node, partitionTable.getHeaderGroup(new RaftNode(node, 0))) {
+        new TestDataGroupMember(node, partitionTable.getPartitionGroup(new RaftNode(node, 0))) {
 
           @Override
           public boolean syncLeader(RaftMember.CheckConsistency checkConsistency) {

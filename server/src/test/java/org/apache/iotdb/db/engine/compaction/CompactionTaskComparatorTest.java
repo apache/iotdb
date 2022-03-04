@@ -202,6 +202,7 @@ public class CompactionTaskComparatorTest {
   /** Test the comparation of cross space compaction task */
   @Test
   public void testComparationOfCrossSpaceTask() {
+    // the priority of the tasks in this array are created from highest to lowest
     AbstractCompactionTask[] crossCompactionTasks = new AbstractCompactionTask[200];
     for (int i = 0; i < 100; ++i) {
       List<TsFileResource> sequenceResources = new ArrayList<>();
@@ -226,7 +227,7 @@ public class CompactionTaskComparatorTest {
             new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i + j, i + j)), j));
       }
       List<TsFileResource> unsequenceResources = new ArrayList<>();
-      for (int j = 100; j < i + 1; ++j) {
+      for (int j = 199; j >= i; --j) {
         unsequenceResources.add(
             new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i + j, i + j)), j));
       }

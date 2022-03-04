@@ -45,6 +45,7 @@ import java.io.InputStreamReader;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -319,7 +320,7 @@ public class ImportCsv extends AbstractCsvTool {
                         measurementName -> {
                           String header = deviceId + "." + measurementName;
                           String value = record.get(header);
-                          if (!value.equals("")) {
+                          if (!"".equals(value)) {
                             TSDataType type;
                             if (!headerTypeMap.containsKey(headerNameMap.get(header))) {
                               type = typeInfer(value);
@@ -436,7 +437,7 @@ public class ImportCsv extends AbstractCsvTool {
                             .forEach(
                                 measurement -> {
                                   String value = record.get(measurement);
-                                  if (!value.equals("")) {
+                                  if (!"".equals(value)) {
                                     TSDataType type;
                                     if (!headerTypeMap.containsKey(
                                         headerNameMap.get(measurement))) {
@@ -541,7 +542,9 @@ public class ImportCsv extends AbstractCsvTool {
     String regex = "(?<=\\()\\S+(?=\\))";
     Pattern pattern = Pattern.compile(regex);
     for (String headerName : headerNames) {
-      if (headerName.equals("Time") || headerName.equals("Device")) continue;
+      if ("Time".equals(headerName) || "Device".equals(headerName)) {
+        continue;
+      }
       Matcher matcher = pattern.matcher(headerName);
       String type;
       if (matcher.find()) {
@@ -555,7 +558,7 @@ public class ImportCsv extends AbstractCsvTool {
       }
       String[] split = headerName.split("\\.");
       String measurementName = split[split.length - 1];
-      String deviceName = headerName.replace("." + measurementName, "");
+      String deviceName = StringUtils.join(Arrays.copyOfRange(split, 0, split.length - 1), '.');
       if (deviceAndMeasurementNames != null) {
         if (!deviceAndMeasurementNames.containsKey(deviceName)) {
           deviceAndMeasurementNames.put(deviceName, new ArrayList<>());
@@ -610,7 +613,6 @@ public class ImportCsv extends AbstractCsvTool {
       SimpleDateFormat format = new SimpleDateFormat(timeFormat);
       try {
         format.parse(time).getTime();
-        System.out.println(timeFormat);
         return format;
       } catch (java.text.ParseException ignored) {
         // do nothing
@@ -684,7 +686,7 @@ public class ImportCsv extends AbstractCsvTool {
         case TEXT:
           return value.substring(1, value.length() - 1);
         case BOOLEAN:
-          if (!value.equals("true") && !value.equals("false")) {
+          if (!"true".equals(value) && !"false".equals(value)) {
             return null;
           }
           return Boolean.valueOf(value);

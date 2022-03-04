@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
@@ -57,7 +58,7 @@ public class CountAggrResult extends AggregateResult {
   public void updateResultFromPageData(
       IBatchDataIterator batchIterator, long minBound, long maxBound) {
     int cnt = 0;
-    while (batchIterator.hasNext()) {
+    while (batchIterator.hasNext(minBound, maxBound)) {
       if (batchIterator.currentTime() >= maxBound || batchIterator.currentTime() < minBound) {
         break;
       }
@@ -81,12 +82,11 @@ public class CountAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+  public void updateResultUsingValues(long[] timestamps, int length, ValueIterator valueIterator) {
     int cnt = 0;
-    for (int i = 0; i < length; i++) {
-      if (values[i] != null) {
-        cnt++;
-      }
+    while (valueIterator.hasNext()) {
+      valueIterator.next();
+      cnt++;
     }
     setLongValue(getLongValue() + cnt);
   }

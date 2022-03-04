@@ -98,10 +98,6 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
     return maxFileVersion;
   }
 
-  public int getMaxCompactionCount() {
-    return maxCompactionCount;
-  }
-
   @Override
   public boolean checkValidAndSetMerging() {
     for (TsFileResource resource : selectedTsFileResourceList) {
@@ -124,6 +120,8 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
         .append(timePartition)
         .append(" task file num is ")
         .append(selectedTsFileResourceList.size())
+        .append(", files is ")
+        .append(selectedTsFileResourceList)
         .append(", total compaction count is ")
         .append(sumOfCompactionCount)
         .toString();

@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Peer;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -54,8 +55,7 @@ public class AppendNodeEntryHandlerTest {
   }
 
   @After
-  public void tearDown() throws IOException {
-    member.closeLogManager();
+  public void tearDown() throws IOException, StorageEngineException {
     member.stop();
     EnvironmentUtils.cleanAllDir();
   }
@@ -71,21 +71,24 @@ public class AppendNodeEntryHandlerTest {
       ClusterDescriptor.getInstance().getConfig().setReplicationNum(10);
       VotingLog votingLog = new VotingLog(log, 10);
       Peer peer = new Peer(1);
-      synchronized (votingLog) {
-        for (int i = 0; i < 10; i++) {
-          AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
-          handler.setLeaderShipStale(leadershipStale);
-          handler.setLog(votingLog);
-          handler.setMember(member);
-          handler.setReceiverTerm(receiverTerm);
-          handler.setReceiver(TestUtils.getNode(i));
-          handler.setPeer(peer);
-          long resp = i >= 5 ? Response.RESPONSE_AGREE : Response.RESPONSE_LOG_MISMATCH;
-          AppendEntryResult result = new AppendEntryResult();
-          result.setStatus(resp);
-          new Thread(() -> handler.onComplete(result)).start();
+      for (int i = 0; i < 10; i++) {
+        AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
+        handler.setLeaderShipStale(leadershipStale);
+        handler.setLog(votingLog);
+        handler.setMember(member);
+        handler.setReceiverTerm(receiverTerm);
+        handler.setReceiver(TestUtils.getNode(i));
+        handler.setPeer(peer);
+        handler.setQuorumSize(ClusterDescriptor.getInstance().getConfig().getReplicationNum() / 2);
+        long resp = i >= 5 ? Response.RESPONSE_AGREE : Response.RESPONSE_LOG_MISMATCH;
+        AppendEntryResult result = new AppendEntryResult();
+        result.setStatus(resp);
+        new Thread(() -> handler.onComplete(result)).start();
+      }
+      while (votingLog.getStronglyAcceptedNodeIds().size() < 5) {
+        synchronized (votingLog) {
+          votingLog.wait(1);
         }
-        votingLog.wait();
       }
       assertEquals(-1, receiverTerm.get());
       assertFalse(leadershipStale.get());
@@ -111,6 +114,7 @@ public class AppendNodeEntryHandlerTest {
       handler.setReceiverTerm(receiverTerm);
       handler.setReceiver(TestUtils.getNode(i));
       handler.setPeer(peer);
+      handler.setQuorumSize(ClusterDescriptor.getInstance().getConfig().getReplicationNum() / 2);
       AppendEntryResult result = new AppendEntryResult();
       result.setStatus(Response.RESPONSE_AGREE);
       handler.onComplete(result);
@@ -137,6 +141,7 @@ public class AppendNodeEntryHandlerTest {
       handler.setReceiverTerm(receiverTerm);
       handler.setReceiver(TestUtils.getNode(0));
       handler.setPeer(peer);
+      handler.setQuorumSize(ClusterDescriptor.getInstance().getConfig().getReplicationNum() / 2);
       new Thread(() -> handler.onComplete(new AppendEntryResult(100L))).start();
       votingLog.wait();
     }
@@ -163,11 +168,13 @@ public class AppendNodeEntryHandlerTest {
       handler.setReceiverTerm(receiverTerm);
       handler.setReceiver(TestUtils.getNode(0));
       handler.setPeer(peer);
+      handler.setQuorumSize(ClusterDescriptor.getInstance().getConfig().getReplicationNum() / 2);
       handler.onError(new TestException());
 
       assertEquals(-1, receiverTerm.get());
       assertFalse(leadershipStale.get());
       assertEquals(0, votingLog.getStronglyAcceptedNodeIds().size());
+
     } finally {
       ClusterDescriptor.getInstance().getConfig().setReplicationNum(replicationNum);
     }

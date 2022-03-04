@@ -56,6 +56,7 @@ struct HeartBeatResponse {
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
   7: optional Node header
+  8: optional long commitIndex
 }
 
 struct RequestCommitIndexResponse {
@@ -93,12 +94,6 @@ struct AppendEntryRequest {
   8: optional bool isFromLeader
 }
 
-
-struct AppendEntryAcknowledgement {
-  1: required long term
-  2: required long index
-  3: required long response
-}
 
 // leader -> follower
 struct AppendEntriesRequest {
@@ -194,7 +189,7 @@ struct PullSchemaResp {
 }
 
 struct SingleSeriesQueryRequest {
-  1: required list<string> path
+  1: required string path
   2: optional binary timeFilterBytes
   3: optional binary valueFilterBytes
   4: required long queryId
@@ -209,7 +204,7 @@ struct SingleSeriesQueryRequest {
 }
 
 struct MultSeriesQueryRequest {
-  1: required list<list<string>> path
+  1: required list<string> path
   2: optional binary timeFilterBytes
   3: optional binary valueFilterBytes
   4: required long queryId
@@ -273,8 +268,9 @@ struct LastQueryRequest {
 }
 
 struct GetAllPathsResult {
-  1: required list<list<string>> paths
-  2: optional list<string> aliasList
+  1: required list<string> paths
+  2: required list<byte> dataTypes
+  3: optional list<string> aliasList
 }
 
 struct AppendEntryResult {

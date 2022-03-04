@@ -19,14 +19,13 @@
 
 package org.apache.iotdb.cluster.server.clusterinfo;
 
-import org.apache.iotdb.cluster.ClusterMain;
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.rpc.thrift.DataPartitionEntry;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMemberTest;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.thrift.TException;
 import org.junit.After;
@@ -40,32 +39,34 @@ import java.util.List;
 public class ClusterInfoServiceImplTest {
 
   ClusterInfoServiceImpl impl;
+  MetaGroupMemberTest metaGroupMemberTest;
 
   @Before
   public void setUp() throws Exception {
-    MetaGroupMemberTest metaGroupMemberTest = new MetaGroupMemberTest();
+    metaGroupMemberTest = new MetaGroupMemberTest();
     // will create a cluster with 10 nodes, ip: 0,10,20,...100
     metaGroupMemberTest.setUp();
     MetaGroupMember metaGroupMember = metaGroupMemberTest.getTestMetaGroupMember();
 
-    MetaClusterServer metaClusterServer = new MetaClusterServer();
-    metaClusterServer.getMember().stop();
-    metaClusterServer.setMetaGroupMember(metaGroupMember);
+    ClusterIoTDB.getInstance().setMetaGroupMember(metaGroupMember);
 
-    ClusterMain.setMetaClusterServer(metaClusterServer);
-
-    metaClusterServer.getIoTDB().metaManager.setStorageGroup(new PartialPath("root", "sg"));
+    ClusterIoTDB.getInstance()
+        .getIotdb()
+        .metaManager
+        .setStorageGroup(new PartialPath("root", "sg"));
     // metaClusterServer.getMember()
     impl = new ClusterInfoServiceImpl();
   }
 
   @After
-  public void tearDown() throws MetadataException {
-    ClusterMain.getMetaServer()
-        .getIoTDB()
+  public void tearDown() throws Exception {
+    ClusterIoTDB.getInstance()
+        .getIotdb()
         .metaManager
         .deleteStorageGroups(Collections.singletonList(new PartialPath("root", "sg")));
-    ClusterMain.getMetaServer().stop();
+    metaGroupMemberTest.tearDown();
+    ClusterIoTDB.getInstance().getMetaGroupMember().stop();
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test

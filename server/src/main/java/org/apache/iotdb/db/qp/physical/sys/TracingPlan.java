@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -30,7 +30,7 @@ public class TracingPlan extends PhysicalPlan {
   private boolean isTracingOn;
 
   public TracingPlan(boolean isTracingOn) {
-    super(false, OperatorType.TRACING);
+    super(OperatorType.TRACING);
     this.isTracingOn = isTracingOn;
   }
 

@@ -68,17 +68,15 @@ public class TsFileHelper {
         UnaryMeasurementSchema measurementSchema =
             new UnaryMeasurementSchema(
                 Constant.SENSOR_PREFIX + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
-        schema.registerTimeseries(
-            new Path(Constant.DEVICE_1, Constant.SENSOR_PREFIX + (i + 1)), measurementSchema);
+        schema.registerTimeseries(new Path(Constant.DEVICE_1), measurementSchema);
         schemaList.add(measurementSchema);
       }
 
       for (int i = 2; i < sensorNum; i++) {
-        IMeasurementSchema measurementSchema =
+        UnaryMeasurementSchema measurementSchema =
             new UnaryMeasurementSchema(
                 Constant.SENSOR_PREFIX + (i + 1), TSDataType.DOUBLE, TSEncoding.TS_2DIFF);
-        schema.registerTimeseries(
-            new Path(Constant.DEVICE_1, Constant.SENSOR_PREFIX + (i + 1)), measurementSchema);
+        schema.registerTimeseries(new Path(Constant.DEVICE_1), measurementSchema);
         schemaList.add(measurementSchema);
       }
 

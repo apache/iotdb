@@ -48,6 +48,8 @@ public class InternalMNode extends MNode {
   // schema template
   protected Template schemaTemplate = null;
 
+  private volatile boolean useTemplate = false;
+
   /** Constructor of MNode. */
   public InternalMNode(IMNode parent, String name) {
     super(parent, name);
@@ -104,6 +106,7 @@ public class InternalMNode extends MNode {
    * @param child child's node
    * @return return the MNode already added
    */
+  @Override
   public IMNode addChild(IMNode child) {
     /* use cpu time to exchange memory
      * measurementNode's children should be null to save memory
@@ -210,6 +213,16 @@ public class InternalMNode extends MNode {
   @Override
   public void setSchemaTemplate(Template schemaTemplate) {
     this.schemaTemplate = schemaTemplate;
+  }
+
+  @Override
+  public boolean isUseTemplate() {
+    return useTemplate;
+  }
+
+  @Override
+  public void setUseTemplate(boolean useTemplate) {
+    this.useTemplate = useTemplate;
   }
 
   @Override
