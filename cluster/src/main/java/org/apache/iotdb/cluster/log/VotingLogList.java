@@ -65,7 +65,9 @@ public class VotingLogList {
         VotingLog votingLog = logList.get(i);
         if (votingLog.getLog().getCurrLogIndex() <= index
             && votingLog.getLog().getCurrLogTerm() == term) {
-          votingLog.getStronglyAcceptedNodeIds().add(acceptingNodeId);
+          synchronized (votingLog) {
+            votingLog.getStronglyAcceptedNodeIds().add(acceptingNodeId);
+          }
           if (votingLog.getStronglyAcceptedNodeIds().size() >= quorumSize) {
             lastEntryIndexToCommit = i;
           }

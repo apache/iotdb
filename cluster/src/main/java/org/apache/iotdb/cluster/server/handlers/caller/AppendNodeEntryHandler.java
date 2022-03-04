@@ -35,6 +35,7 @@ import java.net.ConnectException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_OUT_OF_WINDOW;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_STRONG_ACCEPT;
@@ -86,7 +87,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
 
     long resp = response.status;
 
-    if (resp == RESPONSE_STRONG_ACCEPT) {
+    if (resp == RESPONSE_STRONG_ACCEPT || resp == RESPONSE_AGREE) {
       member
           .getVotingLogList()
           .onStronglyAccept(
@@ -109,8 +110,8 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
         receiverTerm.set(resp);
       }
       leaderShipStale.set(true);
-      synchronized (log.getStronglyAcceptedNodeIds()) {
-        log.getStronglyAcceptedNodeIds().notifyAll();
+      synchronized (log) {
+        log.notifyAll();
       }
     } else if (resp == RESPONSE_WEAK_ACCEPT) {
       synchronized (log) {
@@ -119,7 +120,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
             >= quorumSize) {
           log.acceptedTime.set(System.nanoTime());
         }
-        log.getStronglyAcceptedNodeIds().notifyAll();
+        log.notifyAll();
       }
     } else {
       // e.g., Response.RESPONSE_LOG_MISMATCH
@@ -158,7 +159,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       if (log.getFailedNodeIds().size() > quorumSize) {
         // quorum members have failed, there is no need to wait for others
         log.getStronglyAcceptedNodeIds().add(Integer.MAX_VALUE);
-        log.getStronglyAcceptedNodeIds().notifyAll();
+        log.notifyAll();
       }
     }
   }

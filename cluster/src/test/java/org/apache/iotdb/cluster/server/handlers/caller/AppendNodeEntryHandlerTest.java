@@ -70,6 +70,7 @@ public class AppendNodeEntryHandlerTest {
     try {
       ClusterDescriptor.getInstance().getConfig().setReplicationNum(10);
       VotingLog votingLog = new VotingLog(log, 10);
+      member.getVotingLogList().insert(votingLog);
       Peer peer = new Peer(1);
       for (int i = 0; i < 10; i++) {
         AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
@@ -104,6 +105,7 @@ public class AppendNodeEntryHandlerTest {
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     Log log = new TestLog();
     VotingLog votingLog = new VotingLog(log, 10);
+    member.getVotingLogList().insert(votingLog);
     Peer peer = new Peer(1);
 
     for (int i = 0; i < 3; i++) {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
+import java.util.concurrent.RunnableFuture;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTest;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.exception.StorageEngineException;

@@ -1704,7 +1704,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     long alreadyWait = 0;
 
     synchronized (log) {
-      while (log.getLog().getCurrLogIndex() == -1
+      while (log.getLog().getCurrLogIndex() == Long.MIN_VALUE
           || stronglyAcceptedNodeNum < quorumSize
               && (!(ENABLE_WEAK_ACCEPTANCE && canBeWeaklyAccepted(log.getLog()))
                   || (totalAccepted < quorumSize)
@@ -1770,6 +1770,10 @@ public abstract class RaftMember implements RaftMemberMBean {
             && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE))) {
       waitAppendResultLoop(log, quorumSize);
     }
+    stronglyAcceptedNodeNum = log.getStronglyAcceptedNodeIds().size();
+    weaklyAcceptedNodeNum = log.getWeaklyAcceptedNodeIds().size();
+    totalAccepted = stronglyAcceptedNodeNum + weaklyAcceptedNodeNum;
+
     if (log.acceptedTime.get() != 0) {
       Statistic.RAFT_WAIT_AFTER_ACCEPTED.calOperationCostTimeFromStart(log.acceptedTime.get());
     }
