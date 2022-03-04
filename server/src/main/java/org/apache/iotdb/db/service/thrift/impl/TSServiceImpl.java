@@ -2225,8 +2225,21 @@ public class TSServiceImpl implements TSIService.Iface {
         LOGGER.error("SyncDoubleWrite error", e);
       }
     } else {
-      // put the ByteBuffer into DoubleWriteProducer
-      doubleWriteProducer.put(buffer);
+      if (physicalPlan instanceof CreateTimeSeriesPlan) {
+        // create timeseries is important, which couldn't be async
+        DoubleWriteTask doubleWriteTask =
+            new DoubleWriteTask(doubleWriteProtectorService, buffer, doubleWriteSessionPool);
+        Thread doubleWriteThread = new Thread(doubleWriteTask);
+        doubleWriteThread.start();
+        try {
+          doubleWriteThread.join();
+        } catch (InterruptedException e) {
+          LOGGER.error("DoubleWrite CreateTimeSeriesPlan error.", e);
+        }
+      } else {
+        // otherwise, put the ByteBuffer into DoubleWriteProducer
+        doubleWriteProducer.put(buffer);
+      }
     }
   }
 

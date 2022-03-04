@@ -62,6 +62,7 @@ public abstract class DoubleWriteUtil {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
     config.setEnableDoubleWrite(true);
+    config.setSyncDoubleWrite(false);
     config.setSecondaryAddress(ipB);
     config.setSecondaryPort(portB);
     config.setSecondaryUser(userB);
