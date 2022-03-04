@@ -138,15 +138,14 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       compactionLogger.logFiles(selectedSeqTsFileResourceList, STR_SOURCE_FILES);
       compactionLogger.logFiles(selectedUnSeqTsFileResourceList, STR_SOURCE_FILES);
       compactionLogger.logFiles(targetTsfileResourceList, STR_TARGET_FILES);
-      CompactionUtils.compact(
-          selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
-
-      CompactionUtils.moveTargetFile(targetTsfileResourceList, false, fullStorageGroupName);
-
       // indicates that the cross compaction is complete and the result can be reused during a
       // restart recovery
       compactionLogger.close();
 
+      CompactionUtils.compact(
+          selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
+
+      CompactionUtils.moveTargetFile(targetTsfileResourceList, false, fullStorageGroupName);
       CompactionUtils.combineModsInCompaction(
           selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
 

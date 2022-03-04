@@ -130,14 +130,22 @@ public class CompactionLogAnalyzer {
   }
 
   private void analyzeOldFilePath(boolean isSeqSource, String oldFilePath) {
-    sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromOldInfoString(oldFilePath));
+    if (oldFilePath.startsWith("root")) {
+      sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromOldInfoString(oldFilePath));
+    } else {
+      sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromFilePath(oldFilePath));
+    }
     if (isSeqSource) {
       String targetFilePath =
           oldFilePath.replace(
               TsFileConstant.TSFILE_SUFFIX,
               TsFileConstant.TSFILE_SUFFIX
                   + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX_FROM_OLD);
-      targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromOldInfoString(targetFilePath));
+      if (oldFilePath.startsWith("root")) {
+        targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromOldInfoString(targetFilePath));
+      } else {
+        targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromFilePath(targetFilePath));
+      }
     }
   }
 

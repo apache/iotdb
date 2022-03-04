@@ -109,6 +109,8 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           selectedTsFileResourceList, CompactionLogger.STR_SOURCE_FILES);
       sizeTieredCompactionLogger.logFiles(
           Collections.singletonList(targetTsFileResource), CompactionLogger.STR_TARGET_FILES);
+      LOGGER.info("{} [SizeTiredCompactionTask] Close the logger", fullStorageGroupName);
+      sizeTieredCompactionLogger.close();
       LOGGER.info(
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
 
@@ -127,11 +129,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       LOGGER.info("{} [SizeTiredCompactionTask] start to rename mods file", fullStorageGroupName);
       InnerSpaceCompactionUtils.combineModsInCompaction(
           selectedTsFileResourceList, targetTsFileResource);
-
-      LOGGER.info(
-          "{} [SizeTiredCompactionTask] compact finish, close the logger, edit the tsFileResourceList",
-          fullStorageGroupName);
-      sizeTieredCompactionLogger.close();
 
       if (Thread.currentThread().isInterrupted()) {
         throw new InterruptedException(
