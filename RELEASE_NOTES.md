@@ -63,6 +63,13 @@
 * [IOTDB-2568] "show query processlist" is blocked
 * [IOTDB-2580] Fix DirectByteBuffer and thread leak when deleting storage group
 * [IOTDB-2584] Fix cross space compaction selector
+* [IOTDB-2603] Fix compaction recover
+* [IOTDB-2604] Fix batch size is invalid in import-csv tool
+* [IOTDB-2620] Unrecognizable operator type (SHOW) for AuthorityChecker
+* [IOTDB-2624] Fix "overlapped data should be consumed first" occurs when executing query
+* [IOTDB-2640] Fix cross compaction recover bug
+* [IOTDB-2641] Fix time range of TsFile resource overlaps after unseq compaction
+* [IOTDB-2642] Fix the new file has a higher compact priority than the old file in unseq compaction
 * Fix a logical bug in processPlanLocally in cluster mode
 * Throw Exception while using last query with align by device
 * Add a judgement to determine raft log size can fit into buffer before log appending in cluster mode
