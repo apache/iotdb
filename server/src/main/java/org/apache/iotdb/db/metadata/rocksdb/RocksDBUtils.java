@@ -365,8 +365,11 @@ public class RocksDBUtils {
   public static String convertPartialPathToInnerByNodes(String[] nodes, int level, char nodeType) {
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder.append(nodeType).append(ROOT);
-    for (String str : nodes) {
-      stringBuilder.append(SPLIT_FLAG).append(level).append(str);
+    for (int i = 0; i < nodes.length; i++) {
+      if (i == 0 && nodes[i].equals(ROOT_STRING)) {
+        continue;
+      }
+      stringBuilder.append(SPLIT_FLAG).append(level).append(nodes[i]);
     }
     return stringBuilder.toString();
   }

@@ -7,15 +7,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 import static org.apache.iotdb.db.metadata.rocksdb.RocksDBReadWriteHandler.ROCKSDB_PATH;
 
@@ -177,20 +176,22 @@ public class MRocksDBUnitTest {
     Assert.assertEquals(
         1,
         mRocksDBManager.getStorageGroupNum(new PartialPath("root.inner1.inner2.inner3.sg"), false));
-    Assert.assertEquals(2, mRocksDBManager.getStorageGroupNum(new PartialPath("root.inner"), true));
-    Assert.assertEquals(6, mRocksDBManager.getStorageGroupNum(new PartialPath("root"), true));
+    Assert.assertEquals(
+        2, mRocksDBManager.getStorageGroupNum(new PartialPath("root.inner.**"), false));
+    Assert.assertEquals(6, mRocksDBManager.getStorageGroupNum(new PartialPath("root.**"), false));
 
     // test all timeseries number
     Assert.assertEquals(
         1, mRocksDBManager.getAllTimeseriesCount(new PartialPath("root.tt.sg.dd.m1")));
-    Assert.assertEquals(2, mRocksDBManager.getAllTimeseriesCount(new PartialPath("root"), true));
+    Assert.assertEquals(
+        2, mRocksDBManager.getAllTimeseriesCount(new PartialPath("root.**"), false));
 
     // test device number
     Assert.assertEquals(0, mRocksDBManager.getDevicesNum(new PartialPath("root.inner1.inner2")));
     Assert.assertEquals(
-        0, mRocksDBManager.getDevicesNum(new PartialPath("root.inner1.inner2"), true));
-    Assert.assertEquals(2, mRocksDBManager.getDevicesNum(new PartialPath("root.tt.sg"), true));
-    Assert.assertEquals(1, mRocksDBManager.getDevicesNum(new PartialPath("root.tt.sg.dd"), true));
+        0, mRocksDBManager.getDevicesNum(new PartialPath("root.inner1.inner2.**"), false));
+    Assert.assertEquals(2, mRocksDBManager.getDevicesNum(new PartialPath("root.tt.sg.**"), false));
+    Assert.assertEquals(1, mRocksDBManager.getDevicesNum(new PartialPath("root.tt.sg.dd"), false));
 
     // todo wildcard
 
