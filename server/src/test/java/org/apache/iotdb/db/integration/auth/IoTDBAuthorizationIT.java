@@ -1171,4 +1171,5 @@ public class IoTDBAuthorizationIT {
       }
     }
   }
+
 }
