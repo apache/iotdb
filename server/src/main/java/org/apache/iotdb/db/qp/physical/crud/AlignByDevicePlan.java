@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.util.HashMap;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -48,6 +49,7 @@ public class AlignByDevicePlan extends QueryPlan {
 
   // to record result measurement columns, e.g. temperature, status, speed
   private List<String> measurements;
+  private Set<String> withoutNullColumns = new HashSet<>();
   private Map<String, MeasurementInfo> measurementInfoMap;
   private List<PartialPath> deduplicatePaths = new ArrayList<>();
   private List<String> aggregations;
@@ -65,11 +67,21 @@ public class AlignByDevicePlan extends QueryPlan {
     super();
   }
 
+  public void addWithoutNullColumns(String column) {
+    withoutNullColumns.add(column);
+  }
+
+  public Set<String> getWithoutNullColumns() {
+    return withoutNullColumns;
+  }
+
   @Override
   public void deduplicate(PhysicalGenerator physicalGenerator) {
     Set<String> pathWithAggregationSet = new LinkedHashSet<>();
     List<String> deduplicatedAggregations = new ArrayList<>();
     HashSet<String> measurements = new HashSet<>(getMeasurements());
+    List<String> resultColumn = new ArrayList<>();
+
     for (int i = 0; i < paths.size(); i++) {
       PartialPath path = paths.get(i);
       String aggregation = aggregations != null ? aggregations.get(i) : null;
@@ -77,10 +89,23 @@ public class AlignByDevicePlan extends QueryPlan {
       if (!measurements.contains(measurementWithAggregation)) {
         continue;
       }
+
       String pathStrWithAggregation = getPathStrWithAggregation(path, aggregation);
       if (!pathWithAggregationSet.contains(pathStrWithAggregation)) {
         pathWithAggregationSet.add(pathStrWithAggregation);
         deduplicatePaths.add(path);
+        if (measurementInfoMap.containsKey(measurementWithAggregation)) {
+          MeasurementInfo measurementInfo = measurementInfoMap.get(measurementWithAggregation);
+          if (measurementInfo.getMeasurementAlias() != null
+              && !measurementInfo.getMeasurementAlias().equals("")) {
+            resultColumn.add(measurementInfo.getMeasurementAlias());
+          } else {
+            resultColumn.add(measurementWithAggregation);
+          }
+        } else {
+          resultColumn.add(measurementWithAggregation);
+        }
+
         if (this.aggregations != null) {
           deduplicatedAggregations.add(this.aggregations.get(i));
         }
@@ -88,6 +113,10 @@ public class AlignByDevicePlan extends QueryPlan {
             .computeIfAbsent(path.getDevice(), k -> new ArrayList<>())
             .add(deduplicatePaths.size() - 1);
       }
+    }
+
+    for (String validWithoutColumn : resultColumn) {
+      addAlignByDeviceValidWithoutNullColumn(validWithoutColumn);
     }
     setAggregations(deduplicatedAggregations);
     this.paths = null;

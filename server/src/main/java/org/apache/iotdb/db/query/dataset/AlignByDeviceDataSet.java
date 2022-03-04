@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
+import java.util.Set;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -77,6 +78,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private String currentDevice;
   private List<String> executeColumns;
   private int pathsNum = 0;
+  private Set<String> withoutNullColumns;
 
   public AlignByDeviceDataSet(
       AlignByDevicePlan alignByDevicePlan, QueryContext context, IQueryRouter queryRouter)
@@ -87,6 +89,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     // adapting AlignByDevice query for new vector
     super.columnNum = alignByDevicePlan.getMeasurements().size() + 1; // + 1 for 'device'
     this.measurements = alignByDevicePlan.getMeasurements();
+    this.withoutNullColumns = alignByDevicePlan.getWithoutNullColumns();
     this.paths = alignByDevicePlan.getDeduplicatePaths();
     this.aggregations = alignByDevicePlan.getAggregations();
     this.queryRouter = queryRouter;
@@ -127,6 +130,15 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         this.rawDataQueryPlan.setEnableRedirect(alignByDevicePlan.isEnableRedirect());
     }
 
+    int index = 1;  // start 1, because first is device name
+    if (withoutNullColumnsIndex.isEmpty()) {
+      for (String measurement : this.measurements) {
+        if (withoutNullColumns.contains(measurement)) {
+          withoutNullColumnsIndex.add(index);
+        }
+        index ++;
+      }
+    }
     this.curDataSetInitialized = false;
   }
 

@@ -140,6 +140,10 @@ public class SpecialClauseComponent {
     this.groupByLevelController = groupByLevelController;
   }
 
+  public GroupByLevelController getGroupByLevelController() {
+    return groupByLevelController;
+  }
+
   public boolean isAlignByDevice() {
     return isAlignByDevice;
   }

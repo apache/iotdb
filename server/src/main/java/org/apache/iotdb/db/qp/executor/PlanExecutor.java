@@ -640,7 +640,9 @@ public class PlanExecutor implements IPlanExecutor {
     queryDataSet.setRowOffset(queryPlan.getRowOffset());
     queryDataSet.setWithoutAllNull(queryPlan.isWithoutAllNull());
     queryDataSet.setWithoutAnyNull(queryPlan.isWithoutAnyNull());
-    queryDataSet.setWithoutNullColumnsIndex(queryPlan.getWithoutNullColumnsIndex());
+    if (!(queryPlan instanceof AlignByDevicePlan)) {
+      queryDataSet.setWithoutNullColumnsIndex(queryPlan.getWithoutNullColumnsIndex());
+    }
     return queryDataSet;
   }
 

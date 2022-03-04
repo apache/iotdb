@@ -52,6 +52,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.checkerframework.checker.units.qual.A;
 
 import static org.apache.iotdb.db.utils.SchemaUtils.getSeriesTypeByPath;
 
@@ -67,6 +68,8 @@ public class QueryOperator extends Operator {
 
   protected boolean enableTracing;
 
+  Set<String> aliasSet;
+
   public QueryOperator() {
     super(SQLConstant.TOK_QUERY);
     operatorType = Operator.OperatorType.QUERY;
@@ -81,6 +84,14 @@ public class QueryOperator extends Operator {
     this.props = queryOperator.getProps();
     this.indexType = queryOperator.getIndexType();
     this.enableTracing = queryOperator.isEnableTracing();
+  }
+
+  public void setAliasSet(Set<String> aliasSet) {
+    this.aliasSet = aliasSet;
+  }
+
+  public Set<String> getAliasSet() {
+    return aliasSet;
   }
 
   public SelectComponent getSelectComponent() {
@@ -337,6 +348,7 @@ public class QueryOperator extends Operator {
     alignByDevicePlan.setEnableTracing(enableTracing);
 
     alignByDevicePlan.deduplicate(generator);
+    checkWithoutNullColumnValidAlignByDevice(alignByDevicePlan);
 
     if (whereComponent != null) {
       alignByDevicePlan.setDeviceToFilterMap(
@@ -344,6 +356,17 @@ public class QueryOperator extends Operator {
     }
 
     return alignByDevicePlan;
+  }
+
+  private void checkWithoutNullColumnValidAlignByDevice(QueryPlan queryPlan) throws QueryProcessException {
+    if (specialClauseComponent != null) {
+      // meta consistence check
+      for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
+        if (!queryPlan.isValidWithoutNullColumnAlignByDevice(expression.getExpressionString())) {
+          throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
+        }
+      }
+    }
   }
 
   private void checkDataTypeConsistency(TSDataType checkedDataType, MeasurementInfo measurementInfo)
@@ -359,17 +382,12 @@ public class QueryOperator extends Operator {
   protected void convertSpecialClauseValues(QueryPlan queryPlan)
       throws QueryProcessException{
     if (specialClauseComponent != null) {
-      for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
-        if (queryPlan.getPathToIndex().containsKey(expression.getExpressionString())) {
-          queryPlan.addWithoutNullColumnIndex(queryPlan.getPathToIndex()
-              .get(expression.getExpressionString()));
-        } else {
-          String withoutNullColumn = expression.getExpressionString();
-          // may be alias
-          String[] s = withoutNullColumn.split("\\.");
-          if (queryPlan.getPathToIndex().containsKey(s[s.length - 1])) {
+      // meta consistence check
+      if (!queryPlan.getPathToIndex().isEmpty()) {  // align by device queryPlan.getPathToIndex() is empty
+        for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
+          if (queryPlan.getPathToIndex().containsKey(expression.getExpressionString())) {
             queryPlan.addWithoutNullColumnIndex(queryPlan.getPathToIndex()
-                .get(s[s.length - 1]));
+                .get(expression.getExpressionString()));
           } else {
             throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
           }
@@ -381,6 +399,14 @@ public class QueryOperator extends Operator {
       queryPlan.setRowOffset(specialClauseComponent.getRowOffset());
       queryPlan.setAscending(specialClauseComponent.isAscending());
       queryPlan.setAlignByTime(specialClauseComponent.isAlignByTime());
+
+      // add without null column
+      if (queryPlan instanceof AlignByDevicePlan) {
+        AlignByDevicePlan alignByDevicePlan = (AlignByDevicePlan) queryPlan;
+        for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
+          alignByDevicePlan.addWithoutNullColumns(expression.getExpressionString());
+        }
+      }
     }
   }
 

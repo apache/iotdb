@@ -59,7 +59,8 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   private boolean ascending = true;
 
-  private Map<String, Integer> pathToIndex = new HashMap<>();
+  private Map<String, Integer> pathToIndex = new HashMap<>(); // align By time
+  private Set<String> alignByDeviceWithoutNullValidSet = new HashSet<>();  // align By Device
 
   private Set<Integer> withoutNullColumnsIndex = new HashSet<>();
 
@@ -185,6 +186,14 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public void setColumnNameToDatasetOutputIndex(String columnName, Integer index) {
     pathToIndex.put(columnName, index);
+  }
+
+  public void addAlignByDeviceValidWithoutNullColumn(String columnName) {
+    alignByDeviceWithoutNullValidSet.add(columnName);
+  }
+
+  public boolean isValidWithoutNullColumnAlignByDevice(String columnName) {
+    return alignByDeviceWithoutNullValidSet.contains(columnName);
   }
 
   public boolean isGroupByLevel() {
