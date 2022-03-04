@@ -130,6 +130,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import com.nimbusds.oauth2.sdk.util.CollectionUtils;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -875,7 +876,8 @@ public class TSServiceImpl implements TSIService.Iface {
     List<String> columnsTypes = new ArrayList<>();
 
     // check permissions
-    if ((physicalPlan.getAuthPaths().isEmpty() && !physicalPlan.getFromPaths().isEmpty())
+    if ((physicalPlan.getAuthPaths().isEmpty()
+            && !CollectionUtils.isEmpty(physicalPlan.getFromPaths()))
         || !physicalPlan.getAuthPaths().isEmpty()) {
       List<PartialPath> checkPaths =
           physicalPlan.getAuthPaths().isEmpty()
