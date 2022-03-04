@@ -22,7 +22,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.12.5-SNAPSHOT</version>
+        <version>0.12.5</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>client-cpp-tools</artifactId>
