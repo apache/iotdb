@@ -1021,7 +1021,6 @@ public class MRocksDBManager implements IMetaManager {
                             }
                             if (RocksDBUtils.suffixMatch(iterator.key(), suffixToMatch)) {
                               if (lastIteration) {
-                                System.out.println("matched key: " + new String(iterator.key()));
                                 consumer.accept(
                                     RocksDBUtils.getPathByInnerName(new String(iterator.key())));
                               } else {

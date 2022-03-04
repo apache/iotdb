@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.MetadataManagerType;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -814,6 +815,8 @@ public class IoTDBConfig {
   /** Encryption provided class parameter */
   private String encryptDecryptProviderParameter;
 
+  private MetadataManagerType metadataManagerType = MetadataManagerType.MEMORY_MANAGER;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -929,6 +932,14 @@ public class IoTDBConfig {
 
   public void setTimeIndexLevel(String timeIndexLevel) {
     this.timeIndexLevel = TimeIndexLevel.valueOf(timeIndexLevel);
+  }
+
+  public void setMetadataManagerType(String type) {
+    metadataManagerType = MetadataManagerType.of(type);
+  }
+
+  public MetadataManagerType getMetadataManagerType() {
+    return metadataManagerType;
   }
 
   void updatePath() {
