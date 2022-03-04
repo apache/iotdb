@@ -17,7 +17,7 @@
  * under the License.
  */
 
-lexer grammar IoTDBSqlLexer;
+lexer grammar SqlLexer;
 
 /**
  * 1. Whitespace

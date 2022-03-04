@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.recover;
 
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import java.io.BufferedWriter;
@@ -33,6 +33,7 @@ import java.util.List;
 public class RewriteCrossSpaceCompactionLogger implements AutoCloseable {
 
   public static final String COMPACTION_LOG_NAME = "cross-compaction.log";
+  public static final String COMPACTION_LOG_NAME_FEOM_OLD = "merge.log";
 
   public static final String STR_SEQ_FILES = "seqFiles";
   public static final String STR_TARGET_FILES = "targetFiles";
@@ -57,7 +58,7 @@ public class RewriteCrossSpaceCompactionLogger implements AutoCloseable {
     logStream.flush();
   }
 
-  public void logFiles(CrossSpaceMergeResource resource) throws IOException {
+  public void logFiles(CrossSpaceCompactionResource resource) throws IOException {
     logFiles(resource.getSeqFiles(), STR_SEQ_FILES);
     logFiles(resource.getUnseqFiles(), STR_UNSEQ_FILES);
   }
