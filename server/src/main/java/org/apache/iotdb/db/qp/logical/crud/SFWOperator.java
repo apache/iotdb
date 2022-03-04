@@ -84,6 +84,16 @@ public abstract class SFWOperator extends RootOperator {
     return selectOperator != null ? selectOperator.getSuffixPaths() : null;
   }
 
+  /**
+   * get information from FromOperator in case if getSelectedPaths are null and need to do path
+   * verification.
+   *
+   * @return - a list of seriesPath
+   */
+  public List<PartialPath> getFromPaths() {
+    return fromOperator != null ? fromOperator.getPrefixPaths() : null;
+  }
+
   public boolean hasAggregation() {
     return hasAggregation;
   }

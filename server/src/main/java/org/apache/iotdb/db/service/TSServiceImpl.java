@@ -875,11 +875,22 @@ public class TSServiceImpl implements TSIService.Iface {
     List<String> columnsTypes = new ArrayList<>();
 
     // check permissions
-    if (!checkAuthorization(physicalPlan.getAuthPaths(), physicalPlan, username)) {
-      return RpcUtils.getTSExecuteStatementResp(
-          RpcUtils.getStatus(
-              TSStatusCode.NO_PERMISSION_ERROR,
-              "No permissions for this operation " + physicalPlan.getOperatorType()));
+    if ((physicalPlan.getAuthPaths().isEmpty() && !physicalPlan.getFromPaths().isEmpty())
+        || !physicalPlan.getAuthPaths().isEmpty()) {
+      List<PartialPath> checkPaths =
+          physicalPlan.getAuthPaths().isEmpty()
+              ? physicalPlan.getFromPaths()
+              : physicalPlan.getAuthPaths();
+      if (!checkAuthorization(checkPaths, physicalPlan, username)) {
+        OperatorType operatorType = physicalPlan.getOperatorType();
+        if (operatorType == OperatorType.UDTF) {
+          operatorType = OperatorType.QUERY;
+        }
+        return RpcUtils.getTSExecuteStatementResp(
+            RpcUtils.getStatus(
+                TSStatusCode.NO_PERMISSION_ERROR,
+                "No permissions for this operation " + operatorType));
+      }
     }
 
     TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);

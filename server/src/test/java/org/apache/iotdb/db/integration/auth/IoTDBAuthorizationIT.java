@@ -1105,4 +1105,70 @@ public class IoTDBAuthorizationIT {
       assertTrue(resultSet.next());
     }
   }
+
+  /** ISSUE-4399 */
+  @Test
+  public void testUDTFPermissionReturnMessage() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection adminConnection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStatement = adminConnection.createStatement()) {
+      adminStatement.execute("CREATE USER only_read_sg1 'only_read_sg1'");
+      adminStatement.execute("CREATE ROLE application_role");
+      adminStatement.execute(
+          "GRANT ROLE application_role PRIVILEGES 'READ_TIMESERIES' ON root.sg1");
+      adminStatement.execute("GRANT application_role TO only_read_sg1");
+
+      adminStatement.execute("SET STORAGE GROUP TO root.sg1;");
+      adminStatement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;");
+      adminStatement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;");
+      adminStatement.execute("INSERT INTO root.sg1.d1(timestamp, s1, s2) VALUES (0, -1, 1);");
+
+      adminStatement.execute("SET STORAGE GROUP TO root.sg2;");
+      adminStatement.execute(
+          "CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;");
+      adminStatement.execute(
+          "CREATE TIMESERIES root.sg2.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;");
+      adminStatement.execute("INSERT INTO root.sg2.d1(timestamp, s1, s2) VALUES (0, -1, 1);");
+
+      adminStatement.execute("INSERT INTO root.test(time, s1) VALUES(1, 1)");
+    }
+
+    try (Connection userConnection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "only_read_sg1", "only_read_sg1");
+        Statement userStatement = userConnection.createStatement()) {
+      // Case 1:
+      ResultSet resultSet = userStatement.executeQuery("select sin(s1) from root.sg1.d1;");
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      assertEquals(2, resultSetMetaData.getColumnCount());
+
+      // Case 2:
+      resultSet = userStatement.executeQuery("select sin(s8) from root.sg1.d1;");
+      resultSetMetaData = resultSet.getMetaData();
+      assertEquals(1, resultSetMetaData.getColumnCount());
+
+      // Case 3:
+      resultSet = userStatement.executeQuery("select s8 from root.sg1.d1;");
+      resultSetMetaData = resultSet.getMetaData();
+      assertEquals(1, resultSetMetaData.getColumnCount());
+
+      // Case 4:
+      try {
+        userStatement.executeQuery("select sin(s1) from root.sg2.d1;");
+      } catch (SQLException e) {
+        assertEquals("602: No permissions for this operation QUERY", e.getMessage());
+      }
+
+      // Case 5:
+      try {
+        userStatement.executeQuery("select sin(s8) from root.sg2.d1;");
+      } catch (SQLException e) {
+        assertEquals("602: No permissions for this operation QUERY", e.getMessage());
+      }
+    }
+  }
 }
