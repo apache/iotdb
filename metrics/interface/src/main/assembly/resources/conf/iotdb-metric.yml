@@ -35,7 +35,7 @@ metricLevel: NORMAL
 predefinedMetrics:
   - JVM
 
-# Period time of push, only valid for dropwizard
+# Period time of push, only used by IoTDB Reporter
 pushPeriodInSecond: 5
 
 # The http server's port for prometheus exporter to get metric data.

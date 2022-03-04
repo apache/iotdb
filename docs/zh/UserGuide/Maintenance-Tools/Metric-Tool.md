@@ -215,18 +215,11 @@ metricLevel: NORMAL
 predefinedMetrics:
   - JVM
 
-# 数据推送时间，该参数只对 monitorType=dropwizard生效
+# 数据推送时间，该参数只对 IoTDB Reporter 生效
 pushPeriodInSecond: 5
 
-########################################################
-#                                                      #
-# if the reporter is prometheus,                       #
-# then the following must be set.                      #
-#                                                      #
-########################################################
-prometheusReporterConfig:
-   prometheusExporterUrl: http://localhost
-   prometheusExporterPort: 9091									
+# Prometheus Reporter 使用的端口
+prometheusExporterPort: 9091							
 ```
 
 然后按照下面的操作获取metrics数据
