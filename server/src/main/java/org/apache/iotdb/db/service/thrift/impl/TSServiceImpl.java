@@ -718,11 +718,6 @@ public class TSServiceImpl implements TSIService.Iface {
       if (physicalPlan.isQuery()) {
         return submitQueryTask(physicalPlan, startTime, req);
       } else {
-        if (isEnableDoubleWrite) {
-          // double write
-          transmitDoubleWrite(physicalPlan);
-        }
-
         return executeUpdateStatement(
             statement,
             req.statementId,
@@ -1594,11 +1589,6 @@ public class TSServiceImpl implements TSIService.Iface {
         return status;
       }
 
-      if (isEnableDoubleWrite) {
-        // double write
-        transmitDoubleWrite(plan);
-      }
-
       return executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_RECORD, e.getErrorCode());
@@ -1633,11 +1623,6 @@ public class TSServiceImpl implements TSIService.Iface {
 
       if (status != null) {
         return status;
-      }
-
-      if (isEnableDoubleWrite) {
-        // double write
-        transmitDoubleWrite(plan);
       }
 
       return executeNonQueryPlan(plan);
@@ -1698,11 +1683,6 @@ public class TSServiceImpl implements TSIService.Iface {
 
       if (status != null) {
         return status;
-      }
-
-      if (isEnableDoubleWrite) {
-        // double write
-        transmitDoubleWrite(insertTabletPlan);
       }
 
       return executeNonQueryPlan(insertTabletPlan);
@@ -2212,8 +2192,7 @@ public class TSServiceImpl implements TSIService.Iface {
     return executeNonQueryPlan(physicalPlan);
   }
 
-  private void transmitDoubleWrite(PhysicalPlan physicalPlan)
-      throws InterruptedException, ExecutionException, IOException {
+  private void transmitDoubleWrite(PhysicalPlan physicalPlan) {
 
     if (physicalPlan instanceof InsertTabletPlan) {
       LOGGER.info(
@@ -2223,18 +2202,28 @@ public class TSServiceImpl implements TSIService.Iface {
     }
 
     // serialize physical plan
-    int size = physicalPlan.getSerializedSize();
-    ByteArrayOutputStream doubleWriteByteStream = new ByteArrayOutputStream(size);
-    DataOutputStream doubleWriteSerializeStream = new DataOutputStream(doubleWriteByteStream);
-    physicalPlan.serialize(doubleWriteSerializeStream);
-    ByteBuffer buffer = ByteBuffer.wrap(doubleWriteByteStream.toByteArray());
+    ByteBuffer buffer;
+    try {
+      int size = physicalPlan.getSerializedSize();
+      ByteArrayOutputStream doubleWriteByteStream = new ByteArrayOutputStream(size);
+      DataOutputStream doubleWriteSerializeStream = new DataOutputStream(doubleWriteByteStream);
+      physicalPlan.serialize(doubleWriteSerializeStream);
+      buffer = ByteBuffer.wrap(doubleWriteByteStream.toByteArray());
+    } catch (IOException e) {
+      LOGGER.error("DoubleWrite can't serialize PhysicalPlan", e);
+      return;
+    }
 
     if (isSyncDoubleWrite) {
       // create and wait DoubleWriteTask
       DoubleWriteTask doubleWriteTask =
           new DoubleWriteTask(doubleWriteProtectorService, buffer, doubleWriteSessionPool);
       Future<?> future = doubleWriteTaskThreadPool.submit(doubleWriteTask);
-      future.get();
+      try {
+        future.get();
+      } catch (InterruptedException | ExecutionException e) {
+        LOGGER.error("SyncDoubleWrite error", e);
+      }
     } else {
       // put the ByteBuffer into DoubleWriteProducer
       doubleWriteProducer.put(buffer);
@@ -2242,6 +2231,11 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
+    if (isEnableDoubleWrite) {
+      // DoubleWrite should transmit before execute
+      transmitDoubleWrite(plan);
+    }
+
     try {
       return serviceProvider.executeNonQuery(plan)
           ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
