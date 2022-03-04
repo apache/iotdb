@@ -958,7 +958,8 @@ public class MRocksDBManager implements IMetaManager {
   }
 
   public void traverseOutcomeBasins(
-      String[] nodes, int maxLevel, Consumer<String> consumer, Character[] nodeTypeArray) {
+      String[] nodes, int maxLevel, Consumer<String> consumer, Character[] nodeTypeArray)
+      throws IllegalPathException {
     List<String[]> allNodesArray = RocksDBUtils.replaceMultiWildcardToSingle(nodes, maxLevel);
     allNodesArray.parallelStream().forEach(x -> traverseByPatternPath(x, consumer, nodeTypeArray));
   }

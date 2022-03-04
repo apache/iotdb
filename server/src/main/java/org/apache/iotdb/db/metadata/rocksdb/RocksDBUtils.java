@@ -510,7 +510,8 @@ public class RocksDBUtils {
   }
 
   // eg. root.a.*.**.b.**.c
-  public static List<String[]> replaceMultiWildcardToSingle(String[] nodes, int maxLevel) {
+  public static List<String[]> replaceMultiWildcardToSingle(String[] nodes, int maxLevel)
+      throws IllegalPathException {
     List<String[]> allNodesArray = new ArrayList<>();
     List<Integer> multiWildcardPosition = new ArrayList<>();
     for (int i = 0; i < nodes.length; i++) {
@@ -524,7 +525,7 @@ public class RocksDBUtils {
       for (int i = 1; i <= maxLevel - nodes.length + 2; i++) {
         String[] clone = nodes.clone();
         clone[multiWildcardPosition.get(0)] = replaceWildcard(i);
-        allNodesArray.add(clone);
+        allNodesArray.add(RocksDBUtils.newStringArray(clone));
       }
     } else {
       for (int sum = multiWildcardPosition.size();
@@ -536,7 +537,7 @@ public class RocksDBUtils {
           for (int i = 0; i < value.length; i++) {
             clone[multiWildcardPosition.get(i)] = replaceWildcard(value[i]);
           }
-          allNodesArray.add(clone);
+          allNodesArray.add(RocksDBUtils.newStringArray(clone));
         }
       }
     }
