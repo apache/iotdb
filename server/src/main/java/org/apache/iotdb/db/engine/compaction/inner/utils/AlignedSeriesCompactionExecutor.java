@@ -25,6 +25,7 @@ import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileAlignedSeriesReaderIterator;
@@ -168,9 +169,10 @@ public class AlignedSeriesCompactionExecutor {
         MetricsService.getInstance()
             .getMetricManager()
             .getOrCreateCounter(
-                Metric.BYTE_WRITTEN.toString(),
+                Metric.DATA_WRITTEN.toString(),
+                MetricLevel.IMPORTANT,
                 Tag.NAME.toString(),
-                "inner_compaction_written_bytes");
-    counter.inc(byteNum);
+                "inner_compaction_written_in_kb");
+    counter.inc(byteNum / 1024);
   }
 }
