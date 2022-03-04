@@ -129,9 +129,6 @@ import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEA
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
-import static org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils.getAllCompoundMode;
-import static org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils.newStringArray;
-import static org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils.replaceWildcard;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -960,38 +957,10 @@ public class MRocksDBManager implements IMetaManager {
     return getCountByNodeType(new Character[] {NODE_TYPE_MEASUREMENT}, pathPattern.getNodes());
   }
 
-  // eg. root.a.*.**.b.**.c
-  public void replaceMultiWildcard(
-      String[] nodes, int maxLevel, Consumer<String> consumer, Character[] nodeTypeArray)
-      throws IllegalPathException {
-    List<Integer> multiWildcardPosition = new ArrayList<>();
-    for (int i = 0; i < nodes.length; i++) {
-      if (MULTI_LEVEL_PATH_WILDCARD.equals(nodes[i])) {
-        multiWildcardPosition.add(i);
-      }
-    }
-    if (multiWildcardPosition.isEmpty()) {
-      traverseByPatternPath(nodes, consumer, nodeTypeArray);
-    } else if (multiWildcardPosition.size() == 1) {
-      for (int i = 1; i <= maxLevel - nodes.length + 2; i++) {
-        String[] clone = nodes.clone();
-        clone[multiWildcardPosition.get(0)] = replaceWildcard(i);
-        traverseByPatternPath(newStringArray(clone), consumer, nodeTypeArray);
-      }
-    } else {
-      for (int sum = multiWildcardPosition.size();
-          sum <= maxLevel - (nodes.length - multiWildcardPosition.size() - 1);
-          sum++) {
-        List<int[]> result = getAllCompoundMode(sum, multiWildcardPosition.size());
-        for (int[] value : result) {
-          String[] clone = nodes.clone();
-          for (int i = 0; i < value.length; i++) {
-            clone[multiWildcardPosition.get(i)] = replaceWildcard(value[i]);
-          }
-          traverseByPatternPath(newStringArray(clone), consumer, nodeTypeArray);
-        }
-      }
-    }
+  public void traverseOutcomeBasins(
+      String[] nodes, int maxLevel, Consumer<String> consumer, Character[] nodeTypeArray) {
+    List<String[]> allNodesArray = RocksDBUtils.replaceMultiWildcardToSingle(nodes, maxLevel);
+    allNodesArray.parallelStream().forEach(x -> traverseByPatternPath(x, consumer, nodeTypeArray));
   }
 
   public void traverseByPatternPath(
@@ -1184,7 +1153,7 @@ public class MRocksDBManager implements IMetaManager {
     AtomicInteger atomicInteger = new AtomicInteger(0);
     Consumer<String> consumer = s -> atomicInteger.incrementAndGet();
 
-    replaceMultiWildcard(nodes, MAX_PATH_DEPTH, consumer, nodetype);
+    traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, consumer, nodetype);
     return atomicInteger.get();
   }
 
@@ -1440,7 +1409,7 @@ public class MRocksDBManager implements IMetaManager {
     List<String> allResult = Collections.synchronizedList(new ArrayList<>());
     Consumer<String> consumer = allResult::add;
 
-    replaceMultiWildcard(nodes, MAX_PATH_DEPTH, consumer, nodetype);
+    traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, consumer, nodetype);
 
     for (String path : allResult) {
       collection.add(new PartialPath(path));
