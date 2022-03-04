@@ -117,13 +117,10 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
   protected boolean transformDouble(long time, double value) {
     if (satisfyDouble(value)) {
       if (satisfyValueCount == 0L) {
-        satisfyValueCount++;
         satisfyValueStartTime = time;
-        satisfyValueLastTime = time;
-      } else {
-        satisfyValueCount++;
-        satisfyValueLastTime = time;
       }
+      satisfyValueCount++;
+      satisfyValueLastTime = time;
     } else if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
       interval = new Pair<>(satisfyValueStartTime, getRecord());
       satisfyValueCount = 0L;
@@ -137,13 +134,10 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
   protected boolean transformFloat(long time, float value) {
     if (satisfyFloat(value)) {
       if (satisfyValueCount == 0L) {
-        satisfyValueCount++;
         satisfyValueStartTime = time;
-        satisfyValueLastTime = time;
-      } else {
-        satisfyValueCount++;
-        satisfyValueLastTime = time;
       }
+      satisfyValueCount++;
+      satisfyValueLastTime = time;
     } else if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
       interval = new Pair<>(satisfyValueStartTime, getRecord());
       satisfyValueCount = 0L;
@@ -157,13 +151,10 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
   protected boolean transformLong(long time, long value) {
     if (satisfyLong(value)) {
       if (satisfyValueCount == 0L) {
-        satisfyValueCount++;
         satisfyValueStartTime = time;
-        satisfyValueLastTime = time;
-      } else {
-        satisfyValueCount++;
-        satisfyValueLastTime = time;
       }
+      satisfyValueCount++;
+      satisfyValueLastTime = time;
     } else if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
       interval = new Pair<>(satisfyValueStartTime, getRecord());
       satisfyValueCount = 0L;
@@ -177,13 +168,10 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
   protected boolean transformInt(long time, int value) {
     if (satisfyInt(value)) {
       if (satisfyValueCount == 0L) {
-        satisfyValueCount++;
         satisfyValueStartTime = time;
-        satisfyValueLastTime = time;
-      } else {
-        satisfyValueCount++;
-        satisfyValueLastTime = time;
       }
+      satisfyValueCount++;
+      satisfyValueLastTime = time;
     } else if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
       interval = new Pair<>(satisfyValueStartTime, getRecord());
       satisfyValueCount = 0L;
@@ -197,13 +185,10 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
   protected boolean transformBoolean(long time, boolean value) {
     if (satisfyBoolean(value)) {
       if (satisfyValueCount == 0L) {
-        satisfyValueCount++;
         satisfyValueStartTime = time;
-        satisfyValueLastTime = time;
-      } else {
-        satisfyValueCount++;
-        satisfyValueLastTime = time;
       }
+      satisfyValueCount++;
+      satisfyValueLastTime = time;
     } else if (getRecord() >= min && getRecord() <= max && satisfyValueCount > 0) {
       interval = new Pair<>(satisfyValueStartTime, getRecord());
       satisfyValueCount = 0L;
