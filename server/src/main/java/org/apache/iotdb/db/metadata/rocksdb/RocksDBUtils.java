@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ALIAS;
@@ -506,5 +507,39 @@ public class RocksDBUtils {
       }
     }
     return allResult;
+  }
+
+  // eg. root.a.*.**.b.**.c
+  public static List<String[]> replaceMultiWildcardToSingle(String[] nodes, int maxLevel) {
+    List<String[]> allNodesArray = new ArrayList<>();
+    List<Integer> multiWildcardPosition = new ArrayList<>();
+    for (int i = 0; i < nodes.length; i++) {
+      if (MULTI_LEVEL_PATH_WILDCARD.equals(nodes[i])) {
+        multiWildcardPosition.add(i);
+      }
+    }
+    if (multiWildcardPosition.isEmpty()) {
+      allNodesArray.add(nodes);
+    } else if (multiWildcardPosition.size() == 1) {
+      for (int i = 1; i <= maxLevel - nodes.length + 2; i++) {
+        String[] clone = nodes.clone();
+        clone[multiWildcardPosition.get(0)] = replaceWildcard(i);
+        allNodesArray.add(clone);
+      }
+    } else {
+      for (int sum = multiWildcardPosition.size();
+          sum <= maxLevel - (nodes.length - multiWildcardPosition.size() - 1);
+          sum++) {
+        List<int[]> result = getAllCompoundMode(sum, multiWildcardPosition.size());
+        for (int[] value : result) {
+          String[] clone = nodes.clone();
+          for (int i = 0; i < value.length; i++) {
+            clone[multiWildcardPosition.get(i)] = replaceWildcard(value[i]);
+          }
+          allNodesArray.add(clone);
+        }
+      }
+    }
+    return allNodesArray;
   }
 }
