@@ -115,8 +115,6 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
           mergeFiles[1]);
 
       if (mergeFiles[0].size() > 0 && mergeFiles[1].size() > 0) {
-        mergeFiles[0].forEach(x -> ((TsFileResource) x).setCompactionCandidate(true));
-        mergeFiles[1].forEach(x -> ((TsFileResource) x).setCompactionCandidate(true));
         AbstractCompactionTask compactionTask =
             taskFactory.createTask(
                 logicalStorageGroupName,

@@ -56,6 +56,8 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     this.currentTaskNum = currentTaskNum;
   }
 
+  public abstract void setSourceFilesToCompactionCandidate();
+
   protected abstract void doCompaction() throws Exception;
 
   @Override

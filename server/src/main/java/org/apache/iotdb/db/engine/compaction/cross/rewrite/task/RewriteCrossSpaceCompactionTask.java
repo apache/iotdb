@@ -218,10 +218,12 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     for (TsFileResource tsFileResource : holdReadLockList) {
       tsFileResource.readUnlock();
       tsFileResource.setCompacting(false);
+      tsFileResource.setCompactionCandidate(false);
     }
     for (TsFileResource tsFileResource : holdWriteLockList) {
       tsFileResource.writeUnlock();
       tsFileResource.setCompacting(false);
+      tsFileResource.setCompactionCandidate(false);
     }
     holdReadLockList.clear();
     holdWriteLockList.clear();

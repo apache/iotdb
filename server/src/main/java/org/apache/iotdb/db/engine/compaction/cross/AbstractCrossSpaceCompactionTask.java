@@ -47,6 +47,12 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
     this.selectedUnsequenceFiles = null;
   }
 
+  @Override
+  public void setSourceFilesToCompactionCandidate() {
+    this.selectedSequenceFiles.forEach(x -> x.setCompactionCandidate(true));
+    this.selectedUnsequenceFiles.forEach(x -> x.setCompactionCandidate(true));
+  }
+
   public List<TsFileResource> getSelectedSequenceFiles() {
     return selectedSequenceFiles;
   }
