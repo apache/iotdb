@@ -39,6 +39,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
@@ -1150,11 +1151,17 @@ public class IoTDBAuthorizationIT {
       resultSet = userStatement.executeQuery("select sin(s8) from root.sg1.d1;");
       resultSetMetaData = resultSet.getMetaData();
       assertEquals(1, resultSetMetaData.getColumnCount());
+      while (resultSet.next()) {
+        fail();
+      }
 
       // Case 3:
       resultSet = userStatement.executeQuery("select s8 from root.sg1.d1;");
       resultSetMetaData = resultSet.getMetaData();
       assertEquals(1, resultSetMetaData.getColumnCount());
+      while (resultSet.next()) {
+        fail();
+      }
 
       // Case 4:
       try {
