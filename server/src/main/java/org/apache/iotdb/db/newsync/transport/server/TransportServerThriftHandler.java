@@ -9,7 +9,7 @@ public class TransportServerThriftHandler implements TServerEventHandler {
 
   private TransportServiceImpl serviceImpl;
 
-  TransportServerThriftHandler(TransportServiceImpl serviceImpl) {
+  public TransportServerThriftHandler(TransportServiceImpl serviceImpl) {
     this.serviceImpl = serviceImpl;
   }
 

@@ -165,7 +165,7 @@ public class TransportClient implements ITransportClient, Runnable {
     return true;
   }
 
-  private boolean senderTransport(PipeData pipeData) {
+  public boolean senderTransport(PipeData pipeData) {
 
     int retryCount = 0;
 
@@ -275,7 +275,9 @@ public class TransportClient implements ITransportClient, Runnable {
       try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r");
           ByteArrayOutputStream byteArrayOutputStream =
               new ByteArrayOutputStream(TransportConstant.DATA_CHUNK_SIZE)) {
-
+        if (randomAccessFile.length() <= position) {
+          break;
+        }
         randomAccessFile.seek(position);
         while ((dataLength = randomAccessFile.read(buffer)) != -1) {
           messageDigest.reset();
@@ -353,12 +355,15 @@ public class TransportClient implements ITransportClient, Runnable {
 
       try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
           DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-        int dataLength = new Long(pipeData.serialize(dataOutputStream)).intValue();
-        byte[] buffer = new byte[dataLength];
+        pipeData.serialize(dataOutputStream);
+        //        int dataLength = new Long(pipeData.serialize(dataOutputStream)).intValue();
+        //        byte[] buffer = new byte[dataLength];
+        byte[] buffer = byteArrayOutputStream.toByteArray();
 
-        byteArrayOutputStream.write(buffer, 0, dataLength);
+        //        byteArrayOutputStream.write(buffer, 0, dataLength);
         messageDigest.reset();
-        messageDigest.update(buffer, 0, dataLength);
+        //        messageDigest.update(buffer, 0, dataLength);
+        messageDigest.update(buffer);
         ByteBuffer buffToSend = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
         byteArrayOutputStream.reset();
 
@@ -471,21 +476,21 @@ public class TransportClient implements ITransportClient, Runnable {
       return;
     }
 
-    // Example 1. Send TSFILE.
-    //    List<File> files = new ArrayList<>();
-    //    files.add(new File(System.getProperty(IoTDBConstant.IOTDB_HOME) + "/files/test1"));
-    //    files.add(new File(System.getProperty(IoTDBConstant.IOTDB_HOME) + "/files/test2"));
-    //    files.add(new File(System.getProperty(IoTDBConstant.IOTDB_HOME) + "/files/test3"));
+    //     Example 1. Send TSFILE.
+    //        List<File> files = new ArrayList<>();
+    //        files.add(new File(System.getProperty(IoTDBConstant.IOTDB_HOME) + "/files/test1"));
+    //        files.add(new File(System.getProperty(IoTDBConstant.IOTDB_HOME) + "/files/test2"));
+    //        files.add(new File(System.getProperty(IoTDBConstant.IOTDB_HOME) + "/files/test3"));
 
-    // if (!TransportClient.getInstance().senderTransport()) {
-    // Deal with the error here.
-    // }
+    //     if (!TransportClient.getInstance().senderTransport()) {
+    //     Deal with the error here.
+    //     }
 
-    // Example 2. Send DELETION
-    // TsFilePipeData.Type.DELETION.name();
+    //     Example 2. Send DELETION
+    //     TsFilePipeData.Type.DELETION.name();
 
-    // Example 3. Send PHYSICALPLAN
-    // TsFilePipeData.Type.PHYSICALPLAN.name();
+    //     Example 3. Send PHYSICALPLAN
+    //     TsFilePipeData.Type.PHYSICALPLAN.name();
   }
 
   private static class InstanceHolder {

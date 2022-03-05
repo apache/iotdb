@@ -28,6 +28,7 @@ import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
 import org.apache.iotdb.db.newsync.receiver.manager.ReceiverManager;
 import org.apache.iotdb.db.newsync.transfer.SyncRequest;
 import org.apache.iotdb.db.newsync.transfer.SyncResponse;
+import org.apache.iotdb.db.newsync.transport.server.TransportServerManager;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -69,8 +70,8 @@ public class ReceiverService implements IService {
               pipeInfo.getPipeName(), pipeInfo.getRemoteIp(), pipeInfo.getCreateTime());
         }
       }
-      // TODO: start socket
-    } catch (IOException e) {
+      TransportServerManager.getInstance().startService();
+    } catch (IOException | StartupException e) {
       logger.error(e.getMessage());
       return false;
     }
@@ -82,7 +83,7 @@ public class ReceiverService implements IService {
     try {
       receiverManager.stopServer();
       collector.stopCollect();
-      // TODO: stop socket and collector
+      TransportServerManager.getInstance().stopService();
     } catch (IOException e) {
       logger.error(e.getMessage());
       return false;
@@ -228,7 +229,7 @@ public class ReceiverService implements IService {
 
   @Override
   public ServiceType getID() {
-    return ServiceType.RECEIVER_SERVICE;
+    return ServiceType.SYNC_SERVICE;
   }
 
   private static class ReceiverServiceHolder {

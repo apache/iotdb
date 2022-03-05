@@ -178,8 +178,9 @@ public class TransportServiceImpl implements TransportService.Iface {
         try (InputStream inputStream = new ByteArrayInputStream(byteArray);
             DataInputStream dataInputStream = new DataInputStream(inputStream)) {
           PipeData pipeData = PipeData.deserialize(dataInputStream);
+          System.out.println(pipeData);
           // Do with file
-          // BufferedPipeDataQueue.offer(pipeData);
+          //        BufferedPipeDataQueue.offer(pipeData);
         } catch (IOException | IllegalPathException e) {
           e.printStackTrace();
         }
