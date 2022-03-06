@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
+import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -245,7 +246,7 @@ public class InnerSpaceCompactionUtils {
     File timePartitionDir = new File(directory);
     if (timePartitionDir.exists()) {
       return timePartitionDir.listFiles(
-          (dir, name) -> name.endsWith(SizeTieredCompactionLogger.COMPACTION_LOG_NAME));
+          (dir, name) -> name.endsWith(CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX));
     } else {
       return new File[0];
     }
