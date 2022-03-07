@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
+import static org.apache.iotdb.db.metadata.utils.MetaUtils.splitPathToDetachedPath;
+
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
@@ -26,6 +28,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -119,7 +122,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     queryOperator.getSelectComponent().setResultColumns(resultColumns);
   }
 
-  private void concatWithoutNullColumns(QueryOperator queryOperator) {
+  private void concatWithoutNullColumns(QueryOperator queryOperator)
+      throws LogicalOptimizeException {
     List<PartialPath> prefixPaths = queryOperator.getFromComponent().getPrefixPaths();
     // has without null columns
     if (queryOperator.getSpecialClauseComponent() != null
@@ -133,18 +137,27 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   }
 
   private void concatWithoutNullColumns(List<PartialPath> prefixPaths, Expression expression,
-      List<Expression> withoutNullColumns, Set<String> aliasSet) {
+      List<Expression> withoutNullColumns, Set<String> aliasSet) throws LogicalOptimizeException {
     if (expression instanceof TimeSeriesOperand) {
       TimeSeriesOperand timeSeriesOperand = (TimeSeriesOperand) expression;
-      if (timeSeriesOperand.getPath().getNodeLength() > 0
-          && timeSeriesOperand.getPath().getFirstNode().equals(SQLConstant.ROOT)) { // start with "root." don't concat
+      if (timeSeriesOperand.getPath().getFullPath().startsWith(SQLConstant.ROOT + ".")) { // start with "root." don't concat
+        if (((TimeSeriesOperand) expression).getPath().getNodeLength() == 1) {  // no split
+          try {
+            ((TimeSeriesOperand) expression).setPath(new PartialPath(MetaUtils
+                .splitPathToDetachedPath(((TimeSeriesOperand) expression).getPath().getFirstNode())));  // split path To nodes
+          } catch (IllegalPathException e) {
+            throw new LogicalOptimizeException(e.getMessage());
+          }
+        }
         withoutNullColumns.add(expression);
-      } else if (!aliasSet.contains(expression.getExpressionString())) {  // not alias, concat
-        List<Expression> resultExpressions = new ArrayList<>();
-        expression.concat(prefixPaths, resultExpressions);
-        withoutNullColumns.addAll(resultExpressions);
-      } else {  // alias, don't concat
-        withoutNullColumns.add(expression);
+      } else {
+        if (!aliasSet.contains(expression.getExpressionString())) {  // not alias, concat
+          List<Expression> resultExpressions = new ArrayList<>();
+          expression.concat(prefixPaths, resultExpressions);
+          withoutNullColumns.addAll(resultExpressions);
+        } else {  // alias, don't concat
+          withoutNullColumns.add(expression);
+        }
       }
     } else {
       List<Expression> resultExpressions = new ArrayList<>();

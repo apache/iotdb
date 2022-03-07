@@ -62,7 +62,7 @@ public abstract class QueryPlan extends PhysicalPlan {
   private Map<String, Integer> pathToIndex = new HashMap<>(); // align By time
   private Set<String> alignByDeviceWithoutNullValidSet = new HashSet<>();  // align By Device
 
-  private Set<Integer> withoutNullColumnsIndex = new HashSet<>();
+  private Set<Integer> withoutNullColumnsIndex = new HashSet<>(); // index set that withoutNullColumns for output data columns
 
   private boolean enableRedirect = false;
   private boolean enableTracing = false;
