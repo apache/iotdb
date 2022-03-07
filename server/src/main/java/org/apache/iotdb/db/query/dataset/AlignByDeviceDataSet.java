@@ -206,8 +206,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
             break;
           case QUERY:
             // Group all the subSensors of one vector into one VectorPartialPath
-            executePaths = MetaUtils.groupAlignedPaths(executePaths);
             rawDataQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
+            rawDataQueryPlan.setDeduplicatedVectorPaths(MetaUtils.groupAlignedPaths(executePaths));
             rawDataQueryPlan.setExpression(expression);
             currentDataSet = queryRouter.rawDataQuery(rawDataQueryPlan, context);
             break;
