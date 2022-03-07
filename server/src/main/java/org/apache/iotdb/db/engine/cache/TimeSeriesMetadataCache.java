@@ -114,7 +114,7 @@ public class TimeSeriesMetadataCache {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.CACHE_HIT.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.IMPORTANT,
               lruCache,
               l -> (long) (l.stats().hitRate() * 100),
               Tag.NAME.toString(),
@@ -124,7 +124,7 @@ public class TimeSeriesMetadataCache {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.CACHE_HIT.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.IMPORTANT,
               bloomFilterPreventCount,
               prevent -> {
                 if (bloomFilterRequestCount.get() == 0L) {

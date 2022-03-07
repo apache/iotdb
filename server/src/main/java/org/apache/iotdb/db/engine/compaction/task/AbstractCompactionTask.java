@@ -81,7 +81,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
               System.currentTimeMillis() - startTime,
               TimeUnit.MILLISECONDS,
               Metric.COST_TASK.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               "compaction");
     }

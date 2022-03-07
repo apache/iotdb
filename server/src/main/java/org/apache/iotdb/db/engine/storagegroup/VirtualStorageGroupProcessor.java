@@ -411,7 +411,7 @@ public class VirtualStorageGroupProcessor {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.MEM.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.IMPORTANT,
               storageGroupInfo,
               StorageGroupInfo::getMemCost,
               Tag.NAME.toString(),

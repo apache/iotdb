@@ -42,7 +42,7 @@ public class MetricConfig {
   private List<ReporterType> metricReporterList =
       Arrays.asList(ReporterType.JMX, ReporterType.PROMETHEUS);
 
-  private MetricLevel metricLevel = MetricLevel.NORMAL;
+  private MetricLevel metricLevel = MetricLevel.IMPORTANT;
 
   private List<PredefinedMetric> predefinedMetrics =
       Collections.singletonList(PredefinedMetric.JVM);

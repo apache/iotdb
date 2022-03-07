@@ -29,13 +29,13 @@ metricReporterList:
 monitorType: MICROMETER
 
 # Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
-metricLevel: NORMAL
+metricLevel: IMPORTANT
 
 # Predefined metric, options: [JVM, LOGBACK], LOGBACK are not supported in dropwizard
 predefinedMetrics:
   - JVM
 
-# Period time of push, only valid for dropwizard
+# Period time of push, only used by IoTDB Reporter
 pushPeriodInSecond: 5
 
 # The http server's port for prometheus exporter to get metric data.
