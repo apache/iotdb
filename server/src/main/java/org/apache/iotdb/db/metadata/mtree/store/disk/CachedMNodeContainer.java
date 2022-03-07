@@ -318,13 +318,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public synchronized void evictMNode(String name) {
-    IMNode result = remove(childCache, name);
-    if (result == null) {
-      result = remove(newChildBuffer, name);
-    }
-    if (result == null) {
-      remove(updatedChildBuffer, name);
-    }
+    remove(childCache, name);
   }
 
   public synchronized String toString() {

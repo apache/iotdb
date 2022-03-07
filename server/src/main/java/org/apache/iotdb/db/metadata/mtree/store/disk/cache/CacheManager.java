@@ -18,8 +18,12 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
+import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
+import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -57,14 +61,16 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContaine
  *       </ol>
  * </ol>
  */
-public abstract class CacheStrategy implements ICacheStrategy {
+public abstract class CacheManager implements ICacheManager {
+
+  private IMemManager memManager = MemManagerHolder.getMemManagerInstance();
 
   // The nodeBuffer helps to quickly locate the volatile subtree
   private volatile Map<CacheEntry, IMNode> nodeBuffer = new ConcurrentHashMap<>();
 
-  @Override
-  public boolean isCached(IMNode node) {
-    return getCacheEntry(node) != null;
+  public void initRootStatus(IMNode root) {
+    initCacheEntryForNode(root);
+    doPin(root);
   }
 
   /**
@@ -74,7 +80,21 @@ public abstract class CacheStrategy implements ICacheStrategy {
    * @param node
    */
   @Override
-  public abstract void updateCacheStatusAfterMemoryRead(IMNode node);
+  public void updateCacheStatusAfterMemoryRead(IMNode node) throws MNodeNotCachedException {
+    CacheEntry cacheEntry = getCacheEntry(node);
+    if (cacheEntry == null) {
+      throw new MNodeNotCachedException();
+    }
+
+    // the operation that changes the node's cache status should be synchronized
+    synchronized (cacheEntry) {
+      if (getCacheEntry(node) == null) {
+        throw new MNodeNotCachedException();
+      }
+      pinMNodeWithMemStatusUpdate(node);
+    }
+    updateCacheStatusAfterAccess(cacheEntry);
+  }
 
   /**
    * The node read from disk should be cached and added to nodeCache and the cache of its belonging
@@ -84,6 +104,7 @@ public abstract class CacheStrategy implements ICacheStrategy {
    */
   @Override
   public void updateCacheStatusAfterDiskRead(IMNode node) {
+    pinMNodeWithMemStatusUpdate(node);
     CacheEntry cacheEntry = getCacheEntry(node);
     getBelongedContainer(node).addChildToCache(node);
     addToNodeCache(cacheEntry, node);
@@ -97,6 +118,7 @@ public abstract class CacheStrategy implements ICacheStrategy {
    */
   @Override
   public void updateCacheStatusAfterAppend(IMNode node) {
+    pinMNodeWithMemStatusUpdate(node);
     CacheEntry cacheEntry = getCacheEntry(node);
     cacheEntry.setVolatile(true);
     getBelongedContainer(node).appendMNode(node);
@@ -115,9 +137,7 @@ public abstract class CacheStrategy implements ICacheStrategy {
     if (!cacheEntry.isVolatile()) {
       cacheEntry.setVolatile(true);
       getBelongedContainer(node).updateMNode(node.getName());
-      synchronized (node) {
-        removeFromNodeCache(cacheEntry);
-      }
+      removeFromNodeCache(cacheEntry);
       addNodeToBuffer(node);
     }
   }
@@ -134,15 +154,13 @@ public abstract class CacheStrategy implements ICacheStrategy {
     while (parent != null) {
       cacheEntry = getCacheEntry(parent);
       if (isInNodeCache(cacheEntry)) {
-        synchronized (parent) {
-          if (isInNodeCache(cacheEntry)) {
-            // the ancestors of volatile node should not stay in nodeCache in which the node will be
-            // evicted
-            removeFromNodeCache(cacheEntry);
-            parent = parent.getParent();
-          } else {
-            break;
-          }
+        if (isInNodeCache(cacheEntry)) {
+          // the ancestors of volatile node should not stay in nodeCache in which the node will be
+          // evicted
+          removeFromNodeCache(cacheEntry);
+          parent = parent.getParent();
+        } else {
+          break;
         }
       } else {
         break;
@@ -227,10 +245,15 @@ public abstract class CacheStrategy implements ICacheStrategy {
   }
 
   @Override
-  public List<IMNode> remove(IMNode node) {
+  public void remove(IMNode node) {
     List<IMNode> removedMNodes = new LinkedList<>();
     removeRecursively(node, removedMNodes);
-    return removedMNodes;
+    for (IMNode removedMNode : removedMNodes) {
+      if (getCacheEntry(removedMNode).isPinned()) {
+        memManager.releasePinnedMemResource(removedMNode);
+      }
+      memManager.releaseMemResource(removedMNode);
+    }
   }
 
   private void removeOne(CacheEntry cacheEntry) {
@@ -257,10 +280,10 @@ public abstract class CacheStrategy implements ICacheStrategy {
    * Choose an evictable node from nodeCache and evicted all the cached node in the subtree it
    * represented.
    *
-   * @return
+   * @return whether evicted any MNode successfully
    */
   @Override
-  public synchronized List<IMNode> evict() {
+  public synchronized boolean evict() {
     IMNode node = null;
     CacheEntry cacheEntry = null;
     List<IMNode> evictedMNodes = new ArrayList<>();
@@ -272,9 +295,15 @@ public abstract class CacheStrategy implements ICacheStrategy {
       }
       cacheEntry = getCacheEntry(node);
       // the operation that may change the cache status of a node should be synchronized
-      synchronized (node) {
+      synchronized (cacheEntry) {
         if (!cacheEntry.isPinned() && isInNodeCache(cacheEntry)) {
           getBelongedContainer(node).evictMNode(node.getName());
+          if (node.isMeasurement()) {
+            String alias = node.getAsMeasurementMNode().getAlias();
+            if (alias != null) {
+              node.getParent().getAsEntityMNode().deleteAliasChild(alias);
+            }
+          }
           removeFromNodeCache(getCacheEntry(node));
           node.setCacheEntry(null);
           evictedMNodes.add(node);
@@ -286,7 +315,9 @@ public abstract class CacheStrategy implements ICacheStrategy {
     if (node != null) {
       collectEvictedMNodes(node, evictedMNodes);
     }
-    return evictedMNodes;
+
+    memManager.releaseMemResource(evictedMNodes);
+    return !evictedMNodes.isEmpty();
   }
 
   private void collectEvictedMNodes(IMNode node, List<IMNode> evictedMNodes) {
@@ -307,17 +338,43 @@ public abstract class CacheStrategy implements ICacheStrategy {
    * @param node
    */
   @Override
-  public void pinMNode(IMNode node) {
+  public void pinMNode(IMNode node) throws MNodeNotPinnedException {
     CacheEntry cacheEntry = getCacheEntry(node);
-    if (cacheEntry == null) {
-      cacheEntry = initCacheEntryForNode(node);
+    if (cacheEntry == null || !cacheEntry.isPinned()) {
+      throw new MNodeNotPinnedException();
     }
+
+    synchronized (cacheEntry) {
+      cacheEntry = getCacheEntry(node);
+      if (cacheEntry == null || !cacheEntry.isPinned()) {
+        throw new MNodeNotPinnedException();
+      }
+      doPin(node);
+    }
+  }
+
+  private void pinMNodeWithMemStatusUpdate(IMNode node) {
+    CacheEntry cacheEntry = getCacheEntry(node);
+    // update memory status first
+    if (cacheEntry == null) {
+      memManager.requestPinnedMemResource(node);
+      cacheEntry = initCacheEntryForNode(node);
+    } else if (!cacheEntry.isPinned()) {
+      memManager.upgradeMemResource(node);
+    }
+    doPin(node);
+  }
+
+  private void doPin(IMNode node) {
+    CacheEntry cacheEntry = getCacheEntry(node);
+    // do pin MNode in memory
     if (!cacheEntry.isPinned()) {
       IMNode parent = node.getParent();
       if (parent != null) {
         getCacheEntry(parent).pin();
       }
     }
+
     cacheEntry.pin();
   }
 
@@ -330,12 +387,14 @@ public abstract class CacheStrategy implements ICacheStrategy {
    * @return
    */
   @Override
-  public List<IMNode> unPinMNode(IMNode node) {
-    List<IMNode> releasedMNodes = new ArrayList<>();
+  public void unPinMNode(IMNode node) {
     CacheEntry cacheEntry = getCacheEntry(node);
+    if (cacheEntry == null) {
+      return;
+    }
     cacheEntry.unPin();
     if (!cacheEntry.isPinned()) {
-      releasedMNodes.add(node);
+      memManager.releasePinnedMemResource(node);
       IMNode parent = node.getParent();
       while (parent != null) {
         node = parent;
@@ -345,16 +404,9 @@ public abstract class CacheStrategy implements ICacheStrategy {
         if (cacheEntry.isPinned()) {
           break;
         }
-        releasedMNodes.add(node);
+        memManager.releasePinnedMemResource(parent);
       }
     }
-    return releasedMNodes;
-  }
-
-  @Override
-  public boolean isPinned(IMNode node) {
-    CacheEntry cacheEntry = getCacheEntry(node);
-    return cacheEntry != null && cacheEntry.isPinned();
   }
 
   @Override
@@ -372,6 +424,8 @@ public abstract class CacheStrategy implements ICacheStrategy {
     node.setCacheEntry(cacheEntry);
     return cacheEntry;
   }
+
+  protected abstract void updateCacheStatusAfterAccess(CacheEntry cacheEntry);
 
   protected abstract boolean isInNodeCache(CacheEntry cacheEntry);
 

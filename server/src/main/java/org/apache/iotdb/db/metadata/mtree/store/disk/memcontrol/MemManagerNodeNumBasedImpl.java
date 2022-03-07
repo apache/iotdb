@@ -16,23 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
+package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-public class MemManager implements IMemManager {
+import java.util.List;
 
-  private int capacity =
-      IoTDBDescriptor.getInstance().getConfig().getCachedMetadataSizeInPersistentMode();
+public class MemManagerNodeNumBasedImpl implements IMemManager {
+
+  private int capacity;
 
   private volatile int size;
 
   private volatile int pinnedSize;
 
+  MemManagerNodeNumBasedImpl() {}
+
   @Override
-  public synchronized void initCapacity(int capacity) {
-    this.capacity = capacity;
+  public void init() {
+    capacity = IoTDBDescriptor.getInstance().getConfig().getCachedMetadataSizeInPersistentMode();
   }
 
   @Override
@@ -48,20 +51,6 @@ public class MemManager implements IMemManager {
   @Override
   public synchronized boolean isExceedCapacity() {
     return size + pinnedSize > capacity;
-  }
-
-  @Override
-  public synchronized boolean requestMemResource(IMNode node) {
-    if (size < capacity - pinnedSize) {
-      size++;
-      return true;
-    }
-    return false;
-  }
-
-  @Override
-  public synchronized void releaseMemResource(IMNode node) {
-    size--;
   }
 
   @Override
@@ -82,8 +71,19 @@ public class MemManager implements IMemManager {
   }
 
   @Override
+  public synchronized void releaseMemResource(IMNode node) {
+    size--;
+  }
+
+  @Override
+  public synchronized void releaseMemResource(List<IMNode> evictedNodes) {
+    size -= evictedNodes.size();
+  }
+
+  @Override
   public synchronized void clear() {
     size = 0;
+    pinnedSize = 0;
   }
 
   @Override

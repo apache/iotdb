@@ -54,7 +54,7 @@ public interface IMTreeStore {
 
   void updateMNode(IMNode node);
 
-  void pin(IMNode node);
+  void pin(IMNode node) throws MetadataException;
 
   void unPin(IMNode node);
 
