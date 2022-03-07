@@ -42,15 +42,15 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
 
-public class InfluxFirstFunction extends InfluxSelector {
+public class InfluxLastFunction extends InfluxSelector {
   private Object value;
 
-  public InfluxFirstFunction(List<Expression> expressionList) {
+  public InfluxLastFunction(List<Expression> expressionList) {
     super(expressionList);
-    this.setTimestamp(Long.MAX_VALUE);
+    this.setTimestamp(Long.MIN_VALUE);
   }
 
-  public InfluxFirstFunction(
+  public InfluxLastFunction(
       List<Expression> expressionList, String path, ServiceProvider serviceProvider) {
     super(expressionList, path, serviceProvider);
   }
@@ -62,12 +62,11 @@ public class InfluxFirstFunction extends InfluxSelector {
 
   @Override
   public InfluxFunctionValue calculateByIoTDBFunc() {
-    Object firstValue = null;
-    Long firstTime = null;
+    Object lastValue = null;
+    Long lastTime = null;
     long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
     try {
-      String getFunctionSql =
-          InfluxDBUtils.generateFunctionSql("first_value", getParmaName(), path);
+      String getFunctionSql = InfluxDBUtils.generateFunctionSql("last_value", getParmaName(), path);
       QueryPlan queryPlan =
           (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(getFunctionSql);
       QueryContext queryContext =
@@ -107,12 +106,12 @@ public class InfluxFirstFunction extends InfluxSelector {
               RowRecord recordNew = queryDataSetNew.next();
               List<Field> newFields = recordNew.getFields();
               long time = recordNew.getTimestamp();
-              if (firstValue == null && firstTime == null) {
-                firstValue = InfluxDBUtils.iotdbFiledConvert(newFields.get(0));
-                firstTime = time;
-              } else if (time < firstTime) {
-                firstValue = InfluxDBUtils.iotdbFiledConvert(newFields.get(0));
-                firstTime = time;
+              if (lastValue == null && lastTime == null) {
+                lastValue = InfluxDBUtils.iotdbFiledConvert(newFields.get(0));
+                lastTime = time;
+              } else if (time < lastTime) {
+                lastValue = InfluxDBUtils.iotdbFiledConvert(newFields.get(0));
+                lastTime = time;
               }
             }
           }
@@ -131,10 +130,10 @@ public class InfluxFirstFunction extends InfluxSelector {
       ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
     }
 
-    if (firstValue == null) {
+    if (lastValue == null) {
       return new InfluxFunctionValue(null, null);
     }
-    return new InfluxFunctionValue(firstValue, firstTime);
+    return new InfluxFunctionValue(lastValue, lastTime);
   }
 
   @Override
@@ -142,7 +141,7 @@ public class InfluxFirstFunction extends InfluxSelector {
       InfluxFunctionValue functionValue, List<Object> relatedValues) {
     Object value = functionValue.getValue();
     Long timestamp = functionValue.getTimestamp();
-    if (timestamp <= this.getTimestamp()) {
+    if (timestamp >= this.getTimestamp()) {
       this.value = value;
       this.setTimestamp(timestamp);
       this.setRelatedValues(relatedValues);

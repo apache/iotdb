@@ -20,6 +20,7 @@ package org.apache.iotdb.db.protocol.influxdb.function;
 
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxFirstFunction;
+import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxLastFunction;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 
@@ -36,8 +37,8 @@ public class InfluxFunctionFactory {
         //        return new MinFunction(expressionList);
         //      case SQLConstant.MEAN:
         //        return new MeanFunction(expressionList);
-        //      case SQLConstant.LAST:
-        //        return new LastFunction(expressionList);
+      case InfluxSQLConstant.LAST:
+        return new InfluxLastFunction(expressionList);
       case InfluxSQLConstant.FIRST:
         return new InfluxFirstFunction(expressionList);
         //      case SQLConstant.COUNT:
@@ -69,8 +70,8 @@ public class InfluxFunctionFactory {
         //                return new MinFunction(expressionList, session, path);
         //            case InfluxSQLConstant.MEAN:
         //                return new MeanFunction(expressionList, session, path);
-        //            case InfluxSQLConstant.LAST:
-        //                return new LastFunction(expressionList, session, path);
+      case InfluxSQLConstant.LAST:
+        return new InfluxLastFunction(expressionList, path, serviceProvider);
       case InfluxSQLConstant.FIRST:
         return new InfluxFirstFunction(expressionList, path, serviceProvider);
         //            case InfluxSQLConstant.COUNT:
