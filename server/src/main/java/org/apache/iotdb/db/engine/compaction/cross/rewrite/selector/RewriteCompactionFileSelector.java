@@ -51,6 +51,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   long totalCost;
   private long memoryBudget;
   private long maxSeqFileCost;
+  private int maxCrossCompactionFileNum;
 
   // the number of timeseries being queried at the same time
   int concurrentMergeNum = 1;
@@ -72,6 +73,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   public RewriteCompactionFileSelector(CrossSpaceCompactionResource resource, long memoryBudget) {
     this.resource = resource;
     this.memoryBudget = memoryBudget;
+    this.maxCrossCompactionFileNum =
+        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
   }
 
   /**
@@ -195,7 +198,9 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   }
 
   private boolean updateSelectedFiles(long newCost, TsFileResource unseqFile) {
-    if (totalCost + newCost < memoryBudget) {
+    if (selectedSeqFiles.size() + selectedUnseqFiles.size() + 1 + tmpSelectedSeqFiles.size()
+            < maxCrossCompactionFileNum
+        && totalCost + newCost < memoryBudget) {
       selectedUnseqFiles.add(unseqFile);
       maxSeqFileCost = tempMaxSeqFileCost;
 
