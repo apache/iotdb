@@ -17,15 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.metadata;
+package org.apache.iotdb.db.exception.metadata.template;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class UndefinedTemplateException extends MetadataException {
-  public UndefinedTemplateException(String path) {
+public class DuplicatedTemplateException extends MetadataException {
+  public DuplicatedTemplateException(String path) {
     super(
-        String.format("Undefined template name: " + path),
-        TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
+        String.format("Failed to create duplicated template for path %s", path),
+        TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode(),
         true);
   }
 }

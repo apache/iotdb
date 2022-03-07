@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
-import org.apache.iotdb.db.exception.metadata.RecordDuplicatedException;
+import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
 import org.apache.iotdb.db.metadata.mnode.*;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;

@@ -18,23 +18,24 @@
  *
  */
 
-package org.apache.iotdb.db.exception.metadata;
+package org.apache.iotdb.db.exception.metadata.schemafile;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class TemplateImcompatibeException extends MetadataException {
+public class SegmentNotFoundException extends MetadataException {
 
-  public TemplateImcompatibeException(String path, String templateName) {
+  public SegmentNotFoundException(int pageIndex, short segIndex) {
     super(
-        String.format("Path [%s] already exists in [%s]", path, templateName),
-        TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode());
-    this.isUserException = true;
+        String.format("Segment(index:%d) not found in page(index:%d).", segIndex, pageIndex),
+        TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
+        true);
   }
 
-  public TemplateImcompatibeException(String path, String templateName, String overlapNodeName) {
+  public SegmentNotFoundException(short segIndex) {
     super(
-        String.format("Path [%s] overlaps with [%s] on [%s]", path, templateName, overlapNodeName),
-        TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode());
-    this.isUserException = true;
+        String.format("Segment(index:%d) is not the last segment within the page", segIndex),
+        TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
+        true);
   }
 }

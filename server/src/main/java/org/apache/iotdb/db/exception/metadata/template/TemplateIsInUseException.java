@@ -18,23 +18,17 @@
  *
  */
 
-package org.apache.iotdb.db.exception.metadata;
+package org.apache.iotdb.db.exception.metadata.template;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class SegmentNotFoundException extends MetadataException {
+public class TemplateIsInUseException extends MetadataException {
 
-  public SegmentNotFoundException(int pageIndex, short segIndex) {
+  public TemplateIsInUseException(String path) {
     super(
-        String.format("Segment(index:%d) not found in page(index:%d).", segIndex, pageIndex),
-        TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
-        true);
-  }
-
-  public SegmentNotFoundException(short segIndex) {
-    super(
-        String.format("Segment(index:%d) is not the last segment within the page", segIndex),
-        TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
+        String.format("Template is in use on " + path),
+        TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode(),
         true);
   }
 }

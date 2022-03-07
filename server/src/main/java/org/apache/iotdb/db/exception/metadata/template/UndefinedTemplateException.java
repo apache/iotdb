@@ -15,19 +15,18 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 
-package org.apache.iotdb.db.exception.metadata;
+package org.apache.iotdb.db.exception.metadata.template;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class TemplateIsInUseException extends MetadataException {
-
-  public TemplateIsInUseException(String path) {
+public class UndefinedTemplateException extends MetadataException {
+  public UndefinedTemplateException(String path) {
     super(
-        String.format("Template is in use on " + path),
-        TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode(),
+        String.format("Undefined template name: " + path),
+        TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
         true);
   }
 }

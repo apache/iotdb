@@ -18,16 +18,24 @@
  *
  */
 
-package org.apache.iotdb.db.exception.metadata;
+package org.apache.iotdb.db.exception.metadata.template;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class RecordDuplicatedException extends MetadataException {
+public class TemplateImcompatibeException extends MetadataException {
 
-  public RecordDuplicatedException(String recordKey) {
+  public TemplateImcompatibeException(String path, String templateName) {
     super(
-        String.format("Segment has duplicated record key : " + recordKey),
-        TSStatusCode.RECORD_DUPLICATED.getStatusCode(),
-        true);
+        String.format("Path [%s] already exists in [%s]", path, templateName),
+        TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode());
+    this.isUserException = true;
+  }
+
+  public TemplateImcompatibeException(String path, String templateName, String overlapNodeName) {
+    super(
+        String.format("Path [%s] overlaps with [%s] on [%s]", path, templateName, overlapNodeName),
+        TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode());
+    this.isUserException = true;
   }
 }

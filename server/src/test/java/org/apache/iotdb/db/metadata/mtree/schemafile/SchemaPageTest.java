@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
-import org.apache.iotdb.db.exception.metadata.RecordDuplicatedException;
-import org.apache.iotdb.db.exception.metadata.SchemaPageOverflowException;
-import org.apache.iotdb.db.exception.metadata.SegmentNotFoundException;
+import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
+import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
+import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;

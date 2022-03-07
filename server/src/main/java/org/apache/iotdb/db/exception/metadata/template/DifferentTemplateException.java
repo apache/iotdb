@@ -18,16 +18,17 @@
  *
  */
 
-package org.apache.iotdb.db.exception.metadata;
+package org.apache.iotdb.db.exception.metadata.template;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class SchemaFileNotExists extends MetadataException {
+public class DifferentTemplateException extends MetadataException {
 
-  public SchemaFileNotExists(String fileName) {
+  public DifferentTemplateException(String path, String templateName) {
     super(
-        String.format("Schema file [%s] not exists.", fileName),
-        TSStatusCode.SCHEMA_FILE_NOT_EXISTS.getStatusCode(),
+        String.format("The template on " + path + " is different from " + templateName),
+        TSStatusCode.DIFFERENT_TEMPLATE.getStatusCode(),
         true);
   }
 }

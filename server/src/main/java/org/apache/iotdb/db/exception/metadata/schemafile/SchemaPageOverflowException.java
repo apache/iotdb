@@ -18,23 +18,17 @@
  *
  */
 
-package org.apache.iotdb.db.exception.metadata;
+package org.apache.iotdb.db.exception.metadata.schemafile;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class SegmentOverflowException extends MetadataException {
+public class SchemaPageOverflowException extends MetadataException {
 
-  public SegmentOverflowException(int tarIndex) {
+  public SchemaPageOverflowException(int pageIndex) {
     super(
-        String.format("Segment overflow  : " + tarIndex),
-        TSStatusCode.SEGMENT_OUT_OF_SPACE.getStatusCode(),
-        true);
-  }
-
-  public SegmentOverflowException() {
-    super(
-        String.format("Segment not enough space"),
-        TSStatusCode.SEGMENT_OUT_OF_SPACE.getStatusCode(),
+        String.format("Page in schema file run out of space, index: " + pageIndex),
+        TSStatusCode.PAGE_OUT_OF_SPACE.getStatusCode(),
         true);
   }
 }
