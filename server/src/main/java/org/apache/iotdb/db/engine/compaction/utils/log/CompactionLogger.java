@@ -17,10 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.cross.rewrite.recover;
+package org.apache.iotdb.db.engine.compaction.utils.log;
 
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import java.io.BufferedWriter;
@@ -30,21 +29,27 @@ import java.io.IOException;
 import java.util.List;
 
 /** MergeLogger records the progress of a merge in file "merge.log" as text lines. */
-public class RewriteCrossSpaceCompactionLogger implements AutoCloseable {
+public class CompactionLogger implements AutoCloseable {
 
-  public static final String COMPACTION_LOG_NAME = "cross-compaction.log";
-  public static final String COMPACTION_LOG_NAME_FEOM_OLD = "merge.log";
+  public static final String CROSS_COMPACTION_LOG_NAME_SUFFIX = ".cross-compaction.log";
+  public static final String CROSS_COMPACTION_LOG_NAME_FROM_OLD = "merge.log";
+  public static final String INNER_COMPACTION_LOG_NAME_SUFFIX = ".inner-compaction.log";
 
-  public static final String STR_SEQ_FILES = "seqFiles";
-  public static final String STR_TARGET_FILES = "targetFiles";
-  public static final String STR_UNSEQ_FILES = "unseqFiles";
-  public static final String MAGIC_STRING = "crossSpaceCompaction";
+  public static final String STR_SOURCE_FILES = "source";
+  public static final String STR_TARGET_FILES = "target";
+
+  public static final String STR_SOURCE_FILES_FROM_OLD = "info-source";
+  public static final String STR_TARGET_FILES_FROM_OLD = "info-target";
+  public static final String STR_SEQ_FILES_FROM_OLD = "seqFiles";
+  public static final String STR_UNSEQ_FILES_FROM_OLD = "unseqFiles";
+  public static final String SEQUENCE_NAME_FROM_OLD = "sequence";
+  public static final String UNSEQUENCE_NAME_FROM_OLD = "unsequence";
+  public static final String STR_MERGE_START_FROM_OLD = "merge start";
 
   private BufferedWriter logStream;
 
-  public RewriteCrossSpaceCompactionLogger(File logFile) throws IOException {
+  public CompactionLogger(File logFile) throws IOException {
     logStream = new BufferedWriter(new FileWriter(logFile, true));
-    logStringInfo(MAGIC_STRING);
   }
 
   @Override
@@ -52,25 +57,14 @@ public class RewriteCrossSpaceCompactionLogger implements AutoCloseable {
     logStream.close();
   }
 
-  public void logStringInfo(String logInfo) throws IOException {
-    logStream.write(logInfo);
-    logStream.newLine();
-    logStream.flush();
-  }
-
-  public void logFiles(CrossSpaceMergeResource resource) throws IOException {
-    logFiles(resource.getSeqFiles(), STR_SEQ_FILES);
-    logFiles(resource.getUnseqFiles(), STR_UNSEQ_FILES);
-  }
-
-  public void logFiles(List<TsFileResource> seqFiles, String flag) throws IOException {
-    logStream.write(flag);
-    logStream.newLine();
-    for (TsFileResource tsFileResource : seqFiles) {
+  public void logFiles(List<TsFileResource> tsFiles, String flag) throws IOException {
+    for (TsFileResource tsFileResource : tsFiles) {
       logStream.write(
-          TsFileIdentifier.getFileIdentifierFromFilePath(
-                  tsFileResource.getTsFile().getAbsolutePath())
-              .toString());
+          flag
+              + TsFileIdentifier.INFO_SEPARATOR
+              + TsFileIdentifier.getFileIdentifierFromFilePath(
+                      tsFileResource.getTsFile().getAbsolutePath())
+                  .toString());
       logStream.newLine();
     }
     logStream.flush();
@@ -79,7 +73,8 @@ public class RewriteCrossSpaceCompactionLogger implements AutoCloseable {
   public static File[] findCrossSpaceCompactionLogs(String directory) {
     File timePartitionDir = new File(directory);
     if (timePartitionDir.exists()) {
-      return timePartitionDir.listFiles((dir, name) -> name.endsWith(COMPACTION_LOG_NAME));
+      return timePartitionDir.listFiles(
+          (dir, name) -> name.endsWith(CROSS_COMPACTION_LOG_NAME_SUFFIX));
     } else {
       return new File[0];
     }

@@ -22,9 +22,10 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogAnalyzer;
+import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -81,9 +82,13 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
             "{} [Compaction][Recover] cross space compaction log file {} exists, start to recover it",
             fullStorageGroupName,
             compactionLogFile);
-        RewriteCrossSpaceCompactionLogAnalyzer logAnalyzer =
-            new RewriteCrossSpaceCompactionLogAnalyzer(compactionLogFile);
-        logAnalyzer.analyze();
+        CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(compactionLogFile);
+        if (isOldLog()) {
+          // log from previous version (<0.13)
+          logAnalyzer.analyzeOldCrossCompactionLog();
+        } else {
+          logAnalyzer.analyze();
+        }
         List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
         List<TsFileIdentifier> targetFileIdentifiers = logAnalyzer.getTargetFileInfos();
 
@@ -170,14 +175,14 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
                   .replace(
                       IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX,
                       TsFileConstant.TSFILE_SUFFIX));
-      TsFileResource targetResource;
+      TsFileResource targetResource = null;
       if (tmpTargetFile != null) {
         targetResource = new TsFileResource(tmpTargetFile);
-      } else {
+      } else if (targetFile != null) {
         targetResource = new TsFileResource(targetFile);
       }
 
-      if (!targetResource.remove()) {
+      if (targetResource != null && !targetResource.remove()) {
         // failed to remove tmp target tsfile
         // system should not carry out the subsequent compaction in case of data redundant
         LOGGER.warn(
@@ -217,6 +222,18 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
       File sourceFile = sourceFileIdentifier.getFileFromDataDirs();
       if (sourceFile != null) {
         remainSourceTsFileResources.add(new TsFileResource(sourceFile));
+      } else {
+        // if source file does not exist, its resource file may still exist, so delete it.
+        File resourceFile =
+            getFileFromDataDirs(
+                sourceFileIdentifier.getFilePath() + TsFileResource.RESOURCE_SUFFIX);
+        if (resourceFile != null && !resourceFile.delete()) {
+          LOGGER.error(
+              "{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+              fullStorageGroupName,
+              resourceFile);
+          handleSuccess = false;
+        }
       }
       // delete .compaction.mods file and .mods file of all source files
       File compactionModFile =
@@ -397,7 +414,7 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
     return true;
   }
 
-  public void appendCompactionModificationsFromOld(
+  public static void appendCompactionModificationsFromOld(
       TsFileResource resource, ModificationFile compactionModsFile) throws IOException {
 
     if (compactionModsFile != null) {
@@ -438,5 +455,10 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
   @Override
   public boolean checkValidAndSetMerging() {
     return compactionLogFile.exists();
+  }
+
+  /** Return whether compaction log file is from previous version (<0.13). */
+  private boolean isOldLog() {
+    return compactionLogFile.getName().equals(CompactionLogger.CROSS_COMPACTION_LOG_NAME_FROM_OLD);
   }
 }

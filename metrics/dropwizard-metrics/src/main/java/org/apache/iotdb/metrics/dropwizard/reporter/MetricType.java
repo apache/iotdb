@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.dropwizard.reporter.prometheus;
+package org.apache.iotdb.metrics.dropwizard.reporter;
 
 enum MetricType {
   COUNTER("counter"),
