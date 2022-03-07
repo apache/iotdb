@@ -386,9 +386,9 @@ public class CachedMTreeStore implements IMTreeStore {
    */
   private void executeMemoryRelease() {
     logger.error(
-            "Execute memory release, which should not happen. The memory usage is Pinned Node {}, Cached Node {}",
-            memManager.getPinnedSize(),
-            memManager.getCachedSize());
+        "Execute memory release, which should not happen. The memory usage is Pinned Node {}, Cached Node {}",
+        memManager.getPinnedSize(),
+        memManager.getCachedSize());
     while (memManager.isExceedThreshold()) {
       if (!cacheManager.evict()) {
         break;
