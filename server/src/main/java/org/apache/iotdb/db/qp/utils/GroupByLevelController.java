@@ -56,7 +56,12 @@ public class GroupByLevelController {
   /** count(root.sg.d1.s1) with level = 1 -> count(root.*.d1.s1) */
   private Map<String, String> groupedPathMap;
   /** count(root.*.d1.s1) -> alias */
-  private Map<String, String> aliasMap;
+  private Map<String, String> columnToAliasMap;
+  /**
+   * Only used to check whether one alisa is corresponding to only one column. i.e. Different
+   * columns can't have the same alias.
+   */
+  private Map<String, String> aliasToColumnMap;
 
   public GroupByLevelController(QueryOperator operator) {
     this.seriesLimit = operator.getSpecialClauseComponent().getSeriesLimit();
@@ -72,7 +77,9 @@ public class GroupByLevelController {
   }
 
   public String getAlias(String originName) {
-    return aliasMap != null && aliasMap.get(originName) != null ? aliasMap.get(originName) : null;
+    return columnToAliasMap != null && columnToAliasMap.get(originName) != null
+        ? columnToAliasMap.get(originName)
+        : null;
   }
 
   public void control(ResultColumn rawColumn, List<ResultColumn> resultColumns)
@@ -160,20 +167,27 @@ public class GroupByLevelController {
       throws LogicalOptimizeException {
     if (!rawColumn.hasAlias()) {
       return;
-    } else if (aliasMap == null) {
-      aliasMap = new HashMap<>();
+    } else if (columnToAliasMap == null) {
+      columnToAliasMap = new HashMap<>();
+      aliasToColumnMap = new HashMap<>();
     }
     // If an alias is corresponding to more than one result column, throw an exception
-    if (aliasMap.get(originName) == null && aliasMap.containsValue(rawColumn.getAlias())) {
-      throw new LogicalOptimizeException(String.format(ALIAS_ERROR_MESSAGE1, rawColumn.getAlias()));
+    if (columnToAliasMap.get(originName) == null) {
+      if (aliasToColumnMap.get(rawColumn.getAlias()) != null) {
+        throw new LogicalOptimizeException(
+            String.format(ALIAS_ERROR_MESSAGE1, rawColumn.getAlias()));
+      } else {
+        columnToAliasMap.put(originName, rawColumn.getAlias());
+        aliasToColumnMap.put(rawColumn.getAlias(), originName);
+      }
       // If a result column is corresponding to more than one alias, throw an exception
-    } else if (aliasMap.get(originName) != null
-        && !aliasMap.get(originName).equals(rawColumn.getAlias())) {
+    } else if (!columnToAliasMap.get(originName).equals(rawColumn.getAlias())) {
       throw new LogicalOptimizeException(
           String.format(
-              ALIAS_ERROR_MESSAGE2, originName, aliasMap.get(originName), rawColumn.getAlias()));
-    } else {
-      aliasMap.put(originName, rawColumn.getAlias());
+              ALIAS_ERROR_MESSAGE2,
+              originName,
+              columnToAliasMap.get(originName),
+              rawColumn.getAlias()));
     }
   }
 
