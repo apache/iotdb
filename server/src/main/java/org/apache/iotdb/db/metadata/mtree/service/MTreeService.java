@@ -1413,6 +1413,7 @@ public class MTreeService implements Serializable {
       next = store.getChild(cur, nodes[i]);
       if (next == null) {
         unPinPath(cur);
+        logger.error("Show why child is null {}", cur.getChildren().toString());
         throw new StorageGroupNotSetException(path.getFullPath());
       }
       if (next.isStorageGroup()) {
