@@ -1297,10 +1297,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       groupByClauseComponent.setSlidingStep(
           parseTimeUnitOrSlidingStep(
               ctx.DURATION_LITERAL(1).getText(), false, groupByClauseComponent));
-      if (groupByClauseComponent.getSlidingStep() < groupByClauseComponent.getUnit()) {
-        throw new SQLParserException(
-            "The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
-      }
     } else {
       groupByClauseComponent.setSlidingStep(groupByClauseComponent.getUnit());
       groupByClauseComponent.setSlidingStepByMonth(groupByClauseComponent.isIntervalByMonth());
