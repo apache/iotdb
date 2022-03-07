@@ -23,7 +23,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PlainCacheStrategy extends CacheStrategy {
+public class PlainCacheManager extends CacheManager {
 
   // The nodes in nodeCache are all evictable if not pinned and may be selected to be evicted during
   // cache
@@ -31,7 +31,7 @@ public class PlainCacheStrategy extends CacheStrategy {
   private volatile Map<CacheEntry, IMNode> nodeCache = new ConcurrentHashMap<>();
 
   @Override
-  public void updateCacheStatusAfterMemoryRead(IMNode node) {}
+  protected void updateCacheStatusAfterAccess(CacheEntry cacheEntry) {}
 
   @Override
   protected boolean isInNodeCache(CacheEntry cacheEntry) {

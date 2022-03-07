@@ -342,8 +342,15 @@ public class Template {
     return measurementsCount;
   }
 
+  public IMNode getPathNodeInTemplate(PartialPath path) {
+    return getPathNodeInTemplate(path.getNodes());
+  }
+
   public IMNode getPathNodeInTemplate(String path) throws IllegalPathException {
-    String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
+    return getPathNodeInTemplate(MetaUtils.splitPathToDetachedPath(path));
+  }
+
+  private IMNode getPathNodeInTemplate(String[] pathNodes) {
     if (pathNodes.length == 0) {
       return null;
     }

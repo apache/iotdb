@@ -16,13 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
+package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
+import java.util.List;
+
 public interface IMemManager {
 
-  void initCapacity(int capacity);
+  void init();
 
   boolean isEmpty();
 
@@ -30,15 +32,15 @@ public interface IMemManager {
 
   boolean isExceedCapacity();
 
-  boolean requestMemResource(IMNode node);
-
-  void releaseMemResource(IMNode node);
-
   void requestPinnedMemResource(IMNode node);
 
   void upgradeMemResource(IMNode node);
 
   void releasePinnedMemResource(IMNode node);
+
+  void releaseMemResource(IMNode node);
+
+  void releaseMemResource(List<IMNode> evictedNodes);
 
   void clear();
 

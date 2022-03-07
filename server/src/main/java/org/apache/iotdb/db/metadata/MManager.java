@@ -963,8 +963,13 @@ public class MManager {
     boolean shouldSetStorageGroup;
     try {
       node = mNodeCache.get(path);
-      mtree.pinMNode(node);
-      return node;
+      try {
+        mtree.pinMNode(node);
+        return node;
+      } catch (MetadataException e) {
+        // the node in mNodeCache has been evicted, thus get it via the following progress
+        shouldSetStorageGroup = false;
+      }
     } catch (Exception e) {
       if (e.getCause() instanceof MetadataException) {
         if (!autoCreateSchema) {
@@ -1525,8 +1530,15 @@ public class MManager {
     return mNodes;
   }
 
-  public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
+  public IMeasurementMNode getPinnedMeasurementMNode(PartialPath fullPath)
+      throws MetadataException {
     return mtree.getMeasurementMNode(fullPath);
+  }
+
+  public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
+    IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(fullPath);
+    mtree.unPinMNode(measurementMNode);
+    return measurementMNode;
   }
 
   /**
@@ -1541,6 +1553,7 @@ public class MManager {
       return null;
     }
 
+    mtree.unPinMNode(result);
     if (result.isMeasurement()) {
       return result.getAsMeasurementMNode();
     } else {
@@ -2016,6 +2029,7 @@ public class MManager {
     PartialPath devicePath = plan.getDevicePath();
     String[] measurementList = plan.getMeasurements();
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
+    IMNode deviceMNode = null;
 
     // 1. get device node, set using template if accessed.
     boolean mountedNodeFound = false;
@@ -2034,17 +2048,26 @@ public class MManager {
           if (!mountedNode.isUseTemplate()) {
             setUsingSchemaTemplate(mountedNode);
           }
+          mountedNodeFound = true;
+          if (index < devicePath.getNodeLength() - 1) {
+            deviceMNode =
+                mountedNode
+                    .getUpperTemplate()
+                    .getPathNodeInTemplate(
+                        new PartialPath(
+                            Arrays.copyOfRange(
+                                devicePath.getNodes(), index + 1, devicePath.getNodeLength())));
+            isDeviceInTemplate = true;
+          }
         } finally {
           mtree.unPinMNode(mountedNode);
-        }
-        mountedNodeFound = true;
-        if (index < devicePath.getNodeLength() - 1) {
-          isDeviceInTemplate = true;
         }
       }
     }
     // get logical device node, may be in template. will be multiple if overlap is allowed.
-    IMNode deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
+    if (!isDeviceInTemplate) {
+      deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
+    }
     try {
       // check insert non-aligned InsertPlan for aligned timeseries
       if (deviceMNode.isEntity()) {
@@ -2115,11 +2138,8 @@ public class MManager {
         }
       }
     } finally {
-      mtree.pinMNode(deviceMNode);
-      for (IMeasurementMNode measurementMNode : measurementMNodes) {
-        if (measurementMNode != null) {
-          mtree.unPinMNode(measurementMNode);
-        }
+      if (!isDeviceInTemplate) {
+        mtree.unPinMNode(deviceMNode);
       }
     }
 

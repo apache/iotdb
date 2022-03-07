@@ -16,37 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+package org.apache.iotdb.db.exception.metadata.cache;
 
-import java.util.List;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 
-public interface ICacheStrategy {
+public class MNodeNotPinnedException extends MetadataException {
 
-  boolean isCached(IMNode node);
-
-  void updateCacheStatusAfterMemoryRead(IMNode node);
-
-  void updateCacheStatusAfterDiskRead(IMNode node);
-
-  void updateCacheStatusAfterAppend(IMNode node);
-
-  void updateCacheStatusAfterUpdate(IMNode node);
-
-  void updateCacheStatusAfterPersist(IMNode node);
-
-  List<IMNode> collectVolatileMNodes();
-
-  List<IMNode> remove(IMNode node);
-
-  List<IMNode> evict();
-
-  void pinMNode(IMNode node);
-
-  List<IMNode> unPinMNode(IMNode node);
-
-  boolean isPinned(IMNode node);
-
-  void clear();
+  public MNodeNotPinnedException() {
+    super("MNode has not been pinned.");
+  }
 }

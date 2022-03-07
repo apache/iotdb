@@ -23,7 +23,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class LRUCacheStrategy extends CacheStrategy {
+public class LRUCacheManager extends CacheManager {
 
   private volatile LRUCacheEntry first;
 
@@ -32,12 +32,12 @@ public class LRUCacheStrategy extends CacheStrategy {
   private final Lock lock = new ReentrantLock();
 
   @Override
-  public void updateCacheStatusAfterMemoryRead(IMNode node) {
+  public void updateCacheStatusAfterAccess(CacheEntry cacheEntry) {
     lock.lock();
     try {
-      LRUCacheEntry lruCacheEntry = getAsLRUCacheEntry(node.getCacheEntry());
+      LRUCacheEntry lruCacheEntry = getAsLRUCacheEntry(cacheEntry);
       if (isInCacheList(lruCacheEntry)) {
-        moveToFirst(getAsLRUCacheEntry(getCacheEntry(node)));
+        moveToFirst(lruCacheEntry);
       }
     } finally {
       lock.unlock();

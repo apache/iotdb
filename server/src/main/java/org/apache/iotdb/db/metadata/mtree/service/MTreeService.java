@@ -1865,7 +1865,13 @@ public class MTreeService implements Serializable {
   // endregion
 
   // region Interfaces and Implementation for Pin/UnPin MNode or Path
-  public void pinMNode(IMNode node) {
+
+  /**
+   * Currently, this method is only used for pin node get from mNodeCache
+   *
+   * @param node
+   */
+  public void pinMNode(IMNode node) throws MetadataException {
     store.pin(node);
   }
 
