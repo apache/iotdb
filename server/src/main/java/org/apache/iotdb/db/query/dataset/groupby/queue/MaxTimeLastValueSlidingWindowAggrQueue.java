@@ -38,6 +38,8 @@ public class MaxTimeLastValueSlidingWindowAggrQueue extends SlidingWindowAggrQue
 
   @Override
   protected void evictingExpiredValue() {
-    // nothing to do
+    if(!inTimeRange(this.aggregateResult.getTime())) {
+      this.aggregateResult.reset();
+    }
   }
 }
