@@ -39,6 +39,7 @@ import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
@@ -474,17 +475,17 @@ public class InfluxDBUtils {
   /**
    * Convert align by device query result of iotdb to the query result of influxdb
    *
-   * @param sessionDataSet iotdb query results to be converted
+   * @param queryDataSet iotdb query results to be converted
    * @return query results in influxdb format
    */
   private static QueryResult iotdbResultConvertInfluxResult(
-      QueryDataSet sessionDataSet,
+      QueryDataSet queryDataSet,
       String database,
       String measurement,
       Map<String, Integer> fieldOrders)
       throws IOException {
 
-    if (sessionDataSet == null) {
+    if (queryDataSet == null) {
       return InfluxDBUtils.getNullQueryResult();
     }
     // generate series
@@ -518,11 +519,11 @@ public class InfluxDBUtils {
 
     List<List<Object>> values = new ArrayList<>();
 
-    while (sessionDataSet.hasNext()) {
+    while (queryDataSet.hasNext()) {
       Object[] value = new Object[columns.size()];
 
-      RowRecord record = sessionDataSet.next();
-      List<org.apache.iotdb.tsfile.read.common.Field> fields = record.getFields();
+      RowRecord record = queryDataSet.next();
+      List<Field> fields = record.getFields();
 
       value[0] = record.getTimestamp();
 
@@ -537,7 +538,7 @@ public class InfluxDBUtils {
         Object o = InfluxDBUtils.iotdbFiledConvert(fields.get(i));
         if (o != null) {
           // insert the value of filed into it
-          value[fieldOrders.get(sessionDataSet.getPaths().get(i + 1).getFullPath())] = o;
+          value[fieldOrders.get(((AlignByDeviceDataSet) queryDataSet).measurements.get(i - 1))] = o;
         }
       }
       // insert actual value

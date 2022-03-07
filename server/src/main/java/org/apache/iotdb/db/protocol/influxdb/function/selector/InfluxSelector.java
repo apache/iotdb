@@ -29,7 +29,7 @@ import java.util.List;
 public abstract class InfluxSelector extends InfluxFunction {
 
   // The timestamp corresponding to the value
-  private Long timestamp;
+  private Long timestamp = null;
 
   private List<Object> relatedValues;
 

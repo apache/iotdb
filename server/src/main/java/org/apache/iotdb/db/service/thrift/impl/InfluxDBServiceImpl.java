@@ -192,7 +192,7 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
     Map<String, Integer> fieldOrders = new HashMap<>();
     long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
     try {
-      String showTimeseriesSql = "show timeseries root." + database + '.' + measurement + "**";
+      String showTimeseriesSql = "show timeseries root." + database + '.' + measurement + ".**";
       PhysicalPlan physicalPlan =
           serviceProvider.getPlanner().parseSQLToPhysicalPlan(showTimeseriesSql);
       QueryContext queryContext =
