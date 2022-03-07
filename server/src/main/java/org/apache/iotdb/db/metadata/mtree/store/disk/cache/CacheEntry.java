@@ -45,4 +45,8 @@ public class CacheEntry {
   public boolean isPinned() {
     return semaphore != null && semaphore.get() > 0;
   }
+
+  public int getPinNumber() {
+    return semaphore.get();
+  }
 }

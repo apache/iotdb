@@ -118,7 +118,8 @@ public class CachedMTreeStore implements IMTreeStore {
       if (node == null || !cacheStrategy.isCached(node)) {
         node = loadChildFromDisk(parent, name);
         if (node == null) {
-          logger.info(
+          logger.error("The pin lock on parent is {}", parent.getCacheEntry().getPinNumber());
+          logger.error(
               "There's no child in memory or disk. The child is {}",
               parent.getFullPath() + "." + name);
         }
@@ -128,11 +129,15 @@ public class CachedMTreeStore implements IMTreeStore {
           if (cacheStrategy.isCached(node)) {
             pinMNodeInMemory(node);
             cacheStrategy.updateCacheStatusAfterMemoryRead(node);
+          } else {
+            logger.error(
+                "The child {} has been concurrently evicted.", parent.getFullPath() + "." + name);
           }
         }
         if (!cacheStrategy.isPinned(node)) {
           node = loadChildFromDisk(parent, name);
-          logger.info(
+          logger.error("The pin lock on parent is {}", parent.getCacheEntry().getPinNumber());
+          logger.error(
               "The child has been concurrently evicted, thus try load from disk. The child is {}. {}",
               parent.getFullPath() + "." + name,
               node == null);
@@ -392,7 +397,7 @@ public class CachedMTreeStore implements IMTreeStore {
    */
   private void executeMemoryRelease() {
     List<IMNode> evictedMNodes;
-    logger.warn(
+    logger.error(
         "Execute memory release, which should not happen. The memory usage is Pinned Node {}, Cached Node {}",
         memManager.getPinnedSize(),
         memManager.getCachedSize());
@@ -402,7 +407,7 @@ public class CachedMTreeStore implements IMTreeStore {
         break;
       }
       for (IMNode evictedMNode : evictedMNodes) {
-        logger.warn("Evicting node {}", evictedMNode.getFullPath());
+        logger.error("Evicting node {}", evictedMNode.getFullPath());
         memManager.releaseMemResource(evictedMNode);
       }
     }
