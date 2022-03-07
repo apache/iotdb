@@ -25,6 +25,7 @@ public class CheckKeyResult {
 
   private boolean[] result = new boolean[MAX_NODE_TYPE_NUM];
   private boolean existAnyKey = false;
+  private byte[] value;
 
   public void setSingleCheckValue(char index, boolean value) {
     if (value) {
@@ -35,6 +36,14 @@ public class CheckKeyResult {
 
   public boolean existAnyKey() {
     return existAnyKey;
+  }
+
+  public byte[] getValue() {
+    return value;
+  }
+
+  public void setValue(byte[] value) {
+    this.value = value;
   }
 
   public boolean getResult(RocksDBMNodeType type) {
