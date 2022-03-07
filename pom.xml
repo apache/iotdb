@@ -82,6 +82,7 @@
         <module>tsfile</module>
         <module>antlr</module>
         <module>thrift</module>
+        <module>thrift-confignode</module>
         <module>thrift-cluster</module>
         <module>thrift-sync</module>
         <module>thrift-influxdb</module>
@@ -109,6 +110,7 @@
         <module>client-cpp</module>
         <module>metrics</module>
         <module>integration</module>
+        <module>confignode</module>
         <!--        <module>library-udf</module>-->
     </modules>
     <!-- Properties Management -->
@@ -735,6 +737,7 @@
                         <!-- put all source folders not in src/main/java here-->
                         <sourceDirectory>antlr/target/generated-sources/antlr4</sourceDirectory>
                         <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>thrift-confignode/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-sync/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-cluster/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-influxdb/target/generated-sources/thrift</sourceDirectory>
