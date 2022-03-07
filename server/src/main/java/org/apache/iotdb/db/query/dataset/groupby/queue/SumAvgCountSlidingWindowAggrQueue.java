@@ -30,8 +30,10 @@ public class SumAvgCountSlidingWindowAggrQueue extends SlidingWindowAggrQueue {
 
   @Override
   public void update(AggregateResult aggregateResult) {
-    addLast(aggregateResult);
-    this.aggregateResult.merge(aggregateResult);
+    if (aggregateResult.getResult() != null) {
+      addLast(aggregateResult);
+      this.aggregateResult.merge(aggregateResult);
+    }
   }
 
   @Override

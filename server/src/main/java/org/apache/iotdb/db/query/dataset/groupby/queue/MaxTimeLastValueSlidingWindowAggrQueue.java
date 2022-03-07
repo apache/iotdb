@@ -31,7 +31,9 @@ public class MaxTimeLastValueSlidingWindowAggrQueue extends SlidingWindowAggrQue
 
   @Override
   public void update(AggregateResult aggregateResult) {
-    this.aggregateResult = aggregateResult;
+    if (aggregateResult.getResult() != null) {
+      this.aggregateResult = aggregateResult;
+    }
   }
 
   @Override
