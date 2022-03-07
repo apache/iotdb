@@ -117,6 +117,11 @@ public class CachedMTreeStore implements IMTreeStore {
       IMNode node = parent.getChild(name);
       if (node == null || !cacheStrategy.isCached(node)) {
         node = loadChildFromDisk(parent, name);
+        if (node == null) {
+          logger.info(
+              "There's no child in memory or disk. The child is {}",
+              parent.getFullPath() + "." + name);
+        }
       } else {
         // the operation that changes the node's cache status should be synchronized
         synchronized (node) {
@@ -127,6 +132,10 @@ public class CachedMTreeStore implements IMTreeStore {
         }
         if (!cacheStrategy.isPinned(node)) {
           node = loadChildFromDisk(parent, name);
+          logger.info(
+              "The child has been concurrently evicted, thus try load from disk. The child is {}. {}",
+              parent.getFullPath() + "." + name,
+              node == null);
         }
       }
       if (node != null && node.isMeasurement()) {
