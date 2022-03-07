@@ -50,6 +50,7 @@ public class MinTimeAggrResult extends AggregateResult {
     }
     long time = statistics.getStartTime();
     setValue(time);
+    setTime(getLongValue());
   }
 
   @Override
@@ -68,6 +69,7 @@ public class MinTimeAggrResult extends AggregateResult {
         && batchIterator.currentTime() >= minBound) {
       setLongValue(batchIterator.currentTime());
     }
+    setTime(getLongValue());
   }
 
   @Override
@@ -90,6 +92,7 @@ public class MinTimeAggrResult extends AggregateResult {
       }
       currentPos += timeLength;
     }
+    setTime(getLongValue());
   }
 
   @Override
@@ -100,6 +103,7 @@ public class MinTimeAggrResult extends AggregateResult {
     if (valueIterator.hasNext()) {
       setLongValue(timestamps[valueIterator.getCurPos()]);
     }
+    setTime(getLongValue());
   }
 
   @Override
@@ -119,6 +123,11 @@ public class MinTimeAggrResult extends AggregateResult {
         && getResult() > anotherMinTime.getResult()) {
       setLongValue(anotherMinTime.getResult());
     }
+  }
+
+  @Override
+  public void remove(AggregateResult another) {
+    throw new UnsupportedOperationException("min time aggregate result is not support remove");
   }
 
   @Override

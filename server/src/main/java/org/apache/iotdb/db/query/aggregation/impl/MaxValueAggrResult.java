@@ -46,6 +46,7 @@ public class MaxValueAggrResult extends AggregateResult {
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
     Comparable<Object> maxVal = (Comparable<Object>) statistics.getMaxValue();
+    setTime(statistics.getStartTime());
     updateResult(maxVal);
   }
 
@@ -67,6 +68,7 @@ public class MaxValueAggrResult extends AggregateResult {
       }
       batchIterator.next();
     }
+    setTime(minBound);
     updateResult(maxVal);
   }
 
@@ -80,6 +82,7 @@ public class MaxValueAggrResult extends AggregateResult {
         maxVal = (Comparable<Object>) values[i];
       }
     }
+    setTime(timestamps[0]);
     updateResult(maxVal);
   }
 
@@ -92,6 +95,7 @@ public class MaxValueAggrResult extends AggregateResult {
         maxVal = (Comparable<Object>) value;
       }
     }
+    setTime(timestamps[0]);
     updateResult(maxVal);
   }
 
@@ -103,6 +107,11 @@ public class MaxValueAggrResult extends AggregateResult {
   @Override
   public void merge(AggregateResult another) {
     this.updateResult((Comparable<Object>) another.getResult());
+  }
+
+  @Override
+  public void remove(AggregateResult another) {
+    throw new UnsupportedOperationException("max value aggregate result is not support remove");
   }
 
   @Override

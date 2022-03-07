@@ -59,6 +59,7 @@ public class SumAggrResult extends AggregateResult {
       } else {
         preValue += statistics.getSumDoubleValue();
       }
+      setTime(statistics.getStartTime());
       setDoubleValue(preValue);
     }
   }
@@ -78,6 +79,7 @@ public class SumAggrResult extends AggregateResult {
       updateSum(batchIterator.currentValue());
       batchIterator.next();
     }
+    setTime(minBound);
   }
 
   @Override
@@ -89,6 +91,7 @@ public class SumAggrResult extends AggregateResult {
         updateSum(values[i]);
       }
     }
+    setTime(timestamps[0]);
   }
 
   @Override
@@ -96,6 +99,7 @@ public class SumAggrResult extends AggregateResult {
     while (valueIterator.hasNext()) {
       updateSum(valueIterator.next());
     }
+    setTime(timestamps[0]);
   }
 
   private void updateSum(Object sumVal) throws UnSupportedDataTypeException {
@@ -139,6 +143,15 @@ public class SumAggrResult extends AggregateResult {
       SumAggrResult anotherSum = (SumAggrResult) another;
       double preValue = getDoubleValue();
       setDoubleValue(preValue + anotherSum.getDoubleValue());
+    }
+  }
+
+  @Override
+  public void remove(AggregateResult another) {
+    if (another instanceof SumAggrResult && ((SumAggrResult) another).isNotNull()) {
+      SumAggrResult anotherSum = (SumAggrResult) another;
+      double preValue = getDoubleValue();
+      setDoubleValue(preValue - anotherSum.getDoubleValue());
     }
   }
 

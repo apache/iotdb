@@ -47,6 +47,7 @@ public class MaxTimeAggrResult extends AggregateResult {
   public void updateResultFromStatistics(Statistics statistics) {
     long maxTimestamp = statistics.getEndTime();
     updateMaxTimeResult(maxTimestamp);
+    setTime(getLongValue());
   }
 
   @Override
@@ -63,6 +64,7 @@ public class MaxTimeAggrResult extends AggregateResult {
       updateMaxTimeResult(batchIterator.currentTime());
       batchIterator.next();
     }
+    setTime(getLongValue());
   }
 
   @Override
@@ -75,6 +77,7 @@ public class MaxTimeAggrResult extends AggregateResult {
         return;
       }
     }
+    setTime(getLongValue());
   }
 
   @Override
@@ -85,6 +88,7 @@ public class MaxTimeAggrResult extends AggregateResult {
         return;
       }
     }
+    setTime(getLongValue());
   }
 
   @Override
@@ -98,6 +102,11 @@ public class MaxTimeAggrResult extends AggregateResult {
     if (anotherMaxTime.getResult() != null) {
       this.updateMaxTimeResult(anotherMaxTime.getResult());
     }
+  }
+
+  @Override
+  public void remove(AggregateResult another) {
+    throw new UnsupportedOperationException("max time aggregate result is not support remove");
   }
 
   @Override

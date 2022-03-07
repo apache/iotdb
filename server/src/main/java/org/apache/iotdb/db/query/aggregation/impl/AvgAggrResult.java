@@ -80,6 +80,7 @@ public class AvgAggrResult extends AggregateResult {
       sum = statistics.getSumDoubleValue();
     }
     avg = (avg * preCnt + sum) / cnt;
+    setTime(statistics.getStartTime());
   }
 
   @Override
@@ -108,6 +109,7 @@ public class AvgAggrResult extends AggregateResult {
         updateAvg(seriesDataType, values[i]);
       }
     }
+    setTime(timestamps[0]);
   }
 
   @Override
@@ -115,6 +117,7 @@ public class AvgAggrResult extends AggregateResult {
     while (valueIterator.hasNext()) {
       updateAvg(seriesDataType, valueIterator.next());
     }
+    setTime(timestamps[0]);
   }
 
   private void updateAvg(TSDataType type, Object sumVal) throws UnSupportedDataTypeException {
@@ -173,6 +176,17 @@ public class AvgAggrResult extends AggregateResult {
     }
     avg = (avg * cnt + anotherAvg.avg * anotherAvg.cnt) / (cnt + anotherAvg.cnt);
     cnt += anotherAvg.cnt;
+  }
+
+  @Override
+  public void remove(AggregateResult another) {
+    AvgAggrResult anotherAvg = (AvgAggrResult) another;
+    if (anotherAvg.cnt == 0) {
+      // avoid two empty results producing an NaN
+      return;
+    }
+    avg = (avg * cnt - anotherAvg.avg * anotherAvg.cnt) / (cnt - anotherAvg.cnt);
+    cnt -= anotherAvg.cnt;
   }
 
   @Override

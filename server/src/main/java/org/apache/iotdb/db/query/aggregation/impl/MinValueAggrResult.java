@@ -46,6 +46,7 @@ public class MinValueAggrResult extends AggregateResult {
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
     Comparable<Object> minVal = (Comparable<Object>) statistics.getMinValue();
+    setTime(statistics.getStartTime());
     updateResult(minVal);
   }
 
@@ -63,6 +64,7 @@ public class MinValueAggrResult extends AggregateResult {
       updateResult((Comparable<Object>) batchIterator.currentValue());
       batchIterator.next();
     }
+    setTime(minBound);
   }
 
   @Override
@@ -75,6 +77,7 @@ public class MinValueAggrResult extends AggregateResult {
         minVal = (Comparable<Object>) values[i];
       }
     }
+    setTime(timestamps[0]);
     updateResult(minVal);
   }
 
@@ -87,6 +90,7 @@ public class MinValueAggrResult extends AggregateResult {
         minVal = (Comparable<Object>) value;
       }
     }
+    setTime(timestamps[0]);
     updateResult(minVal);
   }
 
@@ -101,6 +105,11 @@ public class MinValueAggrResult extends AggregateResult {
       Object value = another.getResult();
       this.updateResult((Comparable<Object>) value);
     }
+  }
+
+  @Override
+  public void remove(AggregateResult another) {
+    throw new UnsupportedOperationException("min value aggregate result is not support remove");
   }
 
   @Override

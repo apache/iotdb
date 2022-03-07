@@ -34,9 +34,6 @@ import java.nio.ByteBuffer;
 
 public class LastValueAggrResult extends AggregateResult {
 
-  // timestamp of current value
-  protected long timestamp = Long.MIN_VALUE;
-
   public LastValueAggrResult(TSDataType dataType) {
     super(dataType, AggregationType.LAST_VALUE);
     reset();
@@ -120,6 +117,11 @@ public class LastValueAggrResult extends AggregateResult {
       this.setValue(anotherLast.getValue());
       this.timestamp = anotherLast.timestamp;
     }
+  }
+
+  @Override
+  public void remove(AggregateResult another) {
+    throw new UnsupportedOperationException("last value aggregate result is not support remove");
   }
 
   @Override

@@ -47,10 +47,12 @@ public class CountAggrResult extends AggregateResult {
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
     setLongValue(getLongValue() + statistics.getCount());
+    setTime(statistics.getStartTime());
   }
 
   @Override
   public void updateResultFromPageData(IBatchDataIterator batchIterator) {
+    setTime(batchIterator.currentTime());
     setLongValue(getLongValue() + batchIterator.totalLength());
   }
 
@@ -65,6 +67,7 @@ public class CountAggrResult extends AggregateResult {
       cnt++;
       batchIterator.next();
     }
+    setTime(minBound);
     setLongValue(getLongValue() + cnt);
   }
 
@@ -78,6 +81,7 @@ public class CountAggrResult extends AggregateResult {
         cnt++;
       }
     }
+    setTime(timestamps[0]);
     setLongValue(getLongValue() + cnt);
   }
 
@@ -88,6 +92,7 @@ public class CountAggrResult extends AggregateResult {
       valueIterator.next();
       cnt++;
     }
+    setTime(timestamps[0]);
     setLongValue(getLongValue() + cnt);
   }
 
@@ -100,6 +105,12 @@ public class CountAggrResult extends AggregateResult {
   public void merge(AggregateResult another) {
     CountAggrResult anotherCount = (CountAggrResult) another;
     setLongValue(anotherCount.getResult() + this.getResult());
+  }
+
+  @Override
+  public void remove(AggregateResult another) {
+    CountAggrResult anotherCount = (CountAggrResult) another;
+    setLongValue(anotherCount.getResult() - this.getResult());
   }
 
   @Override

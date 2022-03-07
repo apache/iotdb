@@ -40,6 +40,7 @@ public class MinTimeDescAggrResult extends MinTimeAggrResult {
       setValue(batchIterator.currentTime());
       batchIterator.next();
     }
+    setTime(getLongValue());
   }
 
   @Override
@@ -52,6 +53,7 @@ public class MinTimeDescAggrResult extends MinTimeAggrResult {
         return;
       }
     }
+    setTime(getLongValue());
   }
 
   @Override
@@ -62,6 +64,7 @@ public class MinTimeDescAggrResult extends MinTimeAggrResult {
         return;
       }
     }
+    setTime(getLongValue());
   }
 
   @Override

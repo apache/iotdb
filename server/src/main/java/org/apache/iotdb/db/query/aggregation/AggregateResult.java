@@ -34,11 +34,14 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public abstract class AggregateResult {
+public abstract class AggregateResult implements Cloneable {
 
   public static final int TIME_LENGTH_FOR_FIRST_VALUE = 100;
   private final AggregationType aggregationType;
   protected TSDataType resultDataType;
+
+  // timestamp of current value
+  protected long timestamp;
 
   private boolean booleanValue;
   private int intValue;
@@ -112,6 +115,8 @@ public abstract class AggregateResult {
 
   /** Merge another aggregateResult into this */
   public abstract void merge(AggregateResult another);
+
+  public abstract void remove(AggregateResult another);
 
   public static AggregateResult deserializeFrom(ByteBuffer buffer) {
     AggregationType aggregationType = AggregationType.deserialize(buffer);
@@ -302,6 +307,14 @@ public abstract class AggregateResult {
     this.binaryValue = binaryValue;
   }
 
+  public void setTime(long timestamp) {
+    this.timestamp = timestamp;
+  }
+
+  public long getTime() {
+    return timestamp;
+  }
+
   protected boolean hasCandidateResult() {
     return hasCandidateResult;
   }
@@ -321,5 +334,14 @@ public abstract class AggregateResult {
    */
   public boolean isAscending() {
     return true;
+  }
+
+  @Override
+  public AggregateResult clone() {
+    try {
+      return (AggregateResult) super.clone();
+    } catch (CloneNotSupportedException e) {
+      throw new AssertionError();
+    }
   }
 }
