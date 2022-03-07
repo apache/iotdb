@@ -22,6 +22,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.groupby.queue.SlidingWindowAggrQueue;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TimeRangeIterator;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -40,20 +41,25 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   protected long startTime;
   protected long endTime;
 
-  // current interval [curStartTime, curEndTime)
+  // current interval of aggregation window [curStartTime, curEndTime)
   protected long curStartTime;
   protected long curEndTime;
   protected boolean hasCachedTimeInterval;
+
+  // current interval of pre-aggregation window [curStartTime, curEndTime)
+  protected long curPreAggrStartTime;
+  protected long curPreAggrEndTime;
 
   protected boolean leftCRightO;
   protected boolean isIntervalByMonth = false;
   protected boolean isSlidingStepByMonth = false;
   public static final long MS_TO_MONTH = 30 * 86400_000L;
 
-  TimeRangeIterator timeRangeIterator;
-  TimeRangeIterator splitedTimeRangeIterator;
+  TimeRangeIterator aggrTimeRangeIterator;
+  TimeRangeIterator preAggrTimeRangeIterator;
 
   protected AggregateResult[] curAggregateResults;
+  protected SlidingWindowAggrQueue[] slidingWindowAggrQueues;
 
   public GroupByEngineDataSet() {}
 
@@ -94,7 +100,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     }
 
     // init TimeRangeIterator
-    timeRangeIterator =
+    aggrTimeRangeIterator =
         new TimeRangeIterator(
             startTime,
             endTime,
@@ -105,7 +111,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
             isSlidingStepByMonth,
             false);
 
-    splitedTimeRangeIterator =
+    preAggrTimeRangeIterator =
         new TimeRangeIterator(
             startTime,
             endTime,
@@ -118,12 +124,21 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
 
     // find the first aggregation interval
     Pair<Long, Long> retTimeRange;
-    retTimeRange = timeRangeIterator.getFirstTimeRange();
+    retTimeRange = aggrTimeRangeIterator.getFirstTimeRange();
 
     curStartTime = retTimeRange.left;
     curEndTime = retTimeRange.right;
 
+    // find the first pre-aggregation interval
+    Pair<Long, Long> retPerAggrTimeRange;
+    retPerAggrTimeRange = preAggrTimeRangeIterator.getFirstTimeRange();
+
+    curPreAggrStartTime = retPerAggrTimeRange.left;
+    curPreAggrEndTime = retPerAggrTimeRange.right;
+
     this.hasCachedTimeInterval = true;
+
+    slidingWindowAggrQueues = new SlidingWindowAggrQueue[paths.size()];
   }
 
   @Override
@@ -134,7 +149,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     }
 
     // find the next aggregation interval
-    Pair<Long, Long> nextTimeRange = timeRangeIterator.getNextTimeRange(curStartTime, true);
+    Pair<Long, Long> nextTimeRange = aggrTimeRangeIterator.getNextTimeRange(curStartTime, true);
     if (nextTimeRange == null) {
       return false;
     }
