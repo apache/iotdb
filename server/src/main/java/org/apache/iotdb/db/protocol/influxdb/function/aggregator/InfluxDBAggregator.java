@@ -22,6 +22,7 @@ package org.apache.iotdb.db.protocol.influxdb.function.aggregator;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxDBFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxDBFunctionValue;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 
 import java.util.List;
 
@@ -32,8 +33,9 @@ public abstract class InfluxDBAggregator extends InfluxDBFunction {
     super(expressionList);
   }
 
-  public InfluxDBAggregator(List<Expression> expressionList, String path) {
-    super(expressionList, path);
+  public InfluxDBAggregator(
+      List<Expression> expressionList, String path, ServiceProvider serviceProvider) {
+    super(expressionList, path, serviceProvider);
   }
 
   public abstract void updateValue(InfluxDBFunctionValue functionValue);

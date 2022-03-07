@@ -29,9 +29,11 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryResult;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryRsp;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSSeries;
+import org.apache.iotdb.tsfile.read.common.Field;
 
 import org.influxdb.dto.QueryResult;
 
@@ -66,12 +68,12 @@ public class InfluxDBUtils {
     return tmpList[tmpList.length - 1];
   }
 
-  public static TSQueryRsp queryExpr(FilterOperator filterOperator) {
+  public static QueryResult queryExpr(FilterOperator filterOperator) {
     return null;
   }
 
   public static void ProcessSelectComponent(
-      TSQueryRsp tsQueryRsp, InfluxSelectComponent selectComponent) {}
+      QueryResult queryResult, InfluxSelectComponent selectComponent) {}
 
   /**
    * Query the select result. By default, there are no filter conditions. The functions to be
@@ -80,8 +82,11 @@ public class InfluxDBUtils {
    * @param selectComponent select data to query
    * @return select query result
    */
-  public static TSQueryRsp queryFuncWithoutFilter(
-      InfluxSelectComponent selectComponent, String database, String measurement) {
+  public static QueryResult queryFuncWithoutFilter(
+      InfluxSelectComponent selectComponent,
+      String database,
+      String measurement,
+      ServiceProvider serviceProvider) {
     // columns
     List<String> columns = new ArrayList<>();
     columns.add(InfluxSQLConstant.RESERVED_TIME);
@@ -94,7 +99,7 @@ public class InfluxDBUtils {
         String functionName = ((FunctionExpression) expression).getFunctionName();
         functions.add(
             InfluxDBFunctionFactory.generateFunctionBySession(
-                functionName, expression.getExpressions(), path));
+                functionName, expression.getExpressions(), path, serviceProvider));
         columns.add(functionName);
       }
     }
@@ -124,7 +129,7 @@ public class InfluxDBUtils {
     QueryResult.Result result = new QueryResult.Result();
     result.setSeries(new ArrayList<>(Arrays.asList(series)));
     queryResult.setResults(new ArrayList<>(Arrays.asList(result)));
-    return null;
+    return queryResult;
   }
 
   public static QueryResult convertTSQueryResult(TSQueryRsp tsQueryRsp) {
@@ -149,5 +154,42 @@ public class InfluxDBUtils {
     queryResult.setResults(results);
     queryResult.setError(tsQueryRsp.error);
     return queryResult;
+  }
+
+  public static String generateFunctionSql(String first_value, String parmaName, String path) {
+    return null;
+  }
+
+  /**
+   * convert the value of field in iotdb to object
+   *
+   * @param field filed to be converted
+   * @return value stored in field
+   */
+  public static Object iotdbFiledConvert(Field field) {
+    if (field.getDataType() == null) {
+      return null;
+    }
+    switch (field.getDataType()) {
+      case TEXT:
+        return field.getStringValue();
+      case INT64:
+        return field.getLongV();
+      case INT32:
+        return field.getIntV();
+      case DOUBLE:
+        return field.getDoubleV();
+      case FLOAT:
+        return field.getFloatV();
+      case BOOLEAN:
+        return field.getBoolV();
+      default:
+        return null;
+    }
+  }
+
+  public static String parserFunctionPath(String path) {
+    String splitStrings = path.split("[(]", 1)[1];
+    return splitStrings.substring(0, splitStrings.length() - 1);
   }
 }

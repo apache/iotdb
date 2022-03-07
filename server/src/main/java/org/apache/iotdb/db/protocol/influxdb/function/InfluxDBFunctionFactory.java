@@ -18,24 +18,30 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.function;
 
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
+import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxDBFirstFunction;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 
 import java.util.List;
 
 public class InfluxDBFunctionFactory {
   public static InfluxDBFunction generateFunctionBySession(
-      String functionName, List<Expression> expressionList, String path) {
+      String functionName,
+      List<Expression> expressionList,
+      String path,
+      ServiceProvider serviceProvider) {
     switch (functionName) {
-        //            case InfluxSQLConstant.MAX:
-        //                return new MaxFunction(expressionList, session, path);
+        //                    case InfluxSQLConstant.MAX:
+        //                        return new MaxFunction(expressionList, session, path);
         //            case InfluxSQLConstant.MIN:
         //                return new MinFunction(expressionList, session, path);
         //            case InfluxSQLConstant.MEAN:
         //                return new MeanFunction(expressionList, session, path);
         //            case InfluxSQLConstant.LAST:
         //                return new LastFunction(expressionList, session, path);
-        //            case InfluxSQLConstant.FIRST:
-        //                return new FirstFunction(expressionList, session, path);
+      case InfluxSQLConstant.FIRST:
+        return new InfluxDBFirstFunction(expressionList, path, serviceProvider);
         //            case InfluxSQLConstant.COUNT:
         //                return new CountFunction(expressionList, session, path);
         //            case InfluxSQLConstant.SUM:

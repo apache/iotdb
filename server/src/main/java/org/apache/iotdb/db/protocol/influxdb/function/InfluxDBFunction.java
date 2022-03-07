@@ -20,12 +20,16 @@ package org.apache.iotdb.db.protocol.influxdb.function;
 
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 
 import java.util.List;
 
 public abstract class InfluxDBFunction {
 
   protected String path;
+
+  protected ServiceProvider serviceProvider;
+
   // contain possible parameters
   private List<Expression> expressionList;
 
@@ -33,9 +37,11 @@ public abstract class InfluxDBFunction {
     this.expressionList = expressionList;
   }
 
-  public InfluxDBFunction(List<Expression> expressionList, String path) {
+  public InfluxDBFunction(
+      List<Expression> expressionList, String path, ServiceProvider serviceProvider) {
     this.expressionList = expressionList;
     this.path = path;
+    this.serviceProvider = serviceProvider;
   }
 
   public InfluxDBFunction() {}

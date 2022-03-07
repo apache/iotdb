@@ -62,6 +62,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
 import org.influxdb.InfluxDBException;
 import org.influxdb.dto.Point;
+import org.influxdb.dto.QueryResult;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -166,22 +167,22 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
     Map<String, Integer> fieldOrders = new HashMap<>();
     Map<Integer, String> fieldOrdersReversed = new HashMap<>();
     updateFieldOrders(database, measurement, fieldOrders, fieldOrdersReversed);
-    TSQueryRsp tsQueryRsp;
+    QueryResult queryResult;
     // contain filter condition or have common query the result of by traversal.
     if (queryOperator.getWhereComponent() != null
         || queryOperator.getSelectComponent().isHasCommonQuery()) {
       // step1 : generate query results
-      tsQueryRsp = InfluxDBUtils.queryExpr(queryOperator.getWhereComponent().getFilterOperator());
+      queryResult = InfluxDBUtils.queryExpr(queryOperator.getWhereComponent().getFilterOperator());
       // step2 : select filter
-      InfluxDBUtils.ProcessSelectComponent(tsQueryRsp, queryOperator.getSelectComponent());
+      InfluxDBUtils.ProcessSelectComponent(queryResult, queryOperator.getSelectComponent());
     }
     // don't contain filter condition and only have function use iotdb function.
     else {
-      tsQueryRsp =
+      queryResult =
           InfluxDBUtils.queryFuncWithoutFilter(
-              queryOperator.getSelectComponent(), database, measurement);
+              queryOperator.getSelectComponent(), database, measurement, serviceProvider);
     }
-    return tsQueryRsp;
+    return null;
   }
 
   private void updateFieldOrders(

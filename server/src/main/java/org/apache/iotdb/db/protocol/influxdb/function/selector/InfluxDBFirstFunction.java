@@ -19,9 +19,27 @@
 
 package org.apache.iotdb.db.protocol.influxdb.function.selector;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxDBFunctionValue;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
+import org.apache.iotdb.db.utils.InfluxDBUtils;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import org.apache.thrift.TException;
+import org.influxdb.InfluxDBException;
+
+import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
 
 public class InfluxDBFirstFunction extends InfluxDBSelector {
@@ -32,8 +50,9 @@ public class InfluxDBFirstFunction extends InfluxDBSelector {
     this.setTimestamp(Long.MIN_VALUE);
   }
 
-  public InfluxDBFirstFunction(List<Expression> expressionList, String path) {
-    super(expressionList, path);
+  public InfluxDBFirstFunction(
+      List<Expression> expressionList, String path, ServiceProvider serviceProvider) {
+    super(expressionList, path, serviceProvider);
   }
 
   @Override
@@ -43,7 +62,81 @@ public class InfluxDBFirstFunction extends InfluxDBSelector {
 
   @Override
   public InfluxDBFunctionValue calculateByIoTDBFunc() {
-    return null;
+    Object firstValue = null;
+    Long firstTime = null;
+    long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+    try {
+      String getFunctionSql =
+          InfluxDBUtils.generateFunctionSql("first_value", getParmaName(), path);
+      QueryPlan queryPlan =
+          (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(getFunctionSql);
+      QueryContext queryContext =
+          serviceProvider.genQueryContext(
+              queryId,
+              true,
+              System.currentTimeMillis(),
+              getFunctionSql,
+              IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+      QueryDataSet queryDataSet =
+          serviceProvider.createQueryDataSet(
+              queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+      while (queryDataSet.hasNext()) {
+        List<Path> paths = queryDataSet.getPaths();
+        List<Field> fields = queryDataSet.next().getFields();
+        for (int i = 0; i < paths.size(); i++) {
+          Object o = InfluxDBUtils.iotdbFiledConvert(fields.get(i));
+          queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+          if (o != null) {
+            String specificSql =
+                String.format(
+                    "select %s from %s where %s=%s",
+                    getParmaName(), paths.get(i).getDevice(), paths.get(i).getFullPath(), o);
+            QueryPlan queryPlanNew =
+                (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(specificSql);
+            QueryContext queryContextNew =
+                serviceProvider.genQueryContext(
+                    queryId,
+                    true,
+                    System.currentTimeMillis(),
+                    specificSql,
+                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+            QueryDataSet queryDataSetNew =
+                serviceProvider.createQueryDataSet(
+                    queryContextNew, queryPlanNew, IoTDBConstant.DEFAULT_FETCH_SIZE);
+            while (queryDataSetNew.hasNext()) {
+              RowRecord recordNew = queryDataSetNew.next();
+              List<Field> newFields = recordNew.getFields();
+              Long time = recordNew.getTimestamp();
+              if (firstValue == null && firstTime == null) {
+                firstValue = InfluxDBUtils.iotdbFiledConvert(newFields.get(0));
+                firstTime = time;
+              } else {
+                if (time < firstTime) {
+                  firstValue = InfluxDBUtils.iotdbFiledConvert(newFields.get(0));
+                  firstTime = time;
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (QueryProcessException
+        | TException
+        | StorageEngineException
+        | SQLException
+        | IOException
+        | InterruptedException
+        | QueryFilterOptimizationException
+        | MetadataException e) {
+      throw new InfluxDBException(e.getMessage());
+    } finally {
+      ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+    }
+
+    if (firstValue == null) {
+      return new InfluxDBFunctionValue(null, null);
+    }
+    return new InfluxDBFunctionValue(firstValue, firstTime);
   }
 
   @Override
