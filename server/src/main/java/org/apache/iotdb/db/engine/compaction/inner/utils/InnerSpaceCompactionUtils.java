@@ -31,13 +31,17 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
@@ -108,12 +112,22 @@ public class InnerSpaceCompactionUtils {
     while (seriesIterator.hasNextSeries()) {
       checkThreadInterrupted(targetResource);
       // TODO: we can provide a configuration item to enable concurrent between each series
-      String currentSeries = seriesIterator.nextSeries();
+      PartialPath p = new PartialPath(device, seriesIterator.nextSeries());
+      IMeasurementSchema ms;
+      // TODO: seriesIterator needs to be refactor.
+      // This statement must be called before next hasNextSeries() called, or it may be trapped in a
+      // dead-loop.
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
           seriesIterator.getMetadataListForCurrentSeries();
+      try {
+        ms = IoTDB.metaManager.getSeriesSchema(p);
+      } catch (PathNotExistException e) {
+        logger.info("A deleted path is skipped: {}", e.getMessage());
+        continue;
+      }
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
           new SingleSeriesCompactionExecutor(
-              device, currentSeries, readerAndChunkMetadataList, writer, targetResource);
+              p, ms, readerAndChunkMetadataList, writer, targetResource);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
   }
