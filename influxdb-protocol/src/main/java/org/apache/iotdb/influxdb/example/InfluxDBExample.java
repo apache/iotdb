@@ -38,7 +38,7 @@ public class InfluxDBExample {
     influxDB = IoTDBInfluxDBFactory.connect("http://127.0.0.1:8086", "root", "root");
     influxDB.createDatabase("database");
     influxDB.setDatabase("database");
-//    insertData();
+    insertData();
     queryData();
     influxDB.close();
   }
@@ -64,7 +64,7 @@ public class InfluxDBExample {
     tags.put("name", "xie");
     tags.put("sex", "m");
     tags.put("province", "anhui");
-    fields.put("score", 99);
+    fields.put("score", 99.0);
     fields.put("country", "china");
     builder.tag(tags);
     builder.fields(fields);
@@ -73,14 +73,12 @@ public class InfluxDBExample {
     influxDB.write(point);
   }
 
-  private static void queryData(){
+  private static void queryData() {
     Query query;
     QueryResult result;
 
     //     the selector query is parallel to the field value
-    query =
-            new Query(
-                    "select first(score) from student ", "database");
+    query = new Query("select first(score) from student ", "database");
     result = influxDB.query(query);
     System.out.println("query1 result:" + result.getResults().get(0).getSeries().get(0).toString());
   }

@@ -163,15 +163,19 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
       String database, InfluxQueryOperator queryOperator, long sessionId) {
     String measurement = queryOperator.getFromComponent().getPrefixPaths().get(0).getFullPath();
     // The list of fields under the current measurement and the order of the specified rules
-    Map<String, Integer> fieldOrders = new HashMap<>();
-    Map<Integer, String> fieldOrdersReversed = new HashMap<>();
-    updateFieldOrders(database, measurement, fieldOrders, fieldOrdersReversed);
+    Map<String, Integer> fieldOrders = getFieldOrders(database, measurement);
     QueryResult queryResult;
     // contain filter condition or have common query the result of by traversal.
     if (queryOperator.getWhereComponent() != null
         || queryOperator.getSelectComponent().isHasCommonQuery()) {
       // step1 : generate query results
-      queryResult = InfluxDBUtils.queryExpr(queryOperator.getWhereComponent().getFilterOperator());
+      queryResult =
+          InfluxDBUtils.queryExpr(
+              queryOperator.getWhereComponent().getFilterOperator(),
+              database,
+              measurement,
+              serviceProvider,
+              fieldOrders);
       // step2 : select filter
       InfluxDBUtils.ProcessSelectComponent(queryResult, queryOperator.getSelectComponent());
     }
@@ -184,11 +188,8 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
     return null;
   }
 
-  private void updateFieldOrders(
-      String database,
-      String measurement,
-      Map<String, Integer> fieldOrders,
-      Map<Integer, String> fieldOrdersReversed) {
+  private Map<String, Integer> getFieldOrders(String database, String measurement) {
+    Map<String, Integer> fieldOrders = new HashMap<>();
     long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
     try {
       String showTimeseriesSql = "show timeseries root." + database + '.' + measurement + "**";
@@ -215,7 +216,6 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
           // The corresponding order of fields is 1 + tagNum (the first is timestamp, then all tags,
           // and finally all fields)
           fieldOrders.put(filed, tagOrderNums + fieldNums + 1);
-          fieldOrdersReversed.put(tagOrderNums + fieldNums + 1, filed);
           fieldNums++;
         }
       }
@@ -231,6 +231,7 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
     } finally {
       ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
     }
+    return fieldOrders;
   }
 
   public void handleClientExit() {
