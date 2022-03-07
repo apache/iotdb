@@ -156,8 +156,8 @@ public class InfluxDBUtils {
     return queryResult;
   }
 
-  public static String generateFunctionSql(String first_value, String parmaName, String path) {
-    return null;
+  public static String generateFunctionSql(String functionName, String parameter, String path) {
+    return String.format("select %s(%s) from %s.**", functionName, parameter, path);
   }
 
   /**

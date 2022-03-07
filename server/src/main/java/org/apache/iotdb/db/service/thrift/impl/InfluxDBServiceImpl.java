@@ -34,7 +34,6 @@ import org.apache.iotdb.db.protocol.influxdb.sql.InfluxDBLogicalGenerator;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IoTDB;
@@ -193,8 +192,8 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
     long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
     try {
       String showTimeseriesSql = "show timeseries root." + database + '.' + measurement + "**";
-      QueryPlan queryPlan =
-          (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(showTimeseriesSql);
+      PhysicalPlan physicalPlan =
+          serviceProvider.getPlanner().parseSQLToPhysicalPlan(showTimeseriesSql);
       QueryContext queryContext =
           serviceProvider.genQueryContext(
               queryId,
@@ -204,7 +203,7 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
               IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
       QueryDataSet queryDataSet =
           serviceProvider.createQueryDataSet(
-              queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+              queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
       int fieldNums = 0;
       Map<String, Integer> tagOrders =
           InfluxDBMetaManager.database2Measurement2TagOrders.get(database).get(measurement);

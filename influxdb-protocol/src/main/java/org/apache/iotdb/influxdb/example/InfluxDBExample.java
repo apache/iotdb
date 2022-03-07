@@ -23,6 +23,8 @@ import org.apache.iotdb.influxdb.IoTDBInfluxDBFactory;
 
 import org.influxdb.InfluxDB;
 import org.influxdb.dto.Point;
+import org.influxdb.dto.Query;
+import org.influxdb.dto.QueryResult;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -36,7 +38,8 @@ public class InfluxDBExample {
     influxDB = IoTDBInfluxDBFactory.connect("http://127.0.0.1:8086", "root", "root");
     influxDB.createDatabase("database");
     influxDB.setDatabase("database");
-    insertData();
+//    insertData();
+    queryData();
     influxDB.close();
   }
 
@@ -68,5 +71,17 @@ public class InfluxDBExample {
     builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
     point = builder.build();
     influxDB.write(point);
+  }
+
+  private static void queryData(){
+    Query query;
+    QueryResult result;
+
+    //     the selector query is parallel to the field value
+    query =
+            new Query(
+                    "select first(score) from student ", "database");
+    result = influxDB.query(query);
+    System.out.println("query1 result:" + result.getResults().get(0).getSeries().get(0).toString());
   }
 }
