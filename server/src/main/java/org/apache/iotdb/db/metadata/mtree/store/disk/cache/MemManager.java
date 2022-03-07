@@ -85,4 +85,14 @@ public class MemManager implements IMemManager {
   public synchronized void clear() {
     size = 0;
   }
+
+  @Override
+  public int getPinnedSize() {
+    return pinnedSize;
+  }
+
+  @Override
+  public int getCachedSize() {
+    return size;
+  }
 }

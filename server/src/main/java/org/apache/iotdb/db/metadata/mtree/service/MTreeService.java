@@ -56,6 +56,7 @@ import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.StorageGroup
 import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SFManager;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -1415,6 +1416,9 @@ public class MTreeService implements Serializable {
         unPinPath(cur);
         logger.error(
             "Show why {}'s child is null: {}", cur.getFullPath(), cur.getChildren().toString());
+        logger.error(root.getChildren().toString());
+        logger.error(store.getRoot().getChildren().toString());
+        logger.error(SFManager.getInstance().getUpperMTree().getChildren().toString());
         throw new StorageGroupNotSetException(path.getFullPath());
       }
       if (next.isStorageGroup()) {

@@ -392,12 +392,17 @@ public class CachedMTreeStore implements IMTreeStore {
    */
   private void executeMemoryRelease() {
     List<IMNode> evictedMNodes;
+    logger.warn(
+        "Execute memory release, which should not happen. The memory usage is Pinned Node {}, Cached Node {}",
+        memManager.getPinnedSize(),
+        memManager.getCachedSize());
     while (memManager.isExceedThreshold()) {
       evictedMNodes = cacheStrategy.evict();
       if (evictedMNodes.isEmpty()) {
         break;
       }
       for (IMNode evictedMNode : evictedMNodes) {
+        logger.warn("Evicting node {}", evictedMNode.getFullPath());
         memManager.releaseMemResource(evictedMNode);
       }
     }

@@ -41,4 +41,8 @@ public interface IMemManager {
   void releasePinnedMemResource(IMNode node);
 
   void clear();
+
+  int getPinnedSize();
+
+  int getCachedSize();
 }

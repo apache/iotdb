@@ -327,6 +327,28 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     }
   }
 
+  public synchronized String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append("CachedMNodeContainer:{");
+    builder.append("childCache:[");
+    for (IMNode node : getValues(childCache)) {
+      builder.append(node.getName()).append(",");
+    }
+    builder.append("];");
+    builder.append("newChildBuffer:[");
+    for (IMNode node : getValues(childCache)) {
+      builder.append(node.getName()).append(",");
+    }
+    builder.append("];");
+    builder.append("updateChildBuffer:[");
+    for (IMNode node : getValues(childCache)) {
+      builder.append(node.getName()).append(",");
+    }
+    builder.append("];");
+    builder.append("}");
+    return builder.toString();
+  }
+
   private class CachedMNodeContainerIterator implements Iterator<IMNode> {
 
     Iterator<IMNode> iterator;
@@ -368,28 +390,6 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
           return false;
       }
     }
-  }
-
-  public String toString() {
-    StringBuilder builder = new StringBuilder();
-    builder.append("CachedMNodeContainer:{");
-    builder.append("childCache:[");
-    for (IMNode node : getValues(childCache)) {
-      builder.append(node.getName()).append(",");
-    }
-    builder.append("];");
-    builder.append("newChildBuffer:[");
-    for (IMNode node : getValues(childCache)) {
-      builder.append(node.getName()).append(",");
-    }
-    builder.append("];");
-    builder.append("updateChildBuffer:[");
-    for (IMNode node : getValues(childCache)) {
-      builder.append(node.getName()).append(",");
-    }
-    builder.append("];");
-    builder.append("}");
-    return builder.toString();
   }
 
   private class BufferIterator implements Iterator<IMNode> {
