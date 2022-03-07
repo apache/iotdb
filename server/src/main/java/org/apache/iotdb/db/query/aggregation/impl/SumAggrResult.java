@@ -151,7 +151,11 @@ public class SumAggrResult extends AggregateResult {
     if (another instanceof SumAggrResult && ((SumAggrResult) another).isNotNull()) {
       SumAggrResult anotherSum = (SumAggrResult) another;
       double preValue = getDoubleValue();
-      setDoubleValue(preValue - anotherSum.getDoubleValue());
+      if(preValue == anotherSum.getDoubleValue()) {
+        reset();
+      } else {
+        setDoubleValue(preValue - anotherSum.getDoubleValue());
+      }
     }
   }
 
