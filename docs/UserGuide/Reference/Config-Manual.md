@@ -850,6 +850,15 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 30 |
 |Effective|After restart system|
 
+* max\_cross\_compaction\_file\_num
+
+|Name| max\_cross\_compaction\_file\_num |
+|:---:|:---|
+|Description| The max num of unseq files encounter in cross space compaction |
+|Type| Int32 |
+|Default| 100 |
+|Effective|After restart system|
+
 * cross\_compaction\_file\_selection\_time\_budget
 
 |Name| cross\_compaction\_file\_selection\_time\_budget |

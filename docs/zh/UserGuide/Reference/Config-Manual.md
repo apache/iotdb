@@ -889,6 +889,15 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 30|
 |改后生效方式|重启服务生效|
 
+* max\_cross\_compaction\_file\_num
+
+|名字| max\_cross\_compaction\_file\_num |
+|:---:|:---|
+|描述| 跨空间合并中一次合并最多参与的乱序文件数 |
+|类型| Int32 |
+|默认值| 100|
+|改后生效方式|重启服务生效|
+
 * cross\_compaction\_file\_selection\_time\_budget
 
 |名字| cross\_compaction\_file\_selection\_time\_budget |

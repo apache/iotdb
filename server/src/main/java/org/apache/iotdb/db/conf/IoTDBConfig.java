@@ -417,6 +417,9 @@ public class IoTDBConfig {
   /** The max candidate file num in compaction */
   private int maxCompactionCandidateFileNum = 30;
 
+  /** The max num of unseq source files in cross space compaction */
+  private int maxCrossCompactionFileNum = 100;
+
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
 
@@ -2476,6 +2479,14 @@ public class IoTDBConfig {
 
   public void setMaxCompactionCandidateFileNum(int maxCompactionCandidateFileNum) {
     this.maxCompactionCandidateFileNum = maxCompactionCandidateFileNum;
+  }
+
+  public int getMaxCrossCompactionFileNum() {
+    return maxCrossCompactionFileNum;
+  }
+
+  public void setMaxCrossCompactionFileNum(int maxCrossCompactionFileNum) {
+    this.maxCrossCompactionFileNum = maxCrossCompactionFileNum;
   }
 
   public long getCompactionSubmissionIntervalInMs() {

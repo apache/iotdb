@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -53,6 +54,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Pair<String, Boolean> currentDevice = null;
 
+  /** Used for inner space compaction. */
   public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
     this.tsFileResources = new ArrayList<>(tsFileResources);
     Collections.sort(this.tsFileResources, TsFileResource::compareFileName);
@@ -69,6 +71,23 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         reader.close();
       }
       throw throwable;
+    }
+  }
+
+  /** Used for cross space compaction. */
+  public MultiTsFileDeviceIterator(
+      List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
+    for (TsFileResource tsFileResource : seqResources) {
+      TsFileSequenceReader reader =
+          FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
+      readerMap.put(tsFileResource, reader);
+      deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      TsFileSequenceReader reader =
+          FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
+      readerMap.put(tsFileResource, reader);
+      deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
     }
   }
 
@@ -220,13 +239,13 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       this.sequenceReaders = sequenceReaders;
     }
 
-    public List<String> getAllMeasurements() throws IOException {
+    public Set<String> getAllMeasurements() throws IOException {
       Map<String, TimeseriesMetadata> deviceMeasurementsMap = new ConcurrentHashMap<>();
       for (TsFileSequenceReader reader : sequenceReaders) {
         deviceMeasurementsMap.putAll(reader.readDeviceMetadata(device));
       }
       deviceMeasurementsMap.remove("");
-      return new ArrayList<>(deviceMeasurementsMap.keySet());
+      return deviceMeasurementsMap.keySet();
     }
   }
 

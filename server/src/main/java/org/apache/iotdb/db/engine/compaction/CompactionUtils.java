@@ -56,7 +56,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -83,12 +82,11 @@ public class CompactionUtils {
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
 
-    List<TsFileResource> allResources = new ArrayList<>();
-    allResources.addAll(seqFileResources);
-    allResources.addAll(unseqFileResources);
     try (AbstractCompactionWriter compactionWriter =
-            getCompactionWriter(seqFileResources, unseqFileResources, targetFileResources);
-        MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(allResources)) {
+        getCompactionWriter(seqFileResources, unseqFileResources, targetFileResources)) {
+      // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
+      MultiTsFileDeviceIterator deviceIterator =
+          new MultiTsFileDeviceIterator(seqFileResources, unseqFileResources);
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted(targetFileResources);
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
@@ -121,7 +119,7 @@ public class CompactionUtils {
       throws IOException, MetadataException {
     MultiTsFileDeviceIterator.AlignedMeasurmentIterator alignedMeasurmentIterator =
         deviceIterator.iterateAlignedSeries(device);
-    List<String> allMeasurments = alignedMeasurmentIterator.getAllMeasurements();
+    Set<String> allMeasurments = alignedMeasurmentIterator.getAllMeasurements();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String measurement : allMeasurments) {
       // TODO: use IDTable
@@ -132,9 +130,9 @@ public class CompactionUtils {
     IBatchReader dataBatchReader =
         constructReader(
             device,
-            allMeasurments,
+            new ArrayList<>(allMeasurments),
             measurementSchemas,
-            new HashSet<>(allMeasurments),
+            allMeasurments,
             queryContext,
             queryDataSource,
             true);
@@ -160,7 +158,6 @@ public class CompactionUtils {
     MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
         deviceIterator.iterateNotAlignedSeries(device, false);
     Set<String> allMeasurements = measurementIterator.getAllMeasurements();
-    Set<String> allMeasurementSet = new HashSet<>(allMeasurements);
     for (String measurement : allMeasurements) {
       List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
       measurementSchemas.add(
@@ -171,7 +168,7 @@ public class CompactionUtils {
               device,
               Collections.singletonList(measurement),
               measurementSchemas,
-              allMeasurementSet,
+              allMeasurements,
               queryContext,
               queryDataSource,
               false);
