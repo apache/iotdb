@@ -66,16 +66,16 @@ public class InfluxFirstFunction extends InfluxSelector {
     Long firstTime = null;
     long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
     try {
-      String getFunctionSql =
+      String functionSql =
           InfluxDBUtils.generateFunctionSql("first_value", getParmaName(), path);
       QueryPlan queryPlan =
-          (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(getFunctionSql);
+          (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSql);
       QueryContext queryContext =
           serviceProvider.genQueryContext(
               queryId,
               true,
               System.currentTimeMillis(),
-              getFunctionSql,
+              functionSql,
               IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
       QueryDataSet queryDataSet =
           serviceProvider.createQueryDataSet(
