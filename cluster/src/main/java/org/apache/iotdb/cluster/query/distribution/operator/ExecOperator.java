@@ -1,6 +1,6 @@
-package org.apache.iotdb.db.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.operator;
 
-import org.apache.iotdb.db.query.distribution.common.TreeNode;
+import org.apache.iotdb.cluster.query.distribution.common.TreeNode;
 
 /**
  * @author xingtanzjr

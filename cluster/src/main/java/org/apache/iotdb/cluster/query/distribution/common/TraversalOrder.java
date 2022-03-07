@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.query.distribution.common;
+package org.apache.iotdb.cluster.query.distribution.common;
 
 /**
  * The traversal order for operators by timestamp

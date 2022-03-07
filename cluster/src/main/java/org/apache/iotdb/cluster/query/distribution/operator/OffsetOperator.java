@@ -1,6 +1,6 @@
-package org.apache.iotdb.db.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.operator;
 
-import org.apache.iotdb.db.query.distribution.common.Tablet;
+import org.apache.iotdb.cluster.query.distribution.common.Tablet;
 
 /**
  * OffsetOperator is used to skip top n result from upstream operators. It uses the default order of upstream operators

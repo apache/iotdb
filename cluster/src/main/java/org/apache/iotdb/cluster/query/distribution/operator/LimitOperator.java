@@ -1,6 +1,6 @@
-package org.apache.iotdb.db.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.operator;
 
-import org.apache.iotdb.db.query.distribution.common.Tablet;
+import org.apache.iotdb.cluster.query.distribution.common.Tablet;
 
 /**
  * LimitOperator is used to select top n result. It uses the default order of upstream operators

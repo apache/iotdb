@@ -1,7 +1,7 @@
-package org.apache.iotdb.db.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.operator;
 
+import org.apache.iotdb.cluster.query.distribution.common.Tablet;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.db.query.distribution.common.Tablet;
 
 /**
  * (We use FilterExecOperator to distinguish itself from the FilterOperator used in single-node IoTDB)

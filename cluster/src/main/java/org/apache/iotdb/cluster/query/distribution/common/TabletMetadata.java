@@ -1,6 +1,4 @@
-package org.apache.iotdb.db.query.distribution.common;
-
-import org.apache.iotdb.tsfile.read.common.Path;
+package org.apache.iotdb.cluster.query.distribution.common;
 
 import java.util.List;
 

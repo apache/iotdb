@@ -1,7 +1,7 @@
-package org.apache.iotdb.db.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.operator;
 
-import org.apache.iotdb.db.query.distribution.common.GroupByTimeParameter;
-import org.apache.iotdb.db.query.distribution.common.SeriesBatchAggInfo;
+import org.apache.iotdb.cluster.query.distribution.common.GroupByTimeParameter;
+import org.apache.iotdb.cluster.query.distribution.common.SeriesBatchAggInfo;
 
 /**
  * SeriesAggregateOperator is responsible to do the aggregation calculation for one series.

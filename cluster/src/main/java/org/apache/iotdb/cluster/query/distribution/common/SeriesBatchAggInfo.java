@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.query.distribution.common;
+package org.apache.iotdb.cluster.query.distribution.common;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.Path;

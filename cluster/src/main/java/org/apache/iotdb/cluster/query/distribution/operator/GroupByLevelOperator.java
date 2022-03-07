@@ -1,8 +1,8 @@
-package org.apache.iotdb.db.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.operator;
 
-import org.apache.iotdb.db.query.distribution.common.GroupByTimeParameter;
-import org.apache.iotdb.db.query.distribution.common.LevelBucketInfo;
-import org.apache.iotdb.db.query.distribution.common.Tablet;
+import org.apache.iotdb.cluster.query.distribution.common.GroupByTimeParameter;
+import org.apache.iotdb.cluster.query.distribution.common.LevelBucketInfo;
+import org.apache.iotdb.cluster.query.distribution.common.Tablet;
 
 /**
  * This operator is responsible for the final aggregation merge operation.

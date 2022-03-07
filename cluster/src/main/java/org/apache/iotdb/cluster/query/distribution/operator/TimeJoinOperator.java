@@ -1,8 +1,8 @@
-package org.apache.iotdb.db.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.operator;
 
-import org.apache.iotdb.db.query.distribution.common.Tablet;
-import org.apache.iotdb.db.query.distribution.common.TraversalOrder;
-import org.apache.iotdb.db.query.distribution.common.WithoutPolicy;
+import org.apache.iotdb.cluster.query.distribution.common.Tablet;
+import org.apache.iotdb.cluster.query.distribution.common.TraversalOrder;
+import org.apache.iotdb.cluster.query.distribution.common.WithoutPolicy;
 
 /**
  * TimeJoinOperator is responsible for join two or more series.

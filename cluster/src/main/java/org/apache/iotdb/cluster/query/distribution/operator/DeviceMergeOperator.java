@@ -1,7 +1,7 @@
-package org.apache.iotdb.db.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.operator;
 
-import org.apache.iotdb.db.query.distribution.common.Tablet;
-import org.apache.iotdb.db.query.distribution.common.TraversalOrder;
+import org.apache.iotdb.cluster.query.distribution.common.Tablet;
+import org.apache.iotdb.cluster.query.distribution.common.TraversalOrder;
 
 import java.util.List;
 import java.util.Map;

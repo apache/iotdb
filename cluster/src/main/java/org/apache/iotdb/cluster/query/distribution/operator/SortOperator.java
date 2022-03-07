@@ -1,13 +1,13 @@
-package org.apache.iotdb.db.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.operator;
 
-import org.apache.iotdb.db.query.distribution.common.Tablet;
-import org.apache.iotdb.db.query.distribution.common.TraversalOrder;
+import org.apache.iotdb.cluster.query.distribution.common.Tablet;
+import org.apache.iotdb.cluster.query.distribution.common.TraversalOrder;
 
 /**
  * In general, the parameter in sortOperator should be pushed down to the upstream operators.
  * In our optimized logical query plan, the sortOperator should not appear.
  */
-public class SortOperator extends ExecOperator<Tablet>{
+public class SortOperator extends ExecOperator<Tablet> {
 
     private TraversalOrder sortOrder;
 
