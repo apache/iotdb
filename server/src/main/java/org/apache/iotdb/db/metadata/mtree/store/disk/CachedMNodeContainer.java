@@ -336,12 +336,12 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     }
     builder.append("];");
     builder.append("newChildBuffer:[");
-    for (IMNode node : getValues(childCache)) {
+    for (IMNode node : getValues(newChildBuffer)) {
       builder.append(node.getName()).append(",");
     }
     builder.append("];");
     builder.append("updateChildBuffer:[");
-    for (IMNode node : getValues(childCache)) {
+    for (IMNode node : getValues(updatedChildBuffer)) {
       builder.append(node.getName()).append(",");
     }
     builder.append("];");

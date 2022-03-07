@@ -1424,7 +1424,7 @@ public class MTreeService implements Serializable {
       if (next.isStorageGroup()) {
         unPinPath(next);
         return next.getAsStorageGroupMNode();
-      } else {
+      } else if (i == 2) {
         logger.error("The node {} on level 2 should be storage group node", next.getFullPath());
       }
       cur = next;
