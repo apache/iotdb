@@ -28,6 +28,7 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import com.google.common.primitives.Bytes;
 import org.rocksdb.ColumnFamilyDescriptor;
 import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.ColumnFamilyOptions;
@@ -88,7 +89,7 @@ public class RocksDBReadWriteHandler {
     RocksDB.loadLibrary();
   }
 
-  private RocksDBReadWriteHandler() throws RocksDBException {
+  public RocksDBReadWriteHandler() throws RocksDBException {
     Options options = new Options();
     options.setCreateIfMissing(true);
     options.setAllowMmapReads(true);
@@ -165,8 +166,9 @@ public class RocksDBReadWriteHandler {
     rocksDB.put(key, value);
   }
 
-  public void createNode(String key, RocksDBMNodeType type, byte[] value) throws RocksDBException {
-    byte[] nodeKey = RocksDBUtils.toRocksDBKey(key, type.value);
+  public void createNode(String levelKey, RocksDBMNodeType type, byte[] value)
+      throws RocksDBException {
+    byte[] nodeKey = RocksDBUtils.toRocksDBKey(levelKey, type.value);
     rocksDB.put(nodeKey, value);
   }
 
@@ -220,11 +222,6 @@ public class RocksDBReadWriteHandler {
   }
 
   public CheckKeyResult keyExistByAllTypes(String levelKey) throws RocksDBException {
-    return keyExistByAllTypes(levelKey, new Holder<>());
-  }
-
-  public CheckKeyResult keyExistByAllTypes(String levelKey, Holder<byte[]> holder)
-      throws RocksDBException {
     RocksDBMNodeType[] types =
         new RocksDBMNodeType[] {
           RocksDBMNodeType.ALISA,
@@ -233,50 +230,36 @@ public class RocksDBReadWriteHandler {
           RocksDBMNodeType.MEASUREMENT,
           RocksDBMNodeType.STORAGE_GROUP
         };
-    return keyExistByTypes(levelKey, holder, types);
+    return keyExistByTypes(levelKey, types);
   }
 
   public CheckKeyResult keyExistByTypes(String levelKey, RocksDBMNodeType... types)
       throws RocksDBException {
-    return keyExistByTypes(levelKey, new Holder<>(), types);
-  }
-
-  public CheckKeyResult keyExistByTypes(
-      String levelKey, Holder<byte[]> holder, RocksDBMNodeType... types) throws RocksDBException {
-    // TODO: compare the performance between two methods
     CheckKeyResult result = new CheckKeyResult();
-    for (RocksDBMNodeType type : types) {
-      byte[] key = RocksDBUtils.toRocksDBKey(levelKey, type.value);
-      if (keyExist(key, holder)) {
-        result.setSingleCheckValue(type.value, keyExist(key, holder));
-        break;
+    try {
+      Arrays.stream(types)
+          //          .parallel()
+          .forEach(
+              x -> {
+                byte[] key = Bytes.concat(new byte[] {(byte) x.value}, levelKey.getBytes());
+                try {
+                  Holder<byte[]> holder = new Holder<>();
+                  boolean keyExisted = keyExist(key, holder);
+                  if (keyExisted) {
+                    result.setSingleCheckValue(x.value, true);
+                    result.setValue(holder.getValue());
+                  }
+                } catch (RocksDBException e) {
+                  throw new RuntimeException(e);
+                }
+              });
+    } catch (Exception e) {
+      if (e.getCause() instanceof RocksDBException) {
+        throw (RocksDBException) e.getCause();
       }
+      throw e;
     }
     return result;
-
-    //    try {
-    //      Arrays.stream(types)
-    //          .parallel()
-    //          .forEach(
-    //              x -> {
-    //                byte[] key = Bytes.concat(new byte[] {x.value}, levelKey.getBytes());
-    //                try {
-    //                  boolean keyExisted = keyExist(key, holder);
-    //                  if (keyExisted) {
-    //                    holder.getValue();
-    //                    result.setSingleCheckValue(x.value, true);
-    //                  }
-    //                } catch (RocksDBException e) {
-    //                  throw new RuntimeException(e);
-    //                }
-    //              });
-    //    } catch (Exception e) {
-    //      if (e.getCause() instanceof RocksDBException) {
-    //        throw (RocksDBException) e.getCause();
-    //      }
-    //      throw e;
-    //    }
-    //    return result;
   }
 
   public boolean keyExist(byte[] key, Holder<byte[]> holder) throws RocksDBException {
@@ -284,10 +267,12 @@ public class RocksDBReadWriteHandler {
     if (!rocksDB.keyMayExist(key, holder)) {
       exist = false;
     } else {
-      byte[] value = rocksDB.get(key);
-      if (value != null) {
-        exist = true;
-        holder.setValue(value);
+      if (holder.getValue() != null) {
+        byte[] value = rocksDB.get(key);
+        if (value != null) {
+          exist = true;
+          holder.setValue(value);
+        }
       }
     }
     return exist;

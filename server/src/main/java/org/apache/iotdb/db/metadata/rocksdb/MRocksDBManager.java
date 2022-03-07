@@ -120,7 +120,6 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
-import static org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils.*;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -375,12 +374,11 @@ public class MRocksDBManager implements IMetaManager {
       return;
     }
     String levelPath = RocksDBUtils.getLevelPath(nodes, start - 1);
-    Holder<byte[]> holder = new Holder<>();
     Lock lock = locksPool.get(levelPath);
     if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
       lockedLocks.push(lock);
       try {
-        CheckKeyResult checkResult = readWriteHandler.keyExistByAllTypes(levelPath, holder);
+        CheckKeyResult checkResult = readWriteHandler.keyExistByAllTypes(levelPath);
         if (!checkResult.existAnyKey()) {
           createTimeSeriesRecursively(
               nodes, start - 1, end, schema, alias, tags, attributes, lockedLocks);
@@ -406,7 +404,7 @@ public class MRocksDBManager implements IMetaManager {
               // convert the parent node to entity if it is internal node
               readWriteHandler.convertToEntityNode(levelPath, DEFAULT_NODE_VALUE);
             } else if (checkResult.getResult(RocksDBMNodeType.ENTITY)) {
-              if ((holder.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
+              if ((checkResult.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
                 throw new AlignedTimeseriesException(
                     "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
                     levelPath);
@@ -582,11 +580,10 @@ public class MRocksDBManager implements IMetaManager {
       return;
     }
     String levelPath = RocksDBUtils.getLevelPath(nodes, start - 1);
-    Holder<byte[]> holder = new Holder<>();
     Lock lock = locksPool.get(levelPath);
     if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
       try {
-        CheckKeyResult checkResult = readWriteHandler.keyExistByAllTypes(levelPath, holder);
+        CheckKeyResult checkResult = readWriteHandler.keyExistByAllTypes(levelPath);
         if (!checkResult.existAnyKey()) {
           createEntityRecursively(nodes, start - 1, end, aligned, lockedLocks);
           if (start == nodes.length) {
@@ -602,7 +599,7 @@ public class MRocksDBManager implements IMetaManager {
               throw new PathAlreadyExistException("Node already exists but not entity");
             }
 
-            if ((holder.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
+            if ((checkResult.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
               throw new PathAlreadyExistException("Entity node exists but not aligned");
             }
           } else if (checkResult.getResult(RocksDBMNodeType.MEASUREMENT)
