@@ -185,8 +185,13 @@ public class AvgAggrResult extends AggregateResult {
       // avoid two empty results producing an NaN
       return;
     }
-    avg = (avg * cnt - anotherAvg.avg * anotherAvg.cnt) / (cnt - anotherAvg.cnt);
-    cnt -= anotherAvg.cnt;
+    if(cnt == anotherAvg.cnt) {
+      avg = 0;
+      cnt = 0;
+    } else {
+      avg = (avg * cnt - anotherAvg.avg * anotherAvg.cnt) / (cnt - anotherAvg.cnt);
+      cnt -= anotherAvg.cnt;
+    }
   }
 
   @Override
