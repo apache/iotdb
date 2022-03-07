@@ -146,7 +146,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   First and Second file: d0 ~ d1 and s0 ~ s2, time range is 0 ~ 99 and 150 ~ 249, value range is  0 ~ 99 and 150 ~ 249.
   Third and Forth file: d0 ~ d2 and s0 ~ s4, time range is 250 ~ 299 and 350 ~ 399, value range is 250 ~ 299 and 350 ~ 399.
   Fifth and Sixth file: d0 ~ d4 and s0 ~ s5, time range is 600 ~ 649 and 700 ~ 749, value range is 800 ~ 849 and 900 ~ 949.
-  And d[0-4].s5 is deleted before compacting.
+  Timeseries d[0-4].s5 are deleted before compaction.
   */
   @Test
   public void testSeqInnerSpaceCompactionWithDifferentTimeseries()
@@ -889,7 +889,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   Total 6 seq files, each file has different aligned timeseries, which cause empty page.
   First and Second file: d0 ~ d1 and s0 ~ s2, time range is 0 ~ 99 and 150 ~ 249, value range is  0 ~ 99 and 150 ~ 249.
   Third and Forth file: d0 ~ d2 and s0 ~ s4, time range is 250 ~ 299 and 350 ~ 399, value range is 250 ~ 299 and 350 ~ 399.
-  Fifth and Sixth file: d0 ~ d4 and s0 ~ s6, time range is 600 ~ 649 and 700 ~ 749, value range is 800 ~ 849 and 900 ~ 949.
+  Fifth and Sixth file: d0 ~ d4 and s0 ~ s7, time range is 600 ~ 649 and 700 ~ 749, value range is 800 ~ 849 and 900 ~ 949.
   Timeseries d[0-4].s7 are deleted before compaction.
   */
   @Test

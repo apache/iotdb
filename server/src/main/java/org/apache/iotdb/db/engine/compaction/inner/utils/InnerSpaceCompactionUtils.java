@@ -113,21 +113,21 @@ public class InnerSpaceCompactionUtils {
       checkThreadInterrupted(targetResource);
       // TODO: we can provide a configuration item to enable concurrent between each series
       PartialPath p = new PartialPath(device, seriesIterator.nextSeries());
-      IMeasurementSchema ms;
+      IMeasurementSchema measurementSchema;
       // TODO: seriesIterator needs to be refactor.
       // This statement must be called before next hasNextSeries() called, or it may be trapped in a
       // dead-loop.
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
           seriesIterator.getMetadataListForCurrentSeries();
       try {
-        ms = IoTDB.metaManager.getSeriesSchema(p);
+        measurementSchema = IoTDB.metaManager.getSeriesSchema(p);
       } catch (PathNotExistException e) {
         logger.info("A deleted path is skipped: {}", e.getMessage());
         continue;
       }
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
           new SingleSeriesCompactionExecutor(
-              p, ms, readerAndChunkMetadataList, writer, targetResource);
+              p, measurementSchema, readerAndChunkMetadataList, writer, targetResource);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
   }
