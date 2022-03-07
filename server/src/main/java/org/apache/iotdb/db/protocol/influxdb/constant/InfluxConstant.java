@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.constant;
 
-public class InfluxDBConstant {
+public class InfluxConstant {
 
   public static final String PLACE_HOLDER = "PH";
 }

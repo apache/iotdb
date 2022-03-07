@@ -27,6 +27,7 @@ import java.util.Set;
 
 /** this class contains several constants used in SQL. */
 public class InfluxSQLConstant extends SQLConstant {
+  public static final String STAR = "*";
 
   public static final String MAX = "max";
   public static final String MIN = "min";

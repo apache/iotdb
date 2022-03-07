@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.protocol.influxdb.constant.InfluxDBConstant;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxConstant;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -188,7 +188,7 @@ public class InfluxDBMetaManager {
           .append(
               layerOrderToTagKeysInPath.containsKey(i)
                   ? tags.get(layerOrderToTagKeysInPath.get(i))
-                  : InfluxDBConstant.PLACE_HOLDER);
+                  : InfluxConstant.PLACE_HOLDER);
     }
     return path.toString();
   }

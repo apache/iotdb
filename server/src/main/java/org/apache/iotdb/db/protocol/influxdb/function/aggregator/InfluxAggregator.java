@@ -17,49 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.protocol.influxdb.function.selector;
+package org.apache.iotdb.db.protocol.influxdb.function.aggregator;
 
-import org.apache.iotdb.db.protocol.influxdb.function.InfluxDBFunction;
-import org.apache.iotdb.db.protocol.influxdb.function.InfluxDBFunctionValue;
+import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunction;
+import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 
 import java.util.List;
 
-public abstract class InfluxDBSelector extends InfluxDBFunction {
+public abstract class InfluxAggregator extends InfluxFunction {
+  public InfluxAggregator() {}
 
-  // The timestamp corresponding to the value
-  private Long timestamp;
-
-  private List<Object> relatedValues;
-
-  public InfluxDBSelector() {}
-
-  public InfluxDBSelector(List<Expression> expressionList) {
+  public InfluxAggregator(List<Expression> expressionList) {
     super(expressionList);
   }
 
-  public InfluxDBSelector(
+  public InfluxAggregator(
       List<Expression> expressionList, String path, ServiceProvider serviceProvider) {
     super(expressionList, path, serviceProvider);
   }
 
-  public List<Object> getRelatedValues() {
-    return this.relatedValues;
-  }
-
-  public void setRelatedValues(List<Object> relatedValues) {
-    this.relatedValues = relatedValues;
-  }
-
-  public Long getTimestamp() {
-    return timestamp;
-  }
-
-  public void setTimestamp(Long timestamp) {
-    this.timestamp = timestamp;
-  }
-
-  public abstract void updateValueAndRelateValues(
-      InfluxDBFunctionValue functionValue, List<Object> relatedValues);
+  public abstract void updateValue(InfluxFunctionValue functionValue);
 }

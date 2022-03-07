@@ -23,7 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.protocol.influxdb.function.InfluxDBFunctionValue;
+import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -42,26 +42,26 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
 
-public class InfluxDBFirstFunction extends InfluxDBSelector {
+public class InfluxFirstFunction extends InfluxSelector {
   private Object value;
 
-  public InfluxDBFirstFunction(List<Expression> expressionList) {
+  public InfluxFirstFunction(List<Expression> expressionList) {
     super(expressionList);
     this.setTimestamp(Long.MIN_VALUE);
   }
 
-  public InfluxDBFirstFunction(
+  public InfluxFirstFunction(
       List<Expression> expressionList, String path, ServiceProvider serviceProvider) {
     super(expressionList, path, serviceProvider);
   }
 
   @Override
-  public InfluxDBFunctionValue calculate() {
-    return new InfluxDBFunctionValue(value, this.getTimestamp());
+  public InfluxFunctionValue calculate() {
+    return new InfluxFunctionValue(value, this.getTimestamp());
   }
 
   @Override
-  public InfluxDBFunctionValue calculateByIoTDBFunc() {
+  public InfluxFunctionValue calculateByIoTDBFunc() {
     Object firstValue = null;
     Long firstTime = null;
     long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
@@ -134,14 +134,14 @@ public class InfluxDBFirstFunction extends InfluxDBSelector {
     }
 
     if (firstValue == null) {
-      return new InfluxDBFunctionValue(null, null);
+      return new InfluxFunctionValue(null, null);
     }
-    return new InfluxDBFunctionValue(firstValue, firstTime);
+    return new InfluxFunctionValue(firstValue, firstTime);
   }
 
   @Override
   public void updateValueAndRelateValues(
-      InfluxDBFunctionValue functionValue, List<Object> relatedValues) {
+      InfluxFunctionValue functionValue, List<Object> relatedValues) {
     Object value = functionValue.getValue();
     Long timestamp = functionValue.getTimestamp();
     if (timestamp <= this.getTimestamp()) {

@@ -22,11 +22,13 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.protocol.influxdb.constant.InfluxDBConstant;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxConstant;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
-import org.apache.iotdb.db.protocol.influxdb.function.InfluxDBFunction;
-import org.apache.iotdb.db.protocol.influxdb.function.InfluxDBFunctionFactory;
-import org.apache.iotdb.db.protocol.influxdb.function.InfluxDBFunctionValue;
+import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunction;
+import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionFactory;
+import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
+import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxAggregator;
+import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxSelector;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.influxdb.operator.InfluxCondition;
 import org.apache.iotdb.db.protocol.influxdb.operator.InfluxQueryOperator;
@@ -40,6 +42,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryResult;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryRsp;
@@ -526,7 +529,7 @@ public class InfluxDBUtils {
       String deviceName = fields.get(0).getStringValue();
       String[] deviceNameList = deviceName.split("\\.");
       for (int i = 3; i < deviceNameList.length; i++) {
-        if (!deviceNameList[i].equals(InfluxDBConstant.PLACE_HOLDER)) {
+        if (!deviceNameList[i].equals(InfluxConstant.PLACE_HOLDER)) {
           value[i - 2] = deviceNameList[i];
         }
       }
@@ -578,8 +581,178 @@ public class InfluxDBUtils {
     return condition;
   }
 
+  /**
+   * further process the obtained query result through the query criteria of select
+   *
+   * @param queryResult query results to be processed
+   * @param selectComponent select conditions to be filtered
+   */
   public static void ProcessSelectComponent(
-      QueryResult queryResult, InfluxSelectComponent selectComponent) {}
+      QueryResult queryResult, InfluxSelectComponent selectComponent) {
+
+    // get the row order map of the current data result first
+    List<String> columns = queryResult.getResults().get(0).getSeries().get(0).getColumns();
+    Map<String, Integer> columnOrders = new HashMap<>();
+    for (int i = 0; i < columns.size(); i++) {
+      columnOrders.put(columns.get(i), i);
+    }
+    // get current values
+    List<List<Object>> values = queryResult.getResults().get(0).getSeries().get(0).getValues();
+    // new columns
+    List<String> newColumns = new ArrayList<>();
+    newColumns.add(InfluxSQLConstant.RESERVED_TIME);
+
+    // when have function
+    if (selectComponent.isHasFunction()) {
+      List<InfluxFunction> functions = new ArrayList<>();
+      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+        Expression expression = resultColumn.getExpression();
+        if (expression instanceof FunctionExpression) {
+          String functionName = ((FunctionExpression) expression).getFunctionName();
+          functions.add(
+              InfluxFunctionFactory.generateFunction(functionName, expression.getExpressions()));
+          newColumns.add(functionName);
+        } else if (expression instanceof TimeSeriesOperand) {
+          String columnName = ((TimeSeriesOperand) expression).getPath().getFullPath();
+          if (!columnName.equals(InfluxSQLConstant.STAR)) {
+            newColumns.add(columnName);
+          } else {
+            newColumns.addAll(columns.subList(1, columns.size()));
+          }
+        }
+      }
+      for (List<Object> value : values) {
+        for (InfluxFunction function : functions) {
+          List<Expression> expressions = function.getExpressions();
+          if (expressions == null) {
+            throw new IllegalArgumentException("not support param");
+          }
+          TimeSeriesOperand parmaExpression = (TimeSeriesOperand) expressions.get(0);
+          String parmaName = parmaExpression.getPath().getFullPath();
+          if (columnOrders.containsKey(parmaName)) {
+            Object selectedValue = value.get(columnOrders.get(parmaName));
+            Long selectedTimestamp = (Long) value.get(0);
+            if (selectedValue != null) {
+              // selector function
+              if (function instanceof InfluxSelector) {
+                ((InfluxSelector) function)
+                    .updateValueAndRelateValues(
+                        new InfluxFunctionValue(selectedValue, selectedTimestamp), value);
+              } else {
+                // aggregate function
+                ((InfluxAggregator) function)
+                    .updateValue(new InfluxFunctionValue(selectedValue, selectedTimestamp));
+              }
+            }
+          }
+        }
+      }
+      List<Object> value = new ArrayList<>();
+      values = new ArrayList<>();
+      // after the data is constructed, the final results are generated
+      // First, judge whether there are common queries. If there are, a selector function is allowed
+      // without aggregate functions
+      if (selectComponent.isHasCommonQuery()) {
+        InfluxSelector selector = (InfluxSelector) functions.get(0);
+        List<Object> relatedValue = selector.getRelatedValues();
+        for (String column : newColumns) {
+          if (InfluxSQLConstant.getNativeSelectorFunctionNames().contains(column)) {
+            value.add(selector.calculate().getValue());
+          } else {
+            if (relatedValue != null) {
+              value.add(relatedValue.get(columnOrders.get(column)));
+            }
+          }
+        }
+      } else {
+        // If there are no common queries, they are all function queries
+        for (InfluxFunction function : functions) {
+          if (value.size() == 0) {
+            value.add(function.calculate().getTimestamp());
+          } else {
+            value.set(0, function.calculate().getTimestamp());
+          }
+          value.add(function.calculate().getValue());
+        }
+        if (selectComponent.isHasAggregationFunction() || selectComponent.isHasMoreFunction()) {
+          value.set(0, 0);
+        }
+      }
+      values.add(value);
+    }
+    // if it is not a function query, it is only a common query
+    else if (selectComponent.isHasCommonQuery()) {
+      // start traversing the scope of the select
+      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+        Expression expression = resultColumn.getExpression();
+        if (expression instanceof TimeSeriesOperand) {
+          // not star case
+          if (!((TimeSeriesOperand) expression)
+              .getPath()
+              .getFullPath()
+              .equals(InfluxSQLConstant.STAR)) {
+            newColumns.add(((TimeSeriesOperand) expression).getPath().getFullPath());
+          } else {
+            newColumns.addAll(columns.subList(1, columns.size()));
+          }
+        }
+      }
+      List<List<Object>> newValues = new ArrayList();
+      for (List<Object> value : values) {
+        List<Object> tmpValue = new ArrayList();
+        for (String newColumn : newColumns) {
+          tmpValue.add(value.get(columnOrders.get(newColumn)));
+        }
+        newValues.add(tmpValue);
+      }
+      values = newValues;
+    }
+    InfluxDBUtils.updateQueryResultColumnValue(
+        queryResult, InfluxDBUtils.removeDuplicate(newColumns), values);
+  }
+
+  /**
+   * remove string list duplicate names
+   *
+   * @param strings the list of strings with duplicate names needs to be removed
+   * @return list of de duplicated strings
+   */
+  public static List<String> removeDuplicate(List<String> strings) {
+    Map<String, Integer> nameNums = new HashMap<>();
+    List<String> result = new ArrayList<>();
+    for (String tmpString : strings) {
+      if (!nameNums.containsKey(tmpString)) {
+        nameNums.put(tmpString, 1);
+        result.add(tmpString);
+      } else {
+        int nums = nameNums.get(tmpString);
+        result.add(tmpString + "_" + nums);
+        nameNums.put(tmpString, nums + 1);
+      }
+    }
+    return result;
+  }
+
+  /**
+   * update the new values to the query results of influxdb
+   *
+   * @param queryResult influxdb query results to be updated
+   * @param columns columns to be updated
+   * @param updateValues values to be updated
+   */
+  public static void updateQueryResultColumnValue(
+      QueryResult queryResult, List<String> columns, List<List<Object>> updateValues) {
+    List<QueryResult.Result> results = queryResult.getResults();
+    QueryResult.Result result = results.get(0);
+    List<QueryResult.Series> series = results.get(0).getSeries();
+    QueryResult.Series serie = series.get(0);
+
+    serie.setValues(updateValues);
+    serie.setColumns(columns);
+    series.set(0, serie);
+    result.setSeries(series);
+    results.set(0, result);
+  }
 
   /**
    * Query the select result. By default, there are no filter conditions. The functions to be
@@ -597,14 +770,14 @@ public class InfluxDBUtils {
     List<String> columns = new ArrayList<>();
     columns.add(InfluxSQLConstant.RESERVED_TIME);
 
-    List<InfluxDBFunction> functions = new ArrayList<>();
+    List<InfluxFunction> functions = new ArrayList<>();
     String path = "root." + database + "." + measurement;
     for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
       Expression expression = resultColumn.getExpression();
       if (expression instanceof FunctionExpression) {
         String functionName = ((FunctionExpression) expression).getFunctionName();
         functions.add(
-            InfluxDBFunctionFactory.generateFunctionBySession(
+            InfluxFunctionFactory.generateFunctionByProvider(
                 functionName, expression.getExpressions(), path, serviceProvider));
         columns.add(functionName);
       }
@@ -612,8 +785,8 @@ public class InfluxDBUtils {
 
     List<Object> value = new ArrayList<>();
     List<List<Object>> values = new ArrayList<>();
-    for (InfluxDBFunction function : functions) {
-      InfluxDBFunctionValue functionValue = function.calculateByIoTDBFunc();
+    for (InfluxFunction function : functions) {
+      InfluxFunctionValue functionValue = function.calculateByIoTDBFunc();
       if (value.size() == 0) {
         value.add(functionValue.getTimestamp());
       } else {

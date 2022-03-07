@@ -24,7 +24,7 @@ import org.apache.iotdb.db.service.basic.ServiceProvider;
 
 import java.util.List;
 
-public abstract class InfluxDBFunction {
+public abstract class InfluxFunction {
 
   protected String path;
 
@@ -33,23 +33,23 @@ public abstract class InfluxDBFunction {
   // contain possible parameters
   private List<Expression> expressionList;
 
-  public InfluxDBFunction(List<Expression> expressionList) {
+  public InfluxFunction(List<Expression> expressionList) {
     this.expressionList = expressionList;
   }
 
-  public InfluxDBFunction(
+  public InfluxFunction(
       List<Expression> expressionList, String path, ServiceProvider serviceProvider) {
     this.expressionList = expressionList;
     this.path = path;
     this.serviceProvider = serviceProvider;
   }
 
-  public InfluxDBFunction() {}
+  public InfluxFunction() {}
 
   // calculate result
-  public abstract InfluxDBFunctionValue calculate();
+  public abstract InfluxFunctionValue calculate();
 
-  public abstract InfluxDBFunctionValue calculateByIoTDBFunc();
+  public abstract InfluxFunctionValue calculateByIoTDBFunc();
 
   public List<Expression> getExpressions() {
     return this.expressionList;

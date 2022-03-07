@@ -19,14 +19,45 @@
 package org.apache.iotdb.db.protocol.influxdb.function;
 
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
-import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxDBFirstFunction;
+import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxFirstFunction;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 
 import java.util.List;
 
-public class InfluxDBFunctionFactory {
-  public static InfluxDBFunction generateFunctionBySession(
+public class InfluxFunctionFactory {
+
+  public static InfluxFunction generateFunction(
+      String functionName, List<Expression> expressionList) {
+    switch (functionName) {
+        //      case SQLConstant.MAX:
+        //        return new MaxFunction(expressionList);
+        //      case SQLConstant.MIN:
+        //        return new MinFunction(expressionList);
+        //      case SQLConstant.MEAN:
+        //        return new MeanFunction(expressionList);
+        //      case SQLConstant.LAST:
+        //        return new LastFunction(expressionList);
+      case InfluxSQLConstant.FIRST:
+        return new InfluxFirstFunction(expressionList);
+        //      case SQLConstant.COUNT:
+        //        return new CountFunction(expressionList);
+        //      case SQLConstant.MEDIAN:
+        //        return new MedianFunction(expressionList);
+        //      case SQLConstant.MODE:
+        //        return new ModeFunction(expressionList);
+        //      case SQLConstant.SPREAD:
+        //        return new SpreadFunction(expressionList);
+        //      case SQLConstant.STDDEV:
+        //        return new StddevFunction(expressionList);
+        //      case SQLConstant.SUM:
+        //        return new SumFunction(expressionList);
+      default:
+        throw new IllegalArgumentException("not support aggregation name:" + functionName);
+    }
+  }
+
+  public static InfluxFunction generateFunctionByProvider(
       String functionName,
       List<Expression> expressionList,
       String path,
@@ -41,7 +72,7 @@ public class InfluxDBFunctionFactory {
         //            case InfluxSQLConstant.LAST:
         //                return new LastFunction(expressionList, session, path);
       case InfluxSQLConstant.FIRST:
-        return new InfluxDBFirstFunction(expressionList, path, serviceProvider);
+        return new InfluxFirstFunction(expressionList, path, serviceProvider);
         //            case InfluxSQLConstant.COUNT:
         //                return new CountFunction(expressionList, session, path);
         //            case InfluxSQLConstant.SUM:

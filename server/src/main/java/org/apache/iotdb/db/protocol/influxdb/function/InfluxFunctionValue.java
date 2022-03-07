@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.function;
 
-public class InfluxDBFunctionValue {
+public class InfluxFunctionValue {
 
   private Object value;
   private Long timestamp;
 
-  public InfluxDBFunctionValue(Object value, Long timestamp) {
+  public InfluxFunctionValue(Object value, Long timestamp) {
     this.value = value;
     this.timestamp = timestamp;
   }
