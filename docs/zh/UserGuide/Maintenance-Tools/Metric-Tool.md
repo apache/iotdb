@@ -78,62 +78,62 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 | Metric              | Tag             | level  | 说明             | 示例                                         |
 | ------------------- | --------------- | ------ | ---------------- | -------------------------------------------- |
-| entry_seconds_count | name="接口名"   | normal | 接口累计访问次数 | entry_seconds_count{name="openSession",} 1.0 |
-| entry_seconds_sum   | name="接口名"   | normal | 接口累计耗时(s)  | entry_seconds_sum{name="openSession",} 0.024 |
-| entry_seconds_max   | name="接口名"   | normal | 接口最大耗时(s)  | entry_seconds_max{name="openSession",} 0.024 |
-| quantity_total      | name="pointsIn" | normal | 系统累计写入点数 | quantity_total{name="pointsIn",} 1.0         |
+| entry_seconds_count | name="接口名"   | important | 接口累计访问次数 | entry_seconds_count{name="openSession",} 1.0 |
+| entry_seconds_sum   | name="接口名"   | important | 接口累计耗时(s)  | entry_seconds_sum{name="openSession",} 0.024 |
+| entry_seconds_max   | name="接口名"   | important | 接口最大耗时(s)  | entry_seconds_max{name="openSession",} 0.024 |
+| quantity_total      | name="pointsIn" | important | 系统累计写入点数 | quantity_total{name="pointsIn",} 1.0         |
 
 #### 4.3.2. 文件
 
 | Metric     | Tag                  | level  | 说明                                | 示例                        |
 | ---------- | -------------------- | ------ | ----------------------------------- | --------------------------- |
-| file_size  | name="wal/seq/unseq" | normal | 当前时间wal/seq/unseq文件大小(byte) | file_size{name="wal",} 67.0 |
-| file_count | name="wal/seq/unseq" | normal | 当前时间wal/seq/unseq文件个数       | file_count{name="seq",} 1.0 |
+| file_size  | name="wal/seq/unseq" | important | 当前时间wal/seq/unseq文件大小(byte) | file_size{name="wal",} 67.0 |
+| file_count | name="wal/seq/unseq" | important | 当前时间wal/seq/unseq文件个数       | file_count{name="seq",} 1.0 |
 
 #### 4.3.3. Flush
 
 | Metric                  | Tag                                         | level  | 说明                             | 示例                                                                                    |
 | ----------------------- | ------------------------------------------- | ------ | -------------------------------- | --------------------------------------------------------------------------------------- |
-| queue                   | name="flush",<br />status="running/waiting" | normal | 当前时间flush任务数              | queue{name="flush",status="waiting",} 0.0<br/>queue{name="flush",status="running",} 0.0 |
-| cost_task_seconds_count | name="flush"                                | normal | flush累计发生次数                | cost_task_seconds_count{name="flush",} 1.0                                              |
-| cost_task_seconds_max   | name="flush"                                | normal | 到目前为止flush耗时(s)最大的一次 | cost_task_seconds_max{name="flush",} 0.363                                              |
-| cost_task_seconds_sum   | name="flush"                                | normal | flush累计耗时(s)                 | cost_task_seconds_sum{name="flush",} 0.363                                              |
+| queue                   | name="flush",<br />status="running/waiting" | important | 当前时间flush任务数              | queue{name="flush",status="waiting",} 0.0<br/>queue{name="flush",status="running",} 0.0 |
+| cost_task_seconds_count | name="flush"                                | important | flush累计发生次数                | cost_task_seconds_count{name="flush",} 1.0                                              |
+| cost_task_seconds_max   | name="flush"                                | important | 到目前为止flush耗时(s)最大的一次 | cost_task_seconds_max{name="flush",} 0.363                                              |
+| cost_task_seconds_sum   | name="flush"                                | important | flush累计耗时(s)                 | cost_task_seconds_sum{name="flush",} 0.363                                              |
 
 #### 4.3.4. Compaction
 
 | Metric                  | Tag                                                                     | level  | 说明                                  | 示例                                                 |
 | ----------------------- | ----------------------------------------------------------------------- | ------ | ------------------------------------- | ---------------------------------------------------- |
-| queue                   | name="compaction_inner/compaction_cross",<br />status="running/waiting" | normal | 当前时间compaction任务数              | queue{name="compaction_inner",status="waiting",} 0.0 |
-| cost_task_seconds_count | name="compaction"                                                       | normal | compaction累计发生次数                | cost_task_seconds_count{name="compaction",} 1.0      |
-| cost_task_seconds_max   | name="compaction"                                                       | normal | 到目前为止compaction耗时(s)最大的一次 | cost_task_seconds_max{name="compaction",} 0.363      |
-| cost_task_seconds_sum   | name="compaction"                                                       | normal | compaction累计耗时(s)                 | cost_task_seconds_sum{name="compaction",} 0.363      |
+| queue                   | name="compaction_inner/compaction_cross",<br />status="running/waiting" | important | 当前时间compaction任务数              | queue{name="compaction_inner",status="waiting",} 0.0 |
+| cost_task_seconds_count | name="compaction"                                                       | important | compaction累计发生次数                | cost_task_seconds_count{name="compaction",} 1.0      |
+| cost_task_seconds_max   | name="compaction"                                                       | important | 到目前为止compaction耗时(s)最大的一次 | cost_task_seconds_max{name="compaction",} 0.363      |
+| cost_task_seconds_sum   | name="compaction"                                                       | important | compaction累计耗时(s)                 | cost_task_seconds_sum{name="compaction",} 0.363      |
 
 #### 4.3.5. 内存占用
 
 | Metric | Tag                                     | 说明   | level                                              | 示例                              |
 | ------ | --------------------------------------- | ------ | -------------------------------------------------- | --------------------------------- |
-| mem    | name="chunkMetaData/storageGroup/mtree" | normal | chunkMetaData/storageGroup/mtree占用的内存（byte） | mem{name="chunkMetaData",} 2050.0 |
+| mem    | name="chunkMetaData/storageGroup/mtree" | important | chunkMetaData/storageGroup/mtree占用的内存（byte） | mem{name="chunkMetaData",} 2050.0 |
 
 #### 4.3.6. 缓存命中率
 
 | Metric    | Tag                                     | level  | 说明                                             | 示例                        |
 | --------- | --------------------------------------- | ------ | ------------------------------------------------ | --------------------------- |
-| cache_hit | name="chunk/timeSeriesMeta/bloomFilter" | normal | chunk/timeSeriesMeta缓存命中率,bloomFilter拦截率 | cache_hit{name="chunk",} 80 |
+| cache_hit | name="chunk/timeSeriesMeta/bloomFilter" | important | chunk/timeSeriesMeta缓存命中率,bloomFilter拦截率 | cache_hit{name="chunk",} 80 |
 
 #### 4.3.7. 业务数据
 
 | Metric   | Tag                                   | level  | 说明                                         | 示例                             |
 | -------- | ------------------------------------- | ------ | -------------------------------------------- | -------------------------------- |
-| quantity | name="timeSeries/storageGroup/device" | normal | 当前时间timeSeries/storageGroup/device的数量 | quantity{name="timeSeries",} 1.0 |
+| quantity | name="timeSeries/storageGroup/device" | important | 当前时间timeSeries/storageGroup/device的数量 | quantity{name="timeSeries",} 1.0 |
 
 #### 4.3.8. 集群
 
 | Metric                    | Tag                             | level  | 说明                                                          | 示例                                                                         |
 | ------------------------- | ------------------------------- | ------ | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| cluster_node_leader_count | name="{{ip}}"                   | normal | 节点上```dataGroupLeader```的数量，用来观察leader是否分布均匀 | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
-| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"   | normal | 节点```uncommitted_log```的数量                               | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
-| cluster_node_status       | name="{{ip}}"                   | normal | 节点状态，1=online  2=offline                                 | cluster_node_status{name="127.0.0.1",} 1.0                                   |
-| cluster_elect_total       | name="{{ip}}",status="fail/win" | normal | 节点参与选举的次数及结果                                      | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
+| cluster_node_leader_count | name="{{ip}}"                   | important | 节点上```dataGroupLeader```的数量，用来观察leader是否分布均匀 | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
+| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"   | important | 节点```uncommitted_log```的数量                               | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
+| cluster_node_status       | name="{{ip}}"                   | important | 节点状态，1=online  2=offline                                 | cluster_node_status{name="127.0.0.1",} 1.0                                   |
+| cluster_elect_total       | name="{{ip}}",status="fail/win" | important | 节点参与选举的次数及结果                                      | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
 
 ### 4.4. IoTDB 预定义指标集
 用户可以在`iotdb-metric.yml`文件中，修改`predefinedMetrics`的值来启用预定义指标集，其中`LOGBACK`在`dropwizard`中不支持。
@@ -188,7 +188,20 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | logback_events_total | {level="trace/debug/info/warn/error",} | trace/debug/info/warn/error日志累计数量 | logback_events_total{level="warn",} 0.0 |
 
 ### 4.5. 自定义添加埋点
-如果想自己在IoTDB中添加更多Metrics埋点，可以参考[IoTDB Metrics Framework](https://github.com/apache/iotdb/tree/master/metrics)使用说明
+- 如果想自己在IoTDB中添加更多Metrics埋点，可以参考[IoTDB Metrics Framework](https://github.com/apache/iotdb/tree/master/metrics)使用说明
+- Metric 埋点定义规则
+  - `Metric`：监控项的名称，比如`entry_seconds_count`为接口累计访问次数，file_size 为文件总数。
+  - `Tags`：Key-Value对，用来明确被监控项，可选项
+    - `name = xxx`：被监控项的名称，比如对`entry_seconds_count`这个监控项，name 的含义是被监控的接口名称。
+    - `status = xxx`：被监控项的状态细分，比如监控 Task 的监控项可以通过该参数，将运行的 Task 和停止的 Task 分开。
+    - `user = xxx`：被监控项和某个特定用户相关，比如统计root用户的写入总次数。
+    - 根据具体情况自定义......
+- 监控指标级别含义：
+  - 线上运行默认启动级别为`Important`级，线下调试默认启动级别为`Normal`级，审核严格程度`Core > Important > Normal > All`
+  - `Core`：系统的核心指标，供**运维人员**使用，关乎系统的**性能、稳定性、安全性**，比如实例的状况，系统的负载等。
+  - `Important`：模块的重要指标，供**运维和测试人员**使用，直接关乎**每个模块的运行状态**，比如合并文件个数、执行情况等。
+  - `Normal`：模块的一般指标，供**开发人员**使用，方便在出现问题时**定位模块**，比如合并中的特定关键操作情况。
+  - `All`：模块的全部指标，供**模块开发人员**使用，往往在复现问题的时候使用，从而快速解决问题。
 
 ## 5. 怎样获取这些metrics？
 
@@ -209,7 +222,7 @@ metricReporterList:
 monitorType: MICROMETER
 
 # 初始化metric的级别，可选参数: [CORE, IMPORTANT, NORMAL, ALL]
-metricLevel: NORMAL
+metricLevel: IMPORTANT
 
 # 预定义的指标集, 可选参数: [JVM, LOGBACK], 其中LOGBACK在dropwizard中不支持
 predefinedMetrics:

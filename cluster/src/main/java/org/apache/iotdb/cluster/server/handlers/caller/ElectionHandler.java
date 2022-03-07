@@ -137,7 +137,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
           .count(
               1,
               Metric.CLUSTER_ELECT.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               raftMember.getThisNode().internalIp,
               Tag.STATUS.toString(),

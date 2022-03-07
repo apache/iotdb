@@ -29,7 +29,7 @@ metricReporterList:
 monitorType: MICROMETER
 
 # Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
-metricLevel: NORMAL
+metricLevel: IMPORTANT
 
 # Predefined metric, options: [JVM, LOGBACK], LOGBACK are not supported in dropwizard
 predefinedMetrics:

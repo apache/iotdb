@@ -84,7 +84,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
     String walDir = DirectoryManager.getInstance().getWALFolder();
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         walDir,
         FileUtils::getDirSize,
         Tag.NAME.toString(),
@@ -93,7 +93,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         dataDirs,
         value ->
             Stream.of(value)
@@ -107,7 +107,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "seq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         dataDirs,
         value ->
             Stream.of(value)
@@ -121,7 +121,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "unseq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         walDir,
         value -> {
           File walFolder = new File(value);
@@ -134,7 +134,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "wal");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         dataDirs,
         value ->
             Stream.of(value)
@@ -150,7 +150,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "seq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         dataDirs,
         value ->
             Stream.of(value)

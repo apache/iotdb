@@ -80,62 +80,62 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 | Metric              | Tag                   | level  | Description                              | Sample                                       |
 | ------------------- | --------------------- | ------ | ---------------------------------------- | -------------------------------------------- |
-| entry_seconds_count | name="interface name" | normal | The total request count of the interface | entry_seconds_count{name="openSession",} 1.0 |
-| entry_seconds_sum   | name="interface name" | normal | The total cost seconds of the interface  | entry_seconds_sum{name="openSession",} 0.024 |
-| entry_seconds_max   | name="interface name" | normal | The max latency of the interface         | entry_seconds_max{name="openSession",} 0.024 |
-| quantity_total      | name="pointsIn"       | normal | The total points inserted into IoTDB     | quantity_total{name="pointsIn",} 1.0         |
+| entry_seconds_count | name="interface name" | important | The total request count of the interface | entry_seconds_count{name="openSession",} 1.0 |
+| entry_seconds_sum   | name="interface name" | important | The total cost seconds of the interface  | entry_seconds_sum{name="openSession",} 0.024 |
+| entry_seconds_max   | name="interface name" | important | The max latency of the interface         | entry_seconds_max{name="openSession",} 0.024 |
+| quantity_total      | name="pointsIn"       | important | The total points inserted into IoTDB     | quantity_total{name="pointsIn",} 1.0         |
 
 #### 4.3.2. File
 
 | Metric     | Tag                  | level  | Description                                     | Sample                      |
 | ---------- | -------------------- | ------ | ----------------------------------------------- | --------------------------- |
-| file_size  | name="wal/seq/unseq" | normal | The current file size of wal/seq/unseq in bytes | file_size{name="wal",} 67.0 |
-| file_count | name="wal/seq/unseq" | normal | The current count of wal/seq/unseq files        | file_count{name="seq",} 1.0 |
+| file_size  | name="wal/seq/unseq" | important | The current file size of wal/seq/unseq in bytes | file_size{name="wal",} 67.0 |
+| file_count | name="wal/seq/unseq" | important | The current count of wal/seq/unseq files        | file_count{name="seq",} 1.0 |
 
 #### 4.3.3. Flush
 
 | Metric                  | Tag                                         | level  | Description                                                       | Sample                                                                                  |
 | ----------------------- | ------------------------------------------- | ------ | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| queue                   | name="flush",<br />status="running/waiting" | normal | The count of current flushing tasks in running and waiting status | queue{name="flush",status="waiting",} 0.0<br/>queue{name="flush",status="running",} 0.0 |
-| cost_task_seconds_count | name="flush"                                | normal | The total count of flushing occurs till now                       | cost_task_seconds_count{name="flush",} 1.0                                              |
-| cost_task_seconds_max   | name="flush"                                | normal | The seconds of the longest flushing task takes till now           | cost_task_seconds_max{name="flush",} 0.363                                              |
-| cost_task_seconds_sum   | name="flush"                                | normal | The total cost seconds of all flushing tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
+| queue                   | name="flush",<br />status="running/waiting" | important | The count of current flushing tasks in running and waiting status | queue{name="flush",status="waiting",} 0.0<br/>queue{name="flush",status="running",} 0.0 |
+| cost_task_seconds_count | name="flush"                                | important | The total count of flushing occurs till now                       | cost_task_seconds_count{name="flush",} 1.0                                              |
+| cost_task_seconds_max   | name="flush"                                | important | The seconds of the longest flushing task takes till now           | cost_task_seconds_max{name="flush",} 0.363                                              |
+| cost_task_seconds_sum   | name="flush"                                | important | The total cost seconds of all flushing tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
 
 #### 4.3.4. Compaction
 
 | Metric                  | Tag                                                                     | level  | Description                                                         | Sample                                               |
 | ----------------------- | ----------------------------------------------------------------------- | ------ | ------------------------------------------------------------------- | ---------------------------------------------------- |
-| queue                   | name="compaction_inner/compaction_cross",<br />status="running/waiting" | normal | The count of current compaction tasks in running and waiting status | queue{name="compaction_inner",status="waiting",} 0.0 |
-| cost_task_seconds_count | name="compaction"                                                       | normal | The total count of compaction occurs till now                       | cost_task_seconds_count{name="compaction",} 1.0      |
-| cost_task_seconds_max   | name="compaction"                                                       | normal | The seconds of the longest compaction task takes till now           | cost_task_seconds_max{name="compaction",} 0.363      |
-| cost_task_seconds_sum   | name="compaction"                                                       | normal | The total cost seconds of all compaction tasks till now             | cost_task_seconds_sum{name="compaction",} 0.363      |
+| queue                   | name="compaction_inner/compaction_cross",<br />status="running/waiting" | important | The count of current compaction tasks in running and waiting status | queue{name="compaction_inner",status="waiting",} 0.0 |
+| cost_task_seconds_count | name="compaction"                                                       | important | The total count of compaction occurs till now                       | cost_task_seconds_count{name="compaction",} 1.0      |
+| cost_task_seconds_max   | name="compaction"                                                       | important | The seconds of the longest compaction task takes till now           | cost_task_seconds_max{name="compaction",} 0.363      |
+| cost_task_seconds_sum   | name="compaction"                                                       | important | The total cost seconds of all compaction tasks till now             | cost_task_seconds_sum{name="compaction",} 0.363      |
 
 #### 4.3.5. Memory Usage
 
 | Metric | Tag                                     | level  | Description                                                           | Sample                            |
 | ------ | --------------------------------------- | ------ | --------------------------------------------------------------------- | --------------------------------- |
-| mem    | name="chunkMetaData/storageGroup/mtree" | normal | Current memory size of chunkMetaData/storageGroup/mtree data in bytes | mem{name="chunkMetaData",} 2050.0 |
+| mem    | name="chunkMetaData/storageGroup/mtree" | important | Current memory size of chunkMetaData/storageGroup/mtree data in bytes | mem{name="chunkMetaData",} 2050.0 |
 
 #### 4.3.6. Cache Hit Ratio
 
 | Metric    | Tag                                     | level  | Description                                                                   | Sample                      |
 | --------- | --------------------------------------- | ------ | ----------------------------------------------------------------------------- | --------------------------- |
-| cache_hit | name="chunk/timeSeriesMeta/bloomFilter" | normal | Cache hit ratio of chunk/timeSeriesMeta  and prevention ratio of bloom filter | cache_hit{name="chunk",} 80 |
+| cache_hit | name="chunk/timeSeriesMeta/bloomFilter" | important | Cache hit ratio of chunk/timeSeriesMeta  and prevention ratio of bloom filter | cache_hit{name="chunk",} 80 |
 
 #### 4.3.7. Business Data
 
 | Metric   | Tag                                   | level  | Description                                                   | Sample                           |
 | -------- | ------------------------------------- | ------ | ------------------------------------------------------------- | -------------------------------- |
-| quantity | name="timeSeries/storageGroup/device" | normal | The current count of timeSeries/storageGroup/devices in IoTDB | quantity{name="timeSeries",} 1.0 |
+| quantity | name="timeSeries/storageGroup/device" | important | The current count of timeSeries/storageGroup/devices in IoTDB | quantity{name="timeSeries",} 1.0 |
 
 #### 4.3.8. Cluster
 
 | Metric                    | Tag                             | level  | Description                                                                                  | Sample                                                                       |
 | ------------------------- | ------------------------------- | ------ | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| cluster_node_leader_count | name="{{ip}}"                   | normal | The count of  ```dataGroupLeader``` on each node, which reflects the distribution of leaders | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
-| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"   | normal | The count of ```uncommitted_log``` on each node in data groups it belongs to                 | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
-| cluster_node_status       | name="{{ip}}"                   | normal | The current node status, 1=online  2=offline                                                 | cluster_node_status{name="127.0.0.1",} 1.0                                   |
-| cluster_elect_total       | name="{{ip}}",status="fail/win" | normal | The count and result (won or failed) of elections the node participated in.                  | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
+| cluster_node_leader_count | name="{{ip}}"                   | important | The count of  ```dataGroupLeader``` on each node, which reflects the distribution of leaders | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
+| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"   | important | The count of ```uncommitted_log``` on each node in data groups it belongs to                 | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
+| cluster_node_status       | name="{{ip}}"                   | important | The current node status, 1=online  2=offline                                                 | cluster_node_status{name="127.0.0.1",} 1.0                                   |
+| cluster_elect_total       | name="{{ip}}",status="fail/win" | important | The count and result (won or failed) of elections the node participated in.                  | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
 
 ### 4.4. IoTDB PreDefined Metrics Set
 Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file to enable the predefined set of metrics, which `LOGBACK` does not support in `dropwizard`.
@@ -190,7 +190,20 @@ Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file
 | logback_events_total | {level="trace/debug/info/warn/error",} | The count of  trace/debug/info/warn/error log events till now | logback_events_total{level="warn",} 0.0 |
 
 ### 4.5. Add custom metrics
-If you want to add your own metrics data in IoTDB, please see the [IoTDB Metric Framework] (https://github.com/apache/iotdb/tree/master/metrics) document.
+- If you want to add your own metrics data in IoTDB, please see the [IoTDB Metric Framework] (https://github.com/apache/iotdb/tree/master/metrics) document.
+- Metric embedded point definition rules
+  - `Metric`: The name of the monitoring item. For example, `entry_seconds_count` is the cumulative number of accesses to the interface, and `file_size` is the total number of files.
+  - `Tags`: Key-Value pair, used to identify monitored items, optional
+    - `name = xxx`: The name of the monitored item. For example, for the monitoring item`entry_seconds_count`, the meaning of name is the name of the monitored interface.
+    - `status = xxx`: The status of the monitored item is subdivided. For example, the monitoring item of the monitoring task can use this parameter to separate the running task and the stopped task.
+    - `user = xxx`: The monitored item is related to a specific user, such as the total number of writes by the root user.
+    - Customize for the situation...
+- Monitoring indicator level meaning:
+  - The default startup level for online operation is `Important` level, the default startup level for offline debugging is `Normal` level, and the audit strictness is `Core > Important > Normal > All`
+  - `Core`: The core indicator of the system, used by the **operation and maintenance personnel**, which is related to the performance, stability, and security** of the system, such as the status of the instance, the load of the system, etc.
+  - `Important`: An important indicator of the module, which is used by **operation and maintenance and testers**, and is directly related to **the running status of each module**, such as the number of merged files, execution status, etc.
+  - `Normal`: General indicators of the module, used by **developers** to facilitate **locating the module** when problems occur, such as specific key operation situations in the merger.
+  - `All`: All indicators of the module, used by **module developers**, often used when the problem is reproduced, so as to solve the problem quickly.
 
 ## 5. How to get these metrics？
 
@@ -211,7 +224,7 @@ metricReporterList:
 monitorType: MICROMETER
 
 # Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
-metricLevel: NORMAL
+metricLevel: IMPORTANT
 
 # Predefined metric, options: [JVM, LOGBACK], LOGBACK are not supported in dropwizard
 predefinedMetrics:
