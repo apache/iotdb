@@ -38,31 +38,32 @@ import org.influxdb.InfluxDBException;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
-public class InfluxCountFunction extends InfluxAggregator {
-  private int countNum = 0;
+public class InfluxSumFunction extends InfluxAggregator {
+  private final List<Double> numbers = new ArrayList<>();
 
-  public InfluxCountFunction(List<Expression> expressionList) {
+  public InfluxSumFunction(List<Expression> expressionList) {
     super(expressionList);
   }
 
-  public InfluxCountFunction(
+  public InfluxSumFunction(
       List<Expression> expressionList, String path, ServiceProvider serviceProvider) {
     super(expressionList, path, serviceProvider);
   }
 
   @Override
   public InfluxFunctionValue calculate() {
-    return new InfluxFunctionValue(this.countNum, 0L);
+    return new InfluxFunctionValue(numbers.size() == 0 ? numbers : InfluxDBUtils.Sum(numbers), 0L);
   }
 
   @Override
   public InfluxFunctionValue calculateByIoTDBFunc() {
-    long count = 0;
+    long sum = 0;
     long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
     try {
-      String functionSql = InfluxDBUtils.generateFunctionSql("count", getParmaName(), path);
+      String functionSql = InfluxDBUtils.generateFunctionSql("sum", getParmaName(), path);
       QueryPlan queryPlan =
           (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSql);
       QueryContext queryContext =
@@ -77,8 +78,8 @@ public class InfluxCountFunction extends InfluxAggregator {
               queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
       while (queryDataSet.hasNext()) {
         List<Field> fields = queryDataSet.next().getFields();
-        for (Field field : fields) {
-          count += field.getLongV();
+        if (fields.get(1).getDataType() != null) {
+          sum += fields.get(1).getDoubleV();
         }
       }
     } catch (QueryProcessException
@@ -93,11 +94,17 @@ public class InfluxCountFunction extends InfluxAggregator {
     } finally {
       ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
     }
-    return new InfluxFunctionValue(count, 0L);
+    return new InfluxFunctionValue(sum, 0L);
   }
 
   @Override
   public void updateValue(InfluxFunctionValue functionValue) {
-    this.countNum++;
+    Object value = functionValue.getValue();
+    if (!(value instanceof Number)) {
+      throw new IllegalArgumentException("not support this type");
+    }
+
+    double tmpValue = ((Number) value).doubleValue();
+    numbers.add(tmpValue);
   }
 }

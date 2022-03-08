@@ -52,10 +52,10 @@ public class InfluxFunctionFactory {
         return new InfluxModeFunction(expressionList);
       case InfluxSQLConstant.SPREAD:
         return new InfluxSpreadFunction(expressionList);
-        //      case SQLConstant.STDDEV:
-        //        return new StddevFunction(expressionList);
-        //      case SQLConstant.SUM:
-        //        return new SumFunction(expressionList);
+      case InfluxSQLConstant.STDDEV:
+        return new InfluxStddevFunction(expressionList);
+      case InfluxSQLConstant.SUM:
+        return new InfluxSumFunction(expressionList);
       default:
         throw new IllegalArgumentException("not support aggregation name:" + functionName);
     }
@@ -81,8 +81,8 @@ public class InfluxFunctionFactory {
         return new InfluxMeanFunction(expressionList, path, serviceProvider);
       case InfluxSQLConstant.SPREAD:
         return new InfluxSpreadFunction(expressionList, path, serviceProvider);
-        //            case InfluxSQLConstant.SUM:
-        //                return new SumFunction(expressionList, session, path);
+      case InfluxSQLConstant.SUM:
+        return new InfluxSumFunction(expressionList, path, serviceProvider);
 
       default:
         throw new IllegalArgumentException("not support aggregation name:" + functionName);
