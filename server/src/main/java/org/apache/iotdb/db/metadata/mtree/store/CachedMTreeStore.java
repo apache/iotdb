@@ -120,10 +120,11 @@ public class CachedMTreeStore implements IMTreeStore {
       if (node == null) {
         node = loadChildFromDisk(parent, name);
         if (node == null) {
-          logger.error("The pin lock on parent is {}", parent.getCacheEntry().getPinNumber());
-          logger.error(
-              "There's no child in memory or disk. The child is {}",
-              parent.getFullPath() + "." + name);
+          //          logger.error("The pin lock on parent is {}",
+          // parent.getCacheEntry().getPinNumber());
+          //          logger.error(
+          //              "There's no child in memory or disk. The child is {}",
+          //              parent.getFullPath() + "." + name);
         }
       } else {
         try {
@@ -131,11 +132,13 @@ public class CachedMTreeStore implements IMTreeStore {
           ensureMemoryStatus();
         } catch (MNodeNotCachedException e) {
           node = loadChildFromDisk(parent, name);
-          logger.error("The pin lock on parent is {}", parent.getCacheEntry().getPinNumber());
-          logger.error(
-              "The child has been concurrently evicted, thus try load from disk. The child is {}. {}",
-              parent.getFullPath() + "." + name,
-              node == null);
+          //          logger.error("The pin lock on parent is {}",
+          // parent.getCacheEntry().getPinNumber());
+          //          logger.error(
+          //              "The child has been concurrently evicted, thus try load from disk. The
+          // child is {}. {}",
+          //              parent.getFullPath() + "." + name,
+          //              node == null);
         }
       }
       if (node != null && node.isMeasurement()) {
@@ -385,10 +388,11 @@ public class CachedMTreeStore implements IMTreeStore {
    * no node could be evicted. Update the memory status after evicting each node.
    */
   private void executeMemoryRelease() {
-    logger.error(
-        "Execute memory release, which should not happen. The memory usage is Pinned Node {}, Cached Node {}",
-        memManager.getPinnedSize(),
-        memManager.getCachedSize());
+    //    logger.error(
+    //        "Execute memory release, which should not happen. The memory usage is Pinned Node {},
+    // Cached Node {}",
+    //        memManager.getPinnedSize(),
+    //        memManager.getCachedSize());
     while (memManager.isExceedThreshold()) {
       if (!cacheManager.evict()) {
         break;

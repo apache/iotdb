@@ -184,7 +184,7 @@ public class MManager {
 
   private boolean isRecovering;
   private boolean initialized;
-  private boolean isClearing;
+  private boolean isClearing = false;
   private boolean allowToCreateNewSeries = true;
 
   private AtomicLong totalSeriesNumber = new AtomicLong();
