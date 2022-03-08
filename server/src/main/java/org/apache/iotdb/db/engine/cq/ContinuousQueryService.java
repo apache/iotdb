@@ -21,19 +21,23 @@ package org.apache.iotdb.db.engine.cq;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
+import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ShowContinuousQueriesResult;
 import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,11 +55,59 @@ public class ContinuousQueryService implements IService {
       ContinuousQueryTaskPoolManager.getInstance();
   private static final long TASK_SUBMIT_CHECK_INTERVAL =
       IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval() / 2;
+
+  private static final String LOG_FILE_DIR =
+      IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator;
+  private static final String LOG_FILE_NAME = LOG_FILE_DIR + "cqlog.bin";
+
   private ScheduledExecutorService continuousQueryTaskSubmitThread;
 
   private final ConcurrentHashMap<String, CreateContinuousQueryPlan> continuousQueryPlans =
       new ConcurrentHashMap<>();
   private final ConcurrentHashMap<String, Long> nextExecutionTimestamps = new ConcurrentHashMap<>();
+
+  private CQLogWriter logWriter;
+
+  public synchronized void doRecovery() throws StartupException {
+    try {
+      File logFile = SystemFileFactory.INSTANCE.getFile(LOG_FILE_NAME);
+      if (!logFile.exists()) {
+        return;
+      }
+      try (CQLogReader logReader = new CQLogReader(logFile)) {
+        PhysicalPlan plan;
+        while (logReader.hasNext()) {
+          plan = logReader.next();
+          switch (plan.getOperatorType()) {
+            case CREATE_CONTINUOUS_QUERY:
+              CreateContinuousQueryPlan createContinuousQueryPlan =
+                  (CreateContinuousQueryPlan) plan;
+              register(createContinuousQueryPlan, false);
+              break;
+            case DROP_CONTINUOUS_QUERY:
+              DropContinuousQueryPlan dropContinuousQueryPlan = (DropContinuousQueryPlan) plan;
+              deregister(dropContinuousQueryPlan, false);
+              break;
+            default:
+              LOGGER.error("Unrecognizable command {}", plan.getOperatorType());
+          }
+        }
+      }
+    } catch (ContinuousQueryException | IOException e) {
+      LOGGER.error("Error occurred during restart CQService");
+      throw new StartupException(e);
+    }
+  }
+
+  @TestOnly
+  public synchronized void clear() throws ContinuousQueryException, IOException {
+    deregisterAll();
+
+    if (logWriter != null) {
+      logWriter.close();
+      logWriter = null;
+    }
+  }
 
   @Override
   public ServiceType getID() {
@@ -63,23 +115,30 @@ public class ContinuousQueryService implements IService {
   }
 
   @Override
-  public void start() {
-    for (CreateContinuousQueryPlan plan : continuousQueryPlans.values()) {
-      nextExecutionTimestamps.put(
-          plan.getContinuousQueryName(),
-          calculateNextExecutionTimestamp(plan, SYSTEM_STARTUP_TIME));
+  public void start() throws StartupException {
+    try {
+      doRecovery();
+      logWriter = new CQLogWriter(LOG_FILE_NAME);
+
+      for (CreateContinuousQueryPlan plan : continuousQueryPlans.values()) {
+        nextExecutionTimestamps.put(
+            plan.getContinuousQueryName(),
+            calculateNextExecutionTimestamp(plan, SYSTEM_STARTUP_TIME));
+      }
+
+      continuousQueryTaskSubmitThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("CQ-Task-Submit-Thread");
+      continuousQueryTaskSubmitThread.scheduleAtFixedRate(
+          this::checkAndSubmitTasks,
+          0,
+          TASK_SUBMIT_CHECK_INTERVAL,
+          DatetimeUtils.timestampPrecisionStringToTimeUnit(
+              IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()));
+
+      LOGGER.info("Continuous query service started.");
+    } catch (IOException e) {
+      throw new StartupException(e);
     }
-
-    continuousQueryTaskSubmitThread =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("CQ-Task-Submit-Thread");
-    continuousQueryTaskSubmitThread.scheduleAtFixedRate(
-        this::checkAndSubmitTasks,
-        0,
-        TASK_SUBMIT_CHECK_INTERVAL,
-        DatetimeUtils.timestampPrecisionStringToTimeUnit(
-            IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()));
-
-    LOGGER.info("Continuous query service started.");
   }
 
   private long calculateNextExecutionTimestamp(
@@ -150,7 +209,7 @@ public class ContinuousQueryService implements IService {
     acquireRegistrationLock();
     try {
       if (shouldWriteLog) {
-        IoTDB.metaManager.writeCreateContinuousQueryLog(plan);
+        logWriter.createContinuousQuery(plan);
       }
       doRegister(plan);
       return true;
@@ -194,7 +253,7 @@ public class ContinuousQueryService implements IService {
     acquireRegistrationLock();
     try {
       if (shouldWriteLog) {
-        IoTDB.metaManager.writeDropContinuousQueryLog(plan);
+        logWriter.dropContinuousQuery(plan);
       }
       doDeregister(plan);
       return true;

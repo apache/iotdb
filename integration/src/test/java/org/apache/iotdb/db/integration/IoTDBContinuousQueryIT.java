@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -162,6 +163,7 @@ public class IoTDBContinuousQueryIT {
     connection.close();
     EnvironmentUtils.shutdownDaemon();
     EnvironmentUtils.stopDaemon();
+    ContinuousQueryService.getInstance().clear();
     setUp();
 
     checkShowContinuousQueriesResult(new String[] {"cq3"});

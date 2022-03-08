@@ -103,7 +103,7 @@ public class EnvironmentUtils {
     try {
       UDFRegistrationService.getInstance().deregisterAll();
       TriggerRegistrationService.getInstance().deregisterAll();
-      ContinuousQueryService.getInstance().deregisterAll();
+      ContinuousQueryService.getInstance().clear();
     } catch (UDFRegistrationException | TriggerManagementException | ContinuousQueryException e) {
       fail(e.getMessage());
     }

@@ -1411,6 +1411,11 @@ public class IoTDBDescriptor {
         DatetimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
             conf.getTimestampPrecision()));
+
+    conf.setCqlogBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "cqlog_buffer_size", Integer.toString(conf.getCqlogBufferSize()))));
   }
 
   /** Get default encode algorithm by data type */
