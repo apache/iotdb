@@ -1,4 +1,4 @@
-package org.apache.iotdb.cluster.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.operator.internal;
 
 import org.apache.iotdb.cluster.query.distribution.common.Tablet;
 import org.apache.iotdb.cluster.query.distribution.common.WithoutPolicy;

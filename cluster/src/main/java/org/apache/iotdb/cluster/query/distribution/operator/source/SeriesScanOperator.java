@@ -1,4 +1,4 @@
-package org.apache.iotdb.cluster.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.operator.source;
 
 import org.apache.iotdb.cluster.query.distribution.common.SeriesBatchData;
 import org.apache.iotdb.cluster.query.distribution.common.TraversalOrder;
@@ -18,7 +18,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  *
  * <p>Children type: []
  */
-public class SeriesScanOperator extends InternalOperator<SeriesBatchData> {
+public class SeriesScanOperator extends SourceOperator<SeriesBatchData> {
 
   // The path of the target series which will be scanned.
   private Path seriesPath;
@@ -55,4 +55,10 @@ public class SeriesScanOperator extends InternalOperator<SeriesBatchData> {
   public Statistics<?> getNextStatisticBetween(TimeRange timeRange) {
     return null;
   }
+
+  @Override
+  public void close() throws Exception {}
+
+  @Override
+  public void open() throws Exception {}
 }
