@@ -161,7 +161,36 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   }
 
   @Override
-  public abstract RowRecord nextWithoutConstraint() throws IOException;
+  public RowRecord nextWithoutConstraint() throws IOException {
+    if (!hasCachedTimeInterval) {
+      throw new IOException(
+          "need to call hasNext() before calling next()" + " in GroupByWithValueFilterDataSet.");
+    }
+    hasCachedTimeInterval = false;
+    curAggregateResults = getNextAggregateResult();
+    return constructRowRecord(curAggregateResults);
+  }
+
+  protected AggregateResult[] getNextAggregateResult() throws IOException {
+    return curAggregateResults;
+  }
+
+  protected RowRecord constructRowRecord(AggregateResult[] aggregateResultList) {
+    RowRecord record;
+    if (leftCRightO) {
+      record = new RowRecord(curStartTime);
+    } else {
+      record = new RowRecord(curEndTime - 1);
+    }
+    for (AggregateResult res : curAggregateResults) {
+      if (res == null) {
+        record.addField(null);
+        continue;
+      }
+      record.addField(res.getResult(), res.getResultDataType());
+    }
+    return record;
+  }
 
   public long getStartTime() {
     return startTime;

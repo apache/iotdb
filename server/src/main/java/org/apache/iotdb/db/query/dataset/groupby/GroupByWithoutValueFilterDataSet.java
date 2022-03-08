@@ -38,7 +38,6 @@ import org.apache.iotdb.db.query.executor.groupby.LocalAlignedGroupByExecutor;
 import org.apache.iotdb.db.query.executor.groupby.LocalGroupByExecutor;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -191,31 +190,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   @Override
-  public RowRecord nextWithoutConstraint() throws IOException {
-    if (!hasCachedTimeInterval) {
-      throw new IOException(
-          "need to call hasNext() before calling next() " + "in GroupByWithoutValueFilterDataSet.");
-    }
-    hasCachedTimeInterval = false;
-    RowRecord record;
-    if (leftCRightO) {
-      record = new RowRecord(curStartTime);
-    } else {
-      record = new RowRecord(curEndTime - 1);
-    }
-
-    curAggregateResults = getNextAggregateResult();
-    for (AggregateResult res : curAggregateResults) {
-      if (res == null) {
-        record.addField(null);
-        continue;
-      }
-      record.addField(res.getResult(), res.getResultDataType());
-    }
-    return record;
-  }
-
-  private AggregateResult[] getNextAggregateResult() throws IOException {
+  protected AggregateResult[] getNextAggregateResult() throws IOException {
     curAggregateResults = new AggregateResult[paths.size()];
     for (SlidingWindowAggrQueue slidingWindowAggrQueue : slidingWindowAggrQueues) {
       slidingWindowAggrQueue.setTimeRange(curStartTime, curEndTime);
