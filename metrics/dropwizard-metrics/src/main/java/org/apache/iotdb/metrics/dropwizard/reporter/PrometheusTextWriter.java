@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.dropwizard.reporter.prometheus;
+package org.apache.iotdb.metrics.dropwizard.reporter;
 
 import java.io.FilterWriter;
 import java.io.IOException;

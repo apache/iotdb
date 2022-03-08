@@ -34,6 +34,7 @@ import io.airlift.airline.ParseCommandUnrecognizedException;
 import io.airlift.airline.ParseOptionConversionException;
 import io.airlift.airline.ParseOptionMissingException;
 import io.airlift.airline.ParseOptionMissingValueException;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -99,9 +100,9 @@ public class CommonUtils {
         case BOOLEAN:
           return parseBoolean(value);
         case INT32:
-          return Integer.parseInt(value);
+          return Integer.parseInt(StringUtils.trim(value));
         case INT64:
-          return Long.parseLong(value);
+          return Long.parseLong(StringUtils.trim(value));
         case FLOAT:
           return Float.parseFloat(value);
         case DOUBLE:
