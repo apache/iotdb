@@ -99,7 +99,10 @@ public class InfluxDBUtils {
       String measurement,
       ServiceProvider serviceProvider,
       Map<String, Integer> fieldOrders) {
-    if (operator instanceof BasicFunctionOperator) {
+    if (operator == null) {
+      List<InfluxCondition> conditions = new ArrayList<>();
+      return queryByConditions(conditions, database, measurement, serviceProvider, fieldOrders);
+    } else if (operator instanceof BasicFunctionOperator) {
       List<InfluxCondition> conditions = new ArrayList<>();
       conditions.add(
           InfluxDBUtils.getConditionForBasicFunctionOperator((BasicFunctionOperator) operator));

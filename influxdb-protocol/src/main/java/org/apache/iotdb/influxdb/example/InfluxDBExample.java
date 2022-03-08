@@ -78,7 +78,10 @@ public class InfluxDBExample {
     QueryResult result;
 
     //     the selector query is parallel to the field value
-    query = new Query("select max(score), min(score), first(score), last(score), count(score), mean(score), spread(score), sum(score) from student ", "database");
+    query =
+        new Query(
+            "select max(score), min(score),count(score), first(score), last(score), mean(score), spread(score), sum(score) ,median(score) from student ",
+            "database");
     result = influxDB.query(query);
     System.out.println("query1 result:" + result.getResults().get(0).getSeries().get(0).toString());
   }

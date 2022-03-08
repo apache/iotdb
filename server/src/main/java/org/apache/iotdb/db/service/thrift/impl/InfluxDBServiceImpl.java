@@ -172,7 +172,9 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
       // step1 : generate query results
       queryResult =
           InfluxDBUtils.queryExpr(
-              queryOperator.getWhereComponent().getFilterOperator(),
+              queryOperator.getWhereComponent() != null
+                  ? queryOperator.getWhereComponent().getFilterOperator()
+                  : null,
               database,
               measurement,
               serviceProvider,
