@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.io.IOException;
 
 public class UDTFInRange implements UDTF {
-  TSDataType dataType;
+  protected TSDataType dataType;
   protected double upper;
   protected double lower;
 

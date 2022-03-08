@@ -349,7 +349,7 @@ It costs 0.078s
 | 函数名      | 可接收的输入序列类型                     | 必要的属性参数                               | 输出序列类型     | 功能类型                                             |
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
 | ON_OFF   | INT32 / INT64 / FLOAT / DOUBLE | `threshold`:DOUBLE类型                  | BOOLEAN 类型 | 返回`ts_value >= threshold`的bool值                  |
-| IN_RANGE | INT32 / INT64 / FLOAT / DOUBLE | `lower`:DOUBLE类型<br/>`upper`:DOUBLE类型 | BOOLEAN类型呢 | 返回`ts_value >= lower && ts_value <= upper`的bool值 |                                                    |
+| IN_RANGE | INT32 / INT64 / FLOAT / DOUBLE | `lower`:DOUBLE类型<br/>`upper`:DOUBLE类型 | BOOLEAN类型  | 返回`ts_value >= lower && ts_value <= upper`的bool值 |                                                    |
 测试数据：
 ```
 IoTDB> select ts from root.test;
@@ -390,7 +390,7 @@ select ts, in_range(ts, 'lower'='2', 'upper'='3.1') from root.test;
 
 输出：
 ```
-IoTDB> select ts, in_range(ts,'lower'='2', 'upper'='3.1') from root.test;
+IoTDB> select ts, in_range(ts, 'lower'='2', 'upper'='3.1') from root.test;
 +-----------------------------+------------+--------------------------------------------------+
 |                         Time|root.test.ts|in_range(root.test.ts, "lower"="2", "upper"="3.1")|
 +-----------------------------+------------+--------------------------------------------------+
