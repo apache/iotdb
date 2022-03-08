@@ -167,7 +167,8 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
     QueryResult queryResult;
     // contain filter condition or have common query the result of by traversal.
     if (queryOperator.getWhereComponent() != null
-        || queryOperator.getSelectComponent().isHasCommonQuery()) {
+        || queryOperator.getSelectComponent().isHasCommonQuery()
+        || queryOperator.getSelectComponent().isHasOnlyTraverseFunction()) {
       // step1 : generate query results
       queryResult =
           InfluxDBUtils.queryExpr(
