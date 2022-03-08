@@ -306,7 +306,7 @@ public class MManager {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.MEM.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.IMPORTANT,
               mtree,
               RamUsageEstimator::sizeOf,
               Tag.NAME.toString(),
@@ -319,7 +319,7 @@ public class MManager {
         .getMetricManager()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
-            MetricLevel.NORMAL,
+            MetricLevel.IMPORTANT,
             totalSeriesNumber,
             AtomicLong::get,
             Tag.NAME.toString(),
@@ -329,7 +329,7 @@ public class MManager {
         .getMetricManager()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
-            MetricLevel.NORMAL,
+            MetricLevel.IMPORTANT,
             mtree,
             tree -> {
               try {
@@ -346,7 +346,7 @@ public class MManager {
         .getMetricManager()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
-            MetricLevel.NORMAL,
+            MetricLevel.IMPORTANT,
             mtree,
             tree -> {
               try {

@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -59,6 +60,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * This tool can be used to perform inner space or cross space compaction of aligned and non aligned
@@ -119,20 +121,30 @@ public class CompactionUtils {
       throws IOException, MetadataException {
     MultiTsFileDeviceIterator.AlignedMeasurementIterator alignedMeasurementIterator =
         deviceIterator.iterateAlignedSeries(device);
-    Set<String> allMeasurments = alignedMeasurementIterator.getAllMeasurements();
+    Set<String> allMeasurements = alignedMeasurementIterator.getAllMeasurements();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    for (String measurement : allMeasurments) {
+    for (String measurement : allMeasurements) {
       // TODO: use IDTable
-      measurementSchemas.add(
-          IoTDB.metaManager.getSeriesSchema(new PartialPath(device, measurement)));
+      try {
+        measurementSchemas.add(
+            IoTDB.metaManager.getSeriesSchema(new PartialPath(device, measurement)));
+      } catch (PathNotExistException e) {
+        logger.info("A deleted path is skipped: {}", e.getMessage());
+      }
     }
-
+    if (measurementSchemas.isEmpty()) {
+      return;
+    }
+    List<String> existedMeasurements =
+        measurementSchemas.stream()
+            .map(IMeasurementSchema::getMeasurementId)
+            .collect(Collectors.toList());
     IBatchReader dataBatchReader =
         constructReader(
             device,
-            new ArrayList<>(allMeasurments),
+            existedMeasurements,
             measurementSchemas,
-            allMeasurments,
+            allMeasurements,
             queryContext,
             queryDataSource,
             true);
@@ -160,8 +172,13 @@ public class CompactionUtils {
     Set<String> allMeasurements = measurementIterator.getAllMeasurements();
     for (String measurement : allMeasurements) {
       List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-      measurementSchemas.add(
-          IoTDB.metaManager.getSeriesSchema(new PartialPath(device, measurement)));
+      try {
+        measurementSchemas.add(
+            IoTDB.metaManager.getSeriesSchema(new PartialPath(device, measurement)));
+      } catch (PathNotExistException e) {
+        logger.info("A deleted path is skipped: {}", e.getMessage());
+        continue;
+      }
 
       IBatchReader dataBatchReader =
           constructReader(

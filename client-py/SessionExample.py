@@ -48,6 +48,16 @@ session.create_time_series(
 session.create_time_series(
     "root.sg_test_01.d_01.s_03", TSDataType.INT64, TSEncoding.PLAIN, Compressor.SNAPPY
 )
+session.create_time_series(
+    "root.sg_test_01.d_02.s_01",
+    TSDataType.INT64,
+    TSEncoding.PLAIN,
+    Compressor.SNAPPY,
+    None,
+    {"tag1": "v1"},
+    {"description": "v1"},
+    "temperature"
+)
 
 # setting multiple time series once.
 ts_path_lst_ = [
@@ -72,6 +82,30 @@ session.create_multi_time_series(
     ts_path_lst_, data_type_lst_, encoding_lst_, compressor_lst_
 )
 
+ts_path_lst_ = [
+    "root.sg_test_01.d_02.s_04",
+    "root.sg_test_01.d_02.s_05",
+    "root.sg_test_01.d_02.s_06",
+    "root.sg_test_01.d_02.s_07",
+    "root.sg_test_01.d_02.s_08",
+    "root.sg_test_01.d_02.s_09",
+]
+data_type_lst_ = [
+    TSDataType.FLOAT,
+    TSDataType.DOUBLE,
+    TSDataType.TEXT,
+    TSDataType.FLOAT,
+    TSDataType.DOUBLE,
+    TSDataType.TEXT,
+]
+encoding_lst_ = [TSEncoding.PLAIN for _ in range(len(data_type_lst_))]
+compressor_lst_ = [Compressor.SNAPPY for _ in range(len(data_type_lst_))]
+tags_lst_ = [{"tag2": "v2"} for _ in range(len(data_type_lst_))]
+attributes_lst_ = [{"description": "v2"} for _ in range(len(data_type_lst_))]
+session.create_multi_time_series(
+    ts_path_lst_, data_type_lst_, encoding_lst_, compressor_lst_, None, tags_lst_, attributes_lst_, None
+)
+
 # delete time series
 session.delete_time_series(
     [
@@ -89,6 +123,14 @@ print(
 print(
     "s_03 expecting True, checking result: ",
     session.check_time_series_exists("root.sg_test_01.d_01.s_03"),
+)
+print(
+    "d_02.s_01 expecting True, checking result: ",
+    session.check_time_series_exists("root.sg_test_01.d_02.s_01"),
+)
+print(
+    "d_02.s_06 expecting True, checking result: ",
+    session.check_time_series_exists("root.sg_test_01.d_02.s_06"),
 )
 
 # insert one record into the database.
