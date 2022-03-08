@@ -227,6 +227,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
 
   @Override
   public boolean checkValidAndSetMerging() {
+    selectedTsFileResourceList.forEach(x -> x.setCompactionCandidate(false));
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       TsFileResource resource = selectedTsFileResourceList.get(i);
       resource.readLock();
@@ -244,7 +245,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
 
     for (TsFileResource resource : selectedTsFileResourceList) {
       resource.setCompacting(true);
-      resource.setCompactionCandidate(false);
     }
     return true;
   }
