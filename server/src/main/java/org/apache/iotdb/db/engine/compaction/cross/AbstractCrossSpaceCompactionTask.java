@@ -94,9 +94,9 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
         .append(fullStorageGroupName)
         .append("-")
         .append(timePartition)
-        .append(" task seq file is ")
+        .append(" task seq files are ")
         .append(selectedSequenceFiles.toString())
-        .append(" , unseq file num is ")
+        .append(" , unseq files are ")
         .append(selectedUnsequenceFiles.toString())
         .toString();
   }
