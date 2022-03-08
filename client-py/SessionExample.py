@@ -178,7 +178,7 @@ session.insert_tablet(tablet_)
 
 # insert one numpy tablet into the database.
 np_values_ = [
-    np.array([False, True, False, True], np.bool_),
+    np.array([False, True, False, True], np.dtype('>?')),
     np.array([10, 100, 100, 0], np.dtype('>i4')),
     np.array([11, 11111, 1, 0], np.dtype('>i8')),
     np.array([1.1, 1.25, 188.1, 0], np.dtype('>f4')),
