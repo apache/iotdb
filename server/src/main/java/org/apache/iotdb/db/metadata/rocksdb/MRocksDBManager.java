@@ -102,6 +102,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -1604,9 +1605,70 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
-    return null;
+    if (plan.getKey() != null && plan.getValue() != null) {
+      return showTimeseriesWithIndex(plan, context);
+    } else {
+      return showTimeseriesWithoutIndex(plan, context);
+    }
   }
 
+  private List<ShowTimeSeriesResult> showTimeseriesWithIndex(
+      ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
+    // temporarily unsupported
+    return Collections.emptyList();
+  }
+
+  private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(
+      ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
+    List<Pair<PartialPath, String[]>> ans;
+    if (plan.isOrderByHeat()) {
+      ans = Collections.emptyList();
+    } else {
+      ans = getAllMeasurementSchema(plan);
+    }
+    List<ShowTimeSeriesResult> res = new LinkedList<>();
+    for (Pair<PartialPath, String[]> ansString : ans) {
+      Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
+          new Pair<>(Collections.emptyMap(), Collections.emptyMap());
+      res.add(
+          new ShowTimeSeriesResult(
+              ansString.left.getFullPath(),
+              ansString.right[0],
+              ansString.right[1],
+              TSDataType.valueOf(ansString.right[2]),
+              TSEncoding.valueOf(ansString.right[3]),
+              CompressionType.valueOf(ansString.right[4]),
+              ansString.right[6] != null ? Long.parseLong(ansString.right[6]) : 0,
+              tagAndAttributePair.left,
+              tagAndAttributePair.right));
+    }
+    return res;
+  }
+
+  private List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan)
+      throws MetadataException {
+    List<MeasurementPath> measurementPaths = getMatchedMeasurementPath(plan.getPath().getNodes());
+    List<Pair<PartialPath, String[]>> result = Collections.synchronizedList(new LinkedList<>());
+    measurementPaths
+        .parallelStream()
+        .forEach(
+            measurementPath -> {
+              String[] tsRow = new String[7];
+              // todo need update these properties
+              tsRow[0] = measurementPath.getMeasurementAlias();
+              // sg name
+              tsRow[1] = measurementPath.getFullPath();
+              tsRow[2] = measurementPath.getMeasurementSchema().getType().toString();
+              tsRow[3] = measurementPath.getMeasurementSchema().getEncodingType().toString();
+              tsRow[4] = measurementPath.getMeasurementSchema().getCompressor().toString();
+              tsRow[5] = String.valueOf(0);
+              tsRow[6] = null;
+              Pair<PartialPath, String[]> temp = new Pair<>(measurementPath, tsRow);
+              result.add(temp);
+            });
+
+    return result;
+  }
   /**
    * Get series type for given seriesPath.
    *
