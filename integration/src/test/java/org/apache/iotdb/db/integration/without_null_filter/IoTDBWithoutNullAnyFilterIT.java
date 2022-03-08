@@ -245,26 +245,10 @@ public class IoTDBWithoutNullAnyFilterIT {
   @Test
   public void rawDataWithValueFilterQueryTest() {
     System.out.println("rawDataWithValueFilterQueryTest");
-    String[] retArray1 =
-        new String[] {
-            "9,false,9,9.0,9"
-        };
-    String[] retArray2 =
-        new String[] {
-            "1,true,1,1.0,1"
-        };
-    String[] retArray3 =
-        new String[] {
-            "1,true,1,1.0,1",
-            "6,true,6,6.0,6",
-            "10,true,10,10.0,10"
-        };
-    String[] retArray4 =
-        new String[] {
-            "1,true,1,1.0,1",
-            "6,true,6,6.0,6",
-            "10,true,10,10.0,10"
-        };
+    String[] retArray1 = new String[] {"9,false,9,9.0,9"};
+    String[] retArray2 = new String[] {"1,true,1,1.0,1"};
+    String[] retArray3 = new String[] {"1,true,1,1.0,1", "6,true,6,6.0,6", "10,true,10,10.0,10"};
+    String[] retArray4 = new String[] {"1,true,1,1.0,1", "6,true,6,6.0,6", "10,true,10,10.0,10"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
@@ -292,8 +276,7 @@ public class IoTDBWithoutNullAnyFilterIT {
       }
 
       hasResultSet =
-          statement.execute(
-              "select * from root.test.sg1 where s2 = 1 without null any (s1)");
+          statement.execute("select * from root.test.sg1 where s2 = 1 without null any (s1)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -316,15 +299,13 @@ public class IoTDBWithoutNullAnyFilterIT {
       }
 
       hasResultSet =
-          statement.execute(
-              "select * from root.test.sg1 where s2 = 2 without null any (s1)");
+          statement.execute("select * from root.test.sg1 where s2 = 2 without null any (s1)");
 
       Assert.assertTrue(hasResultSet);
       Assert.assertFalse(statement.getResultSet().next());
 
       hasResultSet =
-          statement.execute(
-              "select * from root.test.sg1 where s1 = true without null any");
+          statement.execute("select * from root.test.sg1 where s1 = true without null any");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1067,12 +1048,7 @@ public class IoTDBWithoutNullAnyFilterIT {
     String[] retArray2 =
         new String[] {"1,1.50,1.50,3.00,3.00", "5,5.50,5.50,11.00,11.00", "9,9.00,9.00,9.00,9.00"};
 
-    String[] retArray3 =
-        new String[] {
-            "1,1.50,3.00",
-            "5,5.50,11.00",
-            "9,9.00,9.00"
-        };
+    String[] retArray3 = new String[] {"1,1.50,3.00", "5,5.50,11.00", "9,9.00,9.00"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
@@ -1179,18 +1155,17 @@ public class IoTDBWithoutNullAnyFilterIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + (resultSet.getString("avg(root.test.*.s2)") == null
-                  || resultSet.getString("avg(root.test.*.s2)").equals("null")
-                  ? "null"
-                  : new BigDecimal(resultSet.getString("avg(root.test.*.s2)"))
-                      .setScale(2, RoundingMode.HALF_UP)
-                      .toPlainString())
+                          || resultSet.getString("avg(root.test.*.s2)").equals("null")
+                      ? "null"
+                      : new BigDecimal(resultSet.getString("avg(root.test.*.s2)"))
+                          .setScale(2, RoundingMode.HALF_UP)
+                          .toPlainString())
                   + ","
-                  + (resultSet.getString("t") == null
-                  || resultSet.getString("t").equals("null")
-                  ? "null"
-                  : new BigDecimal(resultSet.getString("t"))
-                      .setScale(2, RoundingMode.HALF_UP)
-                      .toPlainString());
+                  + (resultSet.getString("t") == null || resultSet.getString("t").equals("null")
+                      ? "null"
+                      : new BigDecimal(resultSet.getString("t"))
+                          .setScale(2, RoundingMode.HALF_UP)
+                          .toPlainString());
           Assert.assertEquals(retArray3[cnt], ans);
           cnt++;
         }

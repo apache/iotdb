@@ -1108,13 +1108,7 @@ public class IoTDBWithoutNullAllFilterIT {
           "7,8.00,7.00,null,null",
           "9,9.00,9.00,9.00,9.00"
         };
-    String[] retArray3 =
-        new String[] {
-            "1,1.50,3.00",
-            "5,5.50,11.00",
-            "7,8.00,null",
-            "9,9.00,9.00"
-        };
+    String[] retArray3 = new String[] {"1,1.50,3.00", "5,5.50,11.00", "7,8.00,null", "9,9.00,9.00"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
@@ -1221,18 +1215,17 @@ public class IoTDBWithoutNullAllFilterIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + (resultSet.getString("avg(root.test.*.s2)") == null
-                  || resultSet.getString("avg(root.test.*.s2)").equals("null")
-                  ? "null"
-                  : new BigDecimal(resultSet.getString("avg(root.test.*.s2)"))
-                      .setScale(2, RoundingMode.HALF_UP)
-                      .toPlainString())
+                          || resultSet.getString("avg(root.test.*.s2)").equals("null")
+                      ? "null"
+                      : new BigDecimal(resultSet.getString("avg(root.test.*.s2)"))
+                          .setScale(2, RoundingMode.HALF_UP)
+                          .toPlainString())
                   + ","
-                  + (resultSet.getString("t") == null
-                  || resultSet.getString("t").equals("null")
-                  ? "null"
-                  : new BigDecimal(resultSet.getString("t"))
-                      .setScale(2, RoundingMode.HALF_UP)
-                      .toPlainString());
+                  + (resultSet.getString("t") == null || resultSet.getString("t").equals("null")
+                      ? "null"
+                      : new BigDecimal(resultSet.getString("t"))
+                          .setScale(2, RoundingMode.HALF_UP)
+                          .toPlainString());
           Assert.assertEquals(retArray3[cnt], ans);
           cnt++;
         }
