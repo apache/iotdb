@@ -98,6 +98,7 @@ public class AvgAggrResult extends AggregateResult {
       updateAvg(seriesDataType, batchIterator.currentValue());
       batchIterator.next();
     }
+    setTime(minBound);
   }
 
   @Override
