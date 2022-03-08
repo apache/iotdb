@@ -99,10 +99,11 @@ public class TsFileResource {
 
   private ModificationFile compactionModFile;
 
-  protected volatile boolean closed = false;
   private volatile boolean deleted = false;
   volatile boolean isCompacting = false;
   volatile boolean compactionCandidate = false;
+
+  protected volatile TsFileResourceStatus status = TsFileResourceStatus.UNCLOSED;
 
   private TsFileLock tsFileLock = new TsFileLock();
 
@@ -167,6 +168,7 @@ public class TsFileResource {
     this.closed = other.closed;
     this.deleted = other.deleted;
     this.isCompacting = other.isCompacting;
+    this.status = other.status;
     this.pathToChunkMetadataListMap = other.pathToChunkMetadataListMap;
     this.pathToReadOnlyMemChunkMap = other.pathToReadOnlyMemChunkMap;
     this.pathToTimeSeriesMetadataMap = other.pathToTimeSeriesMetadataMap;
@@ -432,7 +434,7 @@ public class TsFileResource {
   }
 
   public boolean isClosed() {
-    return closed;
+    return this.status != TsFileResourceStatus.UNCLOSED;
   }
 
   public void close() throws IOException {
@@ -575,10 +577,6 @@ public class TsFileResource {
     return Objects.hash(file);
   }
 
-  public void setClosed(boolean closed) {
-    this.closed = closed;
-  }
-
   public boolean isDeleted() {
     return deleted;
   }
@@ -601,6 +599,10 @@ public class TsFileResource {
 
   public void setCompactionCandidate(boolean compactionCandidate) {
     this.compactionCandidate = compactionCandidate;
+  }
+
+  public void setStatus(TsFileResourceStatus status) {
+    this.status = status;
   }
 
   /**

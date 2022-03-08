@@ -777,7 +777,8 @@ public class VirtualStorageGroupProcessor {
     List<TsFileResource> upgradeRet = new ArrayList<>();
     for (File f : upgradeFiles) {
       TsFileResource fileResource = new TsFileResource(f);
-      fileResource.setClosed(true);
+      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      ;
       // make sure the flush command is called before IoTDB is down.
       fileResource.deserializeFromOldFile();
       upgradeRet.add(fileResource);
@@ -846,7 +847,7 @@ public class VirtualStorageGroupProcessor {
           if (writer != null && writer.hasCrashed()) {
             tsFileManager.addForRecover(tsFileResource, isSeq);
           } else {
-            tsFileResource.setClosed(true);
+            tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
             tsFileManager.add(tsFileResource, isSeq);
             tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
           }
