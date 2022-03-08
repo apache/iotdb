@@ -198,8 +198,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   }
 
   private boolean updateSelectedFiles(long newCost, TsFileResource unseqFile) {
-    if (selectedSeqFiles.size() + selectedUnseqFiles.size() + 1 + tmpSelectedSeqFiles.size()
-            < maxCrossCompactionFileNum
+    if (seqSelectedNum + selectedUnseqFiles.size() + 1 + tmpSelectedSeqFiles.size()
+            <= maxCrossCompactionFileNum
         && totalCost + newCost < memoryBudget) {
       selectedUnseqFiles.add(unseqFile);
       maxSeqFileCost = tempMaxSeqFileCost;

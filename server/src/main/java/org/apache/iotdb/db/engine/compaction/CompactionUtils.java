@@ -117,9 +117,9 @@ public class CompactionUtils {
       QueryContext queryContext,
       QueryDataSource queryDataSource)
       throws IOException, MetadataException {
-    MultiTsFileDeviceIterator.AlignedMeasurmentIterator alignedMeasurmentIterator =
+    MultiTsFileDeviceIterator.AlignedMeasurementIterator alignedMeasurementIterator =
         deviceIterator.iterateAlignedSeries(device);
-    Set<String> allMeasurments = alignedMeasurmentIterator.getAllMeasurements();
+    Set<String> allMeasurments = alignedMeasurementIterator.getAllMeasurements();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String measurement : allMeasurments) {
       // TODO: use IDTable

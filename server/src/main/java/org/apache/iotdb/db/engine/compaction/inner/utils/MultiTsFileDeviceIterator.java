@@ -143,8 +143,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     return new MeasurementIterator(readerMap, device, derserializeTimeseriesMetadata);
   }
 
-  public AlignedMeasurmentIterator iterateAlignedSeries(String device) {
-    return new AlignedMeasurmentIterator(device, new ArrayList<>(readerMap.values()));
+  public AlignedMeasurementIterator iterateAlignedSeries(String device) {
+    return new AlignedMeasurementIterator(device, new ArrayList<>(readerMap.values()));
   }
 
   /**
@@ -230,11 +230,11 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
   }
 
-  public class AlignedMeasurmentIterator {
+  public class AlignedMeasurementIterator {
     private List<TsFileSequenceReader> sequenceReaders;
     private String device;
 
-    private AlignedMeasurmentIterator(String device, List<TsFileSequenceReader> sequenceReaders) {
+    private AlignedMeasurementIterator(String device, List<TsFileSequenceReader> sequenceReaders) {
       this.device = device;
       this.sequenceReaders = sequenceReaders;
     }
