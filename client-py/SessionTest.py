@@ -17,8 +17,11 @@
 #
 
 # Uncomment the following line to use apache-iotdb module installed by pip3
+import numpy as np
+
 from iotdb.Session import Session
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
+from iotdb.utils.NumpyTablet import NumpyTablet
 from iotdb.utils.Tablet import Tablet
 
 # whether the test has passed
@@ -77,7 +80,7 @@ session.create_time_series(
 )
 session.create_time_series(
     "root.sg_test_01.d_02.s_01",
-    TSDataType.INT64,
+    TSDataType.BOOLEAN,
     TSEncoding.PLAIN,
     Compressor.SNAPPY,
     None,
@@ -216,9 +219,27 @@ timestamps_ = [4, 5, 6, 7]
 tablet_ = Tablet(
     "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
 )
+
 if session.insert_tablet(tablet_) < 0:
     test_fail()
     print_message("insert tablet failed")
+
+# insert one numpy tablet into the database.
+np_values_ = [
+    np.array([False, True, False, True], np.bool_),
+    np.array([10, 100, 100, 0], np.dtype('>i4')),
+    np.array([11, 11111, 1, 0], np.dtype('>i8')),
+    np.array([1.1, 1.25, 188.1, 0], np.dtype('>f4')),
+    np.array([10011.1, 101.0, 688.25, 6.25], np.dtype('>f8')),
+    ["test01", "test02", "test03", "test04"],
+]
+np_timestamps_ = np.array([1, 2, 3, 4], np.dtype('>i8'))
+np_tablet_ = NumpyTablet(
+    "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
+)
+if session.insert_tablet(np_tablet_) < 0:
+    test_fail()
+    print_message("insert numpy tablet failed")
 
 # insert multiple tablets into database
 tablet_01 = Tablet(
