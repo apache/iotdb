@@ -37,7 +37,7 @@ public class PlainCacheManager extends CacheManager {
   // thus it should be updated
   @Override
   protected void updateCacheStatusAfterUpdate(CacheEntry cacheEntry, IMNode node) {
-    nodeCache.put(cacheEntry, node);
+    nodeCache.replace(cacheEntry, node);
   }
 
   @Override
