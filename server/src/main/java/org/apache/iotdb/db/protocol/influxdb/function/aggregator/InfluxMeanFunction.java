@@ -38,39 +38,41 @@ import org.influxdb.InfluxDBException;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
-public class InfluxCountFunction extends InfluxAggregator {
-  private int countNum = 0;
+public class InfluxMeanFunction extends InfluxAggregator {
+  private List<Double> numbers = new ArrayList<>();
 
-  public InfluxCountFunction(List<Expression> expressionList) {
+  public InfluxMeanFunction(List<Expression> expressionList) {
     super(expressionList);
   }
 
-  public InfluxCountFunction(
+  public InfluxMeanFunction(
       List<Expression> expressionList, String path, ServiceProvider serviceProvider) {
     super(expressionList, path, serviceProvider);
   }
 
   @Override
   public InfluxFunctionValue calculate() {
-    return new InfluxFunctionValue(this.countNum, 0L);
+    return new InfluxFunctionValue(numbers.size() == 0 ? numbers : InfluxDBUtils.Mean(numbers), 0L);
   }
 
   @Override
   public InfluxFunctionValue calculateByIoTDBFunc() {
+    int sum = 0;
     int count = 0;
     long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
     try {
-      String functionSql = InfluxDBUtils.generateFunctionSql("count", getParmaName(), path);
+      String functionSqlCount = InfluxDBUtils.generateFunctionSql("count", getParmaName(), path);
       QueryPlan queryPlan =
-          (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSql);
+          (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSqlCount);
       QueryContext queryContext =
           serviceProvider.genQueryContext(
               queryId,
               true,
               System.currentTimeMillis(),
-              functionSql,
+              functionSqlCount,
               IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
       QueryDataSet queryDataSet =
           serviceProvider.createQueryDataSet(
@@ -79,6 +81,25 @@ public class InfluxCountFunction extends InfluxAggregator {
         List<Field> fields = queryDataSet.next().getFields();
         for (Field field : fields) {
           count += field.getLongV();
+        }
+      }
+
+      String functionSqlSum = InfluxDBUtils.generateFunctionSql("sum", getParmaName(), path);
+      queryPlan = (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSqlSum);
+      queryContext =
+          serviceProvider.genQueryContext(
+              queryId,
+              true,
+              System.currentTimeMillis(),
+              functionSqlSum,
+              IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+      queryDataSet =
+          serviceProvider.createQueryDataSet(
+              queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+      while (queryDataSet.hasNext()) {
+        List<Field> fields = queryDataSet.next().getFields();
+        for (Field field : fields) {
+          sum += field.getDoubleV();
         }
       }
     } catch (QueryProcessException
@@ -93,11 +114,16 @@ public class InfluxCountFunction extends InfluxAggregator {
     } finally {
       ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
     }
-    return new InfluxFunctionValue(count, 0L);
+    return new InfluxFunctionValue(count != 0 ? sum / count : null, count != 0 ? 0L : null);
   }
 
   @Override
   public void updateValue(InfluxFunctionValue functionValue) {
-    this.countNum++;
+    Object value = functionValue.getValue();
+    if (value instanceof Number) {
+      numbers.add(((Number) value).doubleValue());
+    } else {
+      throw new IllegalArgumentException("mean is not a valid type");
+    }
   }
 }
