@@ -41,15 +41,8 @@ import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.utils.DataTypeUtils;
 import org.apache.iotdb.db.utils.InfluxDBUtils;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.*;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSCloseSessionReq;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSCreateDatabaseReq;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSOpenSessionReq;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSOpenSessionResp;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryReq;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryRsp;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSWritePointsReq;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -153,14 +146,14 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
   }
 
   @Override
-  public TSQueryRsp query(TSQueryReq req) throws TException {
+  public TSQueryResultRsp query(TSQueryReq req) throws TException {
     Operator operator = InfluxDBLogicalGenerator.generate(req.command);
     InfluxDBUtils.checkInfluxDBQueryOperator(operator);
     return queryInfluxDB(req.database, (InfluxQueryOperator) operator, req.sessionId);
   }
 
-  private TSQueryRsp queryInfluxDB(
-      String database, InfluxQueryOperator queryOperator, long sessionId) {
+  private TSQueryResultRsp queryInfluxDB(
+      String database, InfluxQueryOperator queryOperator, long sessionId) throws TException {
     String measurement = queryOperator.getFromComponent().getPrefixPaths().get(0).getFullPath();
     // The list of fields under the current measurement and the order of the specified rules
     Map<String, Integer> fieldOrders = getFieldOrders(database, measurement);
@@ -188,7 +181,13 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
           InfluxDBUtils.queryFuncWithoutFilter(
               queryOperator.getSelectComponent(), database, measurement, serviceProvider);
     }
-    return null;
+    try {
+      TSQueryResultRsp tsQueryResultRsp = InfluxDBUtils.convertQueryResult(queryResult);
+      tsQueryResultRsp.setStatus(RpcUtils.getInfluxDBStatus(TSStatusCode.SUCCESS_STATUS));
+      return tsQueryResultRsp;
+    } catch (IOException e) {
+      throw new TException(e);
+    }
   }
 
   private Map<String, Integer> getFieldOrders(String database, String measurement) {

@@ -21,15 +21,7 @@ package org.apache.iotdb.influxdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.InfluxDBUtils;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.EndPoint;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSCloseSessionReq;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSCreateDatabaseReq;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSOpenSessionReq;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSOpenSessionResp;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryReq;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryRsp;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSWritePointsReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.*;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -46,6 +38,7 @@ import org.influxdb.dto.QueryResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -180,20 +173,20 @@ public class InfluxDBSession {
       throws StatementExecutionException, IoTDBConnectionException {
     request.setSessionId(sessionId);
     try {
-      TSQueryRsp tsQueryRsp = client.query(request);
-      RpcUtils.verifySuccess(tsQueryRsp.status);
-      return InfluxDBUtils.convertTSQueryResult(tsQueryRsp);
-    } catch (TException e) {
+      TSQueryResultRsp tsQueryResultRsp = client.query(request);
+      RpcUtils.verifySuccess(tsQueryResultRsp.status);
+      return InfluxDBUtils.convertTSQueryResult(tsQueryResultRsp);
+    } catch (TException | IOException | ClassNotFoundException e) {
       e.printStackTrace();
       logger.error(e.getMessage());
       if (reconnect()) {
         try {
           request.setSessionId(sessionId);
-          TSQueryRsp tsQueryRsp = client.query(request);
-          RpcUtils.verifySuccess(tsQueryRsp.status);
-          return InfluxDBUtils.convertTSQueryResult(tsQueryRsp);
-        } catch (TException tException) {
-          throw new IoTDBConnectionException(tException);
+          TSQueryResultRsp tsQueryResultRsp = client.query(request);
+          RpcUtils.verifySuccess(tsQueryResultRsp.status);
+          return InfluxDBUtils.convertTSQueryResult(tsQueryResultRsp);
+        } catch (TException | IOException | ClassNotFoundException e1) {
+          throw new IoTDBConnectionException(e1);
         }
       } else {
         throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);

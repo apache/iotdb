@@ -45,8 +45,8 @@ import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryResult;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryRsp;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryResultRsp;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSResult;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSSeries;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -57,7 +57,8 @@ import org.apache.thrift.TException;
 import org.influxdb.InfluxDBException;
 import org.influxdb.dto.QueryResult;
 
-import java.io.IOException;
+import java.io.*;
+import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -818,28 +819,83 @@ public class InfluxDBUtils {
     return queryResult;
   }
 
-  public static QueryResult convertTSQueryResult(TSQueryRsp tsQueryRsp) {
+  public static TSQueryResultRsp convertQueryResult(QueryResult queryResult) throws IOException {
+    List<TSResult> tsResults = new ArrayList<>(queryResult.getResults().size());
+    for (QueryResult.Result result : queryResult.getResults()) {
+      List<TSSeries> tsSeriesList = new ArrayList<>(result.getSeries().size());
+      for (QueryResult.Series series : result.getSeries()) {
+        List<List<ByteBuffer>> tsValues = new ArrayList<>(series.getValues().size());
+
+        for (List<Object> value : series.getValues()) {
+          List<ByteBuffer> tsValue = new ArrayList<>(value.size());
+          for (Object obj : value) {
+            tsValue.add(object2ByteBuffer(obj));
+          }
+          tsValues.add(tsValue);
+        }
+
+        tsSeriesList.add(
+            new TSSeries()
+                .setName(series.getName())
+                .setTags(series.getTags())
+                .setColumns(series.getColumns())
+                .setValues(tsValues));
+      }
+      tsResults.add(new TSResult().setSeries(tsSeriesList).setError(result.getError()));
+    }
+    return new TSQueryResultRsp().setResults(tsResults).setError(queryResult.getError());
+  }
+
+  public static QueryResult convertTSQueryResult(TSQueryResultRsp tsQueryResultRsp)
+      throws IOException, ClassNotFoundException {
     QueryResult queryResult = new QueryResult();
-    List<QueryResult.Result> results = new ArrayList<>();
-    List<QueryResult.Series> serieList = new ArrayList<>();
-    for (TSQueryResult tsQueryResult : tsQueryRsp.results) {
+    List<QueryResult.Result> results = new ArrayList<>(tsQueryResultRsp.results.size());
+    for (TSResult tsResult : tsQueryResultRsp.results) {
       QueryResult.Result result = new QueryResult.Result();
-      for (TSSeries tsSeries : tsQueryResult.series) {
+      List<QueryResult.Series> seriesList = new ArrayList<>(tsResult.series.size());
+      for (TSSeries tsSeries : tsResult.series) {
         QueryResult.Series series = new QueryResult.Series();
-        // TODO buffer to object
-        //        series.setValues(tsSeries.values);
         series.setColumns(tsSeries.columns);
         series.setName(tsSeries.name);
         series.setTags(tsSeries.tags);
-        serieList.add(series);
+        List<List<Object>> values = new ArrayList<>(tsSeries.values.size());
+        for (List<ByteBuffer> byteBufferList : tsSeries.values) {
+          List<Object> value = new ArrayList<>(byteBufferList.size());
+          for (ByteBuffer byteBuffer : byteBufferList) {
+            value.add(byteBuffer2Object(byteBuffer));
+          }
+          values.add(value);
+        }
+        series.setValues(values);
+
+        seriesList.add(series);
       }
-      result.setSeries(serieList);
-      result.setError(tsQueryResult.error);
+      result.setSeries(seriesList);
+      result.setError(tsResult.error);
       results.add(result);
     }
     queryResult.setResults(results);
-    queryResult.setError(tsQueryRsp.error);
+    queryResult.setError(tsQueryResultRsp.error);
     return queryResult;
+  }
+
+  private static ByteBuffer object2ByteBuffer(Object object) throws IOException {
+    ByteArrayOutputStream bout = new ByteArrayOutputStream();
+    ObjectOutputStream out = new ObjectOutputStream(bout);
+    out.writeObject(object);
+    out.flush();
+    byte[] bytes = bout.toByteArray();
+    bout.close();
+    out.close();
+    return ByteBuffer.wrap(bytes);
+  }
+
+  private static Object byteBuffer2Object(ByteBuffer byteBuffer)
+      throws IOException, ClassNotFoundException {
+    ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(byteBuffer.array()));
+    Object object = in.readObject();
+    in.close();
+    return object;
   }
 
   public static String generateFunctionSql(String functionName, String parameter, String path) {

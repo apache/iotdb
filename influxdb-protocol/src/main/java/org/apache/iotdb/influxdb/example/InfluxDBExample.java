@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.influxdb.example;
 
+import org.apache.iotdb.db.utils.InfluxDBUtils;
 import org.apache.iotdb.influxdb.IoTDBInfluxDBFactory;
 
+import org.apache.iotdb.rpc.RpcUtils;
 import org.influxdb.InfluxDB;
 import org.influxdb.dto.Point;
 import org.influxdb.dto.Query;
@@ -80,7 +82,7 @@ public class InfluxDBExample {
     //     the selector query is parallel to the field value
     query =
         new Query(
-            "select max(score), min(score),count(score), first(score), last(score), mean(score), spread(score), sum(score) ,median(score) from student ",
+            "select max(score) from student ",
             "database");
     result = influxDB.query(query);
     System.out.println("query1 result:" + result.getResults().get(0).getSeries().get(0).toString());
