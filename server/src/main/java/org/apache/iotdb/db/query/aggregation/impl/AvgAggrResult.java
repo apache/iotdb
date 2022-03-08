@@ -185,7 +185,7 @@ public class AvgAggrResult extends AggregateResult {
       // avoid two empty results producing an NaN
       return;
     }
-    if(cnt == anotherAvg.cnt) {
+    if (cnt == anotherAvg.cnt) {
       avg = 0;
       cnt = 0;
     } else {

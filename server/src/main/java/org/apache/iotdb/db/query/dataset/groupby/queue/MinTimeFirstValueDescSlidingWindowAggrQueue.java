@@ -37,7 +37,7 @@ public class MinTimeFirstValueDescSlidingWindowAggrQueue extends SlidingWindowAg
 
   @Override
   protected void evictingExpiredValue() {
-    if(!inTimeRange(this.aggregateResult.getTime())) {
+    if (!inTimeRange(this.aggregateResult.getTime())) {
       this.aggregateResult.reset();
     }
   }
