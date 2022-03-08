@@ -42,7 +42,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class InfluxMeanFunction extends InfluxAggregator {
-  private List<Double> numbers = new ArrayList<>();
+  private final List<Double> numbers = new ArrayList<>();
 
   public InfluxMeanFunction(List<Expression> expressionList) {
     super(expressionList);
@@ -60,8 +60,8 @@ public class InfluxMeanFunction extends InfluxAggregator {
 
   @Override
   public InfluxFunctionValue calculateByIoTDBFunc() {
-    int sum = 0;
-    int count = 0;
+    long sum = 0;
+    long count = 0;
     long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
     try {
       String functionSqlCount = InfluxDBUtils.generateFunctionSql("count", getParmaName(), path);

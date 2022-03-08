@@ -19,8 +19,7 @@
 package org.apache.iotdb.db.protocol.influxdb.function;
 
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
-import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxCountFunction;
-import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxMeanFunction;
+import org.apache.iotdb.db.protocol.influxdb.function.aggregator.*;
 import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxFirstFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxLastFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxMaxFunction;
@@ -47,12 +46,12 @@ public class InfluxFunctionFactory {
         return new InfluxCountFunction(expressionList);
       case InfluxSQLConstant.MEAN:
         return new InfluxMeanFunction(expressionList);
-        //      case SQLConstant.MEDIAN:
-        //        return new MedianFunction(expressionList);
-        //      case SQLConstant.MODE:
-        //        return new ModeFunction(expressionList);
-        //      case SQLConstant.SPREAD:
-        //        return new SpreadFunction(expressionList);
+      case InfluxSQLConstant.MEDIAN:
+        return new InfluxMedianFunction(expressionList);
+      case InfluxSQLConstant.MODE:
+        return new InfluxModeFunction(expressionList);
+      case InfluxSQLConstant.SPREAD:
+        return new InfluxSpreadFunction(expressionList);
         //      case SQLConstant.STDDEV:
         //        return new StddevFunction(expressionList);
         //      case SQLConstant.SUM:
@@ -80,10 +79,11 @@ public class InfluxFunctionFactory {
         return new InfluxCountFunction(expressionList, path, serviceProvider);
       case InfluxSQLConstant.MEAN:
         return new InfluxMeanFunction(expressionList, path, serviceProvider);
+      case InfluxSQLConstant.SPREAD:
+        return new InfluxSpreadFunction(expressionList, path, serviceProvider);
         //            case InfluxSQLConstant.SUM:
         //                return new SumFunction(expressionList, session, path);
-        //            case InfluxSQLConstant.SPREAD:
-        //                return new SpreadFunction(expressionList, session, path);
+
       default:
         throw new IllegalArgumentException("not support aggregation name:" + functionName);
     }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.protocol.influxdb.function.selector;
+package org.apache.iotdb.db.protocol.influxdb.function.aggregator;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -41,48 +41,72 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
 
-public class InfluxMinFunction extends InfluxSelector {
-  private Double doubleValue = Double.MAX_VALUE;
-  private String stringValue = null;
-  private boolean isNumber = false;
-  private boolean isString = false;
+public class InfluxSpreadFunction extends InfluxAggregator {
+  private Double maxNum = null;
+  private Double minNum = null;
 
-  public InfluxMinFunction(List<Expression> expressionList) {
+  public InfluxSpreadFunction(List<Expression> expressionList) {
     super(expressionList);
   }
 
-  public InfluxMinFunction(
+  public InfluxSpreadFunction(
       List<Expression> expressionList, String path, ServiceProvider serviceProvider) {
     super(expressionList, path, serviceProvider);
   }
 
   @Override
   public InfluxFunctionValue calculate() {
-    if (!isString && !isNumber) {
-      return new InfluxFunctionValue(null, null);
-    } else if (isString) {
-      return new InfluxFunctionValue(stringValue, this.getTimestamp());
-    } else {
-      return new InfluxFunctionValue(doubleValue, this.getTimestamp());
-    }
+    return new InfluxFunctionValue(maxNum - minNum, 0L);
   }
 
   @Override
   public InfluxFunctionValue calculateByIoTDBFunc() {
+    Double maxValue = null;
     Double minValue = null;
     long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
     try {
-      String functionSql = InfluxDBUtils.generateFunctionSql("min_value", getParmaName(), path);
+      String functionSqlMaxValue =
+          InfluxDBUtils.generateFunctionSql("max_value", getParmaName(), path);
       QueryPlan queryPlan =
-          (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSql);
+          (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSqlMaxValue);
       QueryContext queryContext =
           serviceProvider.genQueryContext(
               queryId,
               true,
               System.currentTimeMillis(),
-              functionSql,
+              functionSqlMaxValue,
               IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
       QueryDataSet queryDataSet =
+          serviceProvider.createQueryDataSet(
+              queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+      while (queryDataSet.hasNext()) {
+        List<Path> paths = queryDataSet.getPaths();
+        List<Field> fields = queryDataSet.next().getFields();
+        for (int i = 0; i < paths.size(); i++) {
+          Object o = InfluxDBUtils.iotdbFiledConvert(fields.get(i));
+          if (o instanceof Number) {
+            double tmpValue = ((Number) o).doubleValue();
+            if (maxValue == null) {
+              maxValue = tmpValue;
+            } else if (tmpValue > maxValue) {
+              maxValue = tmpValue;
+            }
+          }
+        }
+      }
+
+      String functionSqlMinValue =
+          InfluxDBUtils.generateFunctionSql("min_value", getParmaName(), path);
+      queryPlan =
+          (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSqlMinValue);
+      queryContext =
+          serviceProvider.genQueryContext(
+              queryId,
+              true,
+              System.currentTimeMillis(),
+              functionSqlMinValue,
+              IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+      queryDataSet =
           serviceProvider.createQueryDataSet(
               queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
       while (queryDataSet.hasNext()) {
@@ -112,36 +136,25 @@ public class InfluxMinFunction extends InfluxSelector {
     } finally {
       ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
     }
-    return new InfluxFunctionValue(minValue, minValue == null ? null : 0L);
+    if (maxValue == null || minValue == null) {
+      return new InfluxFunctionValue(null, null);
+    }
+    return new InfluxFunctionValue(maxValue - minValue, 0L);
   }
 
   @Override
-  public void updateValueAndRelateValues(
-      InfluxFunctionValue functionValue, List<Object> relatedValues) {
+  public void updateValue(InfluxFunctionValue functionValue) {
     Object value = functionValue.getValue();
-    Long timestamp = functionValue.getTimestamp();
-    if (value instanceof Number) {
-      if (!isNumber) {
-        isNumber = true;
-      }
-      double tmpValue = ((Number) value).doubleValue();
-      if (tmpValue <= this.doubleValue) {
-        doubleValue = tmpValue;
-        this.setTimestamp(timestamp);
-        this.setRelatedValues(relatedValues);
-      }
-    } else if (value instanceof String) {
-      String tmpValue = (String) value;
-      if (!isString) {
-        isString = true;
-        stringValue = tmpValue;
-        this.setTimestamp(timestamp);
-        this.setRelatedValues(relatedValues);
-      } else if (tmpValue.compareTo(this.stringValue) <= 0) {
-        stringValue = tmpValue;
-        this.setTimestamp(timestamp);
-        this.setRelatedValues(relatedValues);
-      }
+    if (!(value instanceof Number)) {
+      throw new IllegalArgumentException("not support this type");
+    }
+
+    double tmpValue = ((Number) value).doubleValue();
+    if (maxNum == null || tmpValue > maxNum) {
+      maxNum = tmpValue;
+    }
+    if (minNum == null || tmpValue < minNum) {
+      minNum = tmpValue;
     }
   }
 }

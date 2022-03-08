@@ -276,6 +276,7 @@ public class InfluxDBUtils {
     }
     return true;
   }
+
   /**
    * check whether the query results of two influxdb belong to the same query, that is, whether the
    * measurement and columns are consistent
@@ -296,6 +297,7 @@ public class InfluxDBUtils {
             queryResult1.getResults().get(0).getSeries().get(0).getColumns(),
             queryResult2.getResults().get(0).getSeries().get(0).getColumns());
   }
+
   /**
    * union the query results of two influxdb
    *
@@ -361,6 +363,7 @@ public class InfluxDBUtils {
     result.setSeries(series);
     results.set(0, result);
   }
+
   /**
    * get query results in the format of influxdb through conditions
    *

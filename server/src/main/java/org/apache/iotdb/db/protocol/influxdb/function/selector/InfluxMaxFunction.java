@@ -69,7 +69,7 @@ public class InfluxMaxFunction extends InfluxSelector {
 
   @Override
   public InfluxFunctionValue calculateByIoTDBFunc() {
-    Double maxNumber = null;
+    Double maxValue = null;
     long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
     try {
       String functionSql = InfluxDBUtils.generateFunctionSql("max_value", getParmaName(), path);
@@ -92,10 +92,10 @@ public class InfluxMaxFunction extends InfluxSelector {
           Object o = InfluxDBUtils.iotdbFiledConvert(fields.get(i));
           if (o instanceof Number) {
             double tmpValue = ((Number) o).doubleValue();
-            if (maxNumber == null) {
-              maxNumber = tmpValue;
-            } else if (tmpValue > maxNumber) {
-              maxNumber = tmpValue;
+            if (maxValue == null) {
+              maxValue = tmpValue;
+            } else if (tmpValue > maxValue) {
+              maxValue = tmpValue;
             }
           }
         }
@@ -112,7 +112,7 @@ public class InfluxMaxFunction extends InfluxSelector {
     } finally {
       ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
     }
-    return new InfluxFunctionValue(maxNumber, maxNumber == null ? null : 0L);
+    return new InfluxFunctionValue(maxValue, maxValue == null ? null : 0L);
   }
 
   @Override
