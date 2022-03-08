@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
 import org.apache.thrift.TException;
 import org.influxdb.InfluxDBException;
 
@@ -50,8 +51,8 @@ public class InfluxMaxFunction extends InfluxSelector {
     super(expressionList);
   }
 
-  public InfluxMaxFunction(List<Expression> expressionList, String path,
-                           ServiceProvider serviceProvider) {
+  public InfluxMaxFunction(
+      List<Expression> expressionList, String path, ServiceProvider serviceProvider) {
     super(expressionList, path, serviceProvider);
   }
 
@@ -115,7 +116,8 @@ public class InfluxMaxFunction extends InfluxSelector {
   }
 
   @Override
-  public void updateValueAndRelateValues(InfluxFunctionValue functionValue, List<Object> relatedValues) {
+  public void updateValueAndRelateValues(
+      InfluxFunctionValue functionValue, List<Object> relatedValues) {
     Object value = functionValue.getValue();
     Long timestamp = functionValue.getTimestamp();
     if (value instanceof Number) {

@@ -66,8 +66,7 @@ public class InfluxFirstFunction extends InfluxSelector {
     Long firstTime = null;
     long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
     try {
-      String functionSql =
-          InfluxDBUtils.generateFunctionSql("first_value", getParmaName(), path);
+      String functionSql = InfluxDBUtils.generateFunctionSql("first_value", getParmaName(), path);
       QueryPlan queryPlan =
           (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSql);
       QueryContext queryContext =

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.protocol.influxdb.function;
 
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
+import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxCountFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxFirstFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxLastFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxMaxFunction;
@@ -41,20 +42,20 @@ public class InfluxFunctionFactory {
         return new InfluxLastFunction(expressionList);
       case InfluxSQLConstant.FIRST:
         return new InfluxFirstFunction(expressionList);
-      //      case SQLConstant.MEAN:
-      //        return new MeanFunction(expressionList);
-      //      case SQLConstant.COUNT:
-      //        return new CountFunction(expressionList);
-      //      case SQLConstant.MEDIAN:
-      //        return new MedianFunction(expressionList);
-      //      case SQLConstant.MODE:
-      //        return new ModeFunction(expressionList);
-      //      case SQLConstant.SPREAD:
-      //        return new SpreadFunction(expressionList);
-      //      case SQLConstant.STDDEV:
-      //        return new StddevFunction(expressionList);
-      //      case SQLConstant.SUM:
-      //        return new SumFunction(expressionList);
+      case InfluxSQLConstant.COUNT:
+        return new InfluxCountFunction(expressionList);
+        //      case SQLConstant.MEAN:
+        //        return new MeanFunction(expressionList);
+        //      case SQLConstant.MEDIAN:
+        //        return new MedianFunction(expressionList);
+        //      case SQLConstant.MODE:
+        //        return new ModeFunction(expressionList);
+        //      case SQLConstant.SPREAD:
+        //        return new SpreadFunction(expressionList);
+        //      case SQLConstant.STDDEV:
+        //        return new StddevFunction(expressionList);
+        //      case SQLConstant.SUM:
+        //        return new SumFunction(expressionList);
       default:
         throw new IllegalArgumentException("not support aggregation name:" + functionName);
     }
@@ -74,14 +75,14 @@ public class InfluxFunctionFactory {
         return new InfluxFirstFunction(expressionList, path, serviceProvider);
       case InfluxSQLConstant.LAST:
         return new InfluxLastFunction(expressionList, path, serviceProvider);
-      //            case InfluxSQLConstant.MEAN:
-      //                return new MeanFunction(expressionList, session, path);
-      //            case InfluxSQLConstant.COUNT:
-      //                return new CountFunction(expressionList, session, path);
-      //            case InfluxSQLConstant.SUM:
-      //                return new SumFunction(expressionList, session, path);
-      //            case InfluxSQLConstant.SPREAD:
-      //                return new SpreadFunction(expressionList, session, path);
+      case InfluxSQLConstant.COUNT:
+        return new InfluxCountFunction(expressionList, path, serviceProvider);
+        //            case InfluxSQLConstant.MEAN:
+        //                return new MeanFunction(expressionList, session, path);
+        //            case InfluxSQLConstant.SUM:
+        //                return new SumFunction(expressionList, session, path);
+        //            case InfluxSQLConstant.SPREAD:
+        //                return new SpreadFunction(expressionList, session, path);
       default:
         throw new IllegalArgumentException("not support aggregation name:" + functionName);
     }
