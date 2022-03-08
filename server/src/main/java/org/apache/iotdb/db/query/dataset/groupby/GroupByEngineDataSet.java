@@ -172,7 +172,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   }
 
   protected AggregateResult[] getNextAggregateResult() throws IOException {
-    return curAggregateResults;
+    throw new UnsupportedOperationException("Should call exact sub class!");
   }
 
   protected RowRecord constructRowRecord(AggregateResult[] aggregateResultList) {
