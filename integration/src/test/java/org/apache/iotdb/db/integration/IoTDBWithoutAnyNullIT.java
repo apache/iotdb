@@ -203,12 +203,7 @@ public class IoTDBWithoutAnyNullIT {
 
   @Test
   public void withoutAnyNull_withValueFilterQueryTest() {
-    String[] retArray1 =
-        new String[] {
-            "9,29,true,99.9",
-            "10,20,true,10.0",
-            "19,29,true,99.9"
-        };
+    String[] retArray1 = new String[] {"9,29,true,99.9", "10,20,true,10.0", "19,29,true,99.9"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =

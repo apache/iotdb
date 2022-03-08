@@ -41,7 +41,7 @@ public class RowRecord {
   public RowRecord(long timestamp, int nums) {
     this.timestamp = timestamp;
     this.fields = new ArrayList<>(nums);
-    for (int i = 0; i < nums; i ++) {
+    for (int i = 0; i < nums; i++) {
       this.fields.add(null);
     }
   }
