@@ -34,3 +34,23 @@ select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
 ```sql
 select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
 ```
+
+在 IoTDB 中，还可以使用  `WITHOUT NULL` 子句对结果集中指定列名的空值进行过滤，比如下面几个例子:
+
+1. 如果查询的结果集中, root.ln.sg1.s1这一列如果为null,则过滤掉该行
+
+```sql
+select * from root.ln.sg1 WITHOUT NULL ANY(s1)
+```
+
+2. 如果查询的结果集中, root.ln.sg1.s1和root.ln.sg1.s2中只要存在至少一列为null,则过滤掉该行
+
+```sql
+select * from root.ln.sg1 WITHOUT NULL ANY(s1, s2)
+```
+
+3. 如果查询的结果集中, root.ln.sg1.s1和root.ln.sg1.s2这两列如果都为null,则过滤掉该行
+
+```sql
+select * from root.ln.sg1 WITHOUT NULL ALL(s1, s2)
+```
