@@ -30,10 +30,6 @@ Metric Module
   - IoTDB Reporter
 
 - [1. Design](#1-design)
-  - [1.1. Over all Design for acquisition System](#11-over-all-design-for-acquisition-system)
-  - [1.2. Class diagram](#12-class-diagram)
-    - [1.2.1. Metric Related Class Diagram](#121-metric-related-class-diagram)
-    - [1.2.2. Metric Framework Class Diagram](#122-metric-framework-class-diagram)
 - [2. Test Report](#2-test-report)
   - [2.1. Test Environment](#21-test-environment)
   - [2.2. Test Metrics](#22-test-metrics)
@@ -47,8 +43,6 @@ Metric Module
 - [5. Some docs](#5-some-docs)
 
 # 1. Design
-
-## 1.1. Over all Design for acquisition System
 1. The acquisition system consists of following four parts.
    1. Metrics：Provide tools for collecting metric in different scenarios, including Counter, Gauge, Meter, Histogram, Timer, each with tags.
    2. MetricManager
@@ -62,18 +56,10 @@ Metric Module
    4. MetricService
       1. Provide the start and stop method of metric module.
       2. Provide the ability to hot load some properties.
-      4. Provide the access of metricManager and the control of reporters.
+      3. Provide the access of metricManager and the control of reporters.
 2. The structure of acquisition system
 
 ![](https://cwiki.apache.org/confluence/download/attachments/184616789/image2021-11-3_10-49-3.png?version=1&modificationDate=1635907745000&api=v2)
-
-## 1.2. Class diagram
-
-### 1.2.1. Metric Related Class Diagram
-![](https://cwiki.apache.org/confluence/download/attachments/184616789/image2022-1-17_16-24-44.png?version=1&modificationDate=1642407890014&api=v2)
-
-### 1.2.2. Metric Framework Class Diagram
-![](https://cwiki.apache.org/confluence/download/attachments/184616789/image2022-1-17_16-31-10.png?version=1&modificationDate=1642408273144&api=v2)
 
 # 2. Test Report
 We implemented the monitoring framework using Dropwizard and Micrometer respectively, and tested the results as follows:
@@ -118,9 +104,10 @@ System.setProperty("IOTDB_CONF", "metrics/dropwizard-metrics/src/test/resources"
 | properties         | meaning                                               | example                |
 | ------------------ | ----------------------------------------------------- | ---------------------- |
 | enableMetric       | whether enable the module                             | true                   |
-| metricReporterList | the list of reporter                                  | jmx, prometheus        |
-| predefinedMetrics  | predefined set of metrics                             | jmx, logback           |
-| monitorType        | The type of monitor manager                           | Dropwizard, Micrometer |
+| metricReporterList | the list of reporter                                  | JMX, PROMETHEUS        |
+| predefinedMetrics  | predefined set of metrics                             | JMX, LOGBACK           |
+| metricLevel | the init level of metrics| ALL, NORMAL, IMPORTANT, CORE |
+| monitorType        | The type of monitor manager                           | DROPWIZARD, MICROMETER |
 | pushPeriodInSecond | the period time of push(used for prometheus, unit: s) | 5                      |
 
 ## 3.2. Module Use Guide
@@ -141,7 +128,7 @@ public class PrometheusRunTest {
     metricConfig.setPredefinedMetrics(new ArrayList<>());
     metricService.startService();
     metricManager = metricService.getMetricManager();
-    Counter counter = metricManager.getOrCreateCounter("counter");
+    Counter counter = metricManager.getOrCreateCounter("counter", MetricLevel.IMPORTANT);
     while (true) {
       counter.inc();
       TimeUnit.SECONDS.sleep(1);
@@ -156,8 +143,7 @@ public class PrometheusRunTest {
 
 ```java
 MetricsService.getInstance()
-   .getOrCreateCounter("operation_count", "name", operation.getName())
-   .inc();
+   .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
 ```
 
 # 4. How to implement your own metric framework?

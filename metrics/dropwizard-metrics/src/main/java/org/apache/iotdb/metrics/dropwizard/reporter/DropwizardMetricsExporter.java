@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.dropwizard.reporter.prometheus;
+package org.apache.iotdb.metrics.dropwizard.reporter;
 
 import com.codahale.metrics.*;
 import org.slf4j.Logger;
@@ -30,12 +30,32 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 class DropwizardMetricsExporter {
-  private static final Logger LOG = LoggerFactory.getLogger(DropwizardMetricsExporter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DropwizardMetricsExporter.class);
 
+  private final MetricRegistry metricRegistry;
   private final PrometheusTextWriter writer;
 
-  public DropwizardMetricsExporter(PrometheusTextWriter writer) {
+  public DropwizardMetricsExporter(MetricRegistry metricRegistry, PrometheusTextWriter writer) {
+    this.metricRegistry = metricRegistry;
     this.writer = writer;
+  }
+
+  public void scrape() throws IOException {
+    for (Map.Entry<String, Gauge> entry : metricRegistry.getGauges().entrySet()) {
+      writeGauge(entry.getKey(), entry.getValue());
+    }
+    for (Map.Entry<String, Counter> entry : metricRegistry.getCounters().entrySet()) {
+      writeCounter(entry.getKey(), entry.getValue());
+    }
+    for (Map.Entry<String, Histogram> entry : metricRegistry.getHistograms().entrySet()) {
+      writeHistogram(entry.getKey(), entry.getValue());
+    }
+    for (Map.Entry<String, Meter> entry : metricRegistry.getMeters().entrySet()) {
+      writeMeter(entry.getKey(), entry.getValue());
+    }
+    for (Map.Entry<String, Timer> entry : metricRegistry.getTimers().entrySet()) {
+      writeTimer(entry.getKey(), entry.getValue());
+    }
   }
 
   /** Export Gauge as Prometheus Guage */
