@@ -20,28 +20,27 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
+import java.util.Random;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class LRUCacheManager extends CacheManager {
 
-  private volatile LRUCacheEntry first;
+  private static final int NUM_OF_LIST = 1013;
 
-  private volatile LRUCacheEntry last;
+  private LRUCacheList[] lruCacheLists = new LRUCacheList[NUM_OF_LIST];
 
-  private final Lock lock = new ReentrantLock();
+  private Random random = new Random();
+
+  public LRUCacheManager() {
+    for (int i = 0; i < NUM_OF_LIST; i++) {
+      lruCacheLists[i] = new LRUCacheList();
+    }
+  }
 
   @Override
   public void updateCacheStatusAfterAccess(CacheEntry cacheEntry) {
-    lock.lock();
-    try {
-      LRUCacheEntry lruCacheEntry = getAsLRUCacheEntry(cacheEntry);
-      if (isInCacheList(lruCacheEntry)) {
-        moveToFirst(lruCacheEntry);
-      }
-    } finally {
-      lock.unlock();
-    }
+    getTargetCacheList(cacheEntry).updateCacheStatusAfterAccess(getAsLRUCacheEntry(cacheEntry));
   }
 
   // MNode update operation like node replace may reset the mapping between cacheEntry and node,
@@ -61,101 +60,146 @@ public class LRUCacheManager extends CacheManager {
 
   @Override
   protected boolean isInNodeCache(CacheEntry cacheEntry) {
-    return isInCacheList(getAsLRUCacheEntry(cacheEntry));
+    return getTargetCacheList(cacheEntry).isInCacheList(getAsLRUCacheEntry(cacheEntry));
   }
 
   @Override
   protected void addToNodeCache(CacheEntry cacheEntry, IMNode node) {
-    lock.lock();
-    try {
-      LRUCacheEntry lruCacheEntry = getAsLRUCacheEntry(cacheEntry);
-      lruCacheEntry.setNode(node);
-      moveToFirst(lruCacheEntry);
-    } finally {
-      lock.unlock();
-    }
+    getTargetCacheList(cacheEntry).addToCacheList(getAsLRUCacheEntry(cacheEntry), node);
   }
 
   @Override
   protected void removeFromNodeCache(CacheEntry cacheEntry) {
-    lock.lock();
-    try {
-      removeOne(getAsLRUCacheEntry(cacheEntry));
-    } finally {
-      lock.unlock();
-    }
+    getTargetCacheList(cacheEntry).removeFromCacheList(getAsLRUCacheEntry(cacheEntry));
   }
 
   @Override
   protected IMNode getPotentialNodeTobeEvicted() {
-    lock.lock();
-    try {
-      LRUCacheEntry target = last;
-      while (target != null && target.isPinned()) {
-        target = target.getPre();
-      }
-
-      return target == null ? null : target.getNode();
-    } finally {
-      lock.unlock();
-    }
+    return lruCacheLists[random.nextInt(NUM_OF_LIST)].getPotentialNodeTobeEvicted();
   }
 
   @Override
   protected void clearNodeCache() {
-    first = null;
-    last = null;
+    for (LRUCacheList lruCacheList : lruCacheLists) {
+      lruCacheList.clear();
+    }
   }
 
   private LRUCacheEntry getAsLRUCacheEntry(CacheEntry cacheEntry) {
     return (LRUCacheEntry) cacheEntry;
   }
 
-  private boolean isInCacheList(LRUCacheEntry entry) {
-    return entry.getPre() != null || entry.getNext() != null || first == entry || last == entry;
+  private LRUCacheList getTargetCacheList(CacheEntry cacheEntry) {
+    return lruCacheLists[getCacheListLoc(cacheEntry)];
   }
 
-  private void moveToFirst(LRUCacheEntry entry) {
-    if (first == null || last == null) { // empty linked list
-      first = last = entry;
-      return;
-    }
-
-    if (first == entry) {
-      return;
-    }
-    if (entry.getPre() != null) {
-      entry.getPre().setNext(entry.getNext());
-    }
-    if (entry.getNext() != null) {
-      entry.getNext().setPre(entry.getPre());
-    }
-
-    if (entry == last) {
-      last = last.getPre();
-    }
-
-    entry.setNext(first);
-    first.setPre(entry);
-    first = entry;
-    first.setPre(null);
+  private int getCacheListLoc(CacheEntry cacheEntry) {
+    return cacheEntry.hashCode() % NUM_OF_LIST;
   }
 
-  private void removeOne(LRUCacheEntry entry) {
-    if (entry.getPre() != null) {
-      entry.getPre().setNext(entry.getNext());
-    }
-    if (entry.getNext() != null) {
-      entry.getNext().setPre(entry.getPre());
-    }
-    if (entry == first) {
-      first = entry.getNext();
-    }
-    if (entry == last) {
-      last = entry.getPre();
+  private static class LRUCacheList {
+
+    private volatile LRUCacheEntry first;
+
+    private volatile LRUCacheEntry last;
+
+    private final Lock lock = new ReentrantLock();
+
+    private void updateCacheStatusAfterAccess(LRUCacheEntry lruCacheEntry) {
+      lock.lock();
+      try {
+        if (isInCacheList(lruCacheEntry)) {
+          moveToFirst(lruCacheEntry);
+        }
+      } finally {
+        lock.unlock();
+      }
     }
 
-    entry.setPre(null);
-    entry.setNext(null);
+    private void addToCacheList(LRUCacheEntry lruCacheEntry, IMNode node) {
+      lock.lock();
+      try {
+        lruCacheEntry.setNode(node);
+        moveToFirst(lruCacheEntry);
+      } finally {
+        lock.unlock();
+      }
+    }
+
+    private void removeFromCacheList(LRUCacheEntry lruCacheEntry) {
+      lock.lock();
+      try {
+        removeOne(lruCacheEntry);
+      } finally {
+        lock.unlock();
+      }
+    }
+
+    private IMNode getPotentialNodeTobeEvicted() {
+      lock.lock();
+      try {
+        LRUCacheEntry target = last;
+        while (target != null && target.isPinned()) {
+          target = target.getPre();
+        }
+
+        return target == null ? null : target.getNode();
+      } finally {
+        lock.unlock();
+      }
+    }
+
+    private void clear() {
+      first = null;
+      last = null;
+    }
+
+    private void moveToFirst(LRUCacheEntry entry) {
+      if (first == null || last == null) { // empty linked list
+        first = last = entry;
+        return;
+      }
+
+      if (first == entry) {
+        return;
+      }
+      if (entry.getPre() != null) {
+        entry.getPre().setNext(entry.getNext());
+      }
+      if (entry.getNext() != null) {
+        entry.getNext().setPre(entry.getPre());
+      }
+
+      if (entry == last) {
+        last = last.getPre();
+      }
+
+      entry.setNext(first);
+      first.setPre(entry);
+      first = entry;
+      first.setPre(null);
+    }
+
+    private void removeOne(LRUCacheEntry entry) {
+      if (entry.getPre() != null) {
+        entry.getPre().setNext(entry.getNext());
+      }
+      if (entry.getNext() != null) {
+        entry.getNext().setPre(entry.getPre());
+      }
+      if (entry == first) {
+        first = entry.getNext();
+      }
+      if (entry == last) {
+        last = entry.getPre();
+      }
+
+      entry.setPre(null);
+      entry.setNext(null);
+    }
+
+    private boolean isInCacheList(LRUCacheEntry entry) {
+      return entry.getPre() != null || entry.getNext() != null || first == entry || last == entry;
+    }
   }
 }
