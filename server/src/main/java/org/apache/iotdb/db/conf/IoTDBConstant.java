@@ -181,6 +181,12 @@ public class IoTDBConstant {
   // cross space compaction
   public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX = ".cross";
 
+  // cross space compaction of previous version (<0.13)
+  public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX_FROM_OLD = ".merge";
+
+  // compaction mods of previous version (<0.13)
+  public static final String COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD = "merge.mods";
+
   // client version number
   public enum ClientVersion {
     V_0_12,

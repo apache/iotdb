@@ -38,7 +38,6 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
@@ -235,12 +234,6 @@ public class VirtualStorageGroupProcessor {
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
   /** storage group info for mem control */
   private StorageGroupInfo storageGroupInfo = new StorageGroupInfo(this);
-  /**
-   * Record the device number of the last TsFile in each storage group, which is applied to
-   * initialize the array size of DeviceTimeIndex. It is reasonable to assume that the adjacent
-   * files should have similar numbers of devices. Default value: INIT_ARRAY_SIZE = 64
-   */
-  private int deviceNumInLastClosedTsFile = DeviceTimeIndex.INIT_ARRAY_SIZE;
   /** whether it's ready from recovery */
   private boolean isReady = false;
   /** close file listeners */
@@ -269,6 +262,7 @@ public class VirtualStorageGroupProcessor {
   private String insertWriteLockHolder = "";
 
   private ScheduledExecutorService timedCompactionScheduleTask;
+  private ScheduledExecutorService walTrimScheduleTask;
 
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
@@ -423,14 +417,14 @@ public class VirtualStorageGroupProcessor {
     }
 
     // start trim task at last
-    ScheduledExecutorService executorService =
+    walTrimScheduleTask =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.WAL_TRIM.getName()
                 + "-"
                 + logicalStorageGroupName
                 + "-"
                 + virtualStorageGroupId);
-    executorService.scheduleWithFixedDelay(
+    walTrimScheduleTask.scheduleWithFixedDelay(
         this::trimTask,
         config.getWalPoolTrimIntervalInMS(),
         config.getWalPoolTrimIntervalInMS(),
@@ -3272,6 +3266,10 @@ public class VirtualStorageGroupProcessor {
 
   public ScheduledExecutorService getTimedCompactionScheduleTask() {
     return timedCompactionScheduleTask;
+  }
+
+  public ScheduledExecutorService getWALTrimScheduleTask() {
+    return walTrimScheduleTask;
   }
 
   public IDTable getIdTable() {

@@ -347,6 +347,7 @@ Currently, IoTDB supports the following condition functions:
 |---------------|---------------------------------|-----------------------------------------------|-------------------------|-----------------------------------------------|
 | ON_OFF        | INT32 / INT64 / FLOAT / DOUBLE  | `threshold`: a double type variate            | BOOLEAN                 | Return `ts_value >= threshold`.               |
 | IN_RANGR      | INT32 / INT64 / FLOAT / DOUBLE  | `lower`: DOUBLE type<br/>`upper`: DOUBLE type | BOOLEAN                 | Return `ts_value >= lower && value <= upper`. |
+
 Example Data:
 ```
 IoTDB> select ts from root.test;
@@ -358,8 +359,8 @@ IoTDB> select ts from root.test;
 |1970-01-01T08:00:00.003+08:00|           3|
 |1970-01-01T08:00:00.004+08:00|           4|
 +-----------------------------+------------+
-
 ```
+
 ##### Test 1
 SQL:
 ```sql

@@ -350,6 +350,7 @@ It costs 0.078s
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
 | ON_OFF   | INT32 / INT64 / FLOAT / DOUBLE | `threshold`:DOUBLE类型                  | BOOLEAN 类型 | 返回`ts_value >= threshold`的bool值                  |
 | IN_RANGE | INT32 / INT64 / FLOAT / DOUBLE | `lower`:DOUBLE类型<br/>`upper`:DOUBLE类型 | BOOLEAN类型  | 返回`ts_value >= lower && ts_value <= upper`的bool值 |                                                    |
+
 测试数据：
 ```
 IoTDB> select ts from root.test;
@@ -364,6 +365,7 @@ IoTDB> select ts from root.test;
 ```
 
 ##### 测试1
+
 SQL语句：
 ```sql
 select ts, on_off(ts, 'threshold'='2') from root.test;
