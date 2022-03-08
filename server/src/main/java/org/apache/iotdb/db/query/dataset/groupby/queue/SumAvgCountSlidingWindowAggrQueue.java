@@ -31,16 +31,19 @@ public class SumAvgCountSlidingWindowAggrQueue extends SlidingWindowAggrQueue {
   @Override
   public void update(AggregateResult aggregateResult) {
     if (aggregateResult.getResult() != null) {
-      addLast(aggregateResult);
+      deque.addLast(aggregateResult);
       this.aggregateResult.merge(aggregateResult);
     }
   }
 
   @Override
   protected void evictingExpiredValue() {
-    while (!isEmpty() && !inTimeRange(getFirstTime())) {
-      AggregateResult aggregateResult = removeFirst();
+    while (!deque.isEmpty() && !inTimeRange(deque.getFirst().getTime())) {
+      AggregateResult aggregateResult = deque.removeFirst();
       this.aggregateResult.remove(aggregateResult);
+    }
+    if (!inTimeRange(this.aggregateResult.getTime())) {
+      this.aggregateResult.reset();
     }
   }
 }

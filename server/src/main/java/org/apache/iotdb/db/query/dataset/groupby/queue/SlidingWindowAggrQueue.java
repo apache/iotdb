@@ -48,41 +48,6 @@ public abstract class SlidingWindowAggrQueue {
     return aggregateResult;
   }
 
-  public void addLast(AggregateResult aggregateResult) {
-    deque.addLast(aggregateResult);
-  }
-
-  public AggregateResult removeFirst() {
-    return deque.removeFirst();
-  }
-
-  public AggregateResult removeLast() {
-    return deque.removeLast();
-  }
-
-  public long getFirstTime() {
-    return deque.getFirst().getTime();
-  }
-
-  public Object getFirstValue() {
-    return deque.getFirst().getResult();
-  }
-
-  public Object getLastValue() {
-    return deque.getLast().getResult();
-  }
-
-  public AggregateResult getFirst() {
-    if (deque.isEmpty()) {
-      return null;
-    }
-    return deque.getFirst();
-  }
-
-  public boolean isEmpty() {
-    return deque.isEmpty();
-  }
-
   public void setTimeRange(long curStartTime, long curEndTime) {
     this.curStartTime = curStartTime;
     this.curEndTime = curEndTime;

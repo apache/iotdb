@@ -37,25 +37,34 @@ public class ExtremeSlidingWindowAggrQueue extends SlidingWindowAggrQueue {
       return;
     }
 
-    while (!isEmpty() && judge(extVal)) {
-      removeLast();
+    while (!deque.isEmpty() && judge(extVal)) {
+      deque.removeLast();
     }
-    addLast(aggregateResult);
-    this.aggregateResult = getFirst();
+    deque.addLast(aggregateResult);
+    if (!deque.isEmpty()) {
+      this.aggregateResult = deque.getFirst();
+    } else {
+      this.aggregateResult.reset();
+    }
   }
 
   @Override
   protected void evictingExpiredValue() {
-    while (!isEmpty() && !inTimeRange(getFirstTime())) {
-      removeFirst();
+    while (!deque.isEmpty() && !inTimeRange(deque.getFirst().getTime())) {
+      deque.removeFirst();
     }
-    this.aggregateResult = getFirst();
+    if (!deque.isEmpty()) {
+      this.aggregateResult = deque.getFirst();
+    } else {
+      this.aggregateResult.reset();
+    }
   }
 
   private boolean judge(Comparable<Object> extVal) {
     Comparable<Object> absExtVal = (Comparable<Object>) getAbsValue(aggregateResult.getResult());
-    Comparable<Object> candidateResult = (Comparable<Object>) getLastValue();
-    Comparable<Object> absCandidateResult = (Comparable<Object>) getAbsValue(getLastValue());
+    Comparable<Object> candidateResult = (Comparable<Object>) deque.getLast().getResult();
+    Comparable<Object> absCandidateResult =
+        (Comparable<Object>) getAbsValue(deque.getLast().getResult());
 
     return absExtVal.compareTo(absCandidateResult) > 0
         || (absExtVal.compareTo(absCandidateResult) == 0 && extVal.compareTo(candidateResult) > 0);

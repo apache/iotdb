@@ -32,16 +32,24 @@ public class MaxTimeLastValueDescSlidingWindowAggrQueue extends SlidingWindowAgg
   @Override
   public void update(AggregateResult aggregateResult) {
     if (aggregateResult.getResult() != null) {
-      addLast(aggregateResult);
-      this.aggregateResult = getFirst();
+      deque.addLast(aggregateResult);
+    }
+    if (!deque.isEmpty()) {
+      this.aggregateResult = deque.getFirst();
+    } else {
+      this.aggregateResult.reset();
     }
   }
 
   @Override
   protected void evictingExpiredValue() {
-    while (!isEmpty() && !inTimeRange(getFirstTime())) {
-      removeFirst();
+    while (!deque.isEmpty() && !inTimeRange(deque.getFirst().getTime())) {
+      deque.removeFirst();
     }
-    this.aggregateResult = getFirst();
+    if (!deque.isEmpty()) {
+      this.aggregateResult = deque.getFirst();
+    } else {
+      this.aggregateResult.reset();
+    }
   }
 }
