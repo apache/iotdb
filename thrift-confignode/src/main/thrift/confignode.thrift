@@ -22,17 +22,17 @@ namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
 service ConfigIService {
-  rpc.TSStatus setStorageGroup(1:i64 sessionId, 2:string storageGroup)
+  rpc.TSStatus setStorageGroup(1:i64 sessionId, 2:string storageGroup);
 
-  rpc.TSStatus deleteStorageGroup(1:i64 sessionId, 2:list<string> storageGroups)
+  rpc.TSStatus deleteStorageGroup(1:i64 sessionId, 2:string storageGroup);
 
-  rpc.TSStatus createTimeseries(1:rpc.TSCreateTimeseriesReq req)
+  rpc.TSStatus deleteStorageGroups(1:i64 sessionId, 2:list<string> storageGroups);
 
-  rpc.TSStatus createAlignedTimeseries(1:rpc.TSCreateAlignedTimeseriesReq req)
+  i32 getSchemaPartition(1:i64 sessionId, 2:string device)
 
-  rpc.TSStatus createMultiTimeseries(1:rpc.TSCreateMultiTimeseriesReq req)
+  list<i32> getDataPartition(1:i64 sessionId, 2:string device, 3:list<i64> times)
 
-  rpc.TSStatus deleteTimeSeries(1:i64 sessionId, 2:list<string> paths)
+  list<i32> getLatestDataPartition(1:i64 sessionId, 2:string device)
 
   i32 getDeviceGroupID(1:i64 sessionId, 2:string device)
 }

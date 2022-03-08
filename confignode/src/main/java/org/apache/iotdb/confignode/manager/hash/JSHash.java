@@ -16,9 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.service.basic;
+package org.apache.iotdb.confignode.manager.hash;
 
-public class ConfigServiceProvider {
+public class JSHash extends DeviceGroupHashExecutor {
 
-  public ConfigServiceProvider() {}
+  private static final int base = 1315423911;
+
+  public JSHash(int deviceGroupCount) {
+    super(deviceGroupCount);
+  }
+
+  @Override
+  public int getDeviceGroupID(String device) {
+    int hash = base;
+
+    for (int i = 0; i < device.length(); i++) {
+      hash ^= ((hash << 5) + (int) device.charAt(i) + (hash >> 2));
+    }
+    hash &= Integer.MAX_VALUE;
+
+    return hash % deviceGroupCount;
+  }
 }

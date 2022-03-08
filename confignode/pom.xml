@@ -29,6 +29,11 @@
     </parent>
     <artifactId>iotdb-confignode</artifactId>
     <name>IoTDB ConfigNode</name>
+    <properties>
+        <iotdb.test.skip>false</iotdb.test.skip>
+        <iotdb.it.skip>${iotdb.test.skip}</iotdb.it.skip>
+        <iotdb.ut.skip>${iotdb.test.skip}</iotdb.ut.skip>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -37,13 +42,45 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-server</artifactId>
+            <artifactId>iotdb-thrift-confignode</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-confignode</artifactId>
+            <artifactId>iotdb-jdbc</artifactId>
             <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>${maven.assembly.version}</version>
+                <executions>
+                    <!-- Package binaries-->
+                    <execution>
+                        <id>confignode-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/assembly/confignode.xml</descriptor>
+                            </descriptors>
+                            <appendAssemblyId>false</appendAssemblyId>
+                            <archive>
+                                <manifest>
+                                    <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                                    <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                                </manifest>
+                            </archive>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>
