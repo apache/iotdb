@@ -119,7 +119,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     List<TsFileResource> selectedFileList = new ArrayList<>();
     long selectedFileSize = 0L;
     long targetCompactionFileSize = config.getTargetCompactionFileSize();
-    LOGGER.info("[CompactionDebug] start to select level {} files", level);
 
     for (TsFileResource currentFile : tsFileResources) {
       TsFileNameGenerator.TsFileName currentName =
@@ -127,12 +126,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
       if (currentName.getInnerCompactionCnt() != level || currentFile.isCompactionCandidate()) {
         selectedFileList.clear();
         selectedFileSize = 0L;
-        LOGGER.info(
-            "[CompactionDebug] current file is {}, clear selected file list because currentFile {}",
-            currentFile,
-            currentName.getInnerCompactionCnt() != level
-                ? "is not in current level"
-                : "is compaction candidate");
         continue;
       }
       LOGGER.debug("Current File is {}, size is {}", currentFile, currentFile.getTsFileSize());
@@ -148,8 +141,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
           || selectedFileList.size() >= config.getMaxCompactionCandidateFileNum()) {
         // submit the task
         if (selectedFileList.size() > 1) {
-          LOGGER.info(
-              "[CompactionDebug] submit a compaction task to temp task queue, level is {}", level);
           taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
         }
         selectedFileList = new ArrayList<>();
@@ -184,7 +175,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
             tsFileManager,
             selectedFileList,
             sequence);
-    LOGGER.info("[CompactionDebug] Submit a task {} to compaction task manager", selectedFileList);
     return CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
   }
 

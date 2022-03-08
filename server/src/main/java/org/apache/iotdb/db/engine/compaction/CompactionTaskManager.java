@@ -239,8 +239,7 @@ public class CompactionTaskManager implements IService {
     try {
       while (currentTaskNum.get()
               < IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
-          && !candidateCompactionTaskQueue.isEmpty()
-          && candidateCompactionTaskQueue.toString() != null) {
+          && !candidateCompactionTaskQueue.isEmpty()) {
         AbstractCompactionTask task = candidateCompactionTaskQueue.take();
 
         // add metrics

@@ -194,7 +194,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         return false;
       }
       tsFileResource.setCompacting(true);
-      tsFileResource.setCompactionCandidate(false);
     }
     return true;
   }
@@ -215,15 +214,15 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   }
 
   private void releaseAllLock() {
+    selectedSeqTsFileResourceList.forEach(x -> x.setCompactionCandidate(false));
+    selectedUnSeqTsFileResourceList.forEach(x -> x.setCompactionCandidate(false));
     for (TsFileResource tsFileResource : holdReadLockList) {
       tsFileResource.readUnlock();
       tsFileResource.setCompacting(false);
-      tsFileResource.setCompactionCandidate(false);
     }
     for (TsFileResource tsFileResource : holdWriteLockList) {
       tsFileResource.writeUnlock();
       tsFileResource.setCompacting(false);
-      tsFileResource.setCompactionCandidate(false);
     }
     holdReadLockList.clear();
     holdWriteLockList.clear();
