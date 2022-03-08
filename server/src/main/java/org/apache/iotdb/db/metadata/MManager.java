@@ -51,6 +51,9 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupManager;
+import org.apache.iotdb.db.metadata.storagegroup.SGMManager;
+import org.apache.iotdb.db.metadata.storagegroup.StorageGroupManagerTrieImpl;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
@@ -173,9 +176,6 @@ public class MManager {
 
   public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
 
-  /** A thread will check whether the MTree is modified lately each such interval. Unit: second */
-  private static final long MTREE_SNAPSHOT_THREAD_CHECK_TIME = 600L;
-
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   /** threshold total size of MTree */
   private static final long MTREE_SIZE_THRESHOLD = config.getAllocateMemoryForSchema();
@@ -188,20 +188,7 @@ public class MManager {
 
   private AtomicLong totalSeriesNumber = new AtomicLong();
 
-  private final int mtreeSnapshotInterval;
-  private final long mtreeSnapshotThresholdTime;
-  private ScheduledExecutorService timedCreateMTreeSnapshotThread;
-  private ScheduledExecutorService timedForceMLogThread;
-
-  // the log file seriesPath
-  private String logFilePath;
-  private File logFile;
-  private MLogWriter logWriter;
-
-  private MTree mtree;
-  // device -> DeviceMNode
-  private LoadingCache<PartialPath, IMNode> mNodeCache;
-  private TagManager tagManager = TagManager.getInstance();
+  private IStorageGroupManager storageGroupManager;
   private TemplateManager templateManager = TemplateManager.getInstance();
 
   // region MManager Singleton
@@ -222,8 +209,6 @@ public class MManager {
 
   // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
   protected MManager() {
-    mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
-    mtreeSnapshotThresholdTime = config.getMtreeSnapshotThresholdTime() * 1000L;
     String schemaDir = config.getSchemaDir();
     File schemaFolder = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!schemaFolder.exists()) {
@@ -233,45 +218,9 @@ public class MManager {
         logger.info("create system folder {} failed.", schemaFolder.getAbsolutePath());
       }
     }
-    logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
 
     // do not write log when recover
     isRecovering = true;
-
-    int cacheSize = config.getmManagerCacheSize();
-    mNodeCache =
-        Caffeine.newBuilder()
-            .maximumSize(cacheSize)
-            .build(
-                new com.github.benmanes.caffeine.cache.CacheLoader<PartialPath, IMNode>() {
-                  @Override
-                  public @Nullable IMNode load(@NonNull PartialPath partialPath)
-                      throws MetadataException {
-
-                    return mtree.getNodeByPathWithStorageGroupCheck(partialPath);
-                  }
-                });
-
-    if (config.isEnableMTreeSnapshot()) {
-      timedCreateMTreeSnapshotThread =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedCreateMTreeSnapshot");
-      timedCreateMTreeSnapshotThread.scheduleAtFixedRate(
-          this::checkMTreeModified,
-          MTREE_SNAPSHOT_THREAD_CHECK_TIME,
-          MTREE_SNAPSHOT_THREAD_CHECK_TIME,
-          TimeUnit.SECONDS);
-    }
-
-    if (config.getSyncMlogPeriodInMs() != 0) {
-      timedForceMLogThread =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
-
-      timedForceMLogThread.scheduleAtFixedRate(
-          this::forceMlog,
-          config.getSyncMlogPeriodInMs(),
-          config.getSyncMlogPeriodInMs(),
-          TimeUnit.MILLISECONDS);
-    }
   }
 
   // Because the writer will be used later and should not be closed here.
@@ -280,19 +229,18 @@ public class MManager {
     if (initialized) {
       return;
     }
-    logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
     try {
       isRecovering = true;
 
-      tagManager.init();
-      mtree = new MTree();
-      mtree.init();
+      storageGroupManager = new StorageGroupManagerTrieImpl();
+      storageGroupManager.init();
 
-      int lineNumber = initFromLog(logFile);
+      // todo implement this as multi thread process
+      for(SGMManager sgmManager: storageGroupManager.getAllSGMManager()){
+        sgmManager.init();
+      }
 
-      logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
-      logWriter.setLogNum(lineNumber);
       isRecovering = false;
     } catch (IOException e) {
       logger.error(
@@ -302,15 +250,6 @@ public class MManager {
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       startStatisticCounts();
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.MEM.toString(),
-              MetricLevel.IMPORTANT,
-              mtree,
-              RamUsageEstimator::sizeOf,
-              Tag.NAME.toString(),
-              "mtree");
     }
   }
 
@@ -330,10 +269,10 @@ public class MManager {
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
             MetricLevel.IMPORTANT,
-            mtree,
-            tree -> {
+            this,
+            mManager -> {
               try {
-                return tree.getDevicesNum(new PartialPath("root.**"));
+                return mManager.getDevicesNum(new PartialPath("root.**"));
               } catch (MetadataException e) {
                 logger.error("get deviceNum error", e);
               }
@@ -347,10 +286,10 @@ public class MManager {
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
             MetricLevel.IMPORTANT,
-            mtree,
-            tree -> {
+            this,
+            mManager -> {
               try {
-                return tree.getStorageGroupNum(new PartialPath("root.**"));
+                return mManager.getStorageGroupNum(new PartialPath("root.**"), false);
               } catch (MetadataException e) {
                 logger.error("get storageGroupNum error", e);
               }
@@ -360,108 +299,21 @@ public class MManager {
             "storageGroup");
   }
 
-  private void forceMlog() {
-    try {
-      logWriter.force();
-    } catch (IOException e) {
-      logger.error("Cannot force mlog to the storage device", e);
-    }
-  }
-
-  /** @return line number of the logFile */
-  @SuppressWarnings("squid:S3776")
-  private int initFromLog(File logFile) throws IOException {
-    long time = System.currentTimeMillis();
-    // init the metadata from the operation log
-    if (logFile.exists()) {
-      int idx = 0;
-      try (MLogReader mLogReader =
-          new MLogReader(config.getSchemaDir(), MetadataConstant.METADATA_LOG); ) {
-        idx = applyMLog(mLogReader);
-        logger.debug(
-            "spend {} ms to deserialize mtree from mlog.bin", System.currentTimeMillis() - time);
-        return idx;
-      } catch (Exception e) {
-        throw new IOException("Failed to parser mlog.bin for err:" + e);
-      }
-    } else {
-      return 0;
-    }
-  }
-
-  private int applyMLog(MLogReader mLogReader) {
-    int idx = 0;
-    PhysicalPlan plan;
-    while (mLogReader.hasNext()) {
-      try {
-        plan = mLogReader.next();
-        idx++;
-      } catch (Exception e) {
-        logger.error("Parse mlog error at lineNumber {} because:", idx, e);
-        break;
-      }
-      if (plan == null) {
-        continue;
-      }
-      try {
-        operation(plan);
-      } catch (MetadataException | IOException e) {
-        logger.error("Can not operate cmd {} for err:", plan.getOperatorType(), e);
-      }
-    }
-
-    return idx;
-  }
-
-  private void checkMTreeModified() {
-    if (logWriter == null || logFile == null) {
-      // the logWriter is not initialized now, we skip the check once.
-      return;
-    }
-    if (System.currentTimeMillis() - logFile.lastModified() >= mtreeSnapshotThresholdTime
-        || logWriter.getLogNum() >= mtreeSnapshotInterval) {
-      logger.info(
-          "New mlog line number: {}, time from last modification: {} ms",
-          logWriter.getLogNum(),
-          System.currentTimeMillis() - logFile.lastModified());
-      createMTreeSnapshot();
-    }
-  }
-
   public void createMTreeSnapshot() {
-    try {
-      mtree.createSnapshot();
-      logWriter.clear();
-    } catch (IOException e) {
-      logger.warn("Failed to create MTree snapshot", e);
+    for(SGMManager sgmManager: storageGroupManager.getAllSGMManager()){
+      sgmManager.createMTreeSnapshot();
     }
   }
 
   /** function for clearing MTree */
   public synchronized void clear() {
     try {
-      if (this.mtree != null) {
-        this.mtree.clear();
+      for(SGMManager sgmManager: storageGroupManager.getAllSGMManager()){
+        sgmManager.clear();
       }
-      if (this.mNodeCache != null) {
-        this.mNodeCache.invalidateAll();
-      }
+      storageGroupManager.clear();
       this.totalSeriesNumber.set(0);
       this.templateManager.clear();
-      if (logWriter != null) {
-        logWriter.close();
-        logWriter = null;
-      }
-      tagManager.clear();
-      initialized = false;
-      if (config.isEnableMTreeSnapshot() && timedCreateMTreeSnapshotThread != null) {
-        timedCreateMTreeSnapshotThread.shutdownNow();
-        timedCreateMTreeSnapshotThread = null;
-      }
-      if (timedForceMLogThread != null) {
-        timedForceMLogThread.shutdownNow();
-        timedForceMLogThread = null;
-      }
     } catch (IOException e) {
       logger.error("Cannot close metadata log writer, because:", e);
     }
@@ -747,7 +599,7 @@ public class MManager {
 
   private void ensureStorageGroup(PartialPath path) throws MetadataException {
     try {
-      mtree.getBelongedStorageGroup(path);
+      storageGroupManager.getBelongedStorageGroup(path);
     } catch (StorageGroupNotSetException e) {
       if (!config.isAutoCreateSchemaEnabled()) {
         throw e;
@@ -870,7 +722,7 @@ public class MManager {
    */
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
     try {
-      mtree.setStorageGroup(storageGroup);
+      storageGroupManager.setStorageGroup(storageGroup);
       if (!config.isEnableMemControl()) {
         MemTableManager.getInstance().addOrDeleteStorageGroup(1);
       }
@@ -901,7 +753,7 @@ public class MManager {
         mNodeCache.invalidateAll();
 
         // try to delete storage group
-        List<IMeasurementMNode> leafMNodes = mtree.deleteStorageGroup(storageGroup);
+        List<IMeasurementMNode> leafMNodes = storageGroupManager.deleteStorageGroup(storageGroup);
         for (IMeasurementMNode leafMNode : leafMNodes) {
           removeFromTagInvertedIndex(leafMNode);
         }
@@ -924,10 +776,7 @@ public class MManager {
   }
 
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
-    getStorageGroupNodeByStorageGroupPath(storageGroup).setDataTTL(dataTTL);
-    if (!isRecovering) {
-      logWriter.setTTL(storageGroup, dataTTL);
-    }
+    storageGroupManager.getSGMManager(storageGroup).setTTL(dataTTL);
   }
   // endregion
 
@@ -1062,7 +911,7 @@ public class MManager {
    */
   public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return mtree.getStorageGroupNum(pathPattern, isPrefixMatch);
+    return storageGroupManager.getStorageGroupNum(pathPattern, isPrefixMatch);
   }
 
   /**
@@ -1156,12 +1005,12 @@ public class MManager {
    * @apiNote :for cluster
    */
   public boolean isStorageGroup(PartialPath path) {
-    return mtree.isStorageGroup(path);
+    return storageGroupManager.isStorageGroup(path);
   }
 
   /** Check whether the given path contains a storage group */
   public boolean checkStorageGroupByPath(PartialPath path) {
-    return mtree.checkStorageGroupByPath(path);
+    return storageGroupManager.checkStorageGroupByPath(path);
   }
 
   /**
@@ -1173,7 +1022,7 @@ public class MManager {
    * @return storage group in the given path
    */
   public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
-    return mtree.getBelongedStorageGroup(path);
+    return storageGroupManager.getBelongedStorageGroup(path);
   }
 
   /**
@@ -1188,7 +1037,7 @@ public class MManager {
    */
   public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
       throws MetadataException {
-    return mtree.getBelongedStorageGroups(pathPattern);
+    return storageGroupManager.getBelongedStorageGroups(pathPattern);
   }
 
   /**
@@ -1201,12 +1050,12 @@ public class MManager {
    */
   public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return mtree.getMatchedStorageGroups(pathPattern, isPrefixMatch);
+    return storageGroupManager.getMatchedStorageGroups(pathPattern, isPrefixMatch);
   }
 
   /** Get all storage group paths */
   public List<PartialPath> getAllStorageGroupPaths() {
-    return mtree.getAllStorageGroupPaths();
+    return storageGroupManager.getAllStorageGroupPaths();
   }
 
   /**
@@ -1483,18 +1332,18 @@ public class MManager {
    */
   public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
       throws MetadataException {
-    return mtree.getStorageGroupNodeByStorageGroupPath(path);
+    return storageGroupManager.getStorageGroupNodeByStorageGroupPath(path);
   }
 
   /** Get storage group node by path. the give path don't need to be storage group path. */
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
     ensureStorageGroup(path);
-    return mtree.getStorageGroupNodeByPath(path);
+    return storageGroupManager.getStorageGroupNodeByPath(path);
   }
 
   /** Get all storage group MNodes */
   public List<IStorageGroupMNode> getAllStorageGroupNodes() {
-    return mtree.getAllStorageGroupNodes();
+    return storageGroupManager.getAllStorageGroupNodes();
   }
 
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
@@ -1789,7 +1638,7 @@ public class MManager {
    */
   public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
       throws MetadataException {
-    Map<String, List<PartialPath>> sgPathMap = mtree.groupPathByStorageGroup(path);
+    Map<String, List<PartialPath>> sgPathMap = storageGroupManager.groupPathByStorageGroup(path);
     if (logger.isDebugEnabled()) {
       logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
     }

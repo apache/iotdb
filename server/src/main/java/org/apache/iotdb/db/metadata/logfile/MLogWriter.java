@@ -135,16 +135,6 @@ public class MLogWriter implements AutoCloseable {
     putLog(deleteTimeSeriesPlan);
   }
 
-  public void createContinuousQuery(CreateContinuousQueryPlan createContinuousQueryPlan)
-      throws IOException {
-    putLog(createContinuousQueryPlan);
-  }
-
-  public void dropContinuousQuery(DropContinuousQueryPlan dropContinuousQueryPlan)
-      throws IOException {
-    putLog(dropContinuousQueryPlan);
-  }
-
   public void setStorageGroup(PartialPath storageGroup) throws IOException {
     SetStorageGroupPlan plan = new SetStorageGroupPlan(storageGroup);
     putLog(plan);
