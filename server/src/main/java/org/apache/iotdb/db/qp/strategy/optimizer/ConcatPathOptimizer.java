@@ -18,13 +18,10 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
-import static org.apache.iotdb.db.metadata.utils.MetaUtils.splitPathToDetachedPath;
-
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -130,33 +127,47 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     if (queryOperator.getSpecialClauseComponent() != null
         && !queryOperator.getSpecialClauseComponent().getWithoutNullColumns().isEmpty()) {
       List<Expression> withoutNullColumns = new ArrayList<>();
-      for (Expression expression : queryOperator.getSpecialClauseComponent().getWithoutNullColumns()) {
-        concatWithoutNullColumns(prefixPaths, expression, withoutNullColumns, queryOperator.getAliasSet());
+      for (Expression expression :
+          queryOperator.getSpecialClauseComponent().getWithoutNullColumns()) {
+        concatWithoutNullColumns(
+            prefixPaths, expression, withoutNullColumns, queryOperator.getAliasSet());
       }
       queryOperator.getSpecialClauseComponent().setWithoutNullColumns(withoutNullColumns);
     }
   }
 
-  private void concatWithoutNullColumns(List<PartialPath> prefixPaths, Expression expression,
-      List<Expression> withoutNullColumns, Set<String> aliasSet) throws LogicalOptimizeException {
+  private void concatWithoutNullColumns(
+      List<PartialPath> prefixPaths,
+      Expression expression,
+      List<Expression> withoutNullColumns,
+      Set<String> aliasSet)
+      throws LogicalOptimizeException {
     if (expression instanceof TimeSeriesOperand) {
       TimeSeriesOperand timeSeriesOperand = (TimeSeriesOperand) expression;
-      if (timeSeriesOperand.getPath().getFullPath().startsWith(SQLConstant.ROOT + ".")) { // start with "root." don't concat
-        if (((TimeSeriesOperand) expression).getPath().getNodeLength() == 1) {  // no split
+      if (timeSeriesOperand
+          .getPath()
+          .getFullPath()
+          .startsWith(SQLConstant.ROOT + ".")) { // start with "root." don't concat
+        if (((TimeSeriesOperand) expression).getPath().getNodeLength() == 1) { // no split
           try {
-            ((TimeSeriesOperand) expression).setPath(new PartialPath(MetaUtils
-                .splitPathToDetachedPath(((TimeSeriesOperand) expression).getPath().getFirstNode())));  // split path To nodes
+            ((TimeSeriesOperand) expression)
+                .setPath(
+                    new PartialPath(
+                        MetaUtils.splitPathToDetachedPath(
+                            ((TimeSeriesOperand) expression)
+                                .getPath()
+                                .getFirstNode()))); // split path To nodes
           } catch (IllegalPathException e) {
             throw new LogicalOptimizeException(e.getMessage());
           }
         }
         withoutNullColumns.add(expression);
       } else {
-        if (!aliasSet.contains(expression.getExpressionString())) {  // not alias, concat
+        if (!aliasSet.contains(expression.getExpressionString())) { // not alias, concat
           List<Expression> resultExpressions = new ArrayList<>();
           expression.concat(prefixPaths, resultExpressions);
           withoutNullColumns.addAll(resultExpressions);
-        } else {  // alias, don't concat
+        } else { // alias, don't concat
           withoutNullColumns.add(expression);
         }
       }
@@ -210,7 +221,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       return;
     }
 
-    List<Expression> expressions = queryOperator.getSpecialClauseComponent().getWithoutNullColumns();
+    List<Expression> expressions =
+        queryOperator.getSpecialClauseComponent().getWithoutNullColumns();
     WildcardsRemover withoutNullWildcardsRemover = new WildcardsRemover(queryOperator);
     List<Expression> filterExpressions = new ArrayList<>();
     List<Expression> resultExpressions = new ArrayList<>();
@@ -223,10 +235,12 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
 
     // group by level, use groupedPathMap
-    GroupByLevelController groupByLevelController = queryOperator.getSpecialClauseComponent().getGroupByLevelController();
+    GroupByLevelController groupByLevelController =
+        queryOperator.getSpecialClauseComponent().getGroupByLevelController();
     if (groupByLevelController != null) {
       for (Expression expression : filterExpressions) {
-        String groupedPath = groupByLevelController.getGroupedPath(expression.getExpressionString());
+        String groupedPath =
+            groupByLevelController.getGroupedPath(expression.getExpressionString());
         if (groupedPath != null) {
           try {
             resultExpressions.add(new TimeSeriesOperand(new PartialPath(groupedPath)));

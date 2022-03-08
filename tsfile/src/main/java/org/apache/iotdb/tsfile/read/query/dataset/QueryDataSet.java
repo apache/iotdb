@@ -18,15 +18,15 @@
  */
 package org.apache.iotdb.tsfile.read.query.dataset;
 
-import java.util.HashSet;
-import java.util.Set;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public abstract class QueryDataSet {
 
@@ -137,11 +137,11 @@ public abstract class QueryDataSet {
           int index = 0;
           for (Field field : rowRecord.getFields()) {
             if (!withoutNullColumnsIndex.contains(index)) {
-              index ++;
+              index++;
               continue;
             }
 
-            index ++;
+            index++;
             if (field == null || field.getDataType() == null) {
               anyNullFlag = true;
               if (withoutAnyNull) {
@@ -163,7 +163,7 @@ public abstract class QueryDataSet {
             continue;
           }
 
-          rowOffset --;
+          rowOffset--;
         }
       } else {
         return false;

@@ -52,7 +52,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.checkerframework.checker.units.qual.A;
 
 import static org.apache.iotdb.db.utils.SchemaUtils.getSeriesTypeByPath;
 
@@ -358,7 +357,8 @@ public class QueryOperator extends Operator {
     return alignByDevicePlan;
   }
 
-  private void checkWithoutNullColumnValidAlignByDevice(QueryPlan queryPlan) throws QueryProcessException {
+  private void checkWithoutNullColumnValidAlignByDevice(QueryPlan queryPlan)
+      throws QueryProcessException {
     if (specialClauseComponent != null) {
       // meta consistence check
       for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
@@ -379,15 +379,16 @@ public class QueryOperator extends Operator {
     }
   }
 
-  protected void convertSpecialClauseValues(QueryPlan queryPlan)
-      throws QueryProcessException{
+  protected void convertSpecialClauseValues(QueryPlan queryPlan) throws QueryProcessException {
     if (specialClauseComponent != null) {
       // meta consistence check
-      if (!queryPlan.getPathToIndex().isEmpty()) {  // align by device queryPlan.getPathToIndex() is empty
+      if (!queryPlan
+          .getPathToIndex()
+          .isEmpty()) { // align by device queryPlan.getPathToIndex() is empty
         for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
           if (queryPlan.getPathToIndex().containsKey(expression.getExpressionString())) {
-            queryPlan.addWithoutNullColumnIndex(queryPlan.getPathToIndex()
-                .get(expression.getExpressionString()));
+            queryPlan.addWithoutNullColumnIndex(
+                queryPlan.getPathToIndex().get(expression.getExpressionString()));
           } else {
             throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
           }

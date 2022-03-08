@@ -509,14 +509,13 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     return tsQueryDataSet;
   }
 
-//  /** if any column in the row record is null, we filter it. */
+  //  /** if any column in the row record is null, we filter it. */
   /** if columns in the row record match the condition of null value filter, we filter it. */
   private boolean filterRowRecord(int seriesNum, long minTime)
       throws IOException, InterruptedException {
     boolean hasNull = false, isAllNull = true;
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-      if (!withoutNullColumnsIndex.isEmpty()
-          && !withoutNullColumnsIndex.contains(seriesIndex)) {
+      if (!withoutNullColumnsIndex.isEmpty() && !withoutNullColumnsIndex.contains(seriesIndex)) {
         continue;
       }
       if (cachedBatchDataArray[seriesIndex] == null

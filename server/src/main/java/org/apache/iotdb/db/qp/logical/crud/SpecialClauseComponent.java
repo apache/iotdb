@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.qp.logical.crud;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.query.expression.Expression;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class SpecialClauseComponent {
 
@@ -55,8 +56,7 @@ public class SpecialClauseComponent {
     return withoutNullColumns;
   }
 
-  public void setWithoutNullColumns(
-      List<Expression> withoutNullColumns) {
+  public void setWithoutNullColumns(List<Expression> withoutNullColumns) {
     this.withoutNullColumns = withoutNullColumns;
   }
 

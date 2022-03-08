@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.util.Set;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -36,6 +35,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 /** TimeValuePairUtils to convert between thrift format and TsFile format. */
 public class QueryDataSetUtils {
@@ -72,7 +72,8 @@ public class QueryDataSetUtils {
           // filter rows whose columns are null according to the rule
           if ((queryDataSet.isWithoutAllNull() && rowRecord.isAllNull())
               || (queryDataSet.isWithoutAnyNull() && rowRecord.hasNullField())) {
-            // if the current RowRecord doesn't satisfy, we should also decrease AlreadyReturnedRowNum
+            // if the current RowRecord doesn't satisfy, we should also decrease
+            // AlreadyReturnedRowNum
             queryDataSet.decreaseAlreadyReturnedRowNum();
             i--;
             continue;
@@ -82,11 +83,11 @@ public class QueryDataSetUtils {
           int index = 0;
           for (Field field : rowRecord.getFields()) {
             if (!withoutNullColumnsIndex.contains(index)) {
-              index ++;
+              index++;
               continue;
             }
 
-            index ++;
+            index++;
             if (field == null || field.getDataType() == null) {
               anyNullFlag = true;
               if (queryDataSet.isWithoutAnyNull()) {
@@ -101,14 +102,16 @@ public class QueryDataSetUtils {
           }
 
           if (anyNullFlag && queryDataSet.isWithoutAnyNull()) {
-            // if the current RowRecord doesn't satisfy, we should also decrease AlreadyReturnedRowNum
+            // if the current RowRecord doesn't satisfy, we should also decrease
+            // AlreadyReturnedRowNum
             queryDataSet.decreaseAlreadyReturnedRowNum();
             i--;
             continue;
           }
 
           if (allNullFlag && queryDataSet.isWithoutAllNull()) {
-            // if the current RowRecord doesn't satisfy, we should also decrease AlreadyReturnedRowNum
+            // if the current RowRecord doesn't satisfy, we should also decrease
+            // AlreadyReturnedRowNum
             queryDataSet.decreaseAlreadyReturnedRowNum();
             i--;
             continue;

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import java.util.Set;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -48,6 +47,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan.getTimeExpression;
 
@@ -130,13 +130,13 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         this.rawDataQueryPlan.setEnableRedirect(alignByDevicePlan.isEnableRedirect());
     }
 
-    int index = 1;  // start 1, because first is device name
+    int index = 1; // start 1, because first is device name
     if (withoutNullColumnsIndex.isEmpty()) {
       for (String measurement : this.measurements) {
         if (withoutNullColumns.contains(measurement)) {
           withoutNullColumnsIndex.add(index);
         }
-        index ++;
+        index++;
       }
     }
     this.curDataSetInitialized = false;

@@ -183,6 +183,9 @@ public class AggregationPlan extends RawDataQueryPlan {
       String aggregatePath =
           groupByLevelController.getGroupedPath(
               String.format("%s(%s)", functionName, path.getFullPath()));
+      if (resultColumns.get(pathIndex).hasAlias()) {
+        return resultColumns.get(pathIndex).getAlias();
+      }
       columnForDisplay = aggregatePath;
     }
     return columnForDisplay;

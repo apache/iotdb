@@ -21,23 +21,23 @@
 
 # 结果集空值过滤
 
-在实际应用中，用户可能希望对查询的结果集中某些存在空值的行进行过滤。为满足该需求，在 IoTDB 中，可以使用  `WITHOUT NULL`  子句对结果集中的空值进行过滤，有两种过滤策略：`WITHOUT NULL ANY`和`WITHOUT NULL ALL`,同时 `WITHOUT NULL`  子句支持在后面以括号的形式指定相应列进行过滤
+在实际应用中，用户可能希望对查询的结果集中某些存在空值的行进行过滤。在 IoTDB 中，可以使用  `WITHOUT NULL`  子句对结果集中的空值进行过滤，有两种过滤策略：`WITHOUT NULL ANY`和`WITHOUT NULL ALL`。不仅如此， `WITHOUT NULL`  子句支持指定相应列进行过滤。
 
 > WITHOUT NULL ANY: 指定的列集中，存在一列为NULL,则满足条件进行过滤
 > 
-> WITHOUT NULL ALL: 指定的列集中，所有列为NULL,则满足条件进行过滤
+> WITHOUT NULL ALL: 指定的列集中，所有列都为NULL,才满足条件进行过滤
 
 ## 不指定列
 
 > 默认就是对结果集中的所有列生效，即指定的列集为结果集中的所有列
 
-1. 如果结果集中，任意一列为 null，则过滤掉该行；即获得的结果集不包含任何空值。
+1. 在下列查询中，如果结果集中某一行任意一列为 null，则过滤掉该行；即获得的结果集不包含任何空值。
 
 ```sql
 select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
 ```
 
-2. 在降采样查询中，如果结果集的某一行所有列都为 null，则过滤掉该行；即获得的结果集不包含所有值都为 null 的行。
+2. 在下列查询中，如果结果集的某一行所有列都为 null，则过滤掉该行；即获得的结果集不包含所有值都为 null 的行。
 
 ```sql
 select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
@@ -54,19 +54,19 @@ select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
 
 比如下面的例子
 
-1. 比如`root.test.sg1.s1`列在元数据存在，`root.test.sg1.usag`列在元数据不存在，则下面相当于without null all(s1)
+1. 比如`without null`指定的列集中`root.test.sg1.s1`列在元数据中存在，`root.test.sg1.usag`列在元数据不存在，则下面查询的without null子句的作用相当于without null all(s1)
 
 ```sql
 select * from root.test.sg1 without null all (s1, usag)
 ```
 
-2. 比如`root.test.sg1.s2`列在元数据存在，但查询的结果集中输出列不包括，所以会报错:`The without null columns don't match the columns queried.If has alias, please use the alias.`
+2. 比如`without null`指定的列集中`root.test.sg1.s2`列在元数据中存在，但查询的结果集中输出列不包括，所以会报错:`The without null columns don't match the columns queried.If has alias, please use the alias.`
 
 ```sql
 select s1 + s2, s1 - s2, s1 * s2, s1 / s2, s1 % s2 from root.test.sg1 without null all (s1+s2, s2)
 ```
 
-### 原始的简单查询
+### 原始数据查询
 
 1. 如果查询的结果集中, root.ln.sg1.s1这一列如果为null,则过滤掉该行
 
@@ -116,7 +116,7 @@ select s2 as t1, - s2, s4, + s4, s2 + s4 as t2, s2 - s4, s2 * s4, s2 / s4, s2 % 
 select s1, sin(s2) + cos(s2) as t1, cos(sin(s2 + s4) + s2) as t2 from root.test.sg1 without null all (t1, t2)
 ```
 
-2. 当你指定了别名，如果在指定的列名中再使用原始列名，则会报错：`The without null columns don't match the columns queried.If has alias, please use the alias.` 比如下面同时使用了tan(s1)和t
+2. 当你指定了别名，如果在without null指定的列集中再使用原始列名，则会报错：`The without null columns don't match the columns queried.If has alias, please use the alias.` 比如下面同时使用了tan(s1)和t
 
 ```sql
 select s1 as d, sin(s1), cos(s1), tan(s1) as t, s2 from root.test.sg1 without null all(d,  tan(s1), t) limit 5
@@ -149,7 +149,7 @@ Total line number = 3
 It costs 0.007s
 ```
 
-指定的列名是与输出结果的列名对应，目前不支持指定某设备的某列，会报错:`The without null columns don't match the columns queried.If has alias, please use the alias.` 比如下面这个查询例子,指定last_value(root.sg1.d1.s3)为null的行进行过滤，目前是不支持的。
+指定的列名是与输出结果的列名对应，目前`without null`子句不支持指定某设备的某列，会报错:`The without null columns don't match the columns queried.If has alias, please use the alias.` 比如下面这个查询例子,指定last_value(root.sg1.d1.s3)为null的行进行过滤，目前是不支持的。
 
 ```sql
 select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null all(last_value(`root.sg1.d1.s3`)) align by device

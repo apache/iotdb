@@ -18,15 +18,12 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.HashSet;
-import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -41,8 +38,10 @@ import org.apache.thrift.TException;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public abstract class QueryPlan extends PhysicalPlan {
 
@@ -60,9 +59,10 @@ public abstract class QueryPlan extends PhysicalPlan {
   private boolean ascending = true;
 
   private Map<String, Integer> pathToIndex = new HashMap<>(); // align By time
-  private Set<String> alignByDeviceWithoutNullValidSet = new HashSet<>();  // align By Device
+  private Set<String> alignByDeviceWithoutNullValidSet = new HashSet<>(); // align By Device
 
-  private Set<Integer> withoutNullColumnsIndex = new HashSet<>(); // index set that withoutNullColumns for output data columns
+  private Set<Integer> withoutNullColumnsIndex =
+      new HashSet<>(); // index set that withoutNullColumns for output data columns
 
   private boolean enableRedirect = false;
   private boolean enableTracing = false;
