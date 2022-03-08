@@ -44,6 +44,13 @@ public class LRUCacheManager extends CacheManager {
     }
   }
 
+  // MNode update operation like node replace may reset the mapping between cacheEntry and node,
+  // thus it should be updated
+  @Override
+  protected void updateCacheStatusAfterUpdate(CacheEntry cacheEntry, IMNode node) {
+    getAsLRUCacheEntry(cacheEntry).setNode(node);
+  }
+
   @Override
   protected CacheEntry initCacheEntryForNode(IMNode node) {
     LRUCacheEntry cacheEntry = new LRUCacheEntry();
