@@ -603,6 +603,13 @@ public class IoTDBConfig {
   private long continuousQueryMinimumEveryInterval = 1000;
 
   /**
+   * The size of log buffer for every CQ management operation plan. If the size of a CQ management
+   * operation plan is larger than this parameter, the CQ management operation plan will be rejected
+   * by CQManager. Unit: byte
+   */
+  private int cqlogBufferSize = 1024 * 1024;
+
+  /**
    * The maximum number of rows can be processed in insert-tablet-plan when executing select-into
    * statements.
    */
@@ -1572,6 +1579,14 @@ public class IoTDBConfig {
 
   public void setContinuousQueryMinimumEveryInterval(long minimumEveryInterval) {
     this.continuousQueryMinimumEveryInterval = minimumEveryInterval;
+  }
+
+  public int getCqlogBufferSize() {
+    return cqlogBufferSize;
+  }
+
+  public void setCqlogBufferSize(int cqlogBufferSize) {
+    this.cqlogBufferSize = cqlogBufferSize;
   }
 
   public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
