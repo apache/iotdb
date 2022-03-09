@@ -68,7 +68,7 @@ public class ContinuousQueryService implements IService {
 
   private CQLogWriter logWriter;
 
-  public synchronized void doRecovery() throws StartupException {
+  public void doRecovery() throws StartupException {
     try {
       File logFile = SystemFileFactory.INSTANCE.getFile(LOG_FILE_NAME);
       if (!logFile.exists()) {
@@ -96,16 +96,6 @@ public class ContinuousQueryService implements IService {
     } catch (ContinuousQueryException | IOException e) {
       LOGGER.error("Error occurred during restart CQService");
       throw new StartupException(e);
-    }
-  }
-
-  @TestOnly
-  public synchronized void clear() throws ContinuousQueryException, IOException {
-    deregisterAll();
-
-    if (logWriter != null) {
-      logWriter.close();
-      logWriter = null;
     }
   }
 
@@ -172,15 +162,26 @@ public class ContinuousQueryService implements IService {
 
   @Override
   public void stop() {
-    if (continuousQueryTaskSubmitThread != null) {
-      continuousQueryTaskSubmitThread.shutdown();
-      try {
-        continuousQueryTaskSubmitThread.awaitTermination(600, TimeUnit.MILLISECONDS);
-      } catch (InterruptedException e) {
-        LOGGER.warn("Check thread still doesn't exit after 60s");
-        continuousQueryTaskSubmitThread.shutdownNow();
-        Thread.currentThread().interrupt();
+    try {
+      if (continuousQueryTaskSubmitThread != null) {
+        continuousQueryTaskSubmitThread.shutdown();
+        try {
+          continuousQueryTaskSubmitThread.awaitTermination(600, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+          LOGGER.warn("Check thread still doesn't exit after 60s");
+          continuousQueryTaskSubmitThread.shutdownNow();
+          Thread.currentThread().interrupt();
+        }
       }
+
+      continuousQueryPlans.clear();
+
+      if (logWriter != null) {
+        logWriter.close();
+        logWriter = null;
+      }
+    } catch (IOException ignored) {
+
     }
   }
 
