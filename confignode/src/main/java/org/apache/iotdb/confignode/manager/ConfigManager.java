@@ -40,6 +40,8 @@ public class ConfigManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
 
+  private final String hashExecutorPackage;
+
   private DeviceGroupHashExecutor hashExecutor;
 
   private Lock partitionTableLock;
@@ -48,12 +50,15 @@ public class ConfigManager {
   private LoadBalancer loadBalancer;
 
   public ConfigManager(String hashType, int deviceGroupCount) {
+    hashExecutorPackage =
+        ConfigNodeDescriptor.getInstance().getConf().getDeviceGroupHashExecutorPackage();
     setHashExecutor(hashType, deviceGroupCount);
   }
 
   public ConfigManager() {
     ConfigNodeConf config = ConfigNodeDescriptor.getInstance().getConf();
 
+    hashExecutorPackage = config.getDeviceGroupHashExecutorPackage();
     setHashExecutor(config.getDeviceGroupHashAlgorithm(), config.getDeviceGroupCount());
 
     this.partitionTableLock = new ReentrantLock();
@@ -64,9 +69,7 @@ public class ConfigManager {
 
   private void setHashExecutor(String hashAlgorithm, int deviceGroupCount) {
     try {
-      Class<?> executor =
-          Class.forName(
-              "org.apache.iotdb.confignode.manager.hash." + hashAlgorithm + "HashExecutor");
+      Class<?> executor = Class.forName(hashExecutorPackage + hashAlgorithm + "HashExecutor");
       Constructor<?> executorConstructor = executor.getConstructor(int.class);
       hashExecutor = (DeviceGroupHashExecutor) executorConstructor.newInstance(deviceGroupCount);
     } catch (ClassNotFoundException

@@ -27,6 +27,8 @@ public class ConfigNodeConf {
   // DeviceGroup hash algorithm
   private String deviceGroupHashAlgorithm = "BKDR";
 
+  private String deviceGroupHashExecutorPackage = "org.apache.iotdb.confignode.manager.hash.";
+
   public ConfigNodeConf() {
     // empty constructor
   }
@@ -45,5 +47,13 @@ public class ConfigNodeConf {
 
   public void setDeviceGroupHashAlgorithm(String deviceGroupHashAlgorithm) {
     this.deviceGroupHashAlgorithm = deviceGroupHashAlgorithm;
+  }
+
+  public String getDeviceGroupHashExecutorPackage() {
+    return deviceGroupHashExecutorPackage;
+  }
+
+  public void setDeviceGroupHashExecutorPackage(String deviceGroupHashExecutorPackage) {
+    this.deviceGroupHashExecutorPackage = deviceGroupHashExecutorPackage;
   }
 }
