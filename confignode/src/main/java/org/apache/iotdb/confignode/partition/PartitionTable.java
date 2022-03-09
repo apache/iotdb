@@ -28,25 +28,25 @@ import java.util.Map;
  */
 public class PartitionTable {
 
-  // Map<StorageGroup, Map<DeviceGroupID, MManagerGroupID>>
+  // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionGroupID>>
   private final Map<String, Map<Integer, Integer>> metadataPartitionTable;
-  // Map<MManagerGroupID, List<PhysicalNodeIDs>>
-  private final Map<Integer, List<Integer>> mManagerGroupPhysicalNodesMap;
+  // Map<SchemaRegionGroupID, List<DataNodeID>>
+  private final Map<Integer, List<Integer>> schemaRegionGroupDataNodesMap;
 
-  // Map<StorageGroup, Map<DeviceGroupID, Map<TimeInterval, List<VSGGroupID>>>>
+  // Map<StorageGroup, Map<DeviceGroupID, Map<TimeInterval, List<DataRegionGroupID>>>>
   private final Map<String, Map<Integer, Map<Long, List<Integer>>>> dataPartitionTable;
-  // Map<VSGGroupID, List<PhysicalNodeIDs>>
-  private final Map<Integer, List<Integer>> vsgGroupPhysicalNodesMap;
+  // Map<DataRegionGroupID, List<DataNodeID>>
+  private final Map<Integer, List<Integer>> dataRegionGroupDataNodesMap;
 
   // Map<StorageGroup, Map<DeviceGroupID, DataPartitionRule>>
   private final Map<String, Map<Integer, DataPartitionRule>> dataPartitionRuleTable;
 
   public PartitionTable() {
     this.metadataPartitionTable = new HashMap<>();
-    this.mManagerGroupPhysicalNodesMap = new HashMap<>();
+    this.schemaRegionGroupDataNodesMap = new HashMap<>();
 
     this.dataPartitionTable = new HashMap<>();
-    this.vsgGroupPhysicalNodesMap = new HashMap<>();
+    this.dataRegionGroupDataNodesMap = new HashMap<>();
 
     this.dataPartitionRuleTable = new HashMap<>();
   }
