@@ -73,6 +73,11 @@ public class ContinuousQueryService implements IService {
 
   public void doRecovery() throws StartupException {
     try {
+      File logDir = SystemFileFactory.INSTANCE.getFile(LOG_FILE_DIR);
+      if (!logDir.exists()) {
+        logDir.mkdir();
+        return;
+      }
       File logFile = SystemFileFactory.INSTANCE.getFile(LOG_FILE_NAME);
       if (!logFile.exists()) {
         return;
