@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
@@ -2295,13 +2296,13 @@ public class MManager {
    * @return paths set
    */
   public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
-    return templateName.equals("")
+    return templateName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
         ? new HashSet<>(mtree.getPathsSetOnTemplate(null))
         : new HashSet<>(mtree.getPathsSetOnTemplate(templateManager.getTemplate(templateName)));
   }
 
   public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
-    return templateName.equals("")
+    return templateName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
         ? new HashSet<>(mtree.getPathsUsingTemplate(null))
         : new HashSet<>(mtree.getPathsUsingTemplate(templateManager.getTemplate(templateName)));
   }

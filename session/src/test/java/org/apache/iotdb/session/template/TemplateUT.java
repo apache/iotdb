@@ -172,7 +172,7 @@ public class TemplateUT {
                 "root.sg.v4",
                 "root.sg.v5",
                 "root.sg.v6")),
-        new HashSet<>(session.showPathsTemplateSetOn("")));
+        new HashSet<>(session.showPathsTemplateSetOn("*")));
 
     session.insertRecord(
         "root.sg.v1.GPS",
@@ -194,7 +194,7 @@ public class TemplateUT {
 
     assertEquals(
         new HashSet<>(Arrays.asList("root.sg.v1", "root.sg.v5")),
-        new HashSet<>(session.showPathsTemplateUsingOn("")));
+        new HashSet<>(session.showPathsTemplateUsingOn("*")));
   }
 
   @Test
