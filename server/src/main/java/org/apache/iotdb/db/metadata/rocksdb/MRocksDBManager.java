@@ -1576,9 +1576,7 @@ public class MRocksDBManager implements IMetaManager {
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
       throws MetadataException {
     // todo update offset
-    Pair<List<MeasurementPath>, Integer> result =
-        new Pair<>(getMatchedMeasurementPath(pathPattern.getNodes()), offset + limit);
-    return result;
+    return new Pair<>(getMatchedMeasurementPath(pathPattern.getNodes()), offset + limit);
   }
 
   private List<MeasurementPath> getMatchedMeasurementPath(String[] nodes)
@@ -1586,16 +1584,8 @@ public class MRocksDBManager implements IMetaManager {
     List<MeasurementPath> allResult = Collections.synchronizedList(new ArrayList<>());
     BiFunction<String, byte[], Boolean> function =
         (a, b) -> {
-          try {
-            allResult.add(
-                new MeasurementPath(
-                    new PartialPath(a),
-                    (MeasurementSchema) RocksDBUtils.parseNodeValue(b, FLAG_IS_SCHEMA)));
-            return true;
-          } catch (IllegalPathException e) {
-            logger.error(e.getMessage());
-            return false;
-          }
+          allResult.add(new RMeasurementMNode(a, b).getMeasurementPath());
+          return true;
         };
     traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
 
