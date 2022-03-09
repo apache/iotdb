@@ -92,6 +92,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -1633,7 +1634,7 @@ public class MTree implements Serializable {
    * Check that each node set with tarTemplate and its descendants have overlapping nodes with
    * appending measurements
    */
-  public boolean isTemplateAppendable(String tarTemplate, List<String> appendMeasurements)
+  public boolean isTemplateAppendable(Template tarTemplate, List<String> appendMeasurements)
       throws MetadataException {
     List<String> setPaths = getPathsSetOnTemplate(tarTemplate);
     if (setPaths.size() == 0) {
@@ -1757,103 +1758,96 @@ public class MTree implements Serializable {
     return fullPathNodes.length - 1;
   }
 
-  public List<String> getPathsSetOnTemplate(String templateName) throws MetadataException {
+  public List<String> getPathsSetOnTemplate(Template template) throws MetadataException {
+    String templateName = template == null ? "" : template.getName();
+    Set<PartialPath> initPath =
+        template == null
+            ? Collections.singleton(new PartialPath("root"))
+            : template.getRelatedStorageGroup();
     List<String> resSet = new ArrayList<>();
-    CollectorTraverser<Set<String>> setTemplatePaths =
-        new CollectorTraverser<Set<String>>(
-            root, root.getPartialPath().concatNode(MULTI_LEVEL_PATH_WILDCARD)) {
-          @Override
-          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
-              throws MetadataException {
-            // will never get here, implement for placeholder
-            return false;
-          }
-
-          @Override
-          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
-              throws MetadataException {
-            // shall not traverse nodes inside template
-            if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
-              return true;
+    for (PartialPath sgPath : initPath) {
+      CollectorTraverser<Set<String>> setTemplatePaths =
+          new CollectorTraverser<Set<String>>(
+              this.root, sgPath.concatNode(MULTI_LEVEL_PATH_WILDCARD)) {
+            @Override
+            protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
+                throws MetadataException {
+              // will never get here, implement for placeholder
+              return false;
             }
 
-            // if node not set template, go on traversing
-            if (node.getUpperTemplate() != null) {
-              // if set template, and equals to target or target for all, add to result
-              if (templateName.equals("")
-                  || templateName.equals(node.getUpperTemplate().getName())) {
-                resSet.add(node.getFullPath());
-              }
-              // descendants of the node cannot set another template, exit from this branch
-              return true;
-            }
-            return false;
-          }
-        };
-    setTemplatePaths.traverse();
-    return resSet;
-  }
-
-  public List<String> getPathsUsingTemplate(String templateName) throws MetadataException {
-    List<String> result = new ArrayList<>();
-
-    CollectorTraverser<Set<String>> usingTemplatePaths =
-        new CollectorTraverser<Set<String>>(
-            root, root.getPartialPath().concatNode(MULTI_LEVEL_PATH_WILDCARD)) {
-          @Override
-          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
-              throws MetadataException {
-            // will never get here, implement for placeholder
-            return false;
-          }
-
-          @Override
-          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
-              throws MetadataException {
-            // shall not traverse nodes inside template
-            if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
-              return true;
-            }
-
-            if (node.getUpperTemplate() != null) {
-              // this node and its descendants are set other template, exit from this branch
-              if (!templateName.equals("")
-                  && !templateName.equals(node.getUpperTemplate().getName())) {
+            @Override
+            protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+                throws MetadataException {
+              // shall not traverse nodes inside template
+              if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
                 return true;
               }
 
-              // descendants of this node may be using template too
-              if (node.isUseTemplate()) {
-                result.add(node.getFullPath());
+              // if node not set template, go on traversing
+              if (node.getSchemaTemplate() != null) {
+                // if set template, and equals to target or target for all, add to result
+                if (templateName.equals("")
+                    || templateName.equals(node.getUpperTemplate().getName())) {
+                  resSet.add(node.getFullPath());
+                }
+                // descendants of the node cannot set another template, exit from this branch
+                return true;
               }
+              return false;
             }
-            return false;
-          }
-        };
-
-    usingTemplatePaths.traverse();
-    return result;
+          };
+      setTemplatePaths.traverse();
+    }
+    return resSet;
   }
 
-  public boolean isTemplateSetOnMTree(String templateName) {
-    // check whether template has been set
-    Deque<IMNode> nodeStack = new ArrayDeque<>();
-    nodeStack.add(root);
+  public List<String> getPathsUsingTemplate(Template template) throws MetadataException {
+    String templateName = template == null ? "" : template.getName();
+    Set<PartialPath> initPath =
+        template == null
+            ? Collections.singleton(new PartialPath("root"))
+            : template.getRelatedStorageGroup();
+    List<String> result = new ArrayList<>();
 
-    // BFT traverse on MTree
-    while (nodeStack.size() != 0) {
-      IMNode curNode = nodeStack.pop();
-      if (curNode.getUpperTemplate() != null) {
-        if (curNode.getUpperTemplate().getName().equals(templateName)) {
-          return true;
-        }
-        // curNode set to other templates, cut this branch
-      } else {
-        // no template on curNode, push children to stack
-        nodeStack.addAll(curNode.getChildren().values());
-      }
+    for (PartialPath sgPath : initPath) {
+      CollectorTraverser<Set<String>> usingTemplatePaths =
+          new CollectorTraverser<Set<String>>(
+              this.root, sgPath.concatNode(MULTI_LEVEL_PATH_WILDCARD)) {
+            @Override
+            protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
+                throws MetadataException {
+              // will never get here, implement for placeholder
+              return false;
+            }
+
+            @Override
+            protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+                throws MetadataException {
+              // shall not traverse nodes inside template
+              if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
+                return true;
+              }
+
+              if (node.getUpperTemplate() != null) {
+                // this node and its descendants are set other template, exit from this branch
+                if (!templateName.equals("")
+                    && !templateName.equals(node.getUpperTemplate().getName())) {
+                  return true;
+                }
+
+                // descendants of this node may be using template too
+                if (node.isUseTemplate()) {
+                  result.add(node.getFullPath());
+                }
+              }
+              return false;
+            }
+          };
+
+      usingTemplatePaths.traverse();
     }
-    return false;
+    return result;
   }
 
   /**

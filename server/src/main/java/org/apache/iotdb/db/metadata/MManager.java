@@ -2194,7 +2194,12 @@ public class MManager {
   }
 
   public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
-    if (!mtree.isTemplateAppendable(plan.getName(), plan.getMeasurements())) {
+    if (templateManager.getTemplate(plan.getName()) == null) {
+      throw new MetadataException(String.format("Template [%s] does not exist.", plan.getName()));
+    }
+
+    if (!mtree.isTemplateAppendable(
+        templateManager.getTemplate(plan.getName()), plan.getMeasurements())) {
       throw new MetadataException(
           String.format(
               "Template [%s] cannot be appended for overlapping of new measurement and MTree",
@@ -2219,7 +2224,11 @@ public class MManager {
   }
 
   public void pruneSchemaTemplate(PruneTemplatePlan plan) throws MetadataException {
-    if (mtree.isTemplateSetOnMTree(plan.getName())) {
+    if (templateManager.getTemplate(plan.getName()) == null) {
+      throw new MetadataException(String.format("Template [%s] does not exist.", plan.getName()));
+    }
+
+    if (templateManager.getTemplate(plan.getName()).getRelatedStorageGroup().size() > 0) {
       throw new MetadataException(
           String.format(
               "Template [%s] cannot be pruned since had been set before.", plan.getName()));
@@ -2286,11 +2295,15 @@ public class MManager {
    * @return paths set
    */
   public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
-    return new HashSet<>(mtree.getPathsSetOnTemplate(templateName));
+    return templateName.equals("")
+        ? new HashSet<>(mtree.getPathsSetOnTemplate(null))
+        : new HashSet<>(mtree.getPathsSetOnTemplate(templateManager.getTemplate(templateName)));
   }
 
   public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
-    return new HashSet<>(mtree.getPathsUsingTemplate(templateName));
+    return templateName.equals("")
+        ? new HashSet<>(mtree.getPathsUsingTemplate(null))
+        : new HashSet<>(mtree.getPathsUsingTemplate(templateManager.getTemplate(templateName)));
   }
 
   public void dropSchemaTemplate(DropTemplatePlan plan) throws MetadataException {
@@ -2301,7 +2314,7 @@ public class MManager {
         throw new UndefinedTemplateException(templateName);
       }
 
-      if (mtree.isTemplateSetOnMTree(templateName)) {
+      if (templateManager.getTemplate(plan.getName()).getRelatedStorageGroup().size() > 0) {
         throw new MetadataException(
             String.format(
                 "Template [%s] has been set on MTree, cannot be dropped now.", templateName));
@@ -2331,6 +2344,8 @@ public class MManager {
 
       node.setSchemaTemplate(template);
 
+      template.markStorageGroup(node);
+
       // write wal
       if (!isRecovering) {
         logWriter.setSchemaTemplate(plan);
@@ -2354,6 +2369,7 @@ public class MManager {
       }
       mtree.checkTemplateInUseOnLowerNode(node);
       node.setSchemaTemplate(null);
+      templateManager.getTemplate(plan.getTemplateName()).removeStorageGroup(node);
       // write wal
       if (!isRecovering) {
         logWriter.unsetSchemaTemplate(plan);

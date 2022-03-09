@@ -64,6 +64,9 @@ public class Template {
   private int measurementsCount;
   private Map<String, IMeasurementSchema> schemaMap;
 
+  // accelerate template query and check
+  private Set<PartialPath> relatedStorageGroup;
+
   public Template() {}
 
   /**
@@ -77,6 +80,7 @@ public class Template {
     name = plan.getName();
     isDirectAligned = false;
     directNodes = new HashMap<>();
+    relatedStorageGroup = new HashSet<>();
 
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       IMeasurementSchema curSchema;
@@ -403,6 +407,32 @@ public class Template {
 
   public Collection<IMNode> getDirectNodes() {
     return directNodes.values();
+  }
+
+  public Set<PartialPath> getRelatedStorageGroup() {
+    return relatedStorageGroup;
+  }
+
+  public boolean markStorageGroup(IMNode setNode) throws MetadataException {
+    IMNode curNode = setNode;
+    while (curNode != null && !curNode.isStorageGroup()) {
+      curNode = curNode.getParent();
+    }
+
+    if (curNode == null) {
+      throw new MetadataException(
+          String.format(
+              "Cannot set template on a node [%s] above storage group.", setNode.getFullPath()));
+    }
+
+    return relatedStorageGroup.add(curNode.getPartialPath());
+  }
+
+  public boolean removeStorageGroup(IMNode unsetNode) {
+    while (!unsetNode.isStorageGroup()) {
+      unsetNode = unsetNode.getParent();
+    }
+    return relatedStorageGroup.remove(unsetNode.getPartialPath());
   }
 
   // endregion
