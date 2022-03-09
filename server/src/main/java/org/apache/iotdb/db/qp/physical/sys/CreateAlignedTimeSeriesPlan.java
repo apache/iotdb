@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
@@ -48,6 +49,9 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
   private List<TSEncoding> encodings;
   private List<CompressionType> compressors;
   private List<String> aliasList;
+  private List<Map<String, String>> tagsList;
+  private List<Map<String, String>> attributesList;
+  private List<Long> tagOffsets = null;
 
   public CreateAlignedTimeSeriesPlan() {
     super(Operator.OperatorType.CREATE_ALIGNED_TIMESERIES);
@@ -60,7 +64,9 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
       List<CompressionType> compressors,
-      List<String> aliasList) {
+      List<String> aliasList,
+      List<Map<String, String>> tagsList,
+      List<Map<String, String>> attributesList) {
     super(Operator.OperatorType.CREATE_ALIGNED_TIMESERIES);
     this.prefixPath = prefixPath;
     this.measurements = measurements;
@@ -68,6 +74,8 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     this.encodings = encodings;
     this.compressors = compressors;
     this.aliasList = aliasList;
+    this.tagsList = tagsList;
+    this.attributesList = attributesList;
     this.canBeSplit = false;
   }
 
@@ -119,11 +127,41 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     this.aliasList = aliasList;
   }
 
+  public List<Map<String, String>> getTagsList() {
+    return tagsList;
+  }
+
+  public void setTagsList(List<Map<String, String>> tagsList) {
+    this.tagsList = tagsList;
+  }
+
+  public List<Map<String, String>> getAttributesList() {
+    return attributesList;
+  }
+
+  public void setAttributesList(List<Map<String, String>> attributesList) {
+    this.attributesList = attributesList;
+  }
+
+  public List<Long> getTagOffsets() {
+    if (tagOffsets == null) {
+      tagOffsets = new ArrayList<>();
+      for (int i = 0; i < measurements.size(); i++) {
+        tagOffsets.add(Long.parseLong("-1"));
+      }
+    }
+    return tagOffsets;
+  }
+
+  public void setTagOffsets(List<Long> tagOffsets) {
+    this.tagOffsets = tagOffsets;
+  }
+
   @Override
   public String toString() {
     return String.format(
-        "devicePath: %s, measurements: %s, dataTypes: %s, encodings: %s, compressions: %s",
-        prefixPath, measurements, dataTypes, encodings, compressors);
+        "devicePath: %s, measurements: %s, dataTypes: %s, encodings: %s, compressions: %s, tagOffsets: %s",
+        prefixPath, measurements, dataTypes, encodings, compressors, tagOffsets);
   }
 
   @Override
@@ -159,9 +197,12 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     for (CompressionType compressor : compressors) {
       stream.write(compressor.ordinal());
     }
+    for (Long tagOffset : tagOffsets) {
+      stream.writeLong(tagOffset);
+    }
 
     // alias
-    if (aliasList != null) {
+    if (aliasList != null && !aliasList.isEmpty()) {
       stream.write(1);
       for (String alias : aliasList) {
         ReadWriteIOUtils.write(alias, stream);
@@ -169,6 +210,27 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     } else {
       stream.write(0);
     }
+
+    // tags
+    if (tagsList != null && !tagsList.isEmpty()) {
+      stream.write(1);
+      for (Map<String, String> tags : tagsList) {
+        ReadWriteIOUtils.write(tags, stream);
+      }
+    } else {
+      stream.write(0);
+    }
+
+    // attributes
+    if (attributesList != null && !attributesList.isEmpty()) {
+      stream.write(1);
+      for (Map<String, String> attributes : attributesList) {
+        ReadWriteIOUtils.write(attributes, stream);
+      }
+    } else {
+      stream.write(0);
+    }
+
     stream.writeLong(index);
   }
 
@@ -192,12 +254,35 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     for (CompressionType compressor : compressors) {
       buffer.put((byte) compressor.ordinal());
     }
+    for (Long tagOffset : tagOffsets) {
+      buffer.putLong(tagOffset);
+    }
 
     // alias
-    if (aliasList != null) {
+    if (aliasList != null && !aliasList.isEmpty()) {
       buffer.put((byte) 1);
       for (String alias : aliasList) {
         ReadWriteIOUtils.write(alias, buffer);
+      }
+    } else {
+      buffer.put((byte) 0);
+    }
+
+    // tags
+    if (tagsList != null && !tagsList.isEmpty()) {
+      buffer.put((byte) 1);
+      for (Map<String, String> tags : tagsList) {
+        ReadWriteIOUtils.write(tags, buffer);
+      }
+    } else {
+      buffer.put((byte) 0);
+    }
+
+    // attributes
+    if (attributesList != null && !attributesList.isEmpty()) {
+      buffer.put((byte) 1);
+      for (Map<String, String> attributes : attributesList) {
+        ReadWriteIOUtils.write(attributes, buffer);
       }
     } else {
       buffer.put((byte) 0);
@@ -230,12 +315,31 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     for (int i = 0; i < size; i++) {
       compressors.add(CompressionType.values()[buffer.get()]);
     }
+    tagOffsets = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      tagOffsets.add(buffer.getLong());
+    }
 
     // alias
     if (buffer.get() == 1) {
       aliasList = new ArrayList<>();
       for (int i = 0; i < size; i++) {
         aliasList.add(ReadWriteIOUtils.readString(buffer));
+      }
+    }
+    // tags
+    if (buffer.get() == 1) {
+      tagsList = new ArrayList<>();
+      for (int i = 0; i < size; i++) {
+        tagsList.add(ReadWriteIOUtils.readMap(buffer));
+      }
+    }
+
+    // attributes
+    if (buffer.get() == 1) {
+      attributesList = new ArrayList<>();
+      for (int i = 0; i < size; i++) {
+        attributesList.add(ReadWriteIOUtils.readMap(buffer));
       }
     }
 
@@ -256,11 +360,12 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
         && Objects.equals(measurements, that.measurements)
         && Objects.equals(dataTypes, that.dataTypes)
         && Objects.equals(encodings, that.encodings)
-        && Objects.equals(compressors, that.compressors);
+        && Objects.equals(compressors, that.compressors)
+        && Objects.equals(tagOffsets, that.tagOffsets);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(prefixPath, measurements, dataTypes, encodings, compressors);
+    return Objects.hash(prefixPath, measurements, dataTypes, encodings, compressors, tagOffsets);
   }
 }
