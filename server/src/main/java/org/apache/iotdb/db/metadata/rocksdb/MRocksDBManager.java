@@ -1503,7 +1503,7 @@ public class MRocksDBManager implements IMetaManager {
       throws MetadataException {
 
     Set<PartialPath> allPath = new HashSet<>();
-    getMatchedPathByNodeType(pathPattern.getNodes(), new Character[] {NODE_TYPE_SG}, allPath);
+    getMatchedPathByNodeType(pathPattern.getNodes(), new Character[] {NODE_TYPE_ENTITY}, allPath);
     return allPath;
   }
 
@@ -1530,7 +1530,16 @@ public class MRocksDBManager implements IMetaManager {
    */
   @Override
   public List<ShowDevicesResult> getMatchedDevices(ShowDevicesPlan plan) throws MetadataException {
-    return null;
+    List<ShowDevicesResult> res = Collections.synchronizedList(new ArrayList<>());
+    BiFunction<byte[], byte[], Boolean> function =
+        (a, b) -> {
+          String fullPath = RocksDBUtils.getPathByInnerName(new String(a));
+          res.add(new ShowDevicesResult(fullPath, RocksDBUtils.isAligned(b)));
+          return true;
+        };
+    traverseOutcomeBasins(
+        plan.getPath().getNodes(), MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_ENTITY});
+    return res;
   }
   // endregion
 

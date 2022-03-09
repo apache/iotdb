@@ -58,6 +58,7 @@ import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ESCAPE_PATH_S
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_ALIAS;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_ATTRIBUTES;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_ALIGNED;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_SET_TTL;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ALIAS;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
@@ -338,6 +339,14 @@ public class RocksDBUtils {
     return obj;
   }
 
+  public static boolean isAligned(byte[] value) {
+    ByteBuffer byteBuffer = ByteBuffer.wrap(value);
+    // skip the version flag and node type flag
+    ReadWriteIOUtils.readByte(byteBuffer);
+    // get block type
+    byte flag = ReadWriteIOUtils.readByte(byteBuffer);
+    return (flag & FLAG_IS_ALIGNED) > 0;
+  }
   /**
    * get inner name by converting partial path.
    *
