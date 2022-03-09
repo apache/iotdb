@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager.hash;
 
+/** All DeviceGroup hash algorithm executors must be subclasses of DeviceGroupHashExecutor */
 public abstract class DeviceGroupHashExecutor {
 
   protected final int deviceGroupCount;
