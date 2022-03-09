@@ -544,4 +544,17 @@ public class RocksDBUtils {
     }
     return stringBuilder.substring(1);
   }
+
+  public static boolean startWith(byte[] a, byte[] b) {
+    if (a.length < b.length) {
+      return false;
+    }
+
+    for (int i = 0; i < b.length; i++) {
+      if (a[i] != b[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
 }
