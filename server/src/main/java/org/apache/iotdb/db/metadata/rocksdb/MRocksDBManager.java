@@ -80,6 +80,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
@@ -96,6 +97,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -630,7 +632,8 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public String deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    Set<String> failedNames = new HashSet<>();
+    Set<String> failedNames = ConcurrentHashMap.newKeySet();
+    //    Set<String> parentToCheck = ConcurrentHashMap.newKeySet();
     traverseOutcomeBasins(
         pathPattern.getNodes(),
         MAX_PATH_DEPTH,
@@ -638,13 +641,11 @@ public class MRocksDBManager implements IMetaManager {
           String path = null;
           RMeasurementMNode deletedNode = null;
           try {
-            path = RocksDBUtils.getPathByInnerName(key);
-            PartialPath partialPath = new PartialPath(path);
-            String levelPath =
-                RocksDBUtils.getLevelPath(partialPath.getNodes(), partialPath.getNodeLength() - 1);
+            path = RocksDBUtils.getPathByInnerName(new String(key));
+            String[] nodes = MetaUtils.splitPathToDetachedPath(path);
+            String levelPath = RocksDBUtils.getLevelPath(nodes, nodes.length - 1);
             // Delete measurement node
-            Lock lock = locksPool.get(levelPath);
-        Lock lock = locksPool.computeIfAbsent(mLevelPath, x -> new ReentrantLock());
+            Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
             if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
               try {
                 deletedNode = new RMeasurementMNode(path, value);
@@ -652,9 +653,8 @@ public class MRocksDBManager implements IMetaManager {
                 // delete the last node of path
                 batch.delete(key);
                 if (deletedNode.getAlias() != null) {
-                  String[] aliasNodes =
-                      Arrays.copyOf(partialPath.getNodes(), partialPath.getNodeLength());
-                  aliasNodes[partialPath.getNodeLength() - 1] = deletedNode.getAlias();
+                  String[] aliasNodes = Arrays.copyOf(nodes, nodes.length);
+                  aliasNodes[nodes.length - 1] = deletedNode.getAlias();
                   String aliasLevelPath =
                       RocksDBUtils.getLevelPath(aliasNodes, aliasNodes.length - 1);
                   batch.delete(RocksDBUtils.toAliasNodeKey(aliasLevelPath));
@@ -670,53 +670,79 @@ public class MRocksDBManager implements IMetaManager {
             } else {
               throw new AcquireLockTimeoutException("acquire lock timeout, " + path);
             }
+
+            //            if (nodes.length > 1) {
+            //              // Only try to delete directly parent if no other siblings
+            //              parentToCheck.add(
+            //                  String.join(PATH_SEPARATOR, Arrays.copyOf(nodes, nodes.length -
+            // 1)));
+            //            }
+          } catch (IllegalPathException e) {
           } catch (Exception e) {
             logger.error("delete timeseries [{}] fail", path, e);
             failedNames.add(path);
-          }
-
-          // delete parent node if is empty
-          IMNode parentNode = deletedNode.getParent();
-          Lock curLock = locksPool.computeIfAbsent(curLevelPath, x -> new ReentrantLock());
-          try {
-            while (parentNode != null) {
-              // TODO: check children size
-              if (!parentNode.isEmptyInternal() || parentNode.isStorageGroup()) {
-                break;
-              } else {
-                PartialPath parentPath = parentNode.getPartialPath();
-                String parentLevelPath =
-                    RocksDBUtils.getLevelPath(
-                        parentPath.getNodes(), parentPath.getNodeLength() - 1);
-                Lock curLock = locksPool.get(parentLevelPath);
-                if (curLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-                  try {
-                    if (parentNode.isEntity()) {
-                      // TODO: aligned timeseries needs special check????
-                      readWriteHandler.deleteNode(
-                          parentNode.getPartialPath().getNodes(), RocksDBMNodeType.ENTITY);
-                    } else {
-                      readWriteHandler.deleteNode(
-                          parentNode.getPartialPath().getNodes(), RocksDBMNodeType.INTERNAL);
-                    }
-                    parentNode = parentNode.getParent();
-                  } finally {
-                    curLock.unlock();
-                  }
-                } else {
-                  throw new AcquireLockTimeoutException("acquire lock timeout, " + parentLevelPath);
-                }
-              }
-            }
-            // TODO: trigger engine update
-            // TODO: update totalTimeSeriesNumber
-          } catch (Exception e) {
-            logger.error("delete timeseries [{}] fail", parentNode.getFullPath(), e);
-            failedNames.add(parentNode.getFullPath());
+            return false;
           }
           return true;
         },
         new Character[] {NODE_TYPE_MEASUREMENT});
+
+    // TODO: do we need to delete parent??
+    //    parentToCheck
+    //        .parallelStream()
+    //        .forEach(
+    //            x -> {
+    //              try {
+    //                String[] parentNodes = MetaUtils.splitPathToDetachedPath(x);
+    //                String levelPathPrefix =
+    //                    RocksDBUtils.getLevelPathPrefix(
+    //                        parentNodes, parentNodes.length - 1, parentNodes.length);
+    //                AtomicInteger childrenCnt = new AtomicInteger(0);
+    //
+    //                Arrays.stream(ALL_NODE_TYPE_ARRAY)
+    //                    .parallel()
+    //                    .forEach(
+    //                        type -> {
+    //                          byte[] prefixKey = RocksDBUtils.toRocksDBKey(levelPathPrefix, type);
+    //                          readWriteHandler.traverseByPrefix(
+    //                              prefixKey, (bytes, bytes2) -> childrenCnt.getAndIncrement());
+    //                        });
+    //
+    //                if (childrenCnt.get() <= 0) {
+    //                  String parentLevelPath =
+    //                      RocksDBUtils.getLevelPath(parentNodes, parentNodes.length - 1);
+    //                  Lock curLock = locksPool.get(parentLevelPath);
+    //                  if (curLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+    //                    try {
+    //                      CheckKeyResult result =
+    // readWriteHandler.keyExistByAllTypes(parentLevelPath);
+    //                      if (result.getResult(RocksDBMNodeType.ENTITY)) {
+    //                        System.out.println("delete entity node: {}" + parentLevelPath);
+    //                        byte[] key = RocksDBUtils.toEntityNodeKey(parentLevelPath);
+    //                        readWriteHandler.deleteByKey(key);
+    //                      } else if (result.getResult(RocksDBMNodeType.INTERNAL)) {
+    //                        System.out.println("delete internal node: {}" + parentLevelPath);
+    //                        byte[] key = RocksDBUtils.toInternalNodeKey(parentLevelPath);
+    //                        readWriteHandler.deleteByKey(key);
+    //                      } else {
+    //                        System.out.println(
+    //                            "delete type node: {}" + result.getExistType() + " " +
+    // parentLevelPath);
+    //                      }
+    //                    } finally {
+    //                      curLock.unlock();
+    //                    }
+    //                  } else {
+    //                    throw new AcquireLockTimeoutException(
+    //                        "acquire lock timeout, " + parentLevelPath);
+    //                  }
+    //                }
+    //              } catch (IllegalPathException e) {
+    //              } catch (Exception e) {
+    //                logger.error("delete parent of timeseries fail", e);
+    //              }
+    //            });
+
     return failedNames.isEmpty() ? null : String.join(",", failedNames);
   }
 
@@ -1878,6 +1904,14 @@ public class MRocksDBManager implements IMetaManager {
       Holder<byte[]> holder = new Holder<>();
       if (readWriteHandler.keyExistByType(key, RocksDBMNodeType.MEASUREMENT, holder)) {
         node = new RMeasurementMNode(fullPath.getFullPath(), holder.getValue());
+      } else if (readWriteHandler.keyExistByType(key, RocksDBMNodeType.ALISA, holder)) {
+        byte[] aliasValue = holder.getValue();
+        if (aliasValue != null) {
+          ByteBuffer byteBuffer = ByteBuffer.wrap(aliasValue);
+          ReadWriteIOUtils.readBytes(byteBuffer, 3);
+          byte[] oriKey = RocksDBUtils.readOriginKey(byteBuffer);
+          node = new RMeasurementMNode(fullPath.getFullPath(), readWriteHandler.get(null, oriKey));
+        }
       }
       return node;
     } catch (RocksDBException e) {
@@ -1888,8 +1922,8 @@ public class MRocksDBManager implements IMetaManager {
 
   // region Interfaces for alias and tag/attribute operations
   @Override
-  public void changeAlias(PartialPath path, String alias) throws MetadataException, IOException {
-    upsertTagsAndAttributes(alias, null, null, path);
+  public void changeAlias(PartialPath path, String newAlias) throws MetadataException, IOException {
+    upsertTagsAndAttributes(newAlias, null, null, path);
   }
 
   @Override
@@ -1905,10 +1939,15 @@ public class MRocksDBManager implements IMetaManager {
       Lock rawKeyLock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
       if (rawKeyLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
         try {
+          boolean hasUpdate = false;
           String[] nodes = path.getNodes();
           RMeasurementMNode mNode = (RMeasurementMNode) getMeasurementMNode(path);
           // upsert alias
-          if (StringUtils.isEmpty(mNode.getAlias()) || !mNode.getAlias().equals(alias)) {
+          if (StringUtils.isNotEmpty(alias)
+              && (StringUtils.isEmpty(mNode.getAlias()) || !mNode.getAlias().equals(alias))) {
+            String oldAliasStr = mNode.getAlias();
+            mNode.setAlias(alias);
+            hasUpdate = true;
             WriteBatch batch = new WriteBatch();
             String[] newAlias = Arrays.copyOf(nodes, nodes.length);
             newAlias[nodes.length - 1] = alias;
@@ -1918,39 +1957,43 @@ public class MRocksDBManager implements IMetaManager {
             Lock newAliasLock = locksPool.computeIfAbsent(newAliasLevel, x -> new ReentrantLock());
             Lock oldAliasLock = null;
             boolean lockedOldAlias = false;
+            boolean lockedNewAlias = false;
             try {
               if (newAliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+                lockedNewAlias = true;
                 if (readWriteHandler.keyExistByAllTypes(newAliasLevel).existAnyKey()) {
                   throw new PathAlreadyExistException("Alias node has exist: " + newAliasLevel);
                 }
                 batch.put(newAliasKey, RocksDBUtils.buildAliasNodeValue(originKey));
+                if (StringUtils.isNotEmpty(oldAliasStr)) {
+                  String[] oldAliasNodes = Arrays.copyOf(nodes, nodes.length);
+                  oldAliasNodes[nodes.length - 1] = oldAliasStr;
+                  String oldAliasLevel =
+                      RocksDBUtils.getLevelPath(oldAliasNodes, oldAliasNodes.length - 1);
+                  byte[] oldAliasKey = RocksDBUtils.toAliasNodeKey(oldAliasLevel);
+                  oldAliasLock = locksPool.computeIfAbsent(oldAliasLevel, x -> new ReentrantLock());
+                  if (oldAliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
+                    lockedOldAlias = true;
+                    if (!readWriteHandler.keyExist(oldAliasKey)) {
+                      logger.error(
+                          "origin node [{}] has alias but alias node [{}] doesn't exist ",
+                          levelPath,
+                          oldAliasLevel);
+                    }
+                    batch.delete(oldAliasKey);
+                  } else {
+                    throw new AcquireLockTimeoutException("acquire lock timeout: " + oldAliasLevel);
+                  }
+                }
               } else {
                 throw new AcquireLockTimeoutException("acquire lock timeout: " + newAliasLevel);
-              }
-
-              if (StringUtils.isNotEmpty(mNode.getAlias()) && !mNode.getAlias().equals(alias)) {
-                String[] oldAlias = Arrays.copyOf(nodes, nodes.length);
-                oldAlias[nodes.length - 1] = mNode.getAlias();
-                String oldAliasLevel = RocksDBUtils.getLevelPath(oldAlias, oldAlias.length - 1);
-                byte[] oldAliasKey = RocksDBUtils.toAliasNodeKey(oldAliasLevel);
-                oldAliasLock = locksPool.computeIfAbsent(oldAliasLevel, x -> new ReentrantLock());
-                if (oldAliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-                  lockedOldAlias = true;
-                  if (!readWriteHandler.keyExist(oldAliasKey)) {
-                    logger.error(
-                        "origin node [{}] has alias but alias node [{}] doesn't exist ",
-                        levelPath,
-                        oldAliasLevel);
-                  }
-                  batch.delete(oldAliasKey);
-                } else {
-                  throw new AcquireLockTimeoutException("acquire lock timeout: " + oldAliasLevel);
-                }
               }
               // TODO: need application lock
               readWriteHandler.executeBatch(batch);
             } finally {
-              newAliasLock.unlock();
+              if (lockedNewAlias) {
+                newAliasLock.unlock();
+              }
               if (oldAliasLock != null && lockedOldAlias) {
                 oldAliasLock.unlock();
               }
@@ -1958,7 +2001,6 @@ public class MRocksDBManager implements IMetaManager {
           }
 
           WriteBatch batch = new WriteBatch();
-          boolean hasUpdate = false;
           if (tagsMap != null && !tagsMap.isEmpty()) {
             if (mNode.getTags() == null) {
               mNode.setTags(tagsMap);

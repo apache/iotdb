@@ -60,6 +60,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
@@ -246,7 +247,7 @@ public class RocksDBReadWriteHandler {
                   Holder<byte[]> holder = new Holder<>();
                   boolean keyExisted = keyExist(key, holder);
                   if (keyExisted) {
-                    result.setSingleCheckValue(x.value, true);
+                    result.setExistType(x.value);
                     result.setValue(holder.getValue());
                   }
                 } catch (RocksDBException e) {
@@ -435,6 +436,14 @@ public class RocksDBReadWriteHandler {
       result.put(iterator.key(), iterator.value());
     }
     return result;
+  }
+
+  public void traverseByPrefix(byte[] prefix, BiConsumer<byte[], byte[]> consumer) {
+    RocksIterator iterator = rocksDB.newIterator();
+    for (iterator.seek(prefix); iterator.isValid(); iterator.next()) {
+      if (RocksDBUtils.startWith(iterator.key(), prefix))
+        consumer.accept(iterator.key(), iterator.value());
+    }
   }
 
   public String findBelongToSpecifiedNodeType(String[] nodes, char nodeType) {

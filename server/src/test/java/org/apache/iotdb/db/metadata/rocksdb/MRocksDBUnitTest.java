@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.metadata.rocksdb;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -114,10 +115,22 @@ public class MRocksDBUnitTest {
     mRocksDBManager.createTimeseries(
         path, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, null);
 
+    IMeasurementMNode m1 = mRocksDBManager.getMeasurementMNode(path);
+    Assert.assertNull(m1.getAlias());
+    Assert.assertEquals(m1.getSchema().getCompressor(), CompressionType.UNCOMPRESSED);
+    Assert.assertEquals(m1.getSchema().getEncodingType(), TSEncoding.PLAIN);
+    Assert.assertEquals(m1.getSchema().getType(), TSDataType.TEXT);
+    Assert.assertNull(m1.getSchema().getProps());
+
     PartialPath path2 = new PartialPath("root.tt.sg.dd.m2");
     mRocksDBManager.createTimeseries(
-        path2, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, "ma");
-    mRocksDBManager.printScanAllKeys();
+        path2, TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.GZIP, null, "ma");
+    IMeasurementMNode m2 = mRocksDBManager.getMeasurementMNode(path2);
+    Assert.assertEquals(m2.getAlias(), "ma");
+    Assert.assertEquals(m2.getSchema().getCompressor(), CompressionType.GZIP);
+    Assert.assertEquals(m2.getSchema().getEncodingType(), TSEncoding.PLAIN);
+    Assert.assertEquals(m2.getSchema().getType(), TSDataType.DOUBLE);
+    Assert.assertNull(m2.getSchema().getProps());
   }
 
   @Test
@@ -219,6 +232,67 @@ public class MRocksDBUnitTest {
     }
 
     //    mRocksDBManager.traverseByPatternPath(new PartialPath("root.sg.d1.*"));
+  }
+
+  @Test
+  public void testDeleteTimeseries() throws MetadataException, IOException {
+    List<PartialPath> timeseries = new ArrayList<>();
+    timeseries.add(new PartialPath("root.sg.d1.m1"));
+    timeseries.add(new PartialPath("root.sg.d1.m2"));
+    timeseries.add(new PartialPath("root.sg.d2.m1"));
+    timeseries.add(new PartialPath("root.sg.d2.m2"));
+    timeseries.add(new PartialPath("root.sg.d3.m1"));
+    timeseries.add(new PartialPath("root.sg.d3.m2"));
+    timeseries.add(new PartialPath("root.sg1.d1.m1"));
+    timeseries.add(new PartialPath("root.sg1.d1.m2"));
+    timeseries.add(new PartialPath("root.sg1.d2.m1"));
+    timeseries.add(new PartialPath("root.sg1.d2.m2"));
+
+    for (PartialPath path : timeseries) {
+      mRocksDBManager.createTimeseries(
+          path, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, null);
+    }
+
+    Assert.assertEquals(
+        mRocksDBManager.getAllTimeseriesCount(new PartialPath("root.**")), timeseries.size());
+
+    int count = timeseries.size();
+    mRocksDBManager.deleteTimeseries(new PartialPath("root.sg.d1.*"));
+    Assert.assertEquals(
+        mRocksDBManager.getAllTimeseriesCount(new PartialPath("root.**")), count - 2);
+
+    count = count - 2;
+    mRocksDBManager.deleteTimeseries(new PartialPath("root.sg1.**"));
+    Assert.assertEquals(
+        mRocksDBManager.getAllTimeseriesCount(new PartialPath("root.**")), count - 4);
+
+    count = count - 4;
+    mRocksDBManager.deleteTimeseries(new PartialPath("root.sg.*.m1"));
+    Assert.assertEquals(
+        mRocksDBManager.getAllTimeseriesCount(new PartialPath("root.**")), count - 2);
+
+    mRocksDBManager.printScanAllKeys();
+  }
+
+  @Test
+  public void testUpsert() throws MetadataException, IOException {
+    PartialPath path2 = new PartialPath("root.tt.sg.dd.m2");
+    mRocksDBManager.createTimeseries(
+        path2, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, "ma");
+
+    IMeasurementMNode m1 = mRocksDBManager.getMeasurementMNode(new PartialPath("root.tt.sg.dd.m2"));
+    Assert.assertEquals(m1.getAlias(), "ma");
+
+    mRocksDBManager.changeAlias(new PartialPath("root.tt.sg.dd.m2"), "test");
+
+    IMeasurementMNode m2 = mRocksDBManager.getMeasurementMNode(new PartialPath("root.tt.sg.dd.m2"));
+    Assert.assertEquals(m2.getAlias(), "test");
+
+    mRocksDBManager.printScanAllKeys();
+
+    IMeasurementMNode m3 =
+        mRocksDBManager.getMeasurementMNode(new PartialPath("root.tt.sg.dd.test"));
+    Assert.assertEquals(m3.getAlias(), "test");
   }
 
   @After

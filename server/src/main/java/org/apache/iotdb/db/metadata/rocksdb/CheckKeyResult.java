@@ -19,23 +19,15 @@
 
 package org.apache.iotdb.db.metadata.rocksdb;
 
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.MAX_NODE_TYPE_NUM;
+import static org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils.NODE_TYPE_ARRAY;
 
 public class CheckKeyResult {
 
-  private boolean[] result = new boolean[MAX_NODE_TYPE_NUM];
-  private boolean existAnyKey = false;
   private byte[] value;
-
-  public void setSingleCheckValue(char index, boolean value) {
-    if (value) {
-      existAnyKey = true;
-    }
-    result[index] = value;
-  }
+  private RocksDBMNodeType nodeType;
 
   public boolean existAnyKey() {
-    return existAnyKey;
+    return nodeType != null;
   }
 
   public byte[] getValue() {
@@ -46,7 +38,18 @@ public class CheckKeyResult {
     this.value = value;
   }
 
+  public void setExistType(char type) {
+    nodeType = NODE_TYPE_ARRAY[type];
+  }
+
+  public RocksDBMNodeType getExistType() {
+    return nodeType;
+  }
+
   public boolean getResult(RocksDBMNodeType type) {
-    return result[type.value];
+    if (type == nodeType) {
+      return true;
+    }
+    return false;
   }
 }
