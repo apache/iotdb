@@ -58,8 +58,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private QueryContext context;
   private IExpression expression;
 
-  // TODO
-  public List<String> measurements;
+  private List<String> measurements;
   private List<PartialPath> paths;
   private List<String> aggregations;
   private Map<String, List<Integer>> deviceToPathIndex;
@@ -133,6 +132,10 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
   public int getPathsNum() {
     return pathsNum;
+  }
+
+  public List<String> getMeasurements() {
+    return measurements;
   }
 
   @Override
