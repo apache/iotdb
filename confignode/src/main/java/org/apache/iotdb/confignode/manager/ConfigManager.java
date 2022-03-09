@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.confignode.config.ConfigNodeConfig;
-import org.apache.iotdb.confignode.config.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.hash.APHashExecutor;
 import org.apache.iotdb.confignode.manager.hash.BKDRHashExecutor;
 import org.apache.iotdb.confignode.manager.hash.DeviceGroupHashExecutor;
@@ -54,7 +54,7 @@ public class ConfigManager {
   }
 
   public ConfigManager() {
-    ConfigNodeConfig config = ConfigNodeDescriptor.getInstance().getConfig();
+    ConfigNodeConf config = ConfigNodeDescriptor.getInstance().getConf();
 
     setHashExecutor(config.getDeviceGroupHashAlgorithm(), config.getDeviceGroupCount());
 

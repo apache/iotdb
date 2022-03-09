@@ -16,34 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.config;
+package org.apache.iotdb.confignode.conf;
 
-public class ConfigNodeConfig {
+public class ConfigNodeConstant {
 
-  public static final String CONFIG_NAME = "iotdb-confignode.properties";
-
-  // Number of DeviceGroups per StorageGroup
-  private int deviceGroupCount = 10000;
-  // DeviceGroup hash algorithm
-  private String deviceGroupHashAlgorithm = "BKDR";
-
-  public ConfigNodeConfig() {
+  private ConfigNodeConstant() {
     // empty constructor
   }
 
-  public int getDeviceGroupCount() {
-    return deviceGroupCount;
-  }
+  public static final String CONFIG_NODE_CONF = "CONFIG_NODE_CONF";
 
-  public void setDeviceGroupCount(int deviceGroupCount) {
-    this.deviceGroupCount = deviceGroupCount;
-  }
-
-  public String getDeviceGroupHashAlgorithm() {
-    return deviceGroupHashAlgorithm;
-  }
-
-  public void setDeviceGroupHashAlgorithm(String deviceGroupHashAlgorithm) {
-    this.deviceGroupHashAlgorithm = deviceGroupHashAlgorithm;
-  }
+  public static final String CONFIG_NODE_HOME = "CONFIG_NODE_HOME";
 }
