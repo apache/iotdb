@@ -130,8 +130,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import com.nimbusds.oauth2.sdk.util.CollectionUtils;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
