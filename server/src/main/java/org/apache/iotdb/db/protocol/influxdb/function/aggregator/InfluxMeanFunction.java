@@ -29,6 +29,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.utils.InfluxDBUtils;
+import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -55,7 +56,7 @@ public class InfluxMeanFunction extends InfluxAggregator {
 
   @Override
   public InfluxFunctionValue calculate() {
-    return new InfluxFunctionValue(numbers.size() == 0 ? numbers : InfluxDBUtils.Mean(numbers), 0L);
+    return new InfluxFunctionValue(numbers.size() == 0 ? numbers : MathUtils.Mean(numbers), 0L);
   }
 
   @Override

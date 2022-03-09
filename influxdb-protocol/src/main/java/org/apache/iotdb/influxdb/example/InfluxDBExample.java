@@ -38,7 +38,7 @@ public class InfluxDBExample {
     influxDB = IoTDBInfluxDBFactory.connect("http://127.0.0.1:8086", "root", "root");
     influxDB.createDatabase("database");
     influxDB.setDatabase("database");
-    //    insertData();
+    insertData();
     queryData();
     influxDB.close();
   }

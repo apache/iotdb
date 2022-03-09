@@ -22,7 +22,7 @@ package org.apache.iotdb.db.protocol.influxdb.function.aggregator;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.db.utils.InfluxDBUtils;
+import org.apache.iotdb.db.utils.MathUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,7 +42,7 @@ public class InfluxStddevFunction extends InfluxAggregator {
   @Override
   public InfluxFunctionValue calculate() {
     return new InfluxFunctionValue(
-        numbers.size() == 0 ? numbers : InfluxDBUtils.POP_STD_dev(numbers), 0L);
+        numbers.size() == 0 ? numbers : MathUtils.POP_STD_dev(numbers), 0L);
   }
 
   @Override

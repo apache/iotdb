@@ -21,6 +21,8 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
+import java.util.List;
+
 public class MathUtils {
 
   private MathUtils() {
@@ -76,5 +78,56 @@ public class MathUtils {
                 ((data - Math.round(data))
                     * Math.pow(10, TSFileDescriptor.getInstance().getConfig().getFloatPrecision())))
             / Math.pow(10, TSFileDescriptor.getInstance().getConfig().getFloatPrecision());
+  }
+
+  /**
+   * calculate sum of list
+   *
+   * @param data need to calculate list
+   * @return sum of list
+   */
+  public static double Sum(List<Double> data) {
+    double sum = 0;
+    for (Double datum : data) {
+      sum = sum + datum;
+    }
+    return sum;
+  }
+
+  /**
+   * calculate mean of list
+   *
+   * @param data need to calculate list
+   * @return mean of list
+   */
+  public static double Mean(List<Double> data) {
+    return Sum(data) / data.size();
+  }
+
+  /**
+   * calculate pop variance of list
+   *
+   * @param data need to calculate list
+   * @return pop variance of list
+   */
+  public static double POP_Variance(List<Double> data) {
+    double variance = 0;
+    for (int i = 0; i < data.size(); i++) {
+      variance = variance + (Math.pow((data.get(i) - Mean(data)), 2));
+    }
+    variance = variance / data.size();
+    return variance;
+  }
+
+  /**
+   * calculate pop std dev of list
+   *
+   * @param data need to calculate list
+   * @return pop std dev of list
+   */
+  public static double POP_STD_dev(List<Double> data) {
+    double std_dev;
+    std_dev = Math.sqrt(POP_Variance(data));
+    return std_dev;
   }
 }

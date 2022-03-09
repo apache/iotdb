@@ -58,6 +58,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private QueryContext context;
   private IExpression expression;
 
+  // TODO
   public List<String> measurements;
   private List<PartialPath> paths;
   private List<String> aggregations;
