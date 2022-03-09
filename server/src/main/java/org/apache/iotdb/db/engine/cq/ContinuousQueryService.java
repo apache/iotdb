@@ -57,7 +57,10 @@ public class ContinuousQueryService implements IService {
       IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval() / 2;
 
   private static final String LOG_FILE_DIR =
-      IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator;
+      IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+          + File.separator
+          + "cq"
+          + File.separator;
   private static final String LOG_FILE_NAME = LOG_FILE_DIR + "cqlog.bin";
 
   private ScheduledExecutorService continuousQueryTaskSubmitThread;
@@ -180,8 +183,8 @@ public class ContinuousQueryService implements IService {
         logWriter.close();
         logWriter = null;
       }
-    } catch (IOException ignored) {
-
+    } catch (IOException e) {
+      LOGGER.warn("Something wrong occurred While stopping CQService: {}", e.getMessage());
     }
   }
 
