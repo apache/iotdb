@@ -870,4 +870,25 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     Assert.assertEquals(2, result[0].size());
     Assert.assertEquals(2, result[1].size());
   }
+
+  @Test
+  public void testMaxFileSelection() throws MergeException, IOException {
+    int oldMaxCrossCompactionCandidateFileNum =
+        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(5);
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    assertEquals(2, result.length);
+    List<TsFileResource> seqSelected = result[0];
+    List<TsFileResource> unseqSelected = result[1];
+    assertEquals(2, seqSelected.size());
+    assertEquals(2, unseqSelected.size());
+    resource.clear();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMaxCrossCompactionCandidateFileNum(oldMaxCrossCompactionCandidateFileNum);
+  }
 }

@@ -555,7 +555,9 @@ public class TsFileResource {
 
   @Override
   public String toString() {
-    return file.toString();
+    return String.format(
+        "file is %s, compactionCandidate: %s, compacting: %s",
+        file.toString(), compactionCandidate, isCompacting);
   }
 
   @Override
