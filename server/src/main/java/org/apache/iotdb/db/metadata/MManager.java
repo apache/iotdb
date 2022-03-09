@@ -2370,7 +2370,7 @@ public class MManager {
       }
       mtree.checkTemplateInUseOnLowerNode(node);
       node.setSchemaTemplate(null);
-      templateManager.getTemplate(plan.getTemplateName()).removeStorageGroup(node);
+      templateManager.getTemplate(plan.getTemplateName()).unmarkStorageGroup(node);
       // write wal
       if (!isRecovering) {
         logWriter.unsetSchemaTemplate(plan);

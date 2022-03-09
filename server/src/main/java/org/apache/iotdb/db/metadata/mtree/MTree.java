@@ -1759,7 +1759,7 @@ public class MTree implements Serializable {
   }
 
   public List<String> getPathsSetOnTemplate(Template template) throws MetadataException {
-    String templateName = template == null ? "" : template.getName();
+    String templateName = template == null ? ONE_LEVEL_PATH_WILDCARD : template.getName();
     Set<PartialPath> initPath =
         template == null
             ? Collections.singleton(new PartialPath("root"))
@@ -1787,7 +1787,7 @@ public class MTree implements Serializable {
               // if node not set template, go on traversing
               if (node.getSchemaTemplate() != null) {
                 // if set template, and equals to target or target for all, add to result
-                if (templateName.equals("")
+                if (templateName.equals(ONE_LEVEL_PATH_WILDCARD)
                     || templateName.equals(node.getUpperTemplate().getName())) {
                   resSet.add(node.getFullPath());
                 }
@@ -1803,7 +1803,7 @@ public class MTree implements Serializable {
   }
 
   public List<String> getPathsUsingTemplate(Template template) throws MetadataException {
-    String templateName = template == null ? "" : template.getName();
+    String templateName = template == null ? ONE_LEVEL_PATH_WILDCARD : template.getName();
     Set<PartialPath> initPath =
         template == null
             ? Collections.singleton(new PartialPath("root"))
@@ -1831,7 +1831,7 @@ public class MTree implements Serializable {
 
               if (node.getUpperTemplate() != null) {
                 // this node and its descendants are set other template, exit from this branch
-                if (!templateName.equals("")
+                if (!templateName.equals(ONE_LEVEL_PATH_WILDCARD)
                     && !templateName.equals(node.getUpperTemplate().getName())) {
                   return true;
                 }

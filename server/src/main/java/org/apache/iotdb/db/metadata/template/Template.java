@@ -413,36 +413,12 @@ public class Template {
     return relatedStorageGroup;
   }
 
-  public boolean markStorageGroup(IMNode setNode) throws MetadataException {
-    IMNode curNode = setNode;
-    while (curNode != null && !curNode.isStorageGroup()) {
-      curNode = curNode.getParent();
-    }
-
-    if (curNode == null) {
-      // BFS for all storage group child and mark in template
-      Deque<IMNode> nodeQueue = new ArrayDeque<>();
-      Set<PartialPath> childSGPath = new HashSet<>();
-      nodeQueue.add(setNode);
-      while (nodeQueue.size() != 0) {
-        IMNode cur = nodeQueue.pop();
-        if (cur.isStorageGroup()) {
-          childSGPath.add(cur.getPartialPath());
-        } else {
-          nodeQueue.addAll(cur.getChildren().values());
-        }
-      }
-      return relatedStorageGroup.addAll(childSGPath);
-    }
-
-    return relatedStorageGroup.add(curNode.getPartialPath());
+  public boolean markStorageGroup(IMNode setNode) {
+    return relatedStorageGroup.addAll(getSGPaths(setNode));
   }
 
-  public boolean removeStorageGroup(IMNode unsetNode) {
-    while (!unsetNode.isStorageGroup()) {
-      unsetNode = unsetNode.getParent();
-    }
-    return relatedStorageGroup.remove(unsetNode.getPartialPath());
+  public boolean unmarkStorageGroup(IMNode unsetNode) {
+    return relatedStorageGroup.removeAll(getSGPaths(unsetNode));
   }
 
   // endregion
@@ -505,6 +481,29 @@ public class Template {
       builder.append(pathNodes[i]);
     }
     return builder.toString();
+  }
+
+  private static Collection<PartialPath> getSGPaths(IMNode cur) {
+    // get all sg paths above or below to the cur
+    IMNode oriNode = cur;
+    while (cur != null && !cur.isStorageGroup()) {
+      cur = cur.getParent();
+    }
+    if (cur == null) {
+      Deque<IMNode> nodeQueue = new ArrayDeque<>();
+      Set<PartialPath> childSGPath = new HashSet<>();
+      nodeQueue.add(oriNode);
+      while (nodeQueue.size() != 0) {
+        IMNode node = nodeQueue.pop();
+        if (node.isStorageGroup()) {
+          childSGPath.add(node.getPartialPath());
+        } else {
+          nodeQueue.addAll(node.getChildren().values());
+        }
+      }
+      return childSGPath;
+    }
+    return Collections.singleton(cur.getPartialPath());
   }
   // endregion
 
