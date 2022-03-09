@@ -1574,7 +1574,7 @@ public class VirtualStorageGroupProcessor {
     }
 
     // prevent new merges and queries from choosing this file
-    resource.setDeleted(true);
+    resource.setStatus(TsFileResourceStatus.DELETED);
 
     // ensure that the file is not used by any queries
     if (resource.tryWriteLock()) {

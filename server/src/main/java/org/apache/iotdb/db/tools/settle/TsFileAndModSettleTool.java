@@ -216,7 +216,7 @@ public class TsFileAndModSettleTool {
       tsFileRewriteTool.parseAndRewriteFile(settledResources);
     }
     if (settledResources.size() == 0) {
-      resourceToBeSettled.setDeleted(true);
+      resourceToBeSettled.setStatus(TsFileResourceStatus.DELETED);
     }
   }
 

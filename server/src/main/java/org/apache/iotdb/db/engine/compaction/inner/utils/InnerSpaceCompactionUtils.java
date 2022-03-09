@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -221,7 +222,7 @@ public class InnerSpaceCompactionUtils {
   public static boolean deleteTsFile(TsFileResource seqFile) {
     try {
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-      seqFile.setDeleted(true);
+      seqFile.setStatus(TsFileResourceStatus.DELETED);
       seqFile.delete();
     } catch (IOException e) {
       logger.error(e.getMessage(), e);

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -223,7 +224,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   private void deleteOldFiles(List<TsFileResource> tsFileResourceList) throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
-      tsFileResource.setDeleted(true);
+      tsFileResource.setStatus(TsFileResourceStatus.DELETED);
       tsFileResource.remove();
       logger.info(
           "[CrossSpaceCompaction] Delete TsFile :{}.",

@@ -165,7 +165,6 @@ public class TsFileResource {
     this.timeIndex = other.timeIndex;
     this.timeIndexType = other.timeIndexType;
     this.modFile = other.modFile;
-    this.deleted = other.deleted;
     this.isCompacting = other.isCompacting;
     this.status = other.status;
     this.pathToChunkMetadataListMap = other.pathToChunkMetadataListMap;
@@ -577,11 +576,7 @@ public class TsFileResource {
   }
 
   public boolean isDeleted() {
-    return deleted;
-  }
-
-  public void setDeleted(boolean deleted) {
-    this.deleted = deleted;
+    return this.status == TsFileResourceStatus.DELETED;
   }
 
   public boolean isCompacting() {
