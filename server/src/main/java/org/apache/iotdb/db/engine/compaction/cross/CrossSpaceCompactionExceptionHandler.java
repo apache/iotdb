@@ -21,12 +21,11 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogAnalyzer;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
+import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -34,7 +33,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,11 +63,10 @@ public class CrossSpaceCompactionExceptionHandler {
 
       boolean handleSuccess = true;
 
-      List<TsFileResource> lostSeqFiles = new ArrayList<>();
-      List<TsFileResource> lostUnseqFiles = new ArrayList<>();
+      List<TsFileResource> lostSourceFiles = new ArrayList<>();
 
-      boolean allSeqFilesExist = checkAllSourceFileExists(seqResourceList, lostSeqFiles);
-      boolean allUnseqFilesExist = checkAllSourceFileExists(unseqResourceList, lostUnseqFiles);
+      boolean allSeqFilesExist = checkAllSourceFileExists(seqResourceList, lostSourceFiles);
+      boolean allUnseqFilesExist = checkAllSourceFileExists(unseqResourceList, lostSourceFiles);
 
       if (allSeqFilesExist && allUnseqFilesExist) {
         // all source files exists, remove target file and recover memory
@@ -84,7 +81,11 @@ public class CrossSpaceCompactionExceptionHandler {
       } else {
         handleSuccess =
             handleWhenSomeSourceFilesLost(
-                storageGroup, seqResourceList, unseqResourceList, logFile);
+                storageGroup,
+                seqResourceList,
+                unseqResourceList,
+                targetResourceList,
+                lostSourceFiles);
       }
 
       if (!handleSuccess) {
@@ -188,40 +189,10 @@ public class CrossSpaceCompactionExceptionHandler {
       String storageGroup,
       List<TsFileResource> seqFileList,
       List<TsFileResource> unseqFileList,
-      File logFile)
+      List<TsFileResource> targetFileList,
+      List<TsFileResource> lostSourceFiles)
       throws IOException {
-    long magicStringLength =
-        RewriteCrossSpaceCompactionLogger.MAGIC_STRING.getBytes(StandardCharsets.UTF_8).length;
-    long fileLength = logFile.length();
-
-    if (fileLength < 2 * magicStringLength) {
-      // the log length is less than twice the Magic String length
-      // it means the compaction has not finished yet
-      LOGGER.error(
-          "{} [Compaction][ExceptionHandler] the compaction log length is less than twice "
-              + "the MagicString length",
-          storageGroup);
-      return false;
-    }
-
-    // read head magic string in compaction log
-    RewriteCrossSpaceCompactionLogAnalyzer logAnalyzer =
-        new RewriteCrossSpaceCompactionLogAnalyzer(logFile);
-    logAnalyzer.analyze();
-    if (!logAnalyzer.isFirstMagicStringExisted()) {
-      LOGGER.error(
-          "{} [Compaction][ExceptionHandler] the head magic string in compaction log is incorrect,"
-              + " failed to handle exception",
-          storageGroup);
-      return false;
-    }
-
-    // read tail string in compaction log
-    if (!logAnalyzer.isEndMagicStringExisted()) {
-      LOGGER.error(
-          "{} [Compaction][ExceptionHandler] the tail magic string in compaction log is incorrect,"
-              + " failed to handle exception",
-          storageGroup);
+    if (!checkIsTargetFilesComplete(targetFileList, lostSourceFiles, storageGroup)) {
       return false;
     }
 
@@ -238,6 +209,24 @@ public class CrossSpaceCompactionExceptionHandler {
     // delete compaction mods files
     CompactionUtils.deleteCompactionModsFile(seqFileList, unseqFileList);
 
+    return true;
+  }
+
+  public static boolean checkIsTargetFilesComplete(
+      List<TsFileResource> targetResources,
+      List<TsFileResource> lostSourceResources,
+      String fullStorageGroupName)
+      throws IOException {
+    for (TsFileResource targetResource : targetResources) {
+      if (!TsFileUtils.isTsFileComplete(targetResource.getTsFile())) {
+        LOGGER.error(
+            "{} [Compaction][ExceptionHandler] target file {} is not complete, and some source files {} is lost, do nothing. Set allowCompaction to false",
+            fullStorageGroupName,
+            targetResource,
+            lostSourceResources);
+        return false;
+      }
+    }
     return true;
   }
 }

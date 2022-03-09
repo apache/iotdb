@@ -218,6 +218,7 @@ public class CompactionTaskManager implements IService {
       throws InterruptedException {
     if (!candidateCompactionTaskQueue.contains(compactionTask)
         && !runningCompactionTaskList.contains(compactionTask)) {
+      compactionTask.setSourceFilesToCompactionCandidate();
       candidateCompactionTaskQueue.put(compactionTask);
 
       // add metrics
@@ -300,7 +301,7 @@ public class CompactionTaskManager implements IService {
             .getMetricManager()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
-                MetricLevel.NORMAL,
+                MetricLevel.IMPORTANT,
                 Tag.NAME.toString(),
                 "compaction_" + taskType,
                 Tag.STATUS.toString(),

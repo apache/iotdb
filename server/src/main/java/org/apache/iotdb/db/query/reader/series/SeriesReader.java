@@ -368,6 +368,7 @@ public class SeriesReader {
     if (valueFilter != null
         && firstChunkMetadata != null
         && !isChunkOverlapped()
+        && !firstChunkMetadata.isModified()
         && !valueFilter.satisfy(firstChunkMetadata.getStatistics())) {
       skipCurrentChunk();
     }
@@ -1067,6 +1068,7 @@ public class SeriesReader {
     if (valueFilter != null
         && firstTimeSeriesMetadata != null
         && !isFileOverlapped()
+        && !firstTimeSeriesMetadata.isModified()
         && !valueFilter.satisfy(firstTimeSeriesMetadata.getStatistics())) {
       firstTimeSeriesMetadata = null;
     }
