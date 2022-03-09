@@ -20,6 +20,8 @@ package org.apache.iotdb.confignode.manager.hash;
 
 import org.apache.iotdb.confignode.manager.ConfigManager;
 
+import org.junit.Test;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -58,6 +60,7 @@ public class DeviceGroupHashExecutorTest {
     return devices;
   }
 
+  @Test
   public void GeneralIndexTest() {
     ConfigManager manager = new ConfigManager("BKDR", deviceGroupCount);
     int[] bucket = new int[deviceGroupCount];

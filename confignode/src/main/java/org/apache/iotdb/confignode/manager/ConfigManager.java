@@ -20,17 +20,15 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.manager.hash.APHashExecutor;
-import org.apache.iotdb.confignode.manager.hash.BKDRHashExecutor;
 import org.apache.iotdb.confignode.manager.hash.DeviceGroupHashExecutor;
-import org.apache.iotdb.confignode.manager.hash.JSHash;
-import org.apache.iotdb.confignode.manager.hash.SDBMHash;
 import org.apache.iotdb.confignode.partition.PartitionTable;
 import org.apache.iotdb.confignode.service.balancer.LoadBalancer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -65,18 +63,19 @@ public class ConfigManager {
   }
 
   private void setHashExecutor(String hashAlgorithm, int deviceGroupCount) {
-    switch (hashAlgorithm) {
-      case "BKDR":
-        hashExecutor = new BKDRHashExecutor(deviceGroupCount);
-        break;
-      case "AP":
-        hashExecutor = new APHashExecutor(deviceGroupCount);
-        break;
-      case "JS":
-        hashExecutor = new JSHash(deviceGroupCount);
-        break;
-      case "SDBM":
-        hashExecutor = new SDBMHash(deviceGroupCount);
+    try {
+      Class<?> executor =
+          Class.forName(
+              "org.apache.iotdb.confignode.manager.hash." + hashAlgorithm + "HashExecutor");
+      Constructor<?> executorConstructor = executor.getConstructor(int.class);
+      hashExecutor = (DeviceGroupHashExecutor) executorConstructor.newInstance(deviceGroupCount);
+    } catch (ClassNotFoundException
+        | NoSuchMethodException
+        | InstantiationException
+        | IllegalAccessException
+        | InvocationTargetException e) {
+      LOGGER.error("Couldn't Constructor DeviceGroupHashExecutor class: {}", hashAlgorithm, e);
+      hashExecutor = null;
     }
   }
 
