@@ -2037,7 +2037,7 @@ public class VirtualStorageGroupProcessor {
         continue;
       }
 
-      if (tsFileResource.isCompacting) {
+      if (tsFileResource.isCompacting()) {
         // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
         // change after compaction
         deletion.setFileOffset(Long.MAX_VALUE);

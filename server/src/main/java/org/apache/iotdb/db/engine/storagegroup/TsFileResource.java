@@ -99,8 +99,6 @@ public class TsFileResource {
 
   private ModificationFile compactionModFile;
 
-  private volatile boolean deleted = false;
-  volatile boolean isCompacting = false;
   volatile boolean compactionCandidate = false;
 
   protected volatile TsFileResourceStatus status = TsFileResourceStatus.UNCLOSED;
@@ -165,7 +163,6 @@ public class TsFileResource {
     this.timeIndex = other.timeIndex;
     this.timeIndexType = other.timeIndexType;
     this.modFile = other.modFile;
-    this.isCompacting = other.isCompacting;
     this.status = other.status;
     this.pathToChunkMetadataListMap = other.pathToChunkMetadataListMap;
     this.pathToReadOnlyMemChunkMap = other.pathToReadOnlyMemChunkMap;
@@ -555,9 +552,7 @@ public class TsFileResource {
 
   @Override
   public String toString() {
-    return String.format(
-        "file is %s, compactionCandidate: %s, compacting: %s",
-        file.toString(), compactionCandidate, isCompacting);
+    return String.format("file is %s, status: ", file.toString(), status);
   }
 
   @Override
@@ -582,11 +577,7 @@ public class TsFileResource {
   }
 
   public boolean isCompacting() {
-    return isCompacting;
-  }
-
-  public void setCompacting(boolean compacting) {
-    isCompacting = compacting;
+    return this.status == TsFileResourceStatus.COMPACTING;
   }
 
   public boolean isCompactionCandidate() {

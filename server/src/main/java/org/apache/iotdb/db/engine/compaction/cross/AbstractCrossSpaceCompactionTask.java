@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -76,13 +77,11 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
     }
 
     for (TsFileResource resource : selectedSequenceFiles) {
-      resource.setCompacting(true);
-      resource.setCompactionCandidate(false);
+      resource.setStatus(TsFileResourceStatus.COMPACTING);
     }
 
     for (TsFileResource resource : selectedUnsequenceFiles) {
-      resource.setCompacting(true);
-      resource.setCompactionCandidate(false);
+      resource.setStatus(TsFileResourceStatus.COMPACTING);
     }
 
     return true;

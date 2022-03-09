@@ -34,7 +34,6 @@ public class FakedTsFileResource extends TsFileResource {
     this.timeIndex = new FileTimeIndex();
     this.tsFileSize = tsFileSize;
     super.status = TsFileResourceStatus.CLOSED;
-    super.isCompacting = false;
     fakeTsfileName = name;
   }
 
@@ -51,8 +50,7 @@ public class FakedTsFileResource extends TsFileResource {
   public String toString() {
     StringBuilder builder = new StringBuilder();
     builder.append(tsFileSize).append(",");
-    builder.append(status).append(",");
-    builder.append(isCompacting);
+    builder.append(status);
     return builder.toString();
   }
 
