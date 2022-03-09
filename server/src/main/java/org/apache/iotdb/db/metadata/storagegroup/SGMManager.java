@@ -23,10 +23,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
-import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
@@ -38,7 +36,6 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
-import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
@@ -62,18 +59,13 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -83,21 +75,15 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.metrics.Metric;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
@@ -122,7 +108,6 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -173,16 +158,9 @@ public class SGMManager {
   private static final long MTREE_SNAPSHOT_THREAD_CHECK_TIME = 600L;
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  /** threshold total size of MTree */
-  private static final long MTREE_SIZE_THRESHOLD = config.getAllocateMemoryForSchema();
-
-  private static final int ESTIMATED_SERIES_SIZE = config.getEstimatedSeriesSize();
 
   private boolean isRecovering;
   private boolean initialized;
-  private boolean allowToCreateNewSeries = true;
-
-  private AtomicLong totalSeriesNumber = new AtomicLong();
 
   private final int mtreeSnapshotInterval;
   private final long mtreeSnapshotThresholdTime;
@@ -199,23 +177,12 @@ public class SGMManager {
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager = TagManager.getInstance();
-  private TemplateManager templateManager = TemplateManager.getInstance();
 
   // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
   SGMManager(IStorageGroupMNode storageGroupMNode) {
     this.storageGroupMNode = storageGroupMNode;
     mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
     mtreeSnapshotThresholdTime = config.getMtreeSnapshotThresholdTime() * 1000L;
-    String schemaDir = config.getSchemaDir();
-    File schemaFolder = SystemFileFactory.INSTANCE.getFile(schemaDir);
-    if (!schemaFolder.exists()) {
-      if (schemaFolder.mkdirs()) {
-        logger.info("create system folder {}", schemaFolder.getAbsolutePath());
-      } else {
-        logger.info("create system folder {} failed.", schemaFolder.getAbsolutePath());
-      }
-    }
-    logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
 
     // do not write log when recover
     isRecovering = true;
@@ -262,6 +229,18 @@ public class SGMManager {
     if (initialized) {
       return;
     }
+    String sgSchemaDir = config.getSchemaDir() + File.separator + storageGroupMNode.getFullPath();
+    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgSchemaDir);
+    if (!sgSchemaFolder.exists()) {
+      if (sgSchemaFolder.mkdirs()) {
+        logger.info("create storage group schema folder {}", sgSchemaFolder.getAbsolutePath());
+      } else {
+        logger.info(
+            "create storage group schema folder {} failed.", sgSchemaFolder.getAbsolutePath());
+      }
+    }
+    logFilePath = sgSchemaDir + File.separator + MetadataConstant.METADATA_LOG;
+
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
     try {
@@ -278,58 +257,19 @@ public class SGMManager {
       isRecovering = false;
     } catch (IOException e) {
       logger.error(
-          "Cannot recover all MTree from file, we try to recover as possible as we can", e);
+          "Cannot recover all MTree from {} file, we try to recover as possible as we can",
+          storageGroupMNode.getFullPath(),
+          e);
     }
     initialized = true;
-
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      startStatisticCounts();
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.MEM.toString(),
-              MetricLevel.IMPORTANT,
-              mtree,
-              RamUsageEstimator::sizeOf,
-              Tag.NAME.toString(),
-              "mtree");
-    }
-  }
-
-  private void startStatisticCounts() {
-    MetricsService.getInstance()
-        .getMetricManager()
-        .getOrCreateAutoGauge(
-            Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
-            totalSeriesNumber,
-            AtomicLong::get,
-            Tag.NAME.toString(),
-            "timeSeries");
-
-    MetricsService.getInstance()
-        .getMetricManager()
-        .getOrCreateAutoGauge(
-            Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
-            mtree,
-            tree -> {
-              try {
-                return tree.getDevicesNum(new PartialPath("root.**"));
-              } catch (MetadataException e) {
-                logger.error("get deviceNum error", e);
-              }
-              return 0;
-            },
-            Tag.NAME.toString(),
-            "device");
   }
 
   private void forceMlog() {
     try {
       logWriter.force();
     } catch (IOException e) {
-      logger.error("Cannot force mlog to the storage device", e);
+      logger.error(
+          "Cannot force {} mlog to the storage device", storageGroupMNode.getFullPath(), e);
     }
   }
 
@@ -344,10 +284,13 @@ public class SGMManager {
           new MLogReader(config.getSchemaDir(), MetadataConstant.METADATA_LOG); ) {
         idx = applyMLog(mLogReader);
         logger.debug(
-            "spend {} ms to deserialize mtree from mlog.bin", System.currentTimeMillis() - time);
+            "spend {} ms to deserialize {} mtree from mlog.bin",
+            System.currentTimeMillis() - time,
+            storageGroupMNode.getFullPath());
         return idx;
       } catch (Exception e) {
-        throw new IOException("Failed to parser mlog.bin for err:" + e);
+        throw new IOException(
+            "Failed to parse " + storageGroupMNode.getFullPath() + " mlog.bin for err:" + e);
       }
     } else {
       return 0;
@@ -411,8 +354,7 @@ public class SGMManager {
       if (this.mNodeCache != null) {
         this.mNodeCache.invalidateAll();
       }
-      this.totalSeriesNumber.set(0);
-      this.templateManager.clear();
+
       if (logWriter != null) {
         logWriter.close();
         logWriter = null;
@@ -460,21 +402,9 @@ public class SGMManager {
         ChangeTagOffsetPlan changeTagOffsetPlan = (ChangeTagOffsetPlan) plan;
         changeOffset(changeTagOffsetPlan.getPath(), changeTagOffsetPlan.getOffset());
         break;
-      case CREATE_TEMPLATE:
-        CreateTemplatePlan createTemplatePlan = (CreateTemplatePlan) plan;
-        createSchemaTemplate(createTemplatePlan);
-        break;
       case DROP_TEMPLATE:
         DropTemplatePlan dropTemplatePlan = (DropTemplatePlan) plan;
         dropSchemaTemplate(dropTemplatePlan);
-        break;
-      case APPEND_TEMPLATE:
-        AppendTemplatePlan appendTemplatePlan = (AppendTemplatePlan) plan;
-        appendSchemaTemplate(appendTemplatePlan);
-        break;
-      case PRUNE_TEMPLATE:
-        PruneTemplatePlan pruneTemplatePlan = (PruneTemplatePlan) plan;
-        pruneSchemaTemplate(pruneTemplatePlan);
         break;
       case SET_TEMPLATE:
         SetTemplatePlan setTemplatePlan = (SetTemplatePlan) plan;
@@ -491,14 +421,6 @@ public class SGMManager {
       case UNSET_TEMPLATE:
         UnsetTemplatePlan unsetTemplatePlan = (UnsetTemplatePlan) plan;
         unsetSchemaTemplate(unsetTemplatePlan);
-        break;
-      case CREATE_CONTINUOUS_QUERY:
-        CreateContinuousQueryPlan createContinuousQueryPlan = (CreateContinuousQueryPlan) plan;
-        createContinuousQuery(createContinuousQueryPlan);
-        break;
-      case DROP_CONTINUOUS_QUERY:
-        DropContinuousQueryPlan dropContinuousQueryPlan = (DropContinuousQueryPlan) plan;
-        dropContinuousQuery(dropContinuousQueryPlan);
         break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
@@ -543,32 +465,6 @@ public class SGMManager {
 
   // endregion
 
-  // region Interfaces for CQ
-  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws MetadataException {
-    try {
-      ContinuousQueryService.getInstance().register(plan, false);
-    } catch (ContinuousQueryException e) {
-      throw new MetadataException(e);
-    }
-  }
-
-  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws MetadataException {
-    try {
-      ContinuousQueryService.getInstance().deregister(plan, false);
-    } catch (ContinuousQueryException e) {
-      throw new MetadataException(e);
-    }
-  }
-
-  public void writeCreateContinuousQueryLog(CreateContinuousQueryPlan plan) throws IOException {
-    logWriter.createContinuousQuery(plan);
-  }
-
-  public void writeDropContinuousQueryLog(DropContinuousQueryPlan plan) throws IOException {
-    logWriter.dropContinuousQuery(plan);
-  }
-  // endregion
-
   // region Interfaces and Implementation for Timeseries operation
   // including create and delete
 
@@ -578,11 +474,6 @@ public class SGMManager {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
-    if (!allowToCreateNewSeries) {
-      throw new MetadataException(
-          "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
-    }
     try {
       PartialPath path = plan.getPath();
       SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
@@ -610,13 +501,6 @@ public class SGMManager {
       } else if (plan.getTags() != null) {
         // tag key, tag value
         tagManager.addIndex(plan.getTags(), leafMNode);
-      }
-
-      // update statistics and schemaDataTypeNumMap
-      totalSeriesNumber.addAndGet(1);
-      if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
-        logger.warn("Current series number {} is too large...", totalSeriesNumber);
-        allowToCreateNewSeries = false;
       }
 
       // write log
@@ -688,11 +572,6 @@ public class SGMManager {
    * @param plan CreateAlignedTimeSeriesPlan
    */
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
-    if (!allowToCreateNewSeries) {
-      throw new MetadataException(
-          "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
-    }
     try {
       PartialPath prefixPath = plan.getPrefixPath();
       List<String> measurements = plan.getMeasurements();
@@ -714,12 +593,6 @@ public class SGMManager {
       // the cached mNode may be replaced by new entityMNode in mtree
       mNodeCache.invalidate(prefixPath);
 
-      // update statistics and schemaDataTypeNumMap
-      totalSeriesNumber.addAndGet(measurements.size());
-      if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
-        logger.warn("Current series number {} is too large...", totalSeriesNumber);
-        allowToCreateNewSeries = false;
-      }
       // write log
       if (!isRecovering) {
         logWriter.createAlignedTimeseries(plan);
@@ -744,7 +617,7 @@ public class SGMManager {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return deletion failed Timeseries
    */
-  public String deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
+  public Set<String> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     try {
       List<MeasurementPath> allTimeseries = mtree.getMeasurementPaths(pathPattern, isPrefixMatch);
@@ -759,7 +632,7 @@ public class SGMManager {
       for (PartialPath p : allTimeseries) {
         deleteSingleTimeseriesInternal(p, failedNames);
       }
-      return failedNames.isEmpty() ? null : String.join(",", failedNames);
+      return failedNames;
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     }
@@ -771,7 +644,7 @@ public class SGMManager {
    * @param pathPattern path to be deleted
    * @return deletion failed Timeseries
    */
-  public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
+  public Set<String> deleteTimeseries(PartialPath pathPattern) throws MetadataException {
     return deleteTimeseries(pathPattern, false);
   }
 
@@ -820,12 +693,6 @@ public class SGMManager {
     while (node.isEmptyInternal()) {
       mNodeCache.invalidate(node.getPartialPath());
       node = node.getParent();
-    }
-    totalSeriesNumber.addAndGet(-1);
-    if (!allowToCreateNewSeries
-        && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
-      logger.info("Current series number {} come back to normal level", totalSeriesNumber);
-      allowToCreateNewSeries = true;
     }
     return storageGroupPath;
   }
@@ -907,10 +774,6 @@ public class SGMManager {
   }
 
   // region Interfaces for metadata count
-
-  public long getTotalSeriesNumber() {
-    return totalSeriesNumber.get();
-  }
 
   /**
    * To calculate the count of timeseries matching given path. The path could be a pattern of a full
@@ -1910,102 +1773,6 @@ public class SGMManager {
   // endregion
 
   // region Interfaces and Implementation for Template operations
-  public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
-    try {
-
-      List<List<TSDataType>> dataTypes = plan.getDataTypes();
-      List<List<TSEncoding>> encodings = plan.getEncodings();
-      for (int i = 0; i < dataTypes.size(); i++) {
-        for (int j = 0; j < dataTypes.get(i).size(); j++) {
-          SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i).get(j), encodings.get(i).get(j));
-        }
-      }
-
-      templateManager.createSchemaTemplate(plan);
-      // write wal
-      if (!isRecovering) {
-        logWriter.createSchemaTemplate(plan);
-      }
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
-  }
-
-  public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
-    try {
-
-      List<TSDataType> dataTypes = plan.getDataTypes();
-      List<TSEncoding> encodings = plan.getEncodings();
-      for (int idx = 0; idx < dataTypes.size(); idx++) {
-        SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(idx), encodings.get(idx));
-      }
-
-      templateManager.appendSchemaTemplate(plan);
-      // write wal
-      if (!isRecovering) {
-        logWriter.appendSchemaTemplate(plan);
-      }
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
-  }
-
-  public void pruneSchemaTemplate(PruneTemplatePlan plan) throws MetadataException {
-    try {
-      templateManager.pruneSchemaTemplate(plan);
-      // write wal
-      if (!isRecovering) {
-        logWriter.pruneSchemaTemplate(plan);
-      }
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
-  }
-
-  public int countMeasurementsInTemplate(String templateName) throws MetadataException {
-    try {
-      return templateManager.getTemplate(templateName).getMeasurementsCount();
-    } catch (UndefinedTemplateException e) {
-      throw new MetadataException(e);
-    }
-  }
-
-  /**
-   * @param templateName name of template to check
-   * @param path full path to check
-   * @return if path correspond to a measurement in template
-   * @throws MetadataException
-   */
-  public boolean isMeasurementInTemplate(String templateName, String path)
-      throws MetadataException {
-    return templateManager.getTemplate(templateName).isPathMeasurement(path);
-  }
-
-  public boolean isPathExistsInTemplate(String templateName, String path) throws MetadataException {
-    return templateManager.getTemplate(templateName).isPathExistInTemplate(path);
-  }
-
-  public List<String> getMeasurementsInTemplate(String templateName, String path)
-      throws MetadataException {
-    return templateManager.getTemplate(templateName).getMeasurementsUnderPath(path);
-  }
-
-  public List<Pair<String, IMeasurementSchema>> getSchemasInTemplate(
-      String templateName, String path) throws MetadataException {
-    Set<Map.Entry<String, IMeasurementSchema>> rawSchemas =
-        templateManager.getTemplate(templateName).getSchemaMap().entrySet();
-    return rawSchemas.stream()
-        .filter(e -> e.getKey().startsWith(path))
-        .collect(
-            ArrayList::new,
-            (res, elem) -> res.add(new Pair<>(elem.getKey(), elem.getValue())),
-            ArrayList::addAll);
-  }
-
-  public Set<String> getAllTemplates() {
-    return templateManager.getAllTemplateName();
-  }
-
   /**
    * Get all paths set designated template
    *
@@ -2022,19 +1789,13 @@ public class SGMManager {
 
   public void dropSchemaTemplate(DropTemplatePlan plan) throws MetadataException {
     try {
-      String templateName = plan.getName();
-      // check whether template exists
-      if (!templateManager.getAllTemplateName().contains(templateName)) {
-        throw new UndefinedTemplateException(templateName);
-      }
 
-      if (mtree.isTemplateSetOnMTree(templateName)) {
+      if (mtree.isTemplateSetOnMTree(plan.getName())) {
         throw new MetadataException(
             String.format(
-                "Template [%s] has been set on MTree, cannot be dropped now.", templateName));
+                "Template [%s] has been set on MTree, cannot be dropped now.", plan.getName()));
       }
 
-      templateManager.dropSchemaTemplate(plan);
       if (!isRecovering) {
         logWriter.dropSchemaTemplate(plan);
       }
@@ -2045,7 +1806,7 @@ public class SGMManager {
 
   public synchronized void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
     // get mnode and update template should be atomic
-    Template template = templateManager.getTemplate(plan.getTemplateName());
+    Template template = TemplateManager.getInstance().getTemplate(plan.getTemplateName());
 
     try {
       PartialPath path = new PartialPath(plan.getPrefixPath());
@@ -2054,7 +1815,7 @@ public class SGMManager {
 
       IMNode node = getDeviceNodeWithAutoCreate(path);
 
-      templateManager.checkTemplateCompatible(template, node);
+      TemplateManager.getInstance().checkTemplateCompatible(template, node);
 
       node.setSchemaTemplate(template);
 
@@ -2180,7 +1941,6 @@ public class SGMManager {
    */
   @TestOnly
   public void initForMultiMManagerTest() {
-    templateManager = TemplateManager.getNewInstanceForTest();
     tagManager = TagManager.getNewInstanceForTest();
     init();
   }
@@ -2188,15 +1948,6 @@ public class SGMManager {
   @TestOnly
   public void flushAllMlogForTest() throws IOException {
     logWriter.close();
-  }
-
-  @TestOnly
-  public Template getTemplate(String templateName) throws MetadataException {
-    try {
-      return templateManager.getTemplate(templateName);
-    } catch (UndefinedTemplateException e) {
-      throw new MetadataException(e);
-    }
   }
   // endregion
 }

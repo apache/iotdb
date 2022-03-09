@@ -51,7 +51,9 @@ public class StorageGroupManagerTrieImpl implements IStorageGroupManager {
   @Override
   public void setStorageGroup(PartialPath path) throws MetadataException {
     IStorageGroupMNode storageGroupMNode = storageGroupTrie.setStorageGroup(path);
-    storageGroupMNode.setSGMManager(new SGMManager(storageGroupMNode));
+    SGMManager sgmManager = new SGMManager(storageGroupMNode);
+    storageGroupMNode.setSGMManager(sgmManager);
+    sgmManager.init();
   }
 
   @Override
