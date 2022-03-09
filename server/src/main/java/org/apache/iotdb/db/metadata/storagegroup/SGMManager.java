@@ -39,7 +39,6 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
-import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -80,7 +79,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
@@ -777,14 +775,6 @@ public class SGMManager {
   }
 
   /**
-   * To calculate the count of timeseries matching given path. The path could be a pattern of a full
-   * path, may contain wildcard.
-   */
-  public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
-    return getAllTimeseriesCount(pathPattern, false);
-  }
-
-  /**
    * To calculate the count of devices for given path pattern. If using prefix match, the path
    * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
    * counted.
@@ -813,17 +803,6 @@ public class SGMManager {
     return mtree.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
   }
 
-  /**
-   * To calculate the count of nodes in the given level for given path pattern.
-   *
-   * @param pathPattern a path pattern or a full path
-   * @param level the level should match the level of the path
-   */
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
-      throws MetadataException {
-    return getNodesCountInGivenLevel(pathPattern, level, false);
-  }
-
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
@@ -832,21 +811,6 @@ public class SGMManager {
   // endregion
 
   // region Interfaces for level Node info Query
-  /**
-   * Get all nodes matching the given path pattern in the given level. The level of the path should
-   * match the nodeLevel. 1. The given level equals the path level with out **, e.g. give path
-   * root.*.d.* and the level should be 4. 2. The given level is greater than path level with **,
-   * e.g. give path root.** and the level could be 2 or 3.
-   *
-   * @param pathPattern can be a pattern of a full path.
-   * @param nodeLevel the level should match the level of the path
-   * @return A List instance which stores all node at given level
-   */
-  public List<PartialPath> getNodesListInGivenLevel(PartialPath pathPattern, int nodeLevel)
-      throws MetadataException {
-    return getNodesListInGivenLevel(pathPattern, nodeLevel, null);
-  }
-
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, MManager.StorageGroupFilter filter)
       throws MetadataException {
@@ -1120,11 +1084,6 @@ public class SGMManager {
 
     return new ArrayList<>(res);
   }
-
-  public Map<PartialPath, IMeasurementSchema> getAllMeasurementSchemaByPrefix(
-      PartialPath prefixPath) throws MetadataException {
-    return mtree.getAllMeasurementSchemaByPrefix(prefixPath);
-  }
   // endregion
   // endregion
 
@@ -1390,152 +1349,6 @@ public class SGMManager {
       mtree.collectTimeseriesSchema(prefixPath, timeseriesSchemas);
     } catch (MetadataException ignored) {
       // do nothing
-    }
-  }
-
-  /**
-   * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
-   * cache the path to mRemoteSchemaCache
-   */
-  public void cacheMeta(
-      PartialPath path, IMeasurementMNode measurementMNode, boolean needSetFullPath) {
-    // do nothing
-  }
-  // endregion
-
-  // region Interfaces for lastCache operations
-  /**
-   * Update the last cache value of time series of given seriesPath.
-   *
-   * <p>MManager will use the seriesPath to search the node first and then process the lastCache in
-   * the MeasurementMNode
-   *
-   * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
-   * during last Query
-   *
-   * @param seriesPath the PartialPath of full path from root to Measurement
-   * @param timeValuePair the latest point value
-   * @param highPriorityUpdate the last value from insertPlan is high priority
-   * @param latestFlushedTime latest flushed time
-   */
-  public void updateLastCache(
-      PartialPath seriesPath,
-      TimeValuePair timeValuePair,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-    IMeasurementMNode node;
-    try {
-      node = getMeasurementMNode(seriesPath);
-    } catch (MetadataException e) {
-      logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
-      return;
-    }
-
-    LastCacheManager.updateLastCache(node, timeValuePair, highPriorityUpdate, latestFlushedTime);
-  }
-
-  /**
-   * Update the last cache value in given MeasurementMNode. work.
-   *
-   * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
-   * during last Query
-   *
-   * @param node the measurementMNode holding the lastCache
-   * @param timeValuePair the latest point value
-   * @param highPriorityUpdate the last value from insertPlan is high priority
-   * @param latestFlushedTime latest flushed time
-   */
-  public void updateLastCache(
-      IMeasurementMNode node,
-      TimeValuePair timeValuePair,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-    LastCacheManager.updateLastCache(node, timeValuePair, highPriorityUpdate, latestFlushedTime);
-  }
-
-  /**
-   * Get the last cache value of time series of given seriesPath. MManager will use the seriesPath
-   * to search the node.
-   *
-   * <p>Invoking scenario: last cache read during last Query
-   *
-   * @param seriesPath the PartialPath of full path from root to Measurement
-   * @return the last cache value
-   */
-  public TimeValuePair getLastCache(PartialPath seriesPath) {
-    IMeasurementMNode node;
-    try {
-      node = getMeasurementMNode(seriesPath);
-    } catch (MetadataException e) {
-      logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
-      return null;
-    }
-
-    return LastCacheManager.getLastCache(node);
-  }
-
-  /**
-   * Get the last cache value in given MeasurementMNode.
-   *
-   * <p>Invoking scenario: last cache read during last Query
-   *
-   * @param node the measurementMNode holding the lastCache
-   * @return the last cache value
-   */
-  public TimeValuePair getLastCache(IMeasurementMNode node) {
-    return LastCacheManager.getLastCache(node);
-  }
-
-  /**
-   * Reset the last cache value of time series of given seriesPath. MManager will use the seriesPath
-   * to search the node.
-   *
-   * @param seriesPath the PartialPath of full path from root to Measurement
-   */
-  public void resetLastCache(PartialPath seriesPath) {
-    IMeasurementMNode node;
-    try {
-      node = getMeasurementMNode(seriesPath);
-    } catch (MetadataException e) {
-      logger.warn("failed to reset last cache for the {}, err:{}", seriesPath, e.getMessage());
-      return;
-    }
-
-    LastCacheManager.resetLastCache(node);
-  }
-
-  /**
-   * delete all the last cache value of any timeseries or aligned timeseries under the device
-   *
-   * <p>Invoking scenario (1) after upload tsfile
-   *
-   * @param deviceId path of device
-   */
-  public void deleteLastCacheByDevice(PartialPath deviceId) throws MetadataException {
-    IMNode node = getDeviceNode(deviceId);
-    if (node.isEntity()) {
-      LastCacheManager.deleteLastCacheByDevice(node.getAsEntityMNode());
-    }
-  }
-
-  /**
-   * delete the last cache value of timeseries or subMeasurement of some aligned timeseries, which
-   * is under the device and matching the originalPath
-   *
-   * <p>Invoking scenario (1) delete timeseries
-   *
-   * @param deviceId path of device
-   * @param originalPath origin timeseries path
-   * @param startTime startTime
-   * @param endTime endTime
-   */
-  public void deleteLastCacheByDevice(
-      PartialPath deviceId, PartialPath originalPath, long startTime, long endTime)
-      throws MetadataException {
-    IMNode node = IoTDB.metaManager.getDeviceNode(deviceId);
-    if (node.isEntity()) {
-      LastCacheManager.deleteLastCacheByDevice(
-          node.getAsEntityMNode(), originalPath, startTime, endTime);
     }
   }
   // endregion
@@ -1851,7 +1664,7 @@ public class SGMManager {
     }
   }
 
-  IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
+  public IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
     // check whether any template has been set on designated path
     if (node.getUpperTemplate() == null) {
       throw new MetadataException(
@@ -1893,36 +1706,6 @@ public class SGMManager {
   // endregion
 
   // region TestOnly Interfaces
-  /**
-   * To reduce the String number in memory, use the deviceId from MManager instead of the deviceId
-   * read from disk
-   *
-   * @param devicePath read from disk
-   * @return deviceId
-   */
-  @TestOnly
-  public String getDeviceId(PartialPath devicePath) {
-    String device = null;
-    try {
-      IMNode deviceNode = getDeviceNode(devicePath);
-      device = deviceNode.getFullPath();
-    } catch (MetadataException | NullPointerException e) {
-      // Cannot get deviceId from MManager, return the input deviceId
-    }
-    return device;
-  }
-
-  /**
-   * Attention!!!!!, this method could only be used for Tests involving multiple mmanagers. The
-   * singleton of templateManager and tagManager will cause interference between mmanagers if one of
-   * the mmanagers invoke init method or clear method
-   */
-  @TestOnly
-  public void initForMultiMManagerTest() {
-    tagManager = TagManager.getNewInstanceForTest();
-    init();
-  }
-
   @TestOnly
   public void flushAllMlogForTest() throws IOException {
     logWriter.close();

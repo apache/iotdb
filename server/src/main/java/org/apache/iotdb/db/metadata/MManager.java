@@ -1368,7 +1368,7 @@ public class MManager {
   public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
     Set<String> result = new TreeSet<>();
     for (SGMManager sgmManager : storageGroupManager.getAllSGMManager()) {
-      sgmManager.getPathsSetTemplate(templateName);
+      result.addAll(sgmManager.getPathsSetTemplate(templateName));
     }
     return result;
   }
@@ -1376,7 +1376,7 @@ public class MManager {
   public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
     Set<String> result = new TreeSet<>();
     for (SGMManager sgmManager : storageGroupManager.getAllSGMManager()) {
-      sgmManager.getPathsUsingTemplate(templateName);
+      result.addAll(sgmManager.getPathsUsingTemplate(templateName));
     }
     return result;
   }
@@ -1416,7 +1416,7 @@ public class MManager {
   }
 
   IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
-    return null;
+    return storageGroupManager.getSGMManager(node.getPartialPath()).setUsingSchemaTemplate(node);
   }
   // endregion
 
@@ -1452,7 +1452,11 @@ public class MManager {
   }
 
   @TestOnly
-  public void flushAllMlogForTest() throws IOException {}
+  public void flushAllMlogForTest() throws IOException {
+    for (SGMManager sgmManager : storageGroupManager.getAllSGMManager()) {
+      sgmManager.flushAllMlogForTest();
+    }
+  }
 
   @TestOnly
   public Template getTemplate(String templateName) throws MetadataException {
