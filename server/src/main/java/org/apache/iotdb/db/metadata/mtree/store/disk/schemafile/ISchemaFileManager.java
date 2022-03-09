@@ -25,12 +25,20 @@ import java.io.IOException;
 import java.util.Iterator;
 
 public interface ISchemaFileManager {
+
+  /**
+   * Delete all existed schema files under target directory
+   *
+   * @return a bare root IMNode
+   */
+  IMNode init() throws MetadataException, IOException;
+
   /**
    * Load all schema files under target directory, return the recovered tree.
    *
    * @return a deep copy tree corresponding to files.
    */
-  IMNode init() throws MetadataException, IOException;
+  IMNode initWithLoad() throws MetadataException, IOException;
 
   IMNode getChildNode(IMNode parent, String childName) throws MetadataException, IOException;
 

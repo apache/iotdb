@@ -52,6 +52,13 @@ public class MockSFManager implements ISchemaFileManager {
   }
 
   @Override
+  public IMNode initWithLoad() {
+    IMNode root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+    writeMNode(root);
+    return root;
+  }
+
+  @Override
   public IMNode getChildNode(IMNode parent, String childName) {
     Map<String, IMNode> segment = getSegment(parent);
     IMNode result = null;

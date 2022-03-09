@@ -81,6 +81,12 @@ public class SFManager implements ISchemaFileManager {
   // region Interfaces
   @Override
   public IMNode init() throws MetadataException, IOException {
+    clearSchemaFiles();
+    return MockSFManager.cloneMNode(root);
+  }
+
+  @Override
+  public IMNode initWithLoad() throws MetadataException, IOException {
     loadSchemaFiles();
     return getUpperMTree();
   }
@@ -309,14 +315,39 @@ public class SFManager implements ISchemaFileManager {
       if (dir.exists()) {
         throw new MetadataException("Invalid path for Schema File directory.");
       }
-      dir.mkdirs();
+      if (!dir.mkdirs()) {
+        throw new MetadataException(
+            String.format("Schema file directory [%s] failed to initiate.", dir.getAbsolutePath()));
+      }
     }
 
     File[] files = dir.listFiles();
+    assert files != null;
     for (File f : files) {
       String[] fileName = MetaUtils.splitPathToDetachedPath(f.getName());
       if (fileName[fileName.length - 1].equals(MetadataConstant.SCHEMA_FILE_SUFFIX)) {
         restoreStorageGroup(Arrays.copyOfRange(fileName, 0, fileName.length - 1));
+      }
+    }
+  }
+
+  private void clearSchemaFiles() throws MetadataException, IOException {
+    File dir = new File(fileDirs);
+    if (!dir.isDirectory()) {
+      if (dir.exists()) {
+        throw new MetadataException("Invalid path for Schema File directory.");
+      }
+      if (!dir.mkdirs()) {
+        throw new MetadataException(
+            String.format("Schema file directory [%s] failed to initiate.", dir.getAbsolutePath()));
+      }
+    }
+    File[] files = dir.listFiles();
+    assert files != null;
+    for (File f : files) {
+      if (!f.delete()) {
+        throw new MetadataException(
+            String.format("Schema file [%s] failed to delete.", f.getAbsolutePath()));
       }
     }
   }

@@ -85,7 +85,7 @@ public class SFManagerTests {
     printPreOrderSeries(root);
 
     SFManager sfManager = SFManager.getInstance();
-    sfManager.init();
+    sfManager.initWithLoad();
 
     for (IMNode sgNode : sgNodes) {
       Iterable<IMNode> innerIte = getIterable(preOrderTraverseSeries(sgNode));
@@ -97,7 +97,7 @@ public class SFManagerTests {
     }
 
     sfManager.close();
-    sfManager.init();
+    sfManager.initWithLoad();
 
     Iterable<IMNode> itb = getIterable(preOrderTraverseSeries(root));
     for (IMNode node : itb) {
@@ -110,7 +110,7 @@ public class SFManagerTests {
     }
 
     sfManager.close();
-    sfManager.init();
+    sfManager.initWithLoad();
 
     Map<String, Set<String>> checkMap = new HashMap<>();
     checkMap.put("sg1", new HashSet<>(Arrays.asList("GPS,sed2".split(","))));
