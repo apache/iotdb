@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service.thrift.impl;
 
+import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -51,6 +52,7 @@ import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import com.google.gson.Gson;
 import org.apache.thrift.TException;
 import org.influxdb.InfluxDBException;
 import org.influxdb.dto.Point;
@@ -153,40 +155,44 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
   }
 
   private TSQueryResultRsp queryInfluxDB(
-      String database, InfluxQueryOperator queryOperator, long sessionId) throws TException {
+      String database, InfluxQueryOperator queryOperator, long sessionId) {
     String measurement = queryOperator.getFromComponent().getPrefixPaths().get(0).getFullPath();
     // The list of fields under the current measurement and the order of the specified rules
     Map<String, Integer> fieldOrders = getFieldOrders(database, measurement);
     QueryResult queryResult;
-    // contain filter condition or have common query the result of by traversal.
-    if (queryOperator.getWhereComponent() != null
-        || queryOperator.getSelectComponent().isHasCommonQuery()
-        || queryOperator.getSelectComponent().isHasOnlyTraverseFunction()) {
-      // step1 : generate query results
-      queryResult =
-          InfluxDBUtils.queryExpr(
-              queryOperator.getWhereComponent() != null
-                  ? queryOperator.getWhereComponent().getFilterOperator()
-                  : null,
-              database,
-              measurement,
-              serviceProvider,
-              fieldOrders);
-      // step2 : select filter
-      InfluxDBUtils.ProcessSelectComponent(queryResult, queryOperator.getSelectComponent());
-    }
-    // don't contain filter condition and only have function use iotdb function.
-    else {
-      queryResult =
-          InfluxDBUtils.queryFuncWithoutFilter(
-              queryOperator.getSelectComponent(), database, measurement, serviceProvider);
-    }
+    TSQueryResultRsp tsQueryResultRsp = new TSQueryResultRsp();
     try {
-      TSQueryResultRsp tsQueryResultRsp = InfluxDBUtils.convertQueryResult(queryResult);
-      tsQueryResultRsp.setStatus(RpcUtils.getInfluxDBStatus(TSStatusCode.SUCCESS_STATUS));
-      return tsQueryResultRsp;
-    } catch (IOException e) {
-      throw new TException(e);
+      // contain filter condition or have common query the result of by traversal.
+      if (queryOperator.getWhereComponent() != null
+          || queryOperator.getSelectComponent().isHasCommonQuery()
+          || queryOperator.getSelectComponent().isHasOnlyTraverseFunction()) {
+        // step1 : generate query results
+        queryResult =
+            InfluxDBUtils.queryExpr(
+                queryOperator.getWhereComponent() != null
+                    ? queryOperator.getWhereComponent().getFilterOperator()
+                    : null,
+                database,
+                measurement,
+                serviceProvider,
+                fieldOrders,
+                sessionId);
+        // step2 : select filter
+        InfluxDBUtils.ProcessSelectComponent(queryResult, queryOperator.getSelectComponent());
+      }
+      // don't contain filter condition and only have function use iotdb function.
+      else {
+        queryResult =
+            InfluxDBUtils.queryFuncWithoutFilter(
+                queryOperator.getSelectComponent(), database, measurement, serviceProvider);
+      }
+      return tsQueryResultRsp
+          .setResultJsonString(new Gson().toJson(queryResult))
+          .setStatus(RpcUtils.getInfluxDBStatus(TSStatusCode.SUCCESS_STATUS));
+    } catch (AuthException e) {
+      return tsQueryResultRsp.setStatus(
+          RpcUtils.getInfluxDBStatus(
+              TSStatusCode.UNINITIALIZED_AUTH_ERROR.getStatusCode(), e.getMessage()));
     }
   }
 

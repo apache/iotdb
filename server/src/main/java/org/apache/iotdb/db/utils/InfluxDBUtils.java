@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -45,9 +46,7 @@ import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryResultRsp;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSResult;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSSeries;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -58,7 +57,6 @@ import org.influxdb.InfluxDBException;
 import org.influxdb.dto.QueryResult;
 
 import java.io.*;
-import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -99,22 +97,27 @@ public class InfluxDBUtils {
       String database,
       String measurement,
       ServiceProvider serviceProvider,
-      Map<String, Integer> fieldOrders) {
+      Map<String, Integer> fieldOrders,
+      Long sessionId)
+      throws AuthException {
     if (operator == null) {
       List<InfluxCondition> conditions = new ArrayList<>();
-      return queryByConditions(conditions, database, measurement, serviceProvider, fieldOrders);
+      return queryByConditions(
+          conditions, database, measurement, serviceProvider, fieldOrders, sessionId);
     } else if (operator instanceof BasicFunctionOperator) {
       List<InfluxCondition> conditions = new ArrayList<>();
       conditions.add(
           InfluxDBUtils.getConditionForBasicFunctionOperator((BasicFunctionOperator) operator));
-      return queryByConditions(conditions, database, measurement, serviceProvider, fieldOrders);
+      return queryByConditions(
+          conditions, database, measurement, serviceProvider, fieldOrders, sessionId);
     } else {
       FilterOperator leftOperator = operator.getChildren().get(0);
       FilterOperator rightOperator = operator.getChildren().get(1);
       if (operator.getFilterType() == FilterConstant.FilterType.KW_OR) {
         return InfluxDBUtils.orQueryResultProcess(
-            queryExpr(leftOperator, database, measurement, serviceProvider, fieldOrders),
-            queryExpr(rightOperator, database, measurement, serviceProvider, fieldOrders));
+            queryExpr(leftOperator, database, measurement, serviceProvider, fieldOrders, sessionId),
+            queryExpr(
+                rightOperator, database, measurement, serviceProvider, fieldOrders, sessionId));
       } else if (operator.getFilterType() == FilterConstant.FilterType.KW_AND) {
         if (InfluxDBUtils.canMergeOperator(leftOperator)
             && InfluxDBUtils.canMergeOperator(rightOperator)) {
@@ -124,11 +127,13 @@ public class InfluxDBUtils {
               InfluxDBUtils.getConditionsByFilterOperatorOperator(rightOperator);
           conditions1.addAll(conditions2);
           return queryByConditions(
-              conditions1, database, measurement, serviceProvider, fieldOrders);
+              conditions1, database, measurement, serviceProvider, fieldOrders, sessionId);
         } else {
           return InfluxDBUtils.andQueryResultProcess(
-              queryExpr(leftOperator, database, measurement, serviceProvider, fieldOrders),
-              queryExpr(rightOperator, database, measurement, serviceProvider, fieldOrders));
+              queryExpr(
+                  leftOperator, database, measurement, serviceProvider, fieldOrders, sessionId),
+              queryExpr(
+                  rightOperator, database, measurement, serviceProvider, fieldOrders, sessionId));
         }
       }
     }
@@ -245,19 +250,6 @@ public class InfluxDBUtils {
       return false;
     } else {
       return o1.equals(o2);
-    }
-  }
-
-  /**
-   * check whether the field is empty. If it is empty, an error will be thrown
-   *
-   * @param string string to check
-   * @param name prompt information in error throwing
-   */
-  public static void checkNonEmptyString(String string, String name)
-      throws IllegalArgumentException {
-    if (string == null || string.isEmpty()) {
-      throw new IllegalArgumentException("Expecting a non-empty string for " + name);
     }
   }
 
@@ -379,7 +371,9 @@ public class InfluxDBUtils {
       String database,
       String measurement,
       ServiceProvider serviceProvider,
-      Map<String, Integer> fieldOrders) {
+      Map<String, Integer> fieldOrders,
+      Long sessionId)
+      throws AuthException {
     // used to store the actual order according to the tag
     Map<Integer, InfluxCondition> realTagOrders = new HashMap<>();
     // stores a list of conditions belonging to the field
@@ -442,6 +436,10 @@ public class InfluxDBUtils {
     try {
       QueryPlan queryPlan =
           (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(realQuerySql);
+      TSStatus tsStatus = serviceProvider.checkAuthority(queryPlan, sessionId);
+      if (tsStatus != null) {
+        throw new AuthException(tsStatus.getMessage());
+      }
       QueryContext queryContext =
           serviceProvider.genQueryContext(
               queryId,
@@ -817,85 +815,6 @@ public class InfluxDBUtils {
     result.setSeries(new ArrayList<>(Arrays.asList(series)));
     queryResult.setResults(new ArrayList<>(Arrays.asList(result)));
     return queryResult;
-  }
-
-  public static TSQueryResultRsp convertQueryResult(QueryResult queryResult) throws IOException {
-    List<TSResult> tsResults = new ArrayList<>(queryResult.getResults().size());
-    for (QueryResult.Result result : queryResult.getResults()) {
-      List<TSSeries> tsSeriesList = new ArrayList<>(result.getSeries().size());
-      for (QueryResult.Series series : result.getSeries()) {
-        List<List<ByteBuffer>> tsValues = new ArrayList<>(series.getValues().size());
-
-        for (List<Object> value : series.getValues()) {
-          List<ByteBuffer> tsValue = new ArrayList<>(value.size());
-          for (Object obj : value) {
-            tsValue.add(object2ByteBuffer(obj));
-          }
-          tsValues.add(tsValue);
-        }
-
-        tsSeriesList.add(
-            new TSSeries()
-                .setName(series.getName())
-                .setTags(series.getTags())
-                .setColumns(series.getColumns())
-                .setValues(tsValues));
-      }
-      tsResults.add(new TSResult().setSeries(tsSeriesList).setError(result.getError()));
-    }
-    return new TSQueryResultRsp().setResults(tsResults).setError(queryResult.getError());
-  }
-
-  public static QueryResult convertTSQueryResult(TSQueryResultRsp tsQueryResultRsp)
-      throws IOException, ClassNotFoundException {
-    QueryResult queryResult = new QueryResult();
-    List<QueryResult.Result> results = new ArrayList<>(tsQueryResultRsp.results.size());
-    for (TSResult tsResult : tsQueryResultRsp.results) {
-      QueryResult.Result result = new QueryResult.Result();
-      List<QueryResult.Series> seriesList = new ArrayList<>(tsResult.series.size());
-      for (TSSeries tsSeries : tsResult.series) {
-        QueryResult.Series series = new QueryResult.Series();
-        series.setColumns(tsSeries.columns);
-        series.setName(tsSeries.name);
-        series.setTags(tsSeries.tags);
-        List<List<Object>> values = new ArrayList<>(tsSeries.values.size());
-        for (List<ByteBuffer> byteBufferList : tsSeries.values) {
-          List<Object> value = new ArrayList<>(byteBufferList.size());
-          for (ByteBuffer byteBuffer : byteBufferList) {
-            value.add(byteBuffer2Object(byteBuffer));
-          }
-          values.add(value);
-        }
-        series.setValues(values);
-
-        seriesList.add(series);
-      }
-      result.setSeries(seriesList);
-      result.setError(tsResult.error);
-      results.add(result);
-    }
-    queryResult.setResults(results);
-    queryResult.setError(tsQueryResultRsp.error);
-    return queryResult;
-  }
-
-  private static ByteBuffer object2ByteBuffer(Object object) throws IOException {
-    ByteArrayOutputStream bout = new ByteArrayOutputStream();
-    ObjectOutputStream out = new ObjectOutputStream(bout);
-    out.writeObject(object);
-    out.flush();
-    byte[] bytes = bout.toByteArray();
-    bout.close();
-    out.close();
-    return ByteBuffer.wrap(bytes);
-  }
-
-  private static Object byteBuffer2Object(ByteBuffer byteBuffer)
-      throws IOException, ClassNotFoundException {
-    ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(byteBuffer.array()));
-    Object object = in.readObject();
-    in.close();
-    return object;
   }
 
   public static String generateFunctionSql(String functionName, String parameter, String path) {

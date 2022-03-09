@@ -20,7 +20,6 @@
 package org.apache.iotdb.influxdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.InfluxDBUtils;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.*;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -28,6 +27,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Config;
 
+import com.google.gson.Gson;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -38,7 +38,6 @@ import org.influxdb.dto.QueryResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -175,8 +174,8 @@ public class InfluxDBSession {
     try {
       TSQueryResultRsp tsQueryResultRsp = client.query(request);
       RpcUtils.verifySuccess(tsQueryResultRsp.status);
-      return InfluxDBUtils.convertTSQueryResult(tsQueryResultRsp);
-    } catch (TException | IOException | ClassNotFoundException e) {
+      return new Gson().fromJson(tsQueryResultRsp.ResultJsonString, QueryResult.class);
+    } catch (TException e) {
       e.printStackTrace();
       logger.error(e.getMessage());
       if (reconnect()) {
@@ -184,8 +183,8 @@ public class InfluxDBSession {
           request.setSessionId(sessionId);
           TSQueryResultRsp tsQueryResultRsp = client.query(request);
           RpcUtils.verifySuccess(tsQueryResultRsp.status);
-          return InfluxDBUtils.convertTSQueryResult(tsQueryResultRsp);
-        } catch (TException | IOException | ClassNotFoundException e1) {
+          return new Gson().fromJson(tsQueryResultRsp.ResultJsonString, QueryResult.class);
+        } catch (TException e1) {
           throw new IoTDBConnectionException(e1);
         }
       } else {
