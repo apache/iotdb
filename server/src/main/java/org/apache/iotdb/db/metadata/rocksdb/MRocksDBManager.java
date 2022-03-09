@@ -959,7 +959,7 @@ public class MRocksDBManager implements IMetaManager {
   public void traverseOutcomeBasins(
       String[] nodes,
       int maxLevel,
-      BiFunction<String, byte[], Boolean> function,
+      BiFunction<byte[], byte[], Boolean> function,
       Character[] nodeTypeArray)
       throws IllegalPathException {
     List<String[]> allNodesArray = RocksDBUtils.replaceMultiWildcardToSingle(nodes, maxLevel);
@@ -967,7 +967,7 @@ public class MRocksDBManager implements IMetaManager {
   }
 
   public void traverseByPatternPath(
-      String[] nodes, BiFunction<String, byte[], Boolean> function, Character[] nodeTypeArray) {
+      String[] nodes, BiFunction<byte[], byte[], Boolean> function, Character[] nodeTypeArray) {
     //    String[] nodes = pathPattern.getNodes();
 
     int startIndex = 0;
@@ -985,11 +985,7 @@ public class MRocksDBManager implements IMetaManager {
                   Holder<byte[]> holder = new Holder<>();
                   readWriteHandler.keyExist(levelPrefix.getBytes(), holder);
                   if (holder.getValue() != null) {
-                    StringBuilder stringBuilder = new StringBuilder();
-                    for (String node : nodes) {
-                      stringBuilder.append(RockDBConstants.PATH_SEPARATOR).append(node);
-                    }
-                    function.apply(stringBuilder.substring(1), holder.getValue());
+                    function.apply(levelPrefix.getBytes(), holder.getValue());
                   }
                 } catch (RocksDBException e) {
                   logger.error(e.getMessage());
@@ -1034,9 +1030,7 @@ public class MRocksDBManager implements IMetaManager {
                             }
                             if (RocksDBUtils.suffixMatch(iterator.key(), suffixToMatch)) {
                               if (lastIteration) {
-                                function.apply(
-                                    RocksDBUtils.getPathByInnerName(new String(iterator.key())),
-                                    iterator.value());
+                                function.apply(iterator.key(), iterator.value());
                               } else {
                                 tempNodes.add(RocksDBUtils.toMetaNodes(iterator.key()));
                               }
@@ -1169,7 +1163,7 @@ public class MRocksDBManager implements IMetaManager {
 
   private int getCountByNodeType(Character[] nodetype, String[] nodes) throws IllegalPathException {
     AtomicInteger atomicInteger = new AtomicInteger(0);
-    BiFunction<String, byte[], Boolean> function =
+    BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
           atomicInteger.incrementAndGet();
           return true;
@@ -1428,9 +1422,9 @@ public class MRocksDBManager implements IMetaManager {
       String[] nodes, Character[] nodetype, Collection<PartialPath> collection)
       throws IllegalPathException {
     List<String> allResult = Collections.synchronizedList(new ArrayList<>());
-    BiFunction<String, byte[], Boolean> function =
+    BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
-          allResult.add(a);
+          allResult.add(RocksDBUtils.getPathByInnerName(new String(a)));
           return true;
         };
     traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, function, nodetype);
@@ -1582,9 +1576,11 @@ public class MRocksDBManager implements IMetaManager {
   private List<MeasurementPath> getMatchedMeasurementPath(String[] nodes)
       throws IllegalPathException {
     List<MeasurementPath> allResult = Collections.synchronizedList(new ArrayList<>());
-    BiFunction<String, byte[], Boolean> function =
+    BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
-          allResult.add(new RMeasurementMNode(a, b).getMeasurementPath());
+          allResult.add(
+              new RMeasurementMNode(RocksDBUtils.getPathByInnerName(new String(a)), b)
+                  .getMeasurementPath());
           return true;
         };
     traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
