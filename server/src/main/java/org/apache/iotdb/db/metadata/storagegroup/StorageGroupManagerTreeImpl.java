@@ -21,13 +21,15 @@ package org.apache.iotdb.db.metadata.storagegroup;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class StorageGroupManagerTreeImpl implements IStorageGroupManager {
 
@@ -57,21 +59,21 @@ public class StorageGroupManagerTreeImpl implements IStorageGroupManager {
   }
 
   @Override
-  public List<IMeasurementMNode> deleteStorageGroup(PartialPath path) throws MetadataException {
-    IStorageGroupMNode storageGroupMNode = storageGroupTree.deleteStorageGroup(path);
-    return storageGroupMNode.getSGMManager().deleteStorageGroup();
-  }
-
-  @Override
   public SGMManager getSGMManager(PartialPath path) throws MetadataException {
     return storageGroupTree.getStorageGroupNodeByPath(path).getSGMManager();
   }
 
   @Override
   public List<SGMManager> getInvolvedSGMManager(PartialPath pathPattern) throws MetadataException {
+    return getInvolvedSGMManager(pathPattern, false);
+  }
+
+  @Override
+  public List<SGMManager> getInvolvedSGMManager(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
     List<SGMManager> result = new ArrayList<>();
     for (IStorageGroupMNode storageGroupMNode :
-        storageGroupTree.getInvolvedStorageGroupNodes(pathPattern)) {
+        storageGroupTree.getInvolvedStorageGroupNodes(pathPattern, isPrefixMatch)) {
       result.add(storageGroupMNode.getSGMManager());
     }
     return result;
@@ -84,6 +86,16 @@ public class StorageGroupManagerTreeImpl implements IStorageGroupManager {
       result.add(storageGroupMNode.getSGMManager());
     }
     return result;
+  }
+
+  @Override
+  public List<SGMManager> deleteStorageGroup(List<PartialPath> storageGroups)
+      throws MetadataException {
+    List<SGMManager> sgmManagers = new ArrayList<>();
+    for (PartialPath path : storageGroups) {
+      sgmManagers.add(storageGroupTree.deleteStorageGroup(path).getSGMManager());
+    }
+    return sgmManagers;
   }
 
   @Override
@@ -131,11 +143,6 @@ public class StorageGroupManagerTreeImpl implements IStorageGroupManager {
   }
 
   @Override
-  public int getStorageGroupNum(PartialPath pathPattern) throws MetadataException {
-    return storageGroupTree.getStorageGroupNum(pathPattern, false);
-  }
-
-  @Override
   public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
       throws MetadataException {
     return storageGroupTree.getStorageGroupNodeByStorageGroupPath(path);
@@ -149,5 +156,30 @@ public class StorageGroupManagerTreeImpl implements IStorageGroupManager {
   @Override
   public List<IStorageGroupMNode> getAllStorageGroupNodes() {
     return storageGroupTree.getAllStorageGroupNodes();
+  }
+
+  @Override
+  public Pair<Integer, List<SGMManager>> getNodesCountInGivenLevel(
+      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
+    return storageGroupTree.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
+  }
+
+  @Override
+  public Pair<List<PartialPath>, List<SGMManager>> getNodesListInGivenLevel(
+      PartialPath pathPattern, int nodeLevel, MManager.StorageGroupFilter filter)
+      throws MetadataException {
+    return storageGroupTree.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);
+  }
+
+  @Override
+  public Pair<Set<String>, List<SGMManager>> getChildNodePathInNextLevel(PartialPath pathPattern)
+      throws MetadataException {
+    return storageGroupTree.getChildNodePathInNextLevel(pathPattern);
+  }
+
+  @Override
+  public Pair<Set<String>, List<SGMManager>> getChildNodeNameInNextLevel(PartialPath pathPattern)
+      throws MetadataException {
+    return storageGroupTree.getChildNodeNameInNextLevel(pathPattern);
   }
 }

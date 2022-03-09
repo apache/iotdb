@@ -20,13 +20,15 @@ package org.apache.iotdb.db.metadata.storagegroup;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface IStorageGroupManager {
 
@@ -36,13 +38,16 @@ public interface IStorageGroupManager {
 
   void setStorageGroup(PartialPath path) throws MetadataException;
 
-  List<IMeasurementMNode> deleteStorageGroup(PartialPath path) throws MetadataException;
-
   SGMManager getSGMManager(PartialPath path) throws MetadataException;
 
   List<SGMManager> getInvolvedSGMManager(PartialPath pathPattern) throws MetadataException;
 
+  List<SGMManager> getInvolvedSGMManager(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException;
+
   List<SGMManager> getAllSGMManager();
+
+  List<SGMManager> deleteStorageGroup(List<PartialPath> storageGroups) throws MetadataException;
 
   boolean isStorageGroup(PartialPath path);
 
@@ -61,12 +66,23 @@ public interface IStorageGroupManager {
 
   int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
 
-  int getStorageGroupNum(PartialPath pathPattern) throws MetadataException;
-
   IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
       throws MetadataException;
 
   IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException;
 
   List<IStorageGroupMNode> getAllStorageGroupNodes();
+
+  Pair<Integer, List<SGMManager>> getNodesCountInGivenLevel(
+      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
+
+  Pair<List<PartialPath>, List<SGMManager>> getNodesListInGivenLevel(
+      PartialPath pathPattern, int nodeLevel, MManager.StorageGroupFilter filter)
+      throws MetadataException;
+
+  Pair<Set<String>, List<SGMManager>> getChildNodePathInNextLevel(PartialPath pathPattern)
+      throws MetadataException;
+
+  Pair<Set<String>, List<SGMManager>> getChildNodeNameInNextLevel(PartialPath pathPattern)
+      throws MetadataException;
 }

@@ -38,6 +38,7 @@ import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -94,6 +95,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -118,7 +120,6 @@ import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTim
  *   <li>MTree initialization, clear and serialization
  *   <li>Timeseries operation, including create and delete
  *   <li>Entity/Device operation
- *   <li>StorageGroup Operation, including set and delete
  *   <li>Interfaces and Implementation for metadata info Query
  *       <ol>
  *         <li>Interfaces for Storage Group info Query
@@ -138,6 +139,7 @@ public class MTree implements Serializable {
   private static final long serialVersionUID = -4200394435237291964L;
   private static final Logger logger = LoggerFactory.getLogger(MTree.class);
   private IMNode root;
+  private IStorageGroupMNode storageGroupMNode;
 
   private String mtreeSnapshotPath;
   private String mtreeSnapshotTmpPath;
@@ -1170,6 +1172,32 @@ public class MTree implements Serializable {
       throw new MNodeTypeMismatchException(
           path.getFullPath(), MetadataConstant.MEASUREMENT_MNODE_TYPE);
     }
+  }
+
+  public List<IMeasurementMNode> getAllMeasurementMNode() {
+    IMNode cur = storageGroupMNode;
+    // collect all the LeafMNode in this storage group
+    List<IMeasurementMNode> leafMNodes = new LinkedList<>();
+    Queue<IMNode> queue = new LinkedList<>();
+    queue.add(cur);
+    while (!queue.isEmpty()) {
+      IMNode node = queue.poll();
+      for (IMNode child : node.getChildren().values()) {
+        if (child.isMeasurement()) {
+          leafMNodes.add(child.getAsMeasurementMNode());
+        } else {
+          queue.add(child);
+        }
+      }
+    }
+
+    cur = cur.getParent();
+    // delete node b while retain root.a.sg2
+    while (!IoTDBConstant.PATH_ROOT.equals(cur.getName()) && cur.getChildren().size() == 0) {
+      cur.getParent().deleteChild(cur.getName());
+      cur = cur.getParent();
+    }
+    return leafMNodes;
   }
 
   // endregion

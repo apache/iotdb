@@ -30,6 +30,7 @@ import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -66,6 +67,14 @@ public class TemplateManager {
   private TemplateManager() {}
 
   public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
+    List<List<TSDataType>> dataTypes = plan.getDataTypes();
+    List<List<TSEncoding>> encodings = plan.getEncodings();
+    for (int i = 0; i < dataTypes.size(); i++) {
+      for (int j = 0; j < dataTypes.get(i).size(); j++) {
+        SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i).get(j), encodings.get(i).get(j));
+      }
+    }
+
     // check schema and measurement name before create template
     if (plan.getSchemaNames() != null) {
       for (String schemaNames : plan.getSchemaNames()) {
@@ -91,6 +100,12 @@ public class TemplateManager {
   }
 
   public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
+    List<TSDataType> dataTypeList = plan.getDataTypes();
+    List<TSEncoding> encodingList = plan.getEncodings();
+    for (int idx = 0; idx < dataTypeList.size(); idx++) {
+      SchemaUtils.checkDataTypeWithEncoding(dataTypeList.get(idx), encodingList.get(idx));
+    }
+
     String templateName = plan.getName();
     Template temp = templateMap.getOrDefault(templateName, null);
     if (temp != null) {

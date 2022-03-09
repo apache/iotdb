@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata.storagegroup;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -65,7 +64,6 @@ import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -104,7 +102,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -152,8 +149,6 @@ public class SGMManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
 
-  public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
-
   /** A thread will check whether the MTree is modified lately each such interval. Unit: second */
   private static final long MTREE_SNAPSHOT_THREAD_CHECK_TIME = 600L;
 
@@ -166,6 +161,8 @@ public class SGMManager {
   private final long mtreeSnapshotThresholdTime;
   private ScheduledExecutorService timedCreateMTreeSnapshotThread;
   private ScheduledExecutorService timedForceMLogThread;
+
+  private String sgSchemaDirPath;
 
   // the log file seriesPath
   private String logFilePath;
@@ -229,8 +226,8 @@ public class SGMManager {
     if (initialized) {
       return;
     }
-    String sgSchemaDir = config.getSchemaDir() + File.separator + storageGroupMNode.getFullPath();
-    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgSchemaDir);
+    sgSchemaDirPath = config.getSchemaDir() + File.separator + storageGroupMNode.getFullPath();
+    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
         logger.info("create storage group schema folder {}", sgSchemaFolder.getAbsolutePath());
@@ -239,7 +236,7 @@ public class SGMManager {
             "create storage group schema folder {} failed.", sgSchemaFolder.getAbsolutePath());
       }
     }
-    logFilePath = sgSchemaDir + File.separator + MetadataConstant.METADATA_LOG;
+    logFilePath = sgSchemaDirPath + File.separator + MetadataConstant.METADATA_LOG;
 
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
@@ -402,10 +399,6 @@ public class SGMManager {
         ChangeTagOffsetPlan changeTagOffsetPlan = (ChangeTagOffsetPlan) plan;
         changeOffset(changeTagOffsetPlan.getPath(), changeTagOffsetPlan.getOffset());
         break;
-      case DROP_TEMPLATE:
-        DropTemplatePlan dropTemplatePlan = (DropTemplatePlan) plan;
-        dropSchemaTemplate(dropTemplatePlan);
-        break;
       case SET_TEMPLATE:
         SetTemplatePlan setTemplatePlan = (SetTemplatePlan) plan;
         setSchemaTemplate(setTemplatePlan);
@@ -437,30 +430,28 @@ public class SGMManager {
     }
   }
 
-  public List<IMeasurementMNode> deleteStorageGroup() {
-    IMNode cur = storageGroupMNode;
+  public synchronized int deleteStorageGroup() throws MetadataException {
     // collect all the LeafMNode in this storage group
-    List<IMeasurementMNode> leafMNodes = new LinkedList<>();
-    Queue<IMNode> queue = new LinkedList<>();
-    queue.add(cur);
-    while (!queue.isEmpty()) {
-      IMNode node = queue.poll();
-      for (IMNode child : node.getChildren().values()) {
-        if (child.isMeasurement()) {
-          leafMNodes.add(child.getAsMeasurementMNode());
-        } else {
-          queue.add(child);
-        }
-      }
+    List<IMeasurementMNode> leafMNodes = mtree.getAllMeasurementMNode();
+
+    // drop triggers with no exceptions
+    TriggerEngine.drop(leafMNodes);
+
+    clear();
+
+    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath);
+    if (sgSchemaFolder.delete()) {
+      logger.info("delete storage group schema folder {}", sgSchemaFolder.getAbsolutePath());
+    } else {
+      logger.info(
+          "delete storage group schema folder {} failed.", sgSchemaFolder.getAbsolutePath());
+      throw new MetadataException(
+          String.format(
+              "Failed to delete storage group schema folder, %s",
+              sgSchemaFolder.getAbsolutePath()));
     }
 
-    cur = cur.getParent();
-    // delete node b while retain root.a.sg2
-    while (!IoTDBConstant.PATH_ROOT.equals(cur.getName()) && cur.getChildren().size() == 0) {
-      cur.getParent().deleteChild(cur.getName());
-      cur = cur.getParent();
-    }
-    return leafMNodes;
+    return leafMNodes.size();
   }
 
   // endregion
@@ -709,7 +700,7 @@ public class SGMManager {
    *     needs to make the Meta group aware of the creation of an SG, so an exception needs to be
    *     thrown here
    */
-  protected IMNode getDeviceNodeWithAutoCreate(
+  public IMNode getDeviceNodeWithAutoCreate(
       PartialPath path, boolean autoCreateSchema, boolean allowCreateSg, int sgLevel)
       throws IOException, MetadataException {
     IMNode node;
@@ -747,7 +738,7 @@ public class SGMManager {
     }
   }
 
-  protected IMNode getDeviceNodeWithAutoCreate(PartialPath path)
+  public IMNode getDeviceNodeWithAutoCreate(PartialPath path)
       throws MetadataException, IOException {
     return getDeviceNodeWithAutoCreate(
         path, config.isAutoCreateSchemaEnabled(), true, config.getDefaultStorageGroupLevel());
@@ -770,7 +761,7 @@ public class SGMManager {
 
   /** Get metadata in string */
   public String getMetadataInString() {
-    return TIME_SERIES_TREE_HEADER + mtree;
+    return mtree.toString();
   }
 
   // region Interfaces for metadata count
@@ -1787,21 +1778,8 @@ public class SGMManager {
     return new HashSet<>(mtree.getPathsUsingTemplate(templateName));
   }
 
-  public void dropSchemaTemplate(DropTemplatePlan plan) throws MetadataException {
-    try {
-
-      if (mtree.isTemplateSetOnMTree(plan.getName())) {
-        throw new MetadataException(
-            String.format(
-                "Template [%s] has been set on MTree, cannot be dropped now.", plan.getName()));
-      }
-
-      if (!isRecovering) {
-        logWriter.dropSchemaTemplate(plan);
-      }
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
+  public boolean isTemplateSet(String templateName) throws MetadataException {
+    return mtree.isTemplateSetOnMTree(templateName);
   }
 
   public synchronized void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
