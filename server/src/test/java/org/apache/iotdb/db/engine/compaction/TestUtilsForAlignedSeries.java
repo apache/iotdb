@@ -71,7 +71,9 @@ public class TestUtilsForAlignedSeries {
             Arrays.asList(measurements),
             Arrays.asList(dataTypes),
             Arrays.asList(encodings),
-            Arrays.asList(compressionTypes));
+            Arrays.asList(compressionTypes),
+            null,
+            null);
       }
     }
   }

@@ -301,7 +301,9 @@ public class MManagerBasicTest {
               TSDataType.valueOf("INT32")),
           Arrays.asList(
               TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          Arrays.asList(compressionType, compressionType, compressionType));
+          Arrays.asList(compressionType, compressionType, compressionType),
+          null,
+          null);
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -342,7 +344,9 @@ public class MManagerBasicTest {
               TSDataType.valueOf("INT32")),
           Arrays.asList(
               TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          Arrays.asList(compressionType, compressionType, compressionType));
+          Arrays.asList(compressionType, compressionType, compressionType),
+          null,
+          null);
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1932,7 +1936,9 @@ public class MManagerBasicTest {
               TSDataType.valueOf("INT32")),
           Arrays.asList(
               TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          Arrays.asList(compressionType, compressionType, compressionType));
+          Arrays.asList(compressionType, compressionType, compressionType),
+          null,
+          null);
 
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
@@ -1979,7 +1985,9 @@ public class MManagerBasicTest {
               TSDataType.valueOf("INT32")),
           Arrays.asList(
               TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          Arrays.asList(compressionType, compressionType, compressionType));
+          Arrays.asList(compressionType, compressionType, compressionType),
+          null,
+          null);
     } catch (Exception e) {
       fail();
     }
@@ -2102,7 +2110,9 @@ public class MManagerBasicTest {
               TSDataType.valueOf("INT32")),
           Arrays.asList(
               TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          Arrays.asList(compressionType, compressionType, compressionType));
+          Arrays.asList(compressionType, compressionType, compressionType),
+          null,
+          null);
       fail();
     } catch (Exception e) {
       Assert.assertEquals(
@@ -2158,7 +2168,9 @@ public class MManagerBasicTest {
                 TSDataType.valueOf("INT32")),
             Arrays.asList(
                 TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-            Arrays.asList(compressionType, compressionType, compressionType));
+            Arrays.asList(compressionType, compressionType, compressionType),
+            null,
+            null);
         fail();
       } catch (Exception e) {
         Assert.assertEquals(
@@ -2181,7 +2193,9 @@ public class MManagerBasicTest {
                 TSDataType.valueOf("INT32")),
             Arrays.asList(
                 TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-            Arrays.asList(compressionType, compressionType, compressionType));
+            Arrays.asList(compressionType, compressionType, compressionType),
+            null,
+            null);
         fail();
       } catch (Exception e) {
         Assert.assertEquals(String.format("%s is an illegal name.", measurementId), e.getMessage());

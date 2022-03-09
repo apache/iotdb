@@ -683,11 +683,13 @@ public class MManager {
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
-      List<CompressionType> compressors)
+      List<CompressionType> compressors,
+      List<Map<String, String>> tags,
+      List<Map<String, String>> attributes)
       throws MetadataException {
     createAlignedTimeSeries(
         new CreateAlignedTimeSeriesPlan(
-            prefixPath, measurements, dataTypes, encodings, compressors, null));
+            prefixPath, measurements, dataTypes, encodings, compressors, null, tags, attributes));
   }
 
   /**
@@ -706,6 +708,8 @@ public class MManager {
       List<String> measurements = plan.getMeasurements();
       List<TSDataType> dataTypes = plan.getDataTypes();
       List<TSEncoding> encodings = plan.getEncodings();
+      List<Map<String, String>> tagsList = plan.getTagsList();
+      List<Map<String, String>> attributesList = plan.getAttributesList();
 
       for (int i = 0; i < measurements.size(); i++) {
         SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
@@ -714,15 +718,25 @@ public class MManager {
       ensureStorageGroup(prefixPath);
 
       // create time series in MTree
-      mtree.createAlignedTimeseries(
-          prefixPath,
-          measurements,
-          plan.getDataTypes(),
-          plan.getEncodings(),
-          plan.getCompressors());
+      List<IMeasurementMNode> measurementMNodeList =
+          mtree.createAlignedTimeseries(
+              prefixPath,
+              measurements,
+              plan.getDataTypes(),
+              plan.getEncodings(),
+              plan.getCompressors());
 
       // the cached mNode may be replaced by new entityMNode in mtree
       mNodeCache.invalidate(prefixPath);
+
+      for (int i = 0; i < measurements.size(); i++) {
+        if (!plan.getTagOffsets().isEmpty() && isRecovering) {
+          tagManager.recoverIndex(plan.getTagOffsets().get(i), measurementMNodeList.get(i));
+        } else if (plan.getTagsList() != null && !plan.getTagsList().isEmpty()) {
+          // tag key, tag value
+          tagManager.addIndex(plan.getTagsList().get(i), measurementMNodeList.get(i));
+        }
+      }
 
       // update statistics and schemaDataTypeNumMap
       totalSeriesNumber.addAndGet(measurements.size());
@@ -730,9 +744,25 @@ public class MManager {
         logger.warn("Current series number {} is too large...", totalSeriesNumber);
         allowToCreateNewSeries = false;
       }
+
       // write log
+      List<Long> tagOffsets = new ArrayList<>();
       if (!isRecovering) {
+        if ((plan.getTagsList() != null && !plan.getTagsList().isEmpty())
+            || (plan.getAttributesList() != null && !plan.getAttributesList().isEmpty())) {
+          for (int i = 0; i < measurements.size(); i++) {
+            tagOffsets.add(tagManager.writeTagFile(tagsList.get(i), attributesList.get(i)));
+          }
+        } else {
+          for (int i = 0; i < measurements.size(); i++) {
+            tagOffsets.add(Long.parseLong("-1"));
+          }
+        }
+        plan.setTagOffsets(tagOffsets);
         logWriter.createAlignedTimeseries(plan);
+      }
+      for (int i = 0; i < measurements.size(); i++) {
+        measurementMNodeList.get(i).setOffset(tagOffsets.get(i));
       }
     } catch (IOException e) {
       throw new MetadataException(e);
@@ -2171,7 +2201,8 @@ public class MManager {
       encodings.add(getDefaultEncoding(dataType));
       compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
     }
-    createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
+    createAlignedTimeSeries(
+        prefixPath, measurements, dataTypes, encodings, compressors, null, null);
   }
 
   // endregion

@@ -238,7 +238,9 @@ public class AbstractCompactionTest {
             measurements,
             dataTypes,
             encodings,
-            compressionTypes);
+            compressionTypes,
+            null,
+            null);
       } else {
         for (int j = 0; j < measurementNum; j++) {
           IoTDB.metaManager.createTimeseries(

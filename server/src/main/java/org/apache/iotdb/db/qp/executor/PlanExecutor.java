@@ -1449,7 +1449,7 @@ public class PlanExecutor implements IPlanExecutor {
         }
 
         IoTDB.metaManager.createAlignedTimeSeries(
-            devicePath, measurements, dataTypes, encodings, compressors);
+            devicePath, measurements, dataTypes, encodings, compressors, null, null);
       } else {
         for (int i = 0; i < size; i++) {
           IMeasurementSchema schema = needRegisterSchema.get(i);
