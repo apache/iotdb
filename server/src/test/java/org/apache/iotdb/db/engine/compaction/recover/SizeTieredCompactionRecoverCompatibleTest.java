@@ -68,9 +68,7 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     targetFile.close();
 
     File logFile =
-        new File(
-            targetResource.getTsFile().getParent(),
-            targetResource.getTsFile().getName() + ".compaction.log");
+        new File(targetResource.getTsFile().getParent(), "root.compactionTest" + ".compaction.log");
     BufferedWriter logWriter = new BufferedWriter(new FileWriter(logFile));
     for (TsFileResource tsFileResource : seqResources) {
       logWriter.write(
@@ -121,9 +119,7 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     targetFile.close();
 
     File logFile =
-        new File(
-            targetResource.getTsFile().getParent(),
-            targetResource.getTsFile().getName() + ".compaction.log");
+        new File(targetResource.getTsFile().getParent(), "root.compactionTest" + ".compaction.log");
     BufferedWriter logWriter = new BufferedWriter(new FileWriter(logFile));
     for (TsFileResource tsFileResource : seqResources) {
       logWriter.write(String.format("source\n%s\n", tsFileResource.getTsFile().getAbsolutePath()));

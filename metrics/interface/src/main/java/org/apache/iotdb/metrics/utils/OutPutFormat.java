@@ -17,22 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.dropwizard.reporter.prometheus;
+package org.apache.iotdb.metrics.utils;
 
-enum MetricType {
-  COUNTER("counter"),
-  GAUGE("gauge"),
-  SUMMARY("summary"),
-  HISTOGRAM("histogram"),
-  UNTYPED("untyped");
+public enum OutPutFormat {
+  PROMETHEUS,
+  JSON;
 
-  private final String text;
-
-  MetricType(String text) {
-    this.text = text;
-  }
-
-  public String getText() {
-    return text;
+  @Override
+  public String toString() {
+    return name();
   }
 }

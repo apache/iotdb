@@ -76,109 +76,109 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 #### 4.3.1. 接入层
 
-| Metric              | Tag             | 说明             | 示例                                         |
-| ------------------- | --------------- | ---------------- | -------------------------------------------- |
-| entry_seconds_count | name="接口名"   | 接口累计访问次数 | entry_seconds_count{name="openSession",} 1.0 |
-| entry_seconds_sum   | name="接口名"   | 接口累计耗时(s)  | entry_seconds_sum{name="openSession",} 0.024 |
-| entry_seconds_max   | name="接口名"   | 接口最大耗时(s)  | entry_seconds_max{name="openSession",} 0.024 |
-| quantity_total      | name="pointsIn" | 系统累计写入点数 | quantity_total{name="pointsIn",} 1.0         |
+| Metric              | Tag             | level  | 说明             | 示例                                         |
+| ------------------- | --------------- | ------ | ---------------- | -------------------------------------------- |
+| entry_seconds_count | name="接口名"   | important | 接口累计访问次数 | entry_seconds_count{name="openSession",} 1.0 |
+| entry_seconds_sum   | name="接口名"   | important | 接口累计耗时(s)  | entry_seconds_sum{name="openSession",} 0.024 |
+| entry_seconds_max   | name="接口名"   | important | 接口最大耗时(s)  | entry_seconds_max{name="openSession",} 0.024 |
+| quantity_total      | name="pointsIn" | important | 系统累计写入点数 | quantity_total{name="pointsIn",} 1.0         |
 
 #### 4.3.2. 文件
 
-| Metric     | Tag                  | 说明                                | 示例                        |
-| ---------- | -------------------- | ----------------------------------- | --------------------------- |
-| file_size  | name="wal/seq/unseq" | 当前时间wal/seq/unseq文件大小(byte) | file_size{name="wal",} 67.0 |
-| file_count | name="wal/seq/unseq" | 当前时间wal/seq/unseq文件个数       | file_count{name="seq",} 1.0 |
+| Metric     | Tag                  | level  | 说明                                | 示例                        |
+| ---------- | -------------------- | ------ | ----------------------------------- | --------------------------- |
+| file_size  | name="wal/seq/unseq" | important | 当前时间wal/seq/unseq文件大小(byte) | file_size{name="wal",} 67.0 |
+| file_count | name="wal/seq/unseq" | important | 当前时间wal/seq/unseq文件个数       | file_count{name="seq",} 1.0 |
 
 #### 4.3.3. Flush
 
-| Metric                  | Tag                                         | 说明                             | 示例                                                         |
-| ----------------------- | ------------------------------------------- | -------------------------------- | ------------------------------------------------------------ |
-| queue                   | name="flush",<br />status="running/waiting" | 当前时间flush任务数              | queue{name="flush",status="waiting",} 0.0<br/>queue{name="flush",status="running",} 0.0 |
-| cost_task_seconds_count | name="flush"                                | flush累计发生次数                | cost_task_seconds_count{name="flush",} 1.0                   |
-| cost_task_seconds_max   | name="flush"                                | 到目前为止flush耗时(s)最大的一次 | cost_task_seconds_max{name="flush",} 0.363                   |
-| cost_task_seconds_sum   | name="flush"                                | flush累计耗时(s)                 | cost_task_seconds_sum{name="flush",} 0.363                   |
+| Metric                  | Tag                                         | level  | 说明                             | 示例                                                                                    |
+| ----------------------- | ------------------------------------------- | ------ | -------------------------------- | --------------------------------------------------------------------------------------- |
+| queue                   | name="flush",<br />status="running/waiting" | important | 当前时间flush任务数              | queue{name="flush",status="waiting",} 0.0<br/>queue{name="flush",status="running",} 0.0 |
+| cost_task_seconds_count | name="flush"                                | important | flush累计发生次数                | cost_task_seconds_count{name="flush",} 1.0                                              |
+| cost_task_seconds_max   | name="flush"                                | important | 到目前为止flush耗时(s)最大的一次 | cost_task_seconds_max{name="flush",} 0.363                                              |
+| cost_task_seconds_sum   | name="flush"                                | important | flush累计耗时(s)                 | cost_task_seconds_sum{name="flush",} 0.363                                              |
 
 #### 4.3.4. Compaction
 
-| Metric                  | Tag                                                          | 说明                                  | 示例                                                 |
-| ----------------------- | ------------------------------------------------------------ | ------------------------------------- | ---------------------------------------------------- |
-| queue                   | name="compaction_inner/compaction_cross",<br />status="running/waiting" | 当前时间compaction任务数              | queue{name="compaction_inner",status="waiting",} 0.0 |
-| cost_task_seconds_count | name="compaction"                                            | compaction累计发生次数                | cost_task_seconds_count{name="compaction",} 1.0      |
-| cost_task_seconds_max   | name="compaction"                                            | 到目前为止compaction耗时(s)最大的一次 | cost_task_seconds_max{name="compaction",} 0.363      |
-| cost_task_seconds_sum   | name="compaction"                                            | compaction累计耗时(s)                 | cost_task_seconds_sum{name="compaction",} 0.363      |
+| Metric                  | Tag                                                                     | level  | 说明                                  | 示例                                                 |
+| ----------------------- | ----------------------------------------------------------------------- | ------ | ------------------------------------- | ---------------------------------------------------- |
+| queue                   | name="compaction_inner/compaction_cross",<br />status="running/waiting" | important | 当前时间compaction任务数              | queue{name="compaction_inner",status="waiting",} 0.0 |
+| cost_task_seconds_count | name="compaction"                                                       | important | compaction累计发生次数                | cost_task_seconds_count{name="compaction",} 1.0      |
+| cost_task_seconds_max   | name="compaction"                                                       | important | 到目前为止compaction耗时(s)最大的一次 | cost_task_seconds_max{name="compaction",} 0.363      |
+| cost_task_seconds_sum   | name="compaction"                                                       | important | compaction累计耗时(s)                 | cost_task_seconds_sum{name="compaction",} 0.363      |
 
 #### 4.3.5. 内存占用
 
-| Metric | Tag                                     | 说明                                               | 示例                              |
-| ------ | --------------------------------------- | -------------------------------------------------- | --------------------------------- |
-| mem    | name="chunkMetaData/storageGroup/mtree" | chunkMetaData/storageGroup/mtree占用的内存（byte） | mem{name="chunkMetaData",} 2050.0 |
+| Metric | Tag                                     | 说明   | level                                              | 示例                              |
+| ------ | --------------------------------------- | ------ | -------------------------------------------------- | --------------------------------- |
+| mem    | name="chunkMetaData/storageGroup/mtree" | important | chunkMetaData/storageGroup/mtree占用的内存（byte） | mem{name="chunkMetaData",} 2050.0 |
 
 #### 4.3.6. 缓存命中率
 
-| Metric    | Tag                                     | 说明                                            | 示例                        |
-| --------- | --------------------------------------- | ----------------------------------------------- | --------------------------- |
-| cache_hit | name="chunk/timeSeriesMeta/bloomFilter" | chunk/timeSeriesMeta缓存命中率,bloomFilter拦截率 | cache_hit{name="chunk",} 80 |
+| Metric    | Tag                                     | level  | 说明                                             | 示例                        |
+| --------- | --------------------------------------- | ------ | ------------------------------------------------ | --------------------------- |
+| cache_hit | name="chunk/timeSeriesMeta/bloomFilter" | important | chunk/timeSeriesMeta缓存命中率,bloomFilter拦截率 | cache_hit{name="chunk",} 80 |
 
 #### 4.3.7. 业务数据
 
-| Metric   | Tag                                   | 说明                                         | 示例                             |
-| -------- | ------------------------------------- | -------------------------------------------- | -------------------------------- |
-| quantity | name="timeSeries/storageGroup/device" | 当前时间timeSeries/storageGroup/device的数量 | quantity{name="timeSeries",} 1.0 |
+| Metric   | Tag                                   | level  | 说明                                         | 示例                             |
+| -------- | ------------------------------------- | ------ | -------------------------------------------- | -------------------------------- |
+| quantity | name="timeSeries/storageGroup/device" | important | 当前时间timeSeries/storageGroup/device的数量 | quantity{name="timeSeries",} 1.0 |
 
 #### 4.3.8. 集群
 
-| Metric                    | Tag                             | 说明                                                         | 示例                                                         |
-| ------------------------- | ------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| cluster_node_leader_count | name="{{ip}}"                   | 节点上```dataGroupLeader```的数量，用来观察leader是否分布均匀 | cluster_node_leader_count{name="127.0.0.1",} 2.0             |
-| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"   | 节点```uncommitted_log```的数量                                    | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
-| cluster_node_status       | name="{{ip}}"                   | 节点状态，1=online  2=offline                                | cluster_node_status{name="127.0.0.1",} 1.0                   |
-| cluster_elect_total       | name="{{ip}}",status="fail/win" | 节点参与选举的次数及结果                                     | cluster_elect_total{name="127.0.0.1",status="win",} 1.0      |
+| Metric                    | Tag                             | level  | 说明                                                          | 示例                                                                         |
+| ------------------------- | ------------------------------- | ------ | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| cluster_node_leader_count | name="{{ip}}"                   | important | 节点上```dataGroupLeader```的数量，用来观察leader是否分布均匀 | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
+| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"   | important | 节点```uncommitted_log```的数量                               | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
+| cluster_node_status       | name="{{ip}}"                   | important | 节点状态，1=online  2=offline                                 | cluster_node_status{name="127.0.0.1",} 1.0                                   |
+| cluster_elect_total       | name="{{ip}}",status="fail/win" | important | 节点参与选举的次数及结果                                      | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
 
 ### 4.4. IoTDB 预定义指标集
-用户可以在`iotdb-metric.yml`文件中，修改`predefinedMetrics`的值来启用预定义指标集，其中`logback`在`dropwizard`中不支持。
+用户可以在`iotdb-metric.yml`文件中，修改`predefinedMetrics`的值来启用预定义指标集，其中`LOGBACK`在`dropwizard`中不支持。
 
 #### 4.4.1. JVM
 
 ##### 4.4.1.1. 线程
 
-| Metric                     | Tag                                                          | 说明                     | 示例                                               |
-| -------------------------- | ------------------------------------------------------------ | ------------------------ | -------------------------------------------------- |
-| jvm_threads_live_threads   | 无                                                           | 当前线程数               | jvm_threads_live_threads 25.0                      |
-| jvm_threads_daemon_threads | 无                                                           | 当前daemon线程数         | jvm_threads_daemon_threads 12.0                    |
-| jvm_threads_peak_threads   | 无                                                           | 峰值线程数               | jvm_threads_peak_threads 28.0                      |
+| Metric                     | Tag                                                           | 说明                     | 示例                                               |
+| -------------------------- | ------------------------------------------------------------- | ------------------------ | -------------------------------------------------- |
+| jvm_threads_live_threads   | 无                                                            | 当前线程数               | jvm_threads_live_threads 25.0                      |
+| jvm_threads_daemon_threads | 无                                                            | 当前daemon线程数         | jvm_threads_daemon_threads 12.0                    |
+| jvm_threads_peak_threads   | 无                                                            | 峰值线程数               | jvm_threads_peak_threads 28.0                      |
 | jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | 当前处于各种状态的线程数 | jvm_threads_states_threads{state="runnable",} 10.0 |
 
 ##### 4.4.1.2. 垃圾回收
 
-| Metric                              | Tag                                                    | 说明                                         | 示例                                                         |
-| ----------------------------------- | ------------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------------ |
+| Metric                              | Tag                                                    | 说明                                         | 示例                                                                                    |
+| ----------------------------------- | ------------------------------------------------------ | -------------------------------------------- | --------------------------------------------------------------------------------------- |
 | jvm_gc_pause_seconds_count          | action="end of major GC/end of minor GC",cause="xxxx"  | YGC/FGC发生次数及其原因                      | jvm_gc_pause_seconds_count{action="end of major GC",cause="Metadata GC Threshold",} 1.0 |
-| jvm_gc_pause_seconds_sum            | action="end of major GC/end of minor GC",cause="xxxx"  | YGC/FGC累计耗时及其原因                      | jvm_gc_pause_seconds_sum{action="end of major GC",cause="Metadata GC Threshold",} 0.03 |
-| jvm_gc_pause_seconds_max            | action="end of major GC",cause="Metadata GC Threshold" | YGC/FGC最大耗时及其原因                      | jvm_gc_pause_seconds_max{action="end of major GC",cause="Metadata GC Threshold",} 0.0 |
-| jvm_gc_overhead_percent             | 无                                                     | GC消耗cpu的比例                              | jvm_gc_overhead_percent 0.0                                  |
-| jvm_gc_memory_promoted_bytes_total  | 无                                                     | 从GC之前到GC之后老年代内存池大小正增长的累计 | jvm_gc_memory_promoted_bytes_total 8425512.0                 |
-| jvm_gc_max_data_size_bytes          | 无                                                     | 老年代内存的历史最大值                       | jvm_gc_max_data_size_bytes 2.863661056E9                     |
-| jvm_gc_live_data_size_bytes         | 无                                                     | GC后老年代内存的大小                         | jvm_gc_live_data_size_bytes 8450088.0                        |
-| jvm_gc_memory_allocated_bytes_total | 无                                                     | 在一个GC之后到下一个GC之前年轻代增加的内存   | jvm_gc_memory_allocated_bytes_total 4.2979144E7              |
+| jvm_gc_pause_seconds_sum            | action="end of major GC/end of minor GC",cause="xxxx"  | YGC/FGC累计耗时及其原因                      | jvm_gc_pause_seconds_sum{action="end of major GC",cause="Metadata GC Threshold",} 0.03  |
+| jvm_gc_pause_seconds_max            | action="end of major GC",cause="Metadata GC Threshold" | YGC/FGC最大耗时及其原因                      | jvm_gc_pause_seconds_max{action="end of major GC",cause="Metadata GC Threshold",} 0.0   |
+| jvm_gc_overhead_percent             | 无                                                     | GC消耗cpu的比例                              | jvm_gc_overhead_percent 0.0                                                             |
+| jvm_gc_memory_promoted_bytes_total  | 无                                                     | 从GC之前到GC之后老年代内存池大小正增长的累计 | jvm_gc_memory_promoted_bytes_total 8425512.0                                            |
+| jvm_gc_max_data_size_bytes          | 无                                                     | 老年代内存的历史最大值                       | jvm_gc_max_data_size_bytes 2.863661056E9                                                |
+| jvm_gc_live_data_size_bytes         | 无                                                     | GC后老年代内存的大小                         | jvm_gc_live_data_size_bytes 8450088.0                                                   |
+| jvm_gc_memory_allocated_bytes_total | 无                                                     | 在一个GC之后到下一个GC之前年轻代增加的内存   | jvm_gc_memory_allocated_bytes_total 4.2979144E7                                         |
 
 ##### 4.4.1.3. 内存
 
-| Metric                          | Tag                             | 说明                    | 示例                                                         |
-| ------------------------------- | ------------------------------- | ----------------------- | ------------------------------------------------------------ |
-| jvm_buffer_memory_used_bytes    | id="direct/mapped"              | 已经使用的缓冲区大小    | jvm_buffer_memory_used_bytes{id="direct",} 3.46728099E8      |
-| jvm_buffer_total_capacity_bytes | id="direct/mapped"              | 最大缓冲区大小          | jvm_buffer_total_capacity_bytes{id="mapped",} 0.0            |
-| jvm_buffer_count_buffers        | id="direct/mapped"              | 当前缓冲区数量          | jvm_buffer_count_buffers{id="direct",} 183.0                 |
+| Metric                          | Tag                             | 说明                    | 示例                                                                                                                                                          |
+| ------------------------------- | ------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| jvm_buffer_memory_used_bytes    | id="direct/mapped"              | 已经使用的缓冲区大小    | jvm_buffer_memory_used_bytes{id="direct",} 3.46728099E8                                                                                                       |
+| jvm_buffer_total_capacity_bytes | id="direct/mapped"              | 最大缓冲区大小          | jvm_buffer_total_capacity_bytes{id="mapped",} 0.0                                                                                                             |
+| jvm_buffer_count_buffers        | id="direct/mapped"              | 当前缓冲区数量          | jvm_buffer_count_buffers{id="direct",} 183.0                                                                                                                  |
 | jvm_memory_committed_bytes      | {area="heap/nonheap",id="xxx",} | 当前向JVM申请的内存大小 | jvm_memory_committed_bytes{area="heap",id="Par Survivor Space",} 2.44252672E8<br/>jvm_memory_committed_bytes{area="nonheap",id="Metaspace",} 3.9051264E7<br/> |
-| jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | JVM最大内存             | jvm_memory_max_bytes{area="heap",id="Par Survivor Space",} 2.44252672E8<br/>jvm_memory_max_bytes{area="nonheap",id="Compressed Class Space",} 1.073741824E9 |
-| jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | JVM已使用内存大小       | jvm_memory_used_bytes{area="heap",id="Par Eden Space",} 1.000128376E9<br/>jvm_memory_used_bytes{area="nonheap",id="Code Cache",} 2.9783808E7<br/> |
+| jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | JVM最大内存             | jvm_memory_max_bytes{area="heap",id="Par Survivor Space",} 2.44252672E8<br/>jvm_memory_max_bytes{area="nonheap",id="Compressed Class Space",} 1.073741824E9   |
+| jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | JVM已使用内存大小       | jvm_memory_used_bytes{area="heap",id="Par Eden Space",} 1.000128376E9<br/>jvm_memory_used_bytes{area="nonheap",id="Code Cache",} 2.9783808E7<br/>             |
 
 ##### 4.4.1.4. Classes
 
-| Metric                             | Tag                                           | 说明                   | 示例                                                         |
-| ---------------------------------- | --------------------------------------------- | ---------------------- | ------------------------------------------------------------ |
-| jvm_classes_unloaded_classes_total | 无                                            | jvm累计卸载的class数量 | jvm_classes_unloaded_classes_total 680.0                     |
-| jvm_classes_loaded_classes         | 无                                            | jvm累计加载的class数量 | jvm_classes_loaded_classes 5975.0                            |
+| Metric                             | Tag                                           | 说明                   | 示例                                                                                |
+| ---------------------------------- | --------------------------------------------- | ---------------------- | ----------------------------------------------------------------------------------- |
+| jvm_classes_unloaded_classes_total | 无                                            | jvm累计卸载的class数量 | jvm_classes_unloaded_classes_total 680.0                                            |
+| jvm_classes_loaded_classes         | 无                                            | jvm累计加载的class数量 | jvm_classes_loaded_classes 5975.0                                                   |
 | jvm_compilation_time_ms_total      | {compiler="HotSpot 64-Bit Tiered Compilers",} | jvm耗费在编译上的时间  | jvm_compilation_time_ms_total{compiler="HotSpot 64-Bit Tiered Compilers",} 107092.0 |
 
 #### 4.4.2. 日志(logback)
@@ -188,7 +188,20 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | logback_events_total | {level="trace/debug/info/warn/error",} | trace/debug/info/warn/error日志累计数量 | logback_events_total{level="warn",} 0.0 |
 
 ### 4.5. 自定义添加埋点
-如果想自己在IoTDB中添加更多Metrics埋点，可以参考[IoTDB Metrics Framework](https://github.com/apache/iotdb/tree/master/metrics)使用说明
+- 如果想自己在IoTDB中添加更多Metrics埋点，可以参考[IoTDB Metrics Framework](https://github.com/apache/iotdb/tree/master/metrics)使用说明
+- Metric 埋点定义规则
+  - `Metric`：监控项的名称，比如`entry_seconds_count`为接口累计访问次数，file_size 为文件总数。
+  - `Tags`：Key-Value对，用来明确被监控项，可选项
+    - `name = xxx`：被监控项的名称，比如对`entry_seconds_count`这个监控项，name 的含义是被监控的接口名称。
+    - `status = xxx`：被监控项的状态细分，比如监控 Task 的监控项可以通过该参数，将运行的 Task 和停止的 Task 分开。
+    - `user = xxx`：被监控项和某个特定用户相关，比如统计root用户的写入总次数。
+    - 根据具体情况自定义......
+- 监控指标级别含义：
+  - 线上运行默认启动级别为`Important`级，线下调试默认启动级别为`Normal`级，审核严格程度`Core > Important > Normal > All`
+  - `Core`：系统的核心指标，供**运维人员**使用，关乎系统的**性能、稳定性、安全性**，比如实例的状况，系统的负载等。
+  - `Important`：模块的重要指标，供**运维和测试人员**使用，直接关乎**每个模块的运行状态**，比如合并文件个数、执行情况等。
+  - `Normal`：模块的一般指标，供**开发人员**使用，方便在出现问题时**定位模块**，比如合并中的特定关键操作情况。
+  - `All`：模块的全部指标，供**模块开发人员**使用，往往在复现问题的时候使用，从而快速解决问题。
 
 ## 5. 怎样获取这些metrics？
 
@@ -200,41 +213,33 @@ metric采集默认是关闭的，需要先到conf/iotdb-metric.yml中打开后�
 # 是否启动监控模块，默认为false
 enableMetric: false
 
-# 数据提供方式，对外部通过jmx和prometheus协议提供metrics的数据, 可选参数：[jmx, prometheus, iotdb],iotdb是默认关闭的。
+# 数据提供方式，对外部通过jmx和prometheus协议提供metrics的数据, 可选参数：[JMX, PROMETHEUS, IOTDB],IOTDB是默认关闭的。
 metricReporterList:
-   - jmx
-   - prometheus
+  - JMX
+  - PROMETHEUS
 
-# 底层使用的metric架构，可选参数：[micrometer, dropwizard]
-monitorType: micrometer
+# 底层使用的metric架构，可选参数：[MICROMETER, DROPWIZARD]
+monitorType: MICROMETER
 
-# 预定义的指标集, 可选参数: [jvm, logback], 其中logback在dropwizard中不支持
+# 初始化metric的级别，可选参数: [CORE, IMPORTANT, NORMAL, ALL]
+metricLevel: IMPORTANT
+
+# 预定义的指标集, 可选参数: [JVM, LOGBACK], 其中LOGBACK在dropwizard中不支持
 predefinedMetrics:
-   - jvm
-   - logback
+  - JVM
 
-# 数据推送时间，该参数只对 monitorType=dropwizard生效
+# 数据推送时间，该参数只对 IoTDB Reporter 生效
 pushPeriodInSecond: 5
 
-########################################################
-#                                                      #
-# if the reporter is prometheus,                       #
-# then the following must be set.                      #
-# if you use dropwizard, all below                     #
-# should be the config of pushgateway                  #
-#                                                      #
-########################################################
-prometheusReporterConfig:
-   prometheusExporterUrl: http://localhost
-   prometheusExporterPort: 9091									
+# Prometheus Reporter 使用的端口
+prometheusExporterPort: 9091							
 ```
 
 然后按照下面的操作获取metrics数据
 1. 打开配置文件中的metric开关
-2. 其他参数默认不动即可
-3. 如果使用`monitorType: dropwizard`框架，在启动IoTDB前请先在`prometheusReporterConfig`的对应位置启动pushgateway
-4. 启动IoTDB
-5. 打开浏览器或者用```curl``` 访问 ```http://servier_ip:9091/metrics```, 就能看到metric数据了:
+2. 其他参数使用默认配置即可
+3. 启动IoTDB
+4. 打开浏览器或者用```curl``` 访问 ```http://servier_ip:9091/metrics```, 就能看到metric数据了:
 
 ```
 ...

@@ -22,10 +22,8 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
-import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
@@ -66,12 +64,10 @@ import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -92,6 +88,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -305,6 +302,7 @@ public class MManager {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.MEM.toString(),
+              MetricLevel.IMPORTANT,
               mtree,
               RamUsageEstimator::sizeOf,
               Tag.NAME.toString(),
@@ -317,6 +315,7 @@ public class MManager {
         .getMetricManager()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
+            MetricLevel.IMPORTANT,
             totalSeriesNumber,
             AtomicLong::get,
             Tag.NAME.toString(),
@@ -326,6 +325,7 @@ public class MManager {
         .getMetricManager()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
+            MetricLevel.IMPORTANT,
             mtree,
             tree -> {
               try {
@@ -342,6 +342,7 @@ public class MManager {
         .getMetricManager()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
+            MetricLevel.IMPORTANT,
             mtree,
             tree -> {
               try {
@@ -530,43 +531,9 @@ public class MManager {
         UnsetTemplatePlan unsetTemplatePlan = (UnsetTemplatePlan) plan;
         unsetSchemaTemplate(unsetTemplatePlan);
         break;
-      case CREATE_CONTINUOUS_QUERY:
-        CreateContinuousQueryPlan createContinuousQueryPlan = (CreateContinuousQueryPlan) plan;
-        createContinuousQuery(createContinuousQueryPlan);
-        break;
-      case DROP_CONTINUOUS_QUERY:
-        DropContinuousQueryPlan dropContinuousQueryPlan = (DropContinuousQueryPlan) plan;
-        dropContinuousQuery(dropContinuousQueryPlan);
-        break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
     }
-  }
-  // endregion
-
-  // region Interfaces for CQ
-  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws MetadataException {
-    try {
-      ContinuousQueryService.getInstance().register(plan, false);
-    } catch (ContinuousQueryException e) {
-      throw new MetadataException(e);
-    }
-  }
-
-  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws MetadataException {
-    try {
-      ContinuousQueryService.getInstance().deregister(plan, false);
-    } catch (ContinuousQueryException e) {
-      throw new MetadataException(e);
-    }
-  }
-
-  public void writeCreateContinuousQueryLog(CreateContinuousQueryPlan plan) throws IOException {
-    logWriter.createContinuousQuery(plan);
-  }
-
-  public void writeDropContinuousQueryLog(DropContinuousQueryPlan plan) throws IOException {
-    logWriter.dropContinuousQuery(plan);
   }
   // endregion
 

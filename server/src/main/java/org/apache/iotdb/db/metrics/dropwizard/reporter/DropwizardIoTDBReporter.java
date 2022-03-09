@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.metrics.dropwizard.reporter;
 
 import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.Reporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager;
+import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import com.codahale.metrics.MetricFilter;
@@ -64,7 +64,7 @@ public class DropwizardIoTDBReporter implements Reporter {
 
   @Override
   public ReporterType getReporterType() {
-    return ReporterType.iotdb;
+    return ReporterType.IOTDB;
   }
 
   @Override

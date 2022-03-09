@@ -24,9 +24,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
-import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -63,6 +63,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SOURCE_FILES;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_TARGET_FILES;
 
 public class SizeTieredCompactionRecoverTest {
 
@@ -230,12 +233,10 @@ public class SizeTieredCompactionRecoverTest {
     }
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
-    SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
-    for (TsFileResource resource : sourceFiles) {
-      logger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, resource.getTsFile());
-    }
-    logger.logFileInfo(SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
-    logger.close();
+    CompactionLogger compactionLogger = new CompactionLogger(new File(logFilePath));
+    compactionLogger.logFiles(sourceFiles, STR_SOURCE_FILES);
+    compactionLogger.logFiles(Collections.singletonList(targetResource), STR_TARGET_FILES);
+    compactionLogger.close();
     InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     SizeTieredCompactionRecoverTask recoverTask =
@@ -289,12 +290,10 @@ public class SizeTieredCompactionRecoverTest {
     }
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
-    SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
-    for (TsFileResource resource : sourceFiles) {
-      logger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, resource.getTsFile());
-    }
-    logger.logFileInfo(SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
-    logger.close();
+    CompactionLogger compactionLogger = new CompactionLogger(new File(logFilePath));
+    compactionLogger.logFiles(sourceFiles, STR_SOURCE_FILES);
+    compactionLogger.logFiles(Collections.singletonList(targetResource), STR_TARGET_FILES);
+    compactionLogger.close();
     InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
@@ -353,11 +352,9 @@ public class SizeTieredCompactionRecoverTest {
     }
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
-    SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
-    for (TsFileResource resource : sourceFiles) {
-      logger.logFile(SizeTieredCompactionLogger.SOURCE_NAME, resource.getTsFile());
-    }
-    logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
+    CompactionLogger logger = new CompactionLogger(new File(logFilePath));
+    logger.logFiles(sourceFiles, CompactionLogger.STR_SOURCE_FILES);
+    logger.logFiles(Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
     logger.close();
     InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
@@ -412,12 +409,10 @@ public class SizeTieredCompactionRecoverTest {
     }
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
-    SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
-    for (TsFileResource resource : sourceFiles) {
-      logger.logFile(SizeTieredCompactionLogger.SOURCE_NAME, resource.getTsFile());
-    }
-    logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
-    logger.close();
+    CompactionLogger compactionLogger = new CompactionLogger(new File(logFilePath));
+    compactionLogger.logFiles(sourceFiles, STR_SOURCE_FILES);
+    compactionLogger.logFiles(Collections.singletonList(targetResource), STR_TARGET_FILES);
+    compactionLogger.close();
     InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
@@ -479,12 +474,10 @@ public class SizeTieredCompactionRecoverTest {
       }
       TsFileResource targetResource =
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
-      SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
-      for (TsFileResource resource : sourceFiles) {
-        logger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, resource.getTsFile());
-      }
-      logger.logFileInfo(SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
-      logger.close();
+      CompactionLogger compactionLogger = new CompactionLogger(new File(logFilePath));
+      compactionLogger.logFiles(sourceFiles, STR_SOURCE_FILES);
+      compactionLogger.logFiles(Collections.singletonList(targetResource), STR_TARGET_FILES);
+      compactionLogger.close();
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
       InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
       long sizeOfTargetFile = targetResource.getTsFileSize();
@@ -584,12 +577,10 @@ public class SizeTieredCompactionRecoverTest {
       }
       TsFileResource targetResource =
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
-      SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
-      for (TsFileResource resource : sourceFiles) {
-        logger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, resource.getTsFile());
-      }
-      logger.logFileInfo(SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
-      logger.close();
+      CompactionLogger compactionLogger = new CompactionLogger(new File(logFilePath));
+      compactionLogger.logFiles(sourceFiles, STR_SOURCE_FILES);
+      compactionLogger.logFiles(Collections.singletonList(targetResource), STR_TARGET_FILES);
+      compactionLogger.close();
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
       InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
       FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
@@ -686,12 +677,10 @@ public class SizeTieredCompactionRecoverTest {
       }
       TsFileResource targetResource =
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
-      SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
-      for (TsFileResource resource : sourceFiles) {
-        logger.logFile(SizeTieredCompactionLogger.SOURCE_NAME, resource.getTsFile());
-      }
-      logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
-      logger.close();
+      CompactionLogger compactionLogger = new CompactionLogger(new File(logFilePath));
+      compactionLogger.logFiles(sourceFiles, STR_SOURCE_FILES);
+      compactionLogger.logFiles(Collections.singletonList(targetResource), STR_TARGET_FILES);
+      compactionLogger.close();
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
       InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
       long sizeOfTargetFile = targetResource.getTsFileSize();
@@ -791,12 +780,10 @@ public class SizeTieredCompactionRecoverTest {
       }
       TsFileResource targetResource =
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
-      SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
-      for (TsFileResource resource : sourceFiles) {
-        logger.logFile(SizeTieredCompactionLogger.SOURCE_NAME, resource.getTsFile());
-      }
-      logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
-      logger.close();
+      CompactionLogger compactionLogger = new CompactionLogger(new File(logFilePath));
+      compactionLogger.logFiles(sourceFiles, STR_SOURCE_FILES);
+      compactionLogger.logFiles(Collections.singletonList(targetResource), STR_TARGET_FILES);
+      compactionLogger.close();
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
       InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
       FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
