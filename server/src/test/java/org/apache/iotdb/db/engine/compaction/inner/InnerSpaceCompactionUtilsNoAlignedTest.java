@@ -431,6 +431,10 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
     IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1);
     try {
       List<TsFileResource> sourceFiles = new ArrayList();
+      Set<String> fullPathSetWithDeleted = new HashSet<>(fullPathSet);
+      // we add a deleted timeseries to simulate timeseries is deleted before compaction.
+      String deletedPath = "root.compactionTest.device999.s999";
+      fullPathSetWithDeleted.add(deletedPath);
       int fileNum = 6;
       long pointStep = 300L;
       for (int i = 0; i < fileNum; ++i) {
@@ -442,7 +446,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
             new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", i + 1, i + 1)));
         sourceFiles.add(resource);
         CompactionFileGeneratorUtils.writeTsFile(
-            fullPathSet, chunkPagePointsNum, i * 1500L, resource);
+            fullPathSetWithDeleted, chunkPagePointsNum, i * 1500L, resource);
       }
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
@@ -476,9 +480,10 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
       if (curPointNum > 0) {
         chunkPointsArray.add(pointsArray);
       }
-      for (String path : fullPathSet) {
+      for (String path : fullPathSetWithDeleted) {
         chunkPagePointsNumMerged.put(path, chunkPointsArray);
       }
+      chunkPagePointsNumMerged.put(deletedPath, null);
       CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
