@@ -50,12 +50,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-public class StorageGroupTrie {
+public class StorageGroupTree {
 
-  private static final Logger logger = LoggerFactory.getLogger(StorageGroupTrie.class);
+  private static final Logger logger = LoggerFactory.getLogger(StorageGroupTree.class);
   private IMNode root;
 
-  StorageGroupTrie() {
+  StorageGroupTree() {
     this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
   }
 

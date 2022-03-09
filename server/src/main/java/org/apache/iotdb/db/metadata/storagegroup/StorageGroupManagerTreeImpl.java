@@ -29,28 +29,28 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class StorageGroupManagerTrieImpl implements IStorageGroupManager {
+public class StorageGroupManagerTreeImpl implements IStorageGroupManager {
 
-  private StorageGroupTrie storageGroupTrie;
+  private StorageGroupTree storageGroupTree;
 
-  public StorageGroupManagerTrieImpl() {
-    storageGroupTrie = new StorageGroupTrie();
+  public StorageGroupManagerTreeImpl() {
+    storageGroupTree = new StorageGroupTree();
   }
 
   public synchronized void init() {
-    storageGroupTrie.init();
+    storageGroupTree.init();
   }
 
   /** function for clearing MTree */
   public synchronized void clear() {
-    if (storageGroupTrie != null) {
-      storageGroupTrie.clear();
+    if (storageGroupTree != null) {
+      storageGroupTree.clear();
     }
   }
 
   @Override
   public void setStorageGroup(PartialPath path) throws MetadataException {
-    IStorageGroupMNode storageGroupMNode = storageGroupTrie.setStorageGroup(path);
+    IStorageGroupMNode storageGroupMNode = storageGroupTree.setStorageGroup(path);
     SGMManager sgmManager = new SGMManager(storageGroupMNode);
     storageGroupMNode.setSGMManager(sgmManager);
     sgmManager.init();
@@ -58,20 +58,20 @@ public class StorageGroupManagerTrieImpl implements IStorageGroupManager {
 
   @Override
   public List<IMeasurementMNode> deleteStorageGroup(PartialPath path) throws MetadataException {
-    IStorageGroupMNode storageGroupMNode = storageGroupTrie.deleteStorageGroup(path);
+    IStorageGroupMNode storageGroupMNode = storageGroupTree.deleteStorageGroup(path);
     return storageGroupMNode.getSGMManager().deleteStorageGroup();
   }
 
   @Override
   public SGMManager getSGMManager(PartialPath path) throws MetadataException {
-    return storageGroupTrie.getStorageGroupNodeByPath(path).getSGMManager();
+    return storageGroupTree.getStorageGroupNodeByPath(path).getSGMManager();
   }
 
   @Override
   public List<SGMManager> getInvolvedSGMManager(PartialPath pathPattern) throws MetadataException {
     List<SGMManager> result = new ArrayList<>();
     for (IStorageGroupMNode storageGroupMNode :
-        storageGroupTrie.getInvolvedStorageGroupNodes(pathPattern)) {
+        storageGroupTree.getInvolvedStorageGroupNodes(pathPattern)) {
       result.add(storageGroupMNode.getSGMManager());
     }
     return result;
@@ -80,7 +80,7 @@ public class StorageGroupManagerTrieImpl implements IStorageGroupManager {
   @Override
   public List<SGMManager> getAllSGMManager() {
     List<SGMManager> result = new ArrayList<>();
-    for (IStorageGroupMNode storageGroupMNode : storageGroupTrie.getAllStorageGroupNodes()) {
+    for (IStorageGroupMNode storageGroupMNode : storageGroupTree.getAllStorageGroupNodes()) {
       result.add(storageGroupMNode.getSGMManager());
     }
     return result;
@@ -88,66 +88,66 @@ public class StorageGroupManagerTrieImpl implements IStorageGroupManager {
 
   @Override
   public boolean isStorageGroup(PartialPath path) {
-    return storageGroupTrie.isStorageGroup(path);
+    return storageGroupTree.isStorageGroup(path);
   }
 
   @Override
   public boolean checkStorageGroupByPath(PartialPath path) {
-    return storageGroupTrie.checkStorageGroupByPath(path);
+    return storageGroupTree.checkStorageGroupByPath(path);
   }
 
   @Override
   public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
-    return storageGroupTrie.getBelongedStorageGroup(path);
+    return storageGroupTree.getBelongedStorageGroup(path);
   }
 
   @Override
   public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
       throws MetadataException {
-    return storageGroupTrie.getBelongedStorageGroups(pathPattern);
+    return storageGroupTree.getBelongedStorageGroups(pathPattern);
   }
 
   @Override
   public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return storageGroupTrie.getMatchedStorageGroups(pathPattern, isPrefixMatch);
+    return storageGroupTree.getMatchedStorageGroups(pathPattern, isPrefixMatch);
   }
 
   @Override
   public List<PartialPath> getAllStorageGroupPaths() {
-    return storageGroupTrie.getAllStorageGroupPaths();
+    return storageGroupTree.getAllStorageGroupPaths();
   }
 
   @Override
   public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
       throws MetadataException {
-    return storageGroupTrie.groupPathByStorageGroup(path);
+    return storageGroupTree.groupPathByStorageGroup(path);
   }
 
   @Override
   public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return storageGroupTrie.getStorageGroupNum(pathPattern, isPrefixMatch);
+    return storageGroupTree.getStorageGroupNum(pathPattern, isPrefixMatch);
   }
 
   @Override
   public int getStorageGroupNum(PartialPath pathPattern) throws MetadataException {
-    return storageGroupTrie.getStorageGroupNum(pathPattern, false);
+    return storageGroupTree.getStorageGroupNum(pathPattern, false);
   }
 
   @Override
   public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
       throws MetadataException {
-    return storageGroupTrie.getStorageGroupNodeByStorageGroupPath(path);
+    return storageGroupTree.getStorageGroupNodeByStorageGroupPath(path);
   }
 
   @Override
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
-    return storageGroupTrie.getStorageGroupNodeByPath(path);
+    return storageGroupTree.getStorageGroupNodeByPath(path);
   }
 
   @Override
   public List<IStorageGroupMNode> getAllStorageGroupNodes() {
-    return storageGroupTrie.getAllStorageGroupNodes();
+    return storageGroupTree.getAllStorageGroupNodes();
   }
 }
