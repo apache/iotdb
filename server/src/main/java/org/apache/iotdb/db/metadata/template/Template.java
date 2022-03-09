@@ -420,9 +420,19 @@ public class Template {
     }
 
     if (curNode == null) {
-      throw new MetadataException(
-          String.format(
-              "Cannot set template on a node [%s] above storage group.", setNode.getFullPath()));
+      // BFS for all storage group child and mark in template
+      Deque<IMNode> nodeQueue = new ArrayDeque<>();
+      Set<PartialPath> childSGPath = new HashSet<>();
+      nodeQueue.add(setNode);
+      while (nodeQueue.size() != 0) {
+        IMNode cur = nodeQueue.pop();
+        if (cur.isStorageGroup()) {
+          childSGPath.add(cur.getPartialPath());
+        } else {
+          nodeQueue.addAll(cur.getChildren().values());
+        }
+      }
+      return relatedStorageGroup.addAll(childSGPath);
     }
 
     return relatedStorageGroup.add(curNode.getPartialPath());
