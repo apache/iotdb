@@ -347,8 +347,14 @@ public class QueryOperator extends Operator {
     alignByDevicePlan.setEnableTracing(enableTracing);
 
     alignByDevicePlan.deduplicate(generator);
-    checkWithoutNullColumnValidAlignByDevice(alignByDevicePlan);
+    // fill withoutNullColumns of AlignByDevicePlan in convertSpecialClauseValues
+    // fill withoutNullValidSet of AlignByDevicePlan in alignByDevicePlan.deduplicate(generator)
+    // then do this check whether all without null columns exist in withoutNullValidSet.
+    checkWithoutNullColumnValid(alignByDevicePlan);
 
+    // because alignByDevicePlan's `withoutNullValidSet` won't be used,
+    // make withoutNullValidSet is null, friendly for gc
+    alignByDevicePlan.closeWithoutNullValidSet();
     if (whereComponent != null) {
       alignByDevicePlan.setDeviceToFilterMap(
           concatFilterByDevice(alignByDevicePlan, devices, whereComponent.getFilterOperator()));
@@ -357,12 +363,12 @@ public class QueryOperator extends Operator {
     return alignByDevicePlan;
   }
 
-  private void checkWithoutNullColumnValidAlignByDevice(QueryPlan queryPlan)
+  private void checkWithoutNullColumnValid(AlignByDevicePlan queryPlan)
       throws QueryProcessException {
     if (specialClauseComponent != null) {
       // meta consistence check
       for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
-        if (!queryPlan.isValidWithoutNullColumnAlignByDevice(expression.getExpressionString())) {
+        if (!queryPlan.isValidWithoutNullColumn(expression.getExpressionString())) {
           throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
         }
       }
@@ -381,7 +387,9 @@ public class QueryOperator extends Operator {
 
   protected void convertSpecialClauseValues(QueryPlan queryPlan) throws QueryProcessException {
     if (specialClauseComponent != null) {
-      // meta consistence check
+      // record the without null column corresponding index if the plan is not AlignByDevicePlan
+      // otherwise, we simply add all without null column names into AlignByDevicePlan,
+      // and then let itself do the logic of conversion in `checkWithoutNullColumnValidAlignByDevice` of `QueryOperator.generateAlignByDevicePlan`
       if (!queryPlan
           .getPathToIndex()
           .isEmpty()) { // align by device queryPlan.getPathToIndex() is empty
@@ -393,21 +401,20 @@ public class QueryOperator extends Operator {
             throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
           }
         }
+      } else if (queryPlan instanceof AlignByDevicePlan) {
+        // add without null column
+        AlignByDevicePlan alignByDevicePlan = (AlignByDevicePlan) queryPlan;
+        for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
+          alignByDevicePlan.addWithoutNullColumns(expression.getExpressionString());
+        }
       }
+
       queryPlan.setWithoutAllNull(specialClauseComponent.isWithoutAllNull());
       queryPlan.setWithoutAnyNull(specialClauseComponent.isWithoutAnyNull());
       queryPlan.setRowLimit(specialClauseComponent.getRowLimit());
       queryPlan.setRowOffset(specialClauseComponent.getRowOffset());
       queryPlan.setAscending(specialClauseComponent.isAscending());
       queryPlan.setAlignByTime(specialClauseComponent.isAlignByTime());
-
-      // add without null column
-      if (queryPlan instanceof AlignByDevicePlan) {
-        AlignByDevicePlan alignByDevicePlan = (AlignByDevicePlan) queryPlan;
-        for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
-          alignByDevicePlan.addWithoutNullColumns(expression.getExpressionString());
-        }
-      }
     }
   }
 

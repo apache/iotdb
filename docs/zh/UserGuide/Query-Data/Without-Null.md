@@ -40,7 +40,7 @@ select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
 2. 在下列查询中，如果结果集的某一行所有列都为 null，则过滤掉该行；即获得的结果集不包含所有值都为 null 的行。
 
 ```sql
-select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
+select * from root.ln.** where group by ([1,10), 2ms) WITHOUT NULL ALL
 ```
 
 ## 指定列
@@ -179,4 +179,13 @@ select s2, s3 from root.test.** without null all(`root.test.sg1.s2`, `root.test.
 
 ```sql
 select s2, s3 from root.test.** without null all(`root.test.sg1.s2`, s3)
+```
+
+### 对齐序列查询
+
+1. 可以指定`without null` 子句后的列名为对齐序列列名
+
+```sql
+CREATE ALIGNED TIMESERIES root.test.sg3(s5 INT32, s6 BOOLEAN, s7 DOUBLE, s8 INT32)
+select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null all (sg3.s5, sg3.s6, sg2.s3)
 ```

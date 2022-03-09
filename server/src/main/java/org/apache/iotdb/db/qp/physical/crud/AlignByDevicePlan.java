@@ -46,9 +46,14 @@ public class AlignByDevicePlan extends QueryPlan {
   public static final String DATATYPE_ERROR_MESSAGE =
       "The data types of the same measurement column should be the same across devices.";
 
-  // to record result measurement columns, e.g. temperature, status, speed
+  // measurements to record result measurement columns, e.g. temperature, status, speed
+  // no contains alias
   private List<String> measurements;
+  // record specified without null columns, include alias
   private Set<String> withoutNullColumns = new HashSet<>();
+  // stores the valid column name that without null can specified
+  // want to see details, please see the method `addValidWithoutNullColumn` and `isValidWithoutNullColumn`
+  private Set<String> withoutNullValidSet = new HashSet<>();
   private Map<String, MeasurementInfo> measurementInfoMap;
   private List<PartialPath> deduplicatePaths = new ArrayList<>();
   private List<String> aggregations;
@@ -72,6 +77,32 @@ public class AlignByDevicePlan extends QueryPlan {
 
   public Set<String> getWithoutNullColumns() {
     return withoutNullColumns;
+  }
+
+  /**
+   * add columnName that appears in output name in result set
+   * so `withoutNullValidSet` stores the valid column name that without null can specified
+   * @param columnName output name in result set, may be alias
+   */
+  public void addValidWithoutNullColumn(String columnName) {
+    withoutNullValidSet.add(columnName);
+  }
+
+  /**
+   * check the columnName specified without null is valid
+   * @param columnName the columnName specified without null
+   * @return valid: return true; invalid: return false
+   */
+  public boolean isValidWithoutNullColumn(String columnName) {
+    return withoutNullValidSet.contains(columnName);
+  }
+
+  /**
+   * make withoutNullValidSet is null, friendly for gc
+   */
+  public void closeWithoutNullValidSet() {
+    withoutNullValidSet.clear();
+    withoutNullValidSet = null;
   }
 
   @Override
@@ -115,7 +146,7 @@ public class AlignByDevicePlan extends QueryPlan {
     }
 
     for (String validWithoutColumn : resultColumn) {
-      addAlignByDeviceValidWithoutNullColumn(validWithoutColumn);
+      addValidWithoutNullColumn(validWithoutColumn);
     }
     setAggregations(deduplicatedAggregations);
     this.paths = null;

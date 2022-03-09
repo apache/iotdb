@@ -51,6 +51,7 @@ public abstract class QueryDataSet {
   /** Only if all columns are null, we don't need that row */
   protected boolean withoutAllNull;
 
+  /** index set that withoutNullColumns for output data columns */
   protected Set<Integer> withoutNullColumnsIndex = new HashSet<>();
 
   protected int columnNum;
@@ -131,17 +132,10 @@ public abstract class QueryDataSet {
               || (withoutAnyNull && rowRecord.hasNullField())) {
             continue;
           }
-          rowOffset--;
         } else {
           boolean anyNullFlag = false, allNullFlag = true;
-          int index = 0;
-          for (Field field : rowRecord.getFields()) {
-            if (!withoutNullColumnsIndex.contains(index)) {
-              index++;
-              continue;
-            }
-
-            index++;
+          for (int index : withoutNullColumnsIndex) {
+            Field field = rowRecord.getFields().get(index);
             if (field == null || field.getDataType() == null) {
               anyNullFlag = true;
               if (withoutAnyNull) {
@@ -162,9 +156,9 @@ public abstract class QueryDataSet {
           if (allNullFlag && withoutAllNull) {
             continue;
           }
-
-          rowOffset--;
         }
+
+        rowOffset--;
       } else {
         return false;
       }

@@ -40,7 +40,7 @@ select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
 2. In the following query, if all columns of one row in the result set are null, the row will be filtered out.
 
 ```sql
-select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
+select * from root.ln.** where group by ([1,10), 2ms) WITHOUT NULL ALL
 ```
 
 ## Specify columns
@@ -179,4 +179,13 @@ select s2, s3 from root.test.** without null all(`root.test.sg1.s2`, `root.test.
 
 ```sql
 select s2, s3 from root.test.** without null all(`root.test.sg1.s2`, s3)
+```
+
+### Aligned Timeseries Query
+
+1. You can specify the `without null` column name as the aligned timeseries column name.
+
+```sql
+CREATE ALIGNED TIMESERIES root.test.sg3(s5 INT32, s6 BOOLEAN, s7 DOUBLE, s8 INT32)
+select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null all (sg3.s5, sg3.s6, sg2.s3)
 ```

@@ -80,14 +80,8 @@ public class QueryDataSetUtils {
           }
         } else {
           boolean anyNullFlag = false, allNullFlag = true;
-          int index = 0;
-          for (Field field : rowRecord.getFields()) {
-            if (!withoutNullColumnsIndex.contains(index)) {
-              index++;
-              continue;
-            }
-
-            index++;
+          for (int index : withoutNullColumnsIndex) {
+            Field field = rowRecord.getFields().get(index);
             if (field == null || field.getDataType() == null) {
               anyNullFlag = true;
               if (queryDataSet.isWithoutAnyNull()) {

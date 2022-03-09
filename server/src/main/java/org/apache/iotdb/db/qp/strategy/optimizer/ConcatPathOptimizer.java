@@ -73,15 +73,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       return queryOperator;
     }
 
-    // add aliasSet
-    Set<String> aliasSet = new HashSet<>();
-    for (ResultColumn resultColumn : queryOperator.getSelectComponent().getResultColumns()) {
-      if (resultColumn.hasAlias()) {
-        aliasSet.add(resultColumn.getAlias());
-      }
-    }
-    queryOperator.setAliasSet(aliasSet);
-
     concatSelect(queryOperator);
     concatWithoutNullColumns(queryOperator);
     removeWildcardsInSelectPaths(queryOperator);
@@ -148,6 +139,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           .getPath()
           .getFullPath()
           .startsWith(SQLConstant.ROOT + ".")) { // start with "root." don't concat
+        // because the full path that starts with 'root.' won't be split
+        // so we need to split it.
         if (((TimeSeriesOperand) expression).getPath().getNodeLength() == 1) { // no split
           try {
             ((TimeSeriesOperand) expression)
@@ -224,21 +217,27 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<Expression> expressions =
         queryOperator.getSpecialClauseComponent().getWithoutNullColumns();
     WildcardsRemover withoutNullWildcardsRemover = new WildcardsRemover(queryOperator);
-    List<Expression> filterExpressions = new ArrayList<>();
+
+    // because timeSeries path may be with "*", so need to remove it for getting some actual timeSeries paths
+    // actualExpressions store the actual timeSeries paths
+    List<Expression> actualExpressions = new ArrayList<>();
     List<Expression> resultExpressions = new ArrayList<>();
+
+    // because expression.removeWildcards will ignore the TimeSeries path that exists in the meta
+    // so we need to recognise the alias, just simply add to the resultExpressions
     for (Expression expression : expressions) {
       if (queryOperator.getAliasSet().contains(expression.getExpressionString())) {
         resultExpressions.add(expression);
         continue;
       }
-      expression.removeWildcards(withoutNullWildcardsRemover, filterExpressions);
+      expression.removeWildcards(withoutNullWildcardsRemover, actualExpressions);
     }
 
     // group by level, use groupedPathMap
     GroupByLevelController groupByLevelController =
         queryOperator.getSpecialClauseComponent().getGroupByLevelController();
     if (groupByLevelController != null) {
-      for (Expression expression : filterExpressions) {
+      for (Expression expression : actualExpressions) {
         String groupedPath =
             groupByLevelController.getGroupedPath(expression.getExpressionString());
         if (groupedPath != null) {
@@ -252,7 +251,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         }
       }
     } else {
-      resultExpressions.addAll(filterExpressions);
+      resultExpressions.addAll(actualExpressions);
     }
     queryOperator.getSpecialClauseComponent().setWithoutNullColumns(resultExpressions);
   }

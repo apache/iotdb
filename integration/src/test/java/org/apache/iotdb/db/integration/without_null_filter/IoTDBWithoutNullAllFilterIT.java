@@ -53,6 +53,7 @@ public class IoTDBWithoutNullAllFilterIT {
         "CREATE TIMESERIES root.test.sg2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE TIMESERIES root.test.sg2.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
         "CREATE TIMESERIES root.test.sg2.s4 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE ALIGNED TIMESERIES root.test.sg3(s5 INT32, s6 BOOLEAN, s7 DOUBLE, s8 INT32)",
         "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) " + "values(1, true, 1, 1.0, 1)",
         "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) " + "values(1, false, 1, 1.0, 1)",
         "INSERT INTO root.test.sg1(timestamp, s2) " + "values(2, 2)",
@@ -85,6 +86,16 @@ public class IoTDBWithoutNullAllFilterIT {
         "INSERT INTO root.test.sg2(timestamp, s4) " + "values(9, 9)",
         "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) " + "values(10, true, 10, 10.0, 10)",
         "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) " + "values(10, true, 10, 10.0, 10)",
+        "flush",
+        "INSERT INTO root.test.sg3(time, s5, s6, s7, s8) aligned values(1, 1, true, 1.0, 1)",
+        "INSERT INTO root.test.sg3(time, s6, s7, s8) aligned values(2, false, 2.0, 2)",
+        "INSERT INTO root.test.sg3(time, s5, s7, s8) aligned values(3, 3, 3.0, 3)",
+        "INSERT INTO root.test.sg3(time, s5) aligned values(5, 5)",
+        "INSERT INTO root.test.sg3(time, s5, s8) aligned values(6, 6, 6)",
+        "INSERT INTO root.test.sg3(time, s6) aligned values(7, true)",
+        "INSERT INTO root.test.sg3(time, s5, s7) aligned values(8, 8, 8.0)",
+        "INSERT INTO root.test.sg3(time, s5, s7, s8) aligned values(9, 9, 9.0, 9)",
+        "INSERT INTO root.test.sg3(time, s7, s8) aligned values(10, 10.0, 10)",
         "flush",
       };
 
@@ -1499,6 +1510,14 @@ public class IoTDBWithoutNullAllFilterIT {
           "7,true,7,8.0,null",
           "9,true,9,null,9"
         };
+    // todo
+    String[] retArray5 =
+        new String[] {
+            "1,2,2.0,2",
+            "5,6,6.0,6",
+            "7,8,8.0,null",
+            "9,9,9.0,9"
+        };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
@@ -1596,6 +1615,238 @@ public class IoTDBWithoutNullAllFilterIT {
           cnt++;
         }
         Assert.assertEquals(retArray4.length, cnt);
+      }
+
+      // TODO
+      hasResultSet =
+          statement.execute(
+              "select last_value(s2) as t, last_value(s3), last_value(s4) from root.test.sg1 group by([1,10), 2ms) without null all(t, last_value(s3)) align by device");
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("t")
+                  + ","
+                  + resultSet.getString(columns[2])
+                  + ","
+                  + resultSet.getString(columns[3]);
+          Assert.assertEquals(retArray5[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray5.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void alignTimeSeriesQueryTest() {
+    System.out.println("alignTimeSeriesQueryTest");
+    String[] retArray1 =
+        new String[] {
+            "1,true,1,1,true,1.0,1,1.0",
+            "2,null,2,null,false,2.0,2,2.0",
+            "3,false,null,3,null,3.0,3,null",
+            "5,null,5,5,null,null,null,5.0",
+            "6,true,6,6,null,null,6,6.0",
+            "7,true,null,null,true,null,null,7.0",
+            "8,true,8,8,null,8.0,null,8.0",
+            "9,false,9,9,null,9.0,9,null",
+            "10,true,10,null,null,10.0,10,10.0"
+        };
+    String[] retArray2 =
+        new String[] {
+            "1,true,1,1.0,1,true,1.0,1",
+            "2,null,2,2.0,null,false,2.0,2",
+            "3,false,null,null,3,null,3.0,3",
+            "5,null,5,5.0,5,null,null,null",
+            "6,true,6,6.0,6,null,null,6",
+            "7,true,null,7.0,null,true,null,null",
+            "8,true,8,8.0,8,null,8.0,null",
+            "9,false,9,null,9,null,9.0,9",
+            "10,true,10,10.0,null,null,10.0,10"
+        };
+    String[] retArray3 =
+        new String[] {
+            "1,true,1,1.0,1,true,1.0,1",
+            "2,null,2,2.0,null,false,2.0,2",
+            "3,false,null,null,3,null,3.0,3",
+            "5,null,5,5.0,5,null,null,null",
+            "6,true,6,6.0,6,null,null,6",
+            "7,true,null,7.0,null,true,null,null",
+            "8,true,8,8.0,8,null,8.0,null",
+            "9,false,9,null,9,null,9.0,9"
+        };
+    String[] retArray4 =
+        new String[] {
+            "1,true,1,1.0,1,true,1.0,1",
+            "2,null,2,2.0,null,false,2.0,2",
+            "3,false,null,null,3,null,3.0,3",
+            "5,null,5,5.0,5,null,null,null",
+            "6,true,6,6.0,6,null,null,6",
+            "7,true,null,7.0,null,true,null,null",
+            "8,true,8,8.0,8,null,8.0,null",
+            "9,false,9,null,9,null,9.0,9",
+            "10,true,10,10.0,null,null,10.0,10"
+        };
+    String[] retArray5 =
+        new String[] {
+            "1,true,1,1.0,1,true,1.0,1",
+            "2,null,2,2.0,null,false,2.0,2",
+            "3,false,null,null,3,null,3.0,3",
+            "5,null,5,5.0,5,null,null,null",
+            "6,true,6,6.0,6,null,null,6",
+            "7,true,null,7.0,null,true,null,null",
+            "8,true,8,8.0,8,null,8.0,null",
+            "9,false,9,null,9,null,9.0,9",
+            "10,true,10,10.0,null,null,10.0,10"
+        };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = // select sg1.s1, sg1.s2, sg3.*, sg2.s3 from root.test without null all (sg3.*, sg1.s2)
+          statement.execute("select sg1.s1, sg1.s2, sg3.*, sg2.s3 from root.test without null all (sg3.*, sg1.s2)");
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("root.test.sg1.s1")
+                  + ","
+                  + resultSet.getString("root.test.sg1.s2")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s5")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s6")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s7")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s8")
+                  + ","
+                  + resultSet.getString("root.test.sg2.s3");
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray1.length, cnt);
+      }
+
+      hasResultSet = statement.execute("select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null all (sg3.*)");
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("root.test.sg1.s1")
+                  + ","
+                  + resultSet.getString("root.test.sg1.s2")
+                  + ","
+                  + resultSet.getString("root.test.sg2.s3")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s5")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s6")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s7")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s8");
+          Assert.assertEquals(retArray2[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray2.length, cnt);
+      }
+
+      hasResultSet = statement.execute("select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null all (sg3.s5, sg3.s6)");
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("root.test.sg1.s1")
+                  + ","
+                  + resultSet.getString("root.test.sg1.s2")
+                  + ","
+                  + resultSet.getString("root.test.sg2.s3")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s5")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s6")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s7")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s8");
+          Assert.assertEquals(retArray3[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray3.length, cnt);
+      }
+
+      hasResultSet = statement.execute("select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null all (sg3.s5, sg3.s6, sg2.s3)");
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("root.test.sg1.s1")
+                  + ","
+                  + resultSet.getString("root.test.sg1.s2")
+                  + ","
+                  + resultSet.getString("root.test.sg2.s3")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s5")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s6")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s7")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s8");
+          Assert.assertEquals(retArray4[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray4.length, cnt);
+      }
+
+      hasResultSet = statement.execute("select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null all");
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("root.test.sg1.s1")
+                  + ","
+                  + resultSet.getString("root.test.sg1.s2")
+                  + ","
+                  + resultSet.getString("root.test.sg2.s3")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s5")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s6")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s7")
+                  + ","
+                  + resultSet.getString("root.test.sg3.s8");
+          Assert.assertEquals(retArray5[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray5.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();

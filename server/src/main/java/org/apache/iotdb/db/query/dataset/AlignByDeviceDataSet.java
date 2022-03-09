@@ -59,6 +59,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private QueryContext context;
   private IExpression expression;
 
+  // contains original measurement, no include alias
   private List<String> measurements;
   private List<PartialPath> paths;
   private List<String> aggregations;
@@ -78,7 +79,6 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private String currentDevice;
   private List<String> executeColumns;
   private int pathsNum = 0;
-  private Set<String> withoutNullColumns;
 
   public AlignByDeviceDataSet(
       AlignByDevicePlan alignByDevicePlan, QueryContext context, IQueryRouter queryRouter)
@@ -89,7 +89,6 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     // adapting AlignByDevice query for new vector
     super.columnNum = alignByDevicePlan.getMeasurements().size() + 1; // + 1 for 'device'
     this.measurements = alignByDevicePlan.getMeasurements();
-    this.withoutNullColumns = alignByDevicePlan.getWithoutNullColumns();
     this.paths = alignByDevicePlan.getDeduplicatePaths();
     this.aggregations = alignByDevicePlan.getAggregations();
     this.queryRouter = queryRouter;
@@ -130,14 +129,20 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         this.rawDataQueryPlan.setEnableRedirect(alignByDevicePlan.isEnableRedirect());
     }
 
+    Set<String> withoutNullColumns = alignByDevicePlan.getWithoutNullColumns();
     int index = 1; // start 1, because first is device name
-    if (withoutNullColumnsIndex.isEmpty()) {
-      for (String measurement : this.measurements) {
-        if (withoutNullColumns.contains(measurement)) {
-          withoutNullColumnsIndex.add(index);
+    for (String measurement : this.measurements) {
+      String actualColumn = measurement;  // may be alias
+      if (alignByDevicePlan.getMeasurementInfoMap().containsKey(measurement)) {
+        String alias = alignByDevicePlan.getMeasurementInfoMap().get(measurement).getMeasurementAlias();
+        if (alias != null && !alias.equals("")) {
+          actualColumn = alias;
         }
-        index++;
       }
+      if (withoutNullColumns.contains(actualColumn)) {
+        withoutNullColumnsIndex.add(index);
+      }
+      index++;
     }
     this.curDataSetInitialized = false;
   }

@@ -2611,9 +2611,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       queryOp = new LastQueryOperator(queryOp);
     }
 
-    for (IoTDBSqlParser.ResultColumnContext resultColumnContext : ctx.resultColumn()) {
-      selectComponent.addResultColumn(parseResultColumn(resultColumnContext));
-    }
     // judge query type
     if (!hasDecidedQueryType()) {
       if (selectComponent.hasUserDefinedAggregationFunction()) {
@@ -2626,6 +2623,17 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     } else if (selectComponent.hasUserDefinedAggregationFunction()) {
       queryOp = new UDAFQueryOperator((AggregationQueryOperator) (queryOp));
     }
+
+    // add aliasSet
+    Set<String> aliasSet = new HashSet<>();
+    for (IoTDBSqlParser.ResultColumnContext resultColumnContext : ctx.resultColumn()) {
+      ResultColumn resultColumn = parseResultColumn(resultColumnContext);
+      if (resultColumn.hasAlias()) {
+        aliasSet.add(resultColumn.getAlias());
+      }
+      selectComponent.addResultColumn(resultColumn);
+    }
+    queryOp.setAliasSet(aliasSet);
 
     queryOp.setSelectComponent(selectComponent);
   }

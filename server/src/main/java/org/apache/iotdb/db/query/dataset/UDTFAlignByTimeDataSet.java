@@ -136,7 +136,14 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         // kept with clause 'with null'.
         // Here we get a timestamp first and then construct the row column by column.
         // We don't record this row when nullFieldsCnt > 0 and withoutAnyNull == true
-        // or nullFieldsCnt == columnNum and withoutAllNull == true
+        // or (
+        //        (
+        //            (withoutNullColumnsIndex.size() > 0 && nullFieldsCnt == withoutNullColumnsIndex.size())
+        //            or
+        //            (withoutNullColumnsIndex.size() == 0 && nullFieldsCnt == columnsNum)
+        //        )
+        //        and withoutAllNull = true
+        //     )
         if ((((withoutNullColumnsIndex.size() > 0
                         && nullFieldsCnt == withoutNullColumnsIndex.size())
                     || (withoutNullColumnsIndex.size() == 0 && nullFieldsCnt == columnsNum))

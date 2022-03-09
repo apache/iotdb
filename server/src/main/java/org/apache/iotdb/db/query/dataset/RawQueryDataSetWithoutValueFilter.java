@@ -509,27 +509,36 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     return tsQueryDataSet;
   }
 
-  //  /** if any column in the row record is null, we filter it. */
   /** if columns in the row record match the condition of null value filter, we filter it. */
   private boolean filterRowRecord(int seriesNum, long minTime)
       throws IOException, InterruptedException {
     boolean hasNull = false, isAllNull = true;
+    // because `cachedBatchDataArray[seriesIndex]` may be TSDataType.VECTOR type
+    // so seriesIndex may not be corresponding to `withoutNullColumnsIndex`
+    // we need the `index` to record
+    int index = 0;
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-      if (!withoutNullColumnsIndex.isEmpty() && !withoutNullColumnsIndex.contains(seriesIndex)) {
+      if (!withoutNullColumnsIndex.isEmpty() && !withoutNullColumnsIndex.contains(index)) {
         continue;
       }
+
       if (cachedBatchDataArray[seriesIndex] == null
           || !cachedBatchDataArray[seriesIndex].hasCurrent()
           || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
+        index ++;
         hasNull = true;
       } else {
         if (TSDataType.VECTOR == cachedBatchDataArray[seriesIndex].getDataType()) {
           boolean nullFlag = false;
           for (TsPrimitiveType primitiveVal : cachedBatchDataArray[seriesIndex].getVector()) {
+            if (!withoutNullColumnsIndex.isEmpty() && !withoutNullColumnsIndex.contains(index)) {
+              index ++;
+              continue;
+            }
+            index ++;
             if (primitiveVal == null) {
               hasNull = true;
               nullFlag = true;
-              break;
             }
           }
 
