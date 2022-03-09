@@ -40,8 +40,6 @@ public interface IStorageGroupManager {
 
   SGMManager getSGMManager(PartialPath path) throws MetadataException;
 
-  List<SGMManager> getInvolvedSGMManager(PartialPath pathPattern) throws MetadataException;
-
   List<SGMManager> getInvolvedSGMManager(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 

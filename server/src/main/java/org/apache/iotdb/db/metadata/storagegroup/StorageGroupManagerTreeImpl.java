@@ -64,11 +64,6 @@ public class StorageGroupManagerTreeImpl implements IStorageGroupManager {
   }
 
   @Override
-  public List<SGMManager> getInvolvedSGMManager(PartialPath pathPattern) throws MetadataException {
-    return getInvolvedSGMManager(pathPattern, false);
-  }
-
-  @Override
   public List<SGMManager> getInvolvedSGMManager(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     List<SGMManager> result = new ArrayList<>();

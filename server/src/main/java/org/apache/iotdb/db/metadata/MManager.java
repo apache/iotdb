@@ -880,7 +880,8 @@ public class MManager {
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
     List<ShowTimeSeriesResult> result = new LinkedList<>();
-    for (SGMManager sgmManager : storageGroupManager.getInvolvedSGMManager(plan.getPath())) {
+    for (SGMManager sgmManager :
+        storageGroupManager.getInvolvedSGMManager(plan.getPath(), plan.isPrefixMatch())) {
       result.addAll(sgmManager.showTimeseries(plan, context));
     }
     return result;

@@ -64,7 +64,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -75,7 +74,6 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,7 +88,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -849,21 +846,6 @@ public class MTree implements Serializable {
     return result;
   }
 
-  public Map<PartialPath, IMeasurementSchema> getAllMeasurementSchemaByPrefix(
-      PartialPath prefixPath) throws MetadataException {
-    Map<PartialPath, IMeasurementSchema> result = new HashMap<>();
-    MeasurementCollector<List<IMeasurementSchema>> collector =
-        new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath) {
-          @Override
-          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
-            result.put(getCurrentPartialPath(node), node.getSchema());
-          }
-        };
-    collector.setPrefixMatch(true);
-    collector.traverse();
-    return result;
-  }
-
   /**
    * Collect the timeseries schemas as IMeasurementSchema under "prefixPath".
    *
@@ -1054,12 +1036,6 @@ public class MTree implements Serializable {
     return counter.getCount();
   }
 
-  /** Get the count of nodes in the given level matching the given path. */
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
-      throws MetadataException {
-    return getNodesCountInGivenLevel(pathPattern, level, false);
-  }
-
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     MeasurementGroupByLevelCounter counter =
@@ -1067,11 +1043,6 @@ public class MTree implements Serializable {
     counter.setPrefixMatch(isPrefixMatch);
     counter.traverse();
     return counter.getResult();
-  }
-
-  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level) throws MetadataException {
-    return getMeasurementCountGroupByLevel(pathPattern, level, false);
   }
 
   // endregion
@@ -1529,52 +1500,5 @@ public class MTree implements Serializable {
     return null;
   }
 
-  // endregion
-
-  // region TestOnly Interface
-  /** combine multiple metadata in string format */
-  @TestOnly
-  public static JsonObject combineMetadataInStrings(String[] metadataStrs) {
-    JsonObject[] jsonObjects = new JsonObject[metadataStrs.length];
-    for (int i = 0; i < jsonObjects.length; i++) {
-      jsonObjects[i] = GSON.fromJson(metadataStrs[i], JsonObject.class);
-    }
-
-    JsonObject root = jsonObjects[0];
-    for (int i = 1; i < jsonObjects.length; i++) {
-      root = combineJsonObjects(root, jsonObjects[i]);
-    }
-
-    return root;
-  }
-
-  private static JsonObject combineJsonObjects(JsonObject a, JsonObject b) {
-    JsonObject res = new JsonObject();
-
-    Set<String> retainSet = new HashSet<>(a.keySet());
-    retainSet.retainAll(b.keySet());
-    Set<String> aCha = new HashSet<>(a.keySet());
-    Set<String> bCha = new HashSet<>(b.keySet());
-    aCha.removeAll(retainSet);
-    bCha.removeAll(retainSet);
-
-    for (String key : aCha) {
-      res.add(key, a.get(key));
-    }
-
-    for (String key : bCha) {
-      res.add(key, b.get(key));
-    }
-    for (String key : retainSet) {
-      JsonElement v1 = a.get(key);
-      JsonElement v2 = b.get(key);
-      if (v1 instanceof JsonObject && v2 instanceof JsonObject) {
-        res.add(key, combineJsonObjects((JsonObject) v1, (JsonObject) v2));
-      } else {
-        res.add(v1.getAsString(), v2);
-      }
-    }
-    return res;
-  }
   // endregion
 }
