@@ -192,6 +192,26 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     return record;
   }
 
+  protected boolean isEndCal() {
+    if (curPreAggrStartTime == -1) {
+      return true;
+    }
+    return ascending ? curPreAggrStartTime >= curEndTime : curPreAggrEndTime <= curStartTime;
+  }
+
+  // find the next pre-aggregation interval
+  protected void updatePreAggrInterval() {
+    Pair<Long, Long> retPerAggrTimeRange;
+    retPerAggrTimeRange = preAggrTimeRangeIterator.getNextTimeRange(curPreAggrStartTime, true);
+    if (retPerAggrTimeRange != null) {
+      curPreAggrStartTime = retPerAggrTimeRange.left;
+      curPreAggrEndTime = retPerAggrTimeRange.right;
+    } else {
+      curPreAggrStartTime = -1;
+      curPreAggrEndTime = -1;
+    }
+  }
+
   public long getStartTime() {
     return startTime;
   }

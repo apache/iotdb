@@ -33,6 +33,7 @@ import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.dataset.groupby.queue.SlidingWindowAggrQueue;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
@@ -72,6 +73,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   protected int timeStampFetchSize;
 
   private long lastTimestamp;
+
+  // tmp result for pre-aggr
+  private AggregateResult[] tmpAggregateResults;
 
   protected GroupByWithValueFilterDataSet() {}
 
@@ -150,6 +154,20 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     }
     // assign null to be friendly for GC
     alignedPathToAggrIndexesMap = null;
+
+    tmpAggregateResults = new AggregateResult[paths.size()];
+    for (int i = 0; i < paths.size(); i++) {
+      tmpAggregateResults[i] =
+          AggregateResultFactory.getAggrResultByName(
+              groupByTimePlan.getDeduplicatedAggregations().get(i),
+              groupByTimePlan.getDeduplicatedDataTypes().get(i),
+              ascending);
+      slidingWindowAggrQueues[i] =
+          AggregateResultFactory.getSlidingWindowAggrQueueByName(
+              groupByTimePlan.getDeduplicatedAggregations().get(i),
+              groupByTimePlan.getDeduplicatedDataTypes().get(i),
+              ascending);
+    }
   }
 
   protected TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan queryPlan)
@@ -174,13 +192,28 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   @Override
   protected AggregateResult[] getNextAggregateResult() throws IOException {
     curAggregateResults = new AggregateResult[paths.size()];
-    for (int i = 0; i < paths.size(); i++) {
-      curAggregateResults[i] =
-          AggregateResultFactory.getAggrResultByName(
-              groupByTimePlan.getDeduplicatedAggregations().get(i),
-              groupByTimePlan.getDeduplicatedDataTypes().get(i),
-              ascending);
+    for (SlidingWindowAggrQueue slidingWindowAggrQueue : slidingWindowAggrQueues) {
+      slidingWindowAggrQueue.setTimeRange(curStartTime, curEndTime);
     }
+    while (!isEndCal()) {
+      AggregateResult[] aggregations = calcResult(curPreAggrStartTime, curPreAggrEndTime);
+      for (int i = 0; i < aggregations.length; i++) {
+        slidingWindowAggrQueues[i].update(aggregations[i].clone());
+      }
+      updatePreAggrInterval();
+    }
+    for (int i = 0; i < curAggregateResults.length; i++) {
+      curAggregateResults[i] = slidingWindowAggrQueues[i].getAggregateResult();
+    }
+    return curAggregateResults;
+  }
+
+  public AggregateResult[] calcResult(long curStartTime, long curEndTime) throws IOException {
+    // clear result cache
+    for (AggregateResult result : tmpAggregateResults) {
+      result.reset();
+    }
+
     long[] timestampArray = new long[timeStampFetchSize];
     int timeArrayLength = 0;
 
@@ -189,20 +222,21 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       if (timestamp < curEndTime) {
         if (!groupByTimePlan.isAscending() && timestamp < curStartTime) {
           cachedTimestamps.addFirst(timestamp);
-          return curAggregateResults;
+          return tmpAggregateResults;
         }
         if (timestamp >= curStartTime) {
           timestampArray[timeArrayLength++] = timestamp;
         }
       } else {
         cachedTimestamps.addFirst(timestamp);
-        return curAggregateResults;
+        return tmpAggregateResults;
       }
     }
 
     while (!cachedTimestamps.isEmpty() || timestampGenerator.hasNext()) {
       // construct timestamp array
-      timeArrayLength = constructTimeArrayForOneCal(timestampArray, timeArrayLength);
+      timeArrayLength =
+          constructTimeArrayForOneCal(timestampArray, timeArrayLength, curStartTime, curEndTime);
 
       // cal result using timestamp array
       calcUsingTimestampArray(timestampArray, timeArrayLength);
@@ -219,7 +253,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       // cal result using timestamp array
       calcUsingTimestampArray(timestampArray, timeArrayLength);
     }
-    return curAggregateResults;
+    return tmpAggregateResults;
   }
 
   private void calcUsingTimestampArray(long[] timestampArray, int timeArrayLength)
@@ -235,7 +269,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
         for (int curIndex = 0; curIndex < subSensorSize; curIndex++) {
           valueIterator.setSubMeasurementIndex(curIndex);
           for (Integer index : subIndexes.get(curIndex)) {
-            curAggregateResults[index].updateResultUsingValues(
+            tmpAggregateResults[index].updateResultUsingValues(
                 timestampArray, timeArrayLength, valueIterator);
             valueIterator.reset();
           }
@@ -252,7 +286,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    * @return time array size
    */
   @SuppressWarnings("squid:S3776")
-  private int constructTimeArrayForOneCal(long[] timestampArray, int timeArrayLength)
+  private int constructTimeArrayForOneCal(
+      long[] timestampArray, int timeArrayLength, long curStartTime, long curEndTime)
       throws IOException {
     for (int cnt = 1;
         cnt < timeStampFetchSize - 1
