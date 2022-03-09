@@ -193,11 +193,6 @@ public class MManager {
       storageGroupManager = new StorageGroupManagerTreeImpl();
       storageGroupManager.init();
 
-      // todo implement this as multi thread process
-      for (SGMManager sgmManager : storageGroupManager.getAllSGMManager()) {
-        sgmManager.init();
-      }
-
       isRecovering = false;
     } catch (IOException e) {
       logger.error(
@@ -265,9 +260,6 @@ public class MManager {
   /** function for clearing MTree */
   public synchronized void clear() {
     try {
-      for (SGMManager sgmManager : storageGroupManager.getAllSGMManager()) {
-        sgmManager.clear();
-      }
       storageGroupManager.clear();
       this.totalSeriesNumber.set(0);
       this.templateManager.clear();
@@ -444,7 +436,6 @@ public class MManager {
     List<SGMManager> sgmManagers = storageGroupManager.deleteStorageGroup(storageGroups);
     for (SGMManager sgmManager : sgmManagers) {
       int deletedSeriesNumber = sgmManager.deleteStorageGroup();
-      sgmManager.clear();
       totalSeriesNumber.addAndGet(deletedSeriesNumber);
       // clear cached MNode
       if (!allowToCreateNewSeries

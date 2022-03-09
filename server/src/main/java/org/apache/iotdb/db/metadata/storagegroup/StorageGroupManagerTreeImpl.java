@@ -41,10 +41,17 @@ public class StorageGroupManagerTreeImpl implements IStorageGroupManager {
 
   public synchronized void init() {
     storageGroupTree.init();
+    // todo implement this as multi thread process
+    for (SGMManager sgmManager : getAllSGMManager()) {
+      sgmManager.init();
+    }
   }
 
   /** function for clearing MTree */
   public synchronized void clear() {
+    for (SGMManager sgmManager : getAllSGMManager()) {
+      sgmManager.clear();
+    }
     if (storageGroupTree != null) {
       storageGroupTree.clear();
     }
