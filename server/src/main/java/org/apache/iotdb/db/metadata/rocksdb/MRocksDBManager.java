@@ -86,6 +86,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.google.common.collect.MapMaker;
+import io.netty.util.internal.StringUtil;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.rocksdb.Holder;
@@ -814,11 +815,8 @@ public class MRocksDBManager implements IMetaManager {
               }
             } else {
               boolean hasChild = !keyCheckResult.getResult(RocksDBMNodeType.STORAGE_GROUP);
-              StringBuilder stringBuilder = new StringBuilder();
-              for (int j = 0; j <= i; j++) {
-                stringBuilder.append(RockDBConstants.PATH_SEPARATOR).append(nodes[j]);
-              }
-              throw new StorageGroupAlreadySetException(stringBuilder.substring(1), hasChild);
+              throw new StorageGroupAlreadySetException(
+                  RocksDBUtils.concatNodesName(nodes, 0, i), hasChild);
             }
           } finally {
             lock.unlock();
@@ -1534,12 +1532,41 @@ public class MRocksDBManager implements IMetaManager {
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
           String fullPath = RocksDBUtils.getPathByInnerName(new String(a));
-          res.add(new ShowDevicesResult(fullPath, RocksDBUtils.isAligned(b)));
+          try {
+            res.add(
+                new ShowDevicesResult(
+                    fullPath,
+                    RocksDBUtils.isAligned(b),
+                    getBelongedToSG(plan.getPath().getNodes())));
+          } catch (MetadataException e) {
+            logger.error(e.getMessage());
+            return false;
+          }
           return true;
         };
     traverseOutcomeBasins(
         plan.getPath().getNodes(), MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_ENTITY});
     return res;
+  }
+
+  private String getBelongedToSG(String[] nodes) throws MetadataException {
+    List<String> contextNodeName = new ArrayList<>();
+    for (int idx = 1; idx < nodes.length; idx++) {
+      contextNodeName.add(nodes[idx]);
+      String innerName =
+          RocksDBUtils.convertPartialPathToInnerByNodes(
+              contextNodeName.toArray(new String[0]), contextNodeName.size(), NODE_TYPE_SG);
+      byte[] queryResult;
+      try {
+        queryResult = readWriteHandler.get(null, innerName.getBytes());
+      } catch (RocksDBException e) {
+        throw new MetadataException(e);
+      }
+      if (queryResult != null) {
+        return RocksDBUtils.concatNodesName(nodes, 0, idx);
+      }
+    }
+    return StringUtil.EMPTY_STRING;
   }
   // endregion
 
@@ -1658,7 +1685,12 @@ public class MRocksDBManager implements IMetaManager {
               // todo need update these properties
               tsRow[0] = measurementPath.getMeasurementAlias();
               // sg name
-              tsRow[1] = measurementPath.getFullPath();
+              try {
+                tsRow[1] = getBelongedToSG(measurementPath.getNodes());
+              } catch (MetadataException e) {
+                logger.error(e.getMessage());
+                tsRow[1] = StringUtil.EMPTY_STRING;
+              }
               tsRow[2] = measurementPath.getMeasurementSchema().getType().toString();
               tsRow[3] = measurementPath.getMeasurementSchema().getEncodingType().toString();
               tsRow[4] = measurementPath.getMeasurementSchema().getCompressor().toString();

@@ -555,4 +555,12 @@ public class RocksDBUtils {
     }
     return allNodesArray;
   }
+
+  public static String concatNodesName(String[] nodes, int startIdx, int endIdx) {
+    StringBuilder stringBuilder = new StringBuilder();
+    for (int i = startIdx; i <= endIdx; i++) {
+      stringBuilder.append(PATH_SEPARATOR).append(nodes[i]);
+    }
+    return stringBuilder.substring(1);
+  }
 }
