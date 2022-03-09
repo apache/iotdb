@@ -814,7 +814,11 @@ public class MRocksDBManager implements IMetaManager {
               }
             } else {
               boolean hasChild = !keyCheckResult.getResult(RocksDBMNodeType.STORAGE_GROUP);
-              throw new StorageGroupAlreadySetException(storageGroup.toString(), hasChild);
+              StringBuilder stringBuilder = new StringBuilder();
+              for (int j = 0; j <= i; j++) {
+                stringBuilder.append(RockDBConstants.PATH_SEPARATOR).append(nodes[j]);
+              }
+              throw new StorageGroupAlreadySetException(stringBuilder.substring(1), hasChild);
             }
           } finally {
             lock.unlock();
