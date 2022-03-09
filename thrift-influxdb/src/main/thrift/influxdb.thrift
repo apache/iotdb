@@ -98,22 +98,7 @@ struct TSQueryResultRsp{
 
   2: optional string ResultJsonString
 
-//  3: optional string error
 }
-
-//struct TSResult{
-//  1: required list<TSSeries> series
-//
-//  2: optional string error
-//}
-//
-//struct TSSeries {
-//  1: required string name
-//  2: optional map<string,string> tags
-//  3: required list<string> columns
-//
-//  4: required list<list<binary>> values
-//}
 
 service InfluxDBService {
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
