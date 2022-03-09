@@ -812,8 +812,9 @@ public class MRocksDBManager implements IMetaManager {
                 readWriteHandler.createNode(
                     levelKey, RocksDBMNodeType.STORAGE_GROUP, DEFAULT_NODE_VALUE);
               }
-            } else if (keyCheckResult.getResult(RocksDBMNodeType.STORAGE_GROUP)) {
-              throw new StorageGroupAlreadySetException(storageGroup.toString());
+            } else {
+              boolean hasChild = !keyCheckResult.getResult(RocksDBMNodeType.STORAGE_GROUP);
+              throw new StorageGroupAlreadySetException(storageGroup.toString(), hasChild);
             }
           } finally {
             lock.unlock();
