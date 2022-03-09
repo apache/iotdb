@@ -31,7 +31,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -188,8 +187,6 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
 
     Assert.assertTrue(targetResource.getTsFile().exists());
     Assert.assertTrue(targetResource.resourceFileExists());
-    Assert.assertTrue(targetResource.getModFile().exists());
-    Assert.assertEquals(6, targetResource.getModFile().getModifications().size());
     Assert.assertFalse(logFile.exists());
   }
 
@@ -291,8 +288,6 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
 
     Assert.assertTrue(targetResource.getTsFile().exists());
     Assert.assertTrue(targetResource.resourceFileExists());
-    Assert.assertTrue(targetResource.getModFile().exists());
-    Assert.assertEquals(6, targetResource.getModFile().getModifications().size());
     Assert.assertFalse(logFile.exists());
   }
 }

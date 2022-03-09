@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
@@ -26,13 +27,10 @@ import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionException
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogAnalyzer;
-import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -172,9 +170,6 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
                   tsFileManager,
                   true);
         } else {
-          if (logAnalyzer.isLogFromOld()) {
-            appendCompactionModificationsFromOld(sourceFileIdentifiers, targetResource);
-          }
           handleSuccess = handleWithoutAllSourceFilesExist(sourceFileIdentifiers);
         }
       }
@@ -295,29 +290,6 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
       }
     }
     return null;
-  }
-
-  /**
-   * Append compaction modifications from previous version (<0.13) to target mods file.
-   *
-   * @param targetResource
-   */
-  private void appendCompactionModificationsFromOld(
-      List<TsFileIdentifier> sourceFileIdentifiers, TsFileResource targetResource)
-      throws IOException {
-    ModificationFile targetModsFile = targetResource.getModFile();
-    for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
-      File sourceModFile =
-          getFileFromDataDirs(sourceFileIdentifier.getFilePath() + ModificationFile.FILE_SUFFIX);
-      if (sourceModFile != null) {
-        for (Modification deletion :
-            new ModificationFile(sourceModFile.getAbsolutePath()).getModifications()) {
-          deletion.setFileOffset(Long.MAX_VALUE);
-          targetModsFile.write(deletion);
-        }
-      }
-    }
-    targetModsFile.close();
   }
 
   /** Return whether compaction log file is from previous version (<0.13). */
