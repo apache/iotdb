@@ -543,7 +543,10 @@ public class InfluxDBUtils {
         Object o = InfluxDBUtils.iotdbFiledConvert(fields.get(i));
         if (o != null) {
           // insert the value of filed into it
-          value[fieldOrders.get(((AlignByDeviceDataSet) queryDataSet).getMeasurements().get(i - 1))] = o;
+          value[
+                  fieldOrders.get(
+                      ((AlignByDeviceDataSet) queryDataSet).getMeasurements().get(i - 1))] =
+              o;
         }
       }
       // insert actual value
