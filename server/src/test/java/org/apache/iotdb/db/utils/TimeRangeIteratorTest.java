@@ -84,6 +84,63 @@ public class TimeRangeIteratorTest {
     checkRes(new TimeRangeIterator(0, 32, 4, 6, false, false, false, true), res4_6);
   }
 
+  @Test
+  public void testNaturalMonthTimeRange() {
+    String[] res1 = {
+      "<1604102400000,1606694400000>",
+      "<1606694400000,1609372800000>",
+      "<1609372800000,1612051200000>",
+      "<1612051200000,1614470400000>",
+      "<1614470400000,1617148800000>"
+    };
+    String[] res2 = {
+      "<1604102400000,1604966400000>",
+      "<1606694400000,1607558400000>",
+      "<1609372800000,1610236800000>",
+      "<1612051200000,1612915200000>",
+      "<1614470400000,1615334400000>"
+    };
+    String[] res3 = {
+      "<1604102400000,1606694400000>",
+      "<1604966400000,1607558400000>",
+      "<1605830400000,1608422400000>",
+      "<1606694400000,1609372800000>",
+      "<1607558400000,1610236800000>",
+      "<1608422400000,1611100800000>",
+      "<1609286400000,1611964800000>",
+      "<1610150400000,1612828800000>",
+      "<1611014400000,1613692800000>",
+      "<1611878400000,1614470400000>",
+      "<1612742400000,1615161600000>",
+      "<1613606400000,1616025600000>",
+      "<1614470400000,1617148800000>",
+      "<1615334400000,1617148800000>",
+      "<1616198400000,1617148800000>",
+      "<1617062400000,1617148800000>"
+    };
+    String[] res4 = {};
+    checkRes(
+        new TimeRangeIterator(1604102400000L, 1617148800000L, 1, 1, true, true, true, false), res1);
+    checkRes(
+        new TimeRangeIterator(1604102400000L, 1617148800000L, 1, 1, true, true, true, true), res1);
+    checkRes(
+        new TimeRangeIterator(
+            1604102400000L, 1617148800000L, 864000000, 1, true, false, true, false),
+        res2);
+    checkRes(
+        new TimeRangeIterator(
+            1604102400000L, 1617148800000L, 864000000, 1, true, false, true, true),
+        res2);
+    checkRes(
+        new TimeRangeIterator(
+            1604102400000L, 1617148800000L, 1, 864000000, true, true, false, false),
+        res3);
+    checkRes(
+        new TimeRangeIterator(
+            1604102400000L, 1617148800000L, 1, 864000000, true, true, false, true),
+        res4);
+  }
+
   private void checkRes(TimeRangeIterator timeRangeIterator, String[] res) {
     boolean isAscending = timeRangeIterator.isAscending();
     long curStartTime;
