@@ -50,7 +50,6 @@ public class MinTimeAggrResult extends AggregateResult {
     }
     long time = statistics.getStartTime();
     setValue(time);
-    setTime(getLongValue());
   }
 
   @Override
@@ -69,7 +68,6 @@ public class MinTimeAggrResult extends AggregateResult {
         && batchIterator.currentTime() >= minBound) {
       setLongValue(batchIterator.currentTime());
     }
-    setTime(getLongValue());
   }
 
   @Override
@@ -92,7 +90,6 @@ public class MinTimeAggrResult extends AggregateResult {
       }
       currentPos += timeLength;
     }
-    setTime(getLongValue());
   }
 
   @Override
@@ -103,7 +100,6 @@ public class MinTimeAggrResult extends AggregateResult {
     if (valueIterator.hasNext()) {
       setLongValue(timestamps[valueIterator.getCurPos()]);
     }
-    setTime(getLongValue());
   }
 
   @Override
@@ -135,4 +131,9 @@ public class MinTimeAggrResult extends AggregateResult {
 
   @Override
   protected void serializeSpecificFields(OutputStream outputStream) {}
+
+  @Override
+  public long getTime() {
+    return getLongValue();
+  }
 }

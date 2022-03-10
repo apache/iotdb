@@ -47,7 +47,6 @@ public class MaxTimeAggrResult extends AggregateResult {
   public void updateResultFromStatistics(Statistics statistics) {
     long maxTimestamp = statistics.getEndTime();
     updateMaxTimeResult(maxTimestamp);
-    setTime(getLongValue());
   }
 
   @Override
@@ -64,7 +63,6 @@ public class MaxTimeAggrResult extends AggregateResult {
       updateMaxTimeResult(batchIterator.currentTime());
       batchIterator.next();
     }
-    setTime(getLongValue());
   }
 
   @Override
@@ -77,7 +75,6 @@ public class MaxTimeAggrResult extends AggregateResult {
         return;
       }
     }
-    setTime(getLongValue());
   }
 
   @Override
@@ -88,7 +85,6 @@ public class MaxTimeAggrResult extends AggregateResult {
         return;
       }
     }
-    setTime(getLongValue());
   }
 
   @Override
@@ -119,5 +115,10 @@ public class MaxTimeAggrResult extends AggregateResult {
     if (!hasCandidateResult() || value >= getLongValue()) {
       setLongValue(value);
     }
+  }
+
+  @Override
+  public long getTime() {
+    return getLongValue();
   }
 }

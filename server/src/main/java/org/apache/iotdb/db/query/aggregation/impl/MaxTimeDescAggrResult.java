@@ -46,7 +46,6 @@ public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
         && batchIterator.currentTime() >= minBound) {
       updateMaxTimeResult(batchIterator.currentTime());
     }
-    setTime(getLongValue());
   }
 
   @Override
@@ -69,7 +68,6 @@ public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
       }
       currentPos += timeLength;
     }
-    setTime(getLongValue());
   }
 
   @Override
@@ -80,7 +78,6 @@ public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
     if (valueIterator.hasNext()) {
       updateMaxTimeResult(timestamps[valueIterator.getCurPos()]);
     }
-    setTime(getLongValue());
   }
 
   @Override
