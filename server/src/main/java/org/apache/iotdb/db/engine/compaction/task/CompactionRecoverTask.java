@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.engine.compaction.task;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
 import org.slf4j.Logger;
@@ -35,7 +36,8 @@ import java.util.regex.Pattern;
  * InnerCompactionTask in sequence/unsequence space, CrossSpaceCompaction.
  */
 public class CompactionRecoverTask {
-  private static final Logger logger = LoggerFactory.getLogger(CompactionRecoverTask.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private TsFileManager tsFileManager;
   private String logicalStorageGroupName;
   private String virtualStorageGroupId;
@@ -49,6 +51,7 @@ public class CompactionRecoverTask {
 
   public void recoverCrossSpaceCompaction() throws Exception {
     logger.info("recovering cross compaction");
+    recoverCrossCompactionFromOldVersion();
     recoverCrossCompaction();
     logger.info("try to synchronize CompactionScheduler");
   }
@@ -76,8 +79,7 @@ public class CompactionRecoverTask {
           continue;
         }
         File[] compactionLogs =
-            RewriteCrossSpaceCompactionLogger.findCrossSpaceCompactionLogs(
-                timePartitionDir.getPath());
+            CompactionLogger.findCrossSpaceCompactionLogs(timePartitionDir.getPath());
         for (File compactionLog : compactionLogs) {
           logger.info("calling cross compaction task");
           IoTDBDescriptor.getInstance()
@@ -92,6 +94,28 @@ public class CompactionRecoverTask {
               .call();
         }
       }
+    }
+  }
+
+  private void recoverCrossCompactionFromOldVersion() throws Exception {
+    // check whether there is old compaction log from previous version (<0.13)
+    File mergeLogFromOldVersion =
+        new File(
+            tsFileManager.getStorageGroupDir()
+                + File.separator
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_FROM_OLD);
+    if (mergeLogFromOldVersion.exists()) {
+      logger.info("calling cross compaction task to recover from previous version.");
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .getCrossCompactionStrategy()
+          .getCompactionRecoverTask(
+              logicalStorageGroupName,
+              virtualStorageGroupId,
+              0L,
+              mergeLogFromOldVersion,
+              tsFileManager)
+          .call();
     }
   }
 }

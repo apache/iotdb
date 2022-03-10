@@ -414,8 +414,11 @@ public class IoTDBConfig {
    */
   private long compactionAcquireWriteLockTimeout = 60_000L;
 
-  /** The max candidate file num in compaction */
-  private int maxCompactionCandidateFileNum = 30;
+  /** The max candidate file num in inner space compaction */
+  private int maxInnerCompactionCandidateFileNum = 30;
+
+  /** The max candidate file num in cross space compaction */
+  private int maxCrossCompactionCandidateFileNum = 1000;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
@@ -573,7 +576,7 @@ public class IoTDBConfig {
   private long mergeIntervalSec = 0L;
 
   /** The limit of compaction merge can reach per second */
-  private int compactionWriteThroughputMbPerSec = 30;
+  private int compactionWriteThroughputMbPerSec = 16;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
@@ -598,6 +601,13 @@ public class IoTDBConfig {
    * The every interval of continuous query instances should not be lower than this limit.
    */
   private long continuousQueryMinimumEveryInterval = 1000;
+
+  /**
+   * The size of log buffer for every CQ management operation plan. If the size of a CQ management
+   * operation plan is larger than this parameter, the CQ management operation plan will be rejected
+   * by CQManager. Unit: byte
+   */
+  private int cqlogBufferSize = 1024 * 1024;
 
   /**
    * The maximum number of rows can be processed in insert-tablet-plan when executing select-into
@@ -1571,6 +1581,14 @@ public class IoTDBConfig {
     this.continuousQueryMinimumEveryInterval = minimumEveryInterval;
   }
 
+  public int getCqlogBufferSize() {
+    return cqlogBufferSize;
+  }
+
+  public void setCqlogBufferSize(int cqlogBufferSize) {
+    this.cqlogBufferSize = cqlogBufferSize;
+  }
+
   public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
     this.selectIntoInsertTabletPlanRowLimit = selectIntoInsertTabletPlanRowLimit;
   }
@@ -2470,12 +2488,20 @@ public class IoTDBConfig {
     this.compactionScheduleIntervalInMs = compactionScheduleIntervalInMs;
   }
 
-  public int getMaxCompactionCandidateFileNum() {
-    return maxCompactionCandidateFileNum;
+  public int getMaxInnerCompactionCandidateFileNum() {
+    return maxInnerCompactionCandidateFileNum;
   }
 
-  public void setMaxCompactionCandidateFileNum(int maxCompactionCandidateFileNum) {
-    this.maxCompactionCandidateFileNum = maxCompactionCandidateFileNum;
+  public void setMaxInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum) {
+    this.maxInnerCompactionCandidateFileNum = maxInnerCompactionCandidateFileNum;
+  }
+
+  public int getMaxCrossCompactionCandidateFileNum() {
+    return maxCrossCompactionCandidateFileNum;
+  }
+
+  public void setMaxCrossCompactionCandidateFileNum(int maxCrossCompactionCandidateFileNum) {
+    this.maxCrossCompactionCandidateFileNum = maxCrossCompactionCandidateFileNum;
   }
 
   public long getCompactionSubmissionIntervalInMs() {

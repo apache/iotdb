@@ -32,30 +32,9 @@
 3. 运行`sbin\start-server.bat`（在 Windows 下）或`sbin\start-server.sh`（在 Linux 或 MacOS 下）以启动 IoTDB 服务器；
 4. 将注册脚本复制到 IoTDB 的程序目录下（与`sbin`目录同级的根目录下），修改脚本中的参数（如果需要）并运行注册脚本以注册 UDF。
 
-## 联系我们
-
-+ Email: iotdb-quality@protonmail.com
 
 ## 下载
 
-您可以下载下列文件：
+由于我们的代码正在审核中，Apache仓库中目前还没有代码。在审核完成之前，您可以前往我们的[旧网页](https://thulab.github.io/iotdb-quality/zh/Download.html)下载上述文件。
 
-<table>
-    <tr>
-        <th align="center">版本</th>
-        <th align="center">包含全部依赖的 Jar 包</th>
-        <th align="center" colspan="2">注册脚本</th>
-        <th align="center" colspan="2">用户手册</th>
-        <th align="center">支持的IoTDB版本</th>
-    </tr>
-    <tr>
-        <td align="center">In progress</td>
-        <td align="center"><a href="https://thulab.github.io/iotdb-quality/download/iotdb-quality-2.0.0-SNAPSHOT-jar-with-dependencies.jar">包含全部依赖的 Jar 包</a></td>
-        <td align="center"><a href="https://thulab.github.io/iotdb-quality/download/register-UDF.bat">Windows</a></td>
-        <td align="center"><a href="https://thulab.github.io/iotdb-quality/download/register-UDF.sh">Linux/MacOS</a></td>
-        <td align="center"><a href="https://thulab.github.io/iotdb-quality/download/UserManual_en.pdf">英文版</a></td>
-        <td align="center"><a href="https://thulab.github.io/iotdb-quality/download/UserManual_zh.pdf">中文版</a></td>
-        <td align="center">>= 0.12.0</td>
-    </tr>
-</table>
 

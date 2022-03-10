@@ -26,6 +26,7 @@ import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MonitorType;
 
 import org.junit.BeforeClass;
@@ -46,15 +47,15 @@ public class MicrometerMetricManagerTest {
   @BeforeClass
   public static void init() {
     metricConfig.setEnableMetric(true);
-    metricConfig.setMonitorType(MonitorType.micrometer);
+    metricConfig.setMonitorType(MonitorType.MICROMETER);
     metricService.startService();
     metricManager = metricService.getMetricManager();
   }
 
   private void getOrCreateDifferentMetricsWithSameName() {
-    Timer timer = metricManager.getOrCreateTimer("metric", "tag1", "tag2");
+    Timer timer = metricManager.getOrCreateTimer("metric", MetricLevel.IMPORTANT, "tag1", "tag2");
     assertNotNull(timer);
-    metricManager.getOrCreateCounter("metric", "tag1", "tag2");
+    metricManager.getOrCreateCounter("metric", MetricLevel.IMPORTANT, "tag1", "tag2");
   }
 
   @Test
@@ -66,7 +67,8 @@ public class MicrometerMetricManagerTest {
   public void testAutoGauge() {
     List<Integer> list = new ArrayList<>();
     Gauge autoGauge =
-        metricManager.getOrCreateAutoGauge("autoGaugeMetric", list, List::size, "tagk", "tagv");
+        metricManager.getOrCreateAutoGauge(
+            "autoGaugeMetric", MetricLevel.IMPORTANT, list, List::size, "tagk", "tagv");
     assertEquals(0L, autoGauge.value());
     list.add(1);
     assertEquals(1L, autoGauge.value());

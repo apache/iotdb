@@ -33,29 +33,9 @@ It effectively meets the demand for data quality in the industrial field.
 3. Run `sbin\start-server.bat` (for Windows) or `sbin\start-server.sh` (for Linux or MacOS) to start IoTDB server.
 4. Copy the script to the directory of IoTDB system (under the root directory, at the same level as `sbin`), modify the parameters in the script if needed and run it to register UDF.
 
-## Contact
-
-+ Email: iotdb-quality@protonmail.com
 
 ## Download
 
-You can download the following files:
+Since our codes are still under review, there are no codes in Apache repository. Before finishing the review, the above files can be downloaded in our [old website](https://thulab.github.io/iotdb-quality/en/Download.html). 
 
-<table>
-    <tr>
-        <th align="center">Version</th>
-        <th align="center">Jar with all dependencies</th>
-        <th align="center" colspan="2">Script of registering UDF</th>
-        <th align="center" colspan="2">User Manual</th>
-        <th align="center">Supported IoTDB Version</th>
-    </tr>
-    <tr>
-        <td align="center">In progress</td>
-        <td align="center"><a href="https://thulab.github.io/iotdb-quality/download/iotdb-quality-2.0.0-SNAPSHOT-jar-with-dependencies.jar">Jar with all dependencies</a></td>
-        <td align="center"><a href="https://thulab.github.io/iotdb-quality/download/register-UDF.bat">Windows</a></td>
-        <td align="center"><a href="https://thulab.github.io/iotdb-quality/download/register-UDF.sh">Linux/MacOS</a></td>
-        <td align="center"><a href="https://thulab.github.io/iotdb-quality/download/UserManual_en.pdf">English</a></td>
-        <td align="center"><a href="https://thulab.github.io/iotdb-quality/download/UserManual_zh.pdf">Chinese</a></td>
-        <td align="center">>= 0.12.0</td>
-    </tr>
-</table>
+

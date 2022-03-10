@@ -106,10 +106,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements IUDF
     }
     RowRecord[] rowRecords = new RowRecord[cachedTimeCnt];
     for (int i = 0; i < cachedTimeCnt; i++) {
-      rowRecords[i] = new RowRecord(cachedTimeArray[i]);
-      for (int columnIndex = 0; columnIndex < columnNum; columnIndex++) {
-        rowRecords[i].addField(null);
-      }
+      rowRecords[i] = new RowRecord(cachedTimeArray[i], columnNum);
     }
 
     boolean[] hasField = new boolean[cachedTimeCnt];
