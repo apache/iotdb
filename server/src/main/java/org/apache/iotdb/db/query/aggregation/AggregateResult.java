@@ -41,6 +41,11 @@ public abstract class AggregateResult implements Cloneable {
   protected TSDataType resultDataType;
 
   // timestamp of current value
+  /**
+   * For [COUNT, AVG, SUM], it is the start time of the aggregation window. For [MAX_VALUE,
+   * MIN_VALUE, EXTREME, FIRST_VALUE, LAST_VALUE], it is the timestamp of the current value. For
+   * [MAX_TIME, MIN_TIME], it is always null.
+   */
   protected long timestamp;
 
   private boolean booleanValue;
@@ -116,6 +121,10 @@ public abstract class AggregateResult implements Cloneable {
   /** Merge another aggregateResult into this */
   public abstract void merge(AggregateResult another);
 
+  /**
+   * Remove another aggregateResult from this. Note: aggregation window of another must be a subset
+   * of the current aggregation window.
+   */
   public abstract void remove(AggregateResult another);
 
   public static AggregateResult deserializeFrom(ByteBuffer buffer) {

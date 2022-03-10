@@ -109,7 +109,8 @@ public class MinValueAggrResult extends AggregateResult {
 
   @Override
   public void remove(AggregateResult another) {
-    throw new UnsupportedOperationException("min value aggregate result is not support remove");
+    throw new UnsupportedOperationException(
+        "remove is not supported in min value aggregate result");
   }
 
   @Override

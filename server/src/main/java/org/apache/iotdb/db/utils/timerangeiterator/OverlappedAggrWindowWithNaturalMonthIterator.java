@@ -71,9 +71,6 @@ public class OverlappedAggrWindowWithNaturalMonthIterator implements ITimeRangeI
       return null;
     }
     long retStartTime = lastTime;
-    if (timeBoundaryHeap.isEmpty()) {
-      return null;
-    }
     lastTime = timeBoundaryHeap.pollFirst();
     return new Pair<>(retStartTime, lastTime);
   }

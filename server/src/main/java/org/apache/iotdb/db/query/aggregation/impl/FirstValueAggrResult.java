@@ -131,7 +131,8 @@ public class FirstValueAggrResult extends AggregateResult {
 
   @Override
   public void remove(AggregateResult another) {
-    throw new UnsupportedOperationException("first value aggregate result is not support remove");
+    throw new UnsupportedOperationException(
+        "remove is not supported in first value aggregate result");
   }
 
   @Override

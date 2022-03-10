@@ -74,8 +74,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   private long lastTimestamp;
 
-  // tmp result for pre-aggr
-  private AggregateResult[] tmpAggregateResults;
+  // aggregate result for current pre-aggregate window
+  private AggregateResult[] preAggregateResults;
 
   protected GroupByWithValueFilterDataSet() {}
 
@@ -155,9 +155,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     // assign null to be friendly for GC
     alignedPathToAggrIndexesMap = null;
 
-    tmpAggregateResults = new AggregateResult[paths.size()];
+    preAggregateResults = new AggregateResult[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
-      tmpAggregateResults[i] =
+      preAggregateResults[i] =
           AggregateResultFactory.getAggrResultByName(
               groupByTimePlan.getDeduplicatedAggregations().get(i),
               groupByTimePlan.getDeduplicatedDataTypes().get(i),
@@ -210,7 +210,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   public AggregateResult[] calcResult(long curStartTime, long curEndTime) throws IOException {
     // clear result cache
-    for (AggregateResult result : tmpAggregateResults) {
+    for (AggregateResult result : preAggregateResults) {
       result.reset();
     }
 
@@ -222,14 +222,14 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       if (timestamp < curEndTime) {
         if (!groupByTimePlan.isAscending() && timestamp < curStartTime) {
           cachedTimestamps.addFirst(timestamp);
-          return tmpAggregateResults;
+          return preAggregateResults;
         }
         if (timestamp >= curStartTime) {
           timestampArray[timeArrayLength++] = timestamp;
         }
       } else {
         cachedTimestamps.addFirst(timestamp);
-        return tmpAggregateResults;
+        return preAggregateResults;
       }
     }
 
@@ -253,7 +253,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       // cal result using timestamp array
       calcUsingTimestampArray(timestampArray, timeArrayLength);
     }
-    return tmpAggregateResults;
+    return preAggregateResults;
   }
 
   private void calcUsingTimestampArray(long[] timestampArray, int timeArrayLength)
@@ -269,7 +269,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
         for (int curIndex = 0; curIndex < subSensorSize; curIndex++) {
           valueIterator.setSubMeasurementIndex(curIndex);
           for (Integer index : subIndexes.get(curIndex)) {
-            tmpAggregateResults[index].updateResultUsingValues(
+            preAggregateResults[index].updateResultUsingValues(
                 timestampArray, timeArrayLength, valueIterator);
             valueIterator.reset();
           }

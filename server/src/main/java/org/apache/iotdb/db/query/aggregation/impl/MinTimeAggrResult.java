@@ -123,7 +123,7 @@ public class MinTimeAggrResult extends AggregateResult {
 
   @Override
   public void remove(AggregateResult another) {
-    throw new UnsupportedOperationException("min time aggregate result is not support remove");
+    throw new UnsupportedOperationException("remove is not supported in min time aggregate result");
   }
 
   @Override

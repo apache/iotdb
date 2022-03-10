@@ -121,7 +121,8 @@ public class LastValueAggrResult extends AggregateResult {
 
   @Override
   public void remove(AggregateResult another) {
-    throw new UnsupportedOperationException("last value aggregate result is not support remove");
+    throw new UnsupportedOperationException(
+        "remove is not supported in last value aggregate result");
   }
 
   @Override

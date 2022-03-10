@@ -111,7 +111,8 @@ public class MaxValueAggrResult extends AggregateResult {
 
   @Override
   public void remove(AggregateResult another) {
-    throw new UnsupportedOperationException("max value aggregate result is not support remove");
+    throw new UnsupportedOperationException(
+        "remove is not supported in max value aggregate result");
   }
 
   @Override

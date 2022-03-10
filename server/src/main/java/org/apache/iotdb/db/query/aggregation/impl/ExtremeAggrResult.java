@@ -148,7 +148,7 @@ public class ExtremeAggrResult extends AggregateResult {
 
   @Override
   public void remove(AggregateResult another) {
-    throw new UnsupportedOperationException("extreme value aggregate result is not support remove");
+    throw new UnsupportedOperationException("remove is not supported in extreme aggregate result");
   }
 
   @Override

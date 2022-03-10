@@ -193,11 +193,16 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     return record;
   }
 
+  /** Judge if all pre-aggregation values in the current aggregation window have been calculated. */
   protected boolean isEndCal() {
     if (curPreAggrStartTime == -1) {
       return true;
     }
-    return ascending ? curPreAggrStartTime >= curEndTime : curPreAggrEndTime <= curStartTime;
+    if (ascending) {
+      return curPreAggrStartTime >= curEndTime;
+    } else {
+      return curPreAggrEndTime <= curStartTime;
+    }
   }
 
   // find the next pre-aggregation interval
