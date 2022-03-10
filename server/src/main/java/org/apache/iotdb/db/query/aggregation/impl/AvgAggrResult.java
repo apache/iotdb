@@ -187,8 +187,7 @@ public class AvgAggrResult extends AggregateResult {
       return;
     }
     if (cnt == anotherAvg.cnt) {
-      avg = 0;
-      cnt = 0;
+      reset();
     } else {
       avg = (avg * cnt - anotherAvg.avg * anotherAvg.cnt) / (cnt - anotherAvg.cnt);
       cnt -= anotherAvg.cnt;

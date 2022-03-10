@@ -110,7 +110,7 @@ public class CountAggrResult extends AggregateResult {
   @Override
   public void remove(AggregateResult another) {
     CountAggrResult anotherCount = (CountAggrResult) another;
-    setLongValue(anotherCount.getResult() - this.getResult());
+    setLongValue(this.getResult() - anotherCount.getResult());
   }
 
   @Override

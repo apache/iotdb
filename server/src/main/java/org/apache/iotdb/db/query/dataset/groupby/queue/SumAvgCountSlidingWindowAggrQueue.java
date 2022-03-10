@@ -42,8 +42,5 @@ public class SumAvgCountSlidingWindowAggrQueue extends SlidingWindowAggrQueue {
       AggregateResult aggregateResult = deque.removeFirst();
       this.aggregateResult.remove(aggregateResult);
     }
-    if (!inTimeRange(this.aggregateResult.getTime())) {
-      this.aggregateResult.reset();
-    }
   }
 }
