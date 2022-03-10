@@ -33,7 +33,6 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -64,32 +63,17 @@ public class TagManager {
   private static final Logger logger = LoggerFactory.getLogger(TagManager.class);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  private String sgSchemaDirPath;
   private TagLogFile tagLogFile;
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<IMeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
 
-  private static class TagManagerHolder {
-
-    private TagManagerHolder() {
-      // allowed to do nothing
-    }
-
-    private static final TagManager INSTANCE = new TagManager();
+  public TagManager(String sgSchemaDirPath) {
+    this.sgSchemaDirPath = sgSchemaDirPath;
   }
-
-  public static TagManager getInstance() {
-    return TagManagerHolder.INSTANCE;
-  }
-
-  @TestOnly
-  public static TagManager getNewInstanceForTest() {
-    return new TagManager();
-  }
-
-  private TagManager() {}
 
   public void init() throws IOException {
-    tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
+    tagLogFile = new TagLogFile(sgSchemaDirPath, MetadataConstant.TAG_LOG);
   }
 
   public void recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {

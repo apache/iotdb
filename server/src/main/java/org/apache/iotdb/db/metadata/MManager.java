@@ -45,11 +45,18 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -190,6 +197,7 @@ public class MManager {
     try {
       isRecovering = true;
 
+      templateManager.init();
       storageGroupManager = new StorageGroupManagerTreeImpl();
       storageGroupManager.init();
 
@@ -269,9 +277,77 @@ public class MManager {
     }
   }
 
+  // This method is used for Metadata Sync
   public void operation(PhysicalPlan plan) throws IOException, MetadataException {
-    for (PartialPath path : plan.getPaths()) {
-      storageGroupManager.getSGMManager(path).operation(plan);
+    switch (plan.getOperatorType()) {
+      case CREATE_TIMESERIES:
+        CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
+        createTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
+        break;
+      case CREATE_ALIGNED_TIMESERIES:
+        CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
+            (CreateAlignedTimeSeriesPlan) plan;
+        createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+        break;
+      case DELETE_TIMESERIES:
+        DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
+        // cause we only has one path for one DeleteTimeSeriesPlan
+        deleteTimeseries(deleteTimeSeriesPlan.getPaths().get(0));
+        break;
+      case SET_STORAGE_GROUP:
+        SetStorageGroupPlan setStorageGroupPlan = (SetStorageGroupPlan) plan;
+        setStorageGroup(setStorageGroupPlan.getPath());
+        break;
+      case DELETE_STORAGE_GROUP:
+        DeleteStorageGroupPlan deleteStorageGroupPlan = (DeleteStorageGroupPlan) plan;
+        deleteStorageGroups(deleteStorageGroupPlan.getPaths());
+        break;
+      case TTL:
+        SetTTLPlan setTTLPlan = (SetTTLPlan) plan;
+        setTTL(setTTLPlan.getStorageGroup(), setTTLPlan.getDataTTL());
+        break;
+      case CHANGE_ALIAS:
+        ChangeAliasPlan changeAliasPlan = (ChangeAliasPlan) plan;
+        changeAlias(changeAliasPlan.getPath(), changeAliasPlan.getAlias());
+        break;
+      case CHANGE_TAG_OFFSET:
+        ChangeTagOffsetPlan changeTagOffsetPlan = (ChangeTagOffsetPlan) plan;
+        changeOffset(changeTagOffsetPlan.getPath(), changeTagOffsetPlan.getOffset());
+        break;
+      case CREATE_TEMPLATE:
+        CreateTemplatePlan createTemplatePlan = (CreateTemplatePlan) plan;
+        createSchemaTemplate(createTemplatePlan);
+        break;
+      case DROP_TEMPLATE:
+        DropTemplatePlan dropTemplatePlan = (DropTemplatePlan) plan;
+        dropSchemaTemplate(dropTemplatePlan);
+        break;
+      case APPEND_TEMPLATE:
+        AppendTemplatePlan appendTemplatePlan = (AppendTemplatePlan) plan;
+        appendSchemaTemplate(appendTemplatePlan);
+        break;
+      case PRUNE_TEMPLATE:
+        PruneTemplatePlan pruneTemplatePlan = (PruneTemplatePlan) plan;
+        pruneSchemaTemplate(pruneTemplatePlan);
+        break;
+      case SET_TEMPLATE:
+        SetTemplatePlan setTemplatePlan = (SetTemplatePlan) plan;
+        setSchemaTemplate(setTemplatePlan);
+        break;
+      case ACTIVATE_TEMPLATE:
+        ActivateTemplatePlan activateTemplatePlan = (ActivateTemplatePlan) plan;
+        setUsingSchemaTemplate(activateTemplatePlan);
+        break;
+      case AUTO_CREATE_DEVICE_MNODE:
+        AutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan = (AutoCreateDeviceMNodePlan) plan;
+        autoCreateDeviceMNode(autoCreateDeviceMNodePlan);
+        break;
+      case UNSET_TEMPLATE:
+        UnsetTemplatePlan unsetTemplatePlan = (UnsetTemplatePlan) plan;
+        unsetSchemaTemplate(unsetTemplatePlan);
+        break;
+      default:
+        logger.error("Unrecognizable command {}", plan.getOperatorType());
     }
   }
   // endregion
@@ -535,6 +611,10 @@ public class MManager {
       throws MetadataException, IOException {
     return getDeviceNodeWithAutoCreate(
         path, config.isAutoCreateSchemaEnabled(), true, config.getDefaultStorageGroupLevel());
+  }
+
+  private void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
+    getMeasurementMNode(plan.getPath());
   }
   // endregion
 
@@ -1036,6 +1116,17 @@ public class MManager {
   // endregion
 
   // region Interfaces for alias and tag/attribute operations
+  /**
+   * Check whether the given path contains a storage group change or set the new offset of a
+   * timeseries
+   *
+   * @param path timeseries
+   * @param offset offset in the tag file
+   */
+  private void changeOffset(PartialPath path, long offset) throws MetadataException {
+    storageGroupManager.getSGMManager(path).changeOffset(path, offset);
+  }
+
   public void changeAlias(PartialPath path, String alias) throws MetadataException {
     storageGroupManager.getSGMManager(path).changeAlias(path, alias);
   }

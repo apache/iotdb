@@ -170,7 +170,7 @@ public class SGMManager {
   private MTree mtree;
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
-  private TagManager tagManager = TagManager.getInstance();
+  private TagManager tagManager;
 
   // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
   SGMManager(IStorageGroupMNode storageGroupMNode) {
@@ -240,6 +240,7 @@ public class SGMManager {
     try {
       isRecovering = true;
 
+      tagManager = new TagManager(sgSchemaDirPath);
       tagManager.init();
       mtree = new MTree(storageGroupMNode);
       mtree.init();
