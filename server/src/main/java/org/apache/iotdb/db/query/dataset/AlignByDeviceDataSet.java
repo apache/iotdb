@@ -132,9 +132,10 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     Set<String> withoutNullColumns = alignByDevicePlan.getWithoutNullColumns();
     int index = 1; // start 1, because first is device name
     for (String measurement : this.measurements) {
-      String actualColumn = measurement;  // may be alias
+      String actualColumn = measurement; // may be alias
       if (alignByDevicePlan.getMeasurementInfoMap().containsKey(measurement)) {
-        String alias = alignByDevicePlan.getMeasurementInfoMap().get(measurement).getMeasurementAlias();
+        String alias =
+            alignByDevicePlan.getMeasurementInfoMap().get(measurement).getMeasurementAlias();
         if (alias != null && !alias.equals("")) {
           actualColumn = alias;
         }

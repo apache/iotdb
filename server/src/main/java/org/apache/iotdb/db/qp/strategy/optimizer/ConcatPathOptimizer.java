@@ -218,7 +218,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         queryOperator.getSpecialClauseComponent().getWithoutNullColumns();
     WildcardsRemover withoutNullWildcardsRemover = new WildcardsRemover(queryOperator);
 
-    // because timeSeries path may be with "*", so need to remove it for getting some actual timeSeries paths
+    // because timeSeries path may be with "*", so need to remove it for getting some actual
+    // timeSeries paths
     // actualExpressions store the actual timeSeries paths
     List<Expression> actualExpressions = new ArrayList<>();
     List<Expression> resultExpressions = new ArrayList<>();

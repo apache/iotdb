@@ -53,6 +53,7 @@ public class IoTDBWithoutNullAnyFilterIT {
         "CREATE TIMESERIES root.test.sg2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE TIMESERIES root.test.sg2.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
         "CREATE TIMESERIES root.test.sg2.s4 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE ALIGNED TIMESERIES root.test.sg3(s5 INT32, s6 BOOLEAN, s7 DOUBLE, s8 INT32)",
         "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) " + "values(1, true, 1, 1.0, 1)",
         "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) " + "values(1, false, 1, 1.0, 1)",
         "INSERT INTO root.test.sg1(timestamp, s2) " + "values(2, 2)",
@@ -85,6 +86,16 @@ public class IoTDBWithoutNullAnyFilterIT {
         "INSERT INTO root.test.sg2(timestamp, s4) " + "values(9, 9)",
         "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) " + "values(10, true, 10, 10.0, 10)",
         "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) " + "values(10, true, 10, 10.0, 10)",
+        "flush",
+        "INSERT INTO root.test.sg3(time, s5, s6, s7, s8) aligned values(1, 1, true, 1.0, 1)",
+        "INSERT INTO root.test.sg3(time, s6, s7, s8) aligned values(2, false, 2.0, 2)",
+        "INSERT INTO root.test.sg3(time, s5, s7, s8) aligned values(3, 3, 3.0, 3)",
+        "INSERT INTO root.test.sg3(time, s5) aligned values(5, 5)",
+        "INSERT INTO root.test.sg3(time, s5, s8) aligned values(6, 6, 6)",
+        "INSERT INTO root.test.sg3(time, s6) aligned values(7, true)",
+        "INSERT INTO root.test.sg3(time, s5, s7) aligned values(8, 8, 8.0)",
+        "INSERT INTO root.test.sg3(time, s5, s7, s8) aligned values(9, 9, 9.0, 9)",
+        "INSERT INTO root.test.sg3(time, s7, s8) aligned values(10, 10.0, 10)",
         "flush",
       };
 
@@ -1049,10 +1060,7 @@ public class IoTDBWithoutNullAnyFilterIT {
         new String[] {"1,1.50,1.50,3.00,3.00", "5,5.50,5.50,11.00,11.00", "9,9.00,9.00,9.00,9.00"};
 
     String[] retArray3 = new String[] {"1,1.50,3.00", "5,5.50,11.00", "9,9.00,9.00"};
-    String[] retArray4 =
-        new String[] {
-            "5.79"
-        };
+    String[] retArray4 = new String[] {"5.79"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
@@ -1184,9 +1192,10 @@ public class IoTDBWithoutNullAnyFilterIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
-          String ans = new BigDecimal(resultSet.getString("avg(root.test.*.s2)"))
-                      .setScale(2, RoundingMode.HALF_UP)
-                      .toPlainString();
+          String ans =
+              new BigDecimal(resultSet.getString("avg(root.test.*.s2)"))
+                  .setScale(2, RoundingMode.HALF_UP)
+                  .toPlainString();
           Assert.assertEquals(retArray4[cnt], ans);
           cnt++;
         }
@@ -1556,30 +1565,16 @@ public class IoTDBWithoutNullAnyFilterIT {
   @Test
   public void alignTimeSeriesQueryTest() {
     System.out.println("alignTimeSeriesQueryTest");
-    String[] retArray1 =
-        new String[] {
-            "1,true,1,1.0,1,true,1.0,1"
-        };
-    String[] retArray2 =
-        new String[] {
-            "1,true,1,1.0,1,true,1.0,1"
-        };
-    String[] retArray3 =
-        new String[] {
-            "1,true,1,1.0,1,true,1.0,1"
-        };
-    String[] retArray4 =
-        new String[] {
-            "1,true,1,1.0,1,true,1.0,1"
-        };
-    String[] retArray5 =
-        new String[] {
-            "1,true,1,1.0,1,true,1.0,1"
-        };
+    String[] retArray1 = new String[] {"1,true,1,1.0,1,true,1.0,1"};
+    String[] retArray2 = new String[] {"1,true,1,1.0,1,true,1.0,1"};
+    String[] retArray3 = new String[] {"1,true,1,1.0,1,true,1.0,1"};
+    String[] retArray4 = new String[] {"1,true,1,1.0,1,true,1.0,1"};
+    String[] retArray5 = new String[] {"1,true,1,1.0,1,true,1.0,1"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
-          statement.execute("select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null any (sg3.*, sg1.s2)");
+          statement.execute(
+              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null any (sg3.*, sg1.s2)");
       Assert.assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1607,7 +1602,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      hasResultSet = statement.execute("select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null any (sg3.*)");
+      hasResultSet =
+          statement.execute(
+              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null any (sg3.*)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1635,7 +1632,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray2.length, cnt);
       }
 
-      hasResultSet = statement.execute("select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null any (sg3.s5, sg3.s6)");
+      hasResultSet =
+          statement.execute(
+              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null any (sg3.s5, sg3.s6)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1663,7 +1662,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray3.length, cnt);
       }
 
-      hasResultSet = statement.execute("select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null any (sg3.s5, sg3.s6, sg2.s3)");
+      hasResultSet =
+          statement.execute(
+              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null any (sg3.s5, sg3.s6, sg2.s3)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1691,7 +1692,8 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray4.length, cnt);
       }
 
-      hasResultSet = statement.execute("select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null any");
+      hasResultSet =
+          statement.execute("select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null any");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {

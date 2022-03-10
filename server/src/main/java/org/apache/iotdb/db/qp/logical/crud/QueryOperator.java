@@ -389,7 +389,8 @@ public class QueryOperator extends Operator {
     if (specialClauseComponent != null) {
       // record the without null column corresponding index if the plan is not AlignByDevicePlan
       // otherwise, we simply add all without null column names into AlignByDevicePlan,
-      // and then let itself do the logic of conversion in `checkWithoutNullColumnValidAlignByDevice` of `QueryOperator.generateAlignByDevicePlan`
+      // and then let itself do the logic of conversion in
+      // `checkWithoutNullColumnValidAlignByDevice` of `QueryOperator.generateAlignByDevicePlan`
       if (!queryPlan
           .getPathToIndex()
           .isEmpty()) { // align by device queryPlan.getPathToIndex() is empty

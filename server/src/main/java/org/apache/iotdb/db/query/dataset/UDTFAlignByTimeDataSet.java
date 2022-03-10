@@ -138,7 +138,8 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         // We don't record this row when nullFieldsCnt > 0 and withoutAnyNull == true
         // or (
         //        (
-        //            (withoutNullColumnsIndex.size() > 0 && nullFieldsCnt == withoutNullColumnsIndex.size())
+        //            (withoutNullColumnsIndex.size() > 0 && nullFieldsCnt ==
+        // withoutNullColumnsIndex.size())
         //            or
         //            (withoutNullColumnsIndex.size() == 0 && nullFieldsCnt == columnsNum)
         //        )

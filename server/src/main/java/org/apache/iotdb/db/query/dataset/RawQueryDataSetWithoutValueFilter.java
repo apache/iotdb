@@ -519,27 +519,30 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     int index = 0;
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
       if (!withoutNullColumnsIndex.isEmpty() && !withoutNullColumnsIndex.contains(index)) {
+        index++;
         continue;
       }
 
       if (cachedBatchDataArray[seriesIndex] == null
           || !cachedBatchDataArray[seriesIndex].hasCurrent()
           || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
-        index ++;
+        index++;
         hasNull = true;
       } else {
         if (TSDataType.VECTOR == cachedBatchDataArray[seriesIndex].getDataType()) {
           boolean nullFlag = false;
           for (TsPrimitiveType primitiveVal : cachedBatchDataArray[seriesIndex].getVector()) {
             if (!withoutNullColumnsIndex.isEmpty() && !withoutNullColumnsIndex.contains(index)) {
-              index ++;
+              index++;
               continue;
             }
-            index ++;
             if (primitiveVal == null) {
               hasNull = true;
               nullFlag = true;
+            } else {
+              isAllNull = false;
             }
+            index++;
           }
 
           if (!nullFlag) {
@@ -549,6 +552,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
             }
           }
         } else {
+          index++;
           isAllNull = false;
         }
       }

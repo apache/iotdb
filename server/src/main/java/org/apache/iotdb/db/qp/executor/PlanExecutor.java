@@ -641,7 +641,8 @@ public class PlanExecutor implements IPlanExecutor {
     queryDataSet.setRowOffset(queryPlan.getRowOffset());
     queryDataSet.setWithoutAllNull(queryPlan.isWithoutAllNull());
     queryDataSet.setWithoutAnyNull(queryPlan.isWithoutAnyNull());
-    // AlignByDevicePlan's withoutNullColumnsIndex has been set in the method `getAlignByDeviceDataSet` above
+    // AlignByDevicePlan's withoutNullColumnsIndex has been set in the method
+    // `getAlignByDeviceDataSet` above
     if (!(queryPlan instanceof AlignByDevicePlan)) {
       queryDataSet.setWithoutNullColumnsIndex(queryPlan.getWithoutNullColumnsIndex());
     }
