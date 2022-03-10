@@ -112,6 +112,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
 
@@ -142,7 +144,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    */
   private final Object waitLeaderCondition = new Object();
   /** the lock is to make sure that only one thread can apply snapshot at the same time */
-  private final Object snapshotApplyLock = new Object();
+  private final Lock snapshotApplyLock = new ReentrantLock();
 
   private final Object heartBeatWaitObject = new Object();
 
@@ -398,7 +400,12 @@ public abstract class RaftMember implements RaftMemberMBean {
         // tell the leader the local log progress so it may decide whether to perform a catch up
         response.setLastLogIndex(logManager.getLastLogIndex());
         response.setLastLogTerm(logManager.getLastLogTerm());
-
+        // if the snapshot apply lock is held, it means that a snapshot is installing now.
+        boolean isFree = snapshotApplyLock.tryLock();
+        if (isFree) {
+          snapshotApplyLock.unlock();
+        }
+        response.setInstallingSnapshot(!isFree);
         if (logger.isDebugEnabled()) {
           logger.debug(
               "{}: log commit log index = {}, max have applied commit index = {}",
@@ -1970,7 +1977,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     this.appendLogThreadPool = appendLogThreadPool;
   }
 
-  public Object getSnapshotApplyLock() {
+  public Lock getSnapshotApplyLock() {
     return snapshotApplyLock;
   }
 
