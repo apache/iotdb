@@ -1,6 +1,6 @@
 package org.apache.iotdb.cluster.query.distribution.operator;
 
-import org.apache.iotdb.cluster.query.distribution.common.Tablet;
+import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 
 /**
@@ -9,7 +9,7 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
  *
  * Children type: [All the operators whose result set is Tablet]
  */
-public class FilterExecOperator extends ExecOperator<Tablet> {
+public class FilterExecNode extends PlanNode<TsBlock> {
 
     // The filter
     private FilterOperator rowFilter;
@@ -20,7 +20,7 @@ public class FilterExecOperator extends ExecOperator<Tablet> {
     }
 
     @Override
-    public Tablet getNextBatch() {
+    public TsBlock getNextBatch() {
         return null;
     }
 }

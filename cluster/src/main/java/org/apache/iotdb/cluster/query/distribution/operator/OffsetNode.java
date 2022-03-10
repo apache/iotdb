@@ -1,13 +1,13 @@
 package org.apache.iotdb.cluster.query.distribution.operator;
 
-import org.apache.iotdb.cluster.query.distribution.common.Tablet;
+import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
 
 /**
  * OffsetOperator is used to skip top n result from upstream operators. It uses the default order of upstream operators
  *
  * Children type: [All the operators whose result set is Tablet]
  */
-public class OffsetOperator extends ExecOperator<Tablet> {
+public class OffsetNode extends PlanNode<TsBlock> {
 
     // The limit count
     private int offset;
@@ -18,7 +18,7 @@ public class OffsetOperator extends ExecOperator<Tablet> {
     }
 
     @Override
-    public Tablet getNextBatch() {
+    public TsBlock getNextBatch() {
         return null;
     }
 }

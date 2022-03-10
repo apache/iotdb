@@ -2,7 +2,7 @@ package org.apache.iotdb.cluster.query.distribution.operator;
 
 import org.apache.iotdb.cluster.query.distribution.common.GroupByTimeParameter;
 import org.apache.iotdb.cluster.query.distribution.common.LevelBucketInfo;
-import org.apache.iotdb.cluster.query.distribution.common.Tablet;
+import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
 
 /**
  * This operator is responsible for the final aggregation merge operation.
@@ -13,7 +13,7 @@ import org.apache.iotdb.cluster.query.distribution.common.Tablet;
  *
  * Children type: [SeriesAggregateOperator]
  */
-public class GroupByLevelOperator extends ExecOperator<Tablet> {
+public class GroupByLevelNode extends PlanNode<TsBlock> {
 
     // All the buckets that the SeriesBatchAggInfo from upstream will be divided into.
     private LevelBucketInfo bucketInfo;
@@ -28,7 +28,7 @@ public class GroupByLevelOperator extends ExecOperator<Tablet> {
     }
 
     @Override
-    public Tablet getNextBatch() {
+    public TsBlock getNextBatch() {
         return null;
     }
 }

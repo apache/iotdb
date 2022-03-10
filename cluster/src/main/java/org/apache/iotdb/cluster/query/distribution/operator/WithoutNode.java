@@ -1,6 +1,6 @@
 package org.apache.iotdb.cluster.query.distribution.operator;
 
-import org.apache.iotdb.cluster.query.distribution.common.Tablet;
+import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
 import org.apache.iotdb.cluster.query.distribution.common.WithoutPolicy;
 
 /**
@@ -8,7 +8,7 @@ import org.apache.iotdb.cluster.query.distribution.common.WithoutPolicy;
  *
  * Children type: [All the operators whose result set is Tablet]
  */
-public class WithoutOperator extends ExecOperator<Tablet> {
+public class WithoutNode extends PlanNode<TsBlock> {
 
     // The policy to discard the result from upstream operator
     private WithoutPolicy discardPolicy;
@@ -19,7 +19,7 @@ public class WithoutOperator extends ExecOperator<Tablet> {
     }
 
     @Override
-    public Tablet getNextBatch() {
+    public TsBlock getNextBatch() {
         return null;
     }
 }

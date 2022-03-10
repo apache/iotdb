@@ -18,7 +18,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  *
  * Children type: []
  */
-public class SeriesScanOperator extends ExecOperator<SeriesBatchData> {
+public class SeriesScanNode extends PlanNode<SeriesBatchData> {
 
     // The path of the target series which will be scanned.
     private Path seriesPath;

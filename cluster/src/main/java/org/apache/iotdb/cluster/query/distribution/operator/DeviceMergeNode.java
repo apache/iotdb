@@ -1,6 +1,6 @@
 package org.apache.iotdb.cluster.query.distribution.operator;
 
-import org.apache.iotdb.cluster.query.distribution.common.Tablet;
+import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
 import org.apache.iotdb.cluster.query.distribution.common.TraversalOrder;
 
 import java.util.List;
@@ -15,7 +15,7 @@ import java.util.Map;
  *
  * Children type: [TimeJoinOperator]
  */
-public class DeviceMergeOperator extends ExecOperator<Tablet> {
+public class DeviceMergeNode extends PlanNode<TsBlock> {
     // The result output order that this operator
     private TraversalOrder mergeOrder;
 
@@ -23,7 +23,7 @@ public class DeviceMergeOperator extends ExecOperator<Tablet> {
     private List<String> ownedDeviceNameList;
 
     // The map from deviceName to corresponding query result operator responsible for that device.
-    private Map<String, TimeJoinOperator> upstreamMap;
+    private Map<String, TimeJoinNode> upstreamMap;
 
     @Override
     public boolean hasNext() {
@@ -34,7 +34,7 @@ public class DeviceMergeOperator extends ExecOperator<Tablet> {
     // the additional column is `deviceName`
     // And, the `alignedByDevice` in the TabletMetadata will be `true`
     @Override
-    public Tablet getNextBatch() {
+    public TsBlock getNextBatch() {
         return null;
     }
 }

@@ -7,7 +7,7 @@ import org.apache.iotdb.cluster.query.distribution.common.TreeNode;
  * The base class of query executable operators, which is used to compose logical query plan.
  * TODO: consider how to restrict the children type for each type of ExecOperator
  */
-public abstract class ExecOperator<T> extends TreeNode<ExecOperator<?>> {
+public abstract class PlanNode<T> extends TreeNode<PlanNode<?>> {
 
     // Judge whether current operator has more result
     public abstract boolean hasNext();

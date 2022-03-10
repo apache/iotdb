@@ -2,7 +2,7 @@ package org.apache.iotdb.cluster.query.distribution.common;
 
 import java.util.List;
 
-public class TabletMetadata {
+public class TsBlockMetadata {
     // list of all columns in current Tablet
     // The column list not only contains the series column, but also contains other column to construct the final result
     // set such as timestamp and deviceName

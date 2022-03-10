@@ -11,7 +11,7 @@ import org.apache.iotdb.cluster.query.distribution.common.SeriesBatchAggInfo;
  *
  * Children type: [SeriesScanOperator]
  */
-public class SeriesAggregateOperator extends ExecOperator<SeriesBatchAggInfo> {
+public class SeriesAggregateNode extends PlanNode<SeriesBatchAggInfo> {
 
     // The parameter of `group by time`
     // Its value will be null if there is no `group by time` clause,

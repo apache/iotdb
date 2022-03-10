@@ -1,6 +1,6 @@
 package org.apache.iotdb.cluster.query.distribution.operator;
 
-import org.apache.iotdb.cluster.query.distribution.common.Tablet;
+import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
 import org.apache.iotdb.cluster.query.distribution.common.TraversalOrder;
 import org.apache.iotdb.cluster.query.distribution.common.WithoutPolicy;
 
@@ -11,7 +11,7 @@ import org.apache.iotdb.cluster.query.distribution.common.WithoutPolicy;
  *
  * Children type: [SeriesScanOperator]
  */
-public class TimeJoinOperator extends ExecOperator<Tablet> {
+public class TimeJoinNode extends PlanNode<TsBlock> {
 
     // This parameter indicates the order when executing multiway merge sort.
     private TraversalOrder mergeOrder;
@@ -27,7 +27,7 @@ public class TimeJoinOperator extends ExecOperator<Tablet> {
     }
 
     @Override
-    public Tablet getNextBatch() {
+    public TsBlock getNextBatch() {
         return null;
     }
 }
