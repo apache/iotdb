@@ -127,7 +127,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
           .gauge(
               count,
               Metric.CLUSTER_NODE_LEADER_COUNT.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               node.internalIp);
     }
@@ -156,7 +156,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
           .gauge(
               isAlive ? 1 : 0,
               Metric.CLUSTER_NODE_STATUS.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               node.internalIp);
     }

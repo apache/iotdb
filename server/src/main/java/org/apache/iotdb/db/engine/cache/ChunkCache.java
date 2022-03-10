@@ -92,7 +92,7 @@ public class ChunkCache {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.CACHE_HIT.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.IMPORTANT,
               lruCache,
               l -> (long) (l.stats().hitRate() * 100),
               Tag.NAME.toString(),

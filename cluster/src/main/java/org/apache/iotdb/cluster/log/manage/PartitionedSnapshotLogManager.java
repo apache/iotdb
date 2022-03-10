@@ -88,7 +88,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.CLUSTER_UNCOMMITTED_LOG.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.IMPORTANT,
               getUnCommittedEntryManager().getAllEntries(),
               List::size,
               Tag.NAME.toString(),

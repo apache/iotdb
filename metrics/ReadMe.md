@@ -128,7 +128,7 @@ public class PrometheusRunTest {
     metricConfig.setPredefinedMetrics(new ArrayList<>());
     metricService.startService();
     metricManager = metricService.getMetricManager();
-    Counter counter = metricManager.getOrCreateCounter("counter", MetricLevel.NORMAL);
+    Counter counter = metricManager.getOrCreateCounter("counter", MetricLevel.IMPORTANT);
     while (true) {
       counter.inc();
       TimeUnit.SECONDS.sleep(1);
@@ -143,7 +143,7 @@ public class PrometheusRunTest {
 
 ```java
 MetricsService.getInstance()
-   .count(1, "operation_count", MetricLevel.NORMAL, "name", operation.getName());
+   .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
 ```
 
 # 4. How to implement your own metric framework?

@@ -89,7 +89,7 @@ Class MeasurementNode extends Node {
 
 * 构造元数据模板
 
-构造上图中的元数据模板，并挂载到对应节点，可参考如下代码
+构造上图中的元数据模板，并挂载到对应节点，可参考如下代码。**请注意，我们强烈建议您将模板设置在存储组或存储组下层的节点中，以更好地适配未来地更新及各模块的协作。**
 
 ``` java
 MeasurementNode nodeV = new MeasurementNode("velocity", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);

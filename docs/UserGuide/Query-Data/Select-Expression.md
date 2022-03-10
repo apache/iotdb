@@ -343,9 +343,10 @@ They return BOOLEANs.
 
 Currently, IoTDB supports the following condition functions:
 
-| Function Name |Allowed Input Series Data Types| Required Attributes                | Output Series Data Type | Series Data Type  Description                                           |
-|---------------|-------------------------------|------------------------------------|-------------------------|-------------------------------------------------------------------------|
-| ON_OFF        | INT32 / INT64 / FLOAT / DOUBLE| `threshold`: a double type variate | BOOLEAN                            | Return `true` if data point `value >= threshold` , else return `false`. |
+| Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
+|---------------|---------------------------------|-----------------------------------------------|-------------------------|-----------------------------------------------|
+| ON_OFF        | INT32 / INT64 / FLOAT / DOUBLE  | `threshold`: a double type variate            | BOOLEAN                 | Return `ts_value >= threshold`.               |
+| IN_RANGR      | INT32 / INT64 / FLOAT / DOUBLE  | `lower`: DOUBLE type<br/>`upper`: DOUBLE type | BOOLEAN                 | Return `ts_value >= lower && value <= upper`. |
 
 Example Data:
 ```
@@ -358,8 +359,9 @@ IoTDB> select ts from root.test;
 |1970-01-01T08:00:00.003+08:00|           3|
 |1970-01-01T08:00:00.004+08:00|           4|
 +-----------------------------+------------+
-
 ```
+
+##### Test 1
 SQL:
 ```sql
 select ts, on_off(ts, 'threshold'='2') from root.test;
@@ -376,9 +378,26 @@ IoTDB> select ts, on_off(ts, 'threshold'='2') from root.test;
 |1970-01-01T08:00:00.003+08:00|           3|                                 true|
 |1970-01-01T08:00:00.004+08:00|           4|                                 true|
 +-----------------------------+------------+-------------------------------------+
-
 ```
 
+##### Test 2
+Sql:
+```sql
+select ts, in_range(ts, 'lower'='2', 'upper'='3.1') from root.test;
+```
+
+Output:
+```
+IoTDB> select ts, in_range(ts,'lower'='2', 'upper'='3.1') from root.test;
++-----------------------------+------------+--------------------------------------------------+
+|                         Time|root.test.ts|in_range(root.test.ts, "lower"="2", "upper"="3.1")|
++-----------------------------+------------+--------------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|           1|                                             false|
+|1970-01-01T08:00:00.002+08:00|           2|                                              true|
+|1970-01-01T08:00:00.003+08:00|           3|                                              true|
+|1970-01-01T08:00:00.004+08:00|           4|                                             false|
++-----------------------------+------------+--------------------------------------------------+
+```
 
 ### Continuous Interval Functions
 The continuous interval functions are used to query all continuous intervals that meet specified conditions.

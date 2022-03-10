@@ -36,12 +36,10 @@ import java.sql.Statement;
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
-public class IoTDBQueryWithComplexValueFilterIT {
-
+public class IoTDBQueryWithRecreatedTimeseriesIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeClass();
-    prepareData();
   }
 
   @AfterClass
@@ -50,64 +48,32 @@ public class IoTDBQueryWithComplexValueFilterIT {
   }
 
   @Test
-  public void testRawQuery1() {
+  // https://issues.apache.org/jira/browse/IOTDB-2697
+  public void testQueryDiffTypeTimeseries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s1 from root.sg1.d1 where (time > 400 and s1 <= 600) or (s2 > 300 and time <= 500)");
-      Assert.assertTrue(hasResultSet);
+      statement.execute("SET STORAGE GROUP TO root.sg");
+      Thread.sleep(100);
+      statement.execute("CREATE TIMESERIES root.sg.d1.s1 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d1.s2 with datatype=INT64,encoding=PLAIN");
+      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES(11000, 10, 20)");
+      Thread.sleep(100);
+      statement.execute("FLUSH");
+      Thread.sleep(100);
+      statement.execute("DELETE TIMESERIES root.sg.d1.s1");
+      statement.execute("CREATE TIMESERIES root.sg.d1.s1 with datatype=INT32,encoding=PLAIN");
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.sg.d1 WHERE s1 > 10")) {
+        Assert.assertFalse(resultSet.next());
+      }
 
-      try (ResultSet resultSet = statement.getResultSet()) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
-        }
-        Assert.assertEquals(300, cnt);
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1 FROM root.sg.d1 WHERE s1 <= 10")) {
+        Assert.assertFalse(resultSet.next());
       }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void testRawQuery2() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s1 from root.sg1.d1 where (time > 400 and s1 <= 600) and (s2 > 300 and time <= 500)");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
-        }
-        Assert.assertEquals(100, cnt);
-      }
-
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  private static void prepareData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("create storage group root.sg1");
-      statement.execute("create timeseries root.sg1.d1.s1 with datatype=INT32,encoding=PLAIN");
-      statement.execute("create timeseries root.sg1.d1.s2 with datatype=DOUBLE,encoding=PLAIN");
-      for (int i = 0; i < 1000; i++) {
-        statement.addBatch(
-            String.format(
-                "insert into root.sg1.d1(time,s1,s2) values(%d,%d,%f)", i, i, (double) i));
-      }
-      statement.executeBatch();
-    } catch (Exception e) {
-      e.printStackTrace();
     }
   }
 }

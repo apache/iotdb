@@ -56,6 +56,8 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     this.currentTaskNum = currentTaskNum;
   }
 
+  public abstract void setSourceFilesToCompactionCandidate();
+
   protected abstract void doCompaction() throws Exception;
 
   @Override
@@ -81,7 +83,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
               System.currentTimeMillis() - startTime,
               TimeUnit.MILLISECONDS,
               Metric.COST_TASK.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               "compaction");
     }
