@@ -1,15 +1,22 @@
 package org.apache.iotdb.cluster.query.distribution.plan.process;
 
-import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
-import org.apache.iotdb.cluster.query.distribution.plan.PlanNode;
+import org.apache.iotdb.cluster.query.distribution.plan.PlanNodeId;
 
 /**
- * OffsetOperator is used to skip top n result from upstream operators. It uses the default order of upstream operators
+ * OffsetNode is used to skip top n result from upstream nodes. It uses the default order of upstream nodes
  *
- * Children type: [All the operators whose result set is Tablet]
  */
-public class OffsetNode extends ProcessNode<TsBlock> {
+public class OffsetNode extends ProcessNode {
 
     // The limit count
     private int offset;
+
+    public OffsetNode(PlanNodeId id) {
+        super(id);
+    }
+
+    public OffsetNode(PlanNodeId id, int offset) {
+        this(id);
+        this.offset = offset;
+    }
 }

@@ -1,25 +1,25 @@
 package org.apache.iotdb.cluster.query.distribution.plan.process;
 
-import org.apache.iotdb.cluster.query.distribution.common.GroupByTimeParameter;
-import org.apache.iotdb.cluster.query.distribution.common.LevelBucketInfo;
-import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
-import org.apache.iotdb.cluster.query.distribution.plan.PlanNode;
+import org.apache.iotdb.cluster.query.distribution.plan.PlanNodeId;
 
 /**
- * This operator is responsible for the final aggregation merge operation.
- * It will arrange the data by time range firstly. And inside each time range, the data from same measurement and
- * different devices will be rolled up by corresponding level into different buckets.
- * If the bucketInfo is empty, the data from `same measurement and different devices` won't be rolled up.
- * If the groupByTimeParameter is null, the data won't be split by time range.
- *
- * Children type: [SeriesAggregateOperator]
+ * This node is responsible for the final aggregation merge operation.
+ * It will process the data from TsBlock row by row.
+ * For one row, it will rollup the fields which have the same aggregate function and belong to one bucket.
+ * Here, that two columns belong to one bucket means the partial paths of device after rolling up in specific level
+ * are the same.
+ * For example, let's say there are two columns `root.sg.d1.s1` and `root.sg.d2.s1`.
+ * If the group by level parameter is [0, 1], then these two columns will belong to one bucket and the bucket name
+ * is `root.sg.*.s1`.
+ * If the group by level parameter is [0, 2], then these two columns will not belong to one bucket. And the total buckets
+ * are `root.*.d1.s1` and `root.*.d2.s1`
  */
-public class GroupByLevelNode extends ProcessNode<TsBlock> {
+public class GroupByLevelNode extends ProcessNode {
 
-    // All the buckets that the SeriesBatchAggInfo from upstream will be divided into.
-    private LevelBucketInfo bucketInfo;
+    private int[] groupByLevels;
 
-    // The parameter of `group by time`
-    // The GroupByLevelOperator also need GroupByTimeParameter
-    private GroupByTimeParameter groupByTimeParameter;
+    public GroupByLevelNode(PlanNodeId id, int[] groupByLevels) {
+        super(id);
+        this.groupByLevels = groupByLevels;
+    }
 }

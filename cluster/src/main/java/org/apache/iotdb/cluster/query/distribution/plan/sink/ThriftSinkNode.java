@@ -19,10 +19,22 @@
 
 package org.apache.iotdb.cluster.query.distribution.plan.sink;
 
-import org.apache.iotdb.cluster.query.distribution.common.SeriesBatchData;
+import org.apache.iotdb.cluster.query.distribution.plan.PlanNodeId;
 
-public class ThriftSinkNode extends SinkNode<SeriesBatchData> {
+/**
+ * not implemented in current IoTDB yet
+ */
+public class ThriftSinkNode extends SinkNode {
+
+  public ThriftSinkNode(PlanNodeId id) {
+    super(id);
+  }
 
   @Override
   public void close() throws Exception {}
+
+  @Override
+  public void send() {
+
+  }
 }

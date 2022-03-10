@@ -19,9 +19,16 @@
 
 package org.apache.iotdb.cluster.query.distribution.plan.source;
 
-import org.apache.iotdb.cluster.query.distribution.common.SeriesBatchData;
+import org.apache.iotdb.cluster.query.distribution.plan.PlanNodeId;
 
-public class CsvSourceNode extends SourceNode<SeriesBatchData> {
+/**
+ * Not implemented in current version.
+ */
+public class CsvSourceNode extends SourceNode {
+
+  public CsvSourceNode(PlanNodeId id) {
+    super(id);
+  }
 
   @Override
   public void close() throws Exception {}

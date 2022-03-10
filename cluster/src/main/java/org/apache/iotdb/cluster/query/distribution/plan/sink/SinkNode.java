@@ -19,9 +19,15 @@
 
 package org.apache.iotdb.cluster.query.distribution.plan.sink;
 
+import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
 import org.apache.iotdb.cluster.query.distribution.plan.PlanNode;
+import org.apache.iotdb.cluster.query.distribution.plan.PlanNodeId;
 
-// 构建与客户端的联系。
-public abstract class SinkNode<T> extends PlanNode<T> implements AutoCloseable {
+public abstract class SinkNode extends PlanNode<TsBlock> implements AutoCloseable {
 
+    public SinkNode(PlanNodeId id) {
+        super(id);
+    }
+
+    public abstract void send();
 }

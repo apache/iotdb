@@ -19,11 +19,20 @@
 
 package org.apache.iotdb.cluster.query.distribution.plan.sink;
 
-import org.apache.iotdb.cluster.query.distribution.common.SeriesBatchData;
+import org.apache.iotdb.cluster.query.distribution.plan.PlanNodeId;
 
-public class CsvSinkNode extends SinkNode<SeriesBatchData> {
+public class CsvSinkNode extends SinkNode {
+  public CsvSinkNode(PlanNodeId id) {
+    super(id);
+  }
+
   @Override
   public void close() throws Exception {
+
+  }
+
+  @Override
+  public void send() {
 
   }
 }

@@ -19,9 +19,15 @@
 
 package org.apache.iotdb.cluster.query.distribution.plan.source;
 
+import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
 import org.apache.iotdb.cluster.query.distribution.plan.PlanNode;
+import org.apache.iotdb.cluster.query.distribution.plan.PlanNodeId;
 
-public abstract class SourceNode<T> extends PlanNode<T> implements AutoCloseable{
+public abstract class SourceNode extends PlanNode<TsBlock> implements AutoCloseable{
+
+  public SourceNode(PlanNodeId id) {
+    super(id);
+  }
 
   public abstract void open() throws Exception;
 }
