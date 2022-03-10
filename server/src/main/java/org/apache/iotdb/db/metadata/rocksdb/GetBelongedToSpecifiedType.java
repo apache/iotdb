@@ -22,12 +22,13 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 
+import org.rocksdb.RocksDBException;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
-import org.rocksdb.RocksDBException;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
@@ -76,10 +77,10 @@ public class GetBelongedToSpecifiedType {
     contextNodes.add(nodes[idx]);
     String innerName =
         RocksDBUtils.convertPartialPathToInnerByNodes(
-            contextNodes.toArray(new String[0]), contextNodes.size(), nodeType);
+            contextNodes.toArray(new String[0]), contextNodes.size() - 1, nodeType);
     byte[] queryResult = readWriteHandler.get(null, innerName.getBytes());
     if (queryResult != null) {
-      allResult.add(new PartialPath(new String(queryResult)));
+      allResult.add(new PartialPath(RocksDBUtils.concatNodesName(nodes, 0, idx)));
     }
   }
 
