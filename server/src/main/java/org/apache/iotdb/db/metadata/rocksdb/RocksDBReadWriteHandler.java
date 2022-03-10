@@ -268,12 +268,14 @@ public class RocksDBReadWriteHandler {
     if (!rocksDB.keyMayExist(key, holder)) {
       exist = false;
     } else {
-      if (holder.getValue() != null) {
+      if (holder.getValue() == null) {
         byte[] value = rocksDB.get(key);
         if (value != null) {
           exist = true;
           holder.setValue(value);
         }
+      } else {
+        exist = true;
       }
     }
     return exist;

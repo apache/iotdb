@@ -833,9 +833,18 @@ public class MRocksDBManager implements IMetaManager {
                     levelKey, RocksDBMNodeType.STORAGE_GROUP, DEFAULT_NODE_VALUE);
               }
             } else {
-              boolean hasChild = !keyCheckResult.getResult(RocksDBMNodeType.STORAGE_GROUP);
-              throw new StorageGroupAlreadySetException(
-                  RocksDBUtils.concatNodesName(nodes, 0, i), hasChild);
+              if (i >= len - 1) {
+                if (keyCheckResult.getExistType() == RocksDBMNodeType.STORAGE_GROUP) {
+                  throw new StorageGroupAlreadySetException(storageGroup.getFullPath());
+                } else {
+                  throw new PathAlreadyExistException(storageGroup.getFullPath());
+                }
+              } else {
+                if (keyCheckResult.getExistType() != RocksDBMNodeType.INTERNAL) {
+                  throw new StorageGroupAlreadySetException(
+                      RocksDBUtils.concatNodesName(nodes, 0, i), true);
+                }
+              }
             }
           } finally {
             lock.unlock();
