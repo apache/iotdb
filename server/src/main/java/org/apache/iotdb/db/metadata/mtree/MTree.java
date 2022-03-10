@@ -188,6 +188,10 @@ public class MTree implements Serializable {
     root = cur;
   }
 
+  public void setStorageGroupMNode(IStorageGroupMNode storageGroupMNode) {
+    this.storageGroupMNode = storageGroupMNode;
+  }
+
   public void clear() {
     storageGroupMNode = null;
   }
@@ -924,11 +928,7 @@ public class MTree implements Serializable {
               storageGroupMNode, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
             @Override
             protected void transferToResult(IMNode node) {
-              try {
-                resultSet.add(getCurrentPartialPath(node).getFullPath());
-              } catch (IllegalPathException e) {
-                logger.error(e.getMessage());
-              }
+              resultSet.add(getCurrentPartialPath(node).getFullPath());
             }
           };
       collector.setResultSet(new TreeSet<>());
@@ -976,11 +976,7 @@ public class MTree implements Serializable {
         new MNodeCollector<List<PartialPath>>(storageGroupMNode, pathPattern) {
           @Override
           protected void transferToResult(IMNode node) {
-            try {
-              resultSet.add(getCurrentPartialPath(node));
-            } catch (MetadataException e) {
-              logger.error(e.getMessage());
-            }
+            resultSet.add(getCurrentPartialPath(node));
           }
         };
     collector.setResultSet(new LinkedList<>());

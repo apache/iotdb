@@ -58,8 +58,9 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
 
   @Override
   public void setSGMManager(SGMManager sgmManager) {
-    if (sgmManager == null) {
+    if (this.sgmManager == null) {
       this.sgmManager = sgmManager;
+      sgmManager.setStorageGroupMNode(this);
     }
   }
 

@@ -23,11 +23,13 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -93,7 +95,9 @@ public abstract class Traverser {
         return;
       } else if (nodes[startIndex].equals(cur.getName())
           || nodes[startIndex].equals(ONE_LEVEL_PATH_WILDCARD)) {
-        cur = ancestors.pop();
+        if (startIndex < startLevel) {
+          cur = ancestors.pop();
+        }
       } else {
         throw new IllegalPathException(
             path.getFullPath(), path.getFullPath() + " doesn't start with " + cur.getFullPath());
@@ -106,7 +110,7 @@ public abstract class Traverser {
    * overriding or implement concerned methods.
    */
   public void traverse() throws MetadataException {
-    traverse(startNode, 0, 0);
+    traverse(startNode, startIndex, startLevel);
   }
 
   /**
@@ -297,18 +301,20 @@ public abstract class Traverser {
    * @param currentNode the node need to get the full path of
    * @return full path from traverse start node to the current node
    */
-  protected PartialPath getCurrentPartialPath(IMNode currentNode) throws IllegalPathException {
+  protected PartialPath getCurrentPartialPath(IMNode currentNode) {
+    return new PartialPath(getCurrentPathNodes(currentNode));
+  }
+
+  protected String[] getCurrentPathNodes(IMNode currentNode) {
     Iterator<IMNode> nodes = traverseContext.descendingIterator();
-    StringBuilder builder = new StringBuilder(nodes.next().getName());
+    List<String> nodeNames =
+        new LinkedList<>(Arrays.asList(nodes.next().getPartialPath().getNodes()));
+
     while (nodes.hasNext()) {
-      builder.append(TsFileConstant.PATH_SEPARATOR);
-      builder.append(nodes.next().getName());
+      nodeNames.add(nodes.next().getName());
     }
-    if (builder.length() != 0) {
-      builder.append(TsFileConstant.PATH_SEPARATOR);
-    }
-    builder.append(currentNode.getName());
-    return new PartialPath(builder.toString());
+    nodeNames.add(currentNode.getName());
+    return nodeNames.toArray(new String[0]);
   }
 
   /** @return the storage group node in the traverse path */

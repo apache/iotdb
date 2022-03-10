@@ -469,9 +469,36 @@ public class MManager {
   protected IMNode getDeviceNodeWithAutoCreate(
       PartialPath path, boolean autoCreateSchema, boolean allowCreateSg, int sgLevel)
       throws IOException, MetadataException {
-    return storageGroupManager
-        .getSGMManager(path)
-        .getDeviceNodeWithAutoCreate(path, autoCreateSchema, allowCreateSg, sgLevel);
+    try {
+      return storageGroupManager
+          .getSGMManager(path)
+          .getDeviceNodeWithAutoCreate(path, autoCreateSchema, allowCreateSg, sgLevel);
+    } catch (StorageGroupNotSetException e) {
+      if (!autoCreateSchema) {
+        throw new PathNotExistException(path.getFullPath());
+      }
+    }
+
+    try {
+      if (allowCreateSg) {
+        PartialPath storageGroupPath = MetaUtils.getStorageGroupPathByLevel(path, sgLevel);
+        setStorageGroup(storageGroupPath);
+        return storageGroupManager
+            .getSGMManager(path)
+            .getDeviceNodeWithAutoCreate(path, autoCreateSchema, allowCreateSg, sgLevel);
+      } else {
+        throw new StorageGroupNotSetException(path.getFullPath());
+      }
+    } catch (StorageGroupAlreadySetException e) {
+      if (e.isHasChild()) {
+        // if setStorageGroup failure is because of child, the deviceNode should not be created.
+        // Timeseries can't be create under a deviceNode without storageGroup.
+        throw e;
+      }
+      return storageGroupManager
+          .getSGMManager(path)
+          .getDeviceNodeWithAutoCreate(path, autoCreateSchema, allowCreateSg, sgLevel);
+    }
   }
 
   protected IMNode getDeviceNodeWithAutoCreate(PartialPath path)
@@ -1392,9 +1419,12 @@ public class MManager {
   }
 
   public synchronized void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
-    storageGroupManager
-        .getSGMManager(new PartialPath(plan.getPrefixPath()))
-        .setSchemaTemplate(plan);
+    PartialPath path = new PartialPath(plan.getPrefixPath());
+    ensureStorageGroup(path);
+    List<SGMManager> sgmManagers = storageGroupManager.getInvolvedSGMManager(path, true);
+    for (SGMManager sgmManager : sgmManagers) {
+      sgmManager.setSchemaTemplate(plan);
+    }
   }
 
   public synchronized void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {

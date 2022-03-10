@@ -33,7 +33,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.NoTemplateOnMNodeException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
@@ -421,6 +420,13 @@ public class SGMManager {
 
   // region Interfaces for Storage Group Info query and operation
 
+  public void setStorageGroupMNode(IStorageGroupMNode storageGroupMNode) {
+    this.storageGroupMNode = storageGroupMNode;
+    if (mtree != null) {
+      mtree.setStorageGroupMNode(storageGroupMNode);
+    }
+  }
+
   public void setTTL(long dataTTL) throws MetadataException, IOException {
     storageGroupMNode.setDataTTL(dataTTL);
     if (!isRecovering) {
@@ -715,25 +721,11 @@ public class SGMManager {
       }
     }
 
-    try {
-      node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
-      if (!(node.isStorageGroup())) {
-        logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.getPartialPath()));
-      }
-      return node;
-    } catch (StorageGroupAlreadySetException e) {
-      if (e.isHasChild()) {
-        // if setStorageGroup failure is because of child, the deviceNode should not be created.
-        // Timeseries can't be create under a deviceNode without storageGroup.
-        throw e;
-      }
-      // ignore set storage group concurrently
-      node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
-      if (!(node.isStorageGroup())) {
-        logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.getPartialPath()));
-      }
-      return node;
+    node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
+    if (!(node.isStorageGroup())) {
+      logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.getPartialPath()));
     }
+    return node;
   }
 
   public IMNode getDeviceNodeWithAutoCreate(PartialPath path)

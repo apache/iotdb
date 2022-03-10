@@ -380,32 +380,24 @@ public class StorageGroupTree {
    * path pattern is used to match prefix path. All timeseries start with the matched prefix path
    * will be counted.
    */
-  public Pair<Integer, List<SGMManager>> getNodesCountInGivenLevel(
+  public Pair<Integer, Set<IStorageGroupMNode>> getNodesCountInGivenLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     MNodeAboveSGLevelCounter counter = new MNodeAboveSGLevelCounter(root, pathPattern, level);
     counter.setPrefixMatch(isPrefixMatch);
     counter.setAboveStorageGroup(true);
     counter.traverse();
-    List<SGMManager> sgmManagers = new LinkedList<>();
-    for (IStorageGroupMNode storageGroupMNode : counter.getInvolvedStorageGroupMNodes()) {
-      sgmManagers.add(storageGroupMNode.getSGMManager());
-    }
-    return new Pair<>(counter.getCount(), sgmManagers);
+    return new Pair<>(counter.getCount(), counter.getInvolvedStorageGroupMNodes());
   }
 
   /** Get all paths from root to the given level */
-  public Pair<List<PartialPath>, List<SGMManager>> getNodesListInGivenLevel(
+  public Pair<List<PartialPath>, Set<IStorageGroupMNode>> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, MManager.StorageGroupFilter filter)
       throws MetadataException {
     MNodeAboveSGCollector<List<PartialPath>> collector =
         new MNodeAboveSGCollector<List<PartialPath>>(root, pathPattern) {
           @Override
           protected void transferToResult(IMNode node) {
-            try {
-              resultSet.add(getCurrentPartialPath(node));
-            } catch (MetadataException e) {
-              logger.error(e.getMessage());
-            }
+            resultSet.add(getCurrentPartialPath(node));
           }
         };
     collector.setResultSet(new LinkedList<>());
@@ -414,12 +406,7 @@ public class StorageGroupTree {
     collector.setAboveStorageGroup(true);
     collector.traverse();
 
-    List<SGMManager> sgmManagers = new LinkedList<>();
-    for (IStorageGroupMNode storageGroupMNode : collector.getInvolvedStorageGroupMNodes()) {
-      sgmManagers.add(storageGroupMNode.getSGMManager());
-    }
-
-    return new Pair<>(collector.getResult(), sgmManagers);
+    return new Pair<>(collector.getResult(), collector.getInvolvedStorageGroupMNodes());
   }
 
   /**
@@ -433,31 +420,22 @@ public class StorageGroupTree {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Pair<Set<String>, List<SGMManager>> getChildNodePathInNextLevel(PartialPath pathPattern)
-      throws MetadataException {
+  public Pair<Set<String>, Set<IStorageGroupMNode>> getChildNodePathInNextLevel(
+      PartialPath pathPattern) throws MetadataException {
     try {
       MNodeAboveSGCollector<Set<String>> collector =
           new MNodeAboveSGCollector<Set<String>>(
               root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
             @Override
             protected void transferToResult(IMNode node) {
-              try {
-                resultSet.add(getCurrentPartialPath(node).getFullPath());
-              } catch (IllegalPathException e) {
-                logger.error(e.getMessage());
-              }
+              resultSet.add(getCurrentPartialPath(node).getFullPath());
             }
           };
       collector.setResultSet(new TreeSet<>());
       collector.setAboveStorageGroup(true);
       collector.traverse();
 
-      List<SGMManager> sgmManagers = new LinkedList<>();
-      for (IStorageGroupMNode storageGroupMNode : collector.getInvolvedStorageGroupMNodes()) {
-        sgmManagers.add(storageGroupMNode.getSGMManager());
-      }
-
-      return new Pair<>(collector.getResult(), sgmManagers);
+      return new Pair<>(collector.getResult(), collector.getInvolvedStorageGroupMNodes());
     } catch (IllegalPathException e) {
       throw new IllegalPathException(pathPattern.getFullPath());
     }
@@ -475,8 +453,8 @@ public class StorageGroupTree {
    * @param pathPattern Path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Pair<Set<String>, List<SGMManager>> getChildNodeNameInNextLevel(PartialPath pathPattern)
-      throws MetadataException {
+  public Pair<Set<String>, Set<IStorageGroupMNode>> getChildNodeNameInNextLevel(
+      PartialPath pathPattern) throws MetadataException {
     try {
       MNodeAboveSGCollector<Set<String>> collector =
           new MNodeAboveSGCollector<Set<String>>(
@@ -490,12 +468,7 @@ public class StorageGroupTree {
       collector.setAboveStorageGroup(true);
       collector.traverse();
 
-      List<SGMManager> sgmManagers = new LinkedList<>();
-      for (IStorageGroupMNode storageGroupMNode : collector.getInvolvedStorageGroupMNodes()) {
-        sgmManagers.add(storageGroupMNode.getSGMManager());
-      }
-
-      return new Pair<>(collector.getResult(), sgmManagers);
+      return new Pair<>(collector.getResult(), collector.getInvolvedStorageGroupMNodes());
     } catch (IllegalPathException e) {
       throw new IllegalPathException(pathPattern.getFullPath());
     }

@@ -169,6 +169,12 @@ public class InternalMNode extends MNode {
       newChildNode.getAsEntityMNode().setUseTemplate(oldChildNode.isUseTemplate());
     }
 
+    if (newChildNode.isStorageGroup() && oldChildNode.isStorageGroup()) {
+      newChildNode
+          .getAsStorageGroupMNode()
+          .setSGMManager(oldChildNode.getAsStorageGroupMNode().getSGMManager());
+    }
+
     newChildNode.setSchemaTemplate(oldChildNode.getSchemaTemplate());
 
     newChildNode.setParent(this);
