@@ -242,7 +242,7 @@ public class SGMManager {
       isRecovering = true;
 
       tagManager.init();
-      mtree = new MTree();
+      mtree = new MTree(storageGroupMNode);
       mtree.init();
 
       int lineNumber = initFromLog(logFile);

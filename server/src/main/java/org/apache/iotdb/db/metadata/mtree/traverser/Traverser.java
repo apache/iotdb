@@ -32,6 +32,7 @@ import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
 
 /**
  * This class defines the main traversal framework and declares some methods for result process
@@ -43,6 +44,8 @@ public abstract class Traverser {
 
   protected IMNode startNode;
   protected String[] nodes;
+  protected int startIndex;
+  protected int startLevel;
 
   // to construct full path or find mounted node on MTree when traverse into template
   protected Deque<IMNode> traverseContext;
@@ -55,13 +58,47 @@ public abstract class Traverser {
 
   public Traverser(IMNode startNode, PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
-    if (nodes.length == 0 || !nodes[0].equals(startNode.getName())) {
+    if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
       throw new IllegalPathException(
           path.getFullPath(), path.getFullPath() + " doesn't start with " + startNode.getName());
     }
     this.startNode = startNode;
     this.nodes = nodes;
+    initStartIndexAndLevel(path);
     this.traverseContext = new ArrayDeque<>();
+  }
+
+  /**
+   * The traverser may start traversing from a storageGroupMNode, which is an InternalMNode of the
+   * whole MTree.
+   */
+  private void initStartIndexAndLevel(PartialPath path) throws MetadataException {
+    IMNode parent = startNode.getParent();
+    Deque<IMNode> ancestors = new ArrayDeque<>();
+    ancestors.push(startNode);
+
+    startLevel = 0;
+    while (parent != null) {
+      startLevel++;
+      ancestors.push(parent);
+      parent = parent.getParent();
+    }
+
+    startIndex = 0;
+    IMNode cur = ancestors.pop();
+    // given root.a.sg, accept path starting with prefix like root.a.sg, root.*.*, root.**,
+    // root.a.**, which means the prefix matches the startNode's fullPath
+    for (startIndex = 0; startIndex <= startLevel && startIndex < nodes.length; startIndex++) {
+      if (nodes[startIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        return;
+      } else if (nodes[startIndex].equals(cur.getName())
+          || nodes[startIndex].equals(ONE_LEVEL_PATH_WILDCARD)) {
+        cur = ancestors.pop();
+      } else {
+        throw new IllegalPathException(
+            path.getFullPath(), path.getFullPath() + " doesn't start with " + cur.getFullPath());
+      }
+    }
   }
 
   /**
