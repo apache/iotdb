@@ -40,8 +40,6 @@ public class ConfigManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
 
-  private final String hashExecutorPackage;
-
   private DeviceGroupHashExecutor hashExecutor;
 
   private Lock partitionTableLock;
@@ -49,17 +47,14 @@ public class ConfigManager {
 
   private LoadBalancer loadBalancer;
 
-  public ConfigManager(String hashType, int deviceGroupCount) {
-    hashExecutorPackage =
-        ConfigNodeDescriptor.getInstance().getConf().getDeviceGroupHashExecutorPackage();
-    setHashExecutor(hashType, deviceGroupCount);
+  public ConfigManager(String hashExecutorClass, int deviceGroupCount) {
+    setHashExecutor(hashExecutorClass, deviceGroupCount);
   }
 
   public ConfigManager() {
     ConfigNodeConf config = ConfigNodeDescriptor.getInstance().getConf();
 
-    hashExecutorPackage = config.getDeviceGroupHashExecutorPackage();
-    setHashExecutor(config.getDeviceGroupHashAlgorithm(), config.getDeviceGroupCount());
+    setHashExecutor(config.getDeviceGroupHashExecutorClass(), config.getDeviceGroupCount());
 
     this.partitionTableLock = new ReentrantLock();
     this.partitionTable = new PartitionTable();
@@ -67,9 +62,9 @@ public class ConfigManager {
     this.loadBalancer = new LoadBalancer(partitionTableLock, partitionTable);
   }
 
-  private void setHashExecutor(String hashAlgorithm, int deviceGroupCount) {
+  private void setHashExecutor(String hashExecutorClass, int deviceGroupCount) {
     try {
-      Class<?> executor = Class.forName(hashExecutorPackage + hashAlgorithm + "HashExecutor");
+      Class<?> executor = Class.forName(hashExecutorClass);
       Constructor<?> executorConstructor = executor.getConstructor(int.class);
       hashExecutor = (DeviceGroupHashExecutor) executorConstructor.newInstance(deviceGroupCount);
     } catch (ClassNotFoundException
@@ -77,7 +72,7 @@ public class ConfigManager {
         | InstantiationException
         | IllegalAccessException
         | InvocationTargetException e) {
-      LOGGER.error("Couldn't Constructor DeviceGroupHashExecutor class: {}", hashAlgorithm, e);
+      LOGGER.error("Couldn't Constructor DeviceGroupHashExecutor class: {}", hashExecutorClass, e);
       hashExecutor = null;
     }
   }

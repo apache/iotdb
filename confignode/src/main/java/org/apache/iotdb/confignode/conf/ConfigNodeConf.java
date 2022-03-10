@@ -24,10 +24,10 @@ public class ConfigNodeConf {
 
   // Number of DeviceGroups per StorageGroup
   private int deviceGroupCount = 10000;
-  // DeviceGroup hash algorithm
-  private String deviceGroupHashAlgorithm = "BKDR";
 
-  private String deviceGroupHashExecutorPackage = "org.apache.iotdb.confignode.manager.hash.";
+  // DeviceGroup hash executor class
+  private String deviceGroupHashExecutorClass =
+      "org.apache.iotdb.confignode.manager.hash.BKDRHashExecutor";
 
   public ConfigNodeConf() {
     // empty constructor
@@ -41,19 +41,11 @@ public class ConfigNodeConf {
     this.deviceGroupCount = deviceGroupCount;
   }
 
-  public String getDeviceGroupHashAlgorithm() {
-    return deviceGroupHashAlgorithm;
+  public String getDeviceGroupHashExecutorClass() {
+    return deviceGroupHashExecutorClass;
   }
 
-  public void setDeviceGroupHashAlgorithm(String deviceGroupHashAlgorithm) {
-    this.deviceGroupHashAlgorithm = deviceGroupHashAlgorithm;
-  }
-
-  public String getDeviceGroupHashExecutorPackage() {
-    return deviceGroupHashExecutorPackage;
-  }
-
-  public void setDeviceGroupHashExecutorPackage(String deviceGroupHashExecutorPackage) {
-    this.deviceGroupHashExecutorPackage = deviceGroupHashExecutorPackage;
+  public void setDeviceGroupHashExecutorClass(String deviceGroupHashExecutorClass) {
+    this.deviceGroupHashExecutorClass = deviceGroupHashExecutorClass;
   }
 }

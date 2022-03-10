@@ -59,7 +59,9 @@ public class DeviceGroupHashExecutorTest {
   }
 
   public void GeneralIndexTest() {
-    ConfigManager manager = new ConfigManager("BKDR", deviceGroupCount);
+    ConfigManager manager =
+        new ConfigManager(
+            "org.apache.iotdb.confignode.manager.hash.BKDRHashExecutor", deviceGroupCount);
     int[] bucket = new int[deviceGroupCount];
     Arrays.fill(bucket, 0);
 

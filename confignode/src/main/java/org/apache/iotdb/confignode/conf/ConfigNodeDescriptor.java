@@ -106,13 +106,9 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "device_group_count", String.valueOf(conf.getDeviceGroupCount()))));
 
-      conf.setDeviceGroupHashAlgorithm(
+      conf.setDeviceGroupHashExecutorClass(
           properties.getProperty(
-              "device_group_hash_algorithm", conf.getDeviceGroupHashAlgorithm()));
-
-      conf.setDeviceGroupHashExecutorPackage(
-          properties.getProperty(
-              "device_group_hash_executor_package", conf.getDeviceGroupHashExecutorPackage()));
+              "device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass()));
 
     } catch (IOException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
