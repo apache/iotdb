@@ -26,11 +26,11 @@ import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 
 import java.io.IOException;
 
-public class TemplateFileWriter {
+public class TemplateLogWriter {
 
   private final MLogWriter logWriter;
 
-  public TemplateFileWriter(String schemaDir, String fileName) throws IOException {
+  public TemplateLogWriter(String schemaDir, String fileName) throws IOException {
     logWriter = new MLogWriter(schemaDir, fileName);
   }
 

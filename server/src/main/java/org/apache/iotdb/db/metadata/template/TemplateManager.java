@@ -55,7 +55,7 @@ public class TemplateManager {
   // template name -> template
   private Map<String, Template> templateMap = new ConcurrentHashMap<>();
 
-  private TemplateFileWriter fileWriter;
+  private TemplateLogWriter logWriter;
 
   private boolean isRecover;
 
@@ -82,8 +82,8 @@ public class TemplateManager {
   }
 
   public void init() throws IOException {
-    fileWriter =
-        new TemplateFileWriter(
+    logWriter =
+        new TemplateLogWriter(
             IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
             MetadataConstant.TEMPLATE_FILE);
     recoverFromTemplateFile();
@@ -91,8 +91,8 @@ public class TemplateManager {
   }
 
   private void recoverFromTemplateFile() throws IOException {
-    TemplateFileReader reader =
-        new TemplateFileReader(
+    TemplateLogReader reader =
+        new TemplateLogReader(
             IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
             MetadataConstant.TEMPLATE_FILE);
     PhysicalPlan plan;
@@ -163,7 +163,7 @@ public class TemplateManager {
 
     try {
       if (!isRecover) {
-        fileWriter.createSchemaTemplate(plan);
+        logWriter.createSchemaTemplate(plan);
       }
     } catch (IOException e) {
       throw new MetadataException(e);
@@ -175,7 +175,7 @@ public class TemplateManager {
 
     try {
       if (!isRecover) {
-        fileWriter.dropSchemaTemplate(plan);
+        logWriter.dropSchemaTemplate(plan);
       }
     } catch (IOException e) {
       throw new MetadataException(e);
@@ -214,7 +214,7 @@ public class TemplateManager {
 
     try {
       if (!isRecover) {
-        fileWriter.appendSchemaTemplate(plan);
+        logWriter.appendSchemaTemplate(plan);
       }
     } catch (IOException e) {
       throw new MetadataException(e);
@@ -234,7 +234,7 @@ public class TemplateManager {
 
     try {
       if (!isRecover) {
-        fileWriter.pruneSchemaTemplate(plan);
+        logWriter.pruneSchemaTemplate(plan);
       }
     } catch (IOException e) {
       throw new MetadataException(e);
@@ -301,8 +301,8 @@ public class TemplateManager {
 
   public void clear() throws IOException {
     templateMap.clear();
-    if (fileWriter != null) {
-      fileWriter.close();
+    if (logWriter != null) {
+      logWriter.close();
     }
   }
 }

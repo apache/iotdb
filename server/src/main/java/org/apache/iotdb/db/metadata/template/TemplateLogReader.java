@@ -23,11 +23,11 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 import java.io.IOException;
 
-public class TemplateFileReader implements AutoCloseable {
+public class TemplateLogReader implements AutoCloseable {
 
   private MLogReader logReader;
 
-  public TemplateFileReader(String schemaDir, String fileName) throws IOException {
+  public TemplateLogReader(String schemaDir, String fileName) throws IOException {
     logReader = new MLogReader(schemaDir, fileName);
   }
 
