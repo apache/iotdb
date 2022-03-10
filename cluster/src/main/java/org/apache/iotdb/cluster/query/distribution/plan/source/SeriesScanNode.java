@@ -1,7 +1,7 @@
-package org.apache.iotdb.cluster.query.distribution.operator.source;
+package org.apache.iotdb.cluster.query.distribution.plan.source;
 
-import org.apache.iotdb.cluster.query.distribution.common.SeriesBatchData;
 import org.apache.iotdb.cluster.query.distribution.common.TraversalOrder;
+import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -18,7 +18,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  *
  * <p>Children type: []
  */
-public class SeriesScanOperator extends SourceOperator<SeriesBatchData> {
+public class SeriesScanNode extends SourceNode<TsBlock> {
 
   // The path of the target series which will be scanned.
   private Path seriesPath;
@@ -36,25 +36,6 @@ public class SeriesScanOperator extends SourceOperator<SeriesBatchData> {
 
   // offset for result set. The default value is 0
   private int offset;
-
-  @Override
-  public boolean hasNext() {
-    return false;
-  }
-
-  @Override
-  public SeriesBatchData getNextBatch() {
-    return null;
-  }
-
-  // This method will only be invoked by SeriesAggregateOperator
-  // It will return the statistics of the series in given time range
-  // When calculate the statistics, the operator should use the most optimized way to do that. In
-  // other words, using
-  // raw data is the final way to do that.
-  public Statistics<?> getNextStatisticBetween(TimeRange timeRange) {
-    return null;
-  }
 
   @Override
   public void close() throws Exception {}

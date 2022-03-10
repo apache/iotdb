@@ -1,6 +1,7 @@
-package org.apache.iotdb.cluster.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.plan.process;
 
 import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
+import org.apache.iotdb.cluster.query.distribution.plan.PlanNode;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 
 /**
@@ -9,18 +10,8 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
  *
  * Children type: [All the operators whose result set is Tablet]
  */
-public class FilterExecNode extends PlanNode<TsBlock> {
+public class FilterNode extends ProcessNode<TsBlock> {
 
     // The filter
     private FilterOperator rowFilter;
-
-    @Override
-    public boolean hasNext() {
-        return false;
-    }
-
-    @Override
-    public TsBlock getNextBatch() {
-        return null;
-    }
 }

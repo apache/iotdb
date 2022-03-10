@@ -17,18 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.plan.sink;
 
-import org.apache.iotdb.cluster.query.distribution.common.TreeNode;
+import org.apache.iotdb.cluster.query.distribution.common.SeriesBatchData;
 
-public abstract class ExecutableOperator<T> extends TreeNode<ExecutableOperator<?>> {
+public class CsvSinkNode extends SinkNode<SeriesBatchData> {
+  @Override
+  public void close() throws Exception {
 
-  // Resource control, runtime control...
-
-  // Judge whether current operator has more result
-  public abstract boolean hasNext();
-
-  // Get next result batch of this operator
-  // Return null if there is no more result to return
-  public abstract T getNextBatch();
+  }
 }

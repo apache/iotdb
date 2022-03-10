@@ -1,4 +1,4 @@
-package org.apache.iotdb.cluster.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.plan;
 
 import org.apache.iotdb.cluster.query.distribution.common.TreeNode;
 
@@ -9,10 +9,4 @@ import org.apache.iotdb.cluster.query.distribution.common.TreeNode;
  */
 public abstract class PlanNode<T> extends TreeNode<PlanNode<?>> {
 
-    // Judge whether current operator has more result
-    public abstract boolean hasNext();
-
-    // Get next result batch of this operator
-    // Return null if there is no more result to return
-    public abstract T getNextBatch();
 }

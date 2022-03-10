@@ -1,8 +1,9 @@
-package org.apache.iotdb.cluster.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.plan.process;
 
 import org.apache.iotdb.cluster.query.distribution.common.GroupByTimeParameter;
 import org.apache.iotdb.cluster.query.distribution.common.LevelBucketInfo;
 import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
+import org.apache.iotdb.cluster.query.distribution.plan.PlanNode;
 
 /**
  * This operator is responsible for the final aggregation merge operation.
@@ -13,7 +14,7 @@ import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
  *
  * Children type: [SeriesAggregateOperator]
  */
-public class GroupByLevelNode extends PlanNode<TsBlock> {
+public class GroupByLevelNode extends ProcessNode<TsBlock> {
 
     // All the buckets that the SeriesBatchAggInfo from upstream will be divided into.
     private LevelBucketInfo bucketInfo;
@@ -21,14 +22,4 @@ public class GroupByLevelNode extends PlanNode<TsBlock> {
     // The parameter of `group by time`
     // The GroupByLevelOperator also need GroupByTimeParameter
     private GroupByTimeParameter groupByTimeParameter;
-
-    @Override
-    public boolean hasNext() {
-        return false;
-    }
-
-    @Override
-    public TsBlock getNextBatch() {
-        return null;
-    }
 }

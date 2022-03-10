@@ -17,12 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.query.distribution.operator.sink;
+package org.apache.iotdb.cluster.query.distribution.plan.sink;
 
-import org.apache.iotdb.cluster.query.distribution.operator.ExecutableOperator;
+import org.apache.iotdb.cluster.query.distribution.plan.PlanNode;
 
 // 构建与客户端的联系。
-public abstract class SinkOperator<T> extends ExecutableOperator<T> implements AutoCloseable {
+public abstract class SinkNode<T> extends PlanNode<T> implements AutoCloseable {
 
-  public abstract void open() throws Exception;
 }

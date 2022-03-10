@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.query.distribution.operator.source;
+package org.apache.iotdb.cluster.query.distribution.plan.sink;
 
-import org.apache.iotdb.cluster.query.distribution.operator.ExecutableOperator;
+import org.apache.iotdb.cluster.query.distribution.common.SeriesBatchData;
 
-// 区分不同的数据源，可拓展。
-public abstract class SourceOperator<T> extends ExecutableOperator<T> implements AutoCloseable {
+public class ThriftSinkNode extends SinkNode<SeriesBatchData> {
 
-  public abstract void open() throws Exception;
+  @Override
+  public void close() throws Exception {}
 }

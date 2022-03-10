@@ -1,7 +1,11 @@
-package org.apache.iotdb.cluster.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.plan.process;
 
 import org.apache.iotdb.cluster.query.distribution.common.GroupByTimeParameter;
 import org.apache.iotdb.cluster.query.distribution.common.SeriesBatchAggInfo;
+import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
+import org.apache.iotdb.cluster.query.distribution.plan.PlanNode;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 /**
  * SeriesAggregateOperator is responsible to do the aggregation calculation for one series.
@@ -11,7 +15,7 @@ import org.apache.iotdb.cluster.query.distribution.common.SeriesBatchAggInfo;
  *
  * Children type: [SeriesScanOperator]
  */
-public class SeriesAggregateNode extends PlanNode<SeriesBatchAggInfo> {
+public class SeriesAggregateNode extends ProcessNode<TsBlock> {
 
     // The parameter of `group by time`
     // Its value will be null if there is no `group by time` clause,
@@ -21,13 +25,12 @@ public class SeriesAggregateNode extends PlanNode<SeriesBatchAggInfo> {
     // We use a String to indicate the parameter temporarily
     private String aggregationFunc;
 
-    @Override
-    public boolean hasNext() {
-        return false;
-    }
-
-    @Override
-    public SeriesBatchAggInfo getNextBatch() {
+    // This method will only be invoked by SeriesAggregateOperator
+    // It will return the statistics of the series in given time range
+    // When calculate the statistics, the operator should use the most optimized way to do that. In
+    // other words, using
+    // raw data is the final way to do that.
+    public Statistics<?> getNextStatisticBetween(TimeRange timeRange) {
         return null;
     }
 }

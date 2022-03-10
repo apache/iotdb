@@ -1,8 +1,9 @@
-package org.apache.iotdb.cluster.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.plan.process;
 
 import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
 import org.apache.iotdb.cluster.query.distribution.common.TraversalOrder;
 import org.apache.iotdb.cluster.query.distribution.common.WithoutPolicy;
+import org.apache.iotdb.cluster.query.distribution.plan.PlanNode;
 
 /**
  * TimeJoinOperator is responsible for join two or more series.
@@ -11,7 +12,7 @@ import org.apache.iotdb.cluster.query.distribution.common.WithoutPolicy;
  *
  * Children type: [SeriesScanOperator]
  */
-public class TimeJoinNode extends PlanNode<TsBlock> {
+public class TimeJoinNode extends ProcessNode<TsBlock> {
 
     // This parameter indicates the order when executing multiway merge sort.
     private TraversalOrder mergeOrder;
@@ -20,14 +21,4 @@ public class TimeJoinNode extends PlanNode<TsBlock> {
     // The without policy is able to be push down to the TimeJoinOperator because we can know whether a row contains
     // null or not in this operator the situation won't be changed by the downstream operators.
     private WithoutPolicy withoutPolicy;
-
-    @Override
-    public boolean hasNext() {
-        return false;
-    }
-
-    @Override
-    public TsBlock getNextBatch() {
-        return null;
-    }
 }

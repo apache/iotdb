@@ -17,24 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.query.distribution.operator.sink;
+package org.apache.iotdb.cluster.query.distribution.plan.source;
 
 import org.apache.iotdb.cluster.query.distribution.common.SeriesBatchData;
 
-public class CsvSinkOperator extends SinkOperator<SeriesBatchData> {
+public class CsvSourceNode extends SourceNode<SeriesBatchData> {
 
   @Override
   public void close() throws Exception {}
-
-  @Override
-  public boolean hasNext() {
-    return false;
-  }
-
-  @Override
-  public SeriesBatchData getNextBatch() {
-    return null;
-  }
 
   @Override
   public void open() throws Exception {}

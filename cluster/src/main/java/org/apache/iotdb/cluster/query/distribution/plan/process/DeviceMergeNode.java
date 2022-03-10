@@ -1,7 +1,8 @@
-package org.apache.iotdb.cluster.query.distribution.operator;
+package org.apache.iotdb.cluster.query.distribution.plan.process;
 
 import org.apache.iotdb.cluster.query.distribution.common.TsBlock;
 import org.apache.iotdb.cluster.query.distribution.common.TraversalOrder;
+import org.apache.iotdb.cluster.query.distribution.plan.PlanNode;
 
 import java.util.List;
 import java.util.Map;
@@ -15,7 +16,7 @@ import java.util.Map;
  *
  * Children type: [TimeJoinOperator]
  */
-public class DeviceMergeNode extends PlanNode<TsBlock> {
+public class DeviceMergeNode extends ProcessNode<TsBlock> {
     // The result output order that this operator
     private TraversalOrder mergeOrder;
 
@@ -24,17 +25,4 @@ public class DeviceMergeNode extends PlanNode<TsBlock> {
 
     // The map from deviceName to corresponding query result operator responsible for that device.
     private Map<String, TimeJoinNode> upstreamMap;
-
-    @Override
-    public boolean hasNext() {
-        return false;
-    }
-
-    // If the Tablet from TimeJoinOperator has n columns, the output of DeviceMergeOperator will contain n+1 columns where
-    // the additional column is `deviceName`
-    // And, the `alignedByDevice` in the TabletMetadata will be `true`
-    @Override
-    public TsBlock getNextBatch() {
-        return null;
-    }
 }
