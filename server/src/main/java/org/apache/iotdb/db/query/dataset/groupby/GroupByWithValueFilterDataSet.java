@@ -203,7 +203,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       updatePreAggrInterval();
     }
     for (int i = 0; i < curAggregateResults.length; i++) {
-      curAggregateResults[i] = slidingWindowAggrQueues[i].getAggregateResult();
+      curAggregateResults[i] = slidingWindowAggrQueues[i].getAggregateResult().clone();
     }
     return curAggregateResults;
   }

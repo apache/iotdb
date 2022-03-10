@@ -96,9 +96,9 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     if (isIntervalByMonth) {
       // calculate interval length by natural month based on curStartTime
       // ie. startTIme = 1/31, interval = 1mo, curEndTime will be set to 2/29
-      retEndTime = Math.min(DatetimeUtils.calcIntervalByMonth(retStartTime, intervalNum), endTime);
+      retEndTime = Math.min(DatetimeUtils.calcIntervalByMonth(retStartTime, interval), endTime);
     } else {
-      retEndTime = Math.min(retStartTime + intervalNum, endTime);
+      retEndTime = Math.min(retStartTime + interval, endTime);
     }
     return new Pair<>(retStartTime, retEndTime);
   }

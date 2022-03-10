@@ -229,7 +229,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         updatePreAggrInterval();
       }
       for (int i = 0; i < curAggregateResults.length; i++) {
-        curAggregateResults[i] = slidingWindowAggrQueues[i].getAggregateResult();
+        curAggregateResults[i] = slidingWindowAggrQueues[i].getAggregateResult().clone();
       }
     } catch (QueryProcessException e) {
       logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
