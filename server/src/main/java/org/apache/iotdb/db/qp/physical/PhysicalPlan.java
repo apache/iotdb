@@ -110,6 +110,10 @@ public abstract class PhysicalPlan {
 
   public abstract List<PartialPath> getPaths();
 
+  public List<PartialPath> getFromPaths() {
+    return Collections.emptyList();
+  }
+
   public void setPaths(List<PartialPath> paths) {}
 
   public boolean isQuery() {

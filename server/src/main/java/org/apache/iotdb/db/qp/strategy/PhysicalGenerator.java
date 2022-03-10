@@ -562,6 +562,7 @@ public class PhysicalGenerator {
       queryPlan = getAlignQueryPlan(queryOperator, fetchSize, queryPlan);
     } else {
       queryPlan.setPaths(queryOperator.getSelectedPaths());
+      queryPlan.setFromPaths(queryOperator.getFromPaths());
       // Last query result set will not be affected by alignment
       if (queryPlan instanceof LastQueryPlan && !queryOperator.isAlignByTime()) {
         throw new QueryProcessException("Disable align cannot be applied to LAST query.");

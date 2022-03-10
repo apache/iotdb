@@ -32,6 +32,7 @@ import java.util.Map;
 public abstract class QueryPlan extends PhysicalPlan {
 
   protected List<PartialPath> paths = null;
+  protected List<PartialPath> fromPaths = null;
   protected List<TSDataType> dataTypes = null;
   private boolean alignByTime = true; // for disable align sql
 
@@ -67,6 +68,15 @@ public abstract class QueryPlan extends PhysicalPlan {
   @Override
   public void setPaths(List<PartialPath> paths) {
     this.paths = paths;
+  }
+
+  @Override
+  public List<PartialPath> getFromPaths() {
+    return fromPaths;
+  }
+
+  public void setFromPaths(List<PartialPath> fromPaths) {
+    this.fromPaths = fromPaths;
   }
 
   public List<TSDataType> getDataTypes() {

@@ -131,6 +131,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -875,11 +876,23 @@ public class TSServiceImpl implements TSIService.Iface {
     List<String> columnsTypes = new ArrayList<>();
 
     // check permissions
-    if (!checkAuthorization(physicalPlan.getAuthPaths(), physicalPlan, username)) {
-      return RpcUtils.getTSExecuteStatementResp(
-          RpcUtils.getStatus(
-              TSStatusCode.NO_PERMISSION_ERROR,
-              "No permissions for this operation " + physicalPlan.getOperatorType()));
+    if ((physicalPlan.getAuthPaths().isEmpty()
+            && !CollectionUtils.isEmpty(physicalPlan.getFromPaths()))
+        || !physicalPlan.getAuthPaths().isEmpty()) {
+      List<PartialPath> checkPaths =
+          physicalPlan.getAuthPaths().isEmpty()
+              ? physicalPlan.getFromPaths()
+              : physicalPlan.getAuthPaths();
+      if (!checkAuthorization(checkPaths, physicalPlan, username)) {
+        OperatorType operatorType = physicalPlan.getOperatorType();
+        if (operatorType == OperatorType.UDTF) {
+          operatorType = OperatorType.QUERY;
+        }
+        return RpcUtils.getTSExecuteStatementResp(
+            RpcUtils.getStatus(
+                TSStatusCode.NO_PERMISSION_ERROR,
+                "No permissions for this operation " + operatorType));
+      }
     }
 
     TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
