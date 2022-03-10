@@ -385,7 +385,7 @@ public class InfluxDBUtils {
     // maximum number of tags in the current query criteria
     int currentQueryMaxTagNum = 0;
     Map<String, Integer> tagOrders =
-        InfluxDBMetaManager.database2Measurement2TagOrders.get(database).get(measurement);
+        InfluxDBMetaManager.getDatabase2Measurement2TagOrders().get(database).get(measurement);
     for (IExpression expression : expressions) {
       SingleSeriesExpression singleSeriesExpression = ((SingleSeriesExpression) expression);
       // the current condition is in tag
@@ -505,7 +505,7 @@ public class InfluxDBUtils {
     series.setName(measurement);
     // gets the reverse map of the tag
     Map<String, Integer> tagOrders =
-        InfluxDBMetaManager.database2Measurement2TagOrders.get(database).get(measurement);
+        InfluxDBMetaManager.getDatabase2Measurement2TagOrders().get(database).get(measurement);
     Map<Integer, String> tagOrderReversed =
         tagOrders.entrySet().stream()
             .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
@@ -672,7 +672,7 @@ public class InfluxDBUtils {
         List<Object> relatedValue = selector.getRelatedValues();
         for (String column : newColumns) {
           if (InfluxSQLConstant.getNativeSelectorFunctionNames().contains(column)) {
-            value.add(selector.calculate().getValue());
+            value.add(selector.calculateBruteForce().getValue());
           } else {
             if (relatedValue != null) {
               value.add(relatedValue.get(columnOrders.get(column)));
@@ -683,11 +683,11 @@ public class InfluxDBUtils {
         // If there are no common queries, they are all function queries
         for (InfluxFunction function : functions) {
           if (value.size() == 0) {
-            value.add(function.calculate().getTimestamp());
+            value.add(function.calculateBruteForce().getTimestamp());
           } else {
-            value.set(0, function.calculate().getTimestamp());
+            value.set(0, function.calculateBruteForce().getTimestamp());
           }
-          value.add(function.calculate().getValue());
+          value.add(function.calculateBruteForce().getValue());
         }
         if (selectComponent.isHasAggregationFunction() || selectComponent.isHasMoreFunction()) {
           value.set(0, 0);
@@ -801,6 +801,11 @@ public class InfluxDBUtils {
     List<Object> value = new ArrayList<>();
     List<List<Object>> values = new ArrayList<>();
     for (InfluxFunction function : functions) {
+      // if(){
+      //
+      // }
+      // select
+      //
       InfluxFunctionValue functionValue = function.calculateByIoTDBFunc();
       if (value.size() == 0) {
         value.add(functionValue.getTimestamp());

@@ -88,10 +88,6 @@ public final class InfluxSelectComponent
     return hasOnlyTraverseFunction;
   }
 
-  public boolean isHasSelectorFunction() {
-    return hasSelectorFunction;
-  }
-
   public boolean isHasMoreSelectorFunction() {
     return hasMoreSelectorFunction;
   }

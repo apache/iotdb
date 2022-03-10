@@ -38,7 +38,7 @@ public class InfluxDBExample {
     influxDB = IoTDBInfluxDBFactory.connect("http://127.0.0.1:8086", "root", "root");
     influxDB.createDatabase("database");
     influxDB.setDatabase("database");
-    //    insertData();
+    insertData();
     queryData();
     influxDB.close();
   }
@@ -92,7 +92,7 @@ public class InfluxDBExample {
     // use iotdb built-in func
     query =
         new Query(
-            "select max(score),min(score),sum(score),count(score),spread(score),mean(score),first(score),last(score) from student ",
+            "select max(score),min(score),sum(score),count(score),first(score),last(score) from student ",
             "database");
     result = influxDB.query(query);
     System.out.println("query3 result:" + result.getResults().get(0).getSeries().get(0).toString());

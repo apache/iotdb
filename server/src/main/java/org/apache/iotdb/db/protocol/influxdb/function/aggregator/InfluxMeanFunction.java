@@ -55,8 +55,8 @@ public class InfluxMeanFunction extends InfluxAggregator {
   }
 
   @Override
-  public InfluxFunctionValue calculate() {
-    return new InfluxFunctionValue(numbers.size() == 0 ? numbers : MathUtils.Mean(numbers), 0L);
+  public InfluxFunctionValue calculateBruteForce() {
+    return new InfluxFunctionValue(numbers.size() == 0 ? numbers : MathUtils.mean(numbers), 0L);
   }
 
   @Override

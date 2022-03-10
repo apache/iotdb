@@ -57,7 +57,7 @@ public class InfluxMaxFunction extends InfluxSelector {
   }
 
   @Override
-  public InfluxFunctionValue calculate() {
+  public InfluxFunctionValue calculateBruteForce() {
     if (!isString && !isNumber) {
       return new InfluxFunctionValue(null, null);
     } else if (isString) {

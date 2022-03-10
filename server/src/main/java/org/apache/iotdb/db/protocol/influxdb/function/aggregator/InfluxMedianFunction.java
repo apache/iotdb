@@ -40,7 +40,7 @@ public class InfluxMedianFunction extends InfluxAggregator {
   }
 
   @Override
-  public InfluxFunctionValue calculate() {
+  public InfluxFunctionValue calculateBruteForce() {
     Collections.sort(numbers);
     int len = numbers.size();
     if (len > 0) {

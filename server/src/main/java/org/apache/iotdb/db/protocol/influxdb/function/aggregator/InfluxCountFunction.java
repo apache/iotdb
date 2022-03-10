@@ -53,7 +53,7 @@ public class InfluxCountFunction extends InfluxAggregator {
   }
 
   @Override
-  public InfluxFunctionValue calculate() {
+  public InfluxFunctionValue calculateBruteForce() {
     return new InfluxFunctionValue(this.countNum, 0L);
   }
 

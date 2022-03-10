@@ -56,7 +56,7 @@ public class InfluxFirstFunction extends InfluxSelector {
   }
 
   @Override
-  public InfluxFunctionValue calculate() {
+  public InfluxFunctionValue calculateBruteForce() {
     return new InfluxFunctionValue(value, this.getTimestamp());
   }
 

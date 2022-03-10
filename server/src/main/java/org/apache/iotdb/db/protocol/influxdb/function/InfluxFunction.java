@@ -47,7 +47,7 @@ public abstract class InfluxFunction {
   public InfluxFunction() {}
 
   // calculate result
-  public abstract InfluxFunctionValue calculate();
+  public abstract InfluxFunctionValue calculateBruteForce();
 
   public abstract InfluxFunctionValue calculateByIoTDBFunc();
 

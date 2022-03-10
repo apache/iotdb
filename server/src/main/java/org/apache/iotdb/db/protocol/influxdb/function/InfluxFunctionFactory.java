@@ -83,7 +83,6 @@ public class InfluxFunctionFactory {
         return new InfluxSpreadFunction(expressionList, path, serviceProvider);
       case InfluxSQLConstant.SUM:
         return new InfluxSumFunction(expressionList, path, serviceProvider);
-
       default:
         throw new IllegalArgumentException("not support aggregation name:" + functionName);
     }

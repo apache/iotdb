@@ -40,9 +40,9 @@ public class InfluxStddevFunction extends InfluxAggregator {
   }
 
   @Override
-  public InfluxFunctionValue calculate() {
+  public InfluxFunctionValue calculateBruteForce() {
     return new InfluxFunctionValue(
-        numbers.size() == 0 ? numbers : MathUtils.POP_STD_dev(numbers), 0L);
+        numbers.size() == 0 ? numbers : MathUtils.popStdDev(numbers), 0L);
   }
 
   @Override

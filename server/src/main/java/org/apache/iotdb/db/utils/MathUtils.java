@@ -86,7 +86,7 @@ public class MathUtils {
    * @param data need to calculate list
    * @return sum of list
    */
-  public static double Sum(List<Double> data) {
+  public static double sum(List<Double> data) {
     double sum = 0;
     for (Double datum : data) {
       sum = sum + datum;
@@ -100,8 +100,8 @@ public class MathUtils {
    * @param data need to calculate list
    * @return mean of list
    */
-  public static double Mean(List<Double> data) {
-    return Sum(data) / data.size();
+  public static double mean(List<Double> data) {
+    return sum(data) / data.size();
   }
 
   /**
@@ -110,10 +110,10 @@ public class MathUtils {
    * @param data need to calculate list
    * @return pop variance of list
    */
-  public static double POP_Variance(List<Double> data) {
+  public static double popVariance(List<Double> data) {
     double variance = 0;
     for (int i = 0; i < data.size(); i++) {
-      variance = variance + (Math.pow((data.get(i) - Mean(data)), 2));
+      variance = variance + (Math.pow((data.get(i) - mean(data)), 2));
     }
     variance = variance / data.size();
     return variance;
@@ -125,9 +125,9 @@ public class MathUtils {
    * @param data need to calculate list
    * @return pop std dev of list
    */
-  public static double POP_STD_dev(List<Double> data) {
+  public static double popStdDev(List<Double> data) {
     double std_dev;
-    std_dev = Math.sqrt(POP_Variance(data));
+    std_dev = Math.sqrt(popVariance(data));
     return std_dev;
   }
 }

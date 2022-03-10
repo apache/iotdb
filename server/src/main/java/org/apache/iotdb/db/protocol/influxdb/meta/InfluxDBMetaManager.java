@@ -60,7 +60,7 @@ public class InfluxDBMetaManager {
   }
 
   // TODO avoid OOM
-  public static Map<String, Map<String, Map<String, Integer>>> database2Measurement2TagOrders =
+  private static Map<String, Map<String, Map<String, Integer>>> database2Measurement2TagOrders =
       new HashMap<>();
 
   private InfluxDBMetaManager() {
@@ -202,6 +202,10 @@ public class InfluxDBMetaManager {
         throw new InfluxDBException(e.getMessage());
       }
     }
+  }
+
+  public static Map<String, Map<String, Map<String, Integer>>> getDatabase2Measurement2TagOrders() {
+    return database2Measurement2TagOrders;
   }
 
   private static class InfluxDBMetaManagerHolder {

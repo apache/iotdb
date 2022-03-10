@@ -55,7 +55,7 @@ public class InfluxSpreadFunction extends InfluxAggregator {
   }
 
   @Override
-  public InfluxFunctionValue calculate() {
+  public InfluxFunctionValue calculateBruteForce() {
     return new InfluxFunctionValue(maxNum - minNum, 0L);
   }
 

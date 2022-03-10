@@ -81,8 +81,8 @@ struct TSCreateDatabaseReq{
   2: required string database
 }
 
-// WritePoints()
-// write points in influxdb
+// query()
+// query in influxdb
 struct TSQueryReq{
   // The session to execute the statement against
   1: required i64 sessionId
@@ -91,12 +91,10 @@ struct TSQueryReq{
   3: required string database
 }
 
-// WritePoints()
-// write points in influxdb
 struct TSQueryResultRsp{
   1: required TSStatus status
 
-  2: optional string ResultJsonString
+  2: optional string resultJsonString
 
 }
 

@@ -55,8 +55,8 @@ public class InfluxSumFunction extends InfluxAggregator {
   }
 
   @Override
-  public InfluxFunctionValue calculate() {
-    return new InfluxFunctionValue(numbers.size() == 0 ? numbers : MathUtils.Sum(numbers), 0L);
+  public InfluxFunctionValue calculateBruteForce() {
+    return new InfluxFunctionValue(numbers.size() == 0 ? numbers : MathUtils.sum(numbers), 0L);
   }
 
   @Override

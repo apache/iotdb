@@ -43,7 +43,7 @@ public class InfluxModeFunction extends InfluxAggregator {
   }
 
   @Override
-  public InfluxFunctionValue calculate() {
+  public InfluxFunctionValue calculateBruteForce() {
     return new InfluxFunctionValue(maxObject, 0L);
   }
 

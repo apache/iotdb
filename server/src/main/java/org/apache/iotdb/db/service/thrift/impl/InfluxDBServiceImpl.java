@@ -42,8 +42,15 @@ import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.utils.DataTypeUtils;
 import org.apache.iotdb.db.utils.InfluxDBUtils;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.*;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSCreateDatabaseReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSOpenSessionReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryResultRsp;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSWritePointsReq;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -215,7 +222,7 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
               queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
       int fieldNums = 0;
       Map<String, Integer> tagOrders =
-          InfluxDBMetaManager.database2Measurement2TagOrders.get(database).get(measurement);
+          InfluxDBMetaManager.getDatabase2Measurement2TagOrders().get(database).get(measurement);
       int tagOrderNums = tagOrders.size();
       while (queryDataSet.hasNext()) {
         List<Field> fields = queryDataSet.next().getFields();
