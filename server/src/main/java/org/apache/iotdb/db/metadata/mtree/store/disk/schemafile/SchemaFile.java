@@ -676,23 +676,27 @@ public class SchemaFile implements ISchemaFile {
   private void addPageToCache(int pageIndex, ISchemaPage page) throws IOException {
     pageInstCache.put(pageIndex, page);
     if (pageInstCache.size() >= PAGE_CACHE_SIZE) {
-      int removeCnt =
-          (int) (0.2 * pageInstCache.size()) > 0 ? (int) (0.2 * pageInstCache.size()) : 1;
-      List<Integer> rmvIdx = new ArrayList<>();
+      synchronized (pageInstCache) {
+        if (pageInstCache.size() >= PAGE_CACHE_SIZE) {
+          int removeCnt =
+              (int) (0.2 * pageInstCache.size()) > 0 ? (int) (0.2 * pageInstCache.size()) : 1;
+          List<Integer> rmvIdx = new ArrayList<>();
 
-      for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
-        removeCnt--;
-        entry.getValue().syncPageBuffer();
-        flushPageToFile(entry.getValue());
+          for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
+            removeCnt--;
+            entry.getValue().syncPageBuffer();
+            flushPageToFile(entry.getValue());
 
-        rmvIdx.add(entry.getKey());
-        if (removeCnt <= 0) {
-          break;
+            rmvIdx.add(entry.getKey());
+            if (removeCnt <= 0) {
+              break;
+            }
+          }
+
+          for (Integer i : rmvIdx) {
+            pageInstCache.remove(i);
+          }
         }
-      }
-
-      for (Integer i : rmvIdx) {
-        pageInstCache.remove(i);
       }
     }
   }
