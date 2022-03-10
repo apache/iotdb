@@ -197,6 +197,12 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     for (CompressionType compressor : compressors) {
       stream.write(compressor.ordinal());
     }
+    if (tagOffsets == null) {
+      tagOffsets = new ArrayList<>();
+      for (int i = 0; i < measurements.size(); i++) {
+        tagOffsets.add(Long.parseLong("-1"));
+      }
+    }
     for (Long tagOffset : tagOffsets) {
       stream.writeLong(tagOffset);
     }
