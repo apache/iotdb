@@ -320,6 +320,9 @@ public class MetaDataTransfer {
         .forEach(
             sgNode -> {
               try {
+                if (sgNode.getPartialPath().getFullPath() == "root.iotcloud") {
+                  return;
+                }
                 rocksDBManager.setStorageGroup(sgNode.getPartialPath());
                 if (sgNode.getDataTTL() > 0) {
                   rocksDBManager.setTTL(sgNode.getPartialPath(), sgNode.getDataTTL());
