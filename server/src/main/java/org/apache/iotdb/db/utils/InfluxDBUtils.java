@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxConstant;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunction;
@@ -48,8 +49,14 @@ import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.read.filter.ValueFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.apache.thrift.TException;
@@ -101,15 +108,14 @@ public class InfluxDBUtils {
       Long sessionId)
       throws AuthException {
     if (operator == null) {
-      List<InfluxCondition> conditions = new ArrayList<>();
-      return queryByConditions(
-          conditions, database, measurement, serviceProvider, fieldOrders, sessionId);
+      List<IExpression> expressions= new ArrayList<>();
+      return queryByConditions(expressions, database, measurement, serviceProvider, fieldOrders, sessionId);
     } else if (operator instanceof BasicFunctionOperator) {
-      List<InfluxCondition> conditions = new ArrayList<>();
-      conditions.add(
-          InfluxDBUtils.getConditionForBasicFunctionOperator((BasicFunctionOperator) operator));
+      List<IExpression> iExpressions= new ArrayList<>();
+      iExpressions.add(
+          InfluxDBUtils.getIExpressionForBasicFunctionOperator((BasicFunctionOperator) operator));
       return queryByConditions(
-          conditions, database, measurement, serviceProvider, fieldOrders, sessionId);
+          iExpressions, database, measurement, serviceProvider, fieldOrders, sessionId);
     } else {
       FilterOperator leftOperator = operator.getChildren().get(0);
       FilterOperator rightOperator = operator.getChildren().get(1);
@@ -121,13 +127,13 @@ public class InfluxDBUtils {
       } else if (operator.getFilterType() == FilterConstant.FilterType.KW_AND) {
         if (InfluxDBUtils.canMergeOperator(leftOperator)
             && InfluxDBUtils.canMergeOperator(rightOperator)) {
-          List<InfluxCondition> conditions1 =
-              InfluxDBUtils.getConditionsByFilterOperatorOperator(leftOperator);
-          List<InfluxCondition> conditions2 =
-              InfluxDBUtils.getConditionsByFilterOperatorOperator(rightOperator);
-          conditions1.addAll(conditions2);
+          List<IExpression> iExpressions1=
+              InfluxDBUtils.getIExpressionByFilterOperatorOperator(leftOperator);
+          List<IExpression> iExpressions2=
+              InfluxDBUtils.getIExpressionByFilterOperatorOperator(rightOperator);
+          iExpressions1.addAll(iExpressions2);
           return queryByConditions(
-              conditions1, database, measurement, serviceProvider, fieldOrders, sessionId);
+              iExpressions1, database, measurement, serviceProvider, fieldOrders, sessionId);
         } else {
           return InfluxDBUtils.andQueryResultProcess(
               queryExpr(
@@ -203,6 +209,30 @@ public class InfluxDBUtils {
     }
   }
 
+
+  /**
+   * generate query conditions through the syntax tree (if you enter this function, it means that it
+   * must be a syntax tree that can be merged, and there is no or)
+   *
+   * @param filterOperator the syntax tree of query criteria needs to be generated
+   * @return condition list
+   */
+  public static List<IExpression> getIExpressionByFilterOperatorOperator(
+          FilterOperator filterOperator) {
+    if (filterOperator instanceof BasicFunctionOperator) {
+      // It must be a non-or situation
+      List<IExpression> expressions= new ArrayList<>();
+      expressions.add(getIExpressionForBasicFunctionOperator((BasicFunctionOperator) filterOperator));
+      return expressions;
+    } else {
+      FilterOperator leftOperator = filterOperator.getChildren().get(0);
+      FilterOperator rightOperator = filterOperator.getChildren().get(1);
+      List<IExpression> expressions1= getIExpressionByFilterOperatorOperator(leftOperator);
+      List<IExpression> expressions2= getIExpressionByFilterOperatorOperator(rightOperator);
+      expressions1.addAll(expressions2 );
+      return expressions1;
+    }
+  }
   /**
    * judge whether the subtrees of the syntax tree have or operations. If not, the query can be
    * merged
@@ -363,11 +393,11 @@ public class InfluxDBUtils {
   /**
    * get query results in the format of influxdb through conditions
    *
-   * @param conditions list of conditions, including tag and field condition
+   * @param expressions list of conditions, including tag and field condition
    * @return returns the results of the influxdb query
    */
   private static QueryResult queryByConditions(
-      List<InfluxCondition> conditions,
+      List<IExpression> expressions,
       String database,
       String measurement,
       ServiceProvider serviceProvider,
@@ -375,23 +405,24 @@ public class InfluxDBUtils {
       Long sessionId)
       throws AuthException {
     // used to store the actual order according to the tag
-    Map<Integer, InfluxCondition> realTagOrders = new HashMap<>();
+    Map<Integer, SingleSeriesExpression> realTagOrders = new HashMap<>();
     // stores a list of conditions belonging to the field
-    List<InfluxCondition> fieldConditions = new ArrayList<>();
+    List<SingleSeriesExpression> fieldConditions = new ArrayList<>();
     // maximum number of tags in the current query criteria
     int currentQueryMaxTagNum = 0;
     Map<String, Integer> tagOrders =
         InfluxDBMetaManager.database2Measurement2TagOrders.get(database).get(measurement);
-    for (InfluxCondition condition : conditions) {
+    for (IExpression expression : expressions) {
+      SingleSeriesExpression singleSeriesExpression= ((SingleSeriesExpression) expression);
       // the current condition is in tag
-      if (tagOrders.containsKey(condition.getValue())) {
-        int curOrder = tagOrders.get(condition.getValue());
+      if (tagOrders.containsKey(singleSeriesExpression.getSeriesPath().getFullPath())) {
+        int curOrder = tagOrders.get(singleSeriesExpression.getSeriesPath().getFullPath());
         // put it into the map according to the tag
-        realTagOrders.put(curOrder, condition);
+        realTagOrders.put(curOrder, singleSeriesExpression);
         // update the maximum tag order of the current query criteria
         currentQueryMaxTagNum = Math.max(currentQueryMaxTagNum, curOrder);
       } else {
-        fieldConditions.add(condition);
+        fieldConditions.add(singleSeriesExpression);
       }
     }
     // construct the actual query path
@@ -403,7 +434,7 @@ public class InfluxDBUtils {
         // beginning and end
         curQueryPath
             .append(".")
-            .append(InfluxDBUtils.removeQuotation(realTagOrders.get(i).getLiteral()));
+            .append(InfluxDBUtils.removeQuotation(realTagOrders.get(i).getFilter().));
       } else {
         curQueryPath.append(".").append("*");
       }
@@ -588,6 +619,17 @@ public class InfluxDBUtils {
     condition.setValue(basicFunctionOperator.getSinglePath().getFullPath());
     condition.setLiteral(basicFunctionOperator.getValue());
     return condition;
+  }
+
+  /**
+   * conditions are generated from subtrees of unique conditions
+   *
+   * @param basicFunctionOperator subtree to generate condition
+   * @return corresponding conditions
+   */
+  public static IExpression getIExpressionForBasicFunctionOperator(
+          BasicFunctionOperator basicFunctionOperator) {
+    return new SingleSeriesExpression(basicFunctionOperator.getSinglePath(),filterTypeToFilter(basicFunctionOperator.getFilterType(),basicFunctionOperator.getValue()));
   }
 
   /**
@@ -850,5 +892,25 @@ public class InfluxDBUtils {
       default:
         return null;
     }
+  }
+
+  public static Filter filterTypeToFilter(FilterConstant.FilterType filterType, String value){
+    switch (filterType){
+      case EQUAL:
+        return ValueFilter.eq(value);
+      case NOTEQUAL:
+        return ValueFilter.notEq(value);
+      case LESSTHANOREQUALTO:
+        return ValueFilter.ltEq(value);
+      case LESSTHAN:
+        return ValueFilter.lt(value);
+      case GREATERTHANOREQUALTO:
+        return ValueFilter.gtEq(value);
+      case GREATERTHAN:
+        return ValueFilter.gt(value);
+      default:
+        throw new UnSupportedDataTypeException("Unsupported data type:" + filterType);
+    }
+
   }
 }
