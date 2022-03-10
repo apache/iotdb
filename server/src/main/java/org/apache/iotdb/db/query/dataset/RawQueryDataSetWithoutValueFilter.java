@@ -518,7 +518,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     // we need the `index` to record
     int index = 0;
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-      if (!withoutNullColumnsIndex.isEmpty() && !withoutNullColumnsIndex.contains(index)) {
+      if (withoutNullColumnsIndex != null && !withoutNullColumnsIndex.contains(index)) {
         index++;
         continue;
       }
@@ -532,7 +532,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
         if (TSDataType.VECTOR == cachedBatchDataArray[seriesIndex].getDataType()) {
           boolean nullFlag = false;
           for (TsPrimitiveType primitiveVal : cachedBatchDataArray[seriesIndex].getVector()) {
-            if (!withoutNullColumnsIndex.isEmpty() && !withoutNullColumnsIndex.contains(index)) {
+            if (withoutNullColumnsIndex != null && !withoutNullColumnsIndex.contains(index)) {
               index++;
               continue;
             }
@@ -580,7 +580,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     }
 
     if (isAllNull && isWithoutAllNull()) {
-      if (!withoutNullColumnsIndex.isEmpty()) {
+      if (withoutNullColumnsIndex != null) {
         for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
           if (cachedBatchDataArray[seriesIndex] != null
               && cachedBatchDataArray[seriesIndex].hasCurrent()

@@ -81,6 +81,10 @@ public class AlignByDevicePlan extends QueryPlan {
       withoutNullColumnSet.add(expression.getExpressionString());
     }
 
+    if (!withoutNullColumnSet.isEmpty()) {
+      withoutNullColumnsIndex = new HashSet<>();
+    }
+
     int index = 1; // start 1, because first is device name
     for (String measurement : this.measurements) {
       String actualColumn = measurement; // may be alias

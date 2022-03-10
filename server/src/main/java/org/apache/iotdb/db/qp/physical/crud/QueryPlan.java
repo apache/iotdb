@@ -40,7 +40,6 @@ import org.apache.thrift.TException;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -62,8 +61,8 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   private Map<String, Integer> pathToIndex = new HashMap<>();
 
-  protected Set<Integer> withoutNullColumnsIndex =
-      new HashSet<>(); // index set that withoutNullColumns for output data columns
+  protected Set<Integer>
+      withoutNullColumnsIndex; // index set that withoutNullColumns for output data columns
 
   private boolean enableRedirect = false;
   private boolean enableTracing = false;
@@ -77,10 +76,6 @@ public abstract class QueryPlan extends PhysicalPlan {
   public QueryPlan() {
     super(Operator.OperatorType.QUERY);
     setQuery(true);
-  }
-
-  public void addWithoutNullColumnIndex(Integer index) {
-    withoutNullColumnsIndex.add(index);
   }
 
   public Set<Integer> getWithoutNullColumnsIndex() {

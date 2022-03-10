@@ -68,24 +68,31 @@ public class QueryDataSetUtils {
     for (int i = 0; i < fetchSize; i++) {
       if (queryDataSet.hasNext()) {
         RowRecord rowRecord = queryDataSet.next();
-        boolean anyNullFlag = withoutNullColumnsIndex.isEmpty() && rowRecord.hasNullField(),
-            allNullFlag = true;
-        for (int index : withoutNullColumnsIndex) {
-          Field field = rowRecord.getFields().get(index);
-          if (field == null || field.getDataType() == null) {
-            anyNullFlag = true;
-            if (queryDataSet.isWithoutAnyNull()) {
-              break;
-            }
-          } else {
-            allNullFlag = false;
-            if (queryDataSet.isWithoutAllNull()) {
-              break;
+        boolean
+            anyNullFlag =
+                (withoutNullColumnsIndex == null)
+                    ? rowRecord.hasNullField()
+                    : (withoutNullColumnsIndex.isEmpty() && rowRecord.hasNullField()),
+            allNullFlag = (withoutNullColumnsIndex != null) || rowRecord.isAllNull();
+
+        if (withoutNullColumnsIndex != null) {
+          for (int index : withoutNullColumnsIndex) {
+            Field field = rowRecord.getFields().get(index);
+            if (field == null || field.getDataType() == null) {
+              anyNullFlag = true;
+              if (queryDataSet.isWithoutAnyNull()) {
+                break;
+              }
+            } else {
+              allNullFlag = false;
+              if (queryDataSet.isWithoutAllNull()) {
+                break;
+              }
             }
           }
         }
 
-        if (withoutNullColumnsIndex.isEmpty()) {
+        if (withoutNullColumnsIndex != null && withoutNullColumnsIndex.isEmpty()) {
           allNullFlag = rowRecord.isAllNull();
         }
 

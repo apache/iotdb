@@ -98,9 +98,12 @@ public class RawDataQueryPlan extends QueryPlan {
   public void convertSpecialClauseValues(SpecialClauseComponent specialClauseComponent)
       throws QueryProcessException {
     if (specialClauseComponent != null) {
+      if (!specialClauseComponent.getWithoutNullColumns().isEmpty()) {
+        withoutNullColumnsIndex = new HashSet<>();
+      }
       for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
         if (getPathToIndex().containsKey(expression.getExpressionString())) {
-          addWithoutNullColumnIndex(getPathToIndex().get(expression.getExpressionString()));
+          withoutNullColumnsIndex.add(getPathToIndex().get(expression.getExpressionString()));
         } else {
           throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
         }
