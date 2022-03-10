@@ -50,8 +50,9 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
 
   @Override
   public void setSourceFilesToCompactionCandidate() {
-    this.selectedSequenceFiles.forEach(x -> x.setCompactionCandidate(true));
-    this.selectedUnsequenceFiles.forEach(x -> x.setCompactionCandidate(true));
+    this.selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
+    this.selectedUnsequenceFiles.forEach(
+        x -> x.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
   }
 
   public List<TsFileResource> getSelectedSequenceFiles() {
@@ -102,7 +103,7 @@ public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactio
 
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
-    selectedSequenceFiles.forEach(x -> x.setCompactionCandidate(false));
-    selectedUnsequenceFiles.forEach(x -> x.setCompactionCandidate(false));
+    selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
+    selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
   }
 }

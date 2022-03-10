@@ -210,7 +210,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           tsFileManager,
           tsFileResourceList);
     } finally {
-      releaseFileLocksAndResetMergingStatus(true);
+      releaseFileLocksAndResetMergingStatus();
     }
   }
 
@@ -228,7 +228,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
 
   @Override
   public boolean checkValidAndSetMerging() {
-    selectedTsFileResourceList.forEach(x -> x.setCompactionCandidate(false));
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       TsFileResource resource = selectedTsFileResourceList.get(i);
       resource.readLock();
@@ -239,7 +238,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           || resource.isDeleted()) {
         // this source file cannot be compacted
         // release the lock of locked files, and return
-        releaseFileLocksAndResetMergingStatus(false);
+        releaseFileLocksAndResetMergingStatus();
         return false;
       }
     }
@@ -254,7 +253,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
    * release the read lock and write lock of files if it is held, and set the merging status of
    * selected files to false
    */
-  private void releaseFileLocksAndResetMergingStatus(boolean resetCompactingStatus) {
+  private void releaseFileLocksAndResetMergingStatus() {
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       if (isHoldingReadLock[i]) {
         selectedTsFileResourceList.get(i).readUnlock();
@@ -262,9 +261,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       if (isHoldingWriteLock[i]) {
         selectedTsFileResourceList.get(i).writeUnlock();
       }
-      if (resetCompactingStatus) {
-        selectedTsFileResourceList.get(i).setStatus(TsFileResourceStatus.CLOSED);
-      }
+      selectedTsFileResourceList.get(i).setStatus(TsFileResourceStatus.CLOSED);
     }
   }
 }

@@ -57,7 +57,8 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
 
   @Override
   public void setSourceFilesToCompactionCandidate() {
-    this.selectedTsFileResourceList.forEach(x -> x.setCompactionCandidate(true));
+    this.selectedTsFileResourceList.forEach(
+        x -> x.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
   }
 
   private void collectSelectedFilesInfo() {
@@ -137,6 +138,6 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
 
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
-    selectedTsFileResourceList.forEach(x -> x.setCompactionCandidate(false));
+    selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
   }
 }

@@ -99,8 +99,6 @@ public class TsFileResource {
 
   private ModificationFile compactionModFile;
 
-  volatile boolean compactionCandidate = false;
-
   protected volatile TsFileResourceStatus status = TsFileResourceStatus.UNCLOSED;
 
   private TsFileLock tsFileLock = new TsFileLock();
@@ -433,7 +431,7 @@ public class TsFileResource {
   }
 
   public void close() throws IOException {
-    status = TsFileResourceStatus.CLOSED;
+    this.setStatus(TsFileResourceStatus.CLOSED);
     if (modFile != null) {
       modFile.close();
       modFile = null;
@@ -581,15 +579,53 @@ public class TsFileResource {
   }
 
   public boolean isCompactionCandidate() {
-    return compactionCandidate;
+    return this.status == TsFileResourceStatus.COMPACTION_CANDIDATE;
   }
 
-  public void setCompactionCandidate(boolean compactionCandidate) {
-    this.compactionCandidate = compactionCandidate;
-  }
-
-  public void setStatus(TsFileResourceStatus status) {
-    this.status = status;
+  public boolean setStatus(TsFileResourceStatus status) {
+    boolean success = false;
+    switch (status) {
+      case CLOSED:
+        {
+          if (this.status != TsFileResourceStatus.DELETED) {
+            this.status = TsFileResourceStatus.CLOSED;
+            success = true;
+          }
+          break;
+        }
+      case UNCLOSED:
+        // Can we set a tsfile resource to unclosed status?
+        this.status = TsFileResourceStatus.UNCLOSED;
+        break;
+      case DELETED:
+        {
+          if (this.status == TsFileResourceStatus.CLOSED
+              || this.status == TsFileResourceStatus.COMPACTING) {
+            this.status = TsFileResourceStatus.DELETED;
+            success = true;
+          }
+        }
+        break;
+      case COMPACTING:
+        {
+          if (this.status == TsFileResourceStatus.COMPACTION_CANDIDATE) {
+            this.status = TsFileResourceStatus.COMPACTING;
+            success = true;
+          }
+          break;
+        }
+      case COMPACTION_CANDIDATE:
+        {
+          if (this.status == TsFileResourceStatus.CLOSED) {
+            this.status = TsFileResourceStatus.COMPACTION_CANDIDATE;
+            success = true;
+          }
+          break;
+        }
+      default:
+        break;
+    }
+    return success;
   }
 
   /**

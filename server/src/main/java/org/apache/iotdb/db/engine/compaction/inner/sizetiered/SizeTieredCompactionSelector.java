@@ -123,7 +123,9 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     for (TsFileResource currentFile : tsFileResources) {
       TsFileNameGenerator.TsFileName currentName =
           TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
-      if (currentName.getInnerCompactionCnt() != level || currentFile.isCompactionCandidate()) {
+      if (currentName.getInnerCompactionCnt() != level
+          || currentFile.isCompactionCandidate()
+          || currentFile.isCompacting()) {
         selectedFileList.clear();
         selectedFileSize = 0L;
         continue;

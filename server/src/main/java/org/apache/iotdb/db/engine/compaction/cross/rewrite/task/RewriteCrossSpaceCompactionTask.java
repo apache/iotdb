@@ -208,8 +208,8 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   }
 
   private void releaseAllLock() {
-    selectedSeqTsFileResourceList.forEach(x -> x.setCompactionCandidate(false));
-    selectedUnSeqTsFileResourceList.forEach(x -> x.setCompactionCandidate(false));
+    selectedSeqTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
+    selectedUnSeqTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
     for (TsFileResource tsFileResource : holdReadLockList) {
       tsFileResource.readUnlock();
       tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
