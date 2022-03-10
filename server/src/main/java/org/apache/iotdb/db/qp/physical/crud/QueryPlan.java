@@ -19,9 +19,11 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.ResultColumn;
@@ -60,7 +62,7 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   private Map<String, Integer> pathToIndex = new HashMap<>();
 
-  private Set<Integer> withoutNullColumnsIndex =
+  protected Set<Integer> withoutNullColumnsIndex =
       new HashSet<>(); // index set that withoutNullColumns for output data columns
 
   private boolean enableRedirect = false;
@@ -86,6 +88,9 @@ public abstract class QueryPlan extends PhysicalPlan {
   }
 
   public abstract void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException;
+
+  public abstract void convertSpecialClauseValues(SpecialClauseComponent specialClauseComponent)
+      throws QueryProcessException;
 
   /** Construct the header of result set. Return TSExecuteStatementResp. */
   public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery)

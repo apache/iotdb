@@ -47,7 +47,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan.getTimeExpression;
 
@@ -127,23 +126,6 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         this.rawDataQueryPlan.setAscending(alignByDevicePlan.isAscending());
         // only redirect query for raw data query
         this.rawDataQueryPlan.setEnableRedirect(alignByDevicePlan.isEnableRedirect());
-    }
-
-    Set<String> withoutNullColumns = alignByDevicePlan.getWithoutNullColumns();
-    int index = 1; // start 1, because first is device name
-    for (String measurement : this.measurements) {
-      String actualColumn = measurement; // may be alias
-      if (alignByDevicePlan.getMeasurementInfoMap().containsKey(measurement)) {
-        String alias =
-            alignByDevicePlan.getMeasurementInfoMap().get(measurement).getMeasurementAlias();
-        if (alias != null && !alias.equals("")) {
-          actualColumn = alias;
-        }
-      }
-      if (withoutNullColumns.contains(actualColumn)) {
-        withoutNullColumnsIndex.add(index);
-      }
-      index++;
     }
     this.curDataSetInitialized = false;
   }

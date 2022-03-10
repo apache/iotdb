@@ -224,7 +224,7 @@ public class QueryOperator extends Operator {
       throw new QueryProcessException(e);
     }
 
-    convertSpecialClauseValues(rawDataQueryPlan);
+    rawDataQueryPlan.convertSpecialClauseValues(specialClauseComponent);
 
     // transform filter operator to expression
     IExpression expression = transformFilterOperatorToExpression();
@@ -347,14 +347,14 @@ public class QueryOperator extends Operator {
     alignByDevicePlan.setEnableTracing(enableTracing);
 
     alignByDevicePlan.deduplicate(generator);
-    // fill withoutNullColumns of AlignByDevicePlan in convertSpecialClauseValues
+
     // fill withoutNullValidSet of AlignByDevicePlan in alignByDevicePlan.deduplicate(generator)
     // then do this check whether all without null columns exist in withoutNullValidSet.
     checkWithoutNullColumnValid(alignByDevicePlan);
+    if (specialClauseComponent != null) {
+      alignByDevicePlan.calcWithoutNullColumnIndex(specialClauseComponent.withoutNullColumns);
+    }
 
-    // because alignByDevicePlan's `withoutNullValidSet` won't be used,
-    // make withoutNullValidSet is null, friendly for gc
-    alignByDevicePlan.closeWithoutNullValidSet();
     if (whereComponent != null) {
       alignByDevicePlan.setDeviceToFilterMap(
           concatFilterByDevice(alignByDevicePlan, devices, whereComponent.getFilterOperator()));
@@ -363,16 +363,19 @@ public class QueryOperator extends Operator {
     return alignByDevicePlan;
   }
 
-  private void checkWithoutNullColumnValid(AlignByDevicePlan queryPlan)
+  private void checkWithoutNullColumnValid(AlignByDevicePlan alignByDevicePlan)
       throws QueryProcessException {
     if (specialClauseComponent != null) {
       // meta consistence check
       for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
-        if (!queryPlan.isValidWithoutNullColumn(expression.getExpressionString())) {
+        if (!alignByDevicePlan.isValidWithoutNullColumn(expression.getExpressionString())) {
           throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
         }
       }
     }
+    // because alignByDevicePlan's `withoutNullValidSet` won't be used,
+    // make withoutNullValidSet is null, friendly for gc
+    alignByDevicePlan.closeWithoutNullValidSet();
   }
 
   private void checkDataTypeConsistency(TSDataType checkedDataType, MeasurementInfo measurementInfo)
@@ -385,43 +388,10 @@ public class QueryOperator extends Operator {
     }
   }
 
-  protected void convertSpecialClauseValues(QueryPlan queryPlan) throws QueryProcessException {
-    if (specialClauseComponent != null) {
-      // record the without null column corresponding index if the plan is not AlignByDevicePlan
-      // otherwise, we simply add all without null column names into AlignByDevicePlan,
-      // and then let itself do the logic of conversion in
-      // `checkWithoutNullColumnValidAlignByDevice` of `QueryOperator.generateAlignByDevicePlan`
-      if (!queryPlan
-          .getPathToIndex()
-          .isEmpty()) { // align by device queryPlan.getPathToIndex() is empty
-        for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
-          if (queryPlan.getPathToIndex().containsKey(expression.getExpressionString())) {
-            queryPlan.addWithoutNullColumnIndex(
-                queryPlan.getPathToIndex().get(expression.getExpressionString()));
-          } else {
-            throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
-          }
-        }
-      } else if (queryPlan instanceof AlignByDevicePlan) {
-        // add without null column
-        AlignByDevicePlan alignByDevicePlan = (AlignByDevicePlan) queryPlan;
-        for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
-          alignByDevicePlan.addWithoutNullColumns(expression.getExpressionString());
-        }
-      }
-
-      queryPlan.setWithoutAllNull(specialClauseComponent.isWithoutAllNull());
-      queryPlan.setWithoutAnyNull(specialClauseComponent.isWithoutAnyNull());
-      queryPlan.setRowLimit(specialClauseComponent.getRowLimit());
-      queryPlan.setRowOffset(specialClauseComponent.getRowOffset());
-      queryPlan.setAscending(specialClauseComponent.isAscending());
-      queryPlan.setAlignByTime(specialClauseComponent.isAlignByTime());
-    }
-  }
-
   private List<String> convertSpecialClauseValues(QueryPlan queryPlan, List<String> measurements)
       throws QueryProcessException {
-    convertSpecialClauseValues(queryPlan);
+    queryPlan.convertSpecialClauseValues(specialClauseComponent);
+
     // sLimit trim on the measurementColumnList
     if (specialClauseComponent.hasSlimit()) {
       int seriesSLimit = specialClauseComponent.getSeriesLimit();

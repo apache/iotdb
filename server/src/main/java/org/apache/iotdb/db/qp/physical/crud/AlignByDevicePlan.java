@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
@@ -49,8 +52,7 @@ public class AlignByDevicePlan extends QueryPlan {
   // measurements to record result measurement columns, e.g. temperature, status, speed
   // no contains alias
   private List<String> measurements;
-  // record specified without null columns, include alias
-  private Set<String> withoutNullColumns = new HashSet<>();
+
   // stores the valid column name that without null can specified
   // want to see details, please see the method `addValidWithoutNullColumn` and
   // `isValidWithoutNullColumn`
@@ -72,12 +74,27 @@ public class AlignByDevicePlan extends QueryPlan {
     super();
   }
 
-  public void addWithoutNullColumns(String column) {
-    withoutNullColumns.add(column);
-  }
+  public void calcWithoutNullColumnIndex(List<Expression> withoutNullColumns) {
+    // record specified without null columns, include alias
+    Set<String> withoutNullColumnSet = new HashSet<>();
+    for (Expression expression : withoutNullColumns) {
+      withoutNullColumnSet.add(expression.getExpressionString());
+    }
 
-  public Set<String> getWithoutNullColumns() {
-    return withoutNullColumns;
+    int index = 1; // start 1, because first is device name
+    for (String measurement : this.measurements) {
+      String actualColumn = measurement; // may be alias
+      if (measurementInfoMap.containsKey(measurement)) {
+        String alias = measurementInfoMap.get(measurement).getMeasurementAlias();
+        if (alias != null && !alias.equals("")) {
+          actualColumn = alias;
+        }
+      }
+      if (withoutNullColumnSet.contains(actualColumn)) {
+        withoutNullColumnsIndex.add(index);
+      }
+      index++;
+    }
   }
 
   /**
@@ -111,7 +128,6 @@ public class AlignByDevicePlan extends QueryPlan {
     Set<String> pathWithAggregationSet = new LinkedHashSet<>();
     List<String> deduplicatedAggregations = new ArrayList<>();
     HashSet<String> measurements = new HashSet<>(getMeasurements());
-    List<String> resultColumn = new ArrayList<>();
 
     for (int i = 0; i < paths.size(); i++) {
       PartialPath path = paths.get(i);
@@ -129,12 +145,12 @@ public class AlignByDevicePlan extends QueryPlan {
           MeasurementInfo measurementInfo = measurementInfoMap.get(measurementWithAggregation);
           if (measurementInfo.getMeasurementAlias() != null
               && !measurementInfo.getMeasurementAlias().equals("")) {
-            resultColumn.add(measurementInfo.getMeasurementAlias());
+            addValidWithoutNullColumn(measurementInfo.getMeasurementAlias());
           } else {
-            resultColumn.add(measurementWithAggregation);
+            addValidWithoutNullColumn(measurementWithAggregation);
           }
         } else {
-          resultColumn.add(measurementWithAggregation);
+          addValidWithoutNullColumn(measurementWithAggregation);
         }
 
         if (this.aggregations != null) {
@@ -145,12 +161,21 @@ public class AlignByDevicePlan extends QueryPlan {
             .add(deduplicatePaths.size() - 1);
       }
     }
-
-    for (String validWithoutColumn : resultColumn) {
-      addValidWithoutNullColumn(validWithoutColumn);
-    }
     setAggregations(deduplicatedAggregations);
     this.paths = null;
+  }
+
+  @Override
+  public void convertSpecialClauseValues(SpecialClauseComponent specialClauseComponent)
+      throws QueryProcessException {
+    if (specialClauseComponent != null) {
+      setWithoutAllNull(specialClauseComponent.isWithoutAllNull());
+      setWithoutAnyNull(specialClauseComponent.isWithoutAnyNull());
+      setRowLimit(specialClauseComponent.getRowLimit());
+      setRowOffset(specialClauseComponent.getRowOffset());
+      setAscending(specialClauseComponent.isAscending());
+      setAlignByTime(specialClauseComponent.isAlignByTime());
+    }
   }
 
   public List<PartialPath> getDeduplicatePaths() {

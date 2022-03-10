@@ -54,6 +54,8 @@ public class IoTDBWithoutNullAllFilterIT {
         "CREATE TIMESERIES root.test.sg2.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
         "CREATE TIMESERIES root.test.sg2.s4 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE ALIGNED TIMESERIES root.test.sg3(s5 INT32, s6 BOOLEAN, s7 DOUBLE, s8 INT32)",
+        "CREATE TIMESERIES root.test.sg5.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.sg5.s9 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) " + "values(1, true, 1, 1.0, 1)",
         "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) " + "values(1, false, 1, 1.0, 1)",
         "INSERT INTO root.test.sg1(timestamp, s2) " + "values(2, 2)",
@@ -96,6 +98,7 @@ public class IoTDBWithoutNullAllFilterIT {
         "INSERT INTO root.test.sg3(time, s5, s7) aligned values(8, 8, 8.0)",
         "INSERT INTO root.test.sg3(time, s5, s7, s8) aligned values(9, 9, 9.0, 9)",
         "INSERT INTO root.test.sg3(time, s7, s8) aligned values(10, 10.0, 10)",
+        "INSERT INTO root.test.sg5(timestamp, s1, s9) " + "values(1, true, 1)",
         "flush",
       };
 
@@ -1510,8 +1513,18 @@ public class IoTDBWithoutNullAllFilterIT {
           "7,true,7,8.0,null",
           "9,true,9,null,9"
         };
-    // todo
+
     String[] retArray5 = new String[] {"1,2,2.0,2", "5,6,6.0,6", "7,8,8.0,null", "9,9,9.0,9"};
+    String[] retArray6 =
+        new String[] {
+          "true,1,null",
+          "null,2,null",
+          "null,5,null",
+          "true,6,null",
+          "true,8,null",
+          "false,9,null",
+          "true,10,null"
+        };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
@@ -1611,7 +1624,6 @@ public class IoTDBWithoutNullAllFilterIT {
         Assert.assertEquals(retArray4.length, cnt);
       }
 
-      // TODO
       hasResultSet =
           statement.execute(
               "select last_value(s2) as t, last_value(s3), last_value(s4) from root.test.sg1 group by([1,10), 2ms) without null all(t, last_value(s3)) align by device");
@@ -1631,6 +1643,25 @@ public class IoTDBWithoutNullAllFilterIT {
           cnt++;
         }
         Assert.assertEquals(retArray5.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select s1,s2,s9 from root.test.sg1,root.test.sg5 without null all(s2) align by device");
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString("s1")
+                  + ","
+                  + resultSet.getString("s2")
+                  + ","
+                  + resultSet.getString("s9");
+          Assert.assertEquals(retArray6[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray6.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();

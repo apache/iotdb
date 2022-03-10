@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -52,7 +51,7 @@ public abstract class QueryDataSet {
   protected boolean withoutAllNull;
 
   /** index set that withoutNullColumns for output data columns */
-  protected Set<Integer> withoutNullColumnsIndex = new HashSet<>();
+  protected Set<Integer> withoutNullColumnsIndex;
 
   protected int columnNum;
 
@@ -126,36 +125,30 @@ public abstract class QueryDataSet {
     while (rowOffset > 0) {
       if (hasNextWithoutConstraint()) {
         RowRecord rowRecord = nextWithoutConstraint(); // DO NOT use next()
-        if (withoutNullColumnsIndex.isEmpty()) {
-          // filter rows whose columns are null according to the rule
-          if ((withoutAllNull && rowRecord.isAllNull())
-              || (withoutAnyNull && rowRecord.hasNullField())) {
-            continue;
-          }
-        } else {
-          boolean anyNullFlag = false, allNullFlag = true;
-          for (int index : withoutNullColumnsIndex) {
-            Field field = rowRecord.getFields().get(index);
-            if (field == null || field.getDataType() == null) {
-              anyNullFlag = true;
-              if (withoutAnyNull) {
-                break;
-              }
-            } else {
-              allNullFlag = false;
-              if (withoutAllNull) {
-                break;
-              }
+        boolean anyNullFlag = withoutNullColumnsIndex.isEmpty() && rowRecord.hasNullField(),
+            allNullFlag = true;
+        for (int index : withoutNullColumnsIndex) {
+          Field field = rowRecord.getFields().get(index);
+          if (field == null || field.getDataType() == null) {
+            anyNullFlag = true;
+            if (withoutAnyNull) {
+              break;
+            }
+          } else {
+            allNullFlag = false;
+            if (withoutAllNull) {
+              break;
             }
           }
+        }
 
-          if (anyNullFlag && withoutAnyNull) {
-            continue;
-          }
+        if (withoutNullColumnsIndex.isEmpty()) {
+          allNullFlag = rowRecord.isAllNull();
+        }
 
-          if (allNullFlag && withoutAllNull) {
-            continue;
-          }
+        // filter rows whose columns are null according to the rule
+        if ((withoutAllNull && allNullFlag) || (withoutAnyNull && anyNullFlag)) {
+          continue;
         }
 
         rowOffset--;

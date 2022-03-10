@@ -64,52 +64,39 @@ public class QueryDataSetUtils {
     int[] valueOccupation = new int[columnNum];
     // used to record a bitmap for every 8 row record
     int[] bitmap = new int[columnNum];
+    Set<Integer> withoutNullColumnsIndex = queryDataSet.getWithoutNullColumnsIndex();
     for (int i = 0; i < fetchSize; i++) {
       if (queryDataSet.hasNext()) {
         RowRecord rowRecord = queryDataSet.next();
-        Set<Integer> withoutNullColumnsIndex = queryDataSet.getWithoutNullColumnsIndex();
-        if (withoutNullColumnsIndex.isEmpty()) {
-          // filter rows whose columns are null according to the rule
-          if ((queryDataSet.isWithoutAllNull() && rowRecord.isAllNull())
-              || (queryDataSet.isWithoutAnyNull() && rowRecord.hasNullField())) {
-            // if the current RowRecord doesn't satisfy, we should also decrease
-            // AlreadyReturnedRowNum
-            queryDataSet.decreaseAlreadyReturnedRowNum();
-            i--;
-            continue;
-          }
-        } else {
-          boolean anyNullFlag = false, allNullFlag = true;
-          for (int index : withoutNullColumnsIndex) {
-            Field field = rowRecord.getFields().get(index);
-            if (field == null || field.getDataType() == null) {
-              anyNullFlag = true;
-              if (queryDataSet.isWithoutAnyNull()) {
-                break;
-              }
-            } else {
-              allNullFlag = false;
-              if (queryDataSet.isWithoutAllNull()) {
-                break;
-              }
+        boolean anyNullFlag = withoutNullColumnsIndex.isEmpty() && rowRecord.hasNullField(),
+            allNullFlag = true;
+        for (int index : withoutNullColumnsIndex) {
+          Field field = rowRecord.getFields().get(index);
+          if (field == null || field.getDataType() == null) {
+            anyNullFlag = true;
+            if (queryDataSet.isWithoutAnyNull()) {
+              break;
+            }
+          } else {
+            allNullFlag = false;
+            if (queryDataSet.isWithoutAllNull()) {
+              break;
             }
           }
+        }
 
-          if (anyNullFlag && queryDataSet.isWithoutAnyNull()) {
-            // if the current RowRecord doesn't satisfy, we should also decrease
-            // AlreadyReturnedRowNum
-            queryDataSet.decreaseAlreadyReturnedRowNum();
-            i--;
-            continue;
-          }
+        if (withoutNullColumnsIndex.isEmpty()) {
+          allNullFlag = rowRecord.isAllNull();
+        }
 
-          if (allNullFlag && queryDataSet.isWithoutAllNull()) {
-            // if the current RowRecord doesn't satisfy, we should also decrease
-            // AlreadyReturnedRowNum
-            queryDataSet.decreaseAlreadyReturnedRowNum();
-            i--;
-            continue;
-          }
+        // filter rows whose columns are null according to the rule
+        if ((queryDataSet.isWithoutAllNull() && allNullFlag)
+            || (queryDataSet.isWithoutAnyNull() && anyNullFlag)) {
+          // if the current RowRecord doesn't satisfy, we should also decrease
+          // AlreadyReturnedRowNum
+          queryDataSet.decreaseAlreadyReturnedRowNum();
+          i--;
+          continue;
         }
 
         if (watermarkEncoder != null) {
