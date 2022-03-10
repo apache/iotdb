@@ -289,6 +289,7 @@ public class MManager {
           "IoTDB system load is too large to create timeseries, "
               + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
     }
+    ensureStorageGroup(plan.getPath());
     storageGroupManager.getSGMManager(plan.getPath()).createTimeseries(plan, offset);
 
     // update statistics and schemaDataTypeNumMap
@@ -376,6 +377,12 @@ public class MManager {
         // do nothing
         // concurrent timeseries creation may result concurrent ensureStorageGroup
         // it's ok that the storageGroup has already been set
+
+        if (storageGroupAlreadySetException.isHasChild()) {
+          // if setStorageGroup failure is because of child, the deviceNode should not be created.
+          // Timeseries can't be created under a deviceNode without storageGroup.
+          throw storageGroupAlreadySetException;
+        }
       }
     }
   }
@@ -393,9 +400,33 @@ public class MManager {
       throws MetadataException {
     List<SGMManager> sgmManagers =
         storageGroupManager.getInvolvedSGMManager(pathPattern, isPrefixMatch);
+    if (sgmManagers.isEmpty()) {
+      // In the cluster mode, the deletion of a timeseries will be forwarded to all the nodes. For
+      // nodes that do not have the metadata of the timeseries, the coordinator expects a
+      // PathNotExistException.
+      throw new PathNotExistException(pathPattern.getFullPath());
+    }
     Set<String> failedNames = new HashSet<>();
+    int deletedNum = 0;
+    Pair<Integer, Set<String>> sgDeletionResult;
     for (SGMManager sgmManager : sgmManagers) {
-      failedNames.addAll(sgmManager.deleteTimeseries(pathPattern, isPrefixMatch));
+      sgDeletionResult = sgmManager.deleteTimeseries(pathPattern, isPrefixMatch);
+      deletedNum += sgDeletionResult.left;
+      failedNames.addAll(sgDeletionResult.right);
+    }
+
+    if (deletedNum == 0 && failedNames.isEmpty()) {
+      // In the cluster mode, the deletion of a timeseries will be forwarded to all the nodes. For
+      // nodes that do not have the metadata of the timeseries, the coordinator expects a
+      // PathNotExistException.
+      throw new PathNotExistException(pathPattern.getFullPath());
+    }
+
+    totalSeriesNumber.addAndGet(-deletedNum);
+    if (!allowToCreateNewSeries
+        && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
+      logger.info("Current series number {} come back to normal level", totalSeriesNumber);
+      allowToCreateNewSeries = true;
     }
 
     return failedNames.isEmpty() ? null : String.join(",", failedNames);
@@ -483,9 +514,6 @@ public class MManager {
       if (allowCreateSg) {
         PartialPath storageGroupPath = MetaUtils.getStorageGroupPathByLevel(path, sgLevel);
         setStorageGroup(storageGroupPath);
-        return storageGroupManager
-            .getSGMManager(path)
-            .getDeviceNodeWithAutoCreate(path, autoCreateSchema, allowCreateSg, sgLevel);
       } else {
         throw new StorageGroupNotSetException(path.getFullPath());
       }
@@ -495,10 +523,11 @@ public class MManager {
         // Timeseries can't be create under a deviceNode without storageGroup.
         throw e;
       }
-      return storageGroupManager
-          .getSGMManager(path)
-          .getDeviceNodeWithAutoCreate(path, autoCreateSchema, allowCreateSg, sgLevel);
     }
+
+    return storageGroupManager
+        .getSGMManager(path)
+        .getDeviceNodeWithAutoCreate(path, autoCreateSchema, allowCreateSg, sgLevel);
   }
 
   protected IMNode getDeviceNodeWithAutoCreate(PartialPath path)
@@ -515,9 +544,17 @@ public class MManager {
    * @param path a full path or a prefix path
    */
   public boolean isPathExist(PartialPath path) {
+
     try {
-      SGMManager sgmManager = storageGroupManager.getSGMManager(path);
-      return sgmManager.isPathExist(path);
+      if (!storageGroupManager.isPathExist(path)) {
+        return false;
+      }
+      try {
+        return storageGroupManager.getSGMManager(path).isPathExist(path);
+      } catch (StorageGroupNotSetException e) {
+        // path exists above storage group
+        return true;
+      }
     } catch (MetadataException e) {
       return false;
     }
@@ -1314,9 +1351,21 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
-    return storageGroupManager
-        .getSGMManager(plan.getDevicePath())
-        .getSeriesSchemasAndReadLockDevice(plan);
+    try {
+      return storageGroupManager
+          .getSGMManager(plan.getDevicePath())
+          .getSeriesSchemasAndReadLockDevice(plan);
+    } catch (StorageGroupNotSetException e) {
+      if (config.isAutoCreateSchemaEnabled()) {
+        ensureStorageGroup(plan.getDevicePath());
+      } else {
+        throw e;
+      }
+
+      return storageGroupManager
+          .getSGMManager(plan.getDevicePath())
+          .getSeriesSchemasAndReadLockDevice(plan);
+    }
   }
 
   // endregion
@@ -1428,13 +1477,23 @@ public class MManager {
   }
 
   public synchronized void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
-    storageGroupManager
-        .getSGMManager(new PartialPath(plan.getPrefixPath()))
-        .unsetSchemaTemplate(plan);
+    try {
+      storageGroupManager
+          .getSGMManager(new PartialPath(plan.getPrefixPath()))
+          .unsetSchemaTemplate(plan);
+    } catch (StorageGroupNotSetException e) {
+      throw new PathNotExistException(plan.getPrefixPath());
+    }
   }
 
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
-    storageGroupManager.getSGMManager(plan.getPrefixPath()).setUsingSchemaTemplate(plan);
+    try {
+      storageGroupManager.getSGMManager(plan.getPrefixPath()).setUsingSchemaTemplate(plan);
+    } catch (StorageGroupNotSetException e) {
+      throw new MetadataException(
+          String.format(
+              "Path [%s] has not been set any template.", plan.getPrefixPath().toString()));
+    }
   }
 
   IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {

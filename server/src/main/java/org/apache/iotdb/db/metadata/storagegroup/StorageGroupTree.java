@@ -376,6 +376,29 @@ public class StorageGroupTree {
   }
 
   /**
+   * Check whether the given path exists.
+   *
+   * @param path a full path or a prefix path
+   */
+  public boolean isPathExist(PartialPath path) {
+    String[] nodeNames = path.getNodes();
+    IMNode cur = root;
+    if (!nodeNames[0].equals(root.getName())) {
+      return false;
+    }
+    for (int i = 1; i < nodeNames.length; i++) {
+      if (!cur.hasChild(nodeNames[i])) {
+        return false;
+      }
+      cur = cur.getChild(nodeNames[i]);
+      if (cur.isStorageGroup()) {
+        return true;
+      }
+    }
+    return true;
+  }
+
+  /**
    * Get the count of nodes in the given level matching the given path. If using prefix match, the
    * path pattern is used to match prefix path. All timeseries start with the matched prefix path
    * will be counted.

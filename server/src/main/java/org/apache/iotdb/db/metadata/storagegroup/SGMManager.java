@@ -612,22 +612,18 @@ public class SGMManager {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return deletion failed Timeseries
    */
-  public Set<String> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
+  public Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     try {
       List<MeasurementPath> allTimeseries = mtree.getMeasurementPaths(pathPattern, isPrefixMatch);
-      if (allTimeseries.isEmpty()) {
-        // In the cluster mode, the deletion of a timeseries will be forwarded to all the nodes. For
-        // nodes that do not have the metadata of the timeseries, the coordinator expects a
-        // PathNotExistException.
-        throw new PathNotExistException(pathPattern.getFullPath());
-      }
 
       Set<String> failedNames = new HashSet<>();
+      int deletedNum = 0;
       for (PartialPath p : allTimeseries) {
         deleteSingleTimeseriesInternal(p, failedNames);
+        deletedNum++;
       }
-      return failedNames;
+      return new Pair<>(deletedNum, failedNames);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     }
@@ -639,7 +635,8 @@ public class SGMManager {
    * @param pathPattern path to be deleted
    * @return deletion failed Timeseries
    */
-  public Set<String> deleteTimeseries(PartialPath pathPattern) throws MetadataException {
+  public Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern)
+      throws MetadataException {
     return deleteTimeseries(pathPattern, false);
   }
 

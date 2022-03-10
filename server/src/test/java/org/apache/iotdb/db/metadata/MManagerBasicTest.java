@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -2263,6 +2264,9 @@ public class MManagerBasicTest {
       Assert.assertEquals(
           "Storage group is not set for current seriesPath: [root.ln.sg2.device1.sensor1]",
           e.getMessage());
+    } catch (StorageGroupAlreadySetException e) {
+      Assert.assertEquals(
+          "some children of root.ln have already been set to storage group", e.getMessage());
     } catch (MetadataException e) {
       fail(e.getMessage());
     }

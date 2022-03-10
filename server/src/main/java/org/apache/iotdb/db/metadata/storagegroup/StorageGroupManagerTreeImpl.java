@@ -162,6 +162,11 @@ public class StorageGroupManagerTreeImpl implements IStorageGroupManager {
   }
 
   @Override
+  public boolean isPathExist(PartialPath path) {
+    return storageGroupTree.isPathExist(path);
+  }
+
+  @Override
   public Pair<Integer, List<SGMManager>> getNodesCountInGivenLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     Pair<Integer, Set<IStorageGroupMNode>> resultAboveSG =

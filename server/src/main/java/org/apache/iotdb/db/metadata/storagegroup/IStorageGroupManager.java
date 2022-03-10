@@ -71,6 +71,8 @@ public interface IStorageGroupManager {
 
   List<IStorageGroupMNode> getAllStorageGroupNodes();
 
+  boolean isPathExist(PartialPath path);
+
   Pair<Integer, List<SGMManager>> getNodesCountInGivenLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
 

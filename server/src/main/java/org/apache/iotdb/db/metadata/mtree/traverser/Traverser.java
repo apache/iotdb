@@ -94,9 +94,11 @@ public abstract class Traverser {
       if (nodes[startIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
         return;
       } else if (nodes[startIndex].equals(cur.getName())
-          || nodes[startIndex].equals(ONE_LEVEL_PATH_WILDCARD)) {
+          || nodes[startIndex].contains(ONE_LEVEL_PATH_WILDCARD)) {
         if (startIndex < startLevel) {
           cur = ancestors.pop();
+        } else if (startIndex == startLevel) {
+          break;
         }
       } else {
         throw new IllegalPathException(
@@ -307,13 +309,21 @@ public abstract class Traverser {
 
   protected String[] getCurrentPathNodes(IMNode currentNode) {
     Iterator<IMNode> nodes = traverseContext.descendingIterator();
-    List<String> nodeNames =
-        new LinkedList<>(Arrays.asList(nodes.next().getPartialPath().getNodes()));
+    List<String> nodeNames = new LinkedList<>();
+    if (nodes.hasNext()) {
+      nodeNames.addAll(Arrays.asList(nodes.next().getPartialPath().getNodes()));
+    }
 
     while (nodes.hasNext()) {
       nodeNames.add(nodes.next().getName());
     }
-    nodeNames.add(currentNode.getName());
+
+    if (nodeNames.isEmpty()) {
+      nodeNames.addAll(Arrays.asList(currentNode.getPartialPath().getNodes()));
+    } else {
+      nodeNames.add(currentNode.getName());
+    }
+
     return nodeNames.toArray(new String[0]);
   }
 
