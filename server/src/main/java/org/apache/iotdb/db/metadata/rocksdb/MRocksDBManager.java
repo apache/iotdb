@@ -123,7 +123,18 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ALL_NODE_TYPE_ARRAY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_NODE_VALUE;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_ALIGNED;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_SET_TTL;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -873,7 +884,7 @@ public class MRocksDBManager implements IMetaManager {
                 // wait for all executing createTimeseries operations are complete
                 Thread.sleep(MAX_LOCK_WAIT_TIME * MAX_PATH_DEPTH);
                 String[] nodes = path.getNodes();
-                Arrays.asList(RockDBConstants.ALL_NODE_TYPE_ARRAY).stream()
+                Arrays.asList(ALL_NODE_TYPE_ARRAY).stream()
                     .parallel()
                     .forEach(
                         type -> {
@@ -995,6 +1006,11 @@ public class MRocksDBManager implements IMetaManager {
       Character[] nodeTypeArray)
       throws IllegalPathException {
     List<String[]> allNodesArray = RocksDBUtils.replaceMultiWildcardToSingle(nodes, maxLevel);
+    try {
+      readWriteHandler.scanAllKeys("E:\\ideaProject\\rel-360\\all.txt");
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     allNodesArray.parallelStream().forEach(x -> traverseByPatternPath(x, function, nodeTypeArray));
   }
 
@@ -1037,6 +1053,12 @@ public class MRocksDBManager implements IMetaManager {
       int level = nextFirstWildcardIndex - 1;
 
       boolean lastIteration = nextFirstWildcardIndex >= nodes.length;
+      Character[] nodeType;
+      if (!lastIteration) {
+        nodeType = ALL_NODE_TYPE_ARRAY;
+      } else {
+        nodeType = nodeTypeArray;
+      }
 
       Queue<String[]> tempNodes = new ConcurrentLinkedQueue<>();
       byte[] suffixToMatch =
@@ -1049,7 +1071,7 @@ public class MRocksDBManager implements IMetaManager {
               prefixNodes -> {
                 String levelPrefix =
                     RocksDBUtils.getLevelPathPrefix(prefixNodes, prefixNodes.length - 1, level);
-                Arrays.stream(nodeTypeArray)
+                Arrays.stream(nodeType)
                     .parallel()
                     .forEach(
                         x -> {
@@ -1817,6 +1839,7 @@ public class MRocksDBManager implements IMetaManager {
   /** Get storage group node by path. the give path don't need to be storage group path. */
   @Override
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
+    ensureStorageGroup(path, path.getNodeLength() - 1);
     IStorageGroupMNode node = null;
     try {
       String[] nodes = path.getNodes();
