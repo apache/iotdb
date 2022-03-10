@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.influxdb.function.aggregator;
 
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
@@ -55,16 +56,26 @@ public class InfluxMedianFunction extends InfluxAggregator {
 
   @Override
   public InfluxFunctionValue calculateByIoTDBFunc() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public void updateValue(InfluxFunctionValue functionValue) {
+  public String getFunctionName() {
+    return InfluxSQLConstant.MEDIAN;
+  }
+
+  @Override
+  public void updateValueBruteForce(InfluxFunctionValue functionValue) {
     Object value = functionValue.getValue();
     if (value instanceof Number) {
       numbers.add(((Number) value).doubleValue());
     } else {
       throw new IllegalArgumentException("not support this type");
     }
+  }
+
+  @Override
+  public void updateValueIoTDBFunc(InfluxFunctionValue... functionValues) {
+    throw new UnsupportedOperationException();
   }
 }

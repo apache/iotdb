@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.influxdb.function.aggregator;
 
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
@@ -49,11 +50,16 @@ public class InfluxModeFunction extends InfluxAggregator {
 
   @Override
   public InfluxFunctionValue calculateByIoTDBFunc() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public void updateValue(InfluxFunctionValue functionValue) {
+  public String getFunctionName() {
+    return InfluxSQLConstant.MODE;
+  }
+
+  @Override
+  public void updateValueBruteForce(InfluxFunctionValue functionValue) {
     Object value = functionValue.getValue();
     Long timestamp = functionValue.getTimestamp();
     // update new data
@@ -79,5 +85,10 @@ public class InfluxModeFunction extends InfluxAggregator {
         maxObject = value;
       }
     }
+  }
+
+  @Override
+  public void updateValueIoTDBFunc(InfluxFunctionValue... functionValues) {
+    throw new UnsupportedOperationException();
   }
 }

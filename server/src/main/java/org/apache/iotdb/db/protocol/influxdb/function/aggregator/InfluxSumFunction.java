@@ -19,31 +19,18 @@
 
 package org.apache.iotdb.db.protocol.influxdb.function.aggregator;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
-import org.apache.iotdb.db.protocol.influxdb.util.StringUtils;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.utils.MathUtils;
-import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import org.apache.thrift.TException;
-import org.influxdb.InfluxDBException;
-
-import java.io.IOException;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class InfluxSumFunction extends InfluxAggregator {
   private final List<Double> numbers = new ArrayList<>();
+  private long sum = 0;
 
   public InfluxSumFunction(List<Expression> expressionList) {
     super(expressionList);
@@ -61,45 +48,16 @@ public class InfluxSumFunction extends InfluxAggregator {
 
   @Override
   public InfluxFunctionValue calculateByIoTDBFunc() {
-    long sum = 0;
-    long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
-    try {
-      String functionSql = StringUtils.generateFunctionSql("sum", getParmaName(), path);
-      QueryPlan queryPlan =
-          (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSql);
-      QueryContext queryContext =
-          serviceProvider.genQueryContext(
-              queryId,
-              true,
-              System.currentTimeMillis(),
-              functionSql,
-              IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
-      QueryDataSet queryDataSet =
-          serviceProvider.createQueryDataSet(
-              queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-      while (queryDataSet.hasNext()) {
-        List<Field> fields = queryDataSet.next().getFields();
-        if (fields.get(1).getDataType() != null) {
-          sum += fields.get(1).getDoubleV();
-        }
-      }
-    } catch (QueryProcessException
-        | TException
-        | StorageEngineException
-        | SQLException
-        | IOException
-        | InterruptedException
-        | QueryFilterOptimizationException
-        | MetadataException e) {
-      throw new InfluxDBException(e.getMessage());
-    } finally {
-      ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
-    }
     return new InfluxFunctionValue(sum, 0L);
   }
 
   @Override
-  public void updateValue(InfluxFunctionValue functionValue) {
+  public String getFunctionName() {
+    return InfluxSQLConstant.SUM;
+  }
+
+  @Override
+  public void updateValueBruteForce(InfluxFunctionValue functionValue) {
     Object value = functionValue.getValue();
     if (!(value instanceof Number)) {
       throw new IllegalArgumentException("not support this type");
@@ -107,5 +65,10 @@ public class InfluxSumFunction extends InfluxAggregator {
 
     double tmpValue = ((Number) value).doubleValue();
     numbers.add(tmpValue);
+  }
+
+  @Override
+  public void updateValueIoTDBFunc(InfluxFunctionValue... functionValues) {
+    sum += (double) functionValues[0].getValue();
   }
 }

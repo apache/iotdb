@@ -38,5 +38,5 @@ public abstract class InfluxAggregator extends InfluxFunction {
     super(expressionList, path, serviceProvider);
   }
 
-  public abstract void updateValue(InfluxFunctionValue functionValue);
+  public abstract void updateValueBruteForce(InfluxFunctionValue functionValue);
 }

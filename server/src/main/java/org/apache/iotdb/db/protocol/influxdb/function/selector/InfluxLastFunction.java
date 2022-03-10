@@ -19,28 +19,11 @@
 
 package org.apache.iotdb.db.protocol.influxdb.function.selector;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
-import org.apache.iotdb.db.protocol.influxdb.util.FieldUtils;
-import org.apache.iotdb.db.protocol.influxdb.util.StringUtils;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import org.apache.thrift.TException;
-import org.influxdb.InfluxDBException;
-
-import java.io.IOException;
-import java.sql.SQLException;
 import java.util.List;
 
 public class InfluxLastFunction extends InfluxSelector {
@@ -63,78 +46,18 @@ public class InfluxLastFunction extends InfluxSelector {
 
   @Override
   public InfluxFunctionValue calculateByIoTDBFunc() {
-    Object lastValue = null;
-    Long lastTime = null;
-    long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
-    try {
-      String functionSql = StringUtils.generateFunctionSql("last_value", getParmaName(), path);
-      QueryPlan queryPlan =
-          (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSql);
-      QueryContext queryContext =
-          serviceProvider.genQueryContext(
-              queryId,
-              true,
-              System.currentTimeMillis(),
-              functionSql,
-              IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
-      QueryDataSet queryDataSet =
-          serviceProvider.createQueryDataSet(
-              queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-      while (queryDataSet.hasNext()) {
-        List<Path> paths = queryDataSet.getPaths();
-        List<Field> fields = queryDataSet.next().getFields();
-        for (int i = 0; i < paths.size(); i++) {
-          Object o = FieldUtils.iotdbFieldConvert(fields.get(i));
-          queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
-          if (o != null) {
-            String specificSql =
-                String.format(
-                    "select %s from %s where %s=%s",
-                    getParmaName(), paths.get(i).getDevice(), paths.get(i).getFullPath(), o);
-            QueryPlan queryPlanNew =
-                (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(specificSql);
-            QueryContext queryContextNew =
-                serviceProvider.genQueryContext(
-                    queryId,
-                    true,
-                    System.currentTimeMillis(),
-                    specificSql,
-                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
-            QueryDataSet queryDataSetNew =
-                serviceProvider.createQueryDataSet(
-                    queryContextNew, queryPlanNew, IoTDBConstant.DEFAULT_FETCH_SIZE);
-            while (queryDataSetNew.hasNext()) {
-              RowRecord recordNew = queryDataSetNew.next();
-              List<Field> newFields = recordNew.getFields();
-              long time = recordNew.getTimestamp();
-              if (lastValue == null && lastTime == null) {
-                lastValue = FieldUtils.iotdbFieldConvert(newFields.get(0));
-                lastTime = time;
-              } else if (time > lastTime) {
-                lastValue = FieldUtils.iotdbFieldConvert(newFields.get(0));
-                lastTime = time;
-              }
-            }
-          }
-        }
-      }
-    } catch (QueryProcessException
-        | TException
-        | StorageEngineException
-        | SQLException
-        | IOException
-        | InterruptedException
-        | QueryFilterOptimizationException
-        | MetadataException e) {
-      throw new InfluxDBException(e.getMessage());
-    } finally {
-      ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
-    }
+    return calculateBruteForce();
+  }
 
-    if (lastValue == null) {
-      return new InfluxFunctionValue(null, null);
+  @Override
+  public void updateValueIoTDBFunc(InfluxFunctionValue... functionValues) {
+    if (value == null && getTimestamp() == null) {
+      value = functionValues[0].getValue();
+      setTimestamp(functionValues[0].getTimestamp());
+    } else if (getTimestamp() > functionValues[0].getTimestamp()) {
+      value = functionValues[0].getValue();
+      setTimestamp(functionValues[0].getTimestamp());
     }
-    return new InfluxFunctionValue(lastValue, lastTime);
   }
 
   @Override
@@ -147,5 +70,10 @@ public class InfluxLastFunction extends InfluxSelector {
       this.setTimestamp(timestamp);
       this.setRelatedValues(relatedValues);
     }
+  }
+
+  @Override
+  public String getFunctionName() {
+    return InfluxSQLConstant.LAST;
   }
 }

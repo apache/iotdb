@@ -19,27 +19,11 @@
 
 package org.apache.iotdb.db.protocol.influxdb.function.selector;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
-import org.apache.iotdb.db.protocol.influxdb.util.FieldUtils;
-import org.apache.iotdb.db.protocol.influxdb.util.StringUtils;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import org.apache.thrift.TException;
-import org.influxdb.InfluxDBException;
-
-import java.io.IOException;
-import java.sql.SQLException;
 import java.util.List;
 
 public class InfluxMinFunction extends InfluxSelector {
@@ -47,6 +31,8 @@ public class InfluxMinFunction extends InfluxSelector {
   private String stringValue = null;
   private boolean isNumber = false;
   private boolean isString = false;
+
+  private Double minValue = null;
 
   public InfluxMinFunction(List<Expression> expressionList) {
     super(expressionList);
@@ -70,50 +56,24 @@ public class InfluxMinFunction extends InfluxSelector {
 
   @Override
   public InfluxFunctionValue calculateByIoTDBFunc() {
-    Double minValue = null;
-    long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
-    try {
-      String functionSql = StringUtils.generateFunctionSql("min_value", getParmaName(), path);
-      QueryPlan queryPlan =
-          (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSql);
-      QueryContext queryContext =
-          serviceProvider.genQueryContext(
-              queryId,
-              true,
-              System.currentTimeMillis(),
-              functionSql,
-              IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
-      QueryDataSet queryDataSet =
-          serviceProvider.createQueryDataSet(
-              queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-      while (queryDataSet.hasNext()) {
-        List<Path> paths = queryDataSet.getPaths();
-        List<Field> fields = queryDataSet.next().getFields();
-        for (int i = 0; i < paths.size(); i++) {
-          Object o = FieldUtils.iotdbFieldConvert(fields.get(i));
-          if (o instanceof Number) {
-            double tmpValue = ((Number) o).doubleValue();
-            if (minValue == null) {
-              minValue = tmpValue;
-            } else if (tmpValue < minValue) {
-              minValue = tmpValue;
-            }
-          }
-        }
-      }
-    } catch (QueryProcessException
-        | TException
-        | StorageEngineException
-        | SQLException
-        | IOException
-        | InterruptedException
-        | QueryFilterOptimizationException
-        | MetadataException e) {
-      throw new InfluxDBException(e.getMessage());
-    } finally {
-      ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
-    }
     return new InfluxFunctionValue(minValue, minValue == null ? null : 0L);
+  }
+
+  @Override
+  public void updateValueIoTDBFunc(InfluxFunctionValue... functionValues) {
+    if (functionValues[0].getValue() instanceof Number) {
+      double tmpValue = ((Number) functionValues[0].getValue()).doubleValue();
+      if (minValue == null) {
+        minValue = tmpValue;
+      } else if (tmpValue < minValue) {
+        minValue = tmpValue;
+      }
+    }
+  }
+
+  @Override
+  public String getFunctionName() {
+    return InfluxSQLConstant.MIN;
   }
 
   @Override

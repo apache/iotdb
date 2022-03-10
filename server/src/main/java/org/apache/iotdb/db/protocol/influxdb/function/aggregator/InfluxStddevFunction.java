@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.influxdb.function.aggregator;
 
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
@@ -47,11 +48,16 @@ public class InfluxStddevFunction extends InfluxAggregator {
 
   @Override
   public InfluxFunctionValue calculateByIoTDBFunc() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public void updateValue(InfluxFunctionValue functionValue) {
+  public String getFunctionName() {
+    return InfluxSQLConstant.STDDEV;
+  }
+
+  @Override
+  public void updateValueBruteForce(InfluxFunctionValue functionValue) {
     Object value = functionValue.getValue();
     if (!(value instanceof Number)) {
       throw new IllegalArgumentException("not support this type");
@@ -59,5 +65,10 @@ public class InfluxStddevFunction extends InfluxAggregator {
 
     double tmpValue = ((Number) value).doubleValue();
     numbers.add(tmpValue);
+  }
+
+  @Override
+  public void updateValueIoTDBFunc(InfluxFunctionValue... functionValues) {
+    throw new UnsupportedOperationException();
   }
 }

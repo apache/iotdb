@@ -26,7 +26,7 @@ import java.util.List;
 
 public abstract class InfluxFunction {
 
-  protected String path;
+  private String path;
 
   protected ServiceProvider serviceProvider;
 
@@ -46,11 +46,6 @@ public abstract class InfluxFunction {
 
   public InfluxFunction() {}
 
-  // calculate result
-  public abstract InfluxFunctionValue calculateBruteForce();
-
-  public abstract InfluxFunctionValue calculateByIoTDBFunc();
-
   public List<Expression> getExpressions() {
     return this.expressionList;
   }
@@ -62,4 +57,18 @@ public abstract class InfluxFunction {
     TimeSeriesOperand parmaExpression = (TimeSeriesOperand) expressionList.get(0);
     return parmaExpression.getPath().getFullPath();
   }
+
+  public abstract String getFunctionName();
+
+  public String getPath() {
+    return path;
+  }
+
+  // calculate result by brute force
+  public abstract InfluxFunctionValue calculateBruteForce();
+
+  // calculate result by iotdb func
+  public abstract InfluxFunctionValue calculateByIoTDBFunc();
+
+  public abstract void updateValueIoTDBFunc(InfluxFunctionValue... functionValues);
 }

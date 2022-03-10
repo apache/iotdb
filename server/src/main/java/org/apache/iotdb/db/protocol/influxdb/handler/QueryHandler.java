@@ -32,6 +32,7 @@ import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxSelector;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.influxdb.operator.InfluxQueryOperator;
 import org.apache.iotdb.db.protocol.influxdb.operator.InfluxSelectComponent;
+import org.apache.iotdb.db.protocol.influxdb.util.FieldUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.FilterUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.QueryResultUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.StringUtils;
@@ -53,6 +54,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -191,7 +194,8 @@ public class QueryHandler {
               } else {
                 // aggregate function
                 ((InfluxAggregator) function)
-                    .updateValue(new InfluxFunctionValue(selectedValue, selectedTimestamp));
+                    .updateValueBruteForce(
+                        new InfluxFunctionValue(selectedValue, selectedTimestamp));
               }
             }
           }
@@ -340,7 +344,8 @@ public class QueryHandler {
     List<Object> value = new ArrayList<>();
     List<List<Object>> values = new ArrayList<>();
     for (InfluxFunction function : functions) {
-      InfluxFunctionValue functionValue = function.calculateByIoTDBFunc();
+      InfluxFunctionValue functionValue = updateByIoTDBFunc(function, serviceProvider);
+      //      InfluxFunctionValue functionValue = function.calculateByIoTDBFunc();
       if (value.size() == 0) {
         value.add(functionValue.getTimestamp());
       } else {
@@ -363,6 +368,384 @@ public class QueryHandler {
     result.setSeries(new ArrayList<>(Arrays.asList(series)));
     queryResult.setResults(new ArrayList<>(Arrays.asList(result)));
     return queryResult;
+  }
+
+  private static InfluxFunctionValue updateByIoTDBFunc(
+      InfluxFunction function, ServiceProvider serviceProvider) {
+    switch (function.getFunctionName()) {
+      case InfluxSQLConstant.COUNT:
+        {
+          long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+          String functionSql =
+              StringUtils.generateFunctionSql(
+                  function.getFunctionName(), function.getParmaName(), function.getPath());
+          try {
+            QueryPlan queryPlan =
+                (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSql);
+            QueryContext queryContext =
+                serviceProvider.genQueryContext(
+                    queryId,
+                    true,
+                    System.currentTimeMillis(),
+                    functionSql,
+                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+            QueryDataSet queryDataSet =
+                serviceProvider.createQueryDataSet(
+                    queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+            while (queryDataSet.hasNext()) {
+              List<Field> fields = queryDataSet.next().getFields();
+              for (Field field : fields) {
+                function.updateValueIoTDBFunc(new InfluxFunctionValue(field.getLongV(), null));
+              }
+            }
+          } catch (QueryProcessException
+              | QueryFilterOptimizationException
+              | StorageEngineException
+              | IOException
+              | MetadataException
+              | SQLException
+              | TException
+              | InterruptedException e) {
+            e.printStackTrace();
+            throw new InfluxDBException(e.getMessage());
+          } finally {
+            ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+          }
+          break;
+        }
+      case InfluxSQLConstant.MEAN:
+        {
+          long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+          try {
+            String functionSqlCount =
+                StringUtils.generateFunctionSql(
+                    "count", function.getParmaName(), function.getPath());
+            QueryPlan queryPlan =
+                (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSqlCount);
+            QueryContext queryContext =
+                serviceProvider.genQueryContext(
+                    queryId,
+                    true,
+                    System.currentTimeMillis(),
+                    functionSqlCount,
+                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+            QueryDataSet queryDataSet =
+                serviceProvider.createQueryDataSet(
+                    queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+            while (queryDataSet.hasNext()) {
+              List<Field> fields = queryDataSet.next().getFields();
+              for (Field field : fields) {
+                function.updateValueIoTDBFunc(new InfluxFunctionValue(field.getLongV(), null));
+              }
+            }
+          } catch (QueryProcessException
+              | TException
+              | StorageEngineException
+              | SQLException
+              | IOException
+              | InterruptedException
+              | QueryFilterOptimizationException
+              | MetadataException e) {
+            throw new InfluxDBException(e.getMessage());
+          } finally {
+            ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+          }
+          long queryId1 = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+          try {
+            String functionSqlSum =
+                StringUtils.generateFunctionSql("sum", function.getParmaName(), function.getPath());
+            QueryPlan queryPlan =
+                (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSqlSum);
+            QueryContext queryContext =
+                serviceProvider.genQueryContext(
+                    queryId,
+                    true,
+                    System.currentTimeMillis(),
+                    functionSqlSum,
+                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+            QueryDataSet queryDataSet =
+                serviceProvider.createQueryDataSet(
+                    queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+            while (queryDataSet.hasNext()) {
+              List<Field> fields = queryDataSet.next().getFields();
+              for (Field field : fields) {
+                function.updateValueIoTDBFunc(
+                    null, new InfluxFunctionValue(field.getDoubleV(), null));
+              }
+            }
+          } catch (QueryProcessException
+              | TException
+              | StorageEngineException
+              | SQLException
+              | IOException
+              | InterruptedException
+              | QueryFilterOptimizationException
+              | MetadataException e) {
+            e.printStackTrace();
+            throw new InfluxDBException(e.getMessage());
+          } finally {
+            ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId1);
+          }
+          break;
+        }
+      case InfluxSQLConstant.SPREAD:
+        {
+          long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+          try {
+            String functionSqlMaxValue =
+                StringUtils.generateFunctionSql(
+                    "max_value", function.getParmaName(), function.getPath());
+            QueryPlan queryPlan =
+                (QueryPlan)
+                    serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSqlMaxValue);
+            QueryContext queryContext =
+                serviceProvider.genQueryContext(
+                    queryId,
+                    true,
+                    System.currentTimeMillis(),
+                    functionSqlMaxValue,
+                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+            QueryDataSet queryDataSet =
+                serviceProvider.createQueryDataSet(
+                    queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+            while (queryDataSet.hasNext()) {
+              List<Path> paths = queryDataSet.getPaths();
+              List<Field> fields = queryDataSet.next().getFields();
+              for (int i = 0; i < paths.size(); i++) {
+                Object o = FieldUtils.iotdbFieldConvert(fields.get(i));
+                if (o instanceof Number) {
+                  function.updateValueIoTDBFunc(
+                      new InfluxFunctionValue(((Number) o).doubleValue(), null));
+                }
+              }
+            }
+          } catch (QueryProcessException
+              | TException
+              | StorageEngineException
+              | SQLException
+              | IOException
+              | InterruptedException
+              | QueryFilterOptimizationException
+              | MetadataException e) {
+            throw new InfluxDBException(e.getMessage());
+          } finally {
+            ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+          }
+          long queryId1 = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+          try {
+            String functionSqlMinValue =
+                StringUtils.generateFunctionSql(
+                    "min_value", function.getParmaName(), function.getPath());
+            QueryPlan queryPlan =
+                (QueryPlan)
+                    serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSqlMinValue);
+            QueryContext queryContext =
+                serviceProvider.genQueryContext(
+                    queryId,
+                    true,
+                    System.currentTimeMillis(),
+                    functionSqlMinValue,
+                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+            QueryDataSet queryDataSet =
+                serviceProvider.createQueryDataSet(
+                    queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+            while (queryDataSet.hasNext()) {
+              List<Path> paths = queryDataSet.getPaths();
+              List<Field> fields = queryDataSet.next().getFields();
+              for (int i = 0; i < paths.size(); i++) {
+                Object o = FieldUtils.iotdbFieldConvert(fields.get(i));
+                if (o instanceof Number) {
+                  function.updateValueIoTDBFunc(
+                      null, new InfluxFunctionValue(((Number) o).doubleValue(), null));
+                }
+              }
+            }
+          } catch (QueryProcessException
+              | TException
+              | StorageEngineException
+              | SQLException
+              | IOException
+              | InterruptedException
+              | QueryFilterOptimizationException
+              | MetadataException e) {
+            throw new InfluxDBException(e.getMessage());
+          } finally {
+            ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId1);
+          }
+          break;
+        }
+      case InfluxSQLConstant.SUM:
+        {
+          long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+          try {
+            String functionSql =
+                StringUtils.generateFunctionSql("sum", function.getParmaName(), function.getPath());
+            QueryPlan queryPlan =
+                (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSql);
+            QueryContext queryContext =
+                serviceProvider.genQueryContext(
+                    queryId,
+                    true,
+                    System.currentTimeMillis(),
+                    functionSql,
+                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+            QueryDataSet queryDataSet =
+                serviceProvider.createQueryDataSet(
+                    queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+            while (queryDataSet.hasNext()) {
+              List<Field> fields = queryDataSet.next().getFields();
+              if (fields.get(1).getDataType() != null) {
+                function.updateValueIoTDBFunc(
+                    new InfluxFunctionValue(fields.get(1).getDoubleV(), null));
+              }
+            }
+          } catch (QueryProcessException
+              | TException
+              | StorageEngineException
+              | SQLException
+              | IOException
+              | InterruptedException
+              | QueryFilterOptimizationException
+              | MetadataException e) {
+            throw new InfluxDBException(e.getMessage());
+          } finally {
+            ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+          }
+          break;
+        }
+      case InfluxSQLConstant.FIRST:
+      case InfluxSQLConstant.LAST:
+        {
+          String functionSql;
+          if (function.getFunctionName().equals(InfluxSQLConstant.FIRST)) {
+            functionSql =
+                StringUtils.generateFunctionSql(
+                    "first_value", function.getParmaName(), function.getPath());
+          } else {
+            functionSql =
+                StringUtils.generateFunctionSql(
+                    "last_value", function.getParmaName(), function.getPath());
+          }
+          List<Long> queryIds = new ArrayList<>();
+          queryIds.add(ServiceProvider.SESSION_MANAGER.requestQueryId(true));
+          try {
+            QueryPlan queryPlan =
+                (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSql);
+            QueryContext queryContext =
+                serviceProvider.genQueryContext(
+                    queryIds.get(0),
+                    true,
+                    System.currentTimeMillis(),
+                    functionSql,
+                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+            QueryDataSet queryDataSet =
+                serviceProvider.createQueryDataSet(
+                    queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+            while (queryDataSet.hasNext()) {
+              List<Path> paths = queryDataSet.getPaths();
+              List<Field> fields = queryDataSet.next().getFields();
+              for (int i = 0; i < paths.size(); i++) {
+                Object o = FieldUtils.iotdbFieldConvert(fields.get(i));
+                long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+                queryIds.add(queryId);
+                if (o != null) {
+                  String specificSql =
+                      String.format(
+                          "select %s from %s where %s=%s",
+                          function.getParmaName(),
+                          paths.get(i).getDevice(),
+                          paths.get(i).getFullPath(),
+                          o);
+                  QueryPlan queryPlanNew =
+                      (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(specificSql);
+                  QueryContext queryContextNew =
+                      serviceProvider.genQueryContext(
+                          queryId,
+                          true,
+                          System.currentTimeMillis(),
+                          specificSql,
+                          IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+                  QueryDataSet queryDataSetNew =
+                      serviceProvider.createQueryDataSet(
+                          queryContextNew, queryPlanNew, IoTDBConstant.DEFAULT_FETCH_SIZE);
+                  while (queryDataSetNew.hasNext()) {
+                    RowRecord recordNew = queryDataSetNew.next();
+                    List<Field> newFields = recordNew.getFields();
+                    long time = recordNew.getTimestamp();
+                    function.updateValueIoTDBFunc(new InfluxFunctionValue(newFields.get(0), time));
+                  }
+                }
+              }
+            }
+          } catch (QueryProcessException
+              | TException
+              | StorageEngineException
+              | SQLException
+              | IOException
+              | InterruptedException
+              | QueryFilterOptimizationException
+              | MetadataException e) {
+            throw new InfluxDBException(e.getMessage());
+          } finally {
+            for (long queryId : queryIds) {
+              ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+            }
+          }
+          break;
+        }
+      case InfluxSQLConstant.MAX:
+      case InfluxSQLConstant.MIN:
+        {
+          String functionSql;
+          if (function.getFunctionName().equals(InfluxSQLConstant.MAX)) {
+            functionSql =
+                StringUtils.generateFunctionSql(
+                    "max_value", function.getParmaName(), function.getPath());
+          } else {
+            functionSql =
+                StringUtils.generateFunctionSql(
+                    "min_value", function.getParmaName(), function.getPath());
+          }
+          long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+          try {
+            QueryPlan queryPlan =
+                (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSql);
+            QueryContext queryContext =
+                serviceProvider.genQueryContext(
+                    queryId,
+                    true,
+                    System.currentTimeMillis(),
+                    functionSql,
+                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+            QueryDataSet queryDataSet =
+                serviceProvider.createQueryDataSet(
+                    queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+            while (queryDataSet.hasNext()) {
+              List<Path> paths = queryDataSet.getPaths();
+              List<Field> fields = queryDataSet.next().getFields();
+              for (int i = 0; i < paths.size(); i++) {
+                Object o = FieldUtils.iotdbFieldConvert(fields.get(i));
+                function.updateValueIoTDBFunc(new InfluxFunctionValue(o, null));
+              }
+            }
+          } catch (QueryProcessException
+              | TException
+              | StorageEngineException
+              | SQLException
+              | IOException
+              | InterruptedException
+              | QueryFilterOptimizationException
+              | MetadataException e) {
+            throw new InfluxDBException(e.getMessage());
+          } finally {
+            ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+          }
+          break;
+        }
+      default:
+        throw new IllegalStateException("Unexpected value: " + function.getFunctionName());
+    }
+    return function.calculateByIoTDBFunc();
   }
 
   public static void checkInfluxDBQueryOperator(Operator operator) {
@@ -557,6 +940,7 @@ public class QueryHandler {
       return expressions1;
     }
   }
+
   /**
    * judge whether the subtrees of the syntax tree have or operations. If not, the query can be
    * merged
