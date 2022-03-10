@@ -24,11 +24,12 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
+import org.apache.iotdb.db.protocol.influxdb.util.FieldUtils;
+import org.apache.iotdb.db.protocol.influxdb.util.StringUtils;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.db.utils.InfluxDBUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -66,7 +67,7 @@ public class InfluxSpreadFunction extends InfluxAggregator {
     long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
     try {
       String functionSqlMaxValue =
-          InfluxDBUtils.generateFunctionSql("max_value", getParmaName(), path);
+          StringUtils.generateFunctionSql("max_value", getParmaName(), path);
       QueryPlan queryPlan =
           (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSqlMaxValue);
       QueryContext queryContext =
@@ -83,7 +84,7 @@ public class InfluxSpreadFunction extends InfluxAggregator {
         List<Path> paths = queryDataSet.getPaths();
         List<Field> fields = queryDataSet.next().getFields();
         for (int i = 0; i < paths.size(); i++) {
-          Object o = InfluxDBUtils.iotdbFiledConvert(fields.get(i));
+          Object o = FieldUtils.iotdbFieldConvert(fields.get(i));
           if (o instanceof Number) {
             double tmpValue = ((Number) o).doubleValue();
             if (maxValue == null) {
@@ -96,7 +97,7 @@ public class InfluxSpreadFunction extends InfluxAggregator {
       }
 
       String functionSqlMinValue =
-          InfluxDBUtils.generateFunctionSql("min_value", getParmaName(), path);
+          StringUtils.generateFunctionSql("min_value", getParmaName(), path);
       queryPlan =
           (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSqlMinValue);
       queryContext =
@@ -113,7 +114,7 @@ public class InfluxSpreadFunction extends InfluxAggregator {
         List<Path> paths = queryDataSet.getPaths();
         List<Field> fields = queryDataSet.next().getFields();
         for (int i = 0; i < paths.size(); i++) {
-          Object o = InfluxDBUtils.iotdbFiledConvert(fields.get(i));
+          Object o = FieldUtils.iotdbFieldConvert(fields.get(i));
           if (o instanceof Number) {
             double tmpValue = ((Number) o).doubleValue();
             if (minValue == null) {

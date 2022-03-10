@@ -24,11 +24,11 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
+import org.apache.iotdb.db.protocol.influxdb.util.StringUtils;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.db.utils.InfluxDBUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -62,7 +62,7 @@ public class InfluxCountFunction extends InfluxAggregator {
     long count = 0;
     long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
     try {
-      String functionSql = InfluxDBUtils.generateFunctionSql("count", getParmaName(), path);
+      String functionSql = StringUtils.generateFunctionSql("count", getParmaName(), path);
       QueryPlan queryPlan =
           (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSql);
       QueryContext queryContext =

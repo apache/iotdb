@@ -19,15 +19,13 @@
 
 package org.apache.iotdb.db.service.thrift.impl;
 
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.protocol.influxdb.dto.IoTDBPoint;
+import org.apache.iotdb.db.protocol.influxdb.handler.QueryHandler;
 import org.apache.iotdb.db.protocol.influxdb.input.InfluxLineParser;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.influxdb.operator.InfluxQueryOperator;
@@ -36,12 +34,10 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.utils.DataTypeUtils;
-import org.apache.iotdb.db.utils.InfluxDBUtils;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSCreateDatabaseReq;
@@ -55,22 +51,13 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
-import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import com.google.gson.Gson;
 import org.apache.thrift.TException;
 import org.influxdb.InfluxDBException;
 import org.influxdb.dto.Point;
-import org.influxdb.dto.QueryResult;
 
-import java.io.IOException;
-import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class InfluxDBServiceImpl implements InfluxDBService.Iface {
 
@@ -157,96 +144,9 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
   @Override
   public TSQueryResultRsp query(TSQueryReq req) throws TException {
     Operator operator = InfluxDBLogicalGenerator.generate(req.command);
-    InfluxDBUtils.checkInfluxDBQueryOperator(operator);
-    return queryInfluxDB(req.database, (InfluxQueryOperator) operator, req.sessionId);
-  }
-
-  private TSQueryResultRsp queryInfluxDB(
-      String database, InfluxQueryOperator queryOperator, long sessionId) {
-    String measurement = queryOperator.getFromComponent().getPrefixPaths().get(0).getFullPath();
-    // The list of fields under the current measurement and the order of the specified rules
-    Map<String, Integer> fieldOrders = getFieldOrders(database, measurement);
-    QueryResult queryResult;
-    TSQueryResultRsp tsQueryResultRsp = new TSQueryResultRsp();
-    try {
-      // contain filter condition or have common query the result of by traversal.
-      if (queryOperator.getWhereComponent() != null
-          || queryOperator.getSelectComponent().isHasCommonQuery()
-          || queryOperator.getSelectComponent().isHasOnlyTraverseFunction()) {
-        // step1 : generate query results
-        queryResult =
-            InfluxDBUtils.queryExpr(
-                queryOperator.getWhereComponent() != null
-                    ? queryOperator.getWhereComponent().getFilterOperator()
-                    : null,
-                database,
-                measurement,
-                serviceProvider,
-                fieldOrders,
-                sessionId);
-        // step2 : select filter
-        InfluxDBUtils.ProcessSelectComponent(queryResult, queryOperator.getSelectComponent());
-      }
-      // don't contain filter condition and only have function use iotdb function.
-      else {
-        queryResult =
-            InfluxDBUtils.queryFuncWithoutFilter(
-                queryOperator.getSelectComponent(), database, measurement, serviceProvider);
-      }
-      return tsQueryResultRsp
-          .setResultJsonString(new Gson().toJson(queryResult))
-          .setStatus(RpcUtils.getInfluxDBStatus(TSStatusCode.SUCCESS_STATUS));
-    } catch (AuthException e) {
-      return tsQueryResultRsp.setStatus(
-          RpcUtils.getInfluxDBStatus(
-              TSStatusCode.UNINITIALIZED_AUTH_ERROR.getStatusCode(), e.getMessage()));
-    }
-  }
-
-  private Map<String, Integer> getFieldOrders(String database, String measurement) {
-    Map<String, Integer> fieldOrders = new HashMap<>();
-    long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
-    try {
-      String showTimeseriesSql = "show timeseries root." + database + '.' + measurement + ".**";
-      PhysicalPlan physicalPlan =
-          serviceProvider.getPlanner().parseSQLToPhysicalPlan(showTimeseriesSql);
-      QueryContext queryContext =
-          serviceProvider.genQueryContext(
-              queryId,
-              true,
-              System.currentTimeMillis(),
-              showTimeseriesSql,
-              IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
-      QueryDataSet queryDataSet =
-          serviceProvider.createQueryDataSet(
-              queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-      int fieldNums = 0;
-      Map<String, Integer> tagOrders =
-          InfluxDBMetaManager.getDatabase2Measurement2TagOrders().get(database).get(measurement);
-      int tagOrderNums = tagOrders.size();
-      while (queryDataSet.hasNext()) {
-        List<Field> fields = queryDataSet.next().getFields();
-        String filed = InfluxDBUtils.getFieldByPath(fields.get(0).getStringValue());
-        if (!fieldOrders.containsKey(filed)) {
-          // The corresponding order of fields is 1 + tagNum (the first is timestamp, then all tags,
-          // and finally all fields)
-          fieldOrders.put(filed, tagOrderNums + fieldNums + 1);
-          fieldNums++;
-        }
-      }
-    } catch (QueryProcessException
-        | TException
-        | StorageEngineException
-        | SQLException
-        | IOException
-        | InterruptedException
-        | QueryFilterOptimizationException
-        | MetadataException e) {
-      throw new InfluxDBException(e.getMessage());
-    } finally {
-      ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
-    }
-    return fieldOrders;
+    QueryHandler.checkInfluxDBQueryOperator(operator);
+    return QueryHandler.queryInfluxDB(
+        req.database, (InfluxQueryOperator) operator, req.sessionId, serviceProvider);
   }
 
   public void handleClientExit() {
