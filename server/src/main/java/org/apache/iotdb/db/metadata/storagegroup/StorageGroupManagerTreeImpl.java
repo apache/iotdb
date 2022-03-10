@@ -65,14 +65,14 @@ public class StorageGroupManagerTreeImpl implements IStorageGroupManager {
     }
 
     // todo implement this as multi thread process
-    for (SGMManager sgmManager : getAllSGMManager()) {
+    for (SGMManager sgmManager : getAllSGMManagers()) {
       sgmManager.init();
     }
   }
 
   /** function for clearing MTree */
   public synchronized void clear() {
-    for (SGMManager sgmManager : getAllSGMManager()) {
+    for (SGMManager sgmManager : getAllSGMManagers()) {
       sgmManager.clear();
     }
     if (storageGroupTree != null) {
@@ -89,12 +89,17 @@ public class StorageGroupManagerTreeImpl implements IStorageGroupManager {
   }
 
   @Override
-  public SGMManager getSGMManager(PartialPath path) throws MetadataException {
+  public SGMManager getBelongedSGMManager(PartialPath path) throws MetadataException {
     return storageGroupTree.getStorageGroupNodeByPath(path).getSGMManager();
   }
 
   @Override
-  public List<SGMManager> getInvolvedSGMManager(PartialPath pathPattern, boolean isPrefixMatch)
+  public SGMManager getSGMManagerByStorageGroupPath(PartialPath path) throws MetadataException {
+    return getStorageGroupNodeByStorageGroupPath(path).getSGMManager();
+  }
+
+  @Override
+  public List<SGMManager> getInvolvedSGMManagers(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     List<SGMManager> result = new ArrayList<>();
     for (IStorageGroupMNode storageGroupMNode :
@@ -105,7 +110,7 @@ public class StorageGroupManagerTreeImpl implements IStorageGroupManager {
   }
 
   @Override
-  public List<SGMManager> getAllSGMManager() {
+  public List<SGMManager> getAllSGMManagers() {
     List<SGMManager> result = new ArrayList<>();
     for (IStorageGroupMNode storageGroupMNode : storageGroupTree.getAllStorageGroupNodes()) {
       result.add(storageGroupMNode.getSGMManager());
@@ -114,13 +119,8 @@ public class StorageGroupManagerTreeImpl implements IStorageGroupManager {
   }
 
   @Override
-  public List<SGMManager> deleteStorageGroup(List<PartialPath> storageGroups)
-      throws MetadataException {
-    List<SGMManager> sgmManagers = new ArrayList<>();
-    for (PartialPath path : storageGroups) {
-      sgmManagers.add(storageGroupTree.deleteStorageGroup(path).getSGMManager());
-    }
-    return sgmManagers;
+  public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
+    storageGroupTree.deleteStorageGroup(storageGroup);
   }
 
   @Override

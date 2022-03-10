@@ -47,6 +47,7 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.rescon.TimeseriesManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
@@ -166,6 +167,7 @@ public class SGMManager {
   private File logFile;
   private MLogWriter logWriter;
 
+  private TimeseriesManager timeseriesManager = TimeseriesManager.getInstance();
   private IStorageGroupMNode storageGroupMNode;
   private MTree mtree;
   // device -> DeviceMNode
@@ -435,9 +437,11 @@ public class SGMManager {
     }
   }
 
-  public synchronized int deleteStorageGroup() throws MetadataException {
+  public synchronized void deleteStorageGroup() throws MetadataException {
     // collect all the LeafMNode in this storage group
     List<IMeasurementMNode> leafMNodes = mtree.getAllMeasurementMNode();
+
+    timeseriesManager.deleteTimeseries(leafMNodes.size());
 
     // drop triggers with no exceptions
     TriggerEngine.drop(leafMNodes);
@@ -468,8 +472,6 @@ public class SGMManager {
           String.format(
               "Failed to delete storage group schema folder %s", sgSchemaFolder.getAbsolutePath()));
     }
-
-    return leafMNodes.size();
   }
 
   // endregion
@@ -523,6 +525,9 @@ public class SGMManager {
         logWriter.createTimeseries(plan);
       }
       leafMNode.setOffset(offset);
+
+      // update statistics and schemaDataTypeNumMap
+      timeseriesManager.addTimeseries(1);
 
     } catch (IOException e) {
       throw new MetadataException(e);
@@ -606,6 +611,10 @@ public class SGMManager {
       if (!isRecovering) {
         logWriter.createAlignedTimeseries(plan);
       }
+
+      // update statistics and schemaDataTypeNumMap
+      timeseriesManager.addTimeseries(plan.getMeasurements().size());
+
     } catch (IOException e) {
       throw new MetadataException(e);
     }
@@ -700,6 +709,8 @@ public class SGMManager {
       mNodeCache.invalidate(node.getPartialPath());
       node = node.getParent();
     }
+
+    timeseriesManager.deleteTimeseries(1);
     return storageGroupPath;
   }
   // endregion

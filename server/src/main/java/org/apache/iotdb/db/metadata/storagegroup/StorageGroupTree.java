@@ -130,12 +130,11 @@ public class StorageGroupTree {
   }
 
   /** Delete a storage group */
-  public IStorageGroupMNode deleteStorageGroup(PartialPath path) throws MetadataException {
+  public void deleteStorageGroup(PartialPath path) throws MetadataException {
     IStorageGroupMNode cur = getStorageGroupNodeByStorageGroupPath(path);
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the storage group node sg1
     cur.getParent().deleteChild(cur.getName());
-    return cur;
   }
 
   /**

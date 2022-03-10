@@ -38,14 +38,16 @@ public interface IStorageGroupManager {
 
   void setStorageGroup(PartialPath path) throws MetadataException;
 
-  SGMManager getSGMManager(PartialPath path) throws MetadataException;
+  SGMManager getBelongedSGMManager(PartialPath path) throws MetadataException;
 
-  List<SGMManager> getInvolvedSGMManager(PartialPath pathPattern, boolean isPrefixMatch)
+  SGMManager getSGMManagerByStorageGroupPath(PartialPath path) throws MetadataException;
+
+  List<SGMManager> getInvolvedSGMManagers(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
-  List<SGMManager> getAllSGMManager();
+  List<SGMManager> getAllSGMManagers();
 
-  List<SGMManager> deleteStorageGroup(List<PartialPath> storageGroups) throws MetadataException;
+  void deleteStorageGroup(PartialPath storageGroup) throws MetadataException;
 
   boolean isStorageGroup(PartialPath path);
 
