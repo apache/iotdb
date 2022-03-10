@@ -49,6 +49,8 @@ IoTDB> create schema template t2 aligned (lat FLOAT encoding=Gorilla, lon FLOAT 
 
 ## 挂载元数据模板
 
+**为了更好地适配未来版本的更新及各模块的协作，我们强烈建议您将模板设置在存储组及存储组下层的节点中。**
+
 挂载元数据模板的 SQL 语句如下所示：
 
 ```shell
