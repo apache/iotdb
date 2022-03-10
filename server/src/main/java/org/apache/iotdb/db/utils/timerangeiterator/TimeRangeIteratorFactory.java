@@ -21,6 +21,8 @@ package org.apache.iotdb.db.utils.timerangeiterator;
 
 public class TimeRangeIteratorFactory {
 
+  private static final long MS_TO_MONTH = 30 * 86400_000L;
+
   private TimeRangeIteratorFactory() {}
 
   public static ITimeRangeIterator getTimeRangeIterator(
@@ -32,15 +34,22 @@ public class TimeRangeIteratorFactory {
       boolean isIntervalByMonth,
       boolean isSlidingStepByMonth,
       boolean isPreAggr) {
-    if (isPreAggr) {
-      return new PreAggrWindowIterator(
-          startTime,
-          endTime,
-          interval,
-          slidingStep,
-          isAscending,
-          isIntervalByMonth,
-          isSlidingStepByMonth);
+    long tmpInterval = isIntervalByMonth ? interval * MS_TO_MONTH : interval;
+    long tmpSlidingStep = isSlidingStepByMonth ? slidingStep * MS_TO_MONTH : slidingStep;
+    if (isPreAggr && tmpInterval > tmpSlidingStep) {
+      if (!isIntervalByMonth && !isSlidingStepByMonth) {
+        return new OverlappedAggrWindowIterator(
+            startTime, endTime, interval, slidingStep, isAscending);
+      } else {
+        return new OverlappedAggrWindowWithNaturalMonthIterator(
+            startTime,
+            endTime,
+            interval,
+            slidingStep,
+            isAscending,
+            isSlidingStepByMonth,
+            isIntervalByMonth);
+      }
     } else {
       return new AggrWindowIterator(
           startTime,
@@ -48,8 +57,8 @@ public class TimeRangeIteratorFactory {
           interval,
           slidingStep,
           isAscending,
-          isIntervalByMonth,
-          isSlidingStepByMonth);
+          isSlidingStepByMonth,
+          isIntervalByMonth);
     }
   }
 }
