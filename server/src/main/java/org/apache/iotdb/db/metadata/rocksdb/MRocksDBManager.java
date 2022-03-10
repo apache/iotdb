@@ -1006,11 +1006,6 @@ public class MRocksDBManager implements IMetaManager {
       Character[] nodeTypeArray)
       throws IllegalPathException {
     List<String[]> allNodesArray = RocksDBUtils.replaceMultiWildcardToSingle(nodes, maxLevel);
-    try {
-      readWriteHandler.scanAllKeys("E:\\ideaProject\\rel-360\\all.txt");
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
     allNodesArray.parallelStream().forEach(x -> traverseByPatternPath(x, function, nodeTypeArray));
   }
 
@@ -1839,7 +1834,6 @@ public class MRocksDBManager implements IMetaManager {
   /** Get storage group node by path. the give path don't need to be storage group path. */
   @Override
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
-    ensureStorageGroup(path, path.getNodeLength() - 1);
     IStorageGroupMNode node = null;
     try {
       String[] nodes = path.getNodes();
