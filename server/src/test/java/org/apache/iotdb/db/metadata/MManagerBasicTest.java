@@ -447,7 +447,7 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testRecover() {
+  public void testRecover() throws Exception {
 
     MManager manager = IoTDB.metaManager;
 
@@ -498,21 +498,19 @@ public class MManagerBasicTest {
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
-      MManager recoverManager = new MManager();
-      recoverManager.initForMultiMManagerTest();
+      EnvironmentUtils.restartDaemon();
 
-      assertTrue(recoverManager.isStorageGroup(new PartialPath("root.laptop.d1")));
-      assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop.d2")));
-      assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop.d3")));
-      assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop")));
+      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d1")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d2")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d3")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop")));
       // prefix with *
       assertEquals(
           devices,
-          recoverManager.getMatchedDevices(new PartialPath("root.**"), false).stream()
+          manager.getMatchedDevices(new PartialPath("root.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
-      recoverManager.clear();
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

@@ -246,7 +246,7 @@ public class SGMManager {
 
       int lineNumber = initFromLog(logFile);
 
-      logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
+      logWriter = new MLogWriter(sgSchemaDirPath, MetadataConstant.METADATA_LOG);
       logWriter.setLogNum(lineNumber);
       isRecovering = false;
     } catch (IOException e) {
@@ -275,7 +275,7 @@ public class SGMManager {
     if (logFile.exists()) {
       int idx = 0;
       try (MLogReader mLogReader =
-          new MLogReader(config.getSchemaDir(), MetadataConstant.METADATA_LOG); ) {
+          new MLogReader(sgSchemaDirPath, MetadataConstant.METADATA_LOG); ) {
         idx = applyMLog(mLogReader);
         logger.debug(
             "spend {} ms to deserialize {} mtree from mlog.bin",
@@ -444,6 +444,20 @@ public class SGMManager {
     clear();
 
     File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath);
+    File[] sgFiles = sgSchemaFolder.listFiles();
+    for (File file : sgFiles) {
+      if (file.delete()) {
+        logger.info("delete storage group schema folder {}", sgSchemaFolder.getAbsolutePath());
+      } else {
+        logger.info(
+            "delete storage group schema folder {} failed.", sgSchemaFolder.getAbsolutePath());
+        throw new MetadataException(
+            String.format(
+                "Failed to delete storage group schema folder %s",
+                sgSchemaFolder.getAbsolutePath()));
+      }
+    }
+
     if (sgSchemaFolder.delete()) {
       logger.info("delete storage group schema folder {}", sgSchemaFolder.getAbsolutePath());
     } else {
@@ -451,8 +465,7 @@ public class SGMManager {
           "delete storage group schema folder {} failed.", sgSchemaFolder.getAbsolutePath());
       throw new MetadataException(
           String.format(
-              "Failed to delete storage group schema folder, %s",
-              sgSchemaFolder.getAbsolutePath()));
+              "Failed to delete storage group schema folder %s", sgSchemaFolder.getAbsolutePath()));
     }
 
     return leafMNodes.size();

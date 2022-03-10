@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.storagegroup;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -26,13 +27,22 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+
 public class StorageGroupManagerTreeImpl implements IStorageGroupManager {
+
+  private static final Logger logger = LoggerFactory.getLogger(MManager.class);
 
   private StorageGroupTree storageGroupTree;
 
@@ -42,6 +52,18 @@ public class StorageGroupManagerTreeImpl implements IStorageGroupManager {
 
   public synchronized void init() {
     storageGroupTree.init();
+    File dir = new File(IoTDBDescriptor.getInstance().getConfig().getSchemaDir());
+    File[] sgDirs = dir.listFiles((dir1, name) -> name.startsWith(PATH_ROOT + PATH_SEPARATOR));
+    if (sgDirs != null) {
+      for (File f : sgDirs) {
+        try {
+          setStorageGroup(new PartialPath(f.getName()));
+        } catch (MetadataException e) {
+          logger.error("Cannot recover storage group from dir {} because", f.getName(), e);
+        }
+      }
+    }
+
     // todo implement this as multi thread process
     for (SGMManager sgmManager : getAllSGMManager()) {
       sgmManager.init();

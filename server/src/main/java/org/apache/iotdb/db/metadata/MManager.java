@@ -263,6 +263,7 @@ public class MManager {
       storageGroupManager.clear();
       this.totalSeriesNumber.set(0);
       this.templateManager.clear();
+      initialized = false;
     } catch (IOException e) {
       logger.error("Cannot close metadata log writer, because:", e);
     }
