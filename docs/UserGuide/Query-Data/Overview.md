@@ -33,7 +33,7 @@ In IoTDB, `SELECT` statement is used to retrieve data from one or more selected 
 	<orderByTimeClause?> ORDER BY TIME [ASC | DESC]
 	<paginationClause?> [LIMIT | SLIMIT] INT [OFFSET | SOFFSET] INT
 	<groupByLevelClause?> GROUP BY LEVEL = INT
-	<groupByTimeClause?> GROUP BY ([startTime, endTime), slidingStep)
+	<groupByTimeClause?> GROUP BY ([startTime, endTime), interval, slidingStep)
 	<fillClause?> FILL ([PREVIOUS, beforeRange | LINEAR, beforeRange, afterRange | constant])
 	<withoutNullClause?> WITHOUT NULL [ANY | ALL]
 	<alignClause?> [ALIGN BY DEVICE | DISABLE ALIGN]
