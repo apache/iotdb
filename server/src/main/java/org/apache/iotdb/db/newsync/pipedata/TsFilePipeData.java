@@ -42,14 +42,35 @@ public class TsFilePipeData extends PipeData {
   private static final Logger logger = LoggerFactory.getLogger(TsFilePipeData.class);
 
   private String tsFilePath;
+  private String separator;
 
   public TsFilePipeData(String tsFilePath, long serialNumber) {
     super(serialNumber);
     this.tsFilePath = tsFilePath;
+    this.separator = File.separator;
+  }
+
+  public TsFilePipeData(String tsFilePath, String separator, long serialNumber) {
+    super(serialNumber);
+    this.tsFilePath = tsFilePath;
+    this.separator = separator;
+  }
+
+  public void setSeparator(String separator) {
+    this.separator = separator;
+  }
+
+  public String getTsFilePath() {
+    return tsFilePath;
   }
 
   public void setTsFilePath(String tsFilePath) {
     this.tsFilePath = tsFilePath;
+  }
+
+  public String getFileName() {
+    String[] paths = tsFilePath.split(separator);
+    return paths[paths.length - 1];
   }
 
   @Override
@@ -59,13 +80,16 @@ public class TsFilePipeData extends PipeData {
 
   @Override
   public long serialize(DataOutputStream stream) throws IOException {
-    return super.serialize(stream) + ReadWriteIOUtils.write(tsFilePath, stream);
+    return super.serialize(stream)
+        + ReadWriteIOUtils.write(tsFilePath, stream)
+        + ReadWriteIOUtils.write(separator, stream);
   }
 
   public static TsFilePipeData deserialize(DataInputStream stream) throws IOException {
     long serialNumber = stream.readLong();
     String tsFilePath = ReadWriteIOUtils.readString(stream);
-    return new TsFilePipeData(tsFilePath, serialNumber);
+    String separator = ReadWriteIOUtils.readString(stream);
+    return new TsFilePipeData(tsFilePath, separator, serialNumber);
   }
 
   @Override
@@ -141,11 +165,12 @@ public class TsFilePipeData extends PipeData {
     if (o == null || getClass() != o.getClass()) return false;
     TsFilePipeData pipeData = (TsFilePipeData) o;
     return Objects.equals(tsFilePath, pipeData.tsFilePath)
+        && Objects.equals(separator, pipeData.separator)
         && Objects.equals(serialNumber, pipeData.serialNumber);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tsFilePath, serialNumber);
+    return Objects.hash(tsFilePath, separator, serialNumber);
   }
 }

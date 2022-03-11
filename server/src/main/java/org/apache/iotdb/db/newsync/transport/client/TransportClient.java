@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
 package org.apache.iotdb.db.newsync.transport.client;
 
 import org.apache.iotdb.db.concurrent.ThreadName;
@@ -8,7 +27,6 @@ import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
 import org.apache.iotdb.db.newsync.transport.conf.TransportConstant;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
 import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
 import org.apache.iotdb.db.sync.sender.transfer.SyncClient;
@@ -31,13 +49,9 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
@@ -45,7 +59,6 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.UUID;
 
 import static org.apache.iotdb.db.newsync.transport.conf.TransportConfig.isCheckFileDegistAgain;
 import static org.apache.iotdb.db.newsync.transport.conf.TransportConstant.REBASE_CODE;
@@ -71,8 +84,6 @@ public class TransportClient implements ITransportClient, Runnable {
 
   private int port = -1;
 
-  private String uuid = null;
-
   private IdentityInfo identityInfo = null;
 
   private Pipe pipe = null;
@@ -91,7 +102,6 @@ public class TransportClient implements ITransportClient, Runnable {
   public void setServerConfig(String ipAddress, int port) throws IOException {
     this.ipAddress = ipAddress;
     this.port = port;
-    this.uuid = getOrCreateUUID(getUuidFile());
   }
 
   public TransportClient(Pipe pipe, String ipAddress, int port) throws IOException {
@@ -101,7 +111,6 @@ public class TransportClient implements ITransportClient, Runnable {
     this.pipe = pipe;
     this.ipAddress = ipAddress;
     this.port = port;
-    this.uuid = getOrCreateUUID(getUuidFile());
 
     handshake();
   }
@@ -146,7 +155,8 @@ public class TransportClient implements ITransportClient, Runnable {
       identityInfo =
           new IdentityInfo(
               socket.getLocalAddress().getHostAddress(),
-              this.uuid,
+              pipe.getName(),
+              pipe.getCreateTime(),
               ioTDBConfig.getIoTDBMajorVersion());
       TransportStatus status = serviceClient.handshake(identityInfo);
       if (status.code != SUCCESS_CODE) {
@@ -353,19 +363,11 @@ public class TransportClient implements ITransportClient, Runnable {
                 "Can not sync pipe data after %s tries.", config.getMaxNumOfSyncFileRetry()));
       }
 
-      try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-        pipeData.serialize(dataOutputStream);
-        //        int dataLength = new Long(pipeData.serialize(dataOutputStream)).intValue();
-        //        byte[] buffer = new byte[dataLength];
-        byte[] buffer = byteArrayOutputStream.toByteArray();
-
-        //        byteArrayOutputStream.write(buffer, 0, dataLength);
+      try {
+        byte[] buffer = pipeData.serialize();
         messageDigest.reset();
-        //        messageDigest.update(buffer, 0, dataLength);
         messageDigest.update(buffer);
-        ByteBuffer buffToSend = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-        byteArrayOutputStream.reset();
+        ByteBuffer buffToSend = ByteBuffer.wrap(buffer);
 
         MetaInfo metaInfo =
             new MetaInfo(Type.findByValue(pipeData.getType().ordinal()), "fileName", 0);
@@ -383,49 +385,6 @@ public class TransportClient implements ITransportClient, Runnable {
         logger.error("Exception happened!", e);
       }
     }
-  }
-
-  /** UUID marks the identity of sender for receiver. */
-  private String getOrCreateUUID(File uuidFile) throws IOException {
-    if (!uuidFile.getParentFile().exists()) {
-      uuidFile.getParentFile().mkdirs();
-    }
-
-    String uuid;
-    if (uuidFile.exists()) {
-      try (BufferedReader bf = new BufferedReader((new FileReader(uuidFile)))) {
-        uuid = bf.readLine();
-      } catch (IOException e) {
-        logger.error("Cannot read UUID from file {}", uuidFile.getPath());
-        throw new IOException(e);
-      }
-
-      if ((uuid == null) || (uuid.length() == 0)) {
-        logger.warn("UUID in file {} is empty.", uuidFile.getPath());
-        uuidFile.delete();
-      } else {
-        return uuid;
-      }
-    }
-
-    // uuidFile not exist or uuid in uuidFile is invalid
-    try (FileOutputStream out = new FileOutputStream(uuidFile)) {
-      uuid = generateUUID();
-      out.write(uuid.getBytes());
-    } catch (IOException e) {
-      logger.error("Cannot insert UUID to file {}", uuidFile.getPath());
-      throw new IOException(e);
-    }
-
-    return uuid;
-  }
-
-  private String generateUUID() {
-    return UUID.randomUUID().toString().replaceAll("-", "");
-  }
-
-  private File getUuidFile() {
-    return new File(ioTDBConfig.getSyncDir(), SyncConstant.UUID_FILE_NAME);
   }
 
   /**

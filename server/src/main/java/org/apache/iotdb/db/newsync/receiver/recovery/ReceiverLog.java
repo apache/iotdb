@@ -115,7 +115,13 @@ public class ReceiverLog {
   }
 
   public void close() throws IOException {
-    bw.close();
-    msg.close();
+    if (bw != null) {
+      bw.close();
+      bw = null;
+    }
+    if (msg != null) {
+      msg.close();
+      msg = null;
+    }
   }
 }

@@ -24,6 +24,11 @@ import java.io.File;
 
 /** Util for path generation in sync module */
 public class SyncPathUtil {
+
+  private SyncPathUtil() {
+    // forbidding instantiation
+  }
+
   /** sender */
   public static String getSenderPipeDir(String pipeName, long createTime) {
     return IoTDBDescriptor.getInstance().getConfig().getNewSyncDir()

@@ -1,9 +1,31 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
 package org.apache.iotdb.db.newsync.transport.server;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
+import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
+import org.apache.iotdb.db.newsync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.service.transport.thrift.IdentityInfo;
 import org.apache.iotdb.service.transport.thrift.MetaInfo;
 import org.apache.iotdb.service.transport.thrift.SyncRequest;
@@ -16,16 +38,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -34,7 +47,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
-import static org.apache.iotdb.db.newsync.transport.conf.TransportConfig.getSyncedDir;
 import static org.apache.iotdb.db.newsync.transport.conf.TransportConstant.CONFLICT_CODE;
 import static org.apache.iotdb.db.newsync.transport.conf.TransportConstant.ERROR_CODE;
 import static org.apache.iotdb.db.newsync.transport.conf.TransportConstant.REBASE_CODE;
@@ -46,6 +58,8 @@ public class TransportServiceImpl implements TransportService.Iface {
   private static Logger logger = LoggerFactory.getLogger(TransportServiceImpl.class);
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final String RECORD_SUFFIX = ".record";
+  private static final String PATCH_SUFFIX = ".patch";
 
   private class CheckResult {
     boolean result;
@@ -66,7 +80,7 @@ public class TransportServiceImpl implements TransportService.Iface {
   }
 
   private CheckResult checkStartIndexValid(File file, long startIndex) throws IOException {
-    File recordFile = new File(file.getAbsolutePath() + ".record");
+    File recordFile = new File(file.getAbsolutePath() + RECORD_SUFFIX);
 
     if (!recordFile.exists() && startIndex != 0) {
       logger.error(
@@ -121,8 +135,8 @@ public class TransportServiceImpl implements TransportService.Iface {
               identityInfo.version, config.getIoTDBVersion()));
     }
 
-    if (!new File(getSyncedDir(identityInfo.getAddress(), identityInfo.getUuid())).exists()) {
-      new File(getSyncedDir(identityInfo.getAddress(), identityInfo.getUuid())).mkdirs();
+    if (!new File(getFileDataDirPath(identityInfo)).exists()) {
+      new File(getFileDataDirPath(identityInfo)).mkdirs();
     }
     return new TransportStatus(SUCCESS_CODE, "");
   }
@@ -132,9 +146,8 @@ public class TransportServiceImpl implements TransportService.Iface {
       IdentityInfo identityInfo, MetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest) {
     logger.debug("Invoke transportData method from client ip = {}", identityInfo.address);
 
-    String ipAddress = identityInfo.address;
-    String uuid = identityInfo.uuid;
-    synchronized (uuid.intern()) {
+    String fileDir = getFileDataDirPath(identityInfo);
+    synchronized (fileDir.intern()) {
       Type type = metaInfo.type;
       String fileName = metaInfo.fileName;
       long startIndex = metaInfo.startIndex;
@@ -142,8 +155,7 @@ public class TransportServiceImpl implements TransportService.Iface {
       // Check file start index valid
       if (type == Type.FILE) {
         try {
-          CheckResult result =
-              checkStartIndexValid(new File(getSyncedDir(ipAddress, uuid), fileName), startIndex);
+          CheckResult result = checkStartIndexValid(new File(fileDir, fileName), startIndex);
           if (!result.isResult()) {
             return new TransportStatus(REBASE_CODE, result.getIndex());
           }
@@ -170,32 +182,32 @@ public class TransportServiceImpl implements TransportService.Iface {
       }
 
       if (type != Type.FILE) {
-
         buff.position(pos);
         int length = buff.capacity();
         byte[] byteArray = new byte[length];
         buff.get(byteArray);
-        try (InputStream inputStream = new ByteArrayInputStream(byteArray);
-            DataInputStream dataInputStream = new DataInputStream(inputStream)) {
-          PipeData pipeData = PipeData.deserialize(dataInputStream);
-          System.out.println(pipeData);
-          // Do with file
-          //        BufferedPipeDataQueue.offer(pipeData);
+        try {
+          PipeData pipeData = PipeData.deserialize(byteArray);
+          if (type == Type.TSFILE) {
+            // Do with file
+            handleTsFilePipeData((TsFilePipeData) pipeData, fileDir);
+          }
+          PipeDataQueueFactory.getBufferedPipeDataQueue(getPipeLogDirPath(identityInfo))
+              .offer(pipeData);
         } catch (IOException | IllegalPathException e) {
           e.printStackTrace();
         }
       } else {
         // Write buff to {file}.patch
         buff.position(pos);
-        File file = new File(getSyncedDir(ipAddress, uuid), fileName + ".patch");
+        File file = new File(fileDir, fileName + PATCH_SUFFIX);
         try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw")) {
           randomAccessFile.seek(startIndex);
           int length = buff.capacity();
           byte[] byteArray = new byte[length];
           buff.get(byteArray);
           randomAccessFile.write(byteArray);
-          writeRecordFile(
-              new File(getSyncedDir(ipAddress, uuid), fileName + ".record"), startIndex + length);
+          writeRecordFile(new File(fileDir, fileName + RECORD_SUFFIX), startIndex + length);
           logger.debug(
               "Sync "
                   + fileName
@@ -219,9 +231,8 @@ public class TransportServiceImpl implements TransportService.Iface {
       IdentityInfo identityInfo, MetaInfo metaInfo, ByteBuffer digest) throws TException {
     logger.debug("Invoke checkFileDigest method from client ip = {}", identityInfo.address);
 
-    String ipAddress = identityInfo.getAddress();
-    String uuid = identityInfo.getUuid();
-    synchronized (uuid.intern()) {
+    String fileDir = getFileDataDirPath(identityInfo);
+    synchronized (fileDir.intern()) {
       String fileName = metaInfo.fileName;
       MessageDigest messageDigest = null;
       try {
@@ -232,7 +243,7 @@ public class TransportServiceImpl implements TransportService.Iface {
       }
 
       try (InputStream inputStream =
-          new FileInputStream(new File(getSyncedDir(ipAddress, uuid), fileName + ".patch"))) {
+          new FileInputStream(new File(fileDir, fileName + PATCH_SUFFIX))) {
         byte[] block = new byte[DATA_CHUNK_SIZE];
         int length;
         while ((length = inputStream.read(block)) > 0) {
@@ -249,7 +260,7 @@ public class TransportServiceImpl implements TransportService.Iface {
               fileName,
               localDigest,
               digest);
-          new File(getSyncedDir(ipAddress, uuid), fileName + ".record").delete();
+          new File(fileDir, fileName + RECORD_SUFFIX).delete();
           return new TransportStatus(CONFLICT_CODE, "File digest check error.");
         }
       } catch (IOException e) {
@@ -283,5 +294,43 @@ public class TransportServiceImpl implements TransportService.Iface {
   public void handleClientExit() {
     // TODO: Handle client exit here.
     // do nothing now
+  }
+
+  /**
+   * handle when successfully receive tsFilePipeData. Rename .record file and reset tsFilePipeData's
+   * path.
+   *
+   * @param tsFilePipeData pipeData
+   * @param fileDir path of file data dir
+   */
+  private void handleTsFilePipeData(TsFilePipeData tsFilePipeData, String fileDir) {
+    String tsFileName = tsFilePipeData.getFileName();
+    File dir = new File(fileDir);
+    File[] targetFiles =
+        dir.listFiles((dir1, name) -> name.startsWith(tsFileName) && name.endsWith(PATCH_SUFFIX));
+    // TODO: same name ?
+    if (targetFiles != null) {
+      for (File targetFile : targetFiles) {
+        File newFile =
+            new File(
+                dir,
+                targetFile
+                    .getName()
+                    .substring(0, targetFile.getName().length() - PATCH_SUFFIX.length()));
+        targetFile.renameTo(newFile);
+      }
+    }
+    tsFilePipeData.setSeparator(File.separator);
+    tsFilePipeData.setTsFilePath(dir.getAbsolutePath() + File.separator + tsFileName);
+  }
+
+  private String getFileDataDirPath(IdentityInfo identityInfo) {
+    return SyncPathUtil.getReceiverFileDataDir(
+        identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
+  }
+
+  private String getPipeLogDirPath(IdentityInfo identityInfo) {
+    return SyncPathUtil.getReceiverPipeLogDir(
+        identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
   }
 }

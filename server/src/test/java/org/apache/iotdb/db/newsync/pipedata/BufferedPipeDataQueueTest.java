@@ -104,7 +104,6 @@ public class BufferedPipeDataQueueTest {
   }
 
   /** Try to take data from a new pipe. Expect to wait indefinitely if no data offer. */
-  // TODO: 抛出NPE
   @Test
   public void testTake() {
     BufferedPipeDataQueue pipeDataQueue = new BufferedPipeDataQueue(pipeLogDir.getPath());
