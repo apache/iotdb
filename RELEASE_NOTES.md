@@ -52,6 +52,7 @@
 * [IOTDB-1986] Support select UDF as alisa clauses 
 * [IOTDB-1989] Spark-IoTDB-connector support inserting data
 * [IOTDB-2131] Support previous, linear, constant value fill funtion New fill
+* [IOTDB-2593] Support using IoTDB with JDK17
 * [ISSUE-3811] Provide a data type column for the last query dataset
 * add rabbitmq example
 
@@ -146,6 +147,10 @@
 * [IOTDB-2267] UDF: Error code 500 caused by user logic
 * [IOTDB-2282] fix tag recovery bug after tag upsert
 * [IOTDB-2290] Fix Incorrect query result in C++ client 
+* [IOTDB-2520] Fix `list user privilege root` returns empty 
+* [IOTDB-2544] Fix tag info sync error during metadata sync
+* [IOTDB-2550] Avoid show timeseries error after alter tag on sync sender
+* [IOTDB-2654] Fix Alias doesn't show when using group by level
 * Fix CPP client could not be successfully built on windows
 * Fix dead lock in setDataTTL method
 
