@@ -97,6 +97,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -104,7 +105,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -958,10 +961,12 @@ public class SGMManager {
 
     List<ShowTimeSeriesResult> res = new LinkedList<>();
     PartialPath pathPattern = plan.getPath();
+    boolean needLast = plan.isOrderByHeat();
     int curOffset = -1;
     int count = 0;
-    int limit = plan.getLimit();
-    int offset = plan.getOffset();
+    int limit = needLast ? 0 : plan.getLimit();
+    int offset = needLast ? 0 : plan.getOffset();
+
     for (IMeasurementMNode leaf : allMatchedNodes) {
       if (plan.isPrefixMatch()
           ? pathPattern.matchPrefixPath(leaf.getPartialPath())
@@ -998,6 +1003,31 @@ public class SGMManager {
         }
       }
     }
+
+    Stream<ShowTimeSeriesResult> stream = res.stream();
+
+    limit = plan.getLimit();
+    offset = plan.getOffset();
+
+    if (needLast) {
+      stream =
+          stream.sorted(
+              Comparator.comparingLong(ShowTimeSeriesResult::getLastTime)
+                  .reversed()
+                  .thenComparing(ShowTimeSeriesResult::getName));
+
+      // no limit
+      if (limit != 0) {
+        stream = stream.skip(offset).limit(limit);
+      }
+
+    } else if (limit != 0) {
+      plan.setLimit(limit - res.size());
+      plan.setOffset(Math.max(offset - curOffset - 1, 0));
+    }
+
+    res = stream.collect(toList());
+
     return res;
   }
 
@@ -1008,12 +1038,7 @@ public class SGMManager {
    */
   private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
-    List<Pair<PartialPath, String[]>> ans;
-    if (plan.isOrderByHeat()) {
-      ans = mtree.getAllMeasurementSchemaByHeatOrder(plan, context);
-    } else {
-      ans = mtree.getAllMeasurementSchema(plan);
-    }
+    List<Pair<PartialPath, String[]>> ans = mtree.getAllMeasurementSchema(plan, context);
     List<ShowTimeSeriesResult> res = new LinkedList<>();
     for (Pair<PartialPath, String[]> ansString : ans) {
       long tagFileOffset = Long.parseLong(ansString.right[5]);

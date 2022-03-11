@@ -65,6 +65,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
+import org.apache.iotdb.db.query.dataset.ShowResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.service.metrics.Metric;
@@ -88,6 +89,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -95,7 +97,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -898,10 +902,22 @@ public class MManager {
    */
   public List<ShowDevicesResult> getMatchedDevices(ShowDevicesPlan plan) throws MetadataException {
     List<ShowDevicesResult> result = new LinkedList<>();
+
+    int limit = plan.getLimit();
+    int offset = plan.getOffset();
+
     for (SGMManager sgmManager :
         storageGroupManager.getInvolvedSGMManagers(plan.getPath(), plan.isPrefixMatch())) {
+      if (limit != 0 && plan.getLimit() == 0) {
+        break;
+      }
       result.addAll(sgmManager.getMatchedDevices(plan));
     }
+
+    // reset limit and offset
+    plan.setLimit(limit);
+    plan.setOffset(offset);
+
     return result;
   }
   // endregion
@@ -945,14 +961,27 @@ public class MManager {
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
       throws MetadataException {
     List<MeasurementPath> measurementPaths = new LinkedList<>();
-    int resultOffset = 0;
     Pair<List<MeasurementPath>, Integer> result;
+    int resultOffset = 0;
+
+    int tmpLimit = limit;
+    int tmpOffset = offset;
+
     for (SGMManager sgmManager :
         storageGroupManager.getInvolvedSGMManagers(pathPattern, isPrefixMatch)) {
-      result = sgmManager.getMeasurementPathsWithAlias(pathPattern, limit, offset, isPrefixMatch);
+      if (limit != 0 && tmpLimit == 0) {
+        break;
+      }
+      result =
+          sgmManager.getMeasurementPathsWithAlias(pathPattern, tmpLimit, tmpOffset, isPrefixMatch);
       measurementPaths.addAll(result.left);
       resultOffset += result.right;
+      if (limit != 0) {
+        tmpOffset = Math.max(0, tmpOffset - result.right);
+        tmpLimit -= result.left.size();
+      }
     }
+
     result = new Pair<>(measurementPaths, resultOffset);
     return result;
   }
@@ -960,11 +989,51 @@ public class MManager {
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
     List<ShowTimeSeriesResult> result = new LinkedList<>();
+
+    /*
+     There are two conditions and 4 cases.
+     1. isOrderByHeat = false && limit = 0 : just collect all results from each storage group
+     2. isOrderByHeat = false && limit != 0 : when finish the collection on one sg, the offset and limit should be decreased by the result taken from the current sg
+     3. isOrderByHeat = true && limit = 0 : collect all result from each storage group and then sort
+     4. isOrderByHeat = true && limit != 0 : set the limit' = offset + limit and offset' = 0,
+     which means collect top limit' result from each sg and then sort them and collect the top limit results start from offset.
+     It is ensured that the target result could be extracted from the top limit' results of each sg.
+    */
+
+    int limit = plan.getLimit();
+    int offset = plan.getOffset();
+
+    if (plan.isOrderByHeat() && limit != 0) {
+      plan.setOffset(0);
+      plan.setLimit(offset + limit);
+    }
+
     for (SGMManager sgmManager :
         storageGroupManager.getInvolvedSGMManagers(plan.getPath(), plan.isPrefixMatch())) {
+      if (limit != 0 && plan.getLimit() == 0) {
+        break;
+      }
       result.addAll(sgmManager.showTimeseries(plan, context));
     }
-    return result;
+
+    Stream<ShowTimeSeriesResult> stream = result.stream();
+
+    if (plan.isOrderByHeat()) {
+      stream =
+          stream.sorted(
+              Comparator.comparingLong(ShowTimeSeriesResult::getLastTime)
+                  .reversed()
+                  .thenComparing(ShowResult::getName));
+      if (limit != 0) {
+        stream = stream.skip(offset).limit(limit);
+      }
+    }
+
+    // reset limit and offset with the initial value
+    plan.setLimit(limit);
+    plan.setOffset(offset);
+
+    return stream.collect(toList());
   }
 
   /**

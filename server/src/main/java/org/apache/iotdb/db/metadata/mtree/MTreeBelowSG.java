@@ -639,7 +639,7 @@ public class MTreeBelowSG implements Serializable {
         new EntityCollector<List<ShowDevicesResult>>(
             storageGroupMNode, plan.getPath(), plan.getLimit(), plan.getOffset()) {
           @Override
-          protected void collectEntity(IEntityMNode node) throws MetadataException {
+          protected void collectEntity(IEntityMNode node) {
             PartialPath device = getCurrentPartialPath(node);
             if (plan.hasSgCol()) {
               res.add(
@@ -654,6 +654,12 @@ public class MTreeBelowSG implements Serializable {
         };
     collector.setPrefixMatch(plan.isPrefixMatch());
     collector.traverse();
+
+    if (plan.getLimit() != 0) {
+      plan.setLimit(plan.getLimit() - res.size());
+      plan.setOffset(Math.max(plan.getOffset() - collector.getCurOffset() - 1, 0));
+    }
+
     return res;
   }
 
@@ -728,68 +734,30 @@ public class MTreeBelowSG implements Serializable {
   }
 
   /**
-   * Get all measurement paths matching the given path pattern
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard
-   * @return Pair.left contains all the satisfied paths Pair.right means the current offset or zero
-   *     if we don't set offset.
-   */
-  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset) throws MetadataException {
-    return getMeasurementPathsWithAlias(pathPattern, limit, offset, false);
-  }
-
-  /**
-   * Get all measurement schema matching the given path pattern order by insert frequency
-   *
-   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
-   */
-  public List<Pair<PartialPath, String[]>> getAllMeasurementSchemaByHeatOrder(
-      ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
-    List<Pair<PartialPath, String[]>> allMatchedNodes =
-        collectMeasurementSchema(plan.getPath(), 0, 0, queryContext, true, plan.isPrefixMatch());
-
-    Stream<Pair<PartialPath, String[]>> sortedStream =
-        allMatchedNodes.stream()
-            .sorted(
-                Comparator.comparingLong(
-                        (Pair<PartialPath, String[]> p) -> Long.parseLong(p.right[6]))
-                    .reversed()
-                    .thenComparing((Pair<PartialPath, String[]> p) -> p.left));
-
-    // no limit
-    if (plan.getLimit() == 0) {
-      return sortedStream.collect(toList());
-    } else {
-      return sortedStream.skip(plan.getOffset()).limit(plan.getLimit()).collect(toList());
-    }
-  }
-
-  /**
    * Get all measurement schema matching the given path pattern
    *
    * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
    */
-  public List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan)
-      throws MetadataException {
-    return collectMeasurementSchema(
-        plan.getPath(), plan.getLimit(), plan.getOffset(), null, false, plan.isPrefixMatch());
-  }
+  public List<Pair<PartialPath, String[]>> getAllMeasurementSchema(
+      ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
+    /*
+     There are two conditions and 4 cases.
+     1. isOrderByHeat = false && limit = 0 : just collect all results from each storage group
+     2. isOrderByHeat = false && limit != 0 : the offset and limit should be updated by each sg after traverse, thus the final result will satisfy the constraints of limit and offset
+     3. isOrderByHeat = true && limit = 0 : collect all result from each storage group and then sort
+     4. isOrderByHeat = true && limit != 0 : collect top limit result from each sg and then sort them and collect the top limit results start from offset.
+     The offset must be 0, since each sg should collect top limit results. The current limit is the sum of origin limit and offset when passed into metadata module
+    */
 
-  private List<Pair<PartialPath, String[]>> collectMeasurementSchema(
-      PartialPath pathPattern,
-      int limit,
-      int offset,
-      QueryContext queryContext,
-      boolean needLast,
-      boolean isPrefixMatch)
-      throws MetadataException {
-    List<Pair<PartialPath, String[]>> result = new LinkedList<>();
+    boolean needLast = plan.isOrderByHeat();
+    int limit = needLast ? 0 : plan.getLimit();
+    int offset = needLast ? 0 : plan.getOffset();
+
     MeasurementCollector<List<Pair<PartialPath, String[]>>> collector =
         new MeasurementCollector<List<Pair<PartialPath, String[]>>>(
-            storageGroupMNode, pathPattern, limit, offset) {
+            storageGroupMNode, plan.getPath(), limit, offset) {
           @Override
-          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+          protected void collectMeasurement(IMeasurementMNode node) {
             IMeasurementSchema measurementSchema = node.getSchema();
             String[] tsRow = new String[7];
             tsRow[0] = node.getAlias();
@@ -800,11 +768,39 @@ public class MTreeBelowSG implements Serializable {
             tsRow[5] = String.valueOf(node.getOffset());
             tsRow[6] = needLast ? String.valueOf(getLastTimeStamp(node, queryContext)) : null;
             Pair<PartialPath, String[]> temp = new Pair<>(getCurrentPartialPath(node), tsRow);
-            result.add(temp);
+            resultSet.add(temp);
           }
         };
-    collector.setPrefixMatch(isPrefixMatch);
+    collector.setPrefixMatch(plan.isPrefixMatch());
+    collector.setResultSet(new LinkedList<>());
     collector.traverse();
+
+    List<Pair<PartialPath, String[]>> result = collector.getResult();
+    Stream<Pair<PartialPath, String[]>> stream = result.stream();
+
+    limit = plan.getLimit();
+    offset = plan.getOffset();
+
+    if (needLast) {
+      stream =
+          stream.sorted(
+              Comparator.comparingLong(
+                      (Pair<PartialPath, String[]> p) -> Long.parseLong(p.right[6]))
+                  .reversed()
+                  .thenComparing((Pair<PartialPath, String[]> p) -> p.left));
+
+      // no limit
+      if (limit != 0) {
+        stream = stream.skip(offset).limit(limit);
+      }
+
+    } else if (limit != 0) {
+      plan.setLimit(limit - result.size());
+      plan.setOffset(Math.max(offset - collector.getCurOffset() - 1, 0));
+    }
+
+    result = stream.collect(toList());
+
     return result;
   }
 
