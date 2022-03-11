@@ -451,8 +451,7 @@ public class TransportClient implements ITransportClient, Runnable {
     //     TsFilePipeData.Type.PHYSICALPLAN.name();
   }
 
-  @TestOnly
-  public void stop() {
+  public void close() {
     transport.close();
   }
 

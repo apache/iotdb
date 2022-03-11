@@ -74,7 +74,6 @@ public class TransportServiceTest {
   public void tearDown() throws Exception {
     FileUtils.deleteDirectory(tmpDir);
     EnvironmentUtils.cleanEnv();
-    //    TransportServerManager.getInstance().stopService();
   }
 
   @Test
@@ -124,6 +123,8 @@ public class TransportServiceTest {
 
     // 5. check file
     Thread.sleep(1000);
+    client.close();
+    TransportServerManager.getInstance().stopService();
     File[] targetFiles = fileDir.listFiles((dir1, name) -> name.equals(tsfile.getName()));
     Assert.assertNotNull(targetFiles);
     Assert.assertEquals(1, targetFiles.length);
@@ -165,7 +166,6 @@ public class TransportServiceTest {
     for (int i = 0; i < resPipeData.size(); i++) {
       Assert.assertEquals(pipeDataList.get(i), resPipeData.get(i));
     }
-    //    client.stop();
   }
 
   private void compareFile(File firFile, File secFile) {
