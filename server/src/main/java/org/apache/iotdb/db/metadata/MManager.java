@@ -1632,10 +1632,11 @@ public class MManager {
 
   public synchronized void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
     PartialPath path = new PartialPath(plan.getPrefixPath());
-    ensureStorageGroup(path);
-    List<SGMManager> sgmManagers = storageGroupManager.getInvolvedSGMManagers(path, true);
-    for (SGMManager sgmManager : sgmManagers) {
-      sgmManager.setSchemaTemplate(plan);
+    try {
+      ensureStorageGroup(path);
+      storageGroupManager.getBelongedSGMManager(path).setSchemaTemplate(plan);
+    } catch (StorageGroupAlreadySetException e) {
+      throw new MetadataException("Template should not be set above storageGroup");
     }
   }
 

@@ -132,7 +132,6 @@ import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTim
 public class MTreeBelowSG implements Serializable {
 
   public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-  private static final long serialVersionUID = -4200394435237291964L;
   private static final Logger logger = LoggerFactory.getLogger(MTreeBelowSG.class);
 
   private IStorageGroupMNode storageGroupMNode;
@@ -173,6 +172,7 @@ public class MTreeBelowSG implements Serializable {
       IStorageGroupMNode recoveredTree =
           deserializeFrom(mtreeSnapshot, storageGroupMNode.getFullPath());
       if (recoveredTree != null) {
+        this.storageGroupMNode.getParent().replaceChild(storageGroupMNode.getName(), recoveredTree);
         this.storageGroupMNode = recoveredTree;
         logger.debug(
             "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);

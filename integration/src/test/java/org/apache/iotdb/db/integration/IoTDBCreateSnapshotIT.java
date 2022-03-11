@@ -35,6 +35,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -70,54 +71,9 @@ public class IoTDBCreateSnapshotIT {
 
       // create snapshot
       statement.execute("CREATE SNAPSHOT FOR SCHEMA");
-      File snapshotFile = new File(config.getSchemaDir() + File.separator + "mtree-1.snapshot.bin");
 
-      // test snapshot file exists
-      Assert.assertTrue(snapshotFile.exists());
-
-      // test snapshot content correct
-      String[] exp =
-          new String[] {
-            "2,s0,,1,2,1,,-1,0",
-            "2,s1,,2,2,1,,-1,0",
-            "2,s2,,3,2,1,,-1,0",
-            "2,s3,,5,0,1,,-1,0",
-            "2,s4,,0,0,1,,-1,0",
-            "1,d0,9223372036854775807,5",
-            "2,s0,,1,2,1,,-1,0",
-            "2,s1,,5,0,1,,-1,0",
-            "2,s2,,0,0,1,,-1,0",
-            "1,d1,9223372036854775807,3",
-            "0,vehicle,2",
-            "0,root,1"
-          };
-
-      Set<PhysicalPlan> d0Plans = new HashSet<>(6);
-      for (int i = 0; i < 6; i++) {
-        d0Plans.add(MLogWriter.convertFromString(exp[i]));
-      }
-
-      Set<PhysicalPlan> d1Plans = new HashSet<>(6);
-      for (int i = 0; i < 6; i++) {
-        d1Plans.add(MLogWriter.convertFromString(exp[i + 6]));
-      }
-
-      try (MLogReader mLogReader = new MLogReader(snapshotFile)) {
-        int i = 0;
-        while (i < 6 && mLogReader.hasNext()) {
-          PhysicalPlan plan = mLogReader.next();
-          assertTrue(d0Plans.removeIf(candidate -> candidate.equals(plan)));
-          i++;
-        }
-        assertTrue(d0Plans.isEmpty());
-
-        while (i < 12 && mLogReader.hasNext()) {
-          PhysicalPlan plan = mLogReader.next();
-          assertTrue(d1Plans.removeIf(candidate -> candidate.equals(plan)));
-          i++;
-        }
-        assertTrue(d1Plans.isEmpty());
-      }
+      checkSGD0Snapshot();
+      checkSGD1Snapshot();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -136,6 +92,83 @@ public class IoTDBCreateSnapshotIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  private void checkSGD0Snapshot() throws IOException {
+    File snapshotFile =
+        new File(
+            config.getSchemaDir()
+                + File.separator
+                + "root.vehicle.d0"
+                + File.separator
+                + "mtree-1.snapshot.bin");
+
+    // test snapshot file exists
+    Assert.assertTrue(snapshotFile.exists());
+
+    // test snapshot content correct
+    String[] exp =
+        new String[] {
+          "2,s0,,1,2,1,,-1,0",
+          "2,s1,,2,2,1,,-1,0",
+          "2,s2,,3,2,1,,-1,0",
+          "2,s3,,5,0,1,,-1,0",
+          "2,s4,,0,0,1,,-1,0",
+          "1,d0,9223372036854775807,5",
+        };
+
+    Set<PhysicalPlan> d0Plans = new HashSet<>(6);
+    for (int i = 0; i < 6; i++) {
+      d0Plans.add(MLogWriter.convertFromString(exp[i]));
+    }
+
+    try (MLogReader mLogReader = new MLogReader(snapshotFile)) {
+      int i = 0;
+      while (i < 6 && mLogReader.hasNext()) {
+        PhysicalPlan plan = mLogReader.next();
+        assertTrue(d0Plans.removeIf(candidate -> candidate.equals(plan)));
+        i++;
+      }
+      assertTrue(d0Plans.isEmpty());
+    }
+  }
+
+  private void checkSGD1Snapshot() throws IOException {
+    File snapshotFile =
+        new File(
+            config.getSchemaDir()
+                + File.separator
+                + "root.vehicle.d1"
+                + File.separator
+                + "mtree-1.snapshot.bin");
+
+    // test snapshot file exists
+    Assert.assertTrue(snapshotFile.exists());
+
+    // test snapshot content correct
+    String[] exp =
+        new String[] {
+          "2,s0,,1,2,1,,-1,0",
+          "2,s1,,5,0,1,,-1,0",
+          "2,s2,,0,0,1,,-1,0",
+          "1,d1,9223372036854775807,3",
+        };
+
+    Set<PhysicalPlan> d1Plans = new HashSet<>(4);
+    for (int i = 0; i < 4; i++) {
+      d1Plans.add(MLogWriter.convertFromString(exp[i]));
+    }
+
+    try (MLogReader mLogReader = new MLogReader(snapshotFile)) {
+      int i = 0;
+
+      while (i < 4 && mLogReader.hasNext()) {
+        PhysicalPlan plan = mLogReader.next();
+        assertTrue(d1Plans.removeIf(candidate -> candidate.equals(plan)));
+        i++;
+      }
+      assertTrue(d1Plans.isEmpty());
     }
   }
 
