@@ -68,37 +68,9 @@ public class QueryDataSetUtils {
     for (int i = 0; i < fetchSize; i++) {
       if (queryDataSet.hasNext()) {
         RowRecord rowRecord = queryDataSet.next();
-        boolean
-            anyNullFlag =
-                (withoutNullColumnsIndex == null)
-                    ? rowRecord.hasNullField()
-                    : (withoutNullColumnsIndex.isEmpty() && rowRecord.hasNullField()),
-            allNullFlag = (withoutNullColumnsIndex != null) || rowRecord.isAllNull();
-
-        if (withoutNullColumnsIndex != null) {
-          for (int index : withoutNullColumnsIndex) {
-            Field field = rowRecord.getFields().get(index);
-            if (field == null || field.getDataType() == null) {
-              anyNullFlag = true;
-              if (queryDataSet.isWithoutAnyNull()) {
-                break;
-              }
-            } else {
-              allNullFlag = false;
-              if (queryDataSet.isWithoutAllNull()) {
-                break;
-              }
-            }
-          }
-        }
-
-        if (withoutNullColumnsIndex != null && withoutNullColumnsIndex.isEmpty()) {
-          allNullFlag = rowRecord.isAllNull();
-        }
-
         // filter rows whose columns are null according to the rule
-        if ((queryDataSet.isWithoutAllNull() && allNullFlag)
-            || (queryDataSet.isWithoutAnyNull() && anyNullFlag)) {
+        if (queryDataSet.withoutNullFilter(
+            rowRecord, queryDataSet.isWithoutAllNull(), queryDataSet.isWithoutAnyNull())) {
           // if the current RowRecord doesn't satisfy, we should also decrease
           // AlreadyReturnedRowNum
           queryDataSet.decreaseAlreadyReturnedRowNum();

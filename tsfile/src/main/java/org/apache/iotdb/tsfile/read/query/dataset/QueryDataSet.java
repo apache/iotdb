@@ -125,39 +125,10 @@ public abstract class QueryDataSet {
     while (rowOffset > 0) {
       if (hasNextWithoutConstraint()) {
         RowRecord rowRecord = nextWithoutConstraint(); // DO NOT use next()
-        boolean
-            anyNullFlag =
-                (withoutNullColumnsIndex == null)
-                    ? rowRecord.hasNullField()
-                    : (withoutNullColumnsIndex.isEmpty() && rowRecord.hasNullField()),
-            allNullFlag = (withoutNullColumnsIndex != null) || rowRecord.isAllNull();
-
-        if (withoutNullColumnsIndex != null) {
-          for (int index : withoutNullColumnsIndex) {
-            Field field = rowRecord.getFields().get(index);
-            if (field == null || field.getDataType() == null) {
-              anyNullFlag = true;
-              if (withoutAnyNull) {
-                break;
-              }
-            } else {
-              allNullFlag = false;
-              if (withoutAllNull) {
-                break;
-              }
-            }
-          }
-        }
-
-        if (withoutNullColumnsIndex != null && withoutNullColumnsIndex.isEmpty()) {
-          allNullFlag = rowRecord.isAllNull();
-        }
-
         // filter rows whose columns are null according to the rule
-        if ((withoutAllNull && allNullFlag) || (withoutAnyNull && anyNullFlag)) {
+        if (withoutNullFilter(rowRecord, withoutAllNull, withoutAnyNull)) {
           continue;
         }
-
         rowOffset--;
       } else {
         return false;
@@ -170,6 +141,46 @@ public abstract class QueryDataSet {
     }
 
     return hasNextWithoutConstraint();
+  }
+
+  /**
+   * check rowRecord whether satisfy without null condition
+   *
+   * @param rowRecord rowRecord
+   * @param withoutAllNull true is `without all` clause, false not
+   * @param withoutAnyNull true is `without any` clause, false not
+   * @return true satisfy false don't satisfy
+   */
+  public boolean withoutNullFilter(
+      RowRecord rowRecord, boolean withoutAllNull, boolean withoutAnyNull) {
+    boolean
+        anyNullFlag =
+            (withoutNullColumnsIndex == null)
+                ? rowRecord.hasNullField()
+                : (withoutNullColumnsIndex.isEmpty() && rowRecord.hasNullField()),
+        allNullFlag = (withoutNullColumnsIndex != null) || rowRecord.isAllNull();
+
+    if (withoutNullColumnsIndex != null) {
+      for (int index : withoutNullColumnsIndex) {
+        Field field = rowRecord.getFields().get(index);
+        if (field == null || field.getDataType() == null) {
+          anyNullFlag = true;
+          if (withoutAnyNull) {
+            break;
+          }
+        } else {
+          allNullFlag = false;
+          if (withoutAllNull) {
+            break;
+          }
+        }
+      }
+    }
+
+    if (withoutNullColumnsIndex != null && withoutNullColumnsIndex.isEmpty()) {
+      allNullFlag = rowRecord.isAllNull();
+    }
+    return (withoutAllNull && allNullFlag) || (withoutAnyNull && anyNullFlag);
   }
 
   public abstract boolean hasNextWithoutConstraint() throws IOException;
