@@ -74,10 +74,14 @@ public class AlignByDevicePlan extends QueryPlan {
     super();
   }
 
-  public void calcWithoutNullColumnIndex(List<Expression> withoutNullColumns) {
+  public void calcWithoutNullColumnIndex(List<Expression> withoutNullColumns)
+      throws QueryProcessException {
     // record specified without null columns, include alias
     Set<String> withoutNullColumnSet = new HashSet<>();
     for (Expression expression : withoutNullColumns) {
+      if (!isValidWithoutNullColumn(expression.getExpressionString())) {
+        throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
+      }
       withoutNullColumnSet.add(expression.getExpressionString());
     }
 

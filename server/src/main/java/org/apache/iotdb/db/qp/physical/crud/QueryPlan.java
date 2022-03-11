@@ -47,7 +47,7 @@ import java.util.Set;
 public abstract class QueryPlan extends PhysicalPlan {
 
   public static final String WITHOUT_NULL_FILTER_ERROR_MESSAGE =
-      "The without null columns don't match the columns queried.If has alias, please use the alias.";
+      "The without null columns don't match the columns queried. If there is an alias, please use the alias.";
 
   protected List<ResultColumn> resultColumns = null;
   protected List<MeasurementPath> paths = null;

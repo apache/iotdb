@@ -126,7 +126,7 @@ public abstract class QueryDataSet {
       if (hasNextWithoutConstraint()) {
         RowRecord rowRecord = nextWithoutConstraint(); // DO NOT use next()
         // filter rows whose columns are null according to the rule
-        if (withoutNullFilter(rowRecord, withoutAllNull, withoutAnyNull)) {
+        if (withoutNullFilter(rowRecord)) {
           continue;
         }
         rowOffset--;
@@ -147,12 +147,9 @@ public abstract class QueryDataSet {
    * check rowRecord whether satisfy without null condition
    *
    * @param rowRecord rowRecord
-   * @param withoutNullAll true is `without all` clause, false not
-   * @param withoutNullAny true is `without any` clause, false not
    * @return true satisfy false don't satisfy
    */
-  public boolean withoutNullFilter(
-      RowRecord rowRecord, boolean withoutNullAll, boolean withoutNullAny) {
+  public boolean withoutNullFilter(RowRecord rowRecord) {
     boolean
         anyNullFlag =
             (withoutNullColumnsIndex == null)
@@ -165,12 +162,12 @@ public abstract class QueryDataSet {
         Field field = rowRecord.getFields().get(index);
         if (field == null || field.getDataType() == null) {
           anyNullFlag = true;
-          if (withoutNullAny) {
+          if (withoutAnyNull) {
             break;
           }
         } else {
           allNullFlag = false;
-          if (withoutNullAll) {
+          if (withoutAllNull) {
             break;
           }
         }
@@ -180,7 +177,7 @@ public abstract class QueryDataSet {
     if (withoutNullColumnsIndex != null && withoutNullColumnsIndex.isEmpty()) {
       allNullFlag = rowRecord.isAllNull();
     }
-    return (withoutNullAll && allNullFlag) || (withoutNullAny && anyNullFlag);
+    return (withoutAllNull && allNullFlag) || (withoutAnyNull && anyNullFlag);
   }
 
   public abstract boolean hasNextWithoutConstraint() throws IOException;

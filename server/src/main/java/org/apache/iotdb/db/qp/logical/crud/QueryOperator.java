@@ -347,13 +347,12 @@ public class QueryOperator extends Operator {
     alignByDevicePlan.setEnableTracing(enableTracing);
 
     alignByDevicePlan.deduplicate(generator);
-
-    // fill withoutNullValidSet of AlignByDevicePlan in alignByDevicePlan.deduplicate(generator)
-    // then do this check whether all without null columns exist in withoutNullValidSet.
-    checkWithoutNullColumnValid(alignByDevicePlan);
     if (specialClauseComponent != null) {
       alignByDevicePlan.calcWithoutNullColumnIndex(specialClauseComponent.withoutNullColumns);
     }
+    // because alignByDevicePlan's `withoutNullValidSet` won't be used,
+    // make withoutNullValidSet is null, friendly for gc
+    alignByDevicePlan.closeWithoutNullValidSet();
 
     if (whereComponent != null) {
       alignByDevicePlan.setDeviceToFilterMap(
@@ -361,21 +360,6 @@ public class QueryOperator extends Operator {
     }
 
     return alignByDevicePlan;
-  }
-
-  private void checkWithoutNullColumnValid(AlignByDevicePlan alignByDevicePlan)
-      throws QueryProcessException {
-    if (specialClauseComponent != null) {
-      // meta consistence check
-      for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
-        if (!alignByDevicePlan.isValidWithoutNullColumn(expression.getExpressionString())) {
-          throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
-        }
-      }
-    }
-    // because alignByDevicePlan's `withoutNullValidSet` won't be used,
-    // make withoutNullValidSet is null, friendly for gc
-    alignByDevicePlan.closeWithoutNullValidSet();
   }
 
   private void checkDataTypeConsistency(TSDataType checkedDataType, MeasurementInfo measurementInfo)
