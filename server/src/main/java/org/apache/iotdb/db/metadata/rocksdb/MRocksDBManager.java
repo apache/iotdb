@@ -118,7 +118,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -1116,84 +1115,6 @@ public class MRocksDBManager implements IMetaManager {
     return index;
   }
 
-  private Map<String, byte[]> getKeyNumByPrefix(
-      PartialPath pathPattern, char nodeType, boolean isPrefixMatch) {
-    Map<String, byte[]> result = new ConcurrentHashMap<>();
-    Set<String> seeds = new HashSet<>();
-
-    String seedPath;
-
-    int nonWildcardAvailablePosition =
-        pathPattern.getFullPath().indexOf(ONE_LEVEL_PATH_WILDCARD) - 1;
-    if (nonWildcardAvailablePosition < 0) {
-      seedPath = RocksDBUtils.getLevelPath(pathPattern.getNodes(), pathPattern.getNodeLength() - 1);
-    } else {
-      seedPath = pathPattern.getFullPath().substring(0, nonWildcardAvailablePosition);
-    }
-
-    seeds.add(new String(RocksDBUtils.toRocksDBKey(seedPath, nodeType)));
-
-    scanAllKeysRecursively(
-        seeds,
-        0,
-        s -> {
-          try {
-            byte[] value = readWriteHandler.get(null, s.getBytes());
-            if (value != null && value.length > 0 && s.charAt(0) == nodeType) {
-              if (!isPrefixMatch || isMatched(pathPattern, s)) {
-                result.put(s, value);
-                return false;
-              }
-            }
-          } catch (RocksDBException e) {
-            return false;
-          }
-          return true;
-        },
-        isPrefixMatch);
-    return result;
-  }
-
-  // eg. pathPatter:root.a.b     prefixedKey=sroot.2a.2bbb
-  private boolean isMatched(PartialPath pathPattern, String prefixedKey) {
-    // path = root.a.bbb
-    String path = RocksDBUtils.getPathByInnerName(prefixedKey);
-    if (path.length() <= pathPattern.getFullPath().length()) {
-      return true;
-    } else {
-      String fullPath = pathPattern.getFullPath() + RockDBConstants.PATH_SEPARATOR;
-      return path.startsWith(fullPath);
-    }
-  }
-
-  private void scanAllKeysRecursively(
-      Set<String> seeds, int level, Function<String, Boolean> op, boolean isPrefixMatch) {
-    if (seeds == null || seeds.isEmpty()) {
-      return;
-    }
-    Set<String> children = ConcurrentHashMap.newKeySet();
-    seeds
-        .parallelStream()
-        .forEach(
-            x -> {
-              if (op.apply(x)) {
-                if (isPrefixMatch) {
-                  for (int i = level; i < MAX_PATH_DEPTH; i++) {
-                    // x is not leaf node
-                    String nextLevel = RocksDBUtils.getNextLevelOfPath(x, i);
-                    children.addAll(readWriteHandler.getAllByPrefix(nextLevel));
-                  }
-                } else {
-                  String nextLevel = RocksDBUtils.getNextLevelOfPath(x, level);
-                  children.addAll(readWriteHandler.getAllByPrefix(nextLevel));
-                }
-              }
-            });
-    if (!children.isEmpty()) {
-      scanAllKeysRecursively(children, level + 1, op, isPrefixMatch);
-    }
-  }
-
   @Override
   public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
     return getAllTimeseriesCount(pathPattern, false);
@@ -1550,21 +1471,6 @@ public class MRocksDBManager implements IMetaManager {
     return allPath;
   }
 
-  private Set<PartialPath> getMatchedPathWithNodeType(
-      boolean isPrefixMatch, PartialPath pathPattern, char nodeType) throws MetadataException {
-    Set<PartialPath> result = new HashSet<>();
-    Map<String, byte[]> allMeasurement = getKeyNumByPrefix(pathPattern, nodeType, isPrefixMatch);
-    for (Entry<String, byte[]> entry : allMeasurement.entrySet()) {
-      try {
-        PartialPath path = new PartialPath(RocksDBUtils.getPathByInnerName(entry.getKey()));
-        result.add(path);
-      } catch (ClassCastException | IllegalPathException e) {
-        throw new MetadataException(e);
-      }
-    }
-    return result;
-  }
-
   /**
    * Get all device paths and according storage group paths as ShowDevicesResult.
    *
@@ -1767,10 +1673,10 @@ public class MRocksDBManager implements IMetaManager {
           RocksDBUtils.getLevelPath(fullPath.getNodes(), fullPath.getNodeLength() - 1);
       Holder<byte[]> holder = new Holder<>();
       if (readWriteHandler.keyExistByType(levelKey, RocksDBMNodeType.MEASUREMENT, holder)) {
-        IMeasurementSchema schema =
+        MeasurementSchema measurementSchema =
             (MeasurementSchema)
-                RocksDBUtils.parseNodeValue(holder.getValue(), DATA_BLOCK_TYPE_SCHEMA);
-        return schema;
+                RocksDBUtils.parseNodeValue(holder.getValue(), RMNodeValueType.SCHEMA);
+        return measurementSchema;
       } else {
         throw new PathNotExistException(fullPath.getFullPath());
       }
@@ -1796,26 +1702,8 @@ public class MRocksDBManager implements IMetaManager {
         throw new PathNotExistException(e.getMessage());
       }
       MeasurementSchema measurementSchema =
-          (MeasurementSchema) RocksDBUtils.parseNodeValue(entry.getValue(), FLAG_IS_SCHEMA);
+          (MeasurementSchema) RocksDBUtils.parseNodeValue(entry.getValue(), RMNodeValueType.SCHEMA);
       result.add(new MeasurementPath(pathName, measurementSchema));
-    }
-    return result;
-  }
-
-  @Override
-  public Map<PartialPath, IMeasurementSchema> getAllMeasurementSchemaByPrefix(
-      PartialPath prefixPath) throws MetadataException {
-    Map<PartialPath, IMeasurementSchema> result = new HashMap<>();
-    Map<String, byte[]> allMeasurement = getKeyNumByPrefix(prefixPath, NODE_TYPE_MEASUREMENT, true);
-    for (Entry<String, byte[]> entry : allMeasurement.entrySet()) {
-      try {
-        MeasurementSchema schema =
-            (MeasurementSchema) RocksDBUtils.parseNodeValue(entry.getValue(), FLAG_IS_SCHEMA);
-        PartialPath path = new PartialPath(RocksDBUtils.getPathByInnerName(entry.getKey()));
-        result.put(path, schema);
-      } catch (ClassCastException e) {
-        throw new MetadataException(e);
-      }
     }
     return result;
   }
@@ -1842,13 +1730,9 @@ public class MRocksDBManager implements IMetaManager {
         String levelPath = RocksDBUtils.getLevelPath(nodes, i);
         Holder<byte[]> holder = new Holder<>();
         if (readWriteHandler.keyExistByType(levelPath, RocksDBMNodeType.STORAGE_GROUP, holder)) {
-          Object ttl = RocksDBUtils.parseNodeValue(holder.getValue(), RockDBConstants.FLAG_SET_TTL);
-          if (ttl == null) {
-            ttl = config.getDefaultTTL();
-          }
           node =
               new RStorageGroupMNode(
-                  MetaUtils.getStorageGroupPathByLevel(path, i).getFullPath(), (Long) ttl);
+                  MetaUtils.getStorageGroupPathByLevel(path, i).getFullPath(), holder.getValue());
           break;
         }
       }
@@ -1873,13 +1757,9 @@ public class MRocksDBManager implements IMetaManager {
       if (iterator.key()[0] != NODE_TYPE_SG) {
         break;
       }
-      Object ttl = RocksDBUtils.parseNodeValue(iterator.value(), FLAG_SET_TTL);
-      if (ttl == null) {
-        ttl = config.getDefaultTTL();
-      }
       result.add(
           new RStorageGroupMNode(
-              RocksDBUtils.getPathByInnerName(new String(iterator.key())), (Long) ttl));
+              RocksDBUtils.getPathByInnerName(new String(iterator.key())), iterator.value()));
     }
     return result;
   }
