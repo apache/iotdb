@@ -69,7 +69,8 @@ public class TsFilePipeData extends PipeData {
   }
 
   public String getFileName() {
-    String[] paths = tsFilePath.split(separator);
+    String sep = separator.equals("/") ? separator : "\\\\";
+    String[] paths = tsFilePath.split(sep);
     return paths[paths.length - 1];
   }
 
