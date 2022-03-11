@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
@@ -1421,10 +1422,44 @@ public class MManager {
   }
 
   public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
+    if (templateManager.getTemplate(plan.getName()) == null) {
+      throw new MetadataException(String.format("Template [%s] does not exist.", plan.getName()));
+    }
+
+    boolean isTemplateAppendable = true;
+
+    Template template = templateManager.getTemplate(plan.getName());
+
+    for (PartialPath path : template.getRelatedStorageGroup()) {
+      if (!storageGroupManager
+          .getBelongedSGMManager(path)
+          .isTemplateAppendable(template, plan.getMeasurements())) {
+        isTemplateAppendable = false;
+        break;
+      }
+    }
+
+    if (!isTemplateAppendable) {
+      throw new MetadataException(
+          String.format(
+              "Template [%s] cannot be appended for overlapping of new measurement and MTree",
+              plan.getName()));
+    }
+
     templateManager.appendSchemaTemplate(plan);
   }
 
   public void pruneSchemaTemplate(PruneTemplatePlan plan) throws MetadataException {
+    if (templateManager.getTemplate(plan.getName()) == null) {
+      throw new MetadataException(String.format("Template [%s] does not exist.", plan.getName()));
+    }
+
+    if (templateManager.getTemplate(plan.getName()).getRelatedStorageGroup().size() > 0) {
+      throw new MetadataException(
+          String.format(
+              "Template [%s] cannot be pruned since had been set before.", plan.getName()));
+    }
+
     templateManager.pruneSchemaTemplate(plan);
   }
 
@@ -1479,18 +1514,34 @@ public class MManager {
    * @return paths set
    */
   public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
-    Set<String> result = new TreeSet<>();
-    for (SGMManager sgmManager : storageGroupManager.getAllSGMManagers()) {
-      result.addAll(sgmManager.getPathsSetTemplate(templateName));
+    Set<String> result = new HashSet<>();
+    if (templateName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+      for (SGMManager sgmManager : storageGroupManager.getAllSGMManagers()) {
+        result.addAll(sgmManager.getPathsSetTemplate(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
+      }
+    } else {
+      for (PartialPath path : templateManager.getTemplate(templateName).getRelatedStorageGroup()) {
+        result.addAll(
+            storageGroupManager.getBelongedSGMManager(path).getPathsSetTemplate(templateName));
+      }
     }
+
     return result;
   }
 
   public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
-    Set<String> result = new TreeSet<>();
-    for (SGMManager sgmManager : storageGroupManager.getAllSGMManagers()) {
-      result.addAll(sgmManager.getPathsUsingTemplate(templateName));
+    Set<String> result = new HashSet<>();
+    if (templateName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+      for (SGMManager sgmManager : storageGroupManager.getAllSGMManagers()) {
+        result.addAll(sgmManager.getPathsUsingTemplate(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
+      }
+    } else {
+      for (PartialPath path : templateManager.getTemplate(templateName).getRelatedStorageGroup()) {
+        result.addAll(
+            storageGroupManager.getBelongedSGMManager(path).getPathsUsingTemplate(templateName));
+      }
     }
+
     return result;
   }
 
@@ -1501,12 +1552,10 @@ public class MManager {
       throw new UndefinedTemplateException(templateName);
     }
 
-    for (SGMManager sgmManager : storageGroupManager.getAllSGMManagers()) {
-      if (sgmManager.isTemplateSet(templateName)) {
-        throw new MetadataException(
-            String.format(
-                "Template [%s] has been set on MTree, cannot be dropped now.", templateName));
-      }
+    if (templateManager.getTemplate(plan.getName()).getRelatedStorageGroup().size() > 0) {
+      throw new MetadataException(
+          String.format(
+              "Template [%s] has been set on MTree, cannot be dropped now.", templateName));
     }
 
     templateManager.dropSchemaTemplate(plan);

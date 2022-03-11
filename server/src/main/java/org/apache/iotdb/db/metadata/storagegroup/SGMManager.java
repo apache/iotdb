@@ -1606,8 +1606,9 @@ public class SGMManager {
     return new HashSet<>(mtree.getPathsUsingTemplate(templateName));
   }
 
-  public boolean isTemplateSet(String templateName) throws MetadataException {
-    return mtree.isTemplateSetOnMTree(templateName);
+  public boolean isTemplateAppendable(Template template, List<String> measurements)
+      throws MetadataException {
+    return mtree.isTemplateAppendable(template, measurements);
   }
 
   public synchronized void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
@@ -1624,6 +1625,8 @@ public class SGMManager {
       TemplateManager.getInstance().checkTemplateCompatible(template, node);
 
       node.setSchemaTemplate(template);
+
+      template.markStorageGroup(node);
 
       // write wal
       if (!isRecovering) {
@@ -1648,6 +1651,7 @@ public class SGMManager {
       }
       mtree.checkTemplateInUseOnLowerNode(node);
       node.setSchemaTemplate(null);
+      TemplateManager.getInstance().getTemplate(plan.getTemplateName()).unmarkStorageGroup(node);
       // write wal
       if (!isRecovering) {
         logWriter.unsetSchemaTemplate(plan);

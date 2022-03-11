@@ -54,6 +54,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -1185,6 +1186,44 @@ public class MTreeBelowSG implements Serializable {
   }
 
   /**
+   * Check that each node set with tarTemplate and its descendants have overlapping nodes with
+   * appending measurements
+   */
+  public boolean isTemplateAppendable(Template tarTemplate, List<String> appendMeasurements)
+      throws MetadataException {
+    List<String> setPaths = getPathsSetOnTemplate(tarTemplate.getName());
+    if (setPaths.size() == 0) {
+      return true;
+    }
+    Deque<IMNode> setNodes = new ArrayDeque<>();
+    for (String path : setPaths) {
+      setNodes.add(getNodeByPath(new PartialPath(path)));
+    }
+
+    // since overlap of template and MTree is not allowed, it is sufficient to check on the first
+    // node
+    Set<String> overlapSet = new HashSet<>();
+    for (String path : appendMeasurements) {
+      overlapSet.add(MetaUtils.splitPathToDetachedPath(path)[0]);
+    }
+
+    while (setNodes.size() != 0) {
+      IMNode cur = setNodes.pop();
+      if (cur.getChildren().size() != 0) {
+        for (IMNode child : cur.getChildren().values()) {
+          if (overlapSet.contains(child.getName())) {
+            return false;
+          }
+          if (!child.isMeasurement()) {
+            setNodes.push(child);
+          }
+        }
+      }
+    }
+    return true;
+  }
+
+  /**
    * Note that template and MTree cannot have overlap paths.
    *
    * @return true iff path corresponding to a measurement inside a template, whether using or not.
@@ -1287,9 +1326,9 @@ public class MTreeBelowSG implements Serializable {
             }
 
             // if node not set template, go on traversing
-            if (node.getUpperTemplate() != null) {
+            if (node.getSchemaTemplate() != null) {
               // if set template, and equals to target or target for all, add to result
-              if (templateName.equals("")
+              if (templateName.equals(ONE_LEVEL_PATH_WILDCARD)
                   || templateName.equals(node.getUpperTemplate().getName())) {
                 resSet.add(node.getFullPath());
               }
@@ -1325,7 +1364,7 @@ public class MTreeBelowSG implements Serializable {
 
             if (node.getUpperTemplate() != null) {
               // this node and its descendants are set other template, exit from this branch
-              if (!templateName.equals("")
+              if (!templateName.equals(ONE_LEVEL_PATH_WILDCARD)
                   && !templateName.equals(node.getUpperTemplate().getName())) {
                 return true;
               }
@@ -1341,29 +1380,6 @@ public class MTreeBelowSG implements Serializable {
 
     usingTemplatePaths.traverse();
     return result;
-  }
-
-  public boolean isTemplateSetOnMTree(String templateName) {
-    // check whether template has been set
-    Deque<IMNode> nodeStack = new ArrayDeque<>();
-    nodeStack.push(storageGroupMNode);
-
-    // DFT traverse on MTree
-    while (nodeStack.size() != 0) {
-      IMNode curNode = nodeStack.pop();
-      if (curNode.getUpperTemplate() != null) {
-        if (curNode.getUpperTemplate().getName().equals(templateName)) {
-          return true;
-        }
-        // curNode set to other templates, cut this branch
-      }
-
-      // no template on curNode, push children to stack
-      for (IMNode child : curNode.getChildren().values()) {
-        nodeStack.push(child);
-      }
-    }
-    return false;
   }
 
   /**
