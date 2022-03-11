@@ -363,7 +363,7 @@ public class MRocksDBManager implements IMetaManager {
     // sg check and create
     String[] nodes = path.getNodes();
     SchemaUtils.checkDataTypeWithEncoding(schema.getType(), schema.getEncodingType());
-    int sgIndex = ensureStorageGroup(path, path.getNodeLength() - 1);
+    int sgIndex = ensureStorageGroup(path);
 
     try {
       createTimeSeriesRecursively(
@@ -535,7 +535,7 @@ public class MRocksDBManager implements IMetaManager {
       MetaFormatUtils.checkNodeName(measurements.get(i));
     }
 
-    int sgIndex = ensureStorageGroup(prefixPath, prefixPath.getNodeLength() - 1);
+    int sgIndex = ensureStorageGroup(prefixPath);
 
     try {
       createEntityRecursively(
@@ -610,6 +610,13 @@ public class MRocksDBManager implements IMetaManager {
           }
         } else {
           if (start == nodes.length) {
+
+            // make sure sg node and entity node are different
+            // eg.,'root.a' is a storage group path, 'root.a.b' can not be a timeseries
+            if (checkResult.getResult(RocksDBMNodeType.STORAGE_GROUP)) {
+              throw new MetadataException("Storage Group Node and Entity Node could not be same!");
+            }
+
             if (!checkResult.getResult(RocksDBMNodeType.ENTITY)) {
               throw new PathAlreadyExistException("Node already exists but not entity");
             }
@@ -765,7 +772,7 @@ public class MRocksDBManager implements IMetaManager {
 
   // region Interfaces and Implementation for StorageGroup and TTL operation
   // including sg set and delete, and ttl set
-  private int ensureStorageGroup(PartialPath path, int entityIndex) throws MetadataException {
+  private int ensureStorageGroup(PartialPath path) throws MetadataException {
     int sgIndex = -1;
     String[] nodes = path.getNodes();
     try {
@@ -776,9 +783,6 @@ public class MRocksDBManager implements IMetaManager {
         }
         PartialPath sgPath =
             MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
-        if ((entityIndex - sgPath.getNodeLength()) < 1) {
-          throw new MetadataException("Storage Group Node and Entity Node could not be same!");
-        }
         setStorageGroup(sgPath);
         sgIndex = sgPath.getNodeLength() - 1;
       }
@@ -790,12 +794,6 @@ public class MRocksDBManager implements IMetaManager {
     } catch (RocksDBException e) {
       throw new MetadataException(e);
     }
-
-    // make sure sg node and entity node are different
-    if ((entityIndex - sgIndex) < 1) {
-      throw new MetadataException("Storage Group Node and Entity Node could not be same!");
-    }
-
     return sgIndex;
   }
 
@@ -1834,6 +1832,7 @@ public class MRocksDBManager implements IMetaManager {
   /** Get storage group node by path. the give path don't need to be storage group path. */
   @Override
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
+    ensureStorageGroup(path);
     IStorageGroupMNode node = null;
     try {
       String[] nodes = path.getNodes();
@@ -2508,7 +2507,7 @@ public class MRocksDBManager implements IMetaManager {
       node = getDeviceNode(devicePath);
       return node;
     } catch (PathNotExistException e) {
-      int sgIndex = ensureStorageGroup(devicePath, devicePath.getNodeLength() - 1);
+      int sgIndex = ensureStorageGroup(devicePath);
       if (!config.isAutoCreateSchemaEnabled()) {
         throw new PathNotExistException(devicePath.getFullPath());
       }
