@@ -29,7 +29,6 @@ import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
 import org.apache.iotdb.db.newsync.transport.conf.TransportConstant;
 import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
 import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
-import org.apache.iotdb.db.sync.sender.transfer.SyncClient;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.service.transport.thrift.IdentityInfo;
@@ -67,7 +66,7 @@ import static org.apache.iotdb.db.newsync.transport.conf.TransportConstant.SUCCE
 
 public class TransportClient implements ITransportClient, Runnable {
 
-  private static final Logger logger = LoggerFactory.getLogger(SyncClient.class);
+  private static final Logger logger = LoggerFactory.getLogger(TransportClient.class);
 
   // TODO: Need to change to transport config
   private static SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
@@ -450,6 +449,11 @@ public class TransportClient implements ITransportClient, Runnable {
 
     //     Example 3. Send PHYSICALPLAN
     //     TsFilePipeData.Type.PHYSICALPLAN.name();
+  }
+
+  @TestOnly
+  public void stop() {
+    transport.close();
   }
 
   private static class InstanceHolder {

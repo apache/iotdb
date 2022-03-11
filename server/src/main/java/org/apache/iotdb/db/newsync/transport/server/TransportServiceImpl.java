@@ -297,7 +297,7 @@ public class TransportServiceImpl implements TransportService.Iface {
   }
 
   /**
-   * handle when successfully receive tsFilePipeData. Rename .record file and reset tsFilePipeData's
+   * handle when successfully receive tsFilePipeData. Rename .patch file and reset tsFilePipeData's
    * path.
    *
    * @param tsFilePipeData pipeData

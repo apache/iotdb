@@ -74,6 +74,7 @@ public class TransportServiceTest {
   public void tearDown() throws Exception {
     FileUtils.deleteDirectory(tmpDir);
     EnvironmentUtils.cleanEnv();
+    TransportServerManager.getInstance().stopService();
   }
 
   @Test
@@ -164,6 +165,7 @@ public class TransportServiceTest {
     for (int i = 0; i < resPipeData.size(); i++) {
       Assert.assertEquals(pipeDataList.get(i), resPipeData.get(i));
     }
+    client.stop();
   }
 
   private void compareFile(File firFile, File secFile) {
