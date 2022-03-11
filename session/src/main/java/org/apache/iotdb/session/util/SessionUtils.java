@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -274,7 +275,8 @@ public class SessionUtils {
   }
 
   /**
-   *  Generate by class to Template
+   * Generate by class to Template
+   *
    * @param aclass
    * @return
    * @throws StatementExecutionException
@@ -282,32 +284,48 @@ public class SessionUtils {
   public static Template classToTemplate(Class<?> aclass) throws StatementExecutionException {
     Field[] declaredFields = aclass.getDeclaredFields();
     Template template = new Template(aclass.getSimpleName());
-    for (Field f:declaredFields) {
+    for (Field f : declaredFields) {
       final String name = f.getType().getName();
-      switch (name){
+      switch (name) {
         case "java.lang.String":
-          template.addToTemplate(new MeasurementNode(f.getName(), TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.SNAPPY));
+          template.addToTemplate(
+              new MeasurementNode(
+                  f.getName(), TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.SNAPPY));
           break;
         case "java.lang.Boolean":
-          template.addToTemplate(new MeasurementNode(f.getName(), TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY));
+          template.addToTemplate(
+              new MeasurementNode(
+                  f.getName(), TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY));
           break;
         case "java.lang.Integer":
-          template.addToTemplate(new MeasurementNode(f.getName(), TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY));
+          template.addToTemplate(
+              new MeasurementNode(
+                  f.getName(), TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY));
           break;
         case "java.lang.Long":
-          template.addToTemplate(new MeasurementNode(f.getName(), TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY));
+          template.addToTemplate(
+              new MeasurementNode(
+                  f.getName(), TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY));
           break;
         case "java.lang.Float":
-          template.addToTemplate(new MeasurementNode(f.getName(), TSDataType.FLOAT, TSEncoding.PLAIN, CompressionType.SNAPPY));
+          template.addToTemplate(
+              new MeasurementNode(
+                  f.getName(), TSDataType.FLOAT, TSEncoding.PLAIN, CompressionType.SNAPPY));
           break;
         case "java.lang.Double":
-          template.addToTemplate(new MeasurementNode(f.getName(), TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.SNAPPY));
+          template.addToTemplate(
+              new MeasurementNode(
+                  f.getName(), TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.SNAPPY));
           break;
         case "java.util.Date":
-          template.addToTemplate(new MeasurementNode(f.getName(),TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY));
+          template.addToTemplate(
+              new MeasurementNode(
+                  f.getName(), TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY));
           break;
         default:
-          template.addToTemplate(new MeasurementNode(f.getName(), TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.SNAPPY));
+          template.addToTemplate(
+              new MeasurementNode(
+                  f.getName(), TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.SNAPPY));
       }
     }
     return template;
@@ -315,6 +333,7 @@ public class SessionUtils {
 
   /**
    * Add a record entry parameter based on entity generation
+   *
    * @param object
    * @return
    */
@@ -323,7 +342,7 @@ public class SessionUtils {
     List<String> subMeasurementsList = new ArrayList<>();
     List<TSDataType> tsDataTypes = new ArrayList<>();
     List<Object> valueList = new ArrayList<>();
-    for (Field f:declaredFields) {
+    for (Field f : declaredFields) {
       f.setAccessible(true);
       try {
         final String typeName = f.getType().getName();
@@ -331,7 +350,7 @@ public class SessionUtils {
         final Object o1 = f.get(object);
         if (o1 != null) {
           TSDataType tsDataType;
-          switch (typeName){
+          switch (typeName) {
             case "java.lang.String":
               tsDataType = TSDataType.TEXT;
               subMeasurementsList.add(name);
@@ -372,7 +391,7 @@ public class SessionUtils {
               tsDataType = TSDataType.INT64;
               subMeasurementsList.add(name);
               tsDataTypes.add(tsDataType);
-              valueList.add(((Date)o1).getTime());
+              valueList.add(((Date) o1).getTime());
               break;
             default:
               tsDataType = TSDataType.TEXT;
@@ -385,19 +404,21 @@ public class SessionUtils {
         e.printStackTrace();
       }
     }
-    return new InsertRecordParam(subMeasurementsList,tsDataTypes,valueList);
+    return new InsertRecordParam(subMeasurementsList, tsDataTypes, valueList);
   }
 
-  public static class InsertRecordParam{
+  public static class InsertRecordParam {
     List<String> subMeasurementsList;
     List<TSDataType> tsDataTypes;
     List<Object> valueList;
 
-    public InsertRecordParam(List<String> subMeasurementsList, List<TSDataType> tsDataTypes, List<Object> valueList) {
+    public InsertRecordParam(
+        List<String> subMeasurementsList, List<TSDataType> tsDataTypes, List<Object> valueList) {
       this.subMeasurementsList = subMeasurementsList;
       this.tsDataTypes = tsDataTypes;
       this.valueList = valueList;
     }
+
     public List<String> getSubMeasurementsList() {
       return subMeasurementsList;
     }
@@ -425,32 +446,42 @@ public class SessionUtils {
 
   /**
    * Any level of splicing entity simple name generation prefixPath
+   *
    * @param aclass
    * @param prefixs
    * @return
    */
-  public static String prefixPath(Class<?> aclass,String... prefixs){
-    final String reduce = Arrays.stream(prefixs).reduce("", (current, str) -> "".equals(current)?str:current + "." + str);
-    return reduce==null || "".equals(reduce)?aclass.getSimpleName():reduce.concat("."+aclass.getSimpleName());
+  public static String prefixPath(Class<?> aclass, String... prefixs) {
+    final String reduce =
+        Arrays.stream(prefixs)
+            .reduce("", (current, str) -> "".equals(current) ? str : current + "." + str);
+    return reduce == null || "".equals(reduce)
+        ? aclass.getSimpleName()
+        : reduce.concat("." + aclass.getSimpleName());
   }
 
   /**
    * Any level of splicing entity attribute name generation prefixPaths
+   *
    * @param aclass
    * @param prefixs
    * @return
    */
-  public static List<String> classToPaths(Class<?> aclass,String... prefixs){
-    final String prefixPath = prefixPath(aclass,prefixs);
+  public static List<String> classToPaths(Class<?> aclass, String... prefixs) {
+    final String prefixPath = prefixPath(aclass, prefixs);
     List<String> paths = new ArrayList<String>();
-    Arrays.stream(aclass.getDeclaredFields()).map(Field::getName).forEach(name -> {
-      paths.add(prefixPath + "."+name);
-    });
+    Arrays.stream(aclass.getDeclaredFields())
+        .map(Field::getName)
+        .forEach(
+            name -> {
+              paths.add(prefixPath + "." + name);
+            });
     return paths;
   }
 
   /**
    * Query arbitrary level data based on time and return Java array
+   *
    * @param session
    * @param aclass
    * @param startTime
@@ -464,13 +495,18 @@ public class SessionUtils {
    * @throws IllegalAccessException
    * @throws NoSuchFieldException
    */
-  public static <T> List<T> executeRawDataQuery(Session session,Class<T> aclass ,long startTime, long endTime, String... prefixs) throws IoTDBConnectionException, StatementExecutionException, InstantiationException, IllegalAccessException, NoSuchFieldException {
-    List<String> paths = SessionUtils.classToPaths(aclass,prefixs);
+  public static <T> List<T> executeRawDataQuery(
+      Session session, Class<T> aclass, long startTime, long endTime, String... prefixs)
+      throws IoTDBConnectionException, StatementExecutionException, InstantiationException,
+          IllegalAccessException, NoSuchFieldException {
+    List<String> paths = SessionUtils.classToPaths(aclass, prefixs);
     final List<T> data = new ArrayList<>();
-    SessionDataSet sessionDataSet = session.executeRawDataQuery(paths,startTime,endTime);;
-    while (sessionDataSet.hasNext()){
-      final List<org.apache.iotdb.tsfile.read.common.Field> fields = sessionDataSet.next().getFields();
-      if(fields.size() == paths.size()){
+    SessionDataSet sessionDataSet = session.executeRawDataQuery(paths, startTime, endTime);
+    ;
+    while (sessionDataSet.hasNext()) {
+      final List<org.apache.iotdb.tsfile.read.common.Field> fields =
+          sessionDataSet.next().getFields();
+      if (fields.size() == paths.size()) {
         final T newData = aclass.newInstance();
         for (int i = 0; i < paths.size(); i++) {
           final String[] split = paths.get(i).split("\\.");
@@ -478,34 +514,34 @@ public class SessionUtils {
           Field f = aclass.getDeclaredField(s);
           f.setAccessible(true);
           final String typeName = f.getType().getName();
-          if (fields.get(i).getDataType()!=null) {
-            switch (typeName){
+          if (fields.get(i).getDataType() != null) {
+            switch (typeName) {
               case "java.lang.String":
-                f.set(newData,fields.get(i).getStringValue());
+                f.set(newData, fields.get(i).getStringValue());
                 break;
               case "java.lang.Boolean":
-                f.set(newData,fields.get(i).getBoolV());
+                f.set(newData, fields.get(i).getBoolV());
                 break;
               case "java.lang.Integer":
-                f.set(newData,fields.get(i).getIntV());
+                f.set(newData, fields.get(i).getIntV());
                 break;
               case "java.lang.Long":
-                f.set(newData,fields.get(i).getLongV());
+                f.set(newData, fields.get(i).getLongV());
                 break;
               case "java.lang.Float":
-                f.set(newData,fields.get(i).getFloatV());
+                f.set(newData, fields.get(i).getFloatV());
                 break;
               case "java.lang.Double":
-                f.set(newData,fields.get(i).getDoubleV());
+                f.set(newData, fields.get(i).getDoubleV());
                 break;
               case "java.util.Date":
                 final long l = Long.parseLong(fields.get(i).toString());
                 final Date date = new Date();
                 date.setTime(l);
-                f.set(newData,date);
+                f.set(newData, date);
                 break;
               default:
-                f.set(newData,String.valueOf(fields.get(i)));
+                f.set(newData, String.valueOf(fields.get(i)));
             }
           }
         }
