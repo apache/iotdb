@@ -882,24 +882,26 @@ public class MRocksDBManager implements IMetaManager {
                 // wait for all executing createTimeseries operations are complete
                 Thread.sleep(MAX_LOCK_WAIT_TIME * MAX_PATH_DEPTH);
                 String[] nodes = path.getNodes();
-                Arrays.asList(ALL_NODE_TYPE_ARRAY).stream()
+                Arrays.stream(ALL_NODE_TYPE_ARRAY)
                     .parallel()
                     .forEach(
                         type -> {
                           try {
-                            String startPath =
-                                RocksDBUtils.getLevelPathPrefix(
-                                    nodes, nodes.length - 1, nodes.length);
-                            byte[] startKey = RocksDBUtils.toRocksDBKey(startPath, type);
-                            String endPath =
-                                RocksDBUtils.getLevelPathPrefix(
-                                    nodes, nodes.length - 1, MAX_PATH_DEPTH);
-                            byte[] endKey = RocksDBUtils.toRocksDBKey(endPath, type);
-                            if (type == NODE_TYPE_MEASUREMENT) {
-                              readWriteHandler.deleteNodeByPrefix(
-                                  readWriteHandler.getCFHByName(TABLE_NAME_TAGS), startKey, endKey);
+                            for (int i = nodes.length; i <= MAX_PATH_DEPTH; i++) {
+                              String startPath =
+                                  RocksDBUtils.getLevelPathPrefix(nodes, nodes.length - 1, i);
+                              byte[] startKey = RocksDBUtils.toRocksDBKey(startPath, type);
+                              byte[] endKey = new byte[startKey.length];
+                              System.arraycopy(startKey, 0, endKey, 0, startKey.length - 1);
+                              endKey[endKey.length - 1] = 127;
+                              if (type == NODE_TYPE_MEASUREMENT) {
+                                readWriteHandler.deleteNodeByPrefix(
+                                    readWriteHandler.getCFHByName(TABLE_NAME_TAGS),
+                                    startKey,
+                                    endKey);
+                              }
+                              readWriteHandler.deleteNodeByPrefix(startKey, endKey);
                             }
-                            readWriteHandler.deleteNodeByPrefix(startKey, endKey);
                           } catch (RocksDBException e) {
                             logger.error("delete storage error {}", path.getFullPath(), e);
                           }
