@@ -893,7 +893,7 @@ public class MRocksDBManager implements IMetaManager {
                               byte[] startKey = RocksDBUtils.toRocksDBKey(startPath, type);
                               byte[] endKey = new byte[startKey.length];
                               System.arraycopy(startKey, 0, endKey, 0, startKey.length - 1);
-                              endKey[endKey.length - 1] = 127;
+                              endKey[endKey.length - 1] = Byte.MAX_VALUE;
                               if (type == NODE_TYPE_MEASUREMENT) {
                                 readWriteHandler.deleteNodeByPrefix(
                                     readWriteHandler.getCFHByName(TABLE_NAME_TAGS),
