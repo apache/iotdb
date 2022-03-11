@@ -539,6 +539,7 @@ public abstract class PhysicalPlan {
     DROP_FUNCTION,
     SELECT_INTO,
     DUMMY,
+    DUMMY_CLUSTER,
     SET_SYSTEM_MODE,
     UNSET_TEMPLATE,
     APPEND_TEMPLATE,

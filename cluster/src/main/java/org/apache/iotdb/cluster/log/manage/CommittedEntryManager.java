@@ -79,8 +79,8 @@ public class CommittedEntryManager {
       logger.info("requested snapshot is older than the existing snapshot");
       return;
     }
-    entries.clear();
-    entries.add(new EmptyContentLog(snapshot.getLastLogIndex(), snapshot.getLastLogTerm()));
+    entries.subList(1, entries.size()).clear();
+    entries.set(0, new EmptyContentLog(snapshot.getLastLogIndex(), snapshot.getLastLogTerm()));
   }
 
   /**

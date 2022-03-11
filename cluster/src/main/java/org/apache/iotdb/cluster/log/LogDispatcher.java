@@ -362,7 +362,7 @@ public class LogDispatcher {
       }
     }
 
-    private AppendEntriesRequest prepareRequest(
+    protected AppendEntriesRequest prepareRequest(
         List<ByteBuffer> logList, List<SendLogRequest> currBatch, int firstIndex) {
       AppendEntriesRequest request = new AppendEntriesRequest();
 

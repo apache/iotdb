@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.query;
 
-import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
@@ -27,6 +26,8 @@ import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DummyPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -117,7 +119,7 @@ public class ClusterPlanRouter {
   }
 
   public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(PhysicalPlan plan)
-      throws UnsupportedPlanException, MetadataException, UnknownLogTypeException {
+      throws UnsupportedPlanException, MetadataException {
     if (plan instanceof InsertRowsPlan) {
       return splitAndRoutePlan((InsertRowsPlan) plan);
     } else if (plan instanceof InsertTabletPlan) {
@@ -136,6 +138,8 @@ public class ClusterPlanRouter {
       return splitAndRoutePlan((AlterTimeSeriesPlan) plan);
     } else if (plan instanceof CreateMultiTimeSeriesPlan) {
       return splitAndRoutePlan((CreateMultiTimeSeriesPlan) plan);
+    } else if (plan instanceof DummyPlan) {
+      return splitAndRoutePlan((DummyPlan) plan);
     }
     // the if clause can be removed after the program is stable
     if (PartitionUtils.isLocalNonQueryPlan(plan)) {
@@ -170,6 +174,26 @@ public class ClusterPlanRouter {
       result.put(new LogPlan(plan), partitionGroup);
     }
     return result;
+  }
+
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(DummyPlan plan) {
+    List<Node> allNodes = partitionTable.getAllNodes();
+    String groupIdentifier = plan.getGroupIdentifier();
+    String[] split = groupIdentifier.split(DummyPlan.GROUP_ID_SEPARATOR);
+    Node node = ClusterUtils.parseNode(split[0]);
+    int raftId = Integer.parseInt(split[1]);
+    Node innerNode = null;
+    for (Node n : allNodes) {
+      if (ClusterUtils.isNodeEquals(node, n)) {
+        innerNode = n;
+        break;
+      }
+    }
+    if (innerNode == null) {
+      return null;
+    }
+    RaftNode raftNode = new RaftNode(innerNode, raftId);
+    return Collections.singletonMap(plan, partitionTable.getPartitionGroup(raftNode));
   }
 
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertRowPlan plan)

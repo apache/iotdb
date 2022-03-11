@@ -1317,8 +1317,9 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       result = processNonPartitionedMetaPlan(plan);
     } else {
       // do nothing
-      logger.warn("receive a plan {} could not be processed in local", plan);
-      result = StatusUtils.UNSUPPORTED_OPERATION;
+      //      logger.warn("receive a plan {} could not be processed in local", plan);
+      //      result = StatusUtils.UNSUPPORTED_OPERATION;
+      result = coordinator.executeNonQueryPlan(plan);
     }
     Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.calOperationCostTimeFromStart(startTime);
     return result;
@@ -1708,7 +1709,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
 
       // the leader is removed, start the next election ASAP
       if (oldNode.equals(leader.get()) && !oldNode.equals(thisNode)) {
-        synchronized (term) {
+        synchronized (logManager) {
           setCharacter(NodeCharacter.ELECTOR);
           setLeader(null);
         }

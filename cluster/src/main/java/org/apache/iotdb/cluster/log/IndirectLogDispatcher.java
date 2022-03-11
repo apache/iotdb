@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.cluster.log;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
@@ -100,18 +102,15 @@ public class IndirectLogDispatcher extends LogDispatcher {
 
     @Override
     void sendLog(SendLogRequest logRequest) {
-      Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.calOperationCostTimeFromStart(
-          logRequest.getVotingLog().getLog().getCreateTime());
-      member.sendLogToFollower(
-          logRequest.getVotingLog(),
-          receiver,
-          logRequest.getLeaderShipStale(),
-          logRequest.getNewLeaderTerm(),
-          logRequest.getAppendEntryRequest(),
-          logRequest.getQuorumSize(),
-          directToIndirectFollowerMap.get(receiver));
-      Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_SENT.calOperationCostTimeFromStart(
-          logRequest.getVotingLog().getLog().getCreateTime());
+      logRequest.getAppendEntryRequest().setSubReceivers(directToIndirectFollowerMap.get(receiver));
+      super.sendLog(logRequest);
+    }
+
+    @Override
+    protected AppendEntriesRequest prepareRequest(List<ByteBuffer> logList,
+        List<SendLogRequest> currBatch, int firstIndex) {
+      return super.prepareRequest(logList, currBatch, firstIndex)
+          .setSubReceivers(directToIndirectFollowerMap.get(receiver));
     }
   }
 }

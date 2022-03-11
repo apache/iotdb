@@ -185,16 +185,4 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
     member.acknowledgeAppendLog(ack);
     resultHandler.onComplete(null);
   }
-
-  @Override
-  public void appendEntryIndirect(
-      AppendEntryRequest request,
-      List<Node> subReceivers,
-      AsyncMethodCallback<AppendEntryResult> resultHandler) {
-    try {
-      resultHandler.onComplete(member.appendEntryIndirect(request, subReceivers));
-    } catch (UnknownLogTypeException e) {
-      resultHandler.onError(e);
-    }
-  }
 }

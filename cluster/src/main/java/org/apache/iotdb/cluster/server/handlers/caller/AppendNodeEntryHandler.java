@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -113,12 +114,20 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       synchronized (log) {
         log.notifyAll();
       }
+      if (ClusterDescriptor.getInstance().getConfig().isUseIndirectBroadcasting()) {
+        member.removeAppendLogHandler(
+            new Pair<>(log.getLog().getCurrLogIndex(), log.getLog().getCurrLogTerm()));
+      }
     } else if (resp == RESPONSE_WEAK_ACCEPT) {
       synchronized (log) {
         log.getWeaklyAcceptedNodeIds().add(receiver.nodeIdentifier);
         if (log.getWeaklyAcceptedNodeIds().size() + log.getStronglyAcceptedNodeIds().size()
             >= quorumSize) {
           log.acceptedTime.set(System.nanoTime());
+          if (ClusterDescriptor.getInstance().getConfig().isUseIndirectBroadcasting()) {
+            member.removeAppendLogHandler(
+                new Pair<>(log.getLog().getCurrLogIndex(), log.getLog().getCurrLogTerm()));
+          }
         }
         log.notifyAll();
       }
@@ -160,6 +169,10 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
         // quorum members have failed, there is no need to wait for others
         log.getStronglyAcceptedNodeIds().add(Integer.MAX_VALUE);
         log.notifyAll();
+        if (ClusterDescriptor.getInstance().getConfig().isUseIndirectBroadcasting()) {
+          member.removeAppendLogHandler(
+              new Pair<>(log.getLog().getCurrLogIndex(), log.getLog().getCurrLogTerm()));
+        }
       }
     }
   }

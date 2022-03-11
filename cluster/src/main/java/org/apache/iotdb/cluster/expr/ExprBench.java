@@ -26,12 +26,16 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.qp.physical.sys.DummyPlan;
 
 import org.apache.thrift.TException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
@@ -48,6 +52,8 @@ public class ExprBench {
   private Node target;
   private int maxRequestNum;
   private ExecutorService pool = Executors.newCachedThreadPool();
+  private List<Node> nodeList = new ArrayList<>();
+  private int raftFactor = 1;
 
   public ExprBench(Node target) {
     this.target = target;
@@ -57,8 +63,10 @@ public class ExprBench {
   public void benchmark() {
     long startTime = System.currentTimeMillis();
     for (int i = 0; i < threadNum; i++) {
+      int finalI = i;
       pool.submit(
           () -> {
+            Random random = new Random(123456L + finalI);
             Client client = null;
             try {
               client = clientPool.borrowSyncClient(target, ClientCategory.META);
@@ -69,12 +77,22 @@ public class ExprBench {
             DummyPlan plan = new DummyPlan();
             plan.setWorkload(new byte[workloadSize]);
             plan.setNeedForward(true);
+
             ByteBuffer byteBuffer = ByteBuffer.allocate(workloadSize + 4096);
-            plan.serialize(byteBuffer);
-            byteBuffer.flip();
-            request.setPlanBytes(byteBuffer);
+
             long currRequsetNum = -1;
             while (true) {
+
+              if (raftFactor > 0) {
+                Node node = nodeList.get(random.nextInt(nodeList.size()));
+                int raftId = random.nextInt(raftFactor);
+                plan.setGroupIdentifier(ClusterUtils.nodeToString(node) + "#" + raftId);
+              }
+              byteBuffer.clear();
+              plan.serialize(byteBuffer);
+              byteBuffer.flip();
+              request.planBytes = byteBuffer;
+              request.setPlanBytesIsSet(true);
 
               long reqLatency = System.nanoTime();
               try {
@@ -108,6 +126,7 @@ public class ExprBench {
             }
           });
     }
+    pool.shutdown();
   }
 
   public void setMaxRequestNum(int maxRequestNum) {
@@ -124,6 +143,16 @@ public class ExprBench {
     bench.threadNum = Integer.parseInt(args[3]);
     bench.workloadSize = Integer.parseInt(args[4]) * 1024;
     bench.printInterval = Integer.parseInt(args[5]);
+    String[] nodesSplit = args[6].split(",");
+    for (String s : nodesSplit) {
+      String[] nodeSplit = s.split(":");
+      Node node = new Node();
+      node.setInternalIp(nodeSplit[0]);
+      node.setMetaPort(Integer.parseInt(nodeSplit[1]));
+      bench.nodeList.add(node);
+    }
+    bench.raftFactor = Integer.parseInt(args[7]);
+
     bench.benchmark();
   }
 }

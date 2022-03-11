@@ -53,7 +53,7 @@ public class ClusterConstant {
    * every "REPORT_INTERVAL_SEC" seconds, a reporter thread will print the status of all raft
    * members in this node.
    */
-  public static final int REPORT_INTERVAL_SEC = 10;
+  public static final int REPORT_INTERVAL_SEC = 2;
 
   /**
    * during snapshot, hardlinks of data files are created to for downloading. hardlinks will be

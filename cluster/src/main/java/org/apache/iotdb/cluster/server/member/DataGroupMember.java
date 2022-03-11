@@ -406,7 +406,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
 
         if (removedNode.equals(leader.get()) && !removedNode.equals(thisNode)) {
           // if the leader is removed, also start an election immediately
-          synchronized (term) {
+          synchronized (logManager) {
             setCharacter(NodeCharacter.ELECTOR);
             setLeader(null);
           }
@@ -962,7 +962,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
         peerMap.remove(removedNode);
         if (removedNode.equals(leader.get())) {
           // if the leader is removed, also start an election immediately
-          synchronized (term) {
+          synchronized (logManager) {
             setCharacter(NodeCharacter.ELECTOR);
             setLeader(null);
           }

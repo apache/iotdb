@@ -165,14 +165,4 @@ public abstract class BaseSyncService implements RaftService.Iface {
   public void acknowledgeAppendEntry(AppendEntryResult ack) {
     member.acknowledgeAppendLog(ack);
   }
-
-  @Override
-  public AppendEntryResult appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers)
-      throws TException {
-    try {
-      return member.appendEntryIndirect(request, subReceivers);
-    } catch (UnknownLogTypeException e) {
-      throw new TException(e);
-    }
-  }
 }

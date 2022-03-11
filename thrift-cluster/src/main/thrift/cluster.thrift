@@ -92,6 +92,7 @@ struct AppendEntryRequest {
   // true if the request is sent from the leader, and the reiceiver just responds to the sender;
   // otherwise, the reiceiver should also notify the leader
   8: optional bool isFromLeader
+  9: optional list<Node> subReceivers
 }
 
 
@@ -107,6 +108,10 @@ struct AppendEntriesRequest {
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
   7: optional RaftNode header
+  // true if the request is sent from the leader, and the reiceiver just responds to the sender;
+  // otherwise, the reiceiver should also notify the leader
+  8: optional bool isFromLeader
+  9: optional list<Node> subReceivers
 }
 
 struct AddNodeResponse {
@@ -324,11 +329,6 @@ service RaftService {
   * @return -1: agree, -2: log index mismatch , otherwise return the follower's term
   **/
   AppendEntryResult appendEntry(1:AppendEntryRequest request)
-
-  /**
-  * Like appendEntry, but the receiver should forward the request to nodes in subReceivers.
-  **/
-  AppendEntryResult appendEntryIndirect(1:AppendEntryRequest request, 2:list<Node> subReceivers)
 
   void sendSnapshot(1:SendSnapshotRequest request)
 

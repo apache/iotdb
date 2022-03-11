@@ -50,8 +50,6 @@ public class ClientManager implements IClientManager {
   private Map<ClientCategory, GenericKeyedObjectPool<Node, Client>> syncClientPoolMap;
   private ClientPoolFactory clientPoolFactory;
 
-  private Exception createStack;
-
   /**
    * {@link ClientManager.Type#RequestForwardClient} represents the clients used to forward external
    * client requests to proper node to handle such as query, insert request.
@@ -78,8 +76,6 @@ public class ClientManager implements IClientManager {
       syncClientPoolMap = Maps.newHashMap();
       constructSyncClientMap(type);
     }
-
-    this.createStack = new Exception();
   }
 
   private void constructAsyncClientMap(Type type) {
@@ -164,7 +160,7 @@ public class ClientManager implements IClientManager {
           "BorrowSyncClient invoke on unsupported mode or category: Node:{}, ClientCategory:{}, "
               + "isSyncMode:{}",
           node,
-          clientPoolFactory,
+          category,
           syncClientPoolMap != null);
     }
     return client;
@@ -200,7 +196,7 @@ public class ClientManager implements IClientManager {
           "BorrowSyncClient invoke on unsupported mode or category: Node:{}, ClientCategory:{}, "
               + "isSyncMode:{}",
           node,
-          clientPoolFactory,
+          category,
           syncClientPoolMap != null);
     }
     return client;
@@ -231,9 +227,6 @@ public class ClientManager implements IClientManager {
 
   @Override
   public void close() {
-    if (false) {
-      return;
-    }
     if (asyncClientPoolMap != null) {
       for (GenericKeyedObjectPool<Node, AsyncClient> value : asyncClientPoolMap.values()) {
         value.close();

@@ -260,18 +260,6 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
   }
 
   @Override
-  public void appendEntryIndirect(
-      AppendEntryRequest request,
-      List<Node> subReceivers,
-      AsyncMethodCallback<AppendEntryResult> resultHandler) {
-    try {
-      resultHandler.onComplete(metaGroupMember.appendEntryIndirect(request, subReceivers));
-    } catch (UnknownLogTypeException e) {
-      resultHandler.onError(e);
-    }
-  }
-
-  @Override
   public void acknowledgeAppendEntry(
       AppendEntryResult ack, AsyncMethodCallback<Void> resultHandler) {
     metaGroupMember.acknowledgeAppendLog(ack);

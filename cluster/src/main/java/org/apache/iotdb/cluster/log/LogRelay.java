@@ -20,9 +20,11 @@
 package org.apache.iotdb.cluster.log;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
@@ -59,6 +61,10 @@ public class LogRelay {
   }
 
   public void offer(AppendEntryRequest request, List<Node> receivers) {
+    offer(new RelayEntry(request, receivers));
+  }
+
+  private void offer(RelayEntry entry) {
     synchronized (entryHeap) {
       while (entryHeap.size()
           > ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem()) {
@@ -68,9 +74,13 @@ public class LogRelay {
           Thread.currentThread().interrupt();
         }
       }
-      entryHeap.add(new RelayEntry(request, receivers));
+      entryHeap.add(entry);
       entryHeap.notifyAll();
     }
+  }
+
+  public void offer(AppendEntriesRequest request, List<Node> receivers) {
+    offer(new RelayEntry(request, receivers));
   }
 
   private class RelayThread implements Runnable {
@@ -92,19 +102,35 @@ public class LogRelay {
           }
         }
 
-        raftMember.sendLogToSubFollowers(relayEntry.request, relayEntry.receivers);
+        raftMember.sendLogToSubFollowers(relayEntry.singleRequest, relayEntry.receivers);
+        Statistic.RAFT_SEND_RELAY.add(1);
       }
     }
   }
 
   public static class RelayEntry implements Comparable<RelayEntry> {
 
-    private AppendEntryRequest request;
+    private AppendEntryRequest singleRequest;
+    private AppendEntriesRequest batchRequest;
     private List<Node> receivers;
 
     public RelayEntry(AppendEntryRequest request, List<Node> receivers) {
-      this.request = request;
+      this.singleRequest = request;
       this.receivers = receivers;
+    }
+
+    public RelayEntry(AppendEntriesRequest request, List<Node> receivers) {
+      this.batchRequest = request;
+      this.receivers = receivers;
+    }
+
+    public long getIndex() {
+      if (singleRequest != null) {
+        return singleRequest.prevLogIndex;
+      } else if (batchRequest != null) {
+        return batchRequest.prevLogIndex;
+      }
+      return 0;
     }
 
     @Override
@@ -116,17 +142,18 @@ public class LogRelay {
         return false;
       }
       RelayEntry that = (RelayEntry) o;
-      return Objects.equals(request, that.request);
+      return Objects.equals(singleRequest, that.singleRequest) && Objects.equals(batchRequest,
+          that.batchRequest);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(request);
+      return Objects.hash(singleRequest);
     }
 
     @Override
     public int compareTo(RelayEntry o) {
-      return Long.compare(this.request.prevLogIndex, o.request.prevLogIndex);
+      return Long.compare(this.getIndex(), o.getIndex());
     }
   }
 }

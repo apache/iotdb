@@ -35,6 +35,7 @@ import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
+import org.apache.iotdb.db.qp.physical.sys.DummyPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -103,7 +104,9 @@ public class PartitionUtils {
         || plan instanceof CreateFunctionPlan
         || plan instanceof DropFunctionPlan
         || plan instanceof CreateSnapshotPlan
-        || plan instanceof SetSystemModePlan;
+        || plan instanceof SetSystemModePlan
+        || (plan instanceof DummyPlan
+            && DummyPlan.META_GROUP_ID.equals(((DummyPlan) plan).getGroupIdentifier()));
   }
 
   /**

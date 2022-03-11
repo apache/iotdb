@@ -384,4 +384,8 @@ public class ClusterUtils {
     ClusterNode clusterNode2 = new ClusterNode(node2);
     return clusterNode1.equals(clusterNode2);
   }
+
+  public static String nodeToString(Node node) {
+    return node.getInternalIp() + ":" + node.getMetaPort();
+  }
 }

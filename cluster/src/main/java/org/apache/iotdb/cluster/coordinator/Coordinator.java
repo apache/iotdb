@@ -26,7 +26,6 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ChangeMembershipException;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
-import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.metadata.CMManager;
@@ -424,10 +423,10 @@ public class Coordinator {
       metaGroupMember.syncLeaderWithConsistencyCheck(true);
       try {
         planGroupMap = router.splitAndRoutePlan(plan);
-      } catch (MetadataException | UnknownLogTypeException ex) {
+      } catch (MetadataException ex) {
         // ignore
       }
-    } catch (MetadataException | UnknownLogTypeException e) {
+    } catch (MetadataException e) {
       logger.error("Cannot route plan {}", plan, e);
     }
     logger.debug("route plan {} with partitionGroup {}", plan, planGroupMap);

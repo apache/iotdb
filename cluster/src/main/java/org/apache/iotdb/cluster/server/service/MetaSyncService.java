@@ -255,16 +255,6 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
   }
 
   @Override
-  public AppendEntryResult appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers)
-      throws TException {
-    try {
-      return metaGroupMember.appendEntryIndirect(request, subReceivers);
-    } catch (UnknownLogTypeException e) {
-      throw new TException(e);
-    }
-  }
-
-  @Override
   public void acknowledgeAppendEntry(AppendEntryResult ack) {
     metaGroupMember.acknowledgeAppendLog(ack);
   }

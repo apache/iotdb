@@ -32,8 +32,12 @@ import java.util.List;
 
 public class DummyPlan extends PhysicalPlan {
 
-  private byte[] workload;
-  private boolean needForward;
+  public static final String GROUP_ID_SEPARATOR = "#";
+  public static final String META_GROUP_ID = "meta";
+
+  protected byte[] workload;
+  protected boolean needForward;
+  protected String groupIdentifier = META_GROUP_ID;
 
   public DummyPlan() {
     super(OperatorType.EMPTY);
@@ -52,6 +56,10 @@ public class DummyPlan extends PhysicalPlan {
       stream.write(workload);
     }
     stream.write(needForward ? 1 : 0);
+
+    byte[] bytes = groupIdentifier.getBytes();
+    stream.writeInt(bytes.length);
+    stream.write(bytes);
   }
 
   @Override
@@ -62,6 +70,10 @@ public class DummyPlan extends PhysicalPlan {
       buffer.put(workload);
     }
     buffer.put(needForward ? (byte) 1 : 0);
+
+    byte[] bytes = groupIdentifier.getBytes();
+    buffer.putInt(bytes.length);
+    buffer.put(bytes);
   }
 
   @Override
@@ -70,6 +82,11 @@ public class DummyPlan extends PhysicalPlan {
     workload = new byte[size];
     buffer.get(workload);
     needForward = buffer.get() == 1;
+
+    int groupIdSize = buffer.getInt();
+    byte[] bytes = new byte[groupIdSize];
+    buffer.get(bytes);
+    groupIdentifier = new String(bytes);
   }
 
   public void setWorkload(byte[] workload) {
@@ -86,6 +103,14 @@ public class DummyPlan extends PhysicalPlan {
 
   public byte[] getWorkload() {
     return workload;
+  }
+
+  public String getGroupIdentifier() {
+    return groupIdentifier;
+  }
+
+  public void setGroupIdentifier(String groupIdentifier) {
+    this.groupIdentifier = groupIdentifier;
   }
 
   @Override

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import java.nio.Buffer;
 import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.ClientManager;
@@ -96,6 +97,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.sys.DummyPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -436,7 +438,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    */
   public HeartBeatResponse processHeartbeatRequest(HeartBeatRequest request) {
     logger.trace("{} received a heartbeat", name);
-    synchronized (term) {
+    synchronized (logManager) {
       long thisTerm = term.get();
       long leaderTerm = request.getTerm();
       HeartBeatResponse response = new HeartBeatResponse();
@@ -520,7 +522,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       logger.debug(
           "{}: start to handle request from elector {}", name, electionRequest.getElector());
     }
-    synchronized (term) {
+    synchronized (logManager) {
       long currentTerm = term.get();
       long response =
           checkElectorTerm(currentTerm, electionRequest.getTerm(), electionRequest.getElector());
@@ -576,6 +578,15 @@ public abstract class RaftMember implements RaftMemberMBean {
    * finally see if we can find a position to append the log.
    */
   public AppendEntryResult appendEntry(AppendEntryRequest request) throws UnknownLogTypeException {
+    AppendEntryResult result = appendEntryInternal(request);
+    if (request.isSetSubReceivers()) {
+      request.entry.rewind();
+      logRelay.offer(request, request.subReceivers);
+    }
+    return result;
+  }
+
+  private AppendEntryResult appendEntryInternal(AppendEntryRequest request) throws UnknownLogTypeException {
     logger.debug("{} received an AppendEntryRequest: {}", name, request);
     // the term checked here is that of the leader, not that of the log
     long checkResult = checkRequestTerm(request.term, request.leader);
@@ -598,6 +609,7 @@ public abstract class RaftMember implements RaftMemberMBean {
 
     if (!request.isFromLeader) {
       appendAckLeader(request.leader, log, result.status);
+      Statistic.RAFT_SEND_RELAY_ACK.add(1);
     }
 
     return result;
@@ -661,6 +673,17 @@ public abstract class RaftMember implements RaftMemberMBean {
   /** Similar to appendEntry, while the incoming load is batch of logs instead of a single log. */
   public AppendEntryResult appendEntries(AppendEntriesRequest request)
       throws UnknownLogTypeException {
+    AppendEntryResult result = appendEntriesInternal(request);
+    if (request.isSetSubReceivers()) {
+      request.entries.forEach(Buffer::rewind);
+      logRelay.offer(request, request.subReceivers);
+    }
+    return result;
+  }
+
+  /** Similar to appendEntry, while the incoming load is batch of logs instead of a single log. */
+  private AppendEntryResult appendEntriesInternal(AppendEntriesRequest request)
+      throws UnknownLogTypeException {
     logger.debug("{} received an AppendEntriesRequest", name);
 
     // the term checked here is that of the leader, not that of the log
@@ -716,18 +739,13 @@ public abstract class RaftMember implements RaftMemberMBean {
       AtomicLong newLeaderTerm,
       AppendEntryRequest request,
       Peer peer,
-      int quorumSize,
-      List<Node> indirectReceivers) {
+      int quorumSize) {
     AsyncClient client = getSendLogAsyncClient(node);
     if (client != null) {
       AppendNodeEntryHandler handler =
           getAppendNodeEntryHandler(log, node, leaderShipStale, newLeaderTerm, peer, quorumSize);
       try {
-        if (indirectReceivers == null || indirectReceivers.isEmpty()) {
-          client.appendEntry(request, handler);
-        } else {
-          client.appendEntryIndirect(request, indirectReceivers, handler);
-        }
+        client.appendEntry(request, handler);
         logger.debug("{} sending a log to {}: {}", name, node, log);
       } catch (Exception e) {
         logger.warn("{} cannot append log to node {}", name, node, e);
@@ -796,7 +814,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       return;
     }
 
-    this.votingLogList = new VotingLogList(allNodes.size() / 2);
+    this.votingLogList = new VotingLogList(allNodes.size() / 2, this);
 
     // update the reference of thisNode to keep consistency
     boolean foundThisNode = false;
@@ -1686,7 +1704,8 @@ public abstract class RaftMember implements RaftMemberMBean {
       return false;
     }
     PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
-    return physicalPlanLog.getPlan() instanceof InsertPlan;
+    return physicalPlanLog.getPlan() instanceof InsertPlan
+        || physicalPlanLog.getPlan() instanceof DummyPlan;
   }
 
   /**
@@ -1904,7 +1923,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    *     elector.
    */
   public void stepDown(long newTerm, boolean fromLeader) {
-    synchronized (term) {
+    synchronized (logManager) {
       long currTerm = term.get();
       // confirm that the heartbeat of the new leader hasn't come
       if (currTerm < newTerm) {
@@ -1921,6 +1940,10 @@ public abstract class RaftMember implements RaftMemberMBean {
         // otherwise the node may be stuck in FOLLOWER state by a stale node.
         setCharacter(NodeCharacter.FOLLOWER);
         lastHeartbeatReceivedTime = System.currentTimeMillis();
+      }
+
+      if (ClusterDescriptor.getInstance().getConfig().isUseIndirectBroadcasting()) {
+        sentLogHandlers.clear();
       }
     }
   }
@@ -2093,17 +2116,6 @@ public abstract class RaftMember implements RaftMemberMBean {
     return waitAppendResult(log, leaderShipStale, newLeaderTerm, quorumSize);
   }
 
-  public void sendLogToFollower(
-      VotingLog log,
-      Node node,
-      AtomicBoolean leaderShipStale,
-      AtomicLong newLeaderTerm,
-      AppendEntryRequest request,
-      int quorumSize) {
-    sendLogToFollower(
-        log, node, leaderShipStale, newLeaderTerm, request, quorumSize, Collections.emptyList());
-  }
-
   /** Send "log" to "node". */
   public void sendLogToFollower(
       VotingLog log,
@@ -2111,8 +2123,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       AtomicBoolean leaderShipStale,
       AtomicLong newLeaderTerm,
       AppendEntryRequest request,
-      int quorumSize,
-      List<Node> indirectReceivers) {
+      int quorumSize) {
     if (node.equals(thisNode)) {
       return;
     }
@@ -2134,10 +2145,10 @@ public abstract class RaftMember implements RaftMemberMBean {
 
     if (config.isUseAsyncServer()) {
       sendLogAsync(
-          log, node, leaderShipStale, newLeaderTerm, request, peer, quorumSize, indirectReceivers);
+          log, node, leaderShipStale, newLeaderTerm, request, peer, quorumSize);
     } else {
       sendLogSync(
-          log, node, leaderShipStale, newLeaderTerm, request, peer, quorumSize, indirectReceivers);
+          log, node, leaderShipStale, newLeaderTerm, request, peer, quorumSize);
     }
   }
 
@@ -2176,8 +2187,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       AtomicLong newLeaderTerm,
       AppendEntryRequest request,
       Peer peer,
-      int quorumSize,
-      List<Node> indirectReceivers) {
+      int quorumSize) {
     Client client = getSyncClient(node);
     if (client != null) {
       AppendNodeEntryHandler handler =
@@ -2185,12 +2195,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       try {
         logger.debug("{} sending a log to {}: {}", name, node, log);
         long operationStartTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
-        AppendEntryResult result;
-        if (indirectReceivers == null || indirectReceivers.isEmpty()) {
-          result = client.appendEntry(request);
-        } else {
-          result = client.appendEntryIndirect(request, indirectReceivers);
-        }
+        AppendEntryResult result = client.appendEntry(request);
         Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(operationStartTime);
 
         handler.onComplete(result);
@@ -2222,6 +2227,10 @@ public abstract class RaftMember implements RaftMemberMBean {
     handler.setPeer(peer);
     handler.setReceiverTerm(newLeaderTerm);
     handler.setQuorumSize(quorumSize);
+    if (ClusterDescriptor.getInstance().getConfig().isUseIndirectBroadcasting()) {
+      registerAppendLogHandler(
+          new Pair<>(log.getLog().getCurrLogIndex(), log.getLog().getCurrLogTerm()), handler);
+    }
     return handler;
   }
 
@@ -2243,7 +2252,7 @@ public abstract class RaftMember implements RaftMemberMBean {
   private long checkRequestTerm(long leaderTerm, Node leader) {
     long localTerm;
 
-    synchronized (term) {
+    synchronized (logManager) {
       // if the request comes before the heartbeat arrives, the local term may be smaller than the
       // leader term
       localTerm = term.get();
@@ -2288,6 +2297,7 @@ public abstract class RaftMember implements RaftMemberMBean {
         sentLogHandlers.get(new Pair<>(ack.lastLogIndex, ack.lastLogTerm));
     if (appendNodeEntryHandler != null) {
       appendNodeEntryHandler.onComplete(ack);
+      Statistic.RAFT_RECEIVE_RELAY_ACK.add(1);
     }
   }
 

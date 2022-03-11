@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.cluster.log;
 
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.tsfile.utils.Pair;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,9 +31,11 @@ public class VotingLogList {
   private List<VotingLog> logList = new ArrayList<>();
   private volatile long currTerm = -1;
   private int quorumSize;
+  private RaftMember member;
 
-  public VotingLogList(int quorumSize) {
+  public VotingLogList(int quorumSize, RaftMember member) {
     this.quorumSize = quorumSize;
+    this.member = member;
   }
 
   /**
@@ -91,6 +97,11 @@ public class VotingLogList {
         synchronized (acceptedLog) {
           acceptedLog.acceptedTime.set(System.nanoTime());
           acceptedLog.notifyAll();
+        }
+        if (ClusterDescriptor.getInstance().getConfig().isUseIndirectBroadcasting()) {
+          member.removeAppendLogHandler(
+              new Pair<>(
+                  acceptedLog.getLog().getCurrLogIndex(), acceptedLog.getLog().getCurrLogTerm()));
         }
       }
     }

@@ -288,11 +288,14 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   }
 
   private String clusterConfigCheck() {
-    try {
-      ClusterDescriptor.getInstance().replaceHostnameWithIp();
-    } catch (Exception e) {
-      return String.format("replace hostname with ip failed, %s", e.getMessage());
+    if (IoTDBDescriptor.getInstance().getConfig().isReplaceHostNameWithIp()) {
+      try {
+        ClusterDescriptor.getInstance().replaceHostnameWithIp();
+      } catch (Exception e) {
+        return String.format("replace hostname with ip failed, %s", e.getMessage());
+      }
     }
+
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     // check the initial replicateNum and refuse to start when the replicateNum <= 0
     if (config.getReplicationNum() <= 0) {

@@ -288,4 +288,8 @@ public class UnCommittedEntryManager {
   List<Log> getAllEntries() {
     return entries;
   }
+
+  public void setOffset(long offset) {
+    this.offset = offset;
+  }
 }

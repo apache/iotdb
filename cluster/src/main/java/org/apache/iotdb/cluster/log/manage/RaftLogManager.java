@@ -325,7 +325,7 @@ public abstract class RaftLogManager {
   public long getCommitLogTerm() {
     long term = -1;
     try {
-      term = getTerm(getCommitLogIndex());
+      term = getCommittedEntryManager().getLastTerm();
     } catch (Exception e) {
       logger.error("{}: unexpected error when getting the last term : {}", name, e.getMessage());
     }
@@ -519,19 +519,18 @@ public abstract class RaftLogManager {
         name,
         snapshot.getLastLogIndex(),
         snapshot.getLastLogTerm());
-    try {
-      getCommittedEntryManager().compactEntries(snapshot.getLastLogIndex());
-      getStableEntryManager().removeCompactedEntries(snapshot.getLastLogIndex());
-    } catch (EntryUnavailableException e) {
-      getCommittedEntryManager().applyingSnapshot(snapshot);
-      getUnCommittedEntryManager().applyingSnapshot(snapshot);
-    }
+
+    getUnCommittedEntryManager().applyingSnapshot(snapshot);
+    getCommittedEntryManager().applyingSnapshot(snapshot);
+
     if (this.commitIndex < snapshot.getLastLogIndex()) {
       this.commitIndex = snapshot.getLastLogIndex();
     }
 
     // as the follower receives a snapshot, the logs persisted is not complete, so remove them
-    getStableEntryManager().clearAllLogs(commitIndex);
+    if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
+      getStableEntryManager().clearAllLogs(commitIndex);
+    }
 
     synchronized (changeApplyCommitIndexCond) {
       if (this.maxHaveAppliedCommitIndex < snapshot.getLastLogIndex()) {

@@ -802,6 +802,11 @@ public class IoTDBConfig {
    */
   private boolean enableIDTableLogFile = false;
 
+  /**
+   * to avoid the situation that in some places the hostname is used while in other the ip is used.
+   */
+  private boolean replaceHostNameWithIp = false;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -2514,5 +2519,13 @@ public class IoTDBConfig {
 
   public void setEnableIDTableLogFile(boolean enableIDTableLogFile) {
     this.enableIDTableLogFile = enableIDTableLogFile;
+  }
+
+  public boolean isReplaceHostNameWithIp() {
+    return replaceHostNameWithIp;
+  }
+
+  public void setReplaceHostNameWithIp(boolean replaceHostNameWithIp) {
+    this.replaceHostNameWithIp = replaceHostNameWithIp;
   }
 }
