@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.storagegroup;
+package org.apache.iotdb.db.metadata.mtree;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -58,12 +58,12 @@ import java.util.TreeSet;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
-public class StorageGroupTree {
+public class MTreeAboveSG {
 
-  private static final Logger logger = LoggerFactory.getLogger(StorageGroupTree.class);
+  private static final Logger logger = LoggerFactory.getLogger(MTreeAboveSG.class);
   private IMNode root;
 
-  StorageGroupTree() {
+  public MTreeAboveSG() {
     this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
   }
 

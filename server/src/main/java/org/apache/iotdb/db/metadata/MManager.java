@@ -34,10 +34,10 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.rescon.TimeseriesManager;
+import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupManager;
 import org.apache.iotdb.db.metadata.storagegroup.SGMManager;
-import org.apache.iotdb.db.metadata.storagegroup.StorageGroupManagerTreeImpl;
+import org.apache.iotdb.db.metadata.storagegroup.StorageGroupManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
@@ -144,7 +144,7 @@ public class MManager {
 
   private boolean initialized;
 
-  private TimeseriesManager timeseriesManager = TimeseriesManager.getInstance();
+  private TimeseriesStatistics timeseriesStatistics = TimeseriesStatistics.getInstance();
   private IStorageGroupManager storageGroupManager;
   private TemplateManager templateManager = TemplateManager.getInstance();
 
@@ -185,9 +185,9 @@ public class MManager {
     }
 
     try {
-      timeseriesManager.init();
+      timeseriesStatistics.init();
       templateManager.init();
-      storageGroupManager = new StorageGroupManagerTreeImpl();
+      storageGroupManager = new StorageGroupManager();
       storageGroupManager.init();
 
     } catch (IOException e) {
@@ -248,7 +248,7 @@ public class MManager {
     try {
       storageGroupManager.clear();
       this.templateManager.clear();
-      timeseriesManager.clear();
+      timeseriesStatistics.clear();
       initialized = false;
     } catch (IOException e) {
       logger.error("Cannot close metadata log writer, because:", e);
@@ -339,7 +339,7 @@ public class MManager {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
-    if (!timeseriesManager.isAllowToCreateNewSeries()) {
+    if (!timeseriesStatistics.isAllowToCreateNewSeries()) {
       throw new MetadataException(
           "IoTDB system load is too large to create timeseries, "
               + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
@@ -394,7 +394,7 @@ public class MManager {
    * @param plan CreateAlignedTimeSeriesPlan
    */
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
-    if (!timeseriesManager.isAllowToCreateNewSeries()) {
+    if (!timeseriesStatistics.isAllowToCreateNewSeries()) {
       throw new MetadataException(
           "IoTDB system load is too large to create timeseries, "
               + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
@@ -608,7 +608,7 @@ public class MManager {
   // region Interfaces for metadata count
 
   public long getTotalSeriesNumber() {
-    return timeseriesManager.getTotalSeriesNumber();
+    return timeseriesStatistics.getTotalSeriesNumber();
   }
 
   /**

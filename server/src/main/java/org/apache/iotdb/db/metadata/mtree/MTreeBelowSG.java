@@ -131,11 +131,11 @@ import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTim
  *   <li>TestOnly Interface
  * </ol>
  */
-public class MTree implements Serializable {
+public class MTreeBelowSG implements Serializable {
 
   public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
   private static final long serialVersionUID = -4200394435237291964L;
-  private static final Logger logger = LoggerFactory.getLogger(MTree.class);
+  private static final Logger logger = LoggerFactory.getLogger(MTreeBelowSG.class);
 
   private IMNode root;
   private IStorageGroupMNode storageGroupMNode;
@@ -144,7 +144,7 @@ public class MTree implements Serializable {
   private String mtreeSnapshotTmpPath;
 
   // region MTree initialization, clear and serialization
-  public MTree(IStorageGroupMNode storageGroupMNode) {
+  public MTreeBelowSG(IStorageGroupMNode storageGroupMNode) {
     this.storageGroupMNode = storageGroupMNode;
   }
 

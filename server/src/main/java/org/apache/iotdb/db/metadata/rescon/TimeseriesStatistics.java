@@ -30,9 +30,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public class TimeseriesManager {
+public class TimeseriesStatistics {
 
-  private static final Logger logger = LoggerFactory.getLogger(TimeseriesManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(TimeseriesStatistics.class);
 
   /** threshold total size of MTree */
   private static final long MTREE_SIZE_THRESHOLD =
@@ -50,12 +50,12 @@ public class TimeseriesManager {
       // allowed to do nothing
     }
 
-    private static final TimeseriesManager INSTANCE = new TimeseriesManager();
+    private static final TimeseriesStatistics INSTANCE = new TimeseriesStatistics();
   }
 
   /** we should not use this function in other place, but only in IoTDB class */
-  public static TimeseriesManager getInstance() {
-    return TimeseriesManager.TimeseriesManagerHolder.INSTANCE;
+  public static TimeseriesStatistics getInstance() {
+    return TimeseriesStatistics.TimeseriesManagerHolder.INSTANCE;
   }
 
   public void init() {

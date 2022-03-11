@@ -44,10 +44,10 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mtree.MTree;
+import org.apache.iotdb.db.metadata.mtree.MTreeBelowSG;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.rescon.TimeseriesManager;
+import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
@@ -167,9 +167,9 @@ public class SGMManager {
   private File logFile;
   private MLogWriter logWriter;
 
-  private TimeseriesManager timeseriesManager = TimeseriesManager.getInstance();
+  private TimeseriesStatistics timeseriesStatistics = TimeseriesStatistics.getInstance();
   private IStorageGroupMNode storageGroupMNode;
-  private MTree mtree;
+  private MTreeBelowSG mtree;
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager;
@@ -244,7 +244,7 @@ public class SGMManager {
 
       tagManager = new TagManager(sgSchemaDirPath);
       tagManager.init();
-      mtree = new MTree(storageGroupMNode);
+      mtree = new MTreeBelowSG(storageGroupMNode);
       mtree.init();
 
       int lineNumber = initFromLog(logFile);
@@ -441,7 +441,7 @@ public class SGMManager {
     // collect all the LeafMNode in this storage group
     List<IMeasurementMNode> leafMNodes = mtree.getAllMeasurementMNode();
 
-    timeseriesManager.deleteTimeseries(leafMNodes.size());
+    timeseriesStatistics.deleteTimeseries(leafMNodes.size());
 
     // drop triggers with no exceptions
     TriggerEngine.drop(leafMNodes);
@@ -527,7 +527,7 @@ public class SGMManager {
       leafMNode.setOffset(offset);
 
       // update statistics and schemaDataTypeNumMap
-      timeseriesManager.addTimeseries(1);
+      timeseriesStatistics.addTimeseries(1);
 
     } catch (IOException e) {
       throw new MetadataException(e);
@@ -613,7 +613,7 @@ public class SGMManager {
       }
 
       // update statistics and schemaDataTypeNumMap
-      timeseriesManager.addTimeseries(plan.getMeasurements().size());
+      timeseriesStatistics.addTimeseries(plan.getMeasurements().size());
 
     } catch (IOException e) {
       throw new MetadataException(e);
@@ -710,7 +710,7 @@ public class SGMManager {
       node = node.getParent();
     }
 
-    timeseriesManager.deleteTimeseries(1);
+    timeseriesStatistics.deleteTimeseries(1);
     return storageGroupPath;
   }
   // endregion
