@@ -618,15 +618,15 @@ public class MRocksDBManager implements IMetaManager {
             }
 
             if (!checkResult.getResult(RocksDBMNodeType.ENTITY)) {
-              throw new PathAlreadyExistException("Node already exists but not entity");
+              throw new MetadataException("Node already exists but not entity");
             }
 
             if ((checkResult.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
-              throw new PathAlreadyExistException("Entity node exists but not aligned");
+              throw new MetadataException("Entity node exists but not aligned");
             }
           } else if (checkResult.getResult(RocksDBMNodeType.MEASUREMENT)
               || checkResult.getResult(RocksDBMNodeType.ALISA)) {
-            throw new PathAlreadyExistException("Path contains measurement node");
+            throw new MetadataException("Path contains measurement node");
           }
         }
       } catch (Exception e) {
