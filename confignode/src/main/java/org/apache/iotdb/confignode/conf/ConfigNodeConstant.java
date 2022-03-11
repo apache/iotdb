@@ -16,9 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.service.basic;
+package org.apache.iotdb.confignode.conf;
 
-public class ConfigServiceProvider {
+public class ConfigNodeConstant {
 
-  public ConfigServiceProvider() {}
+  private ConfigNodeConstant() {
+    // empty constructor
+  }
+
+  public static final String CONFIG_NODE_CONF = "CONFIG_NODE_CONF";
+
+  public static final String CONFIG_NODE_HOME = "CONFIG_NODE_HOME";
 }

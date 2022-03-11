@@ -20,11 +20,6 @@ package org.apache.iotdb.confignode.service.thrift.impl;
 
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
-import org.apache.iotdb.confignode.service.basic.ConfigServiceProvider;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
@@ -34,11 +29,9 @@ import java.util.List;
 /** ConfigServiceImpl exposes the interface that interacts with the DataNode */
 public class ConfigServiceImpl implements ConfigIService.Iface {
 
-  private ConfigServiceProvider configServiceProvider;
   private ConfigManager configManager;
 
-  public ConfigServiceImpl() throws QueryProcessException {
-    this.configServiceProvider = new ConfigServiceProvider(null);
+  public ConfigServiceImpl() {
     this.configManager = new ConfigManager();
   }
 
@@ -48,27 +41,29 @@ public class ConfigServiceImpl implements ConfigIService.Iface {
   }
 
   @Override
-  public TSStatus deleteStorageGroup(long sessionId, List<String> storageGroups) throws TException {
+  public TSStatus deleteStorageGroup(long sessionId, String storageGroup) throws TException {
     return null;
   }
 
   @Override
-  public TSStatus createTimeseries(TSCreateTimeseriesReq req) throws TException {
+  public TSStatus deleteStorageGroups(long sessionId, List<String> storageGroups)
+      throws TException {
     return null;
   }
 
   @Override
-  public TSStatus createAlignedTimeseries(TSCreateAlignedTimeseriesReq req) throws TException {
+  public int getSchemaPartition(long sessionId, String device) throws TException {
+    return -1;
+  }
+
+  @Override
+  public List<Integer> getDataPartition(long sessionId, String device, List<Long> times)
+      throws TException {
     return null;
   }
 
   @Override
-  public TSStatus createMultiTimeseries(TSCreateMultiTimeseriesReq req) throws TException {
-    return null;
-  }
-
-  @Override
-  public TSStatus deleteTimeSeries(long sessionId, List<String> paths) throws TException {
+  public List<Integer> getLatestDataPartition(long sessionId, String device) throws TException {
     return null;
   }
 

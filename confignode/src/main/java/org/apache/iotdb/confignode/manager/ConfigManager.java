@@ -18,9 +18,17 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.hash.DeviceGroupHashExecutor;
 import org.apache.iotdb.confignode.partition.PartitionTable;
 import org.apache.iotdb.confignode.service.balancer.LoadBalancer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -30,20 +38,47 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class ConfigManager {
 
-  private final Lock partitionTableLock;
-  private final PartitionTable partitionTable;
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
 
-  private final LoadBalancer loadBalancer;
+  private DeviceGroupHashExecutor hashExecutor;
+
+  private Lock partitionTableLock;
+  private PartitionTable partitionTable;
+
+  private LoadBalancer loadBalancer;
+
+  public ConfigManager(String hashExecutorClass, int deviceGroupCount) {
+    setHashExecutor(hashExecutorClass, deviceGroupCount);
+  }
 
   public ConfigManager() {
+    ConfigNodeConf config = ConfigNodeDescriptor.getInstance().getConf();
+
+    setHashExecutor(config.getDeviceGroupHashExecutorClass(), config.getDeviceGroupCount());
+
     this.partitionTableLock = new ReentrantLock();
     this.partitionTable = new PartitionTable();
 
     this.loadBalancer = new LoadBalancer(partitionTableLock, partitionTable);
   }
 
+  private void setHashExecutor(String hashExecutorClass, int deviceGroupCount) {
+    try {
+      Class<?> executor = Class.forName(hashExecutorClass);
+      Constructor<?> executorConstructor = executor.getConstructor(int.class);
+      hashExecutor = (DeviceGroupHashExecutor) executorConstructor.newInstance(deviceGroupCount);
+    } catch (ClassNotFoundException
+        | NoSuchMethodException
+        | InstantiationException
+        | IllegalAccessException
+        | InvocationTargetException e) {
+      LOGGER.error("Couldn't Constructor DeviceGroupHashExecutor class: {}", hashExecutorClass, e);
+      hashExecutor = null;
+    }
+  }
+
   public int getDeviceGroupID(String device) {
-    return -1;
+    return hashExecutor.getDeviceGroupID(device);
   }
 
   // TODO: Interfaces for metadata operations
