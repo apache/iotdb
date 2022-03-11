@@ -220,7 +220,6 @@ public class ReceiverService implements IService {
 
   @Override
   public void stop() {
-    //    stopPipeServer();
     try {
       receiverManager.close();
     } catch (IOException e) {
@@ -230,7 +229,7 @@ public class ReceiverService implements IService {
 
   @Override
   public ServiceType getID() {
-    return ServiceType.SYNC_SERVICE;
+    return ServiceType.RECEIVER_SERVICE;
   }
 
   private static class ReceiverServiceHolder {

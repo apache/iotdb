@@ -276,6 +276,7 @@ public class IoTDBSyncReceiverCollectorIT {
         Assert.fail();
       }
     }
+    pipeDataQueue.clear();
   }
 
   @Test
@@ -500,5 +501,7 @@ public class IoTDBSyncReceiverCollectorIT {
         Assert.fail();
       }
     }
+    pipeDataQueue2.clear();
+    pipeDataQueue1.clear();
   }
 }
