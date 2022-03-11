@@ -85,6 +85,7 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.google.gson.JsonObject;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -772,8 +773,8 @@ public class SGMManager {
   }
 
   /** Get metadata in string */
-  public String getMetadataInString() {
-    return mtree.toString();
+  public JsonObject getMetadataInJson() {
+    return mtree.toJson();
   }
 
   // region Interfaces for metadata count

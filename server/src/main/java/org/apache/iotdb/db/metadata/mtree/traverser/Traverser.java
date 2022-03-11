@@ -328,7 +328,10 @@ public abstract class Traverser {
   }
 
   /** @return the storage group node in the traverse path */
-  protected IMNode getStorageGroupNodeInTraversePath() {
+  protected IMNode getStorageGroupNodeInTraversePath(IMNode currentNode) {
+    if (currentNode.isStorageGroup()) {
+      return currentNode;
+    }
     Iterator<IMNode> nodes = traverseContext.iterator();
     while (nodes.hasNext()) {
       IMNode node = nodes.next();

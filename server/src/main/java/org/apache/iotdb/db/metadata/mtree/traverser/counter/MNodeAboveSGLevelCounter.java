@@ -28,8 +28,6 @@ import java.util.Set;
 
 public class MNodeAboveSGLevelCounter extends MNodeLevelCounter {
 
-  protected boolean aboveStorageGroup = false;
-
   protected Set<IStorageGroupMNode> involvedStorageGroupMNodes = new HashSet<>();
 
   public MNodeAboveSGLevelCounter(IMNode startNode, PartialPath path, int targetLevel)
@@ -39,7 +37,7 @@ public class MNodeAboveSGLevelCounter extends MNodeLevelCounter {
 
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isStorageGroup() && aboveStorageGroup) {
+    if (node.isStorageGroup()) {
       involvedStorageGroupMNodes.add(node.getAsStorageGroupMNode());
       return true;
     }
@@ -48,15 +46,11 @@ public class MNodeAboveSGLevelCounter extends MNodeLevelCounter {
 
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isStorageGroup() && aboveStorageGroup) {
+    if (node.isStorageGroup()) {
       involvedStorageGroupMNodes.add(node.getAsStorageGroupMNode());
       return true;
     }
     return super.processFullMatchedMNode(node, idx, level);
-  }
-
-  public void setAboveStorageGroup(boolean aboveStorageGroup) {
-    this.aboveStorageGroup = aboveStorageGroup;
   }
 
   public Set<IStorageGroupMNode> getInvolvedStorageGroupMNodes() {

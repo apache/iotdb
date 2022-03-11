@@ -594,15 +594,7 @@ public class MManager {
 
   /** Get metadata in string */
   public String getMetadataInString() {
-    StringBuilder stringBuilder = new StringBuilder();
-    stringBuilder.append(TIME_SERIES_TREE_HEADER);
-    stringBuilder.append("[");
-    for (SGMManager sgmManager : storageGroupManager.getAllSGMManagers()) {
-      stringBuilder.append(sgmManager.getMetadataInString());
-      stringBuilder.append(",");
-    }
-    stringBuilder.append("]");
-    return stringBuilder.toString();
+    return TIME_SERIES_TREE_HEADER + storageGroupManager.getMetadataInString();
   }
 
   // region Interfaces for metadata count
@@ -1044,7 +1036,11 @@ public class MManager {
   }
 
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
-    return storageGroupManager.getBelongedSGMManager(fullPath).getMeasurementMNode(fullPath);
+    try {
+      return storageGroupManager.getBelongedSGMManager(fullPath).getMeasurementMNode(fullPath);
+    } catch (StorageGroupNotSetException e) {
+      throw new PathNotExistException(fullPath.getFullPath());
+    }
   }
 
   /**

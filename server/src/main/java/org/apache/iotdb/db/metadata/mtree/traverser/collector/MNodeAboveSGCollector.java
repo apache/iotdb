@@ -28,8 +28,6 @@ import java.util.Set;
 
 public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
 
-  protected boolean aboveStorageGroup = false;
-
   protected Set<IStorageGroupMNode> involvedStorageGroupMNodes = new HashSet<>();
 
   public MNodeAboveSGCollector(IMNode startNode, PartialPath path) throws MetadataException {
@@ -38,7 +36,7 @@ public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
 
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isStorageGroup() && aboveStorageGroup) {
+    if (node.isStorageGroup()) {
       involvedStorageGroupMNodes.add(node.getAsStorageGroupMNode());
       return true;
     }
@@ -47,15 +45,11 @@ public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
 
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isStorageGroup() && aboveStorageGroup) {
+    if (node.isStorageGroup()) {
       involvedStorageGroupMNodes.add(node.getAsStorageGroupMNode());
       return true;
     }
     return super.processFullMatchedMNode(node, idx, level);
-  }
-
-  public void setAboveStorageGroup(boolean aboveStorageGroup) {
-    this.aboveStorageGroup = aboveStorageGroup;
   }
 
   public Set<IStorageGroupMNode> getInvolvedStorageGroupMNodes() {

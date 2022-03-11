@@ -217,10 +217,6 @@ public class MTreeBelowSG implements Serializable {
     }
   }
 
-  private static String jsonToString(JsonObject jsonObject) {
-    return GSON.toJson(jsonObject);
-  }
-
   public void serializeTo(String snapshotPath) throws IOException {
     try (MLogWriter mLogWriter = new MLogWriter(snapshotPath)) {
       storageGroupMNode.serializeTo(mLogWriter);
@@ -292,11 +288,12 @@ public class MTreeBelowSG implements Serializable {
     return (IStorageGroupMNode) node;
   }
 
-  @Override
-  public String toString() {
+  public JsonObject toJson() {
     JsonObject jsonObject = new JsonObject();
-    jsonObject.add(storageGroupMNode.getName(), mNodeToJSON(storageGroupMNode, null));
-    return jsonToString(jsonObject);
+    jsonObject.add(
+        storageGroupMNode.getFullPath(),
+        mNodeToJSON(storageGroupMNode, storageGroupMNode.getName()));
+    return jsonObject;
   }
 
   private JsonObject mNodeToJSON(IMNode node, String storageGroupName) {
@@ -648,7 +645,7 @@ public class MTreeBelowSG implements Serializable {
                   new ShowDevicesResult(
                       device.getFullPath(),
                       node.isAligned(),
-                      getStorageGroupNodeInTraversePath().getFullPath()));
+                      getStorageGroupNodeInTraversePath(node).getFullPath()));
             } else {
               res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
             }
@@ -795,7 +792,7 @@ public class MTreeBelowSG implements Serializable {
             IMeasurementSchema measurementSchema = node.getSchema();
             String[] tsRow = new String[7];
             tsRow[0] = node.getAlias();
-            tsRow[1] = getStorageGroupNodeInTraversePath().getFullPath();
+            tsRow[1] = getStorageGroupNodeInTraversePath(node).getFullPath();
             tsRow[2] = measurementSchema.getType().toString();
             tsRow[3] = measurementSchema.getEncodingType().toString();
             tsRow[4] = measurementSchema.getCompressor().toString();

@@ -87,4 +87,6 @@ public interface IStorageGroupManager {
 
   Pair<Set<String>, List<SGMManager>> getChildNodeNameInNextLevel(PartialPath pathPattern)
       throws MetadataException;
+
+  String getMetadataInString();
 }

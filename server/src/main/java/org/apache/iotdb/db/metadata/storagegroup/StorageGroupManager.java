@@ -237,4 +237,9 @@ public class StorageGroupManager implements IStorageGroupManager {
     }
     return new Pair<>(resultAboveSG.left, sgmManagers);
   }
+
+  @Override
+  public String getMetadataInString() {
+    return mtree.toString();
+  }
 }

@@ -40,6 +40,28 @@ public class MeasurementGroupByLevelCounter extends Traverser {
       throws MetadataException {
     super(startNode, path);
     this.groupByLevel = groupByLevel;
+    checkLevelAboveSG();
+  }
+
+  /**
+   * The traverser may start traversing from a storageGroupMNode, which is an InternalMNode of the
+   * whole MTree.
+   */
+  private void checkLevelAboveSG() {
+    if (groupByLevel >= startLevel) {
+      return;
+    }
+    IMNode parent = startNode.getParent();
+    int level = startLevel;
+    while (parent != null) {
+      level--;
+      if (level == groupByLevel) {
+        path = parent.getPartialPath();
+        result.putIfAbsent(path, 0);
+        break;
+      }
+      parent = parent.getParent();
+    }
   }
 
   @Override
@@ -70,5 +92,9 @@ public class MeasurementGroupByLevelCounter extends Traverser {
 
   public Map<PartialPath, Integer> getResult() {
     return result;
+  }
+
+  public void setResult(Map<PartialPath, Integer> result) {
+    this.result = result;
   }
 }

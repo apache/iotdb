@@ -43,6 +43,9 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,6 +64,8 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 public class MTreeAboveSG {
 
   private static final Logger logger = LoggerFactory.getLogger(MTreeAboveSG.class);
+  public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
   private IMNode root;
 
   public MTreeAboveSG() {
@@ -406,7 +411,6 @@ public class MTreeAboveSG {
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     MNodeAboveSGLevelCounter counter = new MNodeAboveSGLevelCounter(root, pathPattern, level);
     counter.setPrefixMatch(isPrefixMatch);
-    counter.setAboveStorageGroup(true);
     counter.traverse();
     return new Pair<>(counter.getCount(), counter.getInvolvedStorageGroupMNodes());
   }
@@ -425,7 +429,6 @@ public class MTreeAboveSG {
     collector.setResultSet(new LinkedList<>());
     collector.setTargetLevel(nodeLevel);
     collector.setStorageGroupFilter(filter);
-    collector.setAboveStorageGroup(true);
     collector.traverse();
 
     return new Pair<>(collector.getResult(), collector.getInvolvedStorageGroupMNodes());
@@ -454,7 +457,6 @@ public class MTreeAboveSG {
             }
           };
       collector.setResultSet(new TreeSet<>());
-      collector.setAboveStorageGroup(true);
       collector.traverse();
 
       return new Pair<>(collector.getResult(), collector.getInvolvedStorageGroupMNodes());
@@ -487,12 +489,42 @@ public class MTreeAboveSG {
             }
           };
       collector.setResultSet(new TreeSet<>());
-      collector.setAboveStorageGroup(true);
       collector.traverse();
 
       return new Pair<>(collector.getResult(), collector.getInvolvedStorageGroupMNodes());
     } catch (IllegalPathException e) {
       throw new IllegalPathException(pathPattern.getFullPath());
     }
+  }
+
+  @Override
+  public String toString() {
+    JsonObject jsonObject = new JsonObject();
+    jsonObject.add(root.getName(), mNodeToJSON(root));
+    return jsonToString(jsonObject);
+  }
+
+  private JsonObject mNodeToJSON(IMNode node) {
+    JsonObject jsonObject = new JsonObject();
+    if (node.getChildren().size() > 0) {
+      for (IMNode child : node.getChildren().values()) {
+        if (child.isStorageGroup()) {
+          jsonObject.add(
+              child.getName(),
+              child
+                  .getAsStorageGroupMNode()
+                  .getSGMManager()
+                  .getMetadataInJson()
+                  .get(child.getFullPath()));
+        } else {
+          jsonObject.add(child.getName(), mNodeToJSON(child));
+        }
+      }
+    }
+    return jsonObject;
+  }
+
+  private static String jsonToString(JsonObject jsonObject) {
+    return GSON.toJson(jsonObject);
   }
 }
