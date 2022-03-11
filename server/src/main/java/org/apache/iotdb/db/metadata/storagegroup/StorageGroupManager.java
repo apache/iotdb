@@ -43,7 +43,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public class StorageGroupManager implements IStorageGroupManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(MManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(StorageGroupManager.class);
 
   private MTreeAboveSG mtree;
 
@@ -56,11 +56,11 @@ public class StorageGroupManager implements IStorageGroupManager {
     File dir = new File(IoTDBDescriptor.getInstance().getConfig().getSchemaDir());
     File[] sgDirs = dir.listFiles((dir1, name) -> name.startsWith(PATH_ROOT + PATH_SEPARATOR));
     if (sgDirs != null) {
-      for (File f : sgDirs) {
+      for (File sgDir : sgDirs) {
         try {
-          setStorageGroup(new PartialPath(f.getName()));
+          setStorageGroup(new PartialPath(sgDir.getName()));
         } catch (MetadataException e) {
-          logger.error("Cannot recover storage group from dir {} because", f.getName(), e);
+          logger.error("Cannot recover storage group from dir {} because", sgDir.getName(), e);
         }
       }
     }
