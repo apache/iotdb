@@ -7,6 +7,7 @@ import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -293,6 +294,19 @@ public class MRocksDBUnitTest {
     IMeasurementMNode m3 =
         mRocksDBManager.getMeasurementMNode(new PartialPath("root.tt.sg.dd.test"));
     Assert.assertEquals(m3.getAlias(), "test");
+  }
+
+  @Test
+  public void testGetSeriesSchema() throws MetadataException {
+    PartialPath path2 = new PartialPath("root.tt.sg.dd.m2");
+    mRocksDBManager.createTimeseries(
+        path2, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null, "ma");
+
+    IMeasurementSchema schema = mRocksDBManager.getSeriesSchema(path2);
+
+    Assert.assertEquals(schema.getEncodingType(), TSEncoding.PLAIN);
+    Assert.assertEquals(schema.getType(), TSDataType.TEXT);
+    Assert.assertEquals(schema.getCompressor(), CompressionType.UNCOMPRESSED);
   }
 
   @After
