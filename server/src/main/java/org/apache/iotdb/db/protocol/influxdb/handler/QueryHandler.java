@@ -335,8 +335,7 @@ public class QueryHandler {
       if (expression instanceof FunctionExpression) {
         String functionName = ((FunctionExpression) expression).getFunctionName();
         functions.add(
-            InfluxFunctionFactory.generateFunctionByProvider(
-                functionName, expression.getExpressions(), path, serviceProvider));
+            InfluxFunctionFactory.generateFunction(functionName, expression.getExpressions()));
         columns.add(functionName);
       }
     }
@@ -344,7 +343,7 @@ public class QueryHandler {
     List<Object> value = new ArrayList<>();
     List<List<Object>> values = new ArrayList<>();
     for (InfluxFunction function : functions) {
-      InfluxFunctionValue functionValue = updateByIoTDBFunc(function, serviceProvider);
+      InfluxFunctionValue functionValue = updateByIoTDBFunc(function, serviceProvider, path);
       //      InfluxFunctionValue functionValue = function.calculateByIoTDBFunc();
       if (value.size() == 0) {
         value.add(functionValue.getTimestamp());
@@ -371,14 +370,14 @@ public class QueryHandler {
   }
 
   private static InfluxFunctionValue updateByIoTDBFunc(
-      InfluxFunction function, ServiceProvider serviceProvider) {
+      InfluxFunction function, ServiceProvider serviceProvider, String path) {
     switch (function.getFunctionName()) {
       case InfluxSQLConstant.COUNT:
         {
           long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
           String functionSql =
               StringUtils.generateFunctionSql(
-                  function.getFunctionName(), function.getParmaName(), function.getPath());
+                  function.getFunctionName(), function.getParmaName(), path);
           try {
             QueryPlan queryPlan =
                 (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSql);
@@ -418,8 +417,7 @@ public class QueryHandler {
           long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
           try {
             String functionSqlCount =
-                StringUtils.generateFunctionSql(
-                    "count", function.getParmaName(), function.getPath());
+                StringUtils.generateFunctionSql("count", function.getParmaName(), path);
             QueryPlan queryPlan =
                 (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSqlCount);
             QueryContext queryContext =
@@ -453,7 +451,7 @@ public class QueryHandler {
           long queryId1 = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
           try {
             String functionSqlSum =
-                StringUtils.generateFunctionSql("sum", function.getParmaName(), function.getPath());
+                StringUtils.generateFunctionSql("sum", function.getParmaName(), path);
             QueryPlan queryPlan =
                 (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSqlSum);
             QueryContext queryContext =
@@ -493,8 +491,7 @@ public class QueryHandler {
           long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
           try {
             String functionSqlMaxValue =
-                StringUtils.generateFunctionSql(
-                    "max_value", function.getParmaName(), function.getPath());
+                StringUtils.generateFunctionSql("max_value", function.getParmaName(), path);
             QueryPlan queryPlan =
                 (QueryPlan)
                     serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSqlMaxValue);
@@ -534,8 +531,7 @@ public class QueryHandler {
           long queryId1 = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
           try {
             String functionSqlMinValue =
-                StringUtils.generateFunctionSql(
-                    "min_value", function.getParmaName(), function.getPath());
+                StringUtils.generateFunctionSql("min_value", function.getParmaName(), path);
             QueryPlan queryPlan =
                 (QueryPlan)
                     serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSqlMinValue);
@@ -579,7 +575,7 @@ public class QueryHandler {
           long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
           try {
             String functionSql =
-                StringUtils.generateFunctionSql("sum", function.getParmaName(), function.getPath());
+                StringUtils.generateFunctionSql("sum", function.getParmaName(), path);
             QueryPlan queryPlan =
                 (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(functionSql);
             QueryContext queryContext =
@@ -619,12 +615,10 @@ public class QueryHandler {
           String functionSql;
           if (function.getFunctionName().equals(InfluxSQLConstant.FIRST)) {
             functionSql =
-                StringUtils.generateFunctionSql(
-                    "first_value", function.getParmaName(), function.getPath());
+                StringUtils.generateFunctionSql("first_value", function.getParmaName(), path);
           } else {
             functionSql =
-                StringUtils.generateFunctionSql(
-                    "last_value", function.getParmaName(), function.getPath());
+                StringUtils.generateFunctionSql("last_value", function.getParmaName(), path);
           }
           List<Long> queryIds = new ArrayList<>();
           queryIds.add(ServiceProvider.SESSION_MANAGER.requestQueryId(true));
@@ -699,12 +693,10 @@ public class QueryHandler {
           String functionSql;
           if (function.getFunctionName().equals(InfluxSQLConstant.MAX)) {
             functionSql =
-                StringUtils.generateFunctionSql(
-                    "max_value", function.getParmaName(), function.getPath());
+                StringUtils.generateFunctionSql("max_value", function.getParmaName(), path);
           } else {
             functionSql =
-                StringUtils.generateFunctionSql(
-                    "min_value", function.getParmaName(), function.getPath());
+                StringUtils.generateFunctionSql("min_value", function.getParmaName(), path);
           }
           long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
           try {

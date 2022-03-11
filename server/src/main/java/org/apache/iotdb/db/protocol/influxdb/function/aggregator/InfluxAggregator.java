@@ -22,20 +22,13 @@ package org.apache.iotdb.db.protocol.influxdb.function.aggregator;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.service.basic.ServiceProvider;
 
 import java.util.List;
 
 public abstract class InfluxAggregator extends InfluxFunction {
-  public InfluxAggregator() {}
 
   public InfluxAggregator(List<Expression> expressionList) {
     super(expressionList);
-  }
-
-  public InfluxAggregator(
-      List<Expression> expressionList, String path, ServiceProvider serviceProvider) {
-    super(expressionList, path, serviceProvider);
   }
 
   public abstract void updateValueBruteForce(InfluxFunctionValue functionValue);

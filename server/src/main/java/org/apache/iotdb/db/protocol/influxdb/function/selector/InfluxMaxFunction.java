@@ -22,7 +22,6 @@ package org.apache.iotdb.db.protocol.influxdb.function.selector;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.service.basic.ServiceProvider;
 
 import java.util.List;
 
@@ -36,11 +35,6 @@ public class InfluxMaxFunction extends InfluxSelector {
 
   public InfluxMaxFunction(List<Expression> expressionList) {
     super(expressionList);
-  }
-
-  public InfluxMaxFunction(
-      List<Expression> expressionList, String path, ServiceProvider serviceProvider) {
-    super(expressionList, path, serviceProvider);
   }
 
   @Override

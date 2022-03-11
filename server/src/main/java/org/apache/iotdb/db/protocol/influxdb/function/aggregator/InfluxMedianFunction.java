@@ -22,7 +22,6 @@ package org.apache.iotdb.db.protocol.influxdb.function.aggregator;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.service.basic.ServiceProvider;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,11 +32,6 @@ public class InfluxMedianFunction extends InfluxAggregator {
 
   public InfluxMedianFunction(List<Expression> expressionList) {
     super(expressionList);
-  }
-
-  public InfluxMedianFunction(
-      List<Expression> expressionList, String path, ServiceProvider serviceProvider) {
-    super(expressionList, path, serviceProvider);
   }
 
   @Override

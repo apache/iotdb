@@ -20,28 +20,16 @@ package org.apache.iotdb.db.protocol.influxdb.function;
 
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
-import org.apache.iotdb.db.service.basic.ServiceProvider;
 
 import java.util.List;
 
 public abstract class InfluxFunction {
-
-  private String path;
-
-  protected ServiceProvider serviceProvider;
 
   // contain possible parameters
   private List<Expression> expressionList;
 
   public InfluxFunction(List<Expression> expressionList) {
     this.expressionList = expressionList;
-  }
-
-  public InfluxFunction(
-      List<Expression> expressionList, String path, ServiceProvider serviceProvider) {
-    this.expressionList = expressionList;
-    this.path = path;
-    this.serviceProvider = serviceProvider;
   }
 
   public InfluxFunction() {}
@@ -59,10 +47,6 @@ public abstract class InfluxFunction {
   }
 
   public abstract String getFunctionName();
-
-  public String getPath() {
-    return path;
-  }
 
   // calculate result by brute force
   public abstract InfluxFunctionValue calculateBruteForce();

@@ -25,7 +25,6 @@ import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxLastFunctio
 import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxMaxFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxMinFunction;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.service.basic.ServiceProvider;
 
 import java.util.List;
 
@@ -56,33 +55,6 @@ public class InfluxFunctionFactory {
         return new InfluxStddevFunction(expressionList);
       case InfluxSQLConstant.SUM:
         return new InfluxSumFunction(expressionList);
-      default:
-        throw new IllegalArgumentException("not support aggregation name:" + functionName);
-    }
-  }
-
-  public static InfluxFunction generateFunctionByProvider(
-      String functionName,
-      List<Expression> expressionList,
-      String path,
-      ServiceProvider serviceProvider) {
-    switch (functionName) {
-      case InfluxSQLConstant.MAX:
-        return new InfluxMaxFunction(expressionList, path, serviceProvider);
-      case InfluxSQLConstant.MIN:
-        return new InfluxMinFunction(expressionList, path, serviceProvider);
-      case InfluxSQLConstant.FIRST:
-        return new InfluxFirstFunction(expressionList, path, serviceProvider);
-      case InfluxSQLConstant.LAST:
-        return new InfluxLastFunction(expressionList, path, serviceProvider);
-      case InfluxSQLConstant.COUNT:
-        return new InfluxCountFunction(expressionList, path, serviceProvider);
-      case InfluxSQLConstant.MEAN:
-        return new InfluxMeanFunction(expressionList, path, serviceProvider);
-      case InfluxSQLConstant.SPREAD:
-        return new InfluxSpreadFunction(expressionList, path, serviceProvider);
-      case InfluxSQLConstant.SUM:
-        return new InfluxSumFunction(expressionList, path, serviceProvider);
       default:
         throw new IllegalArgumentException("not support aggregation name:" + functionName);
     }

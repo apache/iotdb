@@ -22,7 +22,6 @@ package org.apache.iotdb.db.protocol.influxdb.function.selector;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.service.basic.ServiceProvider;
 
 import java.util.List;
 
@@ -32,11 +31,6 @@ public class InfluxLastFunction extends InfluxSelector {
   public InfluxLastFunction(List<Expression> expressionList) {
     super(expressionList);
     this.setTimestamp(Long.MIN_VALUE);
-  }
-
-  public InfluxLastFunction(
-      List<Expression> expressionList, String path, ServiceProvider serviceProvider) {
-    super(expressionList, path, serviceProvider);
   }
 
   @Override
