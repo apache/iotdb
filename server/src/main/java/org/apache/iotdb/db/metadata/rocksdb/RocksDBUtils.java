@@ -44,9 +44,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.*;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_ALIGNED;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.PATH_SEPARATOR;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
 
 public class RocksDBUtils {
 
@@ -176,7 +175,7 @@ public class RocksDBUtils {
     }
 
     if (schema != null) {
-      flag = (byte) (flag | FLAG_IS_SCHEMA);
+      flag = (byte) (flag | FLAG_HAS_SCHEMA);
     }
 
     ReadWriteIOUtils.write(flag, outputStream);
@@ -214,16 +213,18 @@ public class RocksDBUtils {
     return ReadWriteIOUtils.readBytes(buffer, len);
   }
 
-  public static int indexOfDataBlockType(byte[] data, byte type) {
-    if ((data[1] & FLAG_SET_TTL) == 0) {
+  public static int indexOfDataBlockType(byte[] data, RMNodeValueType valueType) {
+    if (valueType.flag != null && (data[1] & valueType.flag) == 0) {
       return -1;
     }
 
     int index = -1;
     boolean typeExist = false;
+
     ByteBuffer byteBuffer = ByteBuffer.wrap(data);
-    // skip the version flag and node type flag
+    // skip the data version and filter byte
     ReadWriteIOUtils.readBytes(byteBuffer, 2);
+
     while (byteBuffer.hasRemaining()) {
       byte blockType = ReadWriteIOUtils.readByte(byteBuffer);
       index = byteBuffer.position();
@@ -248,7 +249,7 @@ public class RocksDBUtils {
           break;
       }
       // got the data we need,don't need to read any more
-      if (type == blockType) {
+      if (valueType.type == blockType) {
         typeExist = true;
         break;
       }
@@ -257,7 +258,7 @@ public class RocksDBUtils {
   }
 
   public static byte[] updateTTL(byte[] origin, long ttl) {
-    int index = indexOfDataBlockType(origin, DATA_BLOCK_TYPE_TTL);
+    int index = indexOfDataBlockType(origin, RMNodeValueType.TTL);
     if (index < 1) {
       byte[] ttlBlock = new byte[Long.BYTES + 1];
       ttlBlock[0] = DATA_BLOCK_TYPE_TTL;
@@ -277,44 +278,45 @@ public class RocksDBUtils {
    * parse value and return a specified type. if no data is required, null is returned.
    *
    * @param value value written in default table
-   * @param type the type of value to obtain
+   * @param valueType the type of value to obtain
    */
-  public static Object parseNodeValue(byte[] value, byte type) {
+  public static Object parseNodeValue(byte[] value, RMNodeValueType valueType) {
     ByteBuffer byteBuffer = ByteBuffer.wrap(value);
     // skip the version flag and node type flag
     ReadWriteIOUtils.readByte(byteBuffer);
     // get block type
-    byte flag = ReadWriteIOUtils.readByte(byteBuffer);
-
+    byte filter = ReadWriteIOUtils.readByte(byteBuffer);
     Object obj = null;
+    if (valueType.flag != null && (filter & valueType.flag) == 0) {
+      return obj;
+    }
+
     // this means that the following data contains the information we need
-    if ((flag & type) > 0) {
-      while (byteBuffer.hasRemaining()) {
-        byte blockType = ReadWriteIOUtils.readByte(byteBuffer);
-        switch (blockType) {
-          case DATA_BLOCK_TYPE_TTL:
-            obj = ReadWriteIOUtils.readLong(byteBuffer);
-            break;
-          case DATA_BLOCK_TYPE_ALIAS:
-            obj = ReadWriteIOUtils.readString(byteBuffer);
-            break;
-          case DATA_BLOCK_TYPE_ORIGIN_KEY:
-            obj = readOriginKey(byteBuffer);
-            break;
-          case DATA_BLOCK_TYPE_SCHEMA:
-            obj = MeasurementSchema.deserializeFrom(byteBuffer);
-            break;
-          case DATA_BLOCK_TYPE_TAGS:
-          case DATA_BLOCK_TYPE_ATTRIBUTES:
-            obj = ReadWriteIOUtils.readMap(byteBuffer);
-            break;
-          default:
-            break;
-        }
-        // got the data we need,don't need to read any more
-        if (type == blockType) {
+    while (byteBuffer.hasRemaining()) {
+      byte blockType = ReadWriteIOUtils.readByte(byteBuffer);
+      switch (blockType) {
+        case DATA_BLOCK_TYPE_TTL:
+          obj = ReadWriteIOUtils.readLong(byteBuffer);
           break;
-        }
+        case DATA_BLOCK_TYPE_ALIAS:
+          obj = ReadWriteIOUtils.readString(byteBuffer);
+          break;
+        case DATA_BLOCK_TYPE_ORIGIN_KEY:
+          obj = readOriginKey(byteBuffer);
+          break;
+        case DATA_BLOCK_TYPE_SCHEMA:
+          obj = MeasurementSchema.deserializeFrom(byteBuffer);
+          break;
+        case DATA_BLOCK_TYPE_TAGS:
+        case DATA_BLOCK_TYPE_ATTRIBUTES:
+          obj = ReadWriteIOUtils.readMap(byteBuffer);
+          break;
+        default:
+          break;
+      }
+      // got the data we need,don't need to read any more
+      if (valueType.type == blockType) {
+        break;
       }
     }
     return obj;

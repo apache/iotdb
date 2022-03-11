@@ -247,9 +247,6 @@ public interface IMetaManager {
   List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
       throws PathNotExistException;
 
-  Map<PartialPath, IMeasurementSchema> getAllMeasurementSchemaByPrefix(PartialPath prefixPath)
-      throws MetadataException;
-
   IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
       throws MetadataException;
 

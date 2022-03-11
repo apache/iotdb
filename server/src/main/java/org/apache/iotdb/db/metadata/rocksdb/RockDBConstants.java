@@ -55,7 +55,7 @@ public class RockDBConstants {
   public static final byte DEFAULT_FLAG = 0x00;
 
   public static final byte FLAG_SET_TTL = 0x01;
-  public static final byte FLAG_IS_SCHEMA = 0x01 << 1;
+  public static final byte FLAG_HAS_SCHEMA = 0x01 << 1;
   public static final byte FLAG_HAS_ALIAS = 0x01 << 2;
   public static final byte FLAG_HAS_TAGS = 0x01 << 3;
   public static final byte FLAG_HAS_ATTRIBUTES = 0x01 << 4;
