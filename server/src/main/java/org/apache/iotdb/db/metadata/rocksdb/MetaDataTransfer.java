@@ -45,10 +45,14 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -75,6 +79,9 @@ public class MetaDataTransfer {
           + File.separator
           + MetadataConstant.METADATA_LOG
           + ".transfer_failed";
+
+  private String idxFilePath =
+      RocksDBReadWriteHandler.ROCKSDB_PATH + File.separator + "transfer_mlog.idx";
 
   private AtomicInteger failedPlanCount = new AtomicInteger(0);
   private List<PhysicalPlan> retryPlans = new ArrayList<>();
@@ -125,8 +132,18 @@ public class MetaDataTransfer {
     File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
     // init the metadata from the operation log
     if (logFile.exists()) {
-      try (MLogReader mLogReader = new MLogReader(schemaDir, MetadataConstant.METADATA_LOG); ) {
-        transferFromMLog(mLogReader);
+      try (MLogReader mLogReader = new MLogReader(schemaDir, MetadataConstant.METADATA_LOG)) {
+        int startIdx = 0;
+        File idxFile = new File(idxFilePath);
+        if (idxFile.exists()) {
+          try (BufferedReader br = new BufferedReader(new FileReader(idxFile))) {
+            String idxStr = br.readLine();
+            if (StringUtils.isNotEmpty(idxStr)) {
+              startIdx = Integer.valueOf(idxStr);
+            }
+          }
+        }
+        transferFromMLog(mLogReader, startIdx);
       } catch (Exception e) {
         throw new IOException("Failed to parser mlog.bin for err:" + e);
       }
@@ -138,18 +155,22 @@ public class MetaDataTransfer {
     logger.info("Transfer metadata from MManager to MRocksDBManager complete!");
   }
 
-  private void transferFromMLog(MLogReader mLogReader)
+  private void transferFromMLog(MLogReader mLogReader, long startIdx)
       throws IOException, MetadataException, ExecutionException, InterruptedException {
     long time = System.currentTimeMillis();
-    int idx = 0;
+    logger.info("start from {} to transfer data from mlog.bin", startIdx);
+    int currentIdx = 0;
     PhysicalPlan plan;
     List<PhysicalPlan> nonCollisionCollections = new ArrayList<>();
     while (mLogReader.hasNext()) {
       try {
         plan = mLogReader.next();
-        idx++;
+        currentIdx++;
+        if (currentIdx <= startIdx) {
+          continue;
+        }
       } catch (Exception e) {
-        logger.error("Parse mlog error at lineNumber {} because:", idx, e);
+        logger.error("Parse mlog error at lineNumber {} because:", currentIdx, e);
         throw e;
       }
       if (plan == null) {
@@ -161,15 +182,14 @@ public class MetaDataTransfer {
         case CREATE_ALIGNED_TIMESERIES:
         case AUTO_CREATE_DEVICE_MNODE:
           nonCollisionCollections.add(plan);
-          if (nonCollisionCollections.size() > 100000) {
+          if (nonCollisionCollections.size() > DEFAULT_TRANSFER_PLANS_BUFFER_SIZE) {
             executeBufferedOperation(nonCollisionCollections);
           }
           break;
         case SET_STORAGE_GROUP:
-        case DELETE_TIMESERIES:
-        case DELETE_STORAGE_GROUP:
         case TTL:
         case CHANGE_ALIAS:
+        case DELETE_TIMESERIES:
           executeBufferedOperation(nonCollisionCollections);
           try {
             rocksDBManager.operation(plan);
@@ -177,6 +197,12 @@ public class MetaDataTransfer {
             rocksDBManager.operation(plan);
           } catch (MetadataException e) {
             logger.error("Can not operate cmd {} for err:", plan.getOperatorType(), e);
+          }
+          break;
+        case DELETE_STORAGE_GROUP:
+          DeleteStorageGroupPlan deleteStorageGroupPlan = (DeleteStorageGroupPlan) plan;
+          for (PartialPath path : deleteStorageGroupPlan.getPaths()) {
+            logger.info("delete storage group: {}", path.getFullPath());
           }
           break;
         case CHANGE_TAG_OFFSET:
@@ -210,6 +236,11 @@ public class MetaDataTransfer {
           persistFailedLog(retryPlan);
         }
       }
+    }
+
+    File idxFile = new File(idxFilePath);
+    try (FileWriter writer = new FileWriter(idxFile)) {
+      writer.write(String.valueOf(currentIdx));
     }
     logger.info(
         "Transfer data from mlog.bin complete after {}ms with {} errors",
