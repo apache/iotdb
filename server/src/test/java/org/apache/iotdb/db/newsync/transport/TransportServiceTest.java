@@ -56,12 +56,13 @@ import java.util.concurrent.Executors;
 public class TransportServiceTest {
   /** create tsfile and move to tmpDir for sync test */
   File tmpDir = new File("target/synctest");
-
   String pipeName1 = "pipe1";
   String remoteIp1 = "127.0.0.1";
   long createdTime1 = System.currentTimeMillis();
   File fileDir = new File(SyncPathUtil.getReceiverFileDataDir(pipeName1, remoteIp1, createdTime1));
-
+  PipeDataQueue pipeDataQueue =
+          PipeDataQueueFactory.getBufferedPipeDataQueue(
+                  SyncPathUtil.getReceiverPipeLogDir(pipeName1, remoteIp1, createdTime1));
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
@@ -72,6 +73,7 @@ public class TransportServiceTest {
 
   @After
   public void tearDown() throws Exception {
+    pipeDataQueue.clear();
     FileUtils.deleteDirectory(tmpDir);
     EnvironmentUtils.cleanEnv();
   }
@@ -139,9 +141,6 @@ public class TransportServiceTest {
     compareFile(modsFiles[0], modsFile);
 
     // 6. check pipedata
-    PipeDataQueue pipeDataQueue =
-        PipeDataQueueFactory.getBufferedPipeDataQueue(
-            SyncPathUtil.getReceiverPipeLogDir(pipeName1, remoteIp1, createdTime1));
     tsFilePipeData.setTsFilePath(fileDir.getAbsolutePath() + File.separator + tsfile.getName());
     ExecutorService es1 = Executors.newSingleThreadExecutor();
     List<PipeData> resPipeData = new ArrayList<>();
