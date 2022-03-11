@@ -147,12 +147,12 @@ public abstract class QueryDataSet {
    * check rowRecord whether satisfy without null condition
    *
    * @param rowRecord rowRecord
-   * @param withoutAllNull true is `without all` clause, false not
-   * @param withoutAnyNull true is `without any` clause, false not
+   * @param withoutNullAll true is `without all` clause, false not
+   * @param withoutNullAny true is `without any` clause, false not
    * @return true satisfy false don't satisfy
    */
   public boolean withoutNullFilter(
-      RowRecord rowRecord, boolean withoutAllNull, boolean withoutAnyNull) {
+      RowRecord rowRecord, boolean withoutNullAll, boolean withoutNullAny) {
     boolean
         anyNullFlag =
             (withoutNullColumnsIndex == null)
@@ -165,12 +165,12 @@ public abstract class QueryDataSet {
         Field field = rowRecord.getFields().get(index);
         if (field == null || field.getDataType() == null) {
           anyNullFlag = true;
-          if (withoutAnyNull) {
+          if (withoutNullAny) {
             break;
           }
         } else {
           allNullFlag = false;
-          if (withoutAllNull) {
+          if (withoutNullAll) {
             break;
           }
         }
@@ -180,7 +180,7 @@ public abstract class QueryDataSet {
     if (withoutNullColumnsIndex != null && withoutNullColumnsIndex.isEmpty()) {
       allNullFlag = rowRecord.isAllNull();
     }
-    return (withoutAllNull && allNullFlag) || (withoutAnyNull && anyNullFlag);
+    return (withoutNullAll && allNullFlag) || (withoutNullAny && anyNullFlag);
   }
 
   public abstract boolean hasNextWithoutConstraint() throws IOException;
