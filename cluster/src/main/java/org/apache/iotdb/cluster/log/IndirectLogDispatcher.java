@@ -19,17 +19,16 @@
 
 package org.apache.iotdb.cluster.log;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -107,8 +106,8 @@ public class IndirectLogDispatcher extends LogDispatcher {
     }
 
     @Override
-    protected AppendEntriesRequest prepareRequest(List<ByteBuffer> logList,
-        List<SendLogRequest> currBatch, int firstIndex) {
+    protected AppendEntriesRequest prepareRequest(
+        List<ByteBuffer> logList, List<SendLogRequest> currBatch, int firstIndex) {
       return super.prepareRequest(logList, currBatch, firstIndex)
           .setSubReceivers(directToIndirectFollowerMap.get(receiver));
     }

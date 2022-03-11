@@ -768,27 +768,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public AppendEntryResult appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers)
-      throws TException {
-    return DataGroupEngine.getInstance()
-        .getDataSyncService(request.getHeader())
-        .appendEntryIndirect(request, subReceivers);
-  }
-
-  @Override
   public void acknowledgeAppendEntry(AppendEntryResult ack) throws TException {
     DataGroupEngine.getInstance().getDataSyncService(ack.getHeader()).acknowledgeAppendEntry(ack);
-  }
-
-  @Override
-  public void appendEntryIndirect(
-      AppendEntryRequest request,
-      List<Node> subReceivers,
-      AsyncMethodCallback<AppendEntryResult> resultHandler)
-      throws TException {
-    DataGroupEngine.getInstance()
-        .getDataAsyncService(request.getHeader(), resultHandler, request)
-        .appendEntryIndirect(request, subReceivers, resultHandler);
   }
 
   @Override

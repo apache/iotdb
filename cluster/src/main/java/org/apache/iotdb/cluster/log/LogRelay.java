@@ -102,7 +102,12 @@ public class LogRelay {
           }
         }
 
-        raftMember.sendLogToSubFollowers(relayEntry.singleRequest, relayEntry.receivers);
+        if (relayEntry.singleRequest != null) {
+          raftMember.sendLogToSubFollowers(relayEntry.singleRequest, relayEntry.receivers);
+        } else if (relayEntry.batchRequest != null) {
+          raftMember.sendLogsToSubFollowers(relayEntry.batchRequest, relayEntry.receivers);
+        }
+
         Statistic.RAFT_SEND_RELAY.add(1);
       }
     }
@@ -142,8 +147,8 @@ public class LogRelay {
         return false;
       }
       RelayEntry that = (RelayEntry) o;
-      return Objects.equals(singleRequest, that.singleRequest) && Objects.equals(batchRequest,
-          that.batchRequest);
+      return Objects.equals(singleRequest, that.singleRequest)
+          && Objects.equals(batchRequest, that.batchRequest);
     }
 
     @Override

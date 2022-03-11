@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.server.handlers.forwarder;
 
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
@@ -31,9 +30,9 @@ public class IndirectAppendHandler implements AsyncMethodCallback<AppendEntryRes
 
   private static final Logger logger = LoggerFactory.getLogger(IndirectAppendHandler.class);
   private Node receiver;
-  private AppendEntryRequest request;
+  private Object request;
 
-  public IndirectAppendHandler(Node receiver, AppendEntryRequest request) {
+  public IndirectAppendHandler(Node receiver, Object request) {
     this.receiver = receiver;
     this.request = request;
   }

@@ -121,6 +121,19 @@ public class UnCommittedEntryManager {
         }
       } catch (IndexOutOfBoundsException e) {
         // continue
+        logger.info(
+            "Invalid entryPos {}, entries size {}, last index {}, requested index {}, "
+                + "offset {}",
+            entryPos,
+            entries.size(),
+            last,
+            index,
+            offset);
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException interruptedException) {
+          Thread.currentThread().interrupt();
+        }
       }
     }
   }

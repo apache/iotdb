@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import java.nio.Buffer;
 import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.ClientManager;
@@ -111,12 +110,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
+import java.nio.Buffer;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Map;
@@ -586,7 +585,8 @@ public abstract class RaftMember implements RaftMemberMBean {
     return result;
   }
 
-  private AppendEntryResult appendEntryInternal(AppendEntryRequest request) throws UnknownLogTypeException {
+  private AppendEntryResult appendEntryInternal(AppendEntryRequest request)
+      throws UnknownLogTypeException {
     logger.debug("{} received an AppendEntryRequest: {}", name, request);
     // the term checked here is that of the leader, not that of the log
     long checkResult = checkRequestTerm(request.term, request.leader);
@@ -650,6 +650,7 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   public void sendLogToSubFollowers(AppendEntryRequest request, List<Node> subFollowers) {
     request.setIsFromLeader(false);
+    request.setSubReceiversIsSet(false);
     for (Node subFollower : subFollowers) {
       Client syncClient = null;
       try {
@@ -659,6 +660,29 @@ public abstract class RaftMember implements RaftMemberMBean {
         } else {
           syncClient = getSyncClient(subFollower);
           syncClient.appendEntry(request);
+        }
+      } catch (TException e) {
+        logger.error("Cannot send {} to {}", request, subFollower, e);
+      } finally {
+        if (syncClient != null) {
+          ClientUtils.putBackSyncClient(syncClient);
+        }
+      }
+    }
+  }
+
+  public void sendLogsToSubFollowers(AppendEntriesRequest request, List<Node> subFollowers) {
+    request.setIsFromLeader(false);
+    request.setSubReceiversIsSet(false);
+    for (Node subFollower : subFollowers) {
+      Client syncClient = null;
+      try {
+        if (config.isUseAsyncServer()) {
+          getAsyncClient(subFollower)
+              .appendEntries(request, new IndirectAppendHandler(subFollower, request));
+        } else {
+          syncClient = getSyncClient(subFollower);
+          syncClient.appendEntries(request);
         }
       } catch (TException e) {
         logger.error("Cannot send {} to {}", request, subFollower, e);
@@ -722,6 +746,15 @@ public abstract class RaftMember implements RaftMemberMBean {
           request.getEntries().size(),
           response);
     }
+
+    if (!request.isFromLeader) {
+      // TODO: use batch ack
+      for (Log log : logs) {
+        appendAckLeader(request.leader, log, response.status);
+      }
+      Statistic.RAFT_SEND_RELAY_ACK.add(1);
+    }
+
     return response;
   }
 
@@ -2144,11 +2177,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
 
     if (config.isUseAsyncServer()) {
-      sendLogAsync(
-          log, node, leaderShipStale, newLeaderTerm, request, peer, quorumSize);
+      sendLogAsync(log, node, leaderShipStale, newLeaderTerm, request, peer, quorumSize);
     } else {
-      sendLogSync(
-          log, node, leaderShipStale, newLeaderTerm, request, peer, quorumSize);
+      sendLogSync(log, node, leaderShipStale, newLeaderTerm, request, peer, quorumSize);
     }
   }
 
