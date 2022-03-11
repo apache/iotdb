@@ -193,7 +193,7 @@ public class SGMManager {
                   public @Nullable IMNode load(@NonNull PartialPath partialPath)
                       throws MetadataException {
 
-                    return mtree.getNodeByPathWithStorageGroupCheck(partialPath);
+                    return mtree.getNodeByPath(partialPath);
                   }
                 });
 

@@ -1246,7 +1246,7 @@ public class MManagerBasicTest {
       fail();
     } catch (Exception e) {
       assertEquals(
-          "Path [root.tree.sg0.GPS.s9] overlaps with [treeTemplate] on [GPS]", e.getMessage());
+          "Path [root.tree.sg0.GPS] overlaps with [treeTemplate] on [GPS]", e.getMessage());
     }
 
     CreateTimeSeriesPlan createTimeSeriesPlan4 =
