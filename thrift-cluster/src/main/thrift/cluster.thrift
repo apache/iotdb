@@ -56,6 +56,7 @@ struct HeartBeatResponse {
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
   7: optional Node header
+  8: required bool installingSnapshot // whether the follower is installing snapshot now
 }
 
 struct RequestCommitIndexResponse {
