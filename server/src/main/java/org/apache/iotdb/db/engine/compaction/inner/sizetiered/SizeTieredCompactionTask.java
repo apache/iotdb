@@ -23,8 +23,8 @@ import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
-import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -39,9 +39,6 @@ import java.io.File;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.SOURCE_INFO;
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.TARGET_INFO;
 
 /**
  * SizeTiredCompactionTask compact several inner space files selected by {@link
@@ -104,16 +101,16 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
             dataDirectory
                 + File.separator
                 + targetTsFileResource.getTsFile().getName()
-                + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
-    SizeTieredCompactionLogger sizeTieredCompactionLogger = null;
+                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
+    CompactionLogger sizeTieredCompactionLogger = null;
     try {
-      sizeTieredCompactionLogger = new SizeTieredCompactionLogger(logFile.getPath());
-
-      for (TsFileResource resource : selectedTsFileResourceList) {
-        sizeTieredCompactionLogger.logFileInfo(SOURCE_INFO, resource.getTsFile());
-      }
-      sizeTieredCompactionLogger.logSequence(sequence);
-      sizeTieredCompactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
+      sizeTieredCompactionLogger = new CompactionLogger(logFile);
+      sizeTieredCompactionLogger.logFiles(
+          selectedTsFileResourceList, CompactionLogger.STR_SOURCE_FILES);
+      sizeTieredCompactionLogger.logFiles(
+          Collections.singletonList(targetTsFileResource), CompactionLogger.STR_TARGET_FILES);
+      LOGGER.info("{} [SizeTiredCompactionTask] Close the logger", fullStorageGroupName);
+      sizeTieredCompactionLogger.close();
       LOGGER.info(
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
 
@@ -132,11 +129,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       LOGGER.info("{} [SizeTiredCompactionTask] start to rename mods file", fullStorageGroupName);
       InnerSpaceCompactionUtils.combineModsInCompaction(
           selectedTsFileResourceList, targetTsFileResource);
-
-      LOGGER.info(
-          "{} [SizeTiredCompactionTask] compact finish, close the logger, edit the tsFileResourceList",
-          fullStorageGroupName);
-      sizeTieredCompactionLogger.close();
 
       if (Thread.currentThread().isInterrupted()) {
         throw new InterruptedException(
@@ -235,6 +227,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
 
   @Override
   public boolean checkValidAndSetMerging() {
+    selectedTsFileResourceList.forEach(x -> x.setCompactionCandidate(false));
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       TsFileResource resource = selectedTsFileResourceList.get(i);
       resource.readLock();

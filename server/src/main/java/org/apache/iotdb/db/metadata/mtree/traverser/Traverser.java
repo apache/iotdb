@@ -35,9 +35,13 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /**
  * This class defines the main traversal framework and declares some methods for result process
- * extension. This class could be extended to implement concrete tasks. Currently, the tasks are
- * classified into two type: 1. counter: to count the node num or measurement num that matches the
- * path pattern 2. collector: to collect customized results of the matched node or measurement
+ * extension. This class could be extended to implement concrete tasks. <br>
+ * Currently, the tasks are classified into two type:
+ *
+ * <ol>
+ *   <li>counter: to count the node num or measurement num that matches the path pattern
+ *   <li>collector: to collect customized results of the matched node or measurement
+ * </ol>
  */
 public abstract class Traverser {
 
@@ -53,6 +57,13 @@ public abstract class Traverser {
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
 
+  /**
+   * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
+   *
+   * @param startNode denote which tree to traverse by passing its root
+   * @param path use wildcard to specify which part to traverse
+   * @throws MetadataException
+   */
   public Traverser(IMNode startNode, PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(startNode.getName())) {

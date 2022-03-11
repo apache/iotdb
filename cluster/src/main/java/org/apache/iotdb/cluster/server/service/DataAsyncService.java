@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
@@ -364,10 +365,10 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void getAllMeasurementSchema(
-      RaftNode header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler) {
+      MeasurementSchemaRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
       resultHandler.onComplete(
-          dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(planBinary));
+          dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(request));
     } catch (CheckConsistencyException | IOException | MetadataException e) {
       resultHandler.onError(e);
     }

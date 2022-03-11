@@ -412,13 +412,13 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 1048576 |
 |改后生效方式|触发生效|
 
-* force\_mlog\_period\_in\_ms
+* sync\_mlog\_period\_in\_ms
 
-|名字| force\_mlog\_period\_in\_ms |
+|名字| sync\_mlog\_period\_in\_ms |
 |:---:|:---|
 |描述| mlog定期刷新到磁盘的周期，单位毫秒。如果该参数为0，则表示每次对元数据的更新操作都会被立即写到磁盘上。|
 |类型| Int64 |
-|默认值| 0 |
+|默认值| 100 |
 |改后生效方式|重启服务生效|
 
 * memtable\_size\_threshold
@@ -880,13 +880,22 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 100 |
 |改后生效方式|重启服务生效|
 
-* max\_compaction\_candidate\_file\_num
+* max\_inner\_compaction\_candidate\_file\_num
 
-|名字| max\_compaction\_candidate\_file\_num |
+|名字| max\_inner\_compaction\_candidate\_file\_num |
 |:---:|:---|
 |描述| 空间内合并中一次合并最多参与的文件数 |
 |类型| Int32 |
 |默认值| 30|
+|改后生效方式|重启服务生效|
+
+* max\_cross\_compaction\_candidate\_file\_num
+
+|名字| max\_cross\_compaction\_candidate\_file\_num |
+|:---:|:---|
+|描述| 跨空间合并中一次合并最多参与的文件数 |
+|类型| Int32 |
+|默认值| 1000|
 |改后生效方式|重启服务生效|
 
 * cross\_compaction\_file\_selection\_time\_budget
@@ -940,7 +949,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |:---:|:---|
 |描述| 每秒可达到的写入吞吐量合并限制。|
 |类型| Int32 |
-|默认值| 30 |
+|默认值| 16 |
 |改后生效方式| 重启服务生效|
 
 

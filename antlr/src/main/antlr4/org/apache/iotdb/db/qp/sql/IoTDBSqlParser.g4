@@ -19,7 +19,7 @@
 
 parser grammar IoTDBSqlParser;
 
-options { tokenVocab=IoTDBSqlLexer; }
+options { tokenVocab=SqlLexer; }
 
 
 /**
@@ -704,14 +704,14 @@ nodeName
     : wildcard
     | wildcard? ID wildcard?
     | wildcard? INTEGER_LITERAL wildcard?
-    | QUTOED_ID_WITHOUT_DOT
+    | QUTOED_ID_IN_NODE_NAME
     | STRING_LITERAL
     ;
 
 nodeNameWithoutWildcard
     : ID
     | INTEGER_LITERAL
-    | QUTOED_ID_WITHOUT_DOT
+    | QUTOED_ID_IN_NODE_NAME
     | STRING_LITERAL
     ;
 
@@ -723,7 +723,7 @@ nodeNameCanInExpr
     : wildcard
     | wildcard? ID wildcard?
     | QUTOED_ID
-    | QUTOED_ID_WITHOUT_DOT
+    | QUTOED_ID_IN_NODE_NAME
     ;
 
 wildcard
@@ -737,7 +737,7 @@ wildcard
 identifier
     : ID
     | QUTOED_ID
-    | QUTOED_ID_WITHOUT_DOT
+    | QUTOED_ID_IN_NODE_NAME
     | INTEGER_LITERAL
     ;
 
