@@ -176,18 +176,19 @@ public class AggregationPlan extends RawDataQueryPlan {
 
   @Override
   public String getColumnForDisplay(String columnForReader, int pathIndex) {
+    String columnForDisplay = columnForReader;
     if (isGroupByLevel()) {
+      if (resultColumns.get(pathIndex).hasAlias()) {
+        return resultColumns.get(pathIndex).getAlias();
+      }
+
       PartialPath path = paths.get(pathIndex);
       String functionName = aggregations.get(pathIndex);
       String aggregatePath =
           groupByLevelController.getGroupedPath(
               String.format("%s(%s)", functionName, path.getFullPath()));
-      String alias = groupByLevelController.getAlias(aggregatePath);
-      if (alias != null && !alias.equals("")) {
-        return alias;
-      }
-      return aggregatePath;
+      columnForDisplay = aggregatePath;
     }
-    return columnForReader;
+    return columnForDisplay;
   }
 }
