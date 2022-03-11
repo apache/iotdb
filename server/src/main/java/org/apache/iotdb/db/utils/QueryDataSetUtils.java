@@ -64,7 +64,6 @@ public class QueryDataSetUtils {
     int[] valueOccupation = new int[columnNum];
     // used to record a bitmap for every 8 row record
     int[] bitmap = new int[columnNum];
-    Set<Integer> withoutNullColumnsIndex = queryDataSet.getWithoutNullColumnsIndex();
     for (int i = 0; i < fetchSize; i++) {
       if (queryDataSet.hasNext()) {
         RowRecord rowRecord = queryDataSet.next();
