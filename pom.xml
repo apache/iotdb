@@ -109,6 +109,7 @@
         <module>client-cpp</module>
         <module>metrics</module>
         <module>integration</module>
+        <module>consensus</module>
         <!--        <module>library-udf</module>-->
     </modules>
     <!-- Properties Management -->
