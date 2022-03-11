@@ -54,8 +54,7 @@ public class AlignByDevicePlan extends QueryPlan {
   private List<String> measurements;
 
   // stores the valid column name that without null can specified
-  // want to see details, please see the method `addValidWithoutNullColumn` and
-  // `isValidWithoutNullColumn`
+  // want to see details, please see the method `addValidWithoutNullColumn`
   private Set<String> withoutNullValidSet = new HashSet<>();
   private Map<String, MeasurementInfo> measurementInfoMap;
   private List<PartialPath> deduplicatePaths = new ArrayList<>();
@@ -79,7 +78,7 @@ public class AlignByDevicePlan extends QueryPlan {
     // record specified without null columns, include alias
     Set<String> withoutNullColumnSet = new HashSet<>();
     for (Expression expression : withoutNullColumns) {
-      if (!isValidWithoutNullColumn(expression.getExpressionString())) {
+      if (!withoutNullValidSet.contains(expression.getExpressionString())) {
         throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
       }
       withoutNullColumnSet.add(expression.getExpressionString());
@@ -113,16 +112,6 @@ public class AlignByDevicePlan extends QueryPlan {
    */
   public void addValidWithoutNullColumn(String columnName) {
     withoutNullValidSet.add(columnName);
-  }
-
-  /**
-   * check the columnName specified without null is valid
-   *
-   * @param columnName the columnName specified without null
-   * @return valid: return true; invalid: return false
-   */
-  public boolean isValidWithoutNullColumn(String columnName) {
-    return withoutNullValidSet.contains(columnName);
   }
 
   /** make withoutNullValidSet is null, friendly for gc */
