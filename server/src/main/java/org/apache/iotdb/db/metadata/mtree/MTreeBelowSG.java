@@ -381,6 +381,9 @@ public class MTreeBelowSG implements Serializable {
       }
 
       IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
+      if (entityMNode.isStorageGroup()) {
+        this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
+      }
 
       IMeasurementMNode measurementMNode =
           MeasurementMNode.getMeasurementMNode(
@@ -445,6 +448,9 @@ public class MTreeBelowSG implements Serializable {
 
       IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
       entityMNode.setAligned(true);
+      if (entityMNode.isStorageGroup()) {
+        this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
+      }
 
       for (int i = 0; i < measurements.size(); i++) {
         IMeasurementMNode measurementMNode =
@@ -580,7 +586,11 @@ public class MTreeBelowSG implements Serializable {
     // synchronize check and replace, we need replaceChild become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
-      return MNodeUtils.setToEntity(node);
+      IEntityMNode entityMNode = MNodeUtils.setToEntity(node);
+      if (entityMNode.isStorageGroup()) {
+        this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
+      }
+      return entityMNode;
     }
   }
   // endregion

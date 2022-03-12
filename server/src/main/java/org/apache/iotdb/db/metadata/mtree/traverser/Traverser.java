@@ -52,6 +52,7 @@ public abstract class Traverser {
   protected String[] nodes;
   protected int startIndex;
   protected int startLevel;
+  protected boolean isPrefixStart = false;
 
   // to construct full path or find mounted node on MTree when traverse into template
   protected Deque<IMNode> traverseContext;
@@ -97,24 +98,26 @@ public abstract class Traverser {
       parent = parent.getParent();
     }
 
-    startIndex = 0;
-    IMNode cur = ancestors.pop();
+    IMNode cur;
     // given root.a.sg, accept path starting with prefix like root.a.sg, root.*.*, root.**,
     // root.a.**, which means the prefix matches the startNode's fullPath
     for (startIndex = 0; startIndex <= startLevel && startIndex < nodes.length; startIndex++) {
+      cur = ancestors.pop();
       if (nodes[startIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
         return;
-      } else if (nodes[startIndex].equals(cur.getName())
-          || nodes[startIndex].contains(ONE_LEVEL_PATH_WILDCARD)) {
-        if (startIndex < startLevel) {
-          cur = ancestors.pop();
-        } else if (startIndex == startLevel) {
-          break;
-        }
-      } else {
+      } else if (!nodes[startIndex].equals(cur.getName())
+          && !nodes[startIndex].contains(ONE_LEVEL_PATH_WILDCARD)) {
         throw new IllegalPathException(
             path.getFullPath(), path.getFullPath() + " doesn't start with " + cur.getFullPath());
       }
+    }
+
+    if (startIndex <= startLevel) {
+      if (!nodes[startIndex - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        isPrefixStart = true;
+      }
+    } else {
+      startIndex--;
     }
   }
 
@@ -123,6 +126,9 @@ public abstract class Traverser {
    * overriding or implement concerned methods.
    */
   public void traverse() throws MetadataException {
+    if (isPrefixStart && !isPrefixMatch) {
+      return;
+    }
     traverse(startNode, startIndex, startLevel);
   }
 

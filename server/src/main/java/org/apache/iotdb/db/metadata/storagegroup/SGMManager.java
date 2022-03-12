@@ -179,7 +179,7 @@ public class SGMManager {
   private TagManager tagManager;
 
   // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
-  SGMManager(IStorageGroupMNode storageGroupMNode) {
+  public SGMManager() {
     this.storageGroupMNode = storageGroupMNode;
     mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
     mtreeSnapshotThresholdTime = config.getMtreeSnapshotThresholdTime() * 1000L;
