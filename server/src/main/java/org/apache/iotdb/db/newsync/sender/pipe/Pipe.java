@@ -26,7 +26,7 @@ public interface Pipe {
 
   void stop() throws PipeException;
 
-  void drop();
+  void drop() throws PipeException;
 
   String getName();
 
