@@ -64,11 +64,6 @@ public class StorageGroupManager implements IStorageGroupManager {
         }
       }
     }
-
-    // todo implement this as multi thread process
-    for (SGMManager sgmManager : getAllSGMManagers()) {
-      sgmManager.init();
-    }
   }
 
   /** function for clearing MTree */
@@ -86,7 +81,7 @@ public class StorageGroupManager implements IStorageGroupManager {
     IStorageGroupMNode storageGroupMNode = mtree.setStorageGroup(path);
     SGMManager sgmManager = new SGMManager();
     storageGroupMNode.setSGMManager(sgmManager);
-    sgmManager.init();
+    sgmManager.init(storageGroupMNode);
   }
 
   @Override

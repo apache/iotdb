@@ -51,6 +51,31 @@ import java.util.Map;
 
 public class MLogParserTest {
 
+  private String[] storageGroups = new String[] {"root.sg0", "root.sg1", "root.sgcc", "root.sg"};
+
+  /*
+   * For root.sg0, we prepare 50 CreateTimeseriesPlan.
+   * For root.sg1, we prepare 50 CreateTimeseriesPlan, 1 DeleteTimeseriesPlan, 1 ChangeTagOffsetPlan and 1 ChangeAliasPlan.
+   * For root.sgcc, we prepare 1 SetTTLPlan.
+   * For root.sg, we prepare 1 SetTemplatePlan, 1 AutoCreateDevicePlan and 1 ActivateTemplatePlan.
+   *
+   * For root.ln.cc, we create it and then delete it, thus there's no mlog of root.ln.cc.
+   * There' still 1 CreateTemplatePlan in template_log.bin
+   *
+   * */
+  private int[] mlogLineNum = new int[] {50, 53, 1, 3};
+
+  /*
+   * For root.sg0, we prepare 5 device and 10 measurement per device, thus there are 1 + 5 + 5 * 10 = 56 MNodes .
+   * For root.sg1, we prepare 5 device and 10 measurement per device and then delete 1 measurement, thus there are 1 + 5 + 5 * 10 - 1 = 55 MNodes .
+   * For root.sgcc, there is only 1 StorageGroupMNode.
+   * For root.sg, we prepare 1 device, thus there are 1 + 1 = 2 MNodes.
+   *
+   * For root.ln.cc, we create it and then delete it, thus there's no snapshot of root.ln.cc.
+   *
+   * */
+  private int[] snapshotLineNum = new int[] {56, 55, 1, 2};
+
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
@@ -65,7 +90,7 @@ public class MLogParserTest {
     file.deleteOnExit();
   }
 
-  public void prepareData() {
+  private void prepareData() {
     // prepare data
     for (int i = 0; i < 2; i++) {
       for (int j = 0; j < 5; j++) {
@@ -138,13 +163,49 @@ public class MLogParserTest {
   }
 
   @Test
-  public void testParseMLog() throws IOException {
+  public void testMLogParser() throws IOException {
     prepareData();
-    IoTDB.metaManager.flushAllMlogForTest();
+    testDeletedStorageGroup("root.ln.cc");
 
+    File file;
+
+    IoTDB.metaManager.flushAllMlogForTest();
+    for (int i = 0; i < storageGroups.length; i++) {
+      testParseMLog(storageGroups[i], mlogLineNum[i]);
+      file = new File("target" + File.separator + "tmp" + File.separator + "text.mlog");
+      file.delete();
+    }
+
+    IoTDB.metaManager.createMTreeSnapshot();
+    for (int i = 0; i < storageGroups.length; i++) {
+      testParseMLog(storageGroups[i], 0);
+      file = new File("target" + File.separator + "tmp" + File.separator + "text.mlog");
+      file.delete();
+      testParseSnapshot(storageGroups[i], snapshotLineNum[i]);
+      file = new File("target" + File.separator + "tmp" + File.separator + "text.snapshot");
+      file.delete();
+    }
+
+    testParseTemplateLogFile();
+    file = new File("target" + File.separator + "tmp" + File.separator + "text.mlog");
+    file.delete();
+  }
+
+  private void testDeletedStorageGroup(String storageGroup) {
+    File storageGroupDir =
+        new File(
+            IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+                + File.separator
+                + storageGroup);
+    Assert.assertFalse(storageGroupDir.exists());
+  }
+
+  private void testParseMLog(String storageGroup, int expectedLineNum) throws IOException {
     try {
       MLogParser.parseFromFile(
           IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+              + File.separator
+              + storageGroup
               + File.separator
               + MetadataConstant.METADATA_LOG,
           "target" + File.separator + "tmp" + File.separator + "text.mlog");
@@ -162,36 +223,23 @@ public class MLogParserTest {
         lineNum++;
         lines.add(line);
       }
-      if (lineNum != 113) {
-        // First, we prepare 2 storage groups, each one has 5 devices, and every device has 10
-        // measurements.
-        // So, mlog records 2 * 5 * 10 = 100 CreateTimeSeriesPlan, and 2 SetStorageGroupPlan.
-        // Next, we do 6 operations which will be written into mlog, include set 2 sgs, set ttl,
-        // delete timeseries, delete sg, add tags.
-        // The final operation changeAlias only change the mtree in memory, so it will not write
-        // record to mlog.
-        // Then, we set 1 more storage group, create a template with 2 measurements(1 line), set
-        // the template to this storage group and set 1 device using template. The device will be
-        // auto created.
-        // Finally, the mlog should have 100 + 2 + 6 + 1 + 1 + 1 + 1 + 1 = 113 records
+      if (lineNum != expectedLineNum) {
         for (String content : lines) {
           System.out.println(content);
         }
       }
-      Assert.assertEquals(113, lineNum);
+      Assert.assertEquals(expectedLineNum, lineNum);
     } catch (IOException e) {
       Assert.fail(e.getMessage());
     }
   }
 
-  @Test
-  public void testParseSnapshot() {
-    prepareData();
-    IoTDB.metaManager.createMTreeSnapshot();
-
+  private void testParseSnapshot(String storageGroup, int expectedLineNum) {
     try {
       MLogParser.parseFromFile(
           IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+              + File.separator
+              + storageGroup
               + File.separator
               + MetadataConstant.MTREE_SNAPSHOT,
           "target" + File.separator + "tmp" + File.separator + "text.snapshot");
@@ -209,23 +257,44 @@ public class MLogParserTest {
         lineNum++;
         lines.add(line);
       }
-      if (lineNum != 115) {
-        // First, we prepare 2 storage groups, each one has 5 devices, and every device has 10
-        // measurements.
-        // So, mtree records 2 * 5 * 10 = 100 TimeSeries, and 2 SetStorageGroup, 2 * 5 devices.
-        // Next, we do 4 operations which will be record in mtree, include set 2 sgs, delete
-        // timeseries, delete sg.
-        // Then, we set 1 more storage group, create a template with 2 measurements and set
-        // the template to this storage group and set 1 device using template. The device will be
-        // auto created.
-        // The snapshot should have 100 + 2 + 5 * 2 + 2 - 1 - 1 + 1 + 1 = 114 records,
-        // and we have root record,
-        // so we have 114 + 1 = 115 records finally.
+      if (lineNum != expectedLineNum) {
         for (String content : lines) {
           System.out.println(content);
         }
       }
-      Assert.assertEquals(115, lineNum);
+      Assert.assertEquals(expectedLineNum, lineNum);
+    } catch (IOException e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  private void testParseTemplateLogFile() throws IOException {
+    try {
+      MLogParser.parseFromFile(
+          IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+              + File.separator
+              + MetadataConstant.TEMPLATE_FILE,
+          "target" + File.separator + "tmp" + File.separator + "text.mlog");
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    try (BufferedReader reader =
+        new BufferedReader(
+            new FileReader("target" + File.separator + "tmp" + File.separator + "text.mlog"))) {
+      int lineNum = 0;
+      List<String> lines = new ArrayList<>();
+      String line;
+      while ((line = reader.readLine()) != null) {
+        lineNum++;
+        lines.add(line);
+      }
+      if (lineNum != 1) {
+        for (String content : lines) {
+          System.out.println(content);
+        }
+      }
+      Assert.assertEquals(1, lineNum);
     } catch (IOException e) {
       Assert.fail(e.getMessage());
     }

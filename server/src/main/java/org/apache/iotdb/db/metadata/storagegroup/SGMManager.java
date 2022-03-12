@@ -165,6 +165,7 @@ public class SGMManager {
   private ScheduledExecutorService timedForceMLogThread;
 
   private String sgSchemaDirPath;
+  private String storageGroupFullPath;
 
   // the log file seriesPath
   private String logFilePath;
@@ -172,7 +173,6 @@ public class SGMManager {
   private MLogWriter logWriter;
 
   private TimeseriesStatistics timeseriesStatistics = TimeseriesStatistics.getInstance();
-  private IStorageGroupMNode storageGroupMNode;
   private MTreeBelowSG mtree;
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
@@ -180,7 +180,6 @@ public class SGMManager {
 
   // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
   public SGMManager() {
-    this.storageGroupMNode = storageGroupMNode;
     mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
     mtreeSnapshotThresholdTime = config.getMtreeSnapshotThresholdTime() * 1000L;
 
@@ -225,11 +224,14 @@ public class SGMManager {
 
   // Because the writer will be used later and should not be closed here.
   @SuppressWarnings("squid:S2093")
-  public synchronized void init() {
+  public synchronized void init(IStorageGroupMNode storageGroupMNode) {
     if (initialized) {
       return;
     }
-    sgSchemaDirPath = config.getSchemaDir() + File.separator + storageGroupMNode.getFullPath();
+
+    storageGroupFullPath = storageGroupMNode.getFullPath();
+
+    sgSchemaDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
     File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
@@ -259,7 +261,7 @@ public class SGMManager {
     } catch (IOException e) {
       logger.error(
           "Cannot recover all MTree from {} file, we try to recover as possible as we can",
-          storageGroupMNode.getFullPath(),
+          storageGroupFullPath,
           e);
     }
     initialized = true;
@@ -269,8 +271,7 @@ public class SGMManager {
     try {
       logWriter.force();
     } catch (IOException e) {
-      logger.error(
-          "Cannot force {} mlog to the storage device", storageGroupMNode.getFullPath(), e);
+      logger.error("Cannot force {} mlog to the storage device", storageGroupFullPath, e);
     }
   }
 
@@ -287,11 +288,10 @@ public class SGMManager {
         logger.debug(
             "spend {} ms to deserialize {} mtree from mlog.bin",
             System.currentTimeMillis() - time,
-            storageGroupMNode.getFullPath());
+            storageGroupFullPath);
         return idx;
       } catch (Exception e) {
-        throw new IOException(
-            "Failed to parse " + storageGroupMNode.getFullPath() + " mlog.bin for err:" + e);
+        throw new IOException("Failed to parse " + storageGroupFullPath + " mlog.bin for err:" + e);
       }
     } else {
       return 0;
@@ -428,16 +428,15 @@ public class SGMManager {
   // region Interfaces for Storage Group Info query and operation
 
   public void setStorageGroupMNode(IStorageGroupMNode storageGroupMNode) {
-    this.storageGroupMNode = storageGroupMNode;
     if (mtree != null) {
       mtree.setStorageGroupMNode(storageGroupMNode);
     }
   }
 
   public void setTTL(long dataTTL) throws MetadataException, IOException {
-    storageGroupMNode.setDataTTL(dataTTL);
+    mtree.getStorageGroupMNode().setDataTTL(dataTTL);
     if (!isRecovering) {
-      logWriter.setTTL(storageGroupMNode.getPartialPath(), dataTTL);
+      logWriter.setTTL(new PartialPath(storageGroupFullPath), dataTTL);
     }
   }
 
@@ -985,7 +984,7 @@ public class SGMManager {
               new ShowTimeSeriesResult(
                   leaf.getFullPath(),
                   leaf.getAlias(),
-                  storageGroupMNode.getFullPath(),
+                  storageGroupFullPath,
                   measurementSchema.getType(),
                   measurementSchema.getEncodingType(),
                   measurementSchema.getCompressor(),
@@ -1201,6 +1200,14 @@ public class SGMManager {
     }
     leafMNode.getParent().addAlias(alias, leafMNode);
     leafMNode.setAlias(alias);
+
+    try {
+      if (!isRecovering) {
+        logWriter.changeAlias(path, alias);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
   }
 
   /**

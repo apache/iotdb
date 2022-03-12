@@ -180,6 +180,10 @@ public class MTreeBelowSG implements Serializable {
     }
   }
 
+  public IStorageGroupMNode getStorageGroupMNode() {
+    return this.storageGroupMNode;
+  }
+
   public void setStorageGroupMNode(IStorageGroupMNode storageGroupMNode) {
     this.storageGroupMNode = storageGroupMNode;
     levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
