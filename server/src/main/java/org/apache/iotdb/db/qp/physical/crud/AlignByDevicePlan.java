@@ -52,10 +52,6 @@ public class AlignByDevicePlan extends QueryPlan {
   // measurements to record result measurement columns, e.g. temperature, status, speed
   // no contains alias
   private List<String> measurements;
-
-  // stores the valid column name that without null can specified
-  // want to see details, please see the method `addValidWithoutNullColumn`
-  private Set<String> withoutNullValidSet = new HashSet<>();
   private Map<String, MeasurementInfo> measurementInfoMap;
   private List<PartialPath> deduplicatePaths = new ArrayList<>();
   private List<String> aggregations;
@@ -78,9 +74,6 @@ public class AlignByDevicePlan extends QueryPlan {
     // record specified without null columns, include alias
     Set<String> withoutNullColumnSet = new HashSet<>();
     for (Expression expression : withoutNullColumns) {
-      if (!withoutNullValidSet.contains(expression.getExpressionString())) {
-        throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
-      }
       withoutNullColumnSet.add(expression.getExpressionString());
     }
 
@@ -98,26 +91,15 @@ public class AlignByDevicePlan extends QueryPlan {
         }
       }
       if (withoutNullColumnSet.contains(actualColumn)) {
+        withoutNullColumnSet.remove(actualColumn);
         withoutNullColumnsIndex.add(index);
       }
       index++;
     }
-  }
 
-  /**
-   * add columnName that appears in output name in result set so `withoutNullValidSet` stores the
-   * valid column name that without null can specified
-   *
-   * @param columnName output name in result set, may be alias
-   */
-  public void addValidWithoutNullColumn(String columnName) {
-    withoutNullValidSet.add(columnName);
-  }
-
-  /** make withoutNullValidSet is null, friendly for gc */
-  public void closeWithoutNullValidSet() {
-    withoutNullValidSet.clear();
-    withoutNullValidSet = null;
+    if (!withoutNullColumnSet.isEmpty()) {
+      throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
+    }
   }
 
   @Override
@@ -138,18 +120,6 @@ public class AlignByDevicePlan extends QueryPlan {
       if (!pathWithAggregationSet.contains(pathStrWithAggregation)) {
         pathWithAggregationSet.add(pathStrWithAggregation);
         deduplicatePaths.add(path);
-        if (measurementInfoMap.containsKey(measurementWithAggregation)) {
-          MeasurementInfo measurementInfo = measurementInfoMap.get(measurementWithAggregation);
-          if (measurementInfo.getMeasurementAlias() != null
-              && !measurementInfo.getMeasurementAlias().equals("")) {
-            addValidWithoutNullColumn(measurementInfo.getMeasurementAlias());
-          } else {
-            addValidWithoutNullColumn(measurementWithAggregation);
-          }
-        } else {
-          addValidWithoutNullColumn(measurementWithAggregation);
-        }
-
         if (this.aggregations != null) {
           deduplicatedAggregations.add(this.aggregations.get(i));
         }

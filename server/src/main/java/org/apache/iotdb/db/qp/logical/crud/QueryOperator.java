@@ -350,9 +350,6 @@ public class QueryOperator extends Operator {
     if (specialClauseComponent != null) {
       alignByDevicePlan.calcWithoutNullColumnIndex(specialClauseComponent.withoutNullColumns);
     }
-    // because alignByDevicePlan's `withoutNullValidSet` won't be used,
-    // make withoutNullValidSet is null, friendly for gc
-    alignByDevicePlan.closeWithoutNullValidSet();
 
     if (whereComponent != null) {
       alignByDevicePlan.setDeviceToFilterMap(
