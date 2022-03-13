@@ -21,18 +21,44 @@ include "rpc.thrift"
 namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
+struct SetStorageGroupoReq {
+    1: required string storageGroup
+}
+
+struct DeleteStorageGroupReq {
+    1: required string storageGroup
+}
+
+struct GetDeviceGroupIDReq {
+    1: required string device
+}
+
+struct GetSchemaPartitionReq {
+    1: required string storageGroup
+    2: required list<i32> deviceGroupIDs
+}
+
+struct GetSchemaPartitionResp {
+    1: required list<list<i32>> dataNodeIDs
+    2: required list<i32> schemaRegionIDs
+}
+
+struct GetDataPartitionReq {
+    1: required string storageGroup
+    2: required map<i32, list<i64>> deviceGroupStartTimeMap
+}
+
+struct GetDataPartitionResp {
+    1: required map<i32, list<list<i32>>> dataNodeIDsMap
+    2: required map<i32, list<i32>> dataRegionIDsMap
+}
+
 service ConfigIService {
-  rpc.TSStatus setStorageGroup(1:i64 sessionId, 2:string storageGroup);
+  rpc.TSStatus setStorageGroup(SetStorageGroupoReq req)
 
-  rpc.TSStatus deleteStorageGroup(1:i64 sessionId, 2:string storageGroup);
+  rpc.TSStatus deleteStorageGroup(DeleteStorageGroupReq req)
 
-  rpc.TSStatus deleteStorageGroups(1:i64 sessionId, 2:list<string> storageGroups);
+  GetSchemaPartitionResp getSchemaPartition(GetSchemaPartitionReq req)
 
-  i32 getSchemaPartition(1:i64 sessionId, 2:string device)
-
-  list<i32> getDataPartition(1:i64 sessionId, 2:string device, 3:list<i64> times)
-
-  list<i32> getLatestDataPartition(1:i64 sessionId, 2:string device)
-
-  i32 getDeviceGroupID(1:i64 sessionId, 2:string device)
+  GetDataPartitionResp getDataPartition(GetDataPartitionReq req)
 }
