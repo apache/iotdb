@@ -25,11 +25,11 @@ import java.util.List;
 
 /**
  * DataPartitionRule is used to hold real-time write-load allocation rules i.e. rules = [(0, 0.3),
- * (1, 0.2), (2. 0.5)] means allocate 30% of the write-load to VSGGroup-0 and 20% to vsgGroup-1 and
- * 50% to VSGGroup-2
+ * (1, 0.2), (2. 0.5)] means allocate 30% of the write-load to DataRegion-0 and 20% to DataRegion-1
+ * and 50% to DataRegion-2
  */
 public class DataPartitionRule {
-  // List<Pair<VSGGroupID, Write allocation ratio>>
+  // List<Pair<DataRegionID, Write allocation ratio>>
   private final List<Pair<Integer, Double>> rules;
 
   public DataPartitionRule() {
@@ -40,8 +40,8 @@ public class DataPartitionRule {
     this.rules = rules;
   }
 
-  public void addDataPartitionRule(int vsgGroupID, double ratio) {
-    this.rules.add(new Pair<>(vsgGroupID, ratio));
+  public void addDataPartitionRule(int dataRegionID, double ratio) {
+    this.rules.add(new Pair<>(dataRegionID, ratio));
   }
 
   public List<Pair<Integer, Double>> getDataPartitionRule() {

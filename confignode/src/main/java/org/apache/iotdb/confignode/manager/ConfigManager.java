@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.manager.hash.DeviceGroupHashExecutor;
 import org.apache.iotdb.confignode.partition.PartitionTable;
 import org.apache.iotdb.confignode.service.balancer.LoadBalancer;
 
+import org.jetbrains.annotations.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +34,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * ConfigManager Maintains consistency between PartitionTables in the ConfigNodeGroup. Expose the
+ * ConfigManager maintains consistency between PartitionTables in the ConfigNodeGroup. Expose the
  * query interface for the PartitionTable
  */
 public class ConfigManager {
@@ -47,6 +48,7 @@ public class ConfigManager {
 
   private LoadBalancer loadBalancer;
 
+  @TestOnly
   public ConfigManager(String hashExecutorClass, int deviceGroupCount) {
     setHashExecutor(hashExecutorClass, deviceGroupCount);
   }

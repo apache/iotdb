@@ -20,56 +20,43 @@ package org.apache.iotdb.confignode.service.thrift.impl;
 
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
+import org.apache.iotdb.confignode.rpc.thrift.DataPartitionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.DeleteStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.GetDataPartitionReq;
+import org.apache.iotdb.confignode.rpc.thrift.GetSchemaPartitionReq;
+import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupoReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
 
-import java.util.List;
-
-/** ConfigServiceImpl exposes the interface that interacts with the DataNode */
-public class ConfigServiceImpl implements ConfigIService.Iface {
+/** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
+public class ConfigNodeRPCServer implements ConfigIService.Iface {
 
   private ConfigManager configManager;
 
-  public ConfigServiceImpl() {
+  public ConfigNodeRPCServer() {
     this.configManager = new ConfigManager();
   }
 
   @Override
-  public TSStatus setStorageGroup(long sessionId, String storageGroup) throws TException {
+  public TSStatus setStorageGroup(SetStorageGroupoReq req) throws TException {
     return null;
   }
 
   @Override
-  public TSStatus deleteStorageGroup(long sessionId, String storageGroup) throws TException {
+  public TSStatus deleteStorageGroup(DeleteStorageGroupReq req) throws TException {
     return null;
   }
 
   @Override
-  public TSStatus deleteStorageGroups(long sessionId, List<String> storageGroups)
-      throws TException {
+  public SchemaPartitionInfo getSchemaPartition(GetSchemaPartitionReq req) throws TException {
     return null;
   }
 
   @Override
-  public int getSchemaPartition(long sessionId, String device) throws TException {
-    return -1;
-  }
-
-  @Override
-  public List<Integer> getDataPartition(long sessionId, String device, List<Long> times)
-      throws TException {
+  public DataPartitionInfo getDataPartition(GetDataPartitionReq req) throws TException {
     return null;
-  }
-
-  @Override
-  public List<Integer> getLatestDataPartition(long sessionId, String device) throws TException {
-    return null;
-  }
-
-  @Override
-  public int getDeviceGroupID(long sessionId, String device) throws TException {
-    return -1;
   }
 
   // TODO: Interfaces for data operations

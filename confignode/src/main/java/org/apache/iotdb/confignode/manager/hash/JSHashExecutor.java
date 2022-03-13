@@ -18,18 +18,20 @@
  */
 package org.apache.iotdb.confignode.manager.hash;
 
-public class SDBMHash extends DeviceGroupHashExecutor {
+public class JSHashExecutor extends DeviceGroupHashExecutor {
 
-  public SDBMHash(int deviceGroupCount) {
+  private static final int base = 1315423911;
+
+  public JSHashExecutor(int deviceGroupCount) {
     super(deviceGroupCount);
   }
 
   @Override
   public int getDeviceGroupID(String device) {
-    int hash = 0;
+    int hash = base;
 
     for (int i = 0; i < device.length(); i++) {
-      hash = ((int) device.charAt(i) + (hash << 6) + (hash << 16) - hash);
+      hash ^= ((hash << 5) + (int) device.charAt(i) + (hash >> 2));
     }
     hash &= Integer.MAX_VALUE;
 
