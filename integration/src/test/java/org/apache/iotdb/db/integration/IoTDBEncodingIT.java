@@ -40,6 +40,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class})
 public class IoTDBEncodingIT {
@@ -70,7 +71,7 @@ public class IoTDBEncodingIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.test1.s0 WITH DATATYPE=INT64,ENCODING=REGULAR");
-
+      fail();
     } catch (SQLException e) {
       assertEquals(303, e.getErrorCode());
     }
@@ -102,6 +103,7 @@ public class IoTDBEncodingIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail();
     }
   }
 
@@ -130,6 +132,7 @@ public class IoTDBEncodingIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail();
     }
   }
 
@@ -157,6 +160,7 @@ public class IoTDBEncodingIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail();
     }
   }
 
@@ -184,6 +188,7 @@ public class IoTDBEncodingIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail();
     }
   }
 
@@ -212,6 +217,7 @@ public class IoTDBEncodingIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail();
     }
   }
 
@@ -240,6 +246,7 @@ public class IoTDBEncodingIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail();
     }
   }
 
@@ -268,6 +275,7 @@ public class IoTDBEncodingIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail();
     }
   }
 
@@ -296,6 +304,7 @@ public class IoTDBEncodingIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail();
     }
   }
 
@@ -324,6 +333,7 @@ public class IoTDBEncodingIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail();
     }
   }
 
@@ -352,6 +362,7 @@ public class IoTDBEncodingIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail();
     }
   }
 
