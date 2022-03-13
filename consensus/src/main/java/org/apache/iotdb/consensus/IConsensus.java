@@ -27,10 +27,11 @@ import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 
 import java.util.List;
 
+/** Consensus module base class. Each method should be thread-safe */
 public interface IConsensus {
-  void start();
+  void Start();
 
-  void stop();
+  void Stop();
 
   // write API
   ConsensusWriteResponse Write(ConsensusGroupId groupId, IConsensusRequest IConsensusRequest);
@@ -47,10 +48,10 @@ public interface IConsensus {
 
   ConsensusGenericResponse RemovePeer(ConsensusGroupId groupId, Peer peer);
 
-  ConsensusGenericResponse ChangePeer(ConsensusGroupId groupId, List<Peer> peers);
+  ConsensusGenericResponse ChangePeer(ConsensusGroupId groupId, List<Peer> newPeers);
 
   // management API
-  ConsensusGenericResponse TransferLeader(ConsensusGroupId groupId, Peer newPeer);
+  ConsensusGenericResponse TransferLeader(ConsensusGroupId groupId, Peer newLeader);
 
   ConsensusGenericResponse TriggerSnapshot(ConsensusGroupId groupId);
 }

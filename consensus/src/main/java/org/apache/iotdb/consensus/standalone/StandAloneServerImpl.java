@@ -44,10 +44,10 @@ public class StandAloneServerImpl implements IStateMachine {
   }
 
   @Override
-  public void start() {}
+  public void Start() {}
 
   @Override
-  public void stop() {}
+  public void Stop() {}
 
   @Override
   public TSStatus Write(IConsensusRequest request) {

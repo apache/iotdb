@@ -85,10 +85,10 @@ public class StandAloneConsensusTest {
     }
 
     @Override
-    public void start() {}
+    public void Start() {}
 
     @Override
-    public void stop() {}
+    public void Stop() {}
 
     @Override
     public TSStatus Write(IConsensusRequest request) {
@@ -118,12 +118,12 @@ public class StandAloneConsensusTest {
               }
               return new EmptyStateMachine();
             });
-    consensusImpl.start();
+    consensusImpl.Start();
   }
 
   @After
   public void tearDown() throws Exception {
-    consensusImpl.stop();
+    consensusImpl.Stop();
   }
 
   @Test
@@ -189,6 +189,15 @@ public class StandAloneConsensusTest {
     ConsensusGenericResponse response =
         consensusImpl.RemovePeer(
             dataRegionId, new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667)));
+    assertFalse(response.isSuccess());
+  }
+
+  @Test
+  public void changePeer() {
+    ConsensusGenericResponse response =
+        consensusImpl.ChangePeer(
+            dataRegionId,
+            Collections.singletonList(new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667))));
     assertFalse(response.isSuccess());
   }
 

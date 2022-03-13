@@ -39,6 +39,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * A simple single replica consensus implementation.
+ *
+ * <p>any module can use `IConsensus consensusImpl = new StandAloneConsensus(id -> new
+ * EmptyStateMachine());` to perform an initialization implementation.
+ */
 public class StandAloneConsensus implements IConsensus {
 
   private final IStateMachine.Registry registry;
@@ -50,10 +56,10 @@ public class StandAloneConsensus implements IConsensus {
   }
 
   @Override
-  public void start() {}
+  public void Start() {}
 
   @Override
-  public void stop() {}
+  public void Stop() {}
 
   @Override
   public ConsensusWriteResponse Write(ConsensusGroupId groupId, IConsensusRequest request) {
@@ -108,7 +114,7 @@ public class StandAloneConsensus implements IConsensus {
           exist.set(false);
           StandAloneServerImpl impl =
               new StandAloneServerImpl(peers.get(0), registry.apply(groupId));
-          impl.start();
+          impl.Start();
           return impl;
         });
     if (exist.get()) {
@@ -126,7 +132,7 @@ public class StandAloneConsensus implements IConsensus {
         groupId,
         (k, v) -> {
           exist.set(true);
-          v.stop();
+          v.Stop();
           return null;
         });
     if (!exist.get()) {
@@ -148,12 +154,12 @@ public class StandAloneConsensus implements IConsensus {
   }
 
   @Override
-  public ConsensusGenericResponse ChangePeer(ConsensusGroupId groupId, List<Peer> peers) {
+  public ConsensusGenericResponse ChangePeer(ConsensusGroupId groupId, List<Peer> newPeers) {
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
 
   @Override
-  public ConsensusGenericResponse TransferLeader(ConsensusGroupId groupId, Peer newPeer) {
+  public ConsensusGenericResponse TransferLeader(ConsensusGroupId groupId, Peer newLeader) {
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
 

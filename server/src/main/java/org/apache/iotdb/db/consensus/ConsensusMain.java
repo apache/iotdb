@@ -50,7 +50,7 @@ public class ConsensusMain {
               }
               return new EmptyStateMachine();
             });
-    consensusImpl.start();
+    consensusImpl.Start();
     InsertRowPlan plan = getInsertRowPlan();
     ConsensusGroupId dataRegionId = new ConsensusGroupId(GroupType.DataRegion, 0);
     ConsensusGroupId schemaRegionId = new ConsensusGroupId(GroupType.SchemaRegion, 1);
@@ -62,7 +62,7 @@ public class ConsensusMain {
         Collections.singletonList(new Peer(schemaRegionId, new Endpoint("0.0.0.0", 6667))));
     consensusImpl.Write(dataRegionId, plan);
     consensusImpl.Write(schemaRegionId, plan);
-    consensusImpl.stop();
+    consensusImpl.Stop();
   }
 
   private static InsertRowPlan getInsertRowPlan() throws IllegalPathException {

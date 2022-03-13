@@ -29,57 +29,62 @@ import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 
 import java.util.List;
 
+/**
+ * A multi-raft consensus implementation based on Ratis, currently still under development.
+ *
+ * <p>See jira [IOTDB-2674](https://issues.apache.org/jira/browse/IOTDB-2674) for more details.
+ */
 public class RatisConsensus implements IConsensus {
 
   @Override
-  public void start() {}
+  public void Start() {}
 
   @Override
-  public void stop() {}
+  public void Stop() {}
 
   @Override
   public ConsensusWriteResponse Write(
       ConsensusGroupId groupId, IConsensusRequest IConsensusRequest) {
-    return null;
+    return ConsensusWriteResponse.newBuilder().build();
   }
 
   @Override
   public ConsensusReadResponse Read(ConsensusGroupId groupId, IConsensusRequest IConsensusRequest) {
-    return null;
+    return ConsensusReadResponse.newBuilder().build();
   }
 
   @Override
   public ConsensusGenericResponse AddConsensusGroup(ConsensusGroupId groupId, List<Peer> peers) {
-    return null;
-  }
-
-  @Override
-  public ConsensusGenericResponse RemoveConsensusGroup(ConsensusGroupId groupId) {
-    return null;
-  }
-
-  @Override
-  public ConsensusGenericResponse AddPeer(ConsensusGroupId groupId, Peer peer) {
-    return null;
-  }
-
-  @Override
-  public ConsensusGenericResponse RemovePeer(ConsensusGroupId groupId, Peer peer) {
-    return null;
-  }
-
-  @Override
-  public ConsensusGenericResponse ChangePeer(ConsensusGroupId groupId, List<Peer> peers) {
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
 
   @Override
-  public ConsensusGenericResponse TransferLeader(ConsensusGroupId groupId, Peer newPeer) {
-    return null;
+  public ConsensusGenericResponse RemoveConsensusGroup(ConsensusGroupId groupId) {
+    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+  }
+
+  @Override
+  public ConsensusGenericResponse AddPeer(ConsensusGroupId groupId, Peer peer) {
+    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+  }
+
+  @Override
+  public ConsensusGenericResponse RemovePeer(ConsensusGroupId groupId, Peer peer) {
+    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+  }
+
+  @Override
+  public ConsensusGenericResponse ChangePeer(ConsensusGroupId groupId, List<Peer> newPeers) {
+    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+  }
+
+  @Override
+  public ConsensusGenericResponse TransferLeader(ConsensusGroupId groupId, Peer newLeader) {
+    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
 
   @Override
   public ConsensusGenericResponse TriggerSnapshot(ConsensusGroupId groupId) {
-    return null;
+    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
 }
