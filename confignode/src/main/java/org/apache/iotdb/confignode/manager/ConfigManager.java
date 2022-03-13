@@ -33,7 +33,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * ConfigManager Maintains consistency between PartitionTables in the ConfigNodeGroup. Expose the
+ * ConfigManager maintains consistency between PartitionTables in the ConfigNodeGroup. Expose the
  * query interface for the PartitionTable
  */
 public class ConfigManager {
@@ -47,6 +47,7 @@ public class ConfigManager {
 
   private LoadBalancer loadBalancer;
 
+  /** Test only constructor */
   public ConfigManager(String hashExecutorClass, int deviceGroupCount) {
     setHashExecutor(hashExecutorClass, deviceGroupCount);
   }

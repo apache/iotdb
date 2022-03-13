@@ -23,30 +23,30 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * PartitionTable stores metadata partition table, data partition table, and real-time write load
+ * PartitionTable stores schema partition table, data partition table, and real-time write load
  * allocation rules
  */
 public class PartitionTable {
 
-  // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionGroupID>>
-  private final Map<String, Map<Integer, Integer>> metadataPartitionTable;
-  // Map<SchemaRegionGroupID, List<DataNodeID>>
-  private final Map<Integer, List<Integer>> schemaRegionGroupDataNodesMap;
+  // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionID>>
+  private final Map<String, Map<Integer, Integer>> schemaPartitionTable;
+  // Map<SchemaRegionID, List<DataNodeID>>
+  private final Map<Integer, List<Integer>> schemaRegionDataNodesMap;
 
-  // Map<StorageGroup, Map<DeviceGroupID, Map<TimeInterval, List<DataRegionGroupID>>>>
+  // Map<StorageGroup, Map<DeviceGroupID, Map<TimeInterval, List<DataRegionID>>>>
   private final Map<String, Map<Integer, Map<Long, List<Integer>>>> dataPartitionTable;
-  // Map<DataRegionGroupID, List<DataNodeID>>
-  private final Map<Integer, List<Integer>> dataRegionGroupDataNodesMap;
+  // Map<DataRegionID, List<DataNodeID>>
+  private final Map<Integer, List<Integer>> dataRegionDataNodesMap;
 
   // Map<StorageGroup, Map<DeviceGroupID, DataPartitionRule>>
   private final Map<String, Map<Integer, DataPartitionRule>> dataPartitionRuleTable;
 
   public PartitionTable() {
-    this.metadataPartitionTable = new HashMap<>();
-    this.schemaRegionGroupDataNodesMap = new HashMap<>();
+    this.schemaPartitionTable = new HashMap<>();
+    this.schemaRegionDataNodesMap = new HashMap<>();
 
     this.dataPartitionTable = new HashMap<>();
-    this.dataRegionGroupDataNodesMap = new HashMap<>();
+    this.dataRegionDataNodesMap = new HashMap<>();
 
     this.dataPartitionRuleTable = new HashMap<>();
   }

@@ -26,12 +26,12 @@ import org.apache.thrift.TException;
 
 import java.util.List;
 
-/** ConfigServiceImpl exposes the interface that interacts with the DataNode */
-public class ConfigServiceImpl implements ConfigIService.Iface {
+/** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
+public class ConfigNodeRPCServer implements ConfigIService.Iface {
 
   private ConfigManager configManager;
 
-  public ConfigServiceImpl() {
+  public ConfigNodeRPCServer() {
     this.configManager = new ConfigManager();
   }
 
