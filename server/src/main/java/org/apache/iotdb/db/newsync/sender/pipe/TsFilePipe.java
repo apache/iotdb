@@ -19,8 +19,6 @@
  */
 package org.apache.iotdb.db.newsync.sender.pipe;
 
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.StorageGroupManager;
@@ -49,7 +47,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -69,10 +66,10 @@ public class TsFilePipe implements Pipe {
   private final TsFilePipeLogger pipeLog;
   private final ReentrantLock collectRealTimeDataLock;
 
-  private final ExecutorService singleExecutorService;
-
   private boolean isCollectingRealTimeData;
   private long maxSerialNumber;
+
+  private TransportHandler transportHandler;
 
   private PipeStatus status;
 
@@ -91,14 +88,14 @@ public class TsFilePipe implements Pipe {
     this.pipeLog = new TsFilePipeLogger(this);
     this.collectRealTimeDataLock = new ReentrantLock();
 
-    this.singleExecutorService =
-        IoTDBThreadPoolFactory.newSingleThreadExecutor(
-            ThreadName.PIPE_SERVICE.getName() + "-" + name);
-
     this.isCollectingRealTimeData = false;
     this.maxSerialNumber = Math.max(0L, realTimeQueue.getLastMaxSerialNumber());
 
     this.status = PipeStatus.STOP;
+  }
+
+  public void setTransportHandler(TransportHandler transportHandler) {
+    this.transportHandler = transportHandler;
   }
 
   @Override
@@ -122,7 +119,7 @@ public class TsFilePipe implements Pipe {
         isCollectingRealTimeData = true;
       }
 
-      //      singleExecutorService.submit(this::transport);
+      //      transportHandler.start();
       status = PipeStatus.RUNNING;
     } catch (IOException e) {
       logger.error(
@@ -337,22 +334,7 @@ public class TsFilePipe implements Pipe {
       isCollectingRealTimeData = true;
     }
 
-    singleExecutorService.shutdownNow();
-    try {
-      if (!singleExecutorService.awaitTermination(
-          SyncConstant.DEFAULT_WAITTING_FOR_STOP_MILLISECONDS, TimeUnit.MILLISECONDS)) {
-        throw new PipeException(
-            String.format(
-                "Stop pipe %s when waiting for stop pipe after %s %s.",
-                name,
-                SyncConstant.DEFAULT_WAITTING_FOR_STOP_MILLISECONDS,
-                TimeUnit.MILLISECONDS.name()));
-      }
-    } catch (InterruptedException e) {
-      logger.warn(
-          String.format(
-              "Interrupted when waiting for stop pipe %s %d, because %s", name, createTime, e));
-    }
+    transportHandler.stop();
     status = PipeStatus.STOP;
   }
 
@@ -371,13 +353,11 @@ public class TsFilePipe implements Pipe {
     deregisterTsFile();
     isCollectingRealTimeData = false;
 
-    singleExecutorService.shutdownNow();
     try {
-      if (!singleExecutorService.awaitTermination(
-          SyncConstant.DEFAULT_WAITTING_FOR_STOP_MILLISECONDS, TimeUnit.MILLISECONDS)) {
+      if (!transportHandler.close()) {
         throw new PipeException(
             String.format(
-                "Clear pipe %s when waiting for stop pipe after %s %s.",
+                "Close pipe %s transport when waiting for stop pipe after %s %s.",
                 name,
                 SyncConstant.DEFAULT_WAITTING_FOR_STOP_MILLISECONDS,
                 TimeUnit.MILLISECONDS.name()));

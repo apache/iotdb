@@ -52,7 +52,7 @@ import static org.apache.iotdb.db.newsync.transport.conf.TransportConstant.REBAS
 import static org.apache.iotdb.db.newsync.transport.conf.TransportConstant.RETRY_CODE;
 import static org.apache.iotdb.db.newsync.transport.conf.TransportConstant.SUCCESS_CODE;
 
-public class TransportClient implements ITransportClient, Runnable {
+public class TransportClient implements ITransportClient {
 
   private static final Logger logger = LoggerFactory.getLogger(SyncClient.class);
 
@@ -103,7 +103,7 @@ public class TransportClient implements ITransportClient, Runnable {
     this.port = port;
     this.uuid = getOrCreateUUID(getUuidFile());
 
-    handshake();
+    //    handshake();
   }
 
   private boolean handshake() {
@@ -457,6 +457,7 @@ public class TransportClient implements ITransportClient, Runnable {
 
   }
 
+  @Override
   public SyncResponse heartbeat(SyncRequest syncRequest) throws TException {
     return serviceClient.heartbeat(identityInfo, syncRequest);
   }
