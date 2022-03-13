@@ -195,7 +195,7 @@ public class TransportServiceImpl implements TransportService.Iface {
           PipeDataQueueFactory.getBufferedPipeDataQueue(getPipeLogDirPath(identityInfo))
               .offer(pipeData);
         } catch (IOException | IllegalPathException e) {
-          e.printStackTrace();
+          logger.error("Pipe data transport error, {}", e.getMessage());
         }
       } else {
         // Write buff to {file}.patch

@@ -48,6 +48,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.*;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -171,21 +172,23 @@ public class TransportServiceTest {
 
   private void compareFile(File firFile, File secFile) {
     try {
+      MessageDigest messageDigest1 = MessageDigest.getInstance("SHA-256");
+      MessageDigest messageDigest2 = MessageDigest.getInstance("SHA-256");
       BufferedInputStream fir = new BufferedInputStream(new FileInputStream(firFile));
       BufferedInputStream sec = new BufferedInputStream(new FileInputStream(secFile));
-      // 比较文件的长度是否一样
-      if (fir.available() == sec.available()) {
-        while (fir.read() != -1 && sec.read() != -1) {
-          if (fir.read() != sec.read()) {
-            Assert.fail("Files not same!");
-            break;
-          }
-        }
-      } else {
-        Assert.fail("two files are different!");
+      // To compare the length and hash of the files.
+      Assert.assertEquals(fir.available(), sec.available());
+      byte[] firstBytes = new byte[1024];
+      byte[] secondBytes = new byte[1024];
+      int length = -1;
+      while ((length = fir.read(firstBytes)) != -1) {
+        Assert.assertEquals(length, sec.read(secondBytes));
+        messageDigest1.update(firstBytes, 0, length);
+        messageDigest2.update(secondBytes, 0, length);
       }
       fir.close();
       sec.close();
+      Assert.assertArrayEquals(messageDigest1.digest(), messageDigest2.digest());
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
