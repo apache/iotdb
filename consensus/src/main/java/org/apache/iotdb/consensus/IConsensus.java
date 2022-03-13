@@ -29,29 +29,29 @@ import java.util.List;
 
 /** Consensus module base class. Each method should be thread-safe */
 public interface IConsensus {
-  void Start();
+  void start();
 
-  void Stop();
+  void stop();
 
   // write API
-  ConsensusWriteResponse Write(ConsensusGroupId groupId, IConsensusRequest IConsensusRequest);
+  ConsensusWriteResponse write(ConsensusGroupId groupId, IConsensusRequest IConsensusRequest);
   // read API
-  ConsensusReadResponse Read(ConsensusGroupId groupId, IConsensusRequest IConsensusRequest);
+  ConsensusReadResponse read(ConsensusGroupId groupId, IConsensusRequest IConsensusRequest);
 
   // multi consensus group API
-  ConsensusGenericResponse AddConsensusGroup(ConsensusGroupId groupId, List<Peer> peers);
+  ConsensusGenericResponse addConsensusGroup(ConsensusGroupId groupId, List<Peer> peers);
 
-  ConsensusGenericResponse RemoveConsensusGroup(ConsensusGroupId groupId);
+  ConsensusGenericResponse removeConsensusGroup(ConsensusGroupId groupId);
 
   // single consensus group API
-  ConsensusGenericResponse AddPeer(ConsensusGroupId groupId, Peer peer);
+  ConsensusGenericResponse addPeer(ConsensusGroupId groupId, Peer peer);
 
-  ConsensusGenericResponse RemovePeer(ConsensusGroupId groupId, Peer peer);
+  ConsensusGenericResponse removePeer(ConsensusGroupId groupId, Peer peer);
 
-  ConsensusGenericResponse ChangePeer(ConsensusGroupId groupId, List<Peer> newPeers);
+  ConsensusGenericResponse changePeer(ConsensusGroupId groupId, List<Peer> newPeers);
 
   // management API
-  ConsensusGenericResponse TransferLeader(ConsensusGroupId groupId, Peer newLeader);
+  ConsensusGenericResponse transferLeader(ConsensusGroupId groupId, Peer newLeader);
 
-  ConsensusGenericResponse TriggerSnapshot(ConsensusGroupId groupId);
+  ConsensusGenericResponse triggerSnapshot(ConsensusGroupId groupId);
 }

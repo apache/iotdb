@@ -50,19 +50,19 @@ public class ConsensusMain {
               }
               return new EmptyStateMachine();
             });
-    consensusImpl.Start();
+    consensusImpl.start();
     InsertRowPlan plan = getInsertRowPlan();
     ConsensusGroupId dataRegionId = new ConsensusGroupId(GroupType.DataRegion, 0);
     ConsensusGroupId schemaRegionId = new ConsensusGroupId(GroupType.SchemaRegion, 1);
-    consensusImpl.AddConsensusGroup(
+    consensusImpl.addConsensusGroup(
         dataRegionId,
         Collections.singletonList(new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667))));
-    consensusImpl.AddConsensusGroup(
+    consensusImpl.addConsensusGroup(
         schemaRegionId,
         Collections.singletonList(new Peer(schemaRegionId, new Endpoint("0.0.0.0", 6667))));
-    consensusImpl.Write(dataRegionId, plan);
-    consensusImpl.Write(schemaRegionId, plan);
-    consensusImpl.Stop();
+    consensusImpl.write(dataRegionId, plan);
+    consensusImpl.write(schemaRegionId, plan);
+    consensusImpl.stop();
   }
 
   private static InsertRowPlan getInsertRowPlan() throws IllegalPathException {

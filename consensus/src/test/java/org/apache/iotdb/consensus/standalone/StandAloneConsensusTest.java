@@ -85,13 +85,13 @@ public class StandAloneConsensusTest {
     }
 
     @Override
-    public void Start() {}
+    public void start() {}
 
     @Override
-    public void Stop() {}
+    public void stop() {}
 
     @Override
-    public TSStatus Write(IConsensusRequest request) {
+    public TSStatus write(IConsensusRequest request) {
       if (request instanceof TestEntry) {
         return new TSStatus(
             direction ? ((TestEntry) request).num + 1 : ((TestEntry) request).num - 1);
@@ -100,7 +100,7 @@ public class StandAloneConsensusTest {
     }
 
     @Override
-    public DataSet Read(IConsensusRequest request) {
+    public DataSet read(IConsensusRequest request) {
       return null;
     }
   }
@@ -118,32 +118,32 @@ public class StandAloneConsensusTest {
               }
               return new EmptyStateMachine();
             });
-    consensusImpl.Start();
+    consensusImpl.start();
   }
 
   @After
   public void tearDown() throws Exception {
-    consensusImpl.Stop();
+    consensusImpl.stop();
   }
 
   @Test
   public void addConsensusGroup() {
     ConsensusGenericResponse response1 =
-        consensusImpl.AddConsensusGroup(
+        consensusImpl.addConsensusGroup(
             dataRegionId,
             Collections.singletonList(new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667))));
     assertTrue(response1.isSuccess());
     assertNull(response1.getException());
 
     ConsensusGenericResponse response2 =
-        consensusImpl.AddConsensusGroup(
+        consensusImpl.addConsensusGroup(
             dataRegionId,
             Collections.singletonList(new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667))));
     assertFalse(response2.isSuccess());
     assertTrue(response2.getException() instanceof ConsensusGroupAlreadyExistException);
 
     ConsensusGenericResponse response3 =
-        consensusImpl.AddConsensusGroup(
+        consensusImpl.addConsensusGroup(
             dataRegionId,
             Arrays.asList(
                 new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667)),
@@ -152,7 +152,7 @@ public class StandAloneConsensusTest {
     assertTrue(response3.getException() instanceof IllegalPeerNumException);
 
     ConsensusGenericResponse response4 =
-        consensusImpl.AddConsensusGroup(
+        consensusImpl.addConsensusGroup(
             schemaRegionId,
             Collections.singletonList(new Peer(schemaRegionId, new Endpoint("0.0.0.0", 6667))));
     assertTrue(response4.isSuccess());
@@ -161,18 +161,18 @@ public class StandAloneConsensusTest {
 
   @Test
   public void removeConsensusGroup() {
-    ConsensusGenericResponse response1 = consensusImpl.RemoveConsensusGroup(dataRegionId);
+    ConsensusGenericResponse response1 = consensusImpl.removeConsensusGroup(dataRegionId);
     assertFalse(response1.isSuccess());
     assertTrue(response1.getException() instanceof ConsensusGroupNotExistException);
 
     ConsensusGenericResponse response2 =
-        consensusImpl.AddConsensusGroup(
+        consensusImpl.addConsensusGroup(
             dataRegionId,
             Collections.singletonList(new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667))));
     assertTrue(response2.isSuccess());
     assertNull(response2.getException());
 
-    ConsensusGenericResponse response3 = consensusImpl.RemoveConsensusGroup(dataRegionId);
+    ConsensusGenericResponse response3 = consensusImpl.removeConsensusGroup(dataRegionId);
     assertTrue(response3.isSuccess());
     assertNull(response3.getException());
   }
@@ -180,14 +180,14 @@ public class StandAloneConsensusTest {
   @Test
   public void addPeer() {
     ConsensusGenericResponse response =
-        consensusImpl.AddPeer(dataRegionId, new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667)));
+        consensusImpl.addPeer(dataRegionId, new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667)));
     assertFalse(response.isSuccess());
   }
 
   @Test
   public void removePeer() {
     ConsensusGenericResponse response =
-        consensusImpl.RemovePeer(
+        consensusImpl.removePeer(
             dataRegionId, new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667)));
     assertFalse(response.isSuccess());
   }
@@ -195,7 +195,7 @@ public class StandAloneConsensusTest {
   @Test
   public void changePeer() {
     ConsensusGenericResponse response =
-        consensusImpl.ChangePeer(
+        consensusImpl.changePeer(
             dataRegionId,
             Collections.singletonList(new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667))));
     assertFalse(response.isSuccess());
@@ -204,50 +204,50 @@ public class StandAloneConsensusTest {
   @Test
   public void transferLeader() {
     ConsensusGenericResponse response =
-        consensusImpl.TransferLeader(
+        consensusImpl.transferLeader(
             dataRegionId, new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667)));
     assertFalse(response.isSuccess());
   }
 
   @Test
   public void triggerSnapshot() {
-    ConsensusGenericResponse response = consensusImpl.TriggerSnapshot(dataRegionId);
+    ConsensusGenericResponse response = consensusImpl.triggerSnapshot(dataRegionId);
     assertFalse(response.isSuccess());
   }
 
   @Test
   public void write() {
     ConsensusGenericResponse response1 =
-        consensusImpl.AddConsensusGroup(
+        consensusImpl.addConsensusGroup(
             dataRegionId,
             Collections.singletonList(new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667))));
     assertTrue(response1.isSuccess());
     assertNull(response1.getException());
 
     ConsensusGenericResponse response2 =
-        consensusImpl.AddConsensusGroup(
+        consensusImpl.addConsensusGroup(
             schemaRegionId,
             Collections.singletonList(new Peer(schemaRegionId, new Endpoint("0.0.0.0", 6667))));
     assertTrue(response2.isSuccess());
     assertNull(response2.getException());
 
     ConsensusGenericResponse response3 =
-        consensusImpl.AddConsensusGroup(
+        consensusImpl.addConsensusGroup(
             configId, Collections.singletonList(new Peer(configId, new Endpoint("0.0.0.0", 6667))));
     assertTrue(response3.isSuccess());
     assertNull(response3.getException());
 
-    ConsensusWriteResponse response4 = consensusImpl.Write(dataRegionId, entry);
+    ConsensusWriteResponse response4 = consensusImpl.write(dataRegionId, entry);
     assertNull(response4.getException());
     assertNotNull(response4.getStatus());
     assertEquals(-1, response4.getStatus().getCode());
 
-    ConsensusWriteResponse response5 = consensusImpl.Write(schemaRegionId, entry);
+    ConsensusWriteResponse response5 = consensusImpl.write(schemaRegionId, entry);
     assertNull(response5.getException());
     assertNotNull(response5.getStatus());
     assertEquals(1, response5.getStatus().getCode());
 
-    ConsensusWriteResponse response6 = consensusImpl.Write(configId, entry);
+    ConsensusWriteResponse response6 = consensusImpl.write(configId, entry);
     assertNull(response6.getException());
     assertEquals(0, response6.getStatus().getCode());
   }

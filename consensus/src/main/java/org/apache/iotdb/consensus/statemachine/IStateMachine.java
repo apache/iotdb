@@ -30,11 +30,11 @@ public interface IStateMachine {
 
   interface Registry extends Function<ConsensusGroupId, IStateMachine> {}
 
-  void Start();
+  void start();
 
-  void Stop();
+  void stop();
 
-  TSStatus Write(IConsensusRequest IConsensusRequest);
+  TSStatus write(IConsensusRequest IConsensusRequest);
 
-  DataSet Read(IConsensusRequest IConsensusRequest);
+  DataSet read(IConsensusRequest IConsensusRequest);
 }

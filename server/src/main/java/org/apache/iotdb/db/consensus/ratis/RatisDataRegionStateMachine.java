@@ -33,13 +33,13 @@ public class RatisDataRegionStateMachine implements IStateMachine {
   private static final Logger logger = LoggerFactory.getLogger(RatisDataRegionStateMachine.class);
 
   @Override
-  public void Start() {}
+  public void start() {}
 
   @Override
-  public void Stop() {}
+  public void stop() {}
 
   @Override
-  public TSStatus Write(IConsensusRequest request) {
+  public TSStatus write(IConsensusRequest request) {
     if (request instanceof InsertRowPlan) {
       logger.info("Execute write plan : {}", request);
     }
@@ -47,7 +47,7 @@ public class RatisDataRegionStateMachine implements IStateMachine {
   }
 
   @Override
-  public DataSet Read(IConsensusRequest request) {
+  public DataSet read(IConsensusRequest request) {
     logger.info("Execute read plan : {}", request);
     return null;
   }

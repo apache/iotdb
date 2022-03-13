@@ -56,20 +56,20 @@ public class StandAloneConsensus implements IConsensus {
   }
 
   @Override
-  public void Start() {}
+  public void start() {}
 
   @Override
-  public void Stop() {}
+  public void stop() {}
 
   @Override
-  public ConsensusWriteResponse Write(ConsensusGroupId groupId, IConsensusRequest request) {
+  public ConsensusWriteResponse write(ConsensusGroupId groupId, IConsensusRequest request) {
     AtomicReference<TSStatus> result = new AtomicReference<>();
     stateMachineMap.computeIfPresent(
         groupId,
         (k, v) -> {
           // TODO make Statemachine thread-safe to avoid thread-safe ways like this that may affect
           // performance
-          result.set(v.Write(request));
+          result.set(v.write(request));
           return v;
         });
     if (result.get() == null) {
@@ -81,14 +81,14 @@ public class StandAloneConsensus implements IConsensus {
   }
 
   @Override
-  public ConsensusReadResponse Read(ConsensusGroupId groupId, IConsensusRequest request) {
+  public ConsensusReadResponse read(ConsensusGroupId groupId, IConsensusRequest request) {
     AtomicReference<DataSet> result = new AtomicReference<>();
     stateMachineMap.computeIfPresent(
         groupId,
         (k, v) -> {
           // TODO make Statemachine thread-safe to avoid thread-safe ways like this that may affect
           // performance
-          result.set(v.Read(request));
+          result.set(v.read(request));
           return v;
         });
     if (result.get() == null) {
@@ -100,7 +100,7 @@ public class StandAloneConsensus implements IConsensus {
   }
 
   @Override
-  public ConsensusGenericResponse AddConsensusGroup(ConsensusGroupId groupId, List<Peer> peers) {
+  public ConsensusGenericResponse addConsensusGroup(ConsensusGroupId groupId, List<Peer> peers) {
     int consensusGroupSize = peers.size();
     if (consensusGroupSize != 1) {
       return ConsensusGenericResponse.newBuilder()
@@ -114,7 +114,7 @@ public class StandAloneConsensus implements IConsensus {
           exist.set(false);
           StandAloneServerImpl impl =
               new StandAloneServerImpl(peers.get(0), registry.apply(groupId));
-          impl.Start();
+          impl.start();
           return impl;
         });
     if (exist.get()) {
@@ -126,13 +126,13 @@ public class StandAloneConsensus implements IConsensus {
   }
 
   @Override
-  public ConsensusGenericResponse RemoveConsensusGroup(ConsensusGroupId groupId) {
+  public ConsensusGenericResponse removeConsensusGroup(ConsensusGroupId groupId) {
     AtomicBoolean exist = new AtomicBoolean(false);
     stateMachineMap.computeIfPresent(
         groupId,
         (k, v) -> {
           exist.set(true);
-          v.Stop();
+          v.stop();
           return null;
         });
     if (!exist.get()) {
@@ -144,27 +144,27 @@ public class StandAloneConsensus implements IConsensus {
   }
 
   @Override
-  public ConsensusGenericResponse AddPeer(ConsensusGroupId groupId, Peer peer) {
+  public ConsensusGenericResponse addPeer(ConsensusGroupId groupId, Peer peer) {
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
 
   @Override
-  public ConsensusGenericResponse RemovePeer(ConsensusGroupId groupId, Peer peer) {
+  public ConsensusGenericResponse removePeer(ConsensusGroupId groupId, Peer peer) {
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
 
   @Override
-  public ConsensusGenericResponse ChangePeer(ConsensusGroupId groupId, List<Peer> newPeers) {
+  public ConsensusGenericResponse changePeer(ConsensusGroupId groupId, List<Peer> newPeers) {
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
 
   @Override
-  public ConsensusGenericResponse TransferLeader(ConsensusGroupId groupId, Peer newLeader) {
+  public ConsensusGenericResponse transferLeader(ConsensusGroupId groupId, Peer newLeader) {
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
 
   @Override
-  public ConsensusGenericResponse TriggerSnapshot(ConsensusGroupId groupId) {
+  public ConsensusGenericResponse triggerSnapshot(ConsensusGroupId groupId) {
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
 }

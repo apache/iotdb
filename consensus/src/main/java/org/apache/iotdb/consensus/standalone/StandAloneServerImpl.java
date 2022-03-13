@@ -44,18 +44,18 @@ public class StandAloneServerImpl implements IStateMachine {
   }
 
   @Override
-  public void Start() {}
+  public void start() {}
 
   @Override
-  public void Stop() {}
+  public void stop() {}
 
   @Override
-  public TSStatus Write(IConsensusRequest request) {
-    return stateMachine.Write(request);
+  public TSStatus write(IConsensusRequest request) {
+    return stateMachine.write(request);
   }
 
   @Override
-  public DataSet Read(IConsensusRequest request) {
-    return stateMachine.Read(request);
+  public DataSet read(IConsensusRequest request) {
+    return stateMachine.read(request);
   }
 }

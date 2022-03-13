@@ -26,18 +26,18 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 public class EmptyStateMachine implements IStateMachine {
 
   @Override
-  public void Start() {}
+  public void start() {}
 
   @Override
-  public void Stop() {}
+  public void stop() {}
 
   @Override
-  public TSStatus Write(IConsensusRequest IConsensusRequest) {
+  public TSStatus write(IConsensusRequest IConsensusRequest) {
     return new TSStatus();
   }
 
   @Override
-  public DataSet Read(IConsensusRequest IConsensusRequest) {
+  public DataSet read(IConsensusRequest IConsensusRequest) {
     return null;
   }
 }
