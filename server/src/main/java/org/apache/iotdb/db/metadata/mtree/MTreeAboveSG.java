@@ -435,12 +435,14 @@ public class MTreeAboveSG {
   }
 
   /**
-   * Get child node path in the next level of the given path pattern.
+   * Get child node path in the next level of the given path pattern. This method only count in
+   * nodes above storage group. Nodes below storage group, including storage group node will be
+   * counted by certain MTreeBelowSG.
    *
-   * <p>give pathPattern and the child nodes is those matching pathPattern.*.
+   * <p>give pathPattern and the child nodes is those matching pathPattern.*
    *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [root.sg1.d1, root.sg1.d2]
+   * <p>e.g., MTree has [root.a.sg1.d1.s1, root.b.sg1.d1.s2, root.c.sg1.d2.s1] given path = root
+   * return [root.a, root.b]
    *
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
@@ -466,15 +468,16 @@ public class MTreeAboveSG {
   }
 
   /**
-   * Get child node in the next level of the given path.
+   * Get child node path in the next level of the given path pattern. This method only count in
+   * nodes above storage group. Nodes below storage group, including storage group node will be
+   * counted by certain MTreeBelowSG.
    *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [d1, d2]
+   * <p>give pathPattern and the child nodes is those matching pathPattern.*
    *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1.d1
-   * return [s1, s2]
+   * <p>e.g., MTree has [root.a.sg1.d1.s1, root.b.sg1.d1.s2, root.c.sg1.d2.s1] given path = root
+   * return [a, b]
    *
-   * @param pathPattern Path
+   * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   public Pair<Set<String>, Set<IStorageGroupMNode>> getChildNodeNameInNextLevel(

@@ -112,9 +112,10 @@ import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncodin
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
- * This class takes the responsibility of serialization of all the metadata info and persistent it
- * into files. This class contains all the interfaces to modify the metadata for delta system. All
- * the operations will be insert into the logs temporary in case the downtime of the delta system.
+ * This class takes the responsibility of serialization of all the metadata info of one certain
+ * storage group and persistent it into files. This class contains the interfaces to modify the
+ * metadata in storage group for delta system. All the operations will be inserted into the logs
+ * temporary in case the downtime of the delta system.
  *
  * <p>Since there are too many interfaces and methods in this class, we use code region to help
  * manage code. The code region starts with //region and ends with //endregion. When using Intellij
@@ -124,8 +125,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * <p>The codes are divided into the following code regions:
  *
  * <ol>
- *   <li>Interfaces and Implementation of MManager initialization、snapshot、recover and clear
- *   <li>Interfaces for CQ
+ *   <li>Interfaces and Implementation of initialization、snapshot、recover and clear
  *   <li>Interfaces and Implementation for Timeseries operation
  *   <li>Interfaces and Implementation for StorageGroup and TTL operation
  *   <li>Interfaces for get and auto create device
@@ -140,7 +140,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *   <li>Interfaces and methods for MNode query
  *   <li>Interfaces for alias and tag/attribute operations
  *   <li>Interfaces only for Cluster module usage
- *   <li>Interfaces for lastCache operations
  *   <li>Interfaces and Implementation for InsertPlan process
  *   <li>Interfaces and Implementation for Template operations
  *   <li>TestOnly Interfaces
@@ -156,8 +155,8 @@ public class SGMManager {
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private boolean isRecovering;
-  private boolean initialized;
+  private boolean isRecovering = true;
+  private boolean initialized = false;
 
   private final int mtreeSnapshotInterval;
   private final long mtreeSnapshotThresholdTime;
@@ -178,13 +177,10 @@ public class SGMManager {
   private LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager;
 
-  // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
+  // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SGMManager() {
     mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
     mtreeSnapshotThresholdTime = config.getMtreeSnapshotThresholdTime() * 1000L;
-
-    // do not write log when recover
-    isRecovering = true;
 
     int cacheSize = config.getmManagerCacheSize();
     mNodeCache =
@@ -246,6 +242,7 @@ public class SGMManager {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
     try {
+      // do not write log when recover
       isRecovering = true;
 
       tagManager = new TagManager(sgSchemaDirPath);
@@ -346,7 +343,7 @@ public class SGMManager {
     }
   }
 
-  /** function for clearing MTree */
+  /** function for clearing metadata components of one storage group */
   public synchronized void clear() {
     try {
       if (this.mtree != null) {
@@ -375,6 +372,7 @@ public class SGMManager {
     }
   }
 
+  // this method is mainly used for recover and metadata sync
   public void operation(PhysicalPlan plan) throws IOException, MetadataException {
     switch (plan.getOperatorType()) {
       case CREATE_TIMESERIES:
@@ -449,8 +447,10 @@ public class SGMManager {
     // drop triggers with no exceptions
     TriggerEngine.drop(leafMNodes);
 
+    // clear all the components and release all the file handlers
     clear();
 
+    // delete all the storage group files
     File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath);
     File[] sgFiles = sgSchemaFolder.listFiles();
     for (File file : sgFiles) {
@@ -630,9 +630,9 @@ public class SGMManager {
   }
 
   /**
-   * Delete all timeseries matching the given path pattern, may cross different storage group. If
-   * using prefix match, the path pattern is used to match prefix path. All timeseries start with
-   * the matched prefix path will be deleted.
+   * Delete all timeseries matching the given path pattern. If using prefix match, the path pattern
+   * is used to match prefix path. All timeseries start with the matched prefix path will be
+   * deleted.
    *
    * @param pathPattern path to be deleted
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
@@ -656,7 +656,7 @@ public class SGMManager {
   }
 
   /**
-   * Delete all timeseries matching the given path pattern, may cross different storage group
+   * Delete all timeseries matching the given path pattern
    *
    * @param pathPattern path to be deleted
    * @return deletion failed Timeseries
@@ -725,12 +725,9 @@ public class SGMManager {
    * <p>(we develop this method as we need to get the node's lock after we get the lock.writeLock())
    *
    * @param path path
-   * @param allowCreateSg The stand-alone version can create an sg at will, but the cluster version
-   *     needs to make the Meta group aware of the creation of an SG, so an exception needs to be
-   *     thrown here
+   * @param
    */
-  public IMNode getDeviceNodeWithAutoCreate(
-      PartialPath path, boolean autoCreateSchema, boolean allowCreateSg, int sgLevel)
+  public IMNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema)
       throws IOException, MetadataException {
     IMNode node;
     try {
@@ -746,7 +743,7 @@ public class SGMManager {
       }
     }
 
-    node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
+    node = mtree.getDeviceNodeWithAutoCreating(path);
     if (!(node.isStorageGroup())) {
       logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.getPartialPath()));
     }
@@ -755,12 +752,11 @@ public class SGMManager {
 
   public IMNode getDeviceNodeWithAutoCreate(PartialPath path)
       throws MetadataException, IOException {
-    return getDeviceNodeWithAutoCreate(
-        path, config.isAutoCreateSchemaEnabled(), true, config.getDefaultStorageGroupLevel());
+    return getDeviceNodeWithAutoCreate(path, config.isAutoCreateSchemaEnabled());
   }
 
-  private void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
-    mtree.getDeviceNodeWithAutoCreating(plan.getPath(), config.getDefaultStorageGroupLevel());
+  public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
+    mtree.getDeviceNodeWithAutoCreating(plan.getPath());
   }
   // endregion
 
@@ -774,7 +770,7 @@ public class SGMManager {
     return mtree.isPathExist(path);
   }
 
-  /** Get metadata in string */
+  /** Get metadata in Json format */
   public JsonObject getMetadataInJson() {
     return mtree.toJson();
   }
@@ -808,8 +804,8 @@ public class SGMManager {
 
   /**
    * To calculate the count of nodes in the given level for given path pattern. If using prefix
-   * match, the path pattern is used to match prefix path. All timeseries start with the matched
-   * prefix path will be counted.
+   * match, the path pattern is used to match prefix path. All nodes start with the matched prefix
+   * path will be counted.
    *
    * @param pathPattern a path pattern or a full path
    * @param level the level should match the level of the path
@@ -1183,13 +1179,14 @@ public class SGMManager {
 
   // region Interfaces for alias and tag/attribute operations
   /**
-   * Check whether the given path contains a storage group change or set the new offset of a
-   * timeseries
+   * Set the new offset of a timeseries. Only used for Recover. When creating tags/attributes for a
+   * timeseries, if is first time, the file offset where the tags/attributes stored will be stored
+   * in measurementMNode.
    *
    * @param path timeseries
    * @param offset offset in the tag file
    */
-  public void changeOffset(PartialPath path, long offset) throws MetadataException {
+  private void changeOffset(PartialPath path, long offset) throws MetadataException {
     mtree.getMeasurementMNode(path).setOffset(offset);
   }
 

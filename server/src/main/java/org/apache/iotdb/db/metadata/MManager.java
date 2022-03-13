@@ -49,7 +49,6 @@ import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
-import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -104,8 +103,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
- * into files. This class contains all the interfaces to modify the metadata for delta system. All
- * the operations will be insert into the logs temporary in case the downtime of the delta system.
+ * into files. This class contains all the interfaces to modify the metadata for delta system.
  *
  * <p>Since there are too many interfaces and methods in this class, we use code region to help
  * manage code. The code region starts with //region and ends with //endregion. When using Intellij
@@ -117,7 +115,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * <ol>
  *   <li>MManager Singleton
  *   <li>Interfaces and Implementation of MManager initialization、snapshot、recover and clear
- *   <li>Interfaces for CQ
+ *   <li>Interfaces and Implementation of Operating PhysicalPlans of Metadata
  *   <li>Interfaces and Implementation for Timeseries operation
  *   <li>Interfaces and Implementation for StorageGroup and TTL operation
  *   <li>Interfaces for get and auto create device
@@ -182,7 +180,6 @@ public class MManager {
     }
   }
 
-  // Because the writer will be used later and should not be closed here.
   @SuppressWarnings("squid:S2093")
   public synchronized void init() {
     if (initialized) {
@@ -248,7 +245,7 @@ public class MManager {
     }
   }
 
-  /** function for clearing MTree */
+  /** function for clearing all metadata components */
   public synchronized void clear() {
     try {
       storageGroupManager.clear();
@@ -256,11 +253,13 @@ public class MManager {
       timeseriesStatistics.clear();
       initialized = false;
     } catch (IOException e) {
-      logger.error("Cannot close metadata log writer, because:", e);
+      logger.error("Error occurred when clearing MManager:", e);
     }
   }
+  // endregion
 
-  // This method is used for Metadata Sync
+  // region Interfaces and Implementation of operating PhysicalPlans of Metadata
+  // This method is mainly used for Metadata Sync
   public void operation(PhysicalPlan plan) throws IOException, MetadataException {
     switch (plan.getOperatorType()) {
       case CREATE_TIMESERIES:
@@ -292,10 +291,6 @@ public class MManager {
       case CHANGE_ALIAS:
         ChangeAliasPlan changeAliasPlan = (ChangeAliasPlan) plan;
         changeAlias(changeAliasPlan.getPath(), changeAliasPlan.getAlias());
-        break;
-      case CHANGE_TAG_OFFSET:
-        ChangeTagOffsetPlan changeTagOffsetPlan = (ChangeTagOffsetPlan) plan;
-        changeOffset(changeTagOffsetPlan.getPath(), changeTagOffsetPlan.getOffset());
         break;
       case CREATE_TEMPLATE:
         CreateTemplatePlan createTemplatePlan = (CreateTemplatePlan) plan;
@@ -498,9 +493,9 @@ public class MManager {
   }
 
   /**
-   * Delete storage groups of given paths from MTree. Log format: "delete_storage_group,sg1,sg2,sg3"
+   * Delete storage groups of given paths from MTree.
    *
-   * @param storageGroups list of paths to be deleted. Format: root.node
+   * @param storageGroups list of paths to be deleted.
    */
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     for (PartialPath storageGroup : storageGroups) {
@@ -523,8 +518,6 @@ public class MManager {
   /**
    * get device node, if the storage group is not set, create it when autoCreateSchema is true
    *
-   * <p>(we develop this method as we need to get the node's lock after we get the lock.writeLock())
-   *
    * @param path path
    * @param allowCreateSg The stand-alone version can create an sg at will, but the cluster version
    *     needs to make the Meta group aware of the creation of an SG, so an exception needs to be
@@ -536,7 +529,7 @@ public class MManager {
     try {
       return storageGroupManager
           .getBelongedSGMManager(path)
-          .getDeviceNodeWithAutoCreate(path, autoCreateSchema, allowCreateSg, sgLevel);
+          .getDeviceNodeWithAutoCreate(path, autoCreateSchema);
     } catch (StorageGroupNotSetException e) {
       if (!autoCreateSchema) {
         throw new PathNotExistException(path.getFullPath());
@@ -551,16 +544,17 @@ public class MManager {
         throw new StorageGroupNotSetException(path.getFullPath());
       }
     } catch (StorageGroupAlreadySetException e) {
+      // Storage group may be set concurrently
       if (e.isHasChild()) {
-        // if setStorageGroup failure is because of child, the deviceNode should not be created.
-        // Timeseries can't be create under a deviceNode without storageGroup.
+        // If setStorageGroup failure is because of child, the deviceNode should not be created.
+        // Timeseries can't be created under a deviceNode without storageGroup.
         throw e;
       }
     }
 
     return storageGroupManager
         .getBelongedSGMManager(path)
-        .getDeviceNodeWithAutoCreate(path, autoCreateSchema, allowCreateSg, sgLevel);
+        .getDeviceNodeWithAutoCreate(path, autoCreateSchema);
   }
 
   protected IMNode getDeviceNodeWithAutoCreate(PartialPath path)
@@ -570,7 +564,7 @@ public class MManager {
   }
 
   private void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
-    getMeasurementMNode(plan.getPath());
+    storageGroupManager.getBelongedSGMManager(plan.getPath()).autoCreateDeviceMNode(plan);
   }
   // endregion
 
@@ -663,8 +657,8 @@ public class MManager {
 
   /**
    * To calculate the count of nodes in the given level for given path pattern. If using prefix
-   * match, the path pattern is used to match prefix path. All timeseries start with the matched
-   * prefix path will be counted.
+   * match, the path pattern is used to match prefix path. All nodes start with the matched prefix
+   * path will be counted.
    *
    * @param pathPattern a path pattern or a full path
    * @param level the level should match the level of the path
@@ -715,7 +709,7 @@ public class MManager {
   // region Interfaces for level Node info Query
   /**
    * Get all nodes matching the given path pattern in the given level. The level of the path should
-   * match the nodeLevel. 1. The given level equals the path level with out **, e.g. give path
+   * match the nodeLevel. 1. The given level equals the path level without **, e.g. give path
    * root.*.d.* and the level should be 4. 2. The given level is greater than path level with **,
    * e.g. give path root.** and the level could be 2 or 3.
    *
@@ -1074,9 +1068,10 @@ public class MManager {
 
   // region Interfaces and methods for MNode query
   /**
-   * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
-   * device], return the MNode of root.sg Get storage group node by path. If storage group is not
-   * set, StorageGroupNotSetException will be thrown
+   * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg],
+   * return the MNode of root.sg Get storage group node by path. Give path like [root, sg, device],
+   * MNodeTypeMismatchException will be thrown. If storage group is not set,
+   * StorageGroupNotSetException will be thrown.
    */
   public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
       throws MetadataException {
@@ -1135,17 +1130,6 @@ public class MManager {
   // endregion
 
   // region Interfaces for alias and tag/attribute operations
-  /**
-   * Check whether the given path contains a storage group change or set the new offset of a
-   * timeseries
-   *
-   * @param path timeseries
-   * @param offset offset in the tag file
-   */
-  private void changeOffset(PartialPath path, long offset) throws MetadataException {
-    storageGroupManager.getBelongedSGMManager(path).changeOffset(path, offset);
-  }
-
   public void changeAlias(PartialPath path, String alias) throws MetadataException {
     storageGroupManager.getBelongedSGMManager(path).changeAlias(path, alias);
   }

@@ -558,8 +558,7 @@ public class MTreeBelowSG implements Serializable {
    *
    * <p>e.g., get root.sg.d1, get or create all internal nodes and return the node of d1
    */
-  public IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId, int sgLevel)
-      throws MetadataException {
+  public IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException {
     String[] nodeNames = deviceId.getNodes();
     IMNode cur = storageGroupMNode;
     Template upperTemplate = cur.getSchemaTemplate();
@@ -569,14 +568,7 @@ public class MTreeBelowSG implements Serializable {
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
-        if (i == sgLevel) {
-          cur.addChild(
-              nodeNames[i],
-              new StorageGroupMNode(
-                  cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL()));
-        } else {
-          cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
-        }
+        cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
       }
       cur = cur.getChild(nodeNames[i]);
       // update upper template

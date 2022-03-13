@@ -41,6 +41,8 @@ import java.util.Set;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
+// This class implements all the interfaces for storage group management. The MTreeAboveSg is used
+// to manage all the storage groups and MNodes above storage group.
 public class StorageGroupManager implements IStorageGroupManager {
 
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupManager.class);
@@ -66,7 +68,6 @@ public class StorageGroupManager implements IStorageGroupManager {
     }
   }
 
-  /** function for clearing MTree */
   public synchronized void clear() {
     for (SGMManager sgmManager : getAllSGMManagers()) {
       sgmManager.clear();
