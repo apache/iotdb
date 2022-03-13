@@ -48,7 +48,6 @@ public class ConfigManager {
 
   private LoadBalancer loadBalancer;
 
-  /** Test only constructor */
   @TestOnly
   public ConfigManager(String hashExecutorClass, int deviceGroupCount) {
     setHashExecutor(hashExecutorClass, deviceGroupCount);
