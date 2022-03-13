@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.manager.hash.DeviceGroupHashExecutor;
 import org.apache.iotdb.confignode.partition.PartitionTable;
 import org.apache.iotdb.confignode.service.balancer.LoadBalancer;
 
+import org.jetbrains.annotations.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +49,7 @@ public class ConfigManager {
   private LoadBalancer loadBalancer;
 
   /** Test only constructor */
+  @TestOnly
   public ConfigManager(String hashExecutorClass, int deviceGroupCount) {
     setHashExecutor(hashExecutorClass, deviceGroupCount);
   }
