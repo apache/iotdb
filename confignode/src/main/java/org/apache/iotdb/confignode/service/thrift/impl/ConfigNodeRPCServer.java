@@ -20,11 +20,11 @@ package org.apache.iotdb.confignode.service.thrift.impl;
 
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
+import org.apache.iotdb.confignode.rpc.thrift.DataPartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.GetDataPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.GetDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.GetSchemaPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.GetSchemaPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupoReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -50,12 +50,12 @@ public class ConfigNodeRPCServer implements ConfigIService.Iface {
   }
 
   @Override
-  public GetSchemaPartitionResp getSchemaPartition(GetSchemaPartitionReq req) throws TException {
+  public SchemaPartitionInfo getSchemaPartition(GetSchemaPartitionReq req) throws TException {
     return null;
   }
 
   @Override
-  public GetDataPartitionResp getDataPartition(GetDataPartitionReq req) throws TException {
+  public DataPartitionInfo getDataPartition(GetDataPartitionReq req) throws TException {
     return null;
   }
 

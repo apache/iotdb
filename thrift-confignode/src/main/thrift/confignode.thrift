@@ -38,7 +38,7 @@ struct GetSchemaPartitionReq {
     2: required list<i32> deviceGroupIDs
 }
 
-struct GetSchemaPartitionResp {
+struct SchemaPartitionInfo {
     1: required list<list<i32>> dataNodeIDs
     2: required list<i32> schemaRegionIDs
 }
@@ -48,7 +48,7 @@ struct GetDataPartitionReq {
     2: required map<i32, list<i64>> deviceGroupStartTimeMap
 }
 
-struct GetDataPartitionResp {
+struct DataPartitionInfo {
     1: required map<i32, list<list<i32>>> dataNodeIDsMap
     2: required map<i32, list<i32>> dataRegionIDsMap
 }
@@ -58,7 +58,7 @@ service ConfigIService {
 
   rpc.TSStatus deleteStorageGroup(DeleteStorageGroupReq req)
 
-  GetSchemaPartitionResp getSchemaPartition(GetSchemaPartitionReq req)
+  SchemaPartitionInfo getSchemaPartition(GetSchemaPartitionReq req)
 
-  GetDataPartitionResp getDataPartition(GetDataPartitionReq req)
+  DataPartitionInfo getDataPartition(GetDataPartitionReq req)
 }
