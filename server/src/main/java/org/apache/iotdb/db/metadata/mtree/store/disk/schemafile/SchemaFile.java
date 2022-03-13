@@ -43,6 +43,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * TODO: reliability design TBD
@@ -649,19 +650,26 @@ public class SchemaFile implements ISchemaFile {
    * @return an existed page
    */
   private ISchemaPage getPageInstance(int pageIdx) throws IOException, MetadataException {
-    if (pageIdx > lastPageIndex) {
-      throw new MetadataException(String.format("Page index %d out of range.", pageIdx));
-    }
+    // TODO: improve concurrent control
+    //  since now one page may be evicted after returned but before updated
+    pageLock.writeLock(pageIdx);
+    try {
+      if (pageIdx > lastPageIndex) {
+        throw new MetadataException(String.format("Page index %d out of range.", pageIdx));
+      }
 
-    if (pageInstCache.containsKey(pageIdx)) {
+      if (pageInstCache.containsKey(pageIdx)) {
+        return pageInstCache.get(pageIdx);
+      }
+
+      ByteBuffer newBuf = ByteBuffer.allocate(PAGE_LENGTH);
+
+      loadFromFile(newBuf, pageIdx);
+      addPageToCache(pageIdx, SchemaPage.loadPage(newBuf, pageIdx));
       return pageInstCache.get(pageIdx);
+    } finally {
+      pageLock.writeUnlock(pageIdx);
     }
-
-    ByteBuffer newBuf = ByteBuffer.allocate(PAGE_LENGTH);
-
-    loadFromFile(newBuf, pageIdx);
-    addPageToCache(pageIdx, SchemaPage.loadPage(newBuf, pageIdx));
-    return pageInstCache.get(pageIdx);
   }
 
   private ISchemaPage allocateNewPage() throws IOException {
@@ -694,7 +702,12 @@ public class SchemaFile implements ISchemaFile {
           }
 
           for (Integer i : rmvIdx) {
-            pageInstCache.remove(i);
+            // TODO: improve concurrent control
+            // for any page involved in concurrent operation, it will not be evicted
+            // this may produce an inefficient eviction
+            if (!pageLock.findLock(i).isWriteLocked()) {
+              pageInstCache.remove(i);
+            }
           }
         }
       }
@@ -816,4 +829,44 @@ public class SchemaFile implements ISchemaFile {
   }
 
   // endregion
+
+  private static class pageLock {
+
+    /**
+     * number of reentrant read write lock. Notice that this number should be a prime number for
+     * uniform hash
+     */
+    private static final int NUM_OF_LOCKS = 1039;
+
+    /** locks array */
+    private static ReentrantReadWriteLock[] locks;
+
+    // initialize locks
+    static {
+      locks = new ReentrantReadWriteLock[NUM_OF_LOCKS];
+      for (int i = 0; i < NUM_OF_LOCKS; i++) {
+        locks[i] = new ReentrantReadWriteLock();
+      }
+    }
+
+    public static void readLock(int hash) {
+      findLock(hash).readLock().lock();
+    }
+
+    public static void readUnlock(int hash) {
+      findLock(hash).readLock().unlock();
+    }
+
+    public static void writeLock(int hash) {
+      findLock(hash).writeLock().lock();
+    }
+
+    public static void writeUnlock(int hash) {
+      findLock(hash).writeLock().unlock();
+    }
+
+    private static ReentrantReadWriteLock findLock(int hash) {
+      return locks[hash % NUM_OF_LOCKS];
+    }
+  }
 }
