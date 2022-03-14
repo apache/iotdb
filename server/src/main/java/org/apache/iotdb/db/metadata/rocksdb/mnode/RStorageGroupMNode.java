@@ -43,7 +43,7 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
   public RStorageGroupMNode(String fullPath, byte[] value) {
     super(fullPath);
     Object ttl = RocksDBUtils.parseNodeValue(value, RMNodeValueType.TTL);
-    if (ttl != null) {
+    if (ttl == null) {
       ttl = IoTDBDescriptor.getInstance().getConfig().getDefaultTTL();
     }
     this.dataTTL = (long) ttl;
