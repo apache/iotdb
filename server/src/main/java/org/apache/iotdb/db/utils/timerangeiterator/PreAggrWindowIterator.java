@@ -21,7 +21,7 @@ package org.apache.iotdb.db.utils.timerangeiterator;
 
 import org.apache.iotdb.tsfile.utils.Pair;
 
-public class OverlappedAggrWindowIterator implements ITimeRangeIterator {
+public class PreAggrWindowIterator implements ITimeRangeIterator {
 
   // total query [startTime, endTime)
   private final long startTime;
@@ -37,7 +37,7 @@ public class OverlappedAggrWindowIterator implements ITimeRangeIterator {
   private boolean isIntervalCyclicChange = false;
   private int intervalCnt = 0;
 
-  public OverlappedAggrWindowIterator(
+  public PreAggrWindowIterator(
       long startTime, long endTime, long interval, long slidingStep, boolean isAscending) {
     this.startTime = startTime;
     this.endTime = endTime;

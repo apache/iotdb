@@ -22,7 +22,7 @@ package org.apache.iotdb.db.utils.timerangeiterator;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-public class OverlappedAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator {
+public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator {
 
   private static final int HEAP_MAX_SIZE = 100;
 
@@ -34,7 +34,7 @@ public class OverlappedAggrWindowWithNaturalMonthIterator implements ITimeRangeI
 
   private long lastEndTime;
 
-  public OverlappedAggrWindowWithNaturalMonthIterator(
+  public PreAggrWindowWithNaturalMonthIterator(
       long startTime,
       long endTime,
       long interval,

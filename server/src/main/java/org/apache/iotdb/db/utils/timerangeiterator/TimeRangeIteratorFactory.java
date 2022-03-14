@@ -38,10 +38,9 @@ public class TimeRangeIteratorFactory {
     long tmpSlidingStep = isSlidingStepByMonth ? slidingStep * MS_TO_MONTH : slidingStep;
     if (isPreAggr && tmpInterval > tmpSlidingStep) {
       if (!isIntervalByMonth && !isSlidingStepByMonth) {
-        return new OverlappedAggrWindowIterator(
-            startTime, endTime, interval, slidingStep, isAscending);
+        return new PreAggrWindowIterator(startTime, endTime, interval, slidingStep, isAscending);
       } else {
-        return new OverlappedAggrWindowWithNaturalMonthIterator(
+        return new PreAggrWindowWithNaturalMonthIterator(
             startTime,
             endTime,
             interval,
