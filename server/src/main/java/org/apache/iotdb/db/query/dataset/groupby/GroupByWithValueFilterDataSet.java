@@ -34,6 +34,7 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.groupby.SlidingWindowGroupByExecutor;
+import org.apache.iotdb.db.query.executor.groupby.SlidingWindowGroupByExecutorFactory;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
@@ -163,7 +164,7 @@ public class GroupByWithValueFilterDataSet extends GroupByTimeEngineDataSet {
               groupByTimePlan.getDeduplicatedDataTypes().get(i),
               ascending);
       slidingWindowGroupByExecutors[i] =
-          AggregateResultFactory.getGroupBySlidingWindowAggrExecutorByName(
+          SlidingWindowGroupByExecutorFactory.getSlidingWindowGroupByExecutor(
               groupByTimePlan.getDeduplicatedAggregations().get(i),
               groupByTimePlan.getDeduplicatedDataTypes().get(i),
               ascending);

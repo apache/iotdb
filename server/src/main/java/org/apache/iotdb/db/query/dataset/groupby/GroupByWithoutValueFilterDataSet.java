@@ -34,6 +34,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.groupby.AlignedGroupByExecutor;
 import org.apache.iotdb.db.query.executor.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.executor.groupby.SlidingWindowGroupByExecutor;
+import org.apache.iotdb.db.query.executor.groupby.SlidingWindowGroupByExecutorFactory;
 import org.apache.iotdb.db.query.executor.groupby.impl.LocalAlignedGroupByExecutor;
 import org.apache.iotdb.db.query.executor.groupby.impl.LocalGroupByExecutor;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
@@ -153,7 +154,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
                 path.getSeriesType(),
                 ascending);
         slidingWindowGroupByExecutors[index] =
-            AggregateResultFactory.getGroupBySlidingWindowAggrExecutorByName(
+            SlidingWindowGroupByExecutorFactory.getSlidingWindowGroupByExecutor(
                 groupByTimePlan.getDeduplicatedAggregations().get(index),
                 path.getSeriesType(),
                 ascending);
@@ -178,7 +179,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
                   path.getSchemaList().get(i).getType(),
                   ascending);
           slidingWindowGroupByExecutors[index] =
-              AggregateResultFactory.getGroupBySlidingWindowAggrExecutorByName(
+              SlidingWindowGroupByExecutorFactory.getSlidingWindowGroupByExecutor(
                   groupByTimePlan.getDeduplicatedAggregations().get(index),
                   path.getSchemaList().get(i).getType(),
                   ascending);
