@@ -250,14 +250,14 @@ LIST USER PRIVILEGES <username> ;
 Eg: IoTDB > LIST USER PRIVILEGES tempuser;
 ```
 
-* 列出用户角色
+* 列出用户所有的角色
 
 ```
 LIST ALL ROLE OF USER <username> ;  
 Eg: IoTDB > LIST ALL ROLE OF USER tempuser;
 ```
 
-* 列出角色用户
+* 列出所有用户的角色
 
 ```
 LIST ALL USER OF ROLE <roleName>;
@@ -299,7 +299,7 @@ Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
 |CREATE\_USER|创建用户。路径无关|
 |DELETE\_USER|删除用户。路径无关|
 |MODIFY\_PASSWORD|修改所有用户的密码。路径无关。（没有该权限者仍然能够修改自己的密码。)|
-|LIST\_USER|列出所有用户，列出某用户权限，列出某用户具有的角色以及列出某角色的所有用户四种操作的权限。路径无关|
+|LIST\_USER|列出所有用户，列出某用户权限，列出某用户具有的角色以及列出所有用户的角色四种操作的权限。路径无关|
 |GRANT\_USER\_PRIVILEGE|赋予用户权限。路径无关|
 |REVOKE\_USER\_PRIVILEGE|撤销用户权限。路径无关|
 |GRANT\_USER\_ROLE|赋予用户角色。路径无关|
