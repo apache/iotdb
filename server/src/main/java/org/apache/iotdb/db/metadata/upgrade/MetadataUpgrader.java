@@ -1,0 +1,378 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iotdb.db.metadata.upgrade;
+
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.logfile.MLogReader;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.tag.TagLogFile;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+
+/**
+ * IoTDB after v0.13 only support upgrade from v0.12x. This class implements the upgrade program.
+ */
+public class MetadataUpgrader {
+
+  private static final Logger logger = LoggerFactory.getLogger(MetadataUpgrader.class);
+
+  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private String schemaDirPath = config.getSchemaDir();
+
+  private String mlogFilePath = schemaDirPath + File.separator + MetadataConstant.METADATA_LOG;
+  private File mlogFile = new File(mlogFilePath);
+
+  private String tagFilePath = schemaDirPath + File.separator + MetadataConstant.TAG_LOG;
+  private File tagFile = new File(tagFilePath);
+
+  private String mtreeSnapshotPath =
+      schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT;
+  private String mtreeSnapshotTmpPath =
+      schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT_TMP;
+  private File snapshotFile = new File(mtreeSnapshotPath);
+  private File snapshotTmpFile = new File(mtreeSnapshotTmpPath);
+
+  MManager manager = IoTDB.metaManager;
+
+  public static synchronized void upgrade() throws IOException {
+    MetadataUpgrader upgrader = new MetadataUpgrader();
+    logger.info("Start upgrading metadata files.");
+    if (upgrader.clearEnv()) {
+      logger.info("Metadata files have already been upgraded.");
+      return;
+    }
+    IoTDB.metaManager.init();
+    try {
+      upgrader.reloadMetadataFromSnapshot();
+      upgrader.redoMLog();
+      logger.info("Finish upgrading metadata files.");
+    } finally {
+      IoTDB.metaManager.clear();
+    }
+  }
+
+  private MetadataUpgrader() {}
+
+  public boolean clearEnv() throws IOException {
+    if (mlogFile.exists()) {
+      // the existence of old mlog means the upgrade was interrupted, thus clear the tmp results.
+      File dir = new File(schemaDirPath);
+      File[] sgDirs = dir.listFiles((dir1, name) -> name.startsWith(PATH_ROOT + PATH_SEPARATOR));
+      if (sgDirs == null) {
+        return false;
+      }
+      for (File sgDir : sgDirs) {
+        File[] sgFiles = sgDir.listFiles();
+        if (sgFiles == null) {
+          continue;
+        }
+        for (File sgFile : sgFiles) {
+          if (!sgFile.delete()) {
+            String errorMessage =
+                String.format(
+                    "Cannot delete file %s in dir %s during metadata upgrade",
+                    sgFile.getName(), sgDir.getName());
+            logger.error(errorMessage);
+            throw new IOException(errorMessage);
+          }
+        }
+      }
+      return false;
+    } else {
+      deleteFile(tagFile);
+      deleteFile(snapshotTmpFile);
+      deleteFile(snapshotFile);
+      deleteFile(mlogFile);
+      return true;
+    }
+  }
+
+  private void deleteFile(File file) throws IOException {
+    if (!file.exists()) {
+      return;
+    }
+
+    if (!file.delete()) {
+      String errorMessage =
+          String.format("Cannot delete file %s during metadata upgrade", file.getName());
+      logger.error(errorMessage);
+      throw new IOException(errorMessage);
+    }
+  }
+
+  public void reloadMetadataFromSnapshot() throws IOException {
+    deleteFile(snapshotTmpFile);
+    Map<IStorageGroupMNode, List<IMeasurementMNode>> sgMeasurementMap =
+        deserializeFrom(snapshotFile);
+    IMeasurementSchema schema;
+    CreateTimeSeriesPlan createTimeSeriesPlan;
+    Pair<Map<String, String>, Map<String, String>> tagAttributePair;
+    Map<String, String> tags = null;
+    Map<String, String> attributes = null;
+    try (TagLogFile tagLogFile = new TagLogFile(schemaDirPath, MetadataConstant.TAG_LOG)) {
+      for (IStorageGroupMNode storageGroupMNode : sgMeasurementMap.keySet()) {
+        try {
+          manager.setStorageGroup(storageGroupMNode.getPartialPath());
+          for (IMeasurementMNode measurementMNode : sgMeasurementMap.get(storageGroupMNode)) {
+            schema = measurementMNode.getSchema();
+            if (measurementMNode.getOffset() != -1) {
+              tagAttributePair =
+                  tagLogFile.read(config.getTagAttributeTotalSize(), measurementMNode.getOffset());
+              if (tagAttributePair != null) {
+                tags = tagAttributePair.left;
+                attributes = tagAttributePair.right;
+              }
+            }
+            createTimeSeriesPlan =
+                new CreateTimeSeriesPlan(
+                    measurementMNode.getPartialPath(),
+                    schema.getType(),
+                    schema.getEncodingType(),
+                    schema.getCompressor(),
+                    schema.getProps(),
+                    tags,
+                    attributes,
+                    measurementMNode.getAlias());
+            manager.createTimeseries(createTimeSeriesPlan);
+          }
+        } catch (MetadataException e) {
+          logger.error("Error occurred during recovering metadata from snapshot", e);
+        }
+      }
+    }
+    deleteFile(snapshotFile);
+  }
+
+  private Map<IStorageGroupMNode, List<IMeasurementMNode>> deserializeFrom(File mtreeSnapshot)
+      throws IOException {
+    try (MLogReader mLogReader = new MLogReader(mtreeSnapshot)) {
+      Map<IStorageGroupMNode, List<IMeasurementMNode>> sgMeasurementMap = new HashMap<>();
+      deserializeFromReader(mLogReader, sgMeasurementMap);
+      return sgMeasurementMap;
+    }
+  }
+
+  private void deserializeFromReader(
+      MLogReader mLogReader, Map<IStorageGroupMNode, List<IMeasurementMNode>> sgMeasurementMap)
+      throws IOException {
+    Deque<IMNode> nodeStack = new ArrayDeque<>();
+    IMNode node = null;
+    List<IMeasurementMNode> measurementMNodeList = new LinkedList<>();
+    while (mLogReader.hasNext()) {
+      PhysicalPlan plan = mLogReader.next();
+      if (plan == null) {
+        continue;
+      }
+      int childrenSize = 0;
+      if (plan instanceof StorageGroupMNodePlan) {
+        node = StorageGroupMNode.deserializeFrom((StorageGroupMNodePlan) plan);
+        childrenSize = ((StorageGroupMNodePlan) plan).getChildSize();
+        sgMeasurementMap.put(node.getAsStorageGroupMNode(), measurementMNodeList);
+        measurementMNodeList = new LinkedList<>();
+      } else if (plan instanceof MeasurementMNodePlan) {
+        node = MeasurementMNode.deserializeFrom((MeasurementMNodePlan) plan);
+        childrenSize = ((MeasurementMNodePlan) plan).getChildSize();
+        measurementMNodeList.add(node.getAsMeasurementMNode());
+      } else if (plan instanceof MNodePlan) {
+        node = InternalMNode.deserializeFrom((MNodePlan) plan);
+        childrenSize = ((MNodePlan) plan).getChildSize();
+      }
+
+      if (childrenSize != 0) {
+        ConcurrentHashMap<String, IMNode> childrenMap = new ConcurrentHashMap<>();
+        for (int i = 0; i < childrenSize; i++) {
+          IMNode child = nodeStack.removeFirst();
+          childrenMap.put(child.getName(), child);
+          if (child.isMeasurement()) {
+            if (!node.isEntity()) {
+              node = MNodeUtils.setToEntity(node);
+            }
+            String alias = child.getAsMeasurementMNode().getAlias();
+            if (alias != null) {
+              node.getAsEntityMNode().addAlias(alias, child.getAsMeasurementMNode());
+            }
+          }
+          child.setParent(node);
+        }
+        node.setChildren(childrenMap);
+      }
+      nodeStack.push(node);
+    }
+    if (node == null || !PATH_ROOT.equals(node.getName())) {
+      logger.error("Snapshot file corrupted!");
+      throw new IOException("Snapshot file corrupted!");
+    }
+  }
+
+  public void redoMLog() throws IOException {
+    PhysicalPlan plan;
+    Queue<PhysicalPlan> templatePlanQueue = new LinkedList<>();
+    try (MLogReader mLogReader = new MLogReader(mlogFilePath);
+        TagLogFile tagLogFile = new TagLogFile(schemaDirPath, MetadataConstant.TAG_LOG)) {
+      while (mLogReader.hasNext()) {
+        plan = mLogReader.next();
+        try {
+          switch (plan.getOperatorType()) {
+            case CREATE_TIMESERIES:
+            case CHANGE_TAG_OFFSET:
+              processPlanWithTag(plan, manager, tagLogFile);
+              break;
+            case CREATE_TEMPLATE:
+            case DROP_TEMPLATE:
+            case APPEND_TEMPLATE:
+            case PRUNE_TEMPLATE:
+            case SET_TEMPLATE:
+            case ACTIVATE_TEMPLATE:
+            case UNSET_TEMPLATE:
+              templatePlanQueue.add(plan);
+              break;
+            default:
+              manager.operation(plan);
+          }
+        } catch (MetadataException e) {
+          logger.error("Error occurred during redo mlog: ", e);
+        }
+      }
+    }
+
+    processTemplatePlans(templatePlanQueue, manager);
+
+    deleteFile(mlogFile);
+    deleteFile(tagFile);
+  }
+
+  private void processPlanWithTag(PhysicalPlan plan, MManager manager, TagLogFile tagLogFile)
+      throws MetadataException, IOException {
+    long offset;
+    switch (plan.getOperatorType()) {
+      case CREATE_TIMESERIES:
+        CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
+        offset = createTimeSeriesPlan.getTagOffset();
+        createTimeSeriesPlan.setTagOffset(-1);
+        createTimeSeriesPlan.setTags(null);
+        createTimeSeriesPlan.setAttributes(null);
+        manager.operation(plan);
+        if (offset != -1) {
+          rewriteTagAndAttribute(createTimeSeriesPlan.getPath(), offset, manager, tagLogFile);
+        }
+        break;
+      case CHANGE_TAG_OFFSET:
+        ChangeTagOffsetPlan changeTagOffsetPlan = (ChangeTagOffsetPlan) plan;
+        rewriteTagAndAttribute(
+            changeTagOffsetPlan.getPath(), changeTagOffsetPlan.getOffset(), manager, tagLogFile);
+        break;
+      default:
+        break;
+    }
+  }
+
+  private void rewriteTagAndAttribute(
+      PartialPath path, long offset, MManager manager, TagLogFile tagLogFile)
+      throws IOException, MetadataException {
+    Pair<Map<String, String>, Map<String, String>> pair =
+        tagLogFile.read(config.getTagAttributeTotalSize(), offset);
+    manager.addTags(pair.left, path);
+    manager.addAttributes(pair.right, path);
+  }
+
+  private void processTemplatePlans(Queue<PhysicalPlan> templatePlanQueue, MManager manager)
+      throws IOException {
+    PhysicalPlan plan;
+    while (!templatePlanQueue.isEmpty()) {
+      plan = templatePlanQueue.poll();
+      try {
+        manager.operation(plan);
+      } catch (PathNotExistException pathNotExistException) {
+        try {
+          UnsetTemplatePlan unsetTemplatePlan = (UnsetTemplatePlan) plan;
+          processUnSetTemplateAboveSG(unsetTemplatePlan, manager);
+        } catch (MetadataException e) {
+          logger.error("Error occurred during redo mlog: ", e);
+        }
+      } catch (MetadataException e) {
+        if (!e.getMessage().equals("Template should not be set above storageGroup")) {
+          logger.error("Error occurred during redo mlog: ", e);
+        }
+
+        try {
+          SetTemplatePlan setTemplatePlan = (SetTemplatePlan) plan;
+          processSetTemplateAboveSG(setTemplatePlan, manager);
+        } catch (MetadataException e1) {
+          logger.error("Error occurred during redo mlog: ", e1);
+        }
+      }
+    }
+  }
+
+  private void processSetTemplateAboveSG(SetTemplatePlan setTemplatePlan, MManager manager)
+      throws MetadataException {
+    PartialPath path = new PartialPath(setTemplatePlan.getPrefixPath());
+    for (PartialPath storageGroupPath : manager.getMatchedStorageGroups(path, true)) {
+      setTemplatePlan.setPrefixPath(storageGroupPath.getFullPath());
+      manager.setSchemaTemplate(setTemplatePlan);
+    }
+  }
+
+  private void processUnSetTemplateAboveSG(UnsetTemplatePlan unsetTemplatePlan, MManager manager)
+      throws MetadataException {
+    PartialPath path = new PartialPath(unsetTemplatePlan.getPrefixPath());
+    for (PartialPath storageGroupPath : manager.getMatchedStorageGroups(path, true)) {
+      unsetTemplatePlan.setPrefixPath(storageGroupPath.getFullPath());
+      manager.unsetSchemaTemplate(unsetTemplatePlan);
+    }
+  }
+}

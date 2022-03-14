@@ -281,7 +281,7 @@ public class MManager {
   // endregion
 
   // region Interfaces and Implementation of operating PhysicalPlans of Metadata
-  // This method is mainly used for Metadata Sync
+  // This method is mainly used for Metadata Sync and  upgrade
   public void operation(PhysicalPlan plan) throws IOException, MetadataException {
     switch (plan.getOperatorType()) {
       case CREATE_TIMESERIES:

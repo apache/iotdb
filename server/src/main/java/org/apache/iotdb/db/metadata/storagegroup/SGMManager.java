@@ -687,6 +687,13 @@ public class SGMManager {
 
   public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
     mtree.getDeviceNodeWithAutoCreating(plan.getPath());
+    if (!isRecovering) {
+      try {
+        logWriter.autoCreateDeviceMNode(plan);
+      } catch (IOException e) {
+        throw new MetadataException(e);
+      }
+    }
   }
   // endregion
 
@@ -1117,7 +1124,15 @@ public class SGMManager {
    * @param offset offset in the tag file
    */
   private void changeOffset(PartialPath path, long offset) throws MetadataException {
-    mtree.getMeasurementMNode(path).setOffset(offset);
+    IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
+    measurementMNode.setOffset(offset);
+    if (isRecovering) {
+      try {
+        tagManager.recoverIndex(offset, measurementMNode);
+      } catch (IOException e) {
+        throw new MetadataException(e);
+      }
+    }
   }
 
   public void changeAlias(PartialPath path, String alias) throws MetadataException {

@@ -77,11 +77,10 @@ public class TemplateManager {
     return new TemplateManager();
   }
 
-  private TemplateManager() {
-    isRecover = true;
-  }
+  private TemplateManager() {}
 
   public void init() throws IOException {
+    isRecover = true;
     logWriter =
         new TemplateLogWriter(
             IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),

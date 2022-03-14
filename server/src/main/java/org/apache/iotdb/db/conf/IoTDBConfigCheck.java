@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigurationException;
+import org.apache.iotdb.db.metadata.upgrade.MetadataUpgrader;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -214,9 +215,10 @@ public class IoTDBConfigCheck {
     if (versionString.startsWith("0.10") || versionString.startsWith("0.11")) {
       logger.error("IoTDB version is too old, please upgrade to 0.12 firstly.");
       System.exit(-1);
-    } else if (versionString.startsWith("0.12")) {
+    } else if (versionString.startsWith("0.12") || versionString.startsWith("0.13")) {
       checkWALNotExists();
       upgradePropertiesFile();
+      MetadataUpgrader.upgrade();
     }
     checkProperties();
   }
