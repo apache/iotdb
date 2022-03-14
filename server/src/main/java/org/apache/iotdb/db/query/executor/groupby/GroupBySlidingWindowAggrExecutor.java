@@ -36,7 +36,7 @@ public abstract class GroupBySlidingWindowAggrExecutor {
   protected AggregateResult aggregateResult;
 
   public GroupBySlidingWindowAggrExecutor(
-      TSDataType dataType, java.lang.String aggrFuncName, boolean ascending) {
+      TSDataType dataType, String aggrFuncName, boolean ascending) {
     this.aggregateResult =
         AggregateResultFactory.getAggrResultByName(aggrFuncName, dataType, ascending);
     this.deque = new LinkedList<>();
