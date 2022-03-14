@@ -42,7 +42,7 @@ public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDat
         new ArrayList<>(groupByPlan.getDeduplicatedPaths()),
         groupByPlan.getDeduplicatedDataTypes(),
         groupByPlan.isAscending());
-    initGroupByEngineDataSetFields(context, groupByPlan);
+    initGroupByTimeDataSetFields(context, groupByPlan);
 
     this.metaGroupMember = metaGroupMember;
   }

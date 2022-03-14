@@ -53,7 +53,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
+public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
 
   private static final Logger logger =
       LoggerFactory.getLogger(GroupByWithoutValueFilterDataSet.class);

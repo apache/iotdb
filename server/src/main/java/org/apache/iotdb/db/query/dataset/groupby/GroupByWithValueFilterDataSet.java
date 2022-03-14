@@ -59,7 +59,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
+public class GroupByWithValueFilterDataSet extends GroupByTimeEngineDataSet {
 
   private static final Logger logger = LoggerFactory.getLogger(GroupByWithValueFilterDataSet.class);
 

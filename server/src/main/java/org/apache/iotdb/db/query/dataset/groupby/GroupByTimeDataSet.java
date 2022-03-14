@@ -35,7 +35,7 @@ import java.util.ArrayList;
 
 import static org.apache.iotdb.db.qp.utils.DatetimeUtils.MS_TO_MONTH;
 
-public abstract class GroupByEngineDataSet extends QueryDataSet {
+public abstract class GroupByTimeDataSet extends QueryDataSet {
 
   protected long queryId;
   protected long interval;
@@ -63,20 +63,20 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   protected AggregateResult[] curAggregateResults;
   protected SlidingWindowAggrQueue[] slidingWindowAggrQueues;
 
-  public GroupByEngineDataSet() {}
+  public GroupByTimeDataSet() {}
 
   /** groupBy query. */
-  public GroupByEngineDataSet(QueryContext context, GroupByTimePlan groupByTimePlan) {
+  public GroupByTimeDataSet(QueryContext context, GroupByTimePlan groupByTimePlan) {
     super(
         new ArrayList<>(groupByTimePlan.getDeduplicatedPaths()),
         groupByTimePlan.getDeduplicatedDataTypes(),
         groupByTimePlan.isAscending());
 
     // find the startTime of the first aggregation interval
-    initGroupByEngineDataSetFields(context, groupByTimePlan);
+    initGroupByTimeDataSetFields(context, groupByTimePlan);
   }
 
-  protected void initGroupByEngineDataSetFields(
+  protected void initGroupByTimeDataSetFields(
       QueryContext context, GroupByTimePlan groupByTimePlan) {
     this.queryId = context.getQueryId();
     this.interval = groupByTimePlan.getInterval();
@@ -163,63 +163,10 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   }
 
   @Override
-  public RowRecord nextWithoutConstraint() throws IOException {
-    if (!hasCachedTimeInterval) {
-      throw new IOException(
-          "need to call hasNext() before calling next()" + " in GroupByWithValueFilterDataSet.");
-    }
-    hasCachedTimeInterval = false;
-    curAggregateResults = getNextAggregateResult();
-    return constructRowRecord(curAggregateResults);
-  }
-
-  protected AggregateResult[] getNextAggregateResult() throws IOException {
-    throw new UnsupportedOperationException("Should call exact sub class!");
-  }
-
-  protected RowRecord constructRowRecord(AggregateResult[] aggregateResultList) {
-    RowRecord record;
-    if (leftCRightO) {
-      record = new RowRecord(curStartTime);
-    } else {
-      record = new RowRecord(curEndTime - 1);
-    }
-    for (AggregateResult res : curAggregateResults) {
-      if (res == null) {
-        record.addField(null);
-        continue;
-      }
-      record.addField(res.getResult(), res.getResultDataType());
-    }
-    return record;
-  }
-
-  protected boolean isEndCal() {
-    if (curPreAggrStartTime == -1) {
-      return true;
-    }
-    return ascending ? curPreAggrStartTime >= curEndTime : curPreAggrEndTime <= curStartTime;
-  }
-
-  // find the next pre-aggregation interval
-  protected void updatePreAggrInterval() {
-    Pair<Long, Long> retPerAggrTimeRange;
-    retPerAggrTimeRange = preAggrWindowIterator.getNextTimeRange(curPreAggrStartTime);
-    if (retPerAggrTimeRange != null) {
-      curPreAggrStartTime = retPerAggrTimeRange.left;
-      curPreAggrEndTime = retPerAggrTimeRange.right;
-    } else {
-      curPreAggrStartTime = -1;
-      curPreAggrEndTime = -1;
-    }
-  }
+  public abstract RowRecord nextWithoutConstraint() throws IOException;
 
   public long getStartTime() {
     return startTime;
-  }
-
-  public AggregateResult[] getCurAggregateResults() {
-    return curAggregateResults;
   }
 
   @TestOnly
