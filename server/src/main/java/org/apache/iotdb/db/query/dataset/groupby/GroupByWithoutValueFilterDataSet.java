@@ -33,7 +33,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.groupby.AlignedGroupByExecutor;
 import org.apache.iotdb.db.query.executor.groupby.GroupByExecutor;
-import org.apache.iotdb.db.query.executor.groupby.GroupBySlidingWindowAggrExecutor;
+import org.apache.iotdb.db.query.executor.groupby.SlidingWindowGroupByExecutor;
 import org.apache.iotdb.db.query.executor.groupby.impl.LocalAlignedGroupByExecutor;
 import org.apache.iotdb.db.query.executor.groupby.impl.LocalGroupByExecutor;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
@@ -152,7 +152,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
                 groupByTimePlan.getDeduplicatedAggregations().get(index),
                 path.getSeriesType(),
                 ascending);
-        groupBySlidingWindowAggrExecutors[index] =
+        slidingWindowGroupByExecutors[index] =
             AggregateResultFactory.getGroupBySlidingWindowAggrExecutorByName(
                 groupByTimePlan.getDeduplicatedAggregations().get(index),
                 path.getSeriesType(),
@@ -177,7 +177,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
                   groupByTimePlan.getDeduplicatedAggregations().get(index),
                   path.getSchemaList().get(i).getType(),
                   ascending);
-          groupBySlidingWindowAggrExecutors[index] =
+          slidingWindowGroupByExecutors[index] =
               AggregateResultFactory.getGroupBySlidingWindowAggrExecutorByName(
                   groupByTimePlan.getDeduplicatedAggregations().get(index),
                   path.getSchemaList().get(i).getType(),
@@ -192,9 +192,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
   @Override
   protected AggregateResult[] getNextAggregateResult() throws IOException {
     curAggregateResults = new AggregateResult[paths.size()];
-    for (GroupBySlidingWindowAggrExecutor groupBySlidingWindowAggrExecutor :
-        groupBySlidingWindowAggrExecutors) {
-      groupBySlidingWindowAggrExecutor.setTimeRange(curStartTime, curEndTime);
+    for (SlidingWindowGroupByExecutor slidingWindowGroupByExecutor :
+        slidingWindowGroupByExecutors) {
+      slidingWindowGroupByExecutor.setTimeRange(curStartTime, curEndTime);
     }
     try {
       while (!isEndCal()) {
@@ -207,7 +207,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
               groupByExecutor.calcResult(curPreAggrStartTime, curPreAggrEndTime);
           for (int i = 0; i < aggregations.size(); i++) {
             int resultIndex = indexes.get(i);
-            groupBySlidingWindowAggrExecutors[resultIndex].update(aggregations.get(i).clone());
+            slidingWindowGroupByExecutors[resultIndex].update(aggregations.get(i).clone());
           }
         }
         // get pre-aggregate results of aligned series
@@ -223,14 +223,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
             List<Integer> indexes = indexesList.get(i);
             for (int j = 0; j < aggregations.size(); j++) {
               int resultIndex = indexes.get(j);
-              groupBySlidingWindowAggrExecutors[resultIndex].update(aggregations.get(j).clone());
+              slidingWindowGroupByExecutors[resultIndex].update(aggregations.get(j).clone());
             }
           }
         }
         updatePreAggrInterval();
       }
       for (int i = 0; i < curAggregateResults.length; i++) {
-        curAggregateResults[i] = groupBySlidingWindowAggrExecutors[i].getAggregateResult();
+        curAggregateResults[i] = slidingWindowGroupByExecutors[i].getAggregateResult();
       }
     } catch (QueryProcessException e) {
       logger.error("GroupByWithoutValueFilterDataSet execute has error", e);

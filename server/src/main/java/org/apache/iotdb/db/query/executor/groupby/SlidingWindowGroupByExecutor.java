@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.util.Deque;
 import java.util.LinkedList;
 
-public abstract class GroupBySlidingWindowAggrExecutor {
+public abstract class SlidingWindowGroupByExecutor {
 
   // current aggregate window
   protected long curStartTime;
@@ -37,8 +37,7 @@ public abstract class GroupBySlidingWindowAggrExecutor {
   // output aggregate result
   protected AggregateResult aggregateResult;
 
-  public GroupBySlidingWindowAggrExecutor(
-      TSDataType dataType, String aggrFuncName, boolean ascending) {
+  public SlidingWindowGroupByExecutor(TSDataType dataType, String aggrFuncName, boolean ascending) {
     this.aggregateResult =
         AggregateResultFactory.getAggrResultByName(aggrFuncName, dataType, ascending);
     this.deque = new LinkedList<>();

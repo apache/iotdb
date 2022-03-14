@@ -22,7 +22,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.executor.groupby.GroupBySlidingWindowAggrExecutor;
+import org.apache.iotdb.db.query.executor.groupby.SlidingWindowGroupByExecutor;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.utils.timerangeiterator.TimeRangeIteratorFactory;
@@ -61,7 +61,7 @@ public abstract class GroupByTimeDataSet extends QueryDataSet {
   ITimeRangeIterator preAggrWindowIterator;
 
   protected AggregateResult[] curAggregateResults;
-  protected GroupBySlidingWindowAggrExecutor[] groupBySlidingWindowAggrExecutors;
+  protected SlidingWindowGroupByExecutor[] slidingWindowGroupByExecutors;
 
   public GroupByTimeDataSet() {}
 
@@ -140,7 +140,7 @@ public abstract class GroupByTimeDataSet extends QueryDataSet {
 
     this.hasCachedTimeInterval = true;
 
-    groupBySlidingWindowAggrExecutors = new GroupBySlidingWindowAggrExecutor[paths.size()];
+    slidingWindowGroupByExecutors = new SlidingWindowGroupByExecutor[paths.size()];
   }
 
   @Override

@@ -20,30 +20,37 @@
 package org.apache.iotdb.db.query.executor.groupby.impl;
 
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.aggregation.RemovableAggregateResult;
-import org.apache.iotdb.db.query.executor.groupby.GroupBySlidingWindowAggrExecutor;
+import org.apache.iotdb.db.query.executor.groupby.SlidingWindowGroupByExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class SumAvgCountGroupBySlidingWindowAggrExecutor extends GroupBySlidingWindowAggrExecutor {
+public class NormalQueueSlidingWindowGroupByExecutor extends SlidingWindowGroupByExecutor {
 
-  public SumAvgCountGroupBySlidingWindowAggrExecutor(
-      TSDataType dataType, String string, boolean ascending) {
-    super(dataType, string, ascending);
+  public NormalQueueSlidingWindowGroupByExecutor(
+      TSDataType dataType, String aggrFuncName, boolean ascending) {
+    super(dataType, aggrFuncName, ascending);
   }
 
   @Override
   public void update(AggregateResult aggregateResult) {
     if (aggregateResult.getResult() != null) {
       deque.addLast(aggregateResult);
-      this.aggregateResult.merge(aggregateResult);
+    }
+    if (!deque.isEmpty()) {
+      this.aggregateResult = deque.getFirst();
+    } else {
+      this.aggregateResult.reset();
     }
   }
 
   @Override
   protected void evictingExpiredValue() {
     while (!deque.isEmpty() && !inTimeRange(deque.getFirst().getTime())) {
-      AggregateResult aggregateResult = deque.removeFirst();
-      ((RemovableAggregateResult) this.aggregateResult).remove(aggregateResult);
+      deque.removeFirst();
+    }
+    if (!deque.isEmpty()) {
+      this.aggregateResult = deque.getFirst();
+    } else {
+      this.aggregateResult.reset();
     }
   }
 }

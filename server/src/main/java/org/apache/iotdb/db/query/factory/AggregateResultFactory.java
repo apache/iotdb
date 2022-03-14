@@ -138,7 +138,7 @@ public class AggregateResultFactory {
     }
   }
 
-  public static GroupBySlidingWindowAggrExecutor getGroupBySlidingWindowAggrExecutorByName(
+  public static SlidingWindowGroupByExecutor getGroupBySlidingWindowAggrExecutorByName(
       String aggrFuncName, TSDataType dataType, boolean ascending) {
     if (aggrFuncName == null) {
       throw new IllegalArgumentException("AggregateFunction Name must not be null");
@@ -148,15 +148,15 @@ public class AggregateResultFactory {
       case SQLConstant.SUM:
       case SQLConstant.AVG:
       case SQLConstant.COUNT:
-        return new SumAvgCountGroupBySlidingWindowAggrExecutor(dataType, aggrFuncName, ascending);
+        return new SmoothQueueSlidingWindowGroupByExecutor(dataType, aggrFuncName, ascending);
       case SQLConstant.MAX_VALUE:
-        return new MonotonicQueueGroupBySlidingWindowAggrExecutor(
+        return new MonotonicQueueSlidingWindowGroupByExecutor(
             dataType, aggrFuncName, ascending, (o1, o2) -> ((Comparable<Object>) o1).compareTo(o2));
       case SQLConstant.MIN_VALUE:
-        return new MonotonicQueueGroupBySlidingWindowAggrExecutor(
+        return new MonotonicQueueSlidingWindowGroupByExecutor(
             dataType, aggrFuncName, ascending, (o1, o2) -> ((Comparable<Object>) o2).compareTo(o1));
       case SQLConstant.EXTREME:
-        return new MonotonicQueueGroupBySlidingWindowAggrExecutor(
+        return new MonotonicQueueSlidingWindowGroupByExecutor(
             dataType,
             aggrFuncName,
             ascending,
@@ -176,17 +176,13 @@ public class AggregateResultFactory {
       case SQLConstant.MIN_TIME:
       case SQLConstant.FIRST_VALUE:
         return !ascending
-            ? new MinTimeFirstValueDescGroupBySlidingWindowAggrExecutor(
-                dataType, aggrFuncName, ascending)
-            : new MinTimeFirstValueGroupBySlidingWindowAggrExecutor(
-                dataType, aggrFuncName, ascending);
+            ? new EmptyQueueSlidingWindowGroupByExecutor(dataType, aggrFuncName, ascending)
+            : new NormalQueueSlidingWindowGroupByExecutor(dataType, aggrFuncName, ascending);
       case SQLConstant.MAX_TIME:
       case SQLConstant.LAST_VALUE:
         return !ascending
-            ? new MaxTimeLastValueDescGroupBySlidingWindowAggrExecutor(
-                dataType, aggrFuncName, ascending)
-            : new MaxTimeLastValueGroupBySlidingWindowAggrExecutor(
-                dataType, aggrFuncName, ascending);
+            ? new NormalQueueSlidingWindowGroupByExecutor(dataType, aggrFuncName, ascending)
+            : new EmptyQueueSlidingWindowGroupByExecutor(dataType, aggrFuncName, ascending);
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggrFuncName);
     }
