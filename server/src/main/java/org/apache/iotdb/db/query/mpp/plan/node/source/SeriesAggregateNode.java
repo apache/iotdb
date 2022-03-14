@@ -1,8 +1,8 @@
-package org.apache.iotdb.db.query.mpp.plan.source;
+package org.apache.iotdb.db.query.mpp.plan.node.source;
 
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.mpp.common.GroupByTimeParameter;
-import org.apache.iotdb.db.query.mpp.plan.PlanNodeId;
+import org.apache.iotdb.db.query.mpp.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 /**

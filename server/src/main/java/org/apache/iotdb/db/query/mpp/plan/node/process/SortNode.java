@@ -1,7 +1,7 @@
-package org.apache.iotdb.db.query.mpp.plan.process;
+package org.apache.iotdb.db.query.mpp.plan.node.process;
 
 import org.apache.iotdb.db.query.mpp.common.OrderBy;
-import org.apache.iotdb.db.query.mpp.plan.PlanNodeId;
+import org.apache.iotdb.db.query.mpp.plan.node.PlanNodeId;
 
 /**
  * In general, the parameter in sortNode should be pushed down to the upstream operators.

@@ -1,6 +1,6 @@
-package org.apache.iotdb.db.query.mpp.plan.process;
+package org.apache.iotdb.db.query.mpp.plan.node.process;
 
-import org.apache.iotdb.db.query.mpp.plan.PlanNodeId;
+import org.apache.iotdb.db.query.mpp.plan.node.PlanNodeId;
 
 /**
  * This node is responsible for the final aggregation merge operation.

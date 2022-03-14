@@ -17,22 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.mpp.plan.source;
+package org.apache.iotdb.db.query.mpp.plan.node.source;
 
-import org.apache.iotdb.db.query.mpp.plan.PlanNodeId;
+import org.apache.iotdb.db.query.mpp.common.TsBlock;
+import org.apache.iotdb.db.query.mpp.plan.node.PlanNode;
+import org.apache.iotdb.db.query.mpp.plan.node.PlanNodeId;
 
-/**
- * Not implemented in current version.
- */
-public class CsvSourceNode extends SourceNode {
+public abstract class SourceNode extends PlanNode<TsBlock> implements AutoCloseable{
 
-  public CsvSourceNode(PlanNodeId id) {
+  public SourceNode(PlanNodeId id) {
     super(id);
   }
 
-  @Override
-  public void close() throws Exception {}
-
-  @Override
-  public void open() throws Exception {}
+  public abstract void open() throws Exception;
 }

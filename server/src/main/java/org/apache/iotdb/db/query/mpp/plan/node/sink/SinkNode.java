@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.mpp.plan.sink;
+package org.apache.iotdb.db.query.mpp.plan.node.sink;
 
 import org.apache.iotdb.db.query.mpp.common.TsBlock;
-import org.apache.iotdb.db.query.mpp.plan.PlanNode;
-import org.apache.iotdb.db.query.mpp.plan.PlanNodeId;
+import org.apache.iotdb.db.query.mpp.plan.node.PlanNode;
+import org.apache.iotdb.db.query.mpp.plan.node.PlanNodeId;
 
 public abstract class SinkNode extends PlanNode<TsBlock> implements AutoCloseable {
 

@@ -1,7 +1,7 @@
-package org.apache.iotdb.db.query.mpp.plan.process;
+package org.apache.iotdb.db.query.mpp.plan.node.process;
 
 import org.apache.iotdb.db.query.mpp.common.WithoutPolicy;
-import org.apache.iotdb.db.query.mpp.plan.PlanNodeId;
+import org.apache.iotdb.db.query.mpp.plan.node.PlanNodeId;
 
 /**
  * WithoutNode is used to discard specific rows from upstream node.

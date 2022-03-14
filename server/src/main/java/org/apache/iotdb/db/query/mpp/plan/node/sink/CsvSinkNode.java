@@ -17,21 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.mpp.plan.sink;
+package org.apache.iotdb.db.query.mpp.plan.node.sink;
 
-import org.apache.iotdb.db.query.mpp.plan.PlanNodeId;
+import org.apache.iotdb.db.query.mpp.plan.node.PlanNodeId;
 
-/**
- * not implemented in current IoTDB yet
- */
-public class ThriftSinkNode extends SinkNode {
-
-  public ThriftSinkNode(PlanNodeId id) {
+public class CsvSinkNode extends SinkNode {
+  public CsvSinkNode(PlanNodeId id) {
     super(id);
   }
 
   @Override
-  public void close() throws Exception {}
+  public void close() throws Exception {
+
+  }
 
   @Override
   public void send() {
