@@ -39,8 +39,6 @@ import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.Time
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
-import org.apache.iotdb.db.exception.PipeException;
-import org.apache.iotdb.db.exception.PipeSinkException;
 import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
@@ -53,6 +51,9 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sync.PipeException;
+import org.apache.iotdb.db.exception.sync.PipeServerException;
+import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -439,12 +440,22 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private boolean operateStopPipeServer() {
-    return ReceiverService.getInstance().stopPipeServer();
+  private boolean operateStopPipeServer() throws QueryProcessException {
+    try {
+      ReceiverService.getInstance().stopPipeServer();
+    } catch (PipeServerException e) {
+      throw new QueryProcessException(e);
+    }
+    return true;
   }
 
-  private boolean operateStartPipeServer() {
-    return ReceiverService.getInstance().startPipeServer();
+  private boolean operateStartPipeServer() throws QueryProcessException {
+    try {
+      ReceiverService.getInstance().startPipeServer();
+    } catch (PipeServerException e) {
+      throw new QueryProcessException(e);
+    }
+    return true;
   }
 
   private boolean createTemplate(CreateTemplatePlan createTemplatePlan)
@@ -741,8 +752,12 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private QueryDataSet processShowPipeServer(ShowPipeServerPlan plan) {
-    return ReceiverService.getInstance().showPipe(plan);
+  private QueryDataSet processShowPipeServer(ShowPipeServerPlan plan) throws QueryProcessException {
+    try {
+      return ReceiverService.getInstance().showPipe(plan);
+    } catch (PipeServerException e) {
+      throw new QueryProcessException(e);
+    }
   }
 
   private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {

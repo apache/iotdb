@@ -111,18 +111,13 @@ public class TransportServerManager extends ThriftService
   @Override
   public void startService() throws StartupException {
     // TODO: Whether to change this config here
-    //    if (!IoTDBDescriptor.getInstance().getConfig().isSyncEnable()) {
-    //      return;
-    //    }
     super.startService();
   }
 
   @Override
   public void stopService() {
     // TODO: Whether to change this config here
-    //    if (IoTDBDescriptor.getInstance().getConfig().isSyncEnable()) {
     super.stopService();
-    //    }
   }
 
   @TestOnly

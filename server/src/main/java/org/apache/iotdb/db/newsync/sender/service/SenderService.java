@@ -19,9 +19,9 @@
  */
 package org.apache.iotdb.db.newsync.sender.service;
 
-import org.apache.iotdb.db.exception.PipeException;
-import org.apache.iotdb.db.exception.PipeSinkException;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.sync.PipeException;
+import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.sender.pipe.Pipe;

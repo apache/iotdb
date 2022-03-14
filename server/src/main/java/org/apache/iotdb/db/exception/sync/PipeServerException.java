@@ -17,19 +17,18 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.sync;
 
+import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class PipeException extends IoTDBException {
+public class PipeServerException extends IoTDBException {
 
-  private static final long serialVersionUID = -7312720445194413492L;
-
-  public PipeException(String message, int errorCode) {
+  public PipeServerException(String message, int errorCode) {
     super(message, errorCode);
   }
 
-  public PipeException(String message) {
-    super(message, TSStatusCode.PIPE_ERROR.getStatusCode());
+  public PipeServerException(String message) {
+    this(message, TSStatusCode.PIPESINK_ERROR.getStatusCode());
   }
 }

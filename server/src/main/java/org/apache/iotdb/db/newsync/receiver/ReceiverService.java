@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.newsync.receiver;
 
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.sync.PipeServerException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.receiver.collector.Collector;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.service.transport.thrift.ResponseType;
 import org.apache.iotdb.service.transport.thrift.SyncRequest;
 import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -58,8 +60,9 @@ public class ReceiverService implements IService {
   private Collector collector;
 
   /** start receiver service */
-  public boolean startPipeServer() {
+  public void startPipeServer() throws PipeServerException {
     try {
+      TransportServerManager.getInstance().startService();
       receiverManager.startServer();
       collector.startCollect();
       // recover started pipe
@@ -70,53 +73,77 @@ public class ReceiverService implements IService {
               pipeInfo.getPipeName(), pipeInfo.getRemoteIp(), pipeInfo.getCreateTime());
         }
       }
-      TransportServerManager.getInstance().startService();
     } catch (IOException | StartupException e) {
-      logger.error(e.getMessage());
-      return false;
+      throw new PipeServerException("Failed to start pipe server because " + e.getMessage());
     }
-    return true;
   }
 
   /** stop receiver service */
-  public boolean stopPipeServer() {
+  public void stopPipeServer() throws PipeServerException {
     try {
+      List<PipeInfo> pipeInfos = receiverManager.getAllPipeInfos();
+      for (PipeInfo pipeInfo : pipeInfos) {
+        if (pipeInfo.getStatus().equals(PipeStatus.RUNNING)) {
+          throw new PipeServerException(
+              "Failed to stop pipe server because there is pipe still running.");
+        }
+      }
+      TransportServerManager.getInstance().stopService();
       receiverManager.stopServer();
       collector.stopCollect();
-      // todo: how to stop?
-      TransportServerManager.getInstance().stopService();
     } catch (IOException e) {
-      logger.error(e.getMessage());
-      return false;
+      throw new PipeServerException("Failed to start pipe server because " + e.getMessage());
     }
-    return true;
   }
 
   /** heartbeat RPC handle */
-  // TODO: define exception
-  // TODO: this is a mock interface
-  public SyncResponse recMsg(SyncRequest request) throws IOException {
-    switch (request.getType()) {
-      case HEARTBEAT:
-        List<PipeMessage> messages =
-            receiverManager.getPipeMessages(
-                request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
-        break;
-      case CREATE:
-        createPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
-        break;
-      case START:
-        startPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
-        break;
-      case STOP:
-        stopPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
-        break;
-      case DROP:
-        dropPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
-        break;
+  public SyncResponse recMsg(SyncRequest request) {
+    SyncResponse response = new SyncResponse(ResponseType.INFO, "");
+    ;
+    try {
+      switch (request.getType()) {
+        case HEARTBEAT:
+          List<PipeMessage> messageList =
+              receiverManager.getPipeMessages(
+                  request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
+          PipeMessage message = new PipeMessage(PipeMessage.MsgType.INFO, "");
+          if (!messageList.isEmpty()) {
+            for (PipeMessage pipeMessage : messageList) {
+              if (pipeMessage.getType().getValue() > message.getType().getValue()) {
+                message = pipeMessage;
+              }
+            }
+          }
+          switch (message.getType()) {
+            case INFO:
+              break;
+            case WARN:
+              response = new SyncResponse(ResponseType.WARN, "");
+              break;
+            case ERROR:
+              response = new SyncResponse(ResponseType.ERROR, "");
+              break;
+            default:
+              throw new UnsupportedOperationException("Wrong message type " + message.getType());
+          }
+          break;
+        case CREATE:
+          createPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
+          break;
+        case START:
+          startPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
+          break;
+        case STOP:
+          stopPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
+          break;
+        case DROP:
+          dropPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
+          break;
+      }
+    } catch (IOException e) {
+      logger.warn("Cannot handle message because {}", e.getMessage());
     }
-    // TODO: complete implement
-    return null;
+    return response;
   }
 
   /** create and start a new pipe named pipeName */
@@ -162,7 +189,10 @@ public class ReceiverService implements IService {
    *
    * @return QueryDataSet contained three columns: pipe name, status and start time
    */
-  public QueryDataSet showPipe(ShowPipeServerPlan plan) {
+  public QueryDataSet showPipe(ShowPipeServerPlan plan) throws PipeServerException {
+    if (!receiverManager.isPipeServerEnable()) {
+      throw new PipeServerException("Pipe server is not started.");
+    }
     ListDataSet dataSet =
         new ListDataSet(
             Arrays.asList(
@@ -214,7 +244,11 @@ public class ReceiverService implements IService {
   public void start() throws StartupException {
     receiverManager.init();
     if (receiverManager.isPipeServerEnable()) {
-      startPipeServer();
+      try {
+        startPipeServer();
+      } catch (PipeServerException e) {
+        throw new StartupException(e.getMessage());
+      }
     }
   }
 
