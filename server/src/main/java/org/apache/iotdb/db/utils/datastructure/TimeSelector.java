@@ -47,6 +47,10 @@ public class TimeSelector {
     return heapSize == 0;
   }
 
+  public int size() {
+    return heapSize;
+  }
+
   public void add(long time) {
     if (heapSize == 0) {
       timeHeap[0] = time;

@@ -24,20 +24,15 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public class OverlappedAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator {
 
-  // total query [startTime, endTime)
-  private final long startTime;
-  private final long endTime;
-
-  private final long interval;
-  private final long slidingStep;
-
-  private final boolean isAscending;
-  private final boolean isSlidingStepByMonth;
-  private final boolean isIntervalByMonth;
-
   private static final int HEAP_MAX_SIZE = 100;
 
-  private TimeSelector timeBoundarySet;
+  private final boolean isAscending;
+  private final TimeSelector timeBoundaryHeap;
+
+  private final AggrWindowIterator aggrWindowIterator;
+  private long curStartTimeForIterator;
+
+  private long lastEndTime;
 
   public OverlappedAggrWindowWithNaturalMonthIterator(
       long startTime,
@@ -47,37 +42,9 @@ public class OverlappedAggrWindowWithNaturalMonthIterator implements ITimeRangeI
       boolean isAscending,
       boolean isSlidingStepByMonth,
       boolean isIntervalByMonth) {
-    this.startTime = startTime;
-    this.endTime = endTime;
-    this.interval = interval;
-    this.slidingStep = slidingStep;
     this.isAscending = isAscending;
-    this.isSlidingStepByMonth = isSlidingStepByMonth;
-    this.isIntervalByMonth = isIntervalByMonth;
-    initHeap();
-  }
-
-  @Override
-  public Pair<Long, Long> getFirstTimeRange() {
-    long retStartTime = timeBoundarySet.pollFirst();
-    return new Pair<>(retStartTime, timeBoundarySet.first());
-  }
-
-  @Override
-  public Pair<Long, Long> getNextTimeRange(long curStartTime) {
-    if (timeBoundarySet.isEmpty()) {
-      return null;
-    }
-    long retStartTime = timeBoundarySet.pollFirst();
-    if (timeBoundarySet.isEmpty()) {
-      return null;
-    }
-    return new Pair<>(retStartTime, timeBoundarySet.first());
-  }
-
-  private void initHeap() {
-    timeBoundarySet = new TimeSelector(HEAP_MAX_SIZE, isAscending);
-    AggrWindowIterator iterator =
+    this.timeBoundaryHeap = new TimeSelector(HEAP_MAX_SIZE, isAscending);
+    this.aggrWindowIterator =
         new AggrWindowIterator(
             startTime,
             endTime,
@@ -86,17 +53,52 @@ public class OverlappedAggrWindowWithNaturalMonthIterator implements ITimeRangeI
             isAscending,
             isSlidingStepByMonth,
             isIntervalByMonth);
-    Pair<Long, Long> firstTimeRange = iterator.getFirstTimeRange();
-    timeBoundarySet.add(firstTimeRange.left);
-    timeBoundarySet.add(firstTimeRange.right);
+    initHeap();
+  }
 
-    long curStartTime = firstTimeRange.left;
-    Pair<Long, Long> curTimeRange = iterator.getNextTimeRange(curStartTime);
-    while (curTimeRange != null) {
-      curStartTime = curTimeRange.left;
-      timeBoundarySet.add(curTimeRange.left);
-      timeBoundarySet.add(curTimeRange.right);
-      curTimeRange = iterator.getNextTimeRange(curStartTime);
+  @Override
+  public Pair<Long, Long> getFirstTimeRange() {
+    long retStartTime = timeBoundaryHeap.pollFirst();
+    lastEndTime = timeBoundaryHeap.first();
+    return new Pair<>(retStartTime, lastEndTime);
+  }
+
+  @Override
+  public Pair<Long, Long> getNextTimeRange(long curStartTime) {
+    if (lastEndTime >= curStartTimeForIterator) {
+      tryToExpandHeap();
+    }
+    if (timeBoundaryHeap.isEmpty()) {
+      return null;
+    }
+    long retStartTime = timeBoundaryHeap.pollFirst();
+    if (retStartTime >= curStartTimeForIterator) {
+      tryToExpandHeap();
+    }
+    if (timeBoundaryHeap.isEmpty()) {
+      return null;
+    }
+    lastEndTime = timeBoundaryHeap.first();
+    return new Pair<>(retStartTime, lastEndTime);
+  }
+
+  private void initHeap() {
+    Pair<Long, Long> firstTimeRange = aggrWindowIterator.getFirstTimeRange();
+    timeBoundaryHeap.add(firstTimeRange.left);
+    timeBoundaryHeap.add(firstTimeRange.right);
+    curStartTimeForIterator = firstTimeRange.left;
+
+    tryToExpandHeap();
+  }
+
+  private void tryToExpandHeap() {
+    Pair<Long, Long> curTimeRange = aggrWindowIterator.getNextTimeRange(curStartTimeForIterator);
+    while (curTimeRange != null && timeBoundaryHeap.size() < HEAP_MAX_SIZE) {
+      timeBoundaryHeap.add(curTimeRange.left);
+      timeBoundaryHeap.add(curTimeRange.right);
+      curStartTimeForIterator = curTimeRange.left;
+
+      curTimeRange = aggrWindowIterator.getNextTimeRange(curStartTimeForIterator);
     }
   }
 
