@@ -3,7 +3,7 @@ package org.apache.iotdb.db.query.mpp.exec;
 import org.apache.iotdb.db.query.mpp.common.Analysis;
 import org.apache.iotdb.db.query.mpp.common.QueryContext;
 import org.apache.iotdb.db.query.mpp.common.QueryId;
-import org.apache.iotdb.db.query.mpp.plan.LogicalPlanner;
+import org.apache.iotdb.db.query.mpp.plan.*;
 import org.apache.iotdb.db.query.mpp.plan.optimzation.PlanOptimizer;
 
 import java.util.List;
@@ -23,23 +23,43 @@ public class QueryExecution {
     private List<PlanOptimizer> planOptimizers;
 
     private Analysis analysis;
+    private LogicalQueryPlan logicalPlan;
+    private DistributedQueryPlan distributedPlan;
+    private List<PlanFragment> fragments;
+    private List<FragmentInstance> fragmentInstances;
 
     public QueryExecution(QueryContext context) {
         this.context = context;
     }
 
+    public void plan() {
+        analyze();
+        doLogicalPlan();
+        doDistributedPlan();
+        planFragmentInstances();
+    }
+
+    public void schedule() {
+        this.scheduler = new QueryScheduler(this.stateMachine, this.fragmentInstances);
+        this.scheduler.start();
+    }
+
     // Analyze the statement in QueryContext. Generate the analysis this query need
     public void analyze() {
         // initialize the variable `analysis`
+
     }
 
     // Use LogicalPlanner to do the logical query plan and logical optimization
     public void doLogicalPlan() {
-
+        LogicalPlanner planner = new LogicalPlanner(this.analysis, this.context, this.planOptimizers);
+        this.logicalPlan = planner.plan();
     }
 
     // Generate the distributed plan and split it into fragments
     public void doDistributedPlan() {
+        DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
+        this.distributedPlan = planner.planFragments();
 
     }
 
