@@ -28,11 +28,13 @@ import java.util.LinkedList;
 
 public abstract class GroupBySlidingWindowAggrExecutor {
 
+  // current aggregate window
   protected long curStartTime;
   protected long curEndTime;
 
   protected Deque<AggregateResult> deque;
 
+  // output aggregate result
   protected AggregateResult aggregateResult;
 
   public GroupBySlidingWindowAggrExecutor(
@@ -42,8 +44,10 @@ public abstract class GroupBySlidingWindowAggrExecutor {
     this.deque = new LinkedList<>();
   }
 
+  /** update queue and aggregateResult */
   public abstract void update(AggregateResult aggregateResult);
 
+  /** evicting expired element in queue and reset expired aggregateResult */
   protected abstract void evictingExpiredValue();
 
   public AggregateResult getAggregateResult() {

@@ -40,7 +40,11 @@ public abstract class AggregateResult implements Cloneable {
   private final AggregationType aggregationType;
   protected TSDataType resultDataType;
 
-  // timestamp of current value
+  /**
+   * For [COUNT, AVG, SUM], it is the start time of the aggregation window. For [MAX_VALUE,
+   * MIN_VALUE, EXTREME, FIRST_VALUE, LAST_VALUE], it is the timestamp of the current value. For
+   * [MAX_TIME, MIN_TIME], it is always null.
+   */
   protected long timestamp;
 
   private boolean booleanValue;
