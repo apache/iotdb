@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -96,6 +97,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -147,6 +150,8 @@ public class MManager {
 
   private boolean initialized;
 
+  private ScheduledExecutorService timedForceMLogThread;
+
   private TimeseriesStatistics timeseriesStatistics = TimeseriesStatistics.getInstance();
   private IStorageGroupManager storageGroupManager = StorageGroupManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
@@ -177,6 +182,17 @@ public class MManager {
       } else {
         logger.error("create system folder {} failed.", schemaFolder.getAbsolutePath());
       }
+    }
+
+    if (config.getSyncMlogPeriodInMs() != 0) {
+      timedForceMLogThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
+
+      timedForceMLogThread.scheduleAtFixedRate(
+          this::forceMlog,
+          config.getSyncMlogPeriodInMs(),
+          config.getSyncMlogPeriodInMs(),
+          TimeUnit.MILLISECONDS);
     }
   }
 
@@ -238,12 +254,24 @@ public class MManager {
             "storageGroup");
   }
 
+  public void forceMlog() {
+    for (SGMManager sgmManager : storageGroupManager.getAllSGMManagers()) {
+      sgmManager.forceMlog();
+    }
+  }
+
   /** function for clearing all metadata components */
   public synchronized void clear() {
     try {
       storageGroupManager.clear();
       templateManager.clear();
       timeseriesStatistics.clear();
+
+      if (timedForceMLogThread != null) {
+        timedForceMLogThread.shutdownNow();
+        timedForceMLogThread = null;
+      }
+
       initialized = false;
     } catch (IOException e) {
       logger.error("Error occurred when clearing MManager:", e);

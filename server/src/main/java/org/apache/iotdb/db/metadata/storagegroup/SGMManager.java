@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.storagegroup;
 
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -104,8 +103,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -159,8 +156,6 @@ public class SGMManager {
   private boolean isRecovering = true;
   private boolean initialized = false;
 
-  private ScheduledExecutorService timedForceMLogThread;
-
   private String sgSchemaDirPath;
   private String storageGroupFullPath;
 
@@ -177,7 +172,6 @@ public class SGMManager {
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SGMManager() {
-
     int cacheSize = config.getmManagerCacheSize();
     mNodeCache =
         Caffeine.newBuilder()
@@ -191,17 +185,6 @@ public class SGMManager {
                     return mtree.getNodeByPath(partialPath);
                   }
                 });
-
-    if (config.getSyncMlogPeriodInMs() != 0) {
-      timedForceMLogThread =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
-
-      timedForceMLogThread.scheduleAtFixedRate(
-          this::forceMlog,
-          config.getSyncMlogPeriodInMs(),
-          config.getSyncMlogPeriodInMs(),
-          TimeUnit.MILLISECONDS);
-    }
   }
 
   // Because the writer will be used later and should not be closed here.
@@ -248,7 +231,7 @@ public class SGMManager {
     initialized = true;
   }
 
-  private void forceMlog() {
+  public void forceMlog() {
     try {
       logWriter.force();
     } catch (IOException e) {
@@ -318,11 +301,6 @@ public class SGMManager {
         logWriter = null;
       }
       tagManager.clear();
-
-      if (timedForceMLogThread != null) {
-        timedForceMLogThread.shutdownNow();
-        timedForceMLogThread = null;
-      }
 
       initialized = false;
     } catch (IOException e) {

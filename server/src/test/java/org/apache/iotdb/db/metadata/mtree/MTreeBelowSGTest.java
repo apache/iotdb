@@ -24,11 +24,9 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.storagegroup.SGMManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -72,10 +70,9 @@ public class MTreeBelowSGTest {
   }
 
   private MTreeBelowSG getStorageGroup(PartialPath path) throws MetadataException {
-    IStorageGroupMNode storageGroupMNode = root.setStorageGroup(path);
-    storageGroupMNode.setSGMManager(new SGMManager());
+    root.setStorageGroup(path);
     try {
-      return new MTreeBelowSG(storageGroupMNode);
+      return new MTreeBelowSG(root.getStorageGroupNodeByStorageGroupPath(path));
     } catch (IOException e) {
       throw new MetadataException(e);
     }
