@@ -22,6 +22,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+
 import org.junit.*;
 import org.junit.experimental.categories.Category;
 
@@ -37,45 +38,45 @@ import static org.junit.Assert.assertEquals;
 @Category({LocalStandaloneTest.class, ClusterTest.class})
 public class IoTDBResultMetadataIT {
 
-    @BeforeClass
-    public static void setUp() throws Exception {
-        EnvironmentUtils.envSetUp();
-        try (Connection connection = EnvFactory.getEnv().getConnection();
-             Statement statement = connection.createStatement()) {
-            statement.execute("create timeseries root.sg.dev.status with datatype=text,encoding=PLAIN;");
-            statement.execute("insert into root.sg.dev(time,status) values(1,3.14);");
-        } catch (Exception e) {
-            e.printStackTrace();
-            fail(e.getMessage());
-        }
+  @BeforeClass
+  public static void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create timeseries root.sg.dev.status with datatype=text,encoding=PLAIN;");
+      statement.execute("insert into root.sg.dev(time,status) values(1,3.14);");
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
+  }
 
-    @AfterClass
-    public static void tearDown() throws Exception {
-        EnvironmentUtils.cleanEnv();
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvironmentUtils.cleanEnv();
+  }
+
+  @Test
+  public void columnTypeTest() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      long lastTimestamp;
+      try (ResultSet resultSet = statement.executeQuery("select status from root.sg.dev")) {
+        Assert.assertTrue(resultSet.next());
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(2, metaData.getColumnCount());
+        assertEquals("Time", metaData.getColumnName(1));
+        assertEquals(Types.TIMESTAMP, metaData.getColumnType(1));
+        assertEquals("TIME", metaData.getColumnTypeName(1));
+        assertEquals("root.sg.dev.status", metaData.getColumnName(2));
+        assertEquals(Types.VARCHAR, metaData.getColumnType(2));
+        assertEquals("TEXT", metaData.getColumnTypeName(2));
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
-
-    @Test
-    public void columnTypeTest() {
-        try (Connection connection = EnvFactory.getEnv().getConnection();
-             Statement statement = connection.createStatement()) {
-
-            long lastTimestamp;
-            try (ResultSet resultSet = statement.executeQuery("select status from root.sg.dev")) {
-                Assert.assertTrue(resultSet.next());
-                ResultSetMetaData metaData = resultSet.getMetaData();
-                assertEquals(2, metaData.getColumnCount());
-                assertEquals("Time", metaData.getColumnName(1));
-                assertEquals(Types.TIMESTAMP, metaData.getColumnType(1));
-                assertEquals("TIME", metaData.getColumnTypeName(1));
-                assertEquals("root.sg.dev.status", metaData.getColumnName(2));
-                assertEquals(Types.VARCHAR, metaData.getColumnType(2));
-                assertEquals("TEXT", metaData.getColumnTypeName(2));
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            fail(e.getMessage());
-        }
-    }
+  }
 }
