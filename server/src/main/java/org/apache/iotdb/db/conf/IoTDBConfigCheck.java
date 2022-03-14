@@ -18,17 +18,6 @@
  */
 package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.ConfigurationException;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
-
-import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -39,6 +28,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.exception.ConfigurationException;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBConfigCheck {
 
@@ -88,6 +86,12 @@ public class IoTDBConfigCheck {
 
   private static final String VIRTUAL_STORAGE_GROUP_NUM = "virtual_storage_group_num";
   private static String virtualStorageGroupNum = String.valueOf(config.getVirtualStorageGroupNum());
+
+  private static final String ENABLE_ID_TABLE = "enable_id_table";
+  private static String enableIDTable = String.valueOf(config.isEnableIDTable());
+
+  private static final String ENABLE_ID_TABLE_LOG_FILE = "enable_id_table_log_file";
+  private static String enableIdTableLogFile = String.valueOf(config.isEnableIDTableLogFile());
 
   private static final String TIME_ENCODER_KEY = "time_encoder";
   private static String timeEncoderValue =
@@ -149,6 +153,8 @@ public class IoTDBConfigCheck {
     systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
     systemProperties.put(VIRTUAL_STORAGE_GROUP_NUM, virtualStorageGroupNum);
     systemProperties.put(TIME_ENCODER_KEY, timeEncoderValue);
+    systemProperties.put(ENABLE_ID_TABLE, enableIDTable);
+    systemProperties.put(ENABLE_ID_TABLE_LOG_FILE, enableIdTableLogFile);
   }
 
   /**
@@ -338,6 +344,18 @@ public class IoTDBConfigCheck {
 
     if (!(properties.getProperty(TIME_ENCODER_KEY).equals(timeEncoderValue))) {
       throwException(TIME_ENCODER_KEY, timeEncoderValue);
+    }
+
+    if (!(properties.getProperty(TIME_ENCODER_KEY).equals(timeEncoderValue))) {
+      throwException(TIME_ENCODER_KEY, timeEncoderValue);
+    }
+
+    if (!(properties.getProperty(ENABLE_ID_TABLE).equals(enableIDTable))) {
+      throwException(ENABLE_ID_TABLE, enableIDTable);
+    }
+
+    if (!(properties.getProperty(ENABLE_ID_TABLE_LOG_FILE).equals(enableIdTableLogFile))) {
+      throwException(ENABLE_ID_TABLE_LOG_FILE, enableIdTableLogFile);
     }
   }
 
