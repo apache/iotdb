@@ -72,7 +72,7 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   @Override
   public MeasurementPath getMeasurementPath() {
     MeasurementPath result = new MeasurementPath(super.getPartialPath(), schema);
-    //    result.setUnderAlignedEntity(getParent().isAligned());
+    result.setUnderAlignedEntity(getParent().isAligned());
     if (alias != null && !alias.isEmpty()) {
       result.setMeasurementAlias(alias);
     }

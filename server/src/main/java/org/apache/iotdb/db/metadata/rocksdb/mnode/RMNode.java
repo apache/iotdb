@@ -88,7 +88,7 @@ public abstract class RMNode implements IMNode {
       String parentInnerName =
           RocksDBUtils.convertPartialPathToInner(keyName, nodeNameMaxLevel, type.getValue());
       try {
-        value = readWriteHandler.get(null, (type + parentInnerName).getBytes());
+        value = readWriteHandler.get(null, parentInnerName.getBytes());
       } catch (RocksDBException e) {
         logger.error("Failed to get parent node.", e);
       }
@@ -101,7 +101,7 @@ public abstract class RMNode implements IMNode {
             node = new RInternalMNode(keyName);
             return node;
           case RockDBConstants.NODE_TYPE_ENTITY:
-            node = new REntityMNode(keyName);
+            node = new REntityMNode(keyName, value);
             return node;
           case RockDBConstants.NODE_TYPE_MEASUREMENT:
             node = new RMeasurementMNode(keyName, value);
