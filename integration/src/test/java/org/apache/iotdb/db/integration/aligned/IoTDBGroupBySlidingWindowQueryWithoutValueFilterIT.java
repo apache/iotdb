@@ -19,8 +19,10 @@
 package org.apache.iotdb.db.integration.aligned;
 
 import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 
+import org.apache.iotdb.itbase.category.RemoteTest;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -35,7 +37,7 @@ import java.sql.Statement;
 import static org.apache.iotdb.db.constant.TestConstant.*;
 import static org.apache.iotdb.db.constant.TestConstant.lastValue;
 
-@Category({LocalStandaloneTest.class})
+@Category({LocalStandaloneTest.class, RemoteTest.class, ClusterTest.class})
 public class IoTDBGroupBySlidingWindowQueryWithoutValueFilterIT {
 
   private static final String TIMESTAMP_STR = "Time";
