@@ -16,16 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.hash;
+package org.apache.iotdb.commons.hash;
 
-/** All DeviceGroup hash algorithm executors must be subclasses of DeviceGroupHashExecutor */
-public abstract class DeviceGroupHashExecutor {
+public class BKDRHashExecutor extends DeviceGroupHashExecutor {
 
-  protected final int deviceGroupCount;
+  private static final int seed = 131;
 
-  public DeviceGroupHashExecutor(int deviceGroupCount) {
-    this.deviceGroupCount = deviceGroupCount;
+  public BKDRHashExecutor(int deviceGroupCount) {
+    super(deviceGroupCount);
   }
 
-  public abstract int getDeviceGroupID(String device);
+  @Override
+  public int getDeviceGroupID(String device) {
+    int hash = 0;
+
+    for (int i = 0; i < device.length(); i++) {
+      hash = hash * seed + (int) device.charAt(i);
+    }
+    hash &= Integer.MAX_VALUE;
+
+    return hash % deviceGroupCount;
+  }
 }

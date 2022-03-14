@@ -23,13 +23,13 @@ public class ConfigNodeConstant {
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()
   public static final String VERSION =
-    ConfigNodeConstant.class.getPackage().getImplementationVersion() != null
-      ? ConfigNodeConstant.class.getPackage().getImplementationVersion()
-      : "UNKNOWN";
+      ConfigNodeConstant.class.getPackage().getImplementationVersion() != null
+          ? ConfigNodeConstant.class.getPackage().getImplementationVersion()
+          : "UNKNOWN";
 
-  public static final String CONFIG_NODE_CONF = "CONFIG_NODE_CONF";
+  public static final String CONFIGNODE_CONF = "CONFIGNODE_CONF";
 
-  public static final String CONFIG_NODE_HOME = "CONFIG_NODE_HOME";
+  public static final String CONFIGNODE_HOME = "CONFIGNODE_HOME";
 
   public static final String DATA_DIR = "data";
 

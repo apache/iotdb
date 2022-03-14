@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.confignode.exception.conf.ConfigurationException;
 import org.apache.iotdb.confignode.exception.conf.RepeatConfigurationException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,14 +53,19 @@ public class ConfigNodeConfCheck {
     FileInputStream inputStream = new FileInputStream(currentPropertiesFile);
     currentProperties.load(inputStream);
 
-    File specialPropertiesFile = new File(propsDir + File.separator + ConfigNodeConstant.SPECIAL_CONF_NAME);
+    File specialPropertiesFile =
+        new File(propsDir + File.separator + ConfigNodeConstant.SPECIAL_CONF_NAME);
     if (!specialPropertiesFile.exists()) {
       if (specialPropertiesFile.createNewFile()) {
-        LOGGER.info("Special configuration file {} for ConfigNode is created.", specialPropertiesFile.getAbsolutePath());
+        LOGGER.info(
+            "Special configuration file {} for ConfigNode is created.",
+            specialPropertiesFile.getAbsolutePath());
         writeSpecialProperties();
         return;
       } else {
-        LOGGER.error("Can't create special configuration file {} for ConfigNode. IoTDB-ConfigNode is shutdown.", specialPropertiesFile.getAbsolutePath());
+        LOGGER.error(
+            "Can't create special configuration file {} for ConfigNode. IoTDB-ConfigNode is shutdown.",
+            specialPropertiesFile.getAbsolutePath());
         System.exit(-1);
       }
     }
@@ -69,21 +75,35 @@ public class ConfigNodeConfCheck {
     checkSpecialProperties();
   }
 
-  private void writeSpecialProperties() {
-
-  }
+  private void writeSpecialProperties() {}
 
   private void checkSpecialProperties() throws RepeatConfigurationException {
-    int deviceGroupCount = Integer.parseInt(specialProperties.getProperty("device_group_count", String.valueOf(conf.getDeviceGroupCount())));
-    int currentDeviceGroupCount = Integer.parseInt(currentProperties.getProperty("device_group_count", String.valueOf(conf.getDeviceGroupCount())));
+    int deviceGroupCount =
+        Integer.parseInt(
+            specialProperties.getProperty(
+                "device_group_count", String.valueOf(conf.getDeviceGroupCount())));
+    int currentDeviceGroupCount =
+        Integer.parseInt(
+            currentProperties.getProperty(
+                "device_group_count", String.valueOf(conf.getDeviceGroupCount())));
     if (deviceGroupCount != currentDeviceGroupCount) {
-        throw new RepeatConfigurationException("device_group_count", String.valueOf(currentDeviceGroupCount), String.valueOf(deviceGroupCount));
+      throw new RepeatConfigurationException(
+          "device_group_count",
+          String.valueOf(currentDeviceGroupCount),
+          String.valueOf(deviceGroupCount));
     }
 
-    String deviceGroupHashExecutorClass = specialProperties.getProperty("device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass());
-    String currentDeviceGroupHashExecutorClass = currentProperties.getProperty("device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass());
+    String deviceGroupHashExecutorClass =
+        specialProperties.getProperty(
+            "device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass());
+    String currentDeviceGroupHashExecutorClass =
+        currentProperties.getProperty(
+            "device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass());
     if (!Objects.equals(deviceGroupHashExecutorClass, currentDeviceGroupHashExecutorClass)) {
-      throw new RepeatConfigurationException("device_group_hash_executor_class", currentDeviceGroupHashExecutorClass, deviceGroupHashExecutorClass);
+      throw new RepeatConfigurationException(
+          "device_group_hash_executor_class",
+          currentDeviceGroupHashExecutorClass,
+          deviceGroupHashExecutorClass);
     }
   }
 

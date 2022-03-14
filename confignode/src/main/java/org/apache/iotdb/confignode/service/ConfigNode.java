@@ -47,20 +47,14 @@ public class ConfigNode {
   }
 
   public void active() {
-
+    LOGGER.info("IoTDB ConfigNode has started.");
   }
 
-  public void deactivate() {
+  public void deactivate() {}
 
-  }
+  public void shutdown() {}
 
-  public void shutdown() {
-
-  }
-
-  public void stop() {
-
-  }
+  public void stop() {}
 
   private static class ConfigNodeHolder {
 

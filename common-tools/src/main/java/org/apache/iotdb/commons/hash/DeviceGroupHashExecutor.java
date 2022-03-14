@@ -16,25 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.hash;
+package org.apache.iotdb.commons.hash;
 
-public class JSHashExecutor extends DeviceGroupHashExecutor {
+/** All DeviceGroup hash algorithm executors must be subclasses of DeviceGroupHashExecutor */
+public abstract class DeviceGroupHashExecutor {
 
-  private static final int base = 1315423911;
+  protected final int deviceGroupCount;
 
-  public JSHashExecutor(int deviceGroupCount) {
-    super(deviceGroupCount);
+  public DeviceGroupHashExecutor(int deviceGroupCount) {
+    this.deviceGroupCount = deviceGroupCount;
   }
 
-  @Override
-  public int getDeviceGroupID(String device) {
-    int hash = base;
-
-    for (int i = 0; i < device.length(); i++) {
-      hash ^= ((hash << 5) + (int) device.charAt(i) + (hash >> 2));
-    }
-    hash &= Integer.MAX_VALUE;
-
-    return hash % deviceGroupCount;
-  }
+  public abstract int getDeviceGroupID(String device);
 }

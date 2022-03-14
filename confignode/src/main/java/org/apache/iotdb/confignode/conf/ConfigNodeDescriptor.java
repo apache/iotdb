@@ -57,10 +57,10 @@ public class ConfigNodeDescriptor {
 
   public String getPropsDir() {
     // Check if CONFIG_NODE_CONF is set
-    String propsDir = System.getProperty(ConfigNodeConstant.CONFIG_NODE_CONF, null);
+    String propsDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, null);
     if (propsDir == null) {
       // Check if CONFIG_NODE_HOME is set
-      propsDir = System.getProperty(ConfigNodeConstant.CONFIG_NODE_HOME, null);
+      propsDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
       if (propsDir == null) {
         // When start ConfigNode with script, CONFIG_NODE_CONF and CONFIG_NODE_HOME must be set.
         // Therefore, this case is TestOnly

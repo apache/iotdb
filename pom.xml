@@ -102,6 +102,7 @@
         <module>flink-iotdb-connector</module>
         <module>distribution</module>
         <module>hive-connector</module>
+        <module>common-tools</module>
         <module>confignode</module>
         <module>cluster</module>
         <module>cross-tests</module>

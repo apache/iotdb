@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.hash;
+package org.apache.iotdb.commons.hash;
 
 public class APHashExecutor extends DeviceGroupHashExecutor {
 

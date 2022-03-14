@@ -16,22 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.hash;
+package org.apache.iotdb.commons.hash;
 
-public class BKDRHashExecutor extends DeviceGroupHashExecutor {
+public class JSHashExecutor extends DeviceGroupHashExecutor {
 
-  private static final int seed = 131;
+  private static final int base = 1315423911;
 
-  public BKDRHashExecutor(int deviceGroupCount) {
+  public JSHashExecutor(int deviceGroupCount) {
     super(deviceGroupCount);
   }
 
   @Override
   public int getDeviceGroupID(String device) {
-    int hash = 0;
+    int hash = base;
 
     for (int i = 0; i < device.length(); i++) {
-      hash = hash * seed + (int) device.charAt(i);
+      hash ^= ((hash << 5) + (int) device.charAt(i) + (hash >> 2));
     }
     hash &= Integer.MAX_VALUE;
 
