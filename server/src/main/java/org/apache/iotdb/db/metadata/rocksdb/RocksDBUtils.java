@@ -367,7 +367,7 @@ public class RocksDBUtils {
     StringBuilder stringBuilder = new StringBuilder(nodeType + ROOT);
     for (int i = partialPath.indexOf(PATH_SEPARATOR); i < partialPath.length(); i++) {
       char currentChar = partialPath.charAt(i);
-      stringBuilder.append(partialPath.charAt(i));
+      stringBuilder.append(currentChar);
       if (currentChar == SPLIT_FLAG) {
         stringBuilder.append(level);
       }
