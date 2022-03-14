@@ -47,7 +47,7 @@ public interface IMNode extends Serializable {
 
   IMNode getChild(String name);
 
-  void addChild(String name, IMNode child);
+  IMNode addChild(String name, IMNode child);
 
   IMNode addChild(IMNode child);
 

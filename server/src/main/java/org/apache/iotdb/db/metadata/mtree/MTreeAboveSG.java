@@ -135,7 +135,15 @@ public class MTreeAboveSG {
         storageGroupMNode.setSGMManager(sgmManager);
         sgmManager.init(storageGroupMNode);
 
-        cur.addChild(nodeNames[i], storageGroupMNode);
+        IMNode result = cur.addChild(nodeNames[i], storageGroupMNode);
+
+        if (result == storageGroupMNode) {
+          return;
+        }
+
+        // another thread executed addChild before adding the prepared storageGroupMNode to MTree
+        sgmManager.clear();
+        throw new StorageGroupAlreadySetException(path.getFullPath(), true);
       }
     }
   }

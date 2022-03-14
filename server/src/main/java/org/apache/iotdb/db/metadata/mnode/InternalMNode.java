@@ -76,9 +76,10 @@ public class InternalMNode extends MNode {
    *
    * @param name child's name
    * @param child child's node
+   * @return the child of this node after addChild
    */
   @Override
-  public void addChild(String name, IMNode child) {
+  public IMNode addChild(String name, IMNode child) {
     /* use cpu time to exchange memory
      * measurementNode's children should be null to save memory
      * add child method will only be called when writing MTree, which is not a frequent operation
@@ -92,7 +93,8 @@ public class InternalMNode extends MNode {
       }
     }
     child.setParent(this);
-    children.putIfAbsent(name, child);
+    IMNode existingChild = children.putIfAbsent(name, child);
+    return existingChild == null ? child : existingChild;
   }
 
   /**
