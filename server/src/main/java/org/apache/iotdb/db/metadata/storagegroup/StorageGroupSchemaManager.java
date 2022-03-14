@@ -81,9 +81,6 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   }
 
   public synchronized void clear() {
-    for (SGMManager sgmManager : getAllSGMManagers()) {
-      sgmManager.clear();
-    }
     if (mtree != null) {
       mtree.clear();
     }

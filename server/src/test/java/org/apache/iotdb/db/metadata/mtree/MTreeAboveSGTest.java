@@ -44,20 +44,23 @@ import static org.junit.Assert.fail;
 
 public class MTreeAboveSGTest {
 
+  private MTreeAboveSG root = new MTreeAboveSG();
+
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
+    root = new MTreeAboveSG();
   }
 
   @After
   public void tearDown() throws Exception {
+    root.clear();
     EnvironmentUtils.cleanEnv();
   }
 
   @Test
   @SuppressWarnings("squid:S5783")
   public void testSetStorageGroupExceptionMessage() {
-    MTreeAboveSG root = new MTreeAboveSG();
     try {
       root.setStorageGroup(new PartialPath("root.edge1.access"));
       root.setStorageGroup(new PartialPath("root.edge1"));
@@ -83,7 +86,6 @@ public class MTreeAboveSGTest {
 
   @Test
   public void testAddAndPathExist() throws MetadataException {
-    MTreeAboveSG root = new MTreeAboveSG();
     String path1 = "root";
     root.setStorageGroup(new PartialPath("root.laptop"));
     assertTrue(root.isStorageGroupAlreadySet(new PartialPath(path1)));
@@ -93,7 +95,6 @@ public class MTreeAboveSGTest {
 
   @Test
   public void testGetAllChildNodeNamesByPath() {
-    MTreeAboveSG root = new MTreeAboveSG();
     try {
       root.setStorageGroup(new PartialPath("root.a.d0"));
       root.setStorageGroup(new PartialPath("root.a.d5"));
@@ -116,8 +117,6 @@ public class MTreeAboveSGTest {
 
   @Test
   public void testSetStorageGroup() throws IllegalPathException {
-    // set storage group first
-    MTreeAboveSG root = new MTreeAboveSG();
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
@@ -159,8 +158,6 @@ public class MTreeAboveSGTest {
 
   @Test
   public void testCheckStorageGroup() {
-    // set storage group first
-    MTreeAboveSG root = new MTreeAboveSG();
     try {
       assertFalse(root.isStorageGroup(new PartialPath("root")));
       assertFalse(root.isStorageGroup(new PartialPath("root1.laptop.d2")));
@@ -186,8 +183,6 @@ public class MTreeAboveSGTest {
 
   @Test
   public void testGetAllFileNamesByPath() {
-    // set storage group first
-    MTreeAboveSG root = new MTreeAboveSG();
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       root.setStorageGroup(new PartialPath("root.laptop.d2"));
@@ -209,8 +204,6 @@ public class MTreeAboveSGTest {
 
   @Test
   public void testCheckStorageExistOfPath() {
-    // set storage group first
-    MTreeAboveSG root = new MTreeAboveSG();
     try {
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root")).isEmpty());
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
@@ -239,7 +232,6 @@ public class MTreeAboveSGTest {
 
   @Test
   public void testIllegalStorageGroup() {
-    MTreeAboveSG root = new MTreeAboveSG();
     try {
       root.setStorageGroup(new PartialPath("root.\"sg.ln\""));
     } catch (MetadataException e) {
@@ -251,7 +243,6 @@ public class MTreeAboveSGTest {
 
   @Test
   public void testCountStorageGroup() throws MetadataException {
-    MTreeAboveSG root = new MTreeAboveSG();
     root.setStorageGroup(new PartialPath("root.sg1"));
     root.setStorageGroup(new PartialPath("root.a.sg1"));
     root.setStorageGroup(new PartialPath("root.a.b.sg1"));
@@ -272,7 +263,6 @@ public class MTreeAboveSGTest {
 
   @Test
   public void testGetNodeListInLevel() throws MetadataException {
-    MTreeAboveSG root = new MTreeAboveSG();
     root.setStorageGroup(new PartialPath("root.sg1"));
 
     root.setStorageGroup(new PartialPath("root.sg2"));

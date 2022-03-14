@@ -523,11 +523,7 @@ public class MManager {
    */
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     for (PartialPath storageGroup : storageGroups) {
-      SGMManager sgmManager =
-          storageGroupSchemaManager.getSGMManagerByStorageGroupPath(storageGroup);
-      sgmManager.deleteStorageGroup();
       storageGroupSchemaManager.deleteStorageGroup(storageGroup);
-
       if (!config.isEnableMemControl()) {
         MemTableManager.getInstance().addOrDeleteStorageGroup(-1);
       }

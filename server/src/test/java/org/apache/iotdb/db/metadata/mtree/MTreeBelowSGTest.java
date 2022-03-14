@@ -65,6 +65,7 @@ public class MTreeBelowSGTest {
 
   @After
   public void tearDown() throws Exception {
+    root.clear();
     root = null;
     EnvironmentUtils.cleanEnv();
   }
@@ -400,7 +401,7 @@ public class MTreeBelowSGTest {
     }
     assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1.s1")));
     assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
-    assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop")));
+    assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop")));
   }
 
   @Test

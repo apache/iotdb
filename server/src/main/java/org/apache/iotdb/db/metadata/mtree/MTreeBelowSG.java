@@ -919,13 +919,6 @@ public class MTreeBelowSG implements Serializable {
         }
       }
     }
-
-    cur = cur.getParent();
-    // delete node b while retain root.a.sg2
-    while (cur != storageGroupMNode && cur.getChildren().size() == 0) {
-      cur.getParent().deleteChild(cur.getName());
-      cur = cur.getParent();
-    }
     return leafMNodes;
   }
 

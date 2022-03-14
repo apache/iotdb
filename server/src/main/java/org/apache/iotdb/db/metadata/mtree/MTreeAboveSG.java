@@ -76,6 +76,9 @@ public class MTreeAboveSG {
   public void init() {}
 
   public void clear() {
+    for (IStorageGroupMNode storageGroupMNode : getAllStorageGroupNodes()) {
+      storageGroupMNode.getSGMManager().clear();
+    }
     this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
   }
 
@@ -142,7 +145,7 @@ public class MTreeAboveSG {
         }
 
         // another thread executed addChild before adding the prepared storageGroupMNode to MTree
-        sgmManager.clear();
+        sgmManager.deleteStorageGroup();
         throw new StorageGroupAlreadySetException(path.getFullPath(), true);
       }
     }
@@ -150,10 +153,18 @@ public class MTreeAboveSG {
 
   /** Delete a storage group */
   public void deleteStorageGroup(PartialPath path) throws MetadataException {
-    IStorageGroupMNode cur = getStorageGroupNodeByStorageGroupPath(path);
+    IStorageGroupMNode storageGroupMNode = getStorageGroupNodeByStorageGroupPath(path);
+    IMNode cur = storageGroupMNode.getParent();
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the storage group node sg1
-    cur.getParent().deleteChild(cur.getName());
+    cur.deleteChild(storageGroupMNode.getName());
+    storageGroupMNode.getSGMManager().deleteStorageGroup();
+
+    // delete node a while retain root.a.sg2
+    while (cur.getParent() != null && cur.getChildren().size() == 0) {
+      cur.getParent().deleteChild(cur.getName());
+      cur = cur.getParent();
+    }
   }
 
   /**
