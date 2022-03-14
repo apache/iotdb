@@ -290,6 +290,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |INSERT\_TIMESERIES|insert data; path dependent|
 |READ\_TIMESERIES|query data; path dependent|
 |DELETE\_TIMESERIES|delete data or timeseries; path dependent|
+|DELETE\_STORAGE\_GROUP|delete storage groups; path dependent|
 |CREATE\_USER|create users; path independent|
 |DELETE\_USER|delete users; path independent|
 |MODIFY\_PASSWORD|modify passwords for all users; path independent; (Those who do not have this privilege can still change their own asswords. )|
