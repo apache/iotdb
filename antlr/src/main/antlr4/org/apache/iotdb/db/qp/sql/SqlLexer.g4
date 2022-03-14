@@ -458,10 +458,6 @@ SLIMIT
     : S L I M I T
     ;
 
-SNAPSHOT
-    : S N A P S H O T
-    ;
-
 SOFFSET
     : S O F F S E T
     ;

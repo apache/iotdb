@@ -39,6 +39,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeAboveSGLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.storagegroup.SGMManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -83,7 +84,7 @@ public class MTreeAboveSG {
    *
    * @param path path
    */
-  public IStorageGroupMNode setStorageGroup(PartialPath path) throws MetadataException {
+  public void setStorageGroup(PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
     MetaFormatUtils.checkStorageGroup(path.getFullPath());
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
@@ -102,7 +103,7 @@ public class MTreeAboveSG {
         }
         cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
       } else if (temp.isStorageGroup()) {
-        // before set storage group, check whether the exists or not
+        // before set storage group, check whether the storage group already exists
         throw new StorageGroupAlreadySetException(temp.getFullPath());
       }
       cur = cur.getChild(nodeNames[i]);
@@ -110,8 +111,8 @@ public class MTreeAboveSG {
       i++;
     }
 
-    // synchronize check and add, we need addChild become atomic operation
-    // only write on mtree will be synchronized
+    // synchronize check and add, we need addChild operation be atomic.
+    // only write operations on mtree will be synchronized
     synchronized (this) {
       if (cur.hasChild(nodeNames[i])) {
         // node b has child sg
@@ -128,8 +129,13 @@ public class MTreeAboveSG {
         IStorageGroupMNode storageGroupMNode =
             new StorageGroupMNode(
                 cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+
+        // init SGMManager
+        SGMManager sgmManager = new SGMManager();
+        storageGroupMNode.setSGMManager(sgmManager);
+        sgmManager.init(storageGroupMNode);
+
         cur.addChild(nodeNames[i], storageGroupMNode);
-        return storageGroupMNode;
       }
     }
   }

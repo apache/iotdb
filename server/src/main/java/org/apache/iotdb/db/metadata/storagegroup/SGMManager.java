@@ -159,9 +159,6 @@ public class SGMManager {
   private boolean isRecovering = true;
   private boolean initialized = false;
 
-  private final int mtreeSnapshotInterval;
-  private final long mtreeSnapshotThresholdTime;
-  private ScheduledExecutorService timedCreateMTreeSnapshotThread;
   private ScheduledExecutorService timedForceMLogThread;
 
   private String sgSchemaDirPath;
@@ -180,8 +177,6 @@ public class SGMManager {
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SGMManager() {
-    mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
-    mtreeSnapshotThresholdTime = config.getMtreeSnapshotThresholdTime() * 1000L;
 
     int cacheSize = config.getmManagerCacheSize();
     mNodeCache =
@@ -196,16 +191,6 @@ public class SGMManager {
                     return mtree.getNodeByPath(partialPath);
                   }
                 });
-
-    if (config.isEnableMTreeSnapshot()) {
-      timedCreateMTreeSnapshotThread =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedCreateMTreeSnapshot");
-      timedCreateMTreeSnapshotThread.scheduleAtFixedRate(
-          this::checkMTreeModified,
-          MTREE_SNAPSHOT_THREAD_CHECK_TIME,
-          MTREE_SNAPSHOT_THREAD_CHECK_TIME,
-          TimeUnit.SECONDS);
-    }
 
     if (config.getSyncMlogPeriodInMs() != 0) {
       timedForceMLogThread =
@@ -318,30 +303,6 @@ public class SGMManager {
     return idx;
   }
 
-  private void checkMTreeModified() {
-    if (logWriter == null || logFile == null) {
-      // the logWriter is not initialized now, we skip the check once.
-      return;
-    }
-    if (System.currentTimeMillis() - logFile.lastModified() >= mtreeSnapshotThresholdTime
-        || logWriter.getLogNum() >= mtreeSnapshotInterval) {
-      logger.info(
-          "New mlog line number: {}, time from last modification: {} ms",
-          logWriter.getLogNum(),
-          System.currentTimeMillis() - logFile.lastModified());
-      createMTreeSnapshot();
-    }
-  }
-
-  public void createMTreeSnapshot() {
-    try {
-      mtree.createSnapshot();
-      logWriter.clear();
-    } catch (IOException e) {
-      logger.warn("Failed to create MTree snapshot", e);
-    }
-  }
-
   /** function for clearing metadata components of one storage group */
   public synchronized void clear() {
     try {
@@ -357,15 +318,13 @@ public class SGMManager {
         logWriter = null;
       }
       tagManager.clear();
-      initialized = false;
-      if (config.isEnableMTreeSnapshot() && timedCreateMTreeSnapshotThread != null) {
-        timedCreateMTreeSnapshotThread.shutdownNow();
-        timedCreateMTreeSnapshotThread = null;
-      }
+
       if (timedForceMLogThread != null) {
         timedForceMLogThread.shutdownNow();
         timedForceMLogThread = null;
       }
+
+      initialized = false;
     } catch (IOException e) {
       logger.error("Cannot close metadata log writer, because:", e);
     }

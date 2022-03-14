@@ -65,17 +65,6 @@ public class MLogParserTest {
    * */
   private int[] mlogLineNum = new int[] {50, 53, 1, 3};
 
-  /*
-   * For root.sg0, we prepare 5 device and 10 measurement per device, thus there are 1 + 5 + 5 * 10 = 56 MNodes .
-   * For root.sg1, we prepare 5 device and 10 measurement per device and then delete 1 measurement, thus there are 1 + 5 + 5 * 10 - 1 = 55 MNodes .
-   * For root.sgcc, there is only 1 StorageGroupMNode.
-   * For root.sg, we prepare 1 device, thus there are 1 + 1 = 2 MNodes.
-   *
-   * For root.ln.cc, we create it and then delete it, thus there's no snapshot of root.ln.cc.
-   *
-   * */
-  private int[] snapshotLineNum = new int[] {56, 55, 1, 2};
-
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
@@ -176,16 +165,6 @@ public class MLogParserTest {
       file.delete();
     }
 
-    IoTDB.metaManager.createMTreeSnapshot();
-    for (int i = 0; i < storageGroups.length; i++) {
-      testParseMLog(storageGroups[i], 0);
-      file = new File("target" + File.separator + "tmp" + File.separator + "text.mlog");
-      file.delete();
-      testParseSnapshot(storageGroups[i], snapshotLineNum[i]);
-      file = new File("target" + File.separator + "tmp" + File.separator + "text.snapshot");
-      file.delete();
-    }
-
     testParseTemplateLogFile();
     file = new File("target" + File.separator + "tmp" + File.separator + "text.mlog");
     file.delete();
@@ -216,40 +195,6 @@ public class MLogParserTest {
     try (BufferedReader reader =
         new BufferedReader(
             new FileReader("target" + File.separator + "tmp" + File.separator + "text.mlog"))) {
-      int lineNum = 0;
-      List<String> lines = new ArrayList<>();
-      String line;
-      while ((line = reader.readLine()) != null) {
-        lineNum++;
-        lines.add(line);
-      }
-      if (lineNum != expectedLineNum) {
-        for (String content : lines) {
-          System.out.println(content);
-        }
-      }
-      Assert.assertEquals(expectedLineNum, lineNum);
-    } catch (IOException e) {
-      Assert.fail(e.getMessage());
-    }
-  }
-
-  private void testParseSnapshot(String storageGroup, int expectedLineNum) {
-    try {
-      MLogParser.parseFromFile(
-          IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-              + File.separator
-              + storageGroup
-              + File.separator
-              + MetadataConstant.MTREE_SNAPSHOT,
-          "target" + File.separator + "tmp" + File.separator + "text.snapshot");
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-
-    try (BufferedReader reader =
-        new BufferedReader(
-            new FileReader("target" + File.separator + "tmp" + File.separator + "text.snapshot"))) {
       int lineNum = 0;
       List<String> lines = new ArrayList<>();
       String line;

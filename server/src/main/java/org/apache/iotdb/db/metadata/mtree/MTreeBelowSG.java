@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mtree;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -31,8 +29,6 @@ import org.apache.iotdb.db.exception.metadata.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.logfile.MLogReader;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -40,7 +36,6 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.CollectorTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
@@ -55,12 +50,8 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -77,10 +68,8 @@ import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -94,7 +83,6 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -137,53 +125,10 @@ public class MTreeBelowSG implements Serializable {
   private IStorageGroupMNode storageGroupMNode;
   private int levelOfSG;
 
-  private String mtreeSnapshotPath;
-  private String mtreeSnapshotTmpPath;
-
   // region MTree initialization, clear and serialization
   public MTreeBelowSG(IStorageGroupMNode storageGroupMNode) throws IOException {
     this.storageGroupMNode = storageGroupMNode;
     levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
-    init();
-  }
-
-  private void init() throws IOException {
-    mtreeSnapshotPath =
-        IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-            + File.separator
-            + storageGroupMNode.getFullPath()
-            + File.separator
-            + MetadataConstant.MTREE_SNAPSHOT;
-    mtreeSnapshotTmpPath =
-        IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-            + File.separator
-            + storageGroupMNode.getFullPath()
-            + File.separator
-            + MetadataConstant.MTREE_SNAPSHOT_TMP;
-
-    File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
-    if (tmpFile.exists()) {
-      logger.warn("Creating MTree snapshot not successful before crashing...");
-      Files.delete(tmpFile.toPath());
-    }
-
-    File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
-    long time = System.currentTimeMillis();
-    if (mtreeSnapshot.exists()) {
-      IStorageGroupMNode recoveredTree =
-          deserializeFrom(mtreeSnapshot, storageGroupMNode.getFullPath());
-      if (recoveredTree != null) {
-        // when executing this method, the MTree is initializing, which means this.storageGroup now
-        // takes no subTree info
-        // The subTree of storageGroupMNode will recover from snapshot
-        // add recoveredTree to MTree by replace the storageGroupMNode with the recovered one from
-        // snapshot
-        this.storageGroupMNode.getParent().replaceChild(storageGroupMNode.getName(), recoveredTree);
-        this.storageGroupMNode = recoveredTree;
-        logger.debug(
-            "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
-      }
-    }
   }
 
   public IStorageGroupMNode getStorageGroupMNode() {
@@ -192,106 +137,6 @@ public class MTreeBelowSG implements Serializable {
 
   public void clear() {
     storageGroupMNode = null;
-  }
-
-  public void createSnapshot() throws IOException {
-    long time = System.currentTimeMillis();
-    logger.info("Start creating MTree snapshot to {}", mtreeSnapshotPath);
-    try {
-      serializeTo(mtreeSnapshotTmpPath);
-      File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
-      File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
-      if (snapshotFile.exists()) {
-        Files.delete(snapshotFile.toPath());
-      }
-      if (tmpFile.renameTo(snapshotFile)) {
-        logger.info(
-            "Finish creating MTree snapshot to {}, spend {} ms.",
-            mtreeSnapshotPath,
-            System.currentTimeMillis() - time);
-      }
-    } catch (IOException e) {
-      logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
-      if (SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).exists()) {
-        try {
-          Files.delete(SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).toPath());
-        } catch (IOException e1) {
-          logger.warn("delete file {} failed: {}", mtreeSnapshotTmpPath, e1.getMessage());
-        }
-      }
-      throw e;
-    }
-  }
-
-  public void serializeTo(String snapshotPath) throws IOException {
-    try (MLogWriter mLogWriter = new MLogWriter(snapshotPath)) {
-      storageGroupMNode.serializeTo(mLogWriter);
-    }
-  }
-
-  public static IStorageGroupMNode deserializeFrom(File mtreeSnapshot, String storageGroup) {
-    try (MLogReader mLogReader = new MLogReader(mtreeSnapshot)) {
-      return deserializeFromReader(mLogReader, storageGroup);
-    } catch (IOException e) {
-      logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
-      return null;
-    }
-  }
-
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private static IStorageGroupMNode deserializeFromReader(
-      MLogReader mLogReader, String storageGroup) {
-    Deque<IMNode> nodeStack = new ArrayDeque<>();
-    IMNode node = null;
-    while (mLogReader.hasNext()) {
-      PhysicalPlan plan = null;
-      try {
-        plan = mLogReader.next();
-        if (plan == null) {
-          continue;
-        }
-        int childrenSize = 0;
-        if (plan instanceof StorageGroupMNodePlan) {
-          node = StorageGroupMNode.deserializeFrom((StorageGroupMNodePlan) plan);
-          childrenSize = ((StorageGroupMNodePlan) plan).getChildSize();
-        } else if (plan instanceof MeasurementMNodePlan) {
-          node = MeasurementMNode.deserializeFrom((MeasurementMNodePlan) plan);
-          childrenSize = ((MeasurementMNodePlan) plan).getChildSize();
-        } else if (plan instanceof MNodePlan) {
-          node = InternalMNode.deserializeFrom((MNodePlan) plan);
-          childrenSize = ((MNodePlan) plan).getChildSize();
-        }
-
-        if (childrenSize != 0) {
-          ConcurrentHashMap<String, IMNode> childrenMap = new ConcurrentHashMap<>();
-          for (int i = 0; i < childrenSize; i++) {
-            IMNode child = nodeStack.removeFirst();
-            childrenMap.put(child.getName(), child);
-            if (child.isMeasurement()) {
-              if (!node.isEntity()) {
-                node = MNodeUtils.setToEntity(node);
-              }
-              String alias = child.getAsMeasurementMNode().getAlias();
-              if (alias != null) {
-                node.getAsEntityMNode().addAlias(alias, child.getAsMeasurementMNode());
-              }
-            }
-            child.setParent(node);
-          }
-          node.setChildren(childrenMap);
-        }
-        nodeStack.push(node);
-      } catch (Exception e) {
-        logger.error(
-            "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
-      }
-    }
-    if (!storageGroup.equals(node.getName())) {
-      logger.error("Snapshot file corrupted!");
-      //      throw new MetadataException("Snapshot file corrupted!");
-    }
-
-    return (IStorageGroupMNode) node;
   }
 
   public JsonObject toJson() {
@@ -362,8 +207,8 @@ public class MTreeBelowSG implements Serializable {
 
     String leafName = path.getMeasurement();
 
-    // synchronize check and add, we need addChild and add Alias become atomic operation
-    // only write on mtree will be synchronized
+    // synchronize check and add, we need addChild operation be atomic.
+    // only write operations on mtree will be synchronized
     synchronized (this) {
       if (cur.hasChild(leafName)) {
         throw new PathAlreadyExistException(path.getFullPath());
@@ -427,8 +272,8 @@ public class MTreeBelowSG implements Serializable {
     IMNode cur = pair.left;
     Template upperTemplate = pair.right;
 
-    // synchronize check and add, we need addChild and add Alias become atomic operation
-    // only write on mtree will be synchronized
+    // synchronize check and add, we need addChild operation be atomic.
+    // only write operations on mtree will be synchronized
     synchronized (this) {
       for (String measurement : measurements) {
         if (cur.hasChild(measurement)) {

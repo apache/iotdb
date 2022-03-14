@@ -39,7 +39,6 @@ public class DeviceMappingViewer {
     }
 
     HashVirtualPartitioner partitioner = HashVirtualPartitioner.getInstance();
-    IoTDBDescriptor.getInstance().getConfig().setEnableMTreeSnapshot(false);
     MManager mManager = MManager.getInstance();
     mManager.init();
 

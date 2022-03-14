@@ -238,12 +238,6 @@ public class MManager {
             "storageGroup");
   }
 
-  public void createMTreeSnapshot() {
-    for (SGMManager sgmManager : storageGroupManager.getAllSGMManagers()) {
-      sgmManager.createMTreeSnapshot();
-    }
-  }
-
   /** function for clearing all metadata components */
   public synchronized void clear() {
     try {
@@ -1686,11 +1680,7 @@ public class MManager {
   }
 
   @TestOnly
-  public void flushAllMlogForTest() throws IOException {
-    for (SGMManager sgmManager : storageGroupManager.getAllSGMManagers()) {
-      sgmManager.flushAllMlogForTest();
-    }
-  }
+  public void flushAllMlogForTest() throws IOException {}
 
   @TestOnly
   public Template getTemplate(String templateName) throws MetadataException {
