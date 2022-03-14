@@ -27,6 +27,7 @@ import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +56,7 @@ public class RawQueryReadTaskPoolManager extends AbstractPoolManager {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.QUEUE.toString(),
+              MetricLevel.IMPORTANT,
               pool,
               p -> ((ThreadPoolExecutor) p).getActiveCount(),
               Tag.NAME.toString(),
@@ -65,6 +67,7 @@ public class RawQueryReadTaskPoolManager extends AbstractPoolManager {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.QUEUE.toString(),
+              MetricLevel.IMPORTANT,
               pool,
               p -> ((ThreadPoolExecutor) p).getQueue().size(),
               Tag.NAME.toString(),

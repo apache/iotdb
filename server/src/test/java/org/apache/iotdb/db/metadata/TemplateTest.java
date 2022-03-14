@@ -316,7 +316,7 @@ public class TemplateTest {
 
     assertEquals(
         new HashSet<>(Arrays.asList("root.sg1.d2", "root.sg0.d1", "root.sg2.d3")),
-        manager.getPathsSetTemplate(""));
+        manager.getPathsSetTemplate("*"));
     assertEquals(new HashSet<>(Arrays.asList()), manager.getPathsSetTemplate("treeTemplate"));
 
     for (int i = 0; i < 3; i++) {
@@ -337,7 +337,7 @@ public class TemplateTest {
                 "root.sg1.d2",
                 "root.sg0.d1",
                 "root.sg2.d3")),
-        manager.getPathsSetTemplate(""));
+        manager.getPathsSetTemplate("*"));
 
     PlanExecutor exe1 = new PlanExecutor();
     exe1.insert(getInsertRowPlan("root.sg0.d1", "s11"));
@@ -346,7 +346,7 @@ public class TemplateTest {
 
     assertEquals(
         new HashSet<>(Arrays.asList("root.tsg10.d11", "root.sg1.d2", "root.sg0.d1")),
-        manager.getPathsUsingTemplate(""));
+        manager.getPathsUsingTemplate("*"));
 
     try {
       manager.createSchemaTemplate(plan1);
