@@ -77,6 +77,8 @@ public class IOTDBInsertIT {
     sqls.add("SET STORAGE GROUP TO root.t1");
     sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
     sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
+    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.f1 WITH DATATYPE=FLOAT, ENCODING=PLAIN");
+    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.d1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN");
   }
 
   private static void insertData() throws SQLException {
@@ -169,7 +171,6 @@ public class IOTDBInsertIT {
   @Test
   public void testInsertInfinityFloatValue() {
     try (Statement st1 = connection.createStatement()) {
-      st1.execute("CREATE TIMESERIES root.t1.wf01.wt01.f1 WITH DATATYPE=FLOAT, ENCODING=PLAIN");
       st1.execute("insert into root.t1.wf01.wt01(time, f1) values(100, 3.4028235E300)");
       Assert.fail();
     } catch (SQLException e) {
@@ -182,7 +183,6 @@ public class IOTDBInsertIT {
   @Test
   public void testInsertInfinityDoubleValue() {
     try (Statement st1 = connection.createStatement()) {
-      st1.execute("CREATE TIMESERIES root.t1.wf01.wt01.d1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN");
       st1.execute("insert into root.t1.wf01.wt01(time, d1) values(100, 3.4028235E6000)");
       Assert.fail();
     } catch (SQLException e) {
