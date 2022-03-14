@@ -163,7 +163,7 @@ public class GroupByWithValueFilterDataSet extends GroupByTimeEngineDataSet {
               groupByTimePlan.getDeduplicatedDataTypes().get(i),
               ascending);
       groupBySlidingWindowAggrExecutors[i] =
-          AggregateResultFactory.getSlidingWindowAggrQueueByName(
+          AggregateResultFactory.getGroupBySlidingWindowAggrExecutorByName(
               groupByTimePlan.getDeduplicatedAggregations().get(i),
               groupByTimePlan.getDeduplicatedDataTypes().get(i),
               ascending);

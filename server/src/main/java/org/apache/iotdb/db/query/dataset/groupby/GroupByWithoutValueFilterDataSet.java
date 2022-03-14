@@ -153,7 +153,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
                 path.getSeriesType(),
                 ascending);
         groupBySlidingWindowAggrExecutors[index] =
-            AggregateResultFactory.getSlidingWindowAggrQueueByName(
+            AggregateResultFactory.getGroupBySlidingWindowAggrExecutorByName(
                 groupByTimePlan.getDeduplicatedAggregations().get(index),
                 path.getSeriesType(),
                 ascending);
@@ -178,7 +178,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
                   path.getSchemaList().get(i).getType(),
                   ascending);
           groupBySlidingWindowAggrExecutors[index] =
-              AggregateResultFactory.getSlidingWindowAggrQueueByName(
+              AggregateResultFactory.getGroupBySlidingWindowAggrExecutorByName(
                   groupByTimePlan.getDeduplicatedAggregations().get(index),
                   path.getSchemaList().get(i).getType(),
                   ascending);
@@ -230,7 +230,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
         updatePreAggrInterval();
       }
       for (int i = 0; i < curAggregateResults.length; i++) {
-        curAggregateResults[i] = groupBySlidingWindowAggrExecutors[i].getAggregateResult().clone();
+        curAggregateResults[i] = groupBySlidingWindowAggrExecutors[i].getAggregateResult();
       }
     } catch (QueryProcessException e) {
       logger.error("GroupByWithoutValueFilterDataSet execute has error", e);

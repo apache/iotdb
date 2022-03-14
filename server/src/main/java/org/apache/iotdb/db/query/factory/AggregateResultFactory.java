@@ -137,7 +137,7 @@ public class AggregateResultFactory {
     }
   }
 
-  public static GroupBySlidingWindowAggrExecutor getSlidingWindowAggrQueueByName(
+  public static GroupBySlidingWindowAggrExecutor getGroupBySlidingWindowAggrExecutorByName(
       String aggrFuncName, TSDataType dataType, boolean ascending) {
     if (aggrFuncName == null) {
       throw new IllegalArgumentException("AggregateFunction Name must not be null");
