@@ -72,6 +72,20 @@ public class TimeSelector {
     return minTime;
   }
 
+  public long first() {
+    long minTime = timeHeap[0];
+
+    while (minTime == lastTime) {
+      timeHeap[0] = timeHeap[heapSize - 1];
+      percolateDown(0, timeHeap[0]);
+      --heapSize;
+
+      minTime = timeHeap[0];
+    }
+
+    return minTime;
+  }
+
   private void checkExpansion() {
     if (heapSize == timeHeap.length) {
       timeHeap = Arrays.copyOf(timeHeap, timeHeap.length << 1);

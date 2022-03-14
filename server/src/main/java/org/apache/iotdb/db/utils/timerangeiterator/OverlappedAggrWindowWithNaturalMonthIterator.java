@@ -37,8 +37,7 @@ public class OverlappedAggrWindowWithNaturalMonthIterator implements ITimeRangeI
 
   private static final int HEAP_MAX_SIZE = 100;
 
-  private TimeSelector timeBoundaryHeap;
-  private long lastTime;
+  private TimeSelector timeBoundarySet;
 
   public OverlappedAggrWindowWithNaturalMonthIterator(
       long startTime,
@@ -60,26 +59,24 @@ public class OverlappedAggrWindowWithNaturalMonthIterator implements ITimeRangeI
 
   @Override
   public Pair<Long, Long> getFirstTimeRange() {
-    long retStartTime = timeBoundaryHeap.pollFirst();
-    lastTime = timeBoundaryHeap.pollFirst();
-    return new Pair<>(retStartTime, lastTime);
+    long retStartTime = timeBoundarySet.pollFirst();
+    return new Pair<>(retStartTime, timeBoundarySet.first());
   }
 
   @Override
   public Pair<Long, Long> getNextTimeRange(long curStartTime) {
-    if (timeBoundaryHeap.isEmpty()) {
+    if (timeBoundarySet.isEmpty()) {
       return null;
     }
-    long retStartTime = lastTime;
-    if (timeBoundaryHeap.isEmpty()) {
+    long retStartTime = timeBoundarySet.pollFirst();
+    if (timeBoundarySet.isEmpty()) {
       return null;
     }
-    lastTime = timeBoundaryHeap.pollFirst();
-    return new Pair<>(retStartTime, lastTime);
+    return new Pair<>(retStartTime, timeBoundarySet.first());
   }
 
   private void initHeap() {
-    timeBoundaryHeap = new TimeSelector(HEAP_MAX_SIZE, isAscending);
+    timeBoundarySet = new TimeSelector(HEAP_MAX_SIZE, isAscending);
     AggrWindowIterator iterator =
         new AggrWindowIterator(
             startTime,
@@ -90,15 +87,15 @@ public class OverlappedAggrWindowWithNaturalMonthIterator implements ITimeRangeI
             isSlidingStepByMonth,
             isIntervalByMonth);
     Pair<Long, Long> firstTimeRange = iterator.getFirstTimeRange();
-    timeBoundaryHeap.add(firstTimeRange.left);
-    timeBoundaryHeap.add(firstTimeRange.right);
+    timeBoundarySet.add(firstTimeRange.left);
+    timeBoundarySet.add(firstTimeRange.right);
 
     long curStartTime = firstTimeRange.left;
     Pair<Long, Long> curTimeRange = iterator.getNextTimeRange(curStartTime);
     while (curTimeRange != null) {
       curStartTime = curTimeRange.left;
-      timeBoundaryHeap.add(curTimeRange.left);
-      timeBoundaryHeap.add(curTimeRange.right);
+      timeBoundarySet.add(curTimeRange.left);
+      timeBoundarySet.add(curTimeRange.right);
       curTimeRange = iterator.getNextTimeRange(curStartTime);
     }
   }
