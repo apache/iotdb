@@ -104,9 +104,17 @@ public class CommonUtils {
         case INT64:
           return Long.parseLong(StringUtils.trim(value));
         case FLOAT:
-          return Float.parseFloat(value);
+          float f = Float.parseFloat(value);
+          if (Float.isInfinite(f)) {
+            throw new NumberFormatException("The input float value is Infinity");
+          }
+          return f;
         case DOUBLE:
-          return Double.parseDouble(value);
+          double d = Double.parseDouble(value);
+          if (Double.isInfinite(d)) {
+            throw new NumberFormatException("The input double value is Infinity");
+          }
+          return d;
         case TEXT:
           if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
               || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
