@@ -118,7 +118,6 @@ public abstract class MNode implements IMNode {
   @Override
   public boolean isEmptyInternal() {
     return !IoTDBConstant.PATH_ROOT.equals(name)
-        && !isStorageGroup()
         && !isMeasurement()
         && getSchemaTemplate() == null
         && !isUseTemplate()

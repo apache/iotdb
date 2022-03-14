@@ -623,7 +623,7 @@ public class SGMManager {
       throws MetadataException, IOException {
     Pair<PartialPath, IMeasurementMNode> pair =
         mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
-    // if one of the aligned timeseries is deleted, pair.right could be null
+
     IMeasurementMNode measurementMNode = pair.right;
     removeFromTagInvertedIndex(measurementMNode);
     PartialPath storageGroupPath = pair.left;

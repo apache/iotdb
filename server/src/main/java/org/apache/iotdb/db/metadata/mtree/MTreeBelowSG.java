@@ -380,6 +380,9 @@ public class MTreeBelowSG implements Serializable {
       if (!hasMeasurement) {
         synchronized (this) {
           curNode = MNodeUtils.setToInternal(parent);
+          if (curNode.isStorageGroup()) {
+            this.storageGroupMNode = curNode.getAsStorageGroupMNode();
+          }
         }
       }
     }
@@ -393,6 +396,7 @@ public class MTreeBelowSG implements Serializable {
       curNode.getParent().deleteChild(curNode.getName());
       curNode = curNode.getParent();
     }
+
     return new Pair<>(null, deletedNode);
   }
   // endregion

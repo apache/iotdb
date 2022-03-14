@@ -581,13 +581,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
   }
 
-  // Create Snapshot for Schema
-
-  @Override
-  public Operator visitCreateSnapshot(IoTDBSqlParser.CreateSnapshotContext ctx) {
-    return new CreateSnapshotOperator(SQLConstant.TOK_CREATE_SCHEMA_SNAPSHOT);
-  }
-
   // Alter Timeseries
 
   @Override
