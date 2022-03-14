@@ -165,4 +165,30 @@ public class IOTDBInsertIT {
       Assert.assertEquals("411: Insertion contains duplicated measurement: status", e.getMessage());
     }
   }
+
+  @Test
+  public void testInsertInfinityFloatValue() {
+    try (Statement st1 = connection.createStatement()) {
+      st1.execute("CREATE TIMESERIES root.t1.wf01.wt01.f1 WITH DATATYPE=FLOAT, ENCODING=PLAIN");
+      st1.execute("insert into root.t1.wf01.wt01(time, f1) values(100, 3.4028235E300)");
+      Assert.fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          "313: failed to insert measurements [f1] caused by The input float value is Infinity",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInsertInfinityDoubleValue() {
+    try (Statement st1 = connection.createStatement()) {
+      st1.execute("CREATE TIMESERIES root.t1.wf01.wt01.d1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN");
+      st1.execute("insert into root.t1.wf01.wt01(time, d1) values(100, 3.4028235E6000)");
+      Assert.fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          "313: failed to insert measurements [d1] caused by The input double value is Infinity",
+          e.getMessage());
+    }
+  }
 }
