@@ -37,8 +37,6 @@ public class OverlappedAggrWindowIterator implements ITimeRangeIterator {
   private boolean isIntervalCyclicChange = false;
   private int intervalCnt = 0;
 
-  private static final long MS_TO_MONTH = 30 * 86400_000L;
-
   public OverlappedAggrWindowIterator(
       long startTime, long endTime, long interval, long slidingStep, boolean isAscending) {
     this.startTime = startTime;

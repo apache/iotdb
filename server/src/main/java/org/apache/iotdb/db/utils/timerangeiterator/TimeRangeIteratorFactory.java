@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.utils.timerangeiterator;
 
-public class TimeRangeIteratorFactory {
+import static org.apache.iotdb.db.qp.utils.DatetimeUtils.MS_TO_MONTH;
 
-  private static final long MS_TO_MONTH = 30 * 86400_000L;
+public class TimeRangeIteratorFactory {
 
   private TimeRangeIteratorFactory() {}
 

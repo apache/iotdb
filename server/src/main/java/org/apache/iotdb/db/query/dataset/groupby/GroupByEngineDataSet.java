@@ -33,6 +33,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import static org.apache.iotdb.db.qp.utils.DatetimeUtils.MS_TO_MONTH;
+
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   protected long queryId;
@@ -54,7 +56,6 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   protected boolean leftCRightO;
   protected boolean isIntervalByMonth = false;
   protected boolean isSlidingStepByMonth = false;
-  public static final long MS_TO_MONTH = 30 * 86400_000L;
 
   ITimeRangeIterator aggrWindowIterator;
   ITimeRangeIterator preAggrWindowIterator;

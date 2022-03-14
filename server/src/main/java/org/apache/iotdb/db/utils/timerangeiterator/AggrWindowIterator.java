@@ -22,6 +22,8 @@ package org.apache.iotdb.db.utils.timerangeiterator;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import static org.apache.iotdb.db.qp.utils.DatetimeUtils.MS_TO_MONTH;
+
 public class AggrWindowIterator implements ITimeRangeIterator {
 
   // total query [startTime, endTime)
@@ -34,8 +36,6 @@ public class AggrWindowIterator implements ITimeRangeIterator {
   private final boolean isAscending;
   private final boolean isSlidingStepByMonth;
   private final boolean isIntervalByMonth;
-
-  private static final long MS_TO_MONTH = 30 * 86400_000L;
 
   public AggrWindowIterator(
       long startTime,

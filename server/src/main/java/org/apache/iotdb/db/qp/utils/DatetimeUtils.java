@@ -699,6 +699,8 @@ public class DatetimeUtils {
     }
   }
 
+  public static final long MS_TO_MONTH = 30 * 86400_000L;
+
   /**
    * add natural months based on the startTime to avoid edge cases, ie 2/28
    *
