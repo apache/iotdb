@@ -17,14 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.dataset.groupby.queue;
+package org.apache.iotdb.db.query.executor.groupby.impl;
 
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.executor.groupby.GroupBySlidingWindowAggrExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class MaxTimeLastValueSlidingWindowAggrQueue extends SlidingWindowAggrQueue {
+public class MaxTimeLastValueDescGroupBySlidingWindowAggrExecutor
+    extends GroupBySlidingWindowAggrExecutor {
 
-  public MaxTimeLastValueSlidingWindowAggrQueue(
+  public MaxTimeLastValueDescGroupBySlidingWindowAggrExecutor(
       TSDataType dataType, String aggrFuncName, boolean ascending) {
     super(dataType, aggrFuncName, ascending);
   }
@@ -32,13 +34,23 @@ public class MaxTimeLastValueSlidingWindowAggrQueue extends SlidingWindowAggrQue
   @Override
   public void update(AggregateResult aggregateResult) {
     if (aggregateResult.getResult() != null) {
-      this.aggregateResult = aggregateResult;
+      deque.addLast(aggregateResult);
+    }
+    if (!deque.isEmpty()) {
+      this.aggregateResult = deque.getFirst();
+    } else {
+      this.aggregateResult.reset();
     }
   }
 
   @Override
   protected void evictingExpiredValue() {
-    if (!inTimeRange(this.aggregateResult.getTime())) {
+    while (!deque.isEmpty() && !inTimeRange(deque.getFirst().getTime())) {
+      deque.removeFirst();
+    }
+    if (!deque.isEmpty()) {
+      this.aggregateResult = deque.getFirst();
+    } else {
       this.aggregateResult.reset();
     }
   }

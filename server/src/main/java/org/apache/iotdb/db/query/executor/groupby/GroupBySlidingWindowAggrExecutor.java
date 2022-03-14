@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.dataset.groupby.queue;
+package org.apache.iotdb.db.query.executor.groupby;
 
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.util.Deque;
 import java.util.LinkedList;
 
-public abstract class SlidingWindowAggrQueue {
+public abstract class GroupBySlidingWindowAggrExecutor {
 
   protected long curStartTime;
   protected long curEndTime;
@@ -35,7 +35,7 @@ public abstract class SlidingWindowAggrQueue {
 
   protected AggregateResult aggregateResult;
 
-  public SlidingWindowAggrQueue(
+  public GroupBySlidingWindowAggrExecutor(
       TSDataType dataType, java.lang.String aggrFuncName, boolean ascending) {
     this.aggregateResult =
         AggregateResultFactory.getAggrResultByName(aggrFuncName, dataType, ascending);
@@ -43,6 +43,8 @@ public abstract class SlidingWindowAggrQueue {
   }
 
   public abstract void update(AggregateResult aggregateResult);
+
+  protected abstract void evictingExpiredValue();
 
   public AggregateResult getAggregateResult() {
     return aggregateResult;
@@ -53,8 +55,6 @@ public abstract class SlidingWindowAggrQueue {
     this.curEndTime = curEndTime;
     evictingExpiredValue();
   }
-
-  protected abstract void evictingExpiredValue();
 
   protected boolean inTimeRange(long curTime) {
     return curTime >= curStartTime && curTime < curEndTime;

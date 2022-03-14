@@ -17,27 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.dataset.groupby.queue;
+package org.apache.iotdb.db.query.executor.groupby.impl;
 
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.db.query.executor.groupby.GroupBySlidingWindowAggrExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class ExtremeSlidingWindowAggrQueue extends SlidingWindowAggrQueue {
+public class MinValueGroupBySlidingWindowAggrExecutor extends GroupBySlidingWindowAggrExecutor {
 
-  public ExtremeSlidingWindowAggrQueue(
+  public MinValueGroupBySlidingWindowAggrExecutor(
       TSDataType dataType, String aggrFuncName, boolean ascending) {
     super(dataType, aggrFuncName, ascending);
   }
 
   @Override
   public void update(AggregateResult aggregateResult) {
-    Comparable<Object> extVal = (Comparable<Object>) aggregateResult.getResult();
-    if (extVal == null) {
+    Comparable<Object> minVal = (Comparable<Object>) aggregateResult.getResult();
+    if (minVal == null) {
       return;
     }
 
-    while (!deque.isEmpty() && judge(extVal)) {
+    while (!deque.isEmpty() && minVal.compareTo(deque.getLast().getResult()) < 0) {
       deque.removeLast();
     }
     deque.addLast(aggregateResult);
@@ -57,32 +57,6 @@ public class ExtremeSlidingWindowAggrQueue extends SlidingWindowAggrQueue {
       this.aggregateResult = deque.getFirst();
     } else {
       this.aggregateResult.reset();
-    }
-  }
-
-  private boolean judge(Comparable<Object> extVal) {
-    Comparable<Object> absExtVal = (Comparable<Object>) getAbsValue(aggregateResult.getResult());
-    Comparable<Object> candidateResult = (Comparable<Object>) deque.getLast().getResult();
-    Comparable<Object> absCandidateResult =
-        (Comparable<Object>) getAbsValue(deque.getLast().getResult());
-
-    return absExtVal.compareTo(absCandidateResult) > 0
-        || (absExtVal.compareTo(absCandidateResult) == 0 && extVal.compareTo(candidateResult) > 0);
-  }
-
-  private Object getAbsValue(Object v) {
-    switch (this.aggregateResult.getResultDataType()) {
-      case DOUBLE:
-        return Math.abs((Double) v);
-      case FLOAT:
-        return Math.abs((Float) v);
-      case INT32:
-        return Math.abs((Integer) v);
-      case INT64:
-        return Math.abs((Long) v);
-      default:
-        throw new UnSupportedDataTypeException(
-            java.lang.String.valueOf(this.aggregateResult.getResultDataType()));
     }
   }
 }

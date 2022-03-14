@@ -33,7 +33,7 @@ import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.groupby.queue.SlidingWindowAggrQueue;
+import org.apache.iotdb.db.query.executor.groupby.GroupBySlidingWindowAggrExecutor;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
@@ -162,7 +162,7 @@ public class GroupByWithValueFilterDataSet extends GroupByTimeEngineDataSet {
               groupByTimePlan.getDeduplicatedAggregations().get(i),
               groupByTimePlan.getDeduplicatedDataTypes().get(i),
               ascending);
-      slidingWindowAggrQueues[i] =
+      groupBySlidingWindowAggrExecutors[i] =
           AggregateResultFactory.getSlidingWindowAggrQueueByName(
               groupByTimePlan.getDeduplicatedAggregations().get(i),
               groupByTimePlan.getDeduplicatedDataTypes().get(i),
@@ -192,18 +192,19 @@ public class GroupByWithValueFilterDataSet extends GroupByTimeEngineDataSet {
   @Override
   protected AggregateResult[] getNextAggregateResult() throws IOException {
     curAggregateResults = new AggregateResult[paths.size()];
-    for (SlidingWindowAggrQueue slidingWindowAggrQueue : slidingWindowAggrQueues) {
-      slidingWindowAggrQueue.setTimeRange(curStartTime, curEndTime);
+    for (GroupBySlidingWindowAggrExecutor groupBySlidingWindowAggrExecutor :
+        groupBySlidingWindowAggrExecutors) {
+      groupBySlidingWindowAggrExecutor.setTimeRange(curStartTime, curEndTime);
     }
     while (!isEndCal()) {
       AggregateResult[] aggregations = calcResult(curPreAggrStartTime, curPreAggrEndTime);
       for (int i = 0; i < aggregations.length; i++) {
-        slidingWindowAggrQueues[i].update(aggregations[i].clone());
+        groupBySlidingWindowAggrExecutors[i].update(aggregations[i].clone());
       }
       updatePreAggrInterval();
     }
     for (int i = 0; i < curAggregateResults.length; i++) {
-      curAggregateResults[i] = slidingWindowAggrQueues[i].getAggregateResult().clone();
+      curAggregateResults[i] = groupBySlidingWindowAggrExecutors[i].getAggregateResult().clone();
     }
     return curAggregateResults;
   }

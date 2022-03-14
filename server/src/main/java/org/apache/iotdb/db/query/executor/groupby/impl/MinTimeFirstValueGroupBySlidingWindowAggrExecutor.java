@@ -17,29 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.dataset.groupby.queue;
+package org.apache.iotdb.db.query.executor.groupby.impl;
 
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.executor.groupby.GroupBySlidingWindowAggrExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class MaxValueSlidingWindowAggrQueue extends SlidingWindowAggrQueue {
+public class MinTimeFirstValueGroupBySlidingWindowAggrExecutor
+    extends GroupBySlidingWindowAggrExecutor {
 
-  public MaxValueSlidingWindowAggrQueue(
+  public MinTimeFirstValueGroupBySlidingWindowAggrExecutor(
       TSDataType dataType, String aggrFuncName, boolean ascending) {
     super(dataType, aggrFuncName, ascending);
   }
 
   @Override
   public void update(AggregateResult aggregateResult) {
-    Comparable<Object> maxVal = (Comparable<Object>) aggregateResult.getResult();
-    if (maxVal == null) {
-      return;
+    if (aggregateResult.getResult() != null) {
+      deque.addLast(aggregateResult);
     }
-
-    while (!deque.isEmpty() && maxVal.compareTo(deque.getLast().getResult()) > 0) {
-      deque.removeLast();
-    }
-    deque.addLast(aggregateResult);
     if (!deque.isEmpty()) {
       this.aggregateResult = deque.getFirst();
     } else {
