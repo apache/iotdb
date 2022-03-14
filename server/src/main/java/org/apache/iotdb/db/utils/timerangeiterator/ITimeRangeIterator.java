@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.utils.timerangeiterator;
 
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 public interface ITimeRangeIterator {
@@ -28,6 +27,5 @@ public interface ITimeRangeIterator {
 
   Pair<Long, Long> getNextTimeRange(long curStartTime);
 
-  @TestOnly
   boolean isAscending();
 }
