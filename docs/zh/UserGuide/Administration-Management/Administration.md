@@ -295,6 +295,7 @@ Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
 |INSERT\_TIMESERIES|插入数据。路径相关|
 |READ\_TIMESERIES|查询数据。路径相关|
 |DELETE\_TIMESERIES|删除数据或时间序列。路径相关|
+|DELETE\_STORAGE\_GROUP|删除存储组。路径相关|
 |CREATE\_USER|创建用户。路径无关|
 |DELETE\_USER|删除用户。路径无关|
 |MODIFY\_PASSWORD|修改所有用户的密码。路径无关。（没有该权限者仍然能够修改自己的密码。)|
