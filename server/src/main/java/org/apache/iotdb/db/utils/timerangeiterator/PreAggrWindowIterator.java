@@ -21,6 +21,12 @@ package org.apache.iotdb.db.utils.timerangeiterator;
 
 import org.apache.iotdb.tsfile.utils.Pair;
 
+/**
+ * This class iteratively generates pre-aggregated time windows.
+ *
+ * <p>For example, startTime = 0, endTime = 11, interval = 5, slidingStep = 3, return
+ * [0,2),[2,3),[3,5),[5,6),[6,8),[8,9),[9,10)
+ */
 public class PreAggrWindowIterator implements ITimeRangeIterator {
 
   // total query [startTime, endTime)

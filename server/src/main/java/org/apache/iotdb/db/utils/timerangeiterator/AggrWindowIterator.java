@@ -24,6 +24,12 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import static org.apache.iotdb.db.qp.utils.DatetimeUtils.MS_TO_MONTH;
 
+/**
+ * This class iteratively generates aggregated time windows.
+ *
+ * <p>For example, startTime = 0, endTime = 10, interval = 5, slidingStep = 3, return
+ * [0,6),[3,8),[6,10),[9,10)
+ */
 public class AggrWindowIterator implements ITimeRangeIterator {
 
   // total query [startTime, endTime)

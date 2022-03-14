@@ -25,6 +25,12 @@ public class TimeRangeIteratorFactory {
 
   private TimeRangeIteratorFactory() {}
 
+  /**
+   * The method returns different implements of ITimeRangeIterator depending on the parameters.
+   *
+   * <p>Note: interval and slidingStep stand for the milliseconds if not grouped by month, or the
+   * month count if grouped by month.
+   */
   public static ITimeRangeIterator getTimeRangeIterator(
       long startTime,
       long endTime,
