@@ -116,8 +116,6 @@ public abstract class AggregateResult implements Cloneable {
   /** Merge another aggregateResult into this */
   public abstract void merge(AggregateResult another);
 
-  public abstract void remove(AggregateResult another);
-
   public static AggregateResult deserializeFrom(ByteBuffer buffer) {
     AggregationType aggregationType = AggregationType.deserialize(buffer);
     TSDataType dataType = TSDataType.deserialize(buffer.get());

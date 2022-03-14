@@ -101,11 +101,6 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  public void remove(AggregateResult another) {
-    throw new UnsupportedOperationException("max time aggregate result is not support remove");
-  }
-
-  @Override
   protected void deserializeSpecificFields(ByteBuffer buffer) {}
 
   @Override

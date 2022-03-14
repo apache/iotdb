@@ -147,11 +147,6 @@ public class ExtremeAggrResult extends AggregateResult {
   }
 
   @Override
-  public void remove(AggregateResult another) {
-    throw new UnsupportedOperationException("extreme value aggregate result is not support remove");
-  }
-
-  @Override
   protected void deserializeSpecificFields(ByteBuffer buffer) {
     timestamp = buffer.getLong();
   }

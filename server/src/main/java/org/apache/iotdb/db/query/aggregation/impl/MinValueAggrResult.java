@@ -108,11 +108,6 @@ public class MinValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void remove(AggregateResult another) {
-    throw new UnsupportedOperationException("min value aggregate result is not support remove");
-  }
-
-  @Override
   protected void deserializeSpecificFields(ByteBuffer buffer) {}
 
   @Override

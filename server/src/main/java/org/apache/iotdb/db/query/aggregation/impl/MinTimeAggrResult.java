@@ -122,11 +122,6 @@ public class MinTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  public void remove(AggregateResult another) {
-    throw new UnsupportedOperationException("min time aggregate result is not support remove");
-  }
-
-  @Override
   protected void deserializeSpecificFields(ByteBuffer buffer) {}
 
   @Override

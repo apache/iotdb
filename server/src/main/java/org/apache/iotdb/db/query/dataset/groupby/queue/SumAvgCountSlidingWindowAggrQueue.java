@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.dataset.groupby.queue;
 
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.RemovableAggregateResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class SumAvgCountSlidingWindowAggrQueue extends SlidingWindowAggrQueue {
@@ -40,7 +41,7 @@ public class SumAvgCountSlidingWindowAggrQueue extends SlidingWindowAggrQueue {
   protected void evictingExpiredValue() {
     while (!deque.isEmpty() && !inTimeRange(deque.getFirst().getTime())) {
       AggregateResult aggregateResult = deque.removeFirst();
-      this.aggregateResult.remove(aggregateResult);
+      ((RemovableAggregateResult) this.aggregateResult).remove(aggregateResult);
     }
   }
 }

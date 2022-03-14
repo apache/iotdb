@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.aggregation.RemovableAggregateResult;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,7 +32,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public class CountAggrResult extends AggregateResult {
+public class CountAggrResult extends AggregateResult implements RemovableAggregateResult {
 
   public CountAggrResult() {
     super(TSDataType.INT64, AggregationType.COUNT);

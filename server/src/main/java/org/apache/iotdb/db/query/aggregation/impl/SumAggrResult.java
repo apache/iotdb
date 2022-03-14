@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.aggregation.RemovableAggregateResult;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -35,7 +36,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public class SumAggrResult extends AggregateResult {
+public class SumAggrResult extends AggregateResult implements RemovableAggregateResult {
 
   private TSDataType seriesDataType;
 
