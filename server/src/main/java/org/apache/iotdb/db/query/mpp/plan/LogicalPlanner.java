@@ -16,7 +16,7 @@ public class LogicalPlanner {
         this.context = context;
         this.optimizers = optimizers;
     }
-
+    
     public LogicalQueryPlan plan() {
         return null;
     }

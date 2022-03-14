@@ -6,6 +6,7 @@ import org.apache.iotdb.db.query.mpp.common.QueryId;
 import org.apache.iotdb.db.query.mpp.plan.*;
 import org.apache.iotdb.db.query.mpp.plan.optimzation.PlanOptimizer;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -67,5 +68,19 @@ public class QueryExecution {
     // And for parallel-able fragment, clone it into several instances with different params.
     public void planFragmentInstances() {
 
+    }
+
+    /**
+     * This method will be called by the request thread from client connection.
+     * This method will block until one of these conditions occurs:
+     *   1. There is a batch of result
+     *   2. There is no more result
+     *   3. The query has been cancelled
+     *   4. The query is timeout
+     * This method will fetch the result from DataStreamManager use the virtual ResultOperator's ID
+     * (This part will be designed and implemented with DataStreamManager)
+     */
+    public ByteBuffer getBatchResult() {
+        return null;
     }
 }
