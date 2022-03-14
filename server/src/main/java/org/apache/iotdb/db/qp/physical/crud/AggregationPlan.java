@@ -178,6 +178,10 @@ public class AggregationPlan extends RawDataQueryPlan {
   public String getColumnForDisplay(String columnForReader, int pathIndex) {
     String columnForDisplay = columnForReader;
     if (isGroupByLevel()) {
+      if (resultColumns.get(pathIndex).hasAlias()) {
+        return resultColumns.get(pathIndex).getAlias();
+      }
+
       PartialPath path = paths.get(pathIndex);
       String functionName = aggregations.get(pathIndex);
       String aggregatePath =

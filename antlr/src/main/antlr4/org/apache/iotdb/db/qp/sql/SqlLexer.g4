@@ -633,7 +633,7 @@ TEXT
 // Encoding Type Keywords
 
 ENCODING_VALUE
-    : DICTIONARY | DIFF | GORILLA | PLAIN | REGULAR | RLE | TS_2DIFF
+    : DICTIONARY | DIFF | GORILLA | PLAIN | REGULAR | RLE | TS_2DIFF | ZIGZAG
     ;
 
 DICTIONARY
@@ -664,6 +664,9 @@ TS_2DIFF
     : T S '_' '2' D I F F
     ;
 
+ZIGZAG
+    : Z I G Z A G
+    ;
 
 // Compressor Type Keywords
 
