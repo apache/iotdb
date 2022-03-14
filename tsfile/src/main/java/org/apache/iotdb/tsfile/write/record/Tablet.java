@@ -93,13 +93,7 @@ public class Tablet {
 
     int indexInSchema = 0;
     for (MeasurementSchema schema : schemas) {
-      if (schema.getType() == TSDataType.VECTOR) {
-        for (String measurementId : schema.getSubMeasurementsList()) {
-          measurementIndex.put(measurementId, indexInSchema);
-        }
-      } else {
-        measurementIndex.put(schema.getMeasurementId(), indexInSchema);
-      }
+      measurementIndex.put(schema.getMeasurementId(), indexInSchema);
       indexInSchema++;
     }
 
