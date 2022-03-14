@@ -130,11 +130,6 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void remove(AggregateResult another) {
-    throw new UnsupportedOperationException("first value aggregate result is not support remove");
-  }
-
-  @Override
   protected void deserializeSpecificFields(ByteBuffer buffer) {
     timestamp = buffer.getLong();
   }
