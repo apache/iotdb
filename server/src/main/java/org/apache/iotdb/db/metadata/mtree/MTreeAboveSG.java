@@ -386,11 +386,12 @@ public class MTreeAboveSG {
   }
 
   /**
-   * Check whether the given path exists.
+   * Check whether the storage group of given path exists. The given path may be a prefix path of
+   * existing storage group.
    *
    * @param path a full path or a prefix path
    */
-  public boolean isPathExist(PartialPath path) {
+  public boolean isStorageGroupAlreadySet(PartialPath path) {
     String[] nodeNames = path.getNodes();
     IMNode cur = root;
     if (!nodeNames[0].equals(root.getName())) {

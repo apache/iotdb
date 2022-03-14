@@ -146,7 +146,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
 @SuppressWarnings("java:S1135") // ignore todos
 public class SGMManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(StorageGroupManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(StorageGroupSchemaManager.class);
 
   /** A thread will check whether the MTree is modified lately each such interval. Unit: second */
   private static final long MTREE_SNAPSHOT_THREAD_CHECK_TIME = 600L;

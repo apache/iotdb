@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.Set;
 
 // This class declares all the interfaces for storage group management.
-public interface IStorageGroupManager {
+public interface IStorageGroupSchemaManager {
 
   void init() throws IOException;
 
@@ -168,13 +168,14 @@ public interface IStorageGroupManager {
   List<IStorageGroupMNode> getAllStorageGroupNodes();
 
   /**
-   * Check whether the path exists in MTreeAboveSG. The path may beyond the MTreeAboveSG scope, then
-   * return true if the covered part exists. The rest part will be checked by certain storage group
-   * subTree.
+   * Check whether the storage group of given path is set. The path may be a prefix path of some
+   * storage group. Besides, the given path may be also beyond the MTreeAboveSG scope, then return
+   * true if the covered part exists, which means there's storage group on this path. The rest part
+   * will be checked by certain storage group subTree.
    *
    * @param path a full path or a prefix path
    */
-  boolean isPathExist(PartialPath path);
+  boolean isStorageGroupAlreadySet(PartialPath path);
 
   /**
    * To calculate the count of nodes in the given level for given path pattern. If using prefix

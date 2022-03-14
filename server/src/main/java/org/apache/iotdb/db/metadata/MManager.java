@@ -37,9 +37,9 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
-import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupManager;
+import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.SGMManager;
-import org.apache.iotdb.db.metadata.storagegroup.StorageGroupManager;
+import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
@@ -153,7 +153,8 @@ public class MManager {
   private ScheduledExecutorService timedForceMLogThread;
 
   private TimeseriesStatistics timeseriesStatistics = TimeseriesStatistics.getInstance();
-  private IStorageGroupManager storageGroupManager = StorageGroupManager.getInstance();
+  private IStorageGroupSchemaManager storageGroupSchemaManager =
+      StorageGroupSchemaManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
 
   // region MManager Singleton
@@ -205,7 +206,7 @@ public class MManager {
     try {
       timeseriesStatistics.init();
       templateManager.init();
-      storageGroupManager.init();
+      storageGroupSchemaManager.init();
 
     } catch (IOException e) {
       logger.error(
@@ -255,7 +256,7 @@ public class MManager {
   }
 
   public void forceMlog() {
-    for (SGMManager sgmManager : storageGroupManager.getAllSGMManagers()) {
+    for (SGMManager sgmManager : storageGroupSchemaManager.getAllSGMManagers()) {
       sgmManager.forceMlog();
     }
   }
@@ -263,7 +264,7 @@ public class MManager {
   /** function for clearing all metadata components */
   public synchronized void clear() {
     try {
-      storageGroupManager.clear();
+      storageGroupSchemaManager.clear();
       templateManager.clear();
       timeseriesStatistics.clear();
 
@@ -366,7 +367,7 @@ public class MManager {
               + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
     }
     ensureStorageGroup(plan.getPath());
-    storageGroupManager.getBelongedSGMManager(plan.getPath()).createTimeseries(plan, offset);
+    storageGroupSchemaManager.getBelongedSGMManager(plan.getPath()).createTimeseries(plan, offset);
   }
 
   /**
@@ -421,12 +422,14 @@ public class MManager {
               + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
     }
     ensureStorageGroup(plan.getPrefixPath());
-    storageGroupManager.getBelongedSGMManager(plan.getPrefixPath()).createAlignedTimeSeries(plan);
+    storageGroupSchemaManager
+        .getBelongedSGMManager(plan.getPrefixPath())
+        .createAlignedTimeSeries(plan);
   }
 
   private void ensureStorageGroup(PartialPath path) throws MetadataException {
     try {
-      storageGroupManager.getBelongedStorageGroup(path);
+      storageGroupSchemaManager.getBelongedStorageGroup(path);
     } catch (StorageGroupNotSetException e) {
       if (!config.isAutoCreateSchemaEnabled()) {
         throw e;
@@ -461,7 +464,7 @@ public class MManager {
   public String deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     List<SGMManager> sgmManagers =
-        storageGroupManager.getInvolvedSGMManagers(pathPattern, isPrefixMatch);
+        storageGroupSchemaManager.getInvolvedSGMManagers(pathPattern, isPrefixMatch);
     if (sgmManagers.isEmpty()) {
       // In the cluster mode, the deletion of a timeseries will be forwarded to all the nodes. For
       // nodes that do not have the metadata of the timeseries, the coordinator expects a
@@ -507,7 +510,7 @@ public class MManager {
    * @param storageGroup root.node.(node)*
    */
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
-    storageGroupManager.setStorageGroup(storageGroup);
+    storageGroupSchemaManager.setStorageGroup(storageGroup);
     if (!config.isEnableMemControl()) {
       MemTableManager.getInstance().addOrDeleteStorageGroup(1);
     }
@@ -520,9 +523,10 @@ public class MManager {
    */
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     for (PartialPath storageGroup : storageGroups) {
-      SGMManager sgmManager = storageGroupManager.getSGMManagerByStorageGroupPath(storageGroup);
+      SGMManager sgmManager =
+          storageGroupSchemaManager.getSGMManagerByStorageGroupPath(storageGroup);
       sgmManager.deleteStorageGroup();
-      storageGroupManager.deleteStorageGroup(storageGroup);
+      storageGroupSchemaManager.deleteStorageGroup(storageGroup);
 
       if (!config.isEnableMemControl()) {
         MemTableManager.getInstance().addOrDeleteStorageGroup(-1);
@@ -531,7 +535,7 @@ public class MManager {
   }
 
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
-    storageGroupManager.getSGMManagerByStorageGroupPath(storageGroup).setTTL(dataTTL);
+    storageGroupSchemaManager.getSGMManagerByStorageGroupPath(storageGroup).setTTL(dataTTL);
   }
   // endregion
 
@@ -548,7 +552,7 @@ public class MManager {
       PartialPath path, boolean autoCreateSchema, boolean allowCreateSg, int sgLevel)
       throws IOException, MetadataException {
     try {
-      return storageGroupManager
+      return storageGroupSchemaManager
           .getBelongedSGMManager(path)
           .getDeviceNodeWithAutoCreate(path, autoCreateSchema);
     } catch (StorageGroupNotSetException e) {
@@ -573,7 +577,7 @@ public class MManager {
       }
     }
 
-    return storageGroupManager
+    return storageGroupSchemaManager
         .getBelongedSGMManager(path)
         .getDeviceNodeWithAutoCreate(path, autoCreateSchema);
   }
@@ -585,7 +589,7 @@ public class MManager {
   }
 
   private void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
-    storageGroupManager.getBelongedSGMManager(plan.getPath()).autoCreateDeviceMNode(plan);
+    storageGroupSchemaManager.getBelongedSGMManager(plan.getPath()).autoCreateDeviceMNode(plan);
   }
   // endregion
 
@@ -598,11 +602,11 @@ public class MManager {
   public boolean isPathExist(PartialPath path) {
 
     try {
-      if (!storageGroupManager.isPathExist(path)) {
+      if (!storageGroupSchemaManager.isStorageGroupAlreadySet(path)) {
         return false;
       }
       try {
-        return storageGroupManager.getBelongedSGMManager(path).isPathExist(path);
+        return storageGroupSchemaManager.getBelongedSGMManager(path).isPathExist(path);
       } catch (StorageGroupNotSetException e) {
         // path exists above storage group
         return true;
@@ -614,7 +618,7 @@ public class MManager {
 
   /** Get metadata in string */
   public String getMetadataInString() {
-    return TIME_SERIES_TREE_HEADER + storageGroupManager.getMetadataInString();
+    return TIME_SERIES_TREE_HEADER + storageGroupSchemaManager.getMetadataInString();
   }
 
   // region Interfaces for metadata count
@@ -632,7 +636,7 @@ public class MManager {
       throws MetadataException {
     int count = 0;
     for (SGMManager sgmManager :
-        storageGroupManager.getInvolvedSGMManagers(pathPattern, isPrefixMatch)) {
+        storageGroupSchemaManager.getInvolvedSGMManagers(pathPattern, isPrefixMatch)) {
       count += sgmManager.getAllTimeseriesCount(pathPattern, isPrefixMatch);
     }
     return count;
@@ -655,7 +659,7 @@ public class MManager {
       throws MetadataException {
     int num = 0;
     for (SGMManager sgmManager :
-        storageGroupManager.getInvolvedSGMManagers(pathPattern, isPrefixMatch)) {
+        storageGroupSchemaManager.getInvolvedSGMManagers(pathPattern, isPrefixMatch)) {
       num += sgmManager.getDevicesNum(pathPattern, isPrefixMatch);
     }
     return num;
@@ -673,7 +677,7 @@ public class MManager {
    */
   public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return storageGroupManager.getStorageGroupNum(pathPattern, isPrefixMatch);
+    return storageGroupSchemaManager.getStorageGroupNum(pathPattern, isPrefixMatch);
   }
 
   /**
@@ -688,7 +692,7 @@ public class MManager {
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
     Pair<Integer, List<SGMManager>> pair =
-        storageGroupManager.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
+        storageGroupSchemaManager.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
     int count = pair.left;
     for (SGMManager sgmManager : pair.right) {
       count += sgmManager.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
@@ -712,7 +716,7 @@ public class MManager {
     Map<PartialPath, Integer> result = new HashMap<>();
     Map<PartialPath, Integer> sgResult;
     for (SGMManager sgmManager :
-        storageGroupManager.getInvolvedSGMManagers(pathPattern, isPrefixMatch)) {
+        storageGroupSchemaManager.getInvolvedSGMManagers(pathPattern, isPrefixMatch)) {
       sgResult = sgmManager.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
       for (PartialPath path : sgResult.keySet()) {
         if (result.containsKey(path)) {
@@ -746,7 +750,7 @@ public class MManager {
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
     Pair<List<PartialPath>, List<SGMManager>> pair =
-        storageGroupManager.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);
+        storageGroupSchemaManager.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);
     List<PartialPath> result = pair.left;
     for (SGMManager sgmManager : pair.right) {
       result.addAll(sgmManager.getNodesListInGivenLevel(pathPattern, nodeLevel, filter));
@@ -767,7 +771,7 @@ public class MManager {
    */
   public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
     Pair<Set<String>, List<SGMManager>> pair =
-        storageGroupManager.getChildNodePathInNextLevel(pathPattern);
+        storageGroupSchemaManager.getChildNodePathInNextLevel(pathPattern);
     Set<String> result = pair.left;
     for (SGMManager sgmManager : pair.right) {
       result.addAll(sgmManager.getChildNodePathInNextLevel(pathPattern));
@@ -787,7 +791,7 @@ public class MManager {
    */
   public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
     Pair<Set<String>, List<SGMManager>> pair =
-        storageGroupManager.getChildNodeNameInNextLevel(pathPattern);
+        storageGroupSchemaManager.getChildNodeNameInNextLevel(pathPattern);
     Set<String> result = pair.left;
     for (SGMManager sgmManager : pair.right) {
       result.addAll(sgmManager.getChildNodeNameInNextLevel(pathPattern));
@@ -804,12 +808,12 @@ public class MManager {
    * @apiNote :for cluster
    */
   public boolean isStorageGroup(PartialPath path) {
-    return storageGroupManager.isStorageGroup(path);
+    return storageGroupSchemaManager.isStorageGroup(path);
   }
 
   /** Check whether the given path contains a storage group */
   public boolean checkStorageGroupByPath(PartialPath path) {
-    return storageGroupManager.checkStorageGroupByPath(path);
+    return storageGroupSchemaManager.checkStorageGroupByPath(path);
   }
 
   /**
@@ -821,7 +825,7 @@ public class MManager {
    * @return storage group in the given path
    */
   public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
-    return storageGroupManager.getBelongedStorageGroup(path);
+    return storageGroupSchemaManager.getBelongedStorageGroup(path);
   }
 
   /**
@@ -836,7 +840,7 @@ public class MManager {
    */
   public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
       throws MetadataException {
-    return storageGroupManager.getBelongedStorageGroups(pathPattern);
+    return storageGroupSchemaManager.getBelongedStorageGroups(pathPattern);
   }
 
   /**
@@ -849,12 +853,12 @@ public class MManager {
    */
   public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return storageGroupManager.getMatchedStorageGroups(pathPattern, isPrefixMatch);
+    return storageGroupSchemaManager.getMatchedStorageGroups(pathPattern, isPrefixMatch);
   }
 
   /** Get all storage group paths */
   public List<PartialPath> getAllStorageGroupPaths() {
-    return storageGroupManager.getAllStorageGroupPaths();
+    return storageGroupSchemaManager.getAllStorageGroupPaths();
   }
 
   /**
@@ -888,7 +892,9 @@ public class MManager {
    * @return A HashSet instance which stores devices paths.
    */
   public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
-    return storageGroupManager.getBelongedSGMManager(timeseries).getBelongedDevices(timeseries);
+    return storageGroupSchemaManager
+        .getBelongedSGMManager(timeseries)
+        .getBelongedDevices(timeseries);
   }
 
   /**
@@ -903,7 +909,7 @@ public class MManager {
       throws MetadataException {
     Set<PartialPath> result = new TreeSet<>();
     for (SGMManager sgmManager :
-        storageGroupManager.getInvolvedSGMManagers(pathPattern, isPrefixMatch)) {
+        storageGroupSchemaManager.getInvolvedSGMManagers(pathPattern, isPrefixMatch)) {
       result.addAll(sgmManager.getMatchedDevices(pathPattern, isPrefixMatch));
     }
     return result;
@@ -922,7 +928,7 @@ public class MManager {
     int offset = plan.getOffset();
 
     for (SGMManager sgmManager :
-        storageGroupManager.getInvolvedSGMManagers(plan.getPath(), plan.isPrefixMatch())) {
+        storageGroupSchemaManager.getInvolvedSGMManagers(plan.getPath(), plan.isPrefixMatch())) {
       if (limit != 0 && plan.getLimit() == 0) {
         break;
       }
@@ -983,7 +989,7 @@ public class MManager {
     int tmpOffset = offset;
 
     for (SGMManager sgmManager :
-        storageGroupManager.getInvolvedSGMManagers(pathPattern, isPrefixMatch)) {
+        storageGroupSchemaManager.getInvolvedSGMManagers(pathPattern, isPrefixMatch)) {
       if (limit != 0 && tmpLimit == 0) {
         break;
       }
@@ -1024,7 +1030,7 @@ public class MManager {
     }
 
     for (SGMManager sgmManager :
-        storageGroupManager.getInvolvedSGMManagers(plan.getPath(), plan.isPrefixMatch())) {
+        storageGroupSchemaManager.getInvolvedSGMManagers(plan.getPath(), plan.isPrefixMatch())) {
       if (limit != 0 && plan.getLimit() == 0) {
         break;
       }
@@ -1077,7 +1083,7 @@ public class MManager {
   public List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
       throws PathNotExistException {
     try {
-      return storageGroupManager
+      return storageGroupSchemaManager
           .getBelongedSGMManager(devicePath)
           .getAllMeasurementByDevicePath(devicePath);
     } catch (MetadataException e) {
@@ -1096,34 +1102,36 @@ public class MManager {
    */
   public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
       throws MetadataException {
-    return storageGroupManager.getStorageGroupNodeByStorageGroupPath(path);
+    return storageGroupSchemaManager.getStorageGroupNodeByStorageGroupPath(path);
   }
 
   /** Get storage group node by path. the give path don't need to be storage group path. */
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
     ensureStorageGroup(path);
-    return storageGroupManager.getStorageGroupNodeByPath(path);
+    return storageGroupSchemaManager.getStorageGroupNodeByPath(path);
   }
 
   /** Get all storage group MNodes */
   public List<IStorageGroupMNode> getAllStorageGroupNodes() {
-    return storageGroupManager.getAllStorageGroupNodes();
+    return storageGroupSchemaManager.getAllStorageGroupNodes();
   }
 
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
-    return storageGroupManager.getBelongedSGMManager(path).getDeviceNode(path);
+    return storageGroupSchemaManager.getBelongedSGMManager(path).getDeviceNode(path);
   }
 
   public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
-    return storageGroupManager
+    return storageGroupSchemaManager
         .getBelongedSGMManager(deviceId)
         .getMeasurementMNodes(deviceId, measurements);
   }
 
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     try {
-      return storageGroupManager.getBelongedSGMManager(fullPath).getMeasurementMNode(fullPath);
+      return storageGroupSchemaManager
+          .getBelongedSGMManager(fullPath)
+          .getMeasurementMNode(fullPath);
     } catch (StorageGroupNotSetException e) {
       throw new PathNotExistException(fullPath.getFullPath());
     }
@@ -1152,7 +1160,7 @@ public class MManager {
 
   // region Interfaces for alias and tag/attribute operations
   public void changeAlias(PartialPath path, String alias) throws MetadataException {
-    storageGroupManager.getBelongedSGMManager(path).changeAlias(path, alias);
+    storageGroupSchemaManager.getBelongedSGMManager(path).changeAlias(path, alias);
   }
 
   /**
@@ -1171,7 +1179,7 @@ public class MManager {
       Map<String, String> attributesMap,
       PartialPath fullPath)
       throws MetadataException, IOException {
-    storageGroupManager
+    storageGroupSchemaManager
         .getBelongedSGMManager(fullPath)
         .upsertTagsAndAttributes(alias, tagsMap, attributesMap, fullPath);
   }
@@ -1184,7 +1192,9 @@ public class MManager {
    */
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    storageGroupManager.getBelongedSGMManager(fullPath).addAttributes(attributesMap, fullPath);
+    storageGroupSchemaManager
+        .getBelongedSGMManager(fullPath)
+        .addAttributes(attributesMap, fullPath);
   }
 
   /**
@@ -1195,7 +1205,7 @@ public class MManager {
    */
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    storageGroupManager.getBelongedSGMManager(fullPath).addTags(tagsMap, fullPath);
+    storageGroupSchemaManager.getBelongedSGMManager(fullPath).addTags(tagsMap, fullPath);
   }
 
   /**
@@ -1207,7 +1217,9 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
       throws MetadataException, IOException {
-    storageGroupManager.getBelongedSGMManager(fullPath).dropTagsOrAttributes(keySet, fullPath);
+    storageGroupSchemaManager
+        .getBelongedSGMManager(fullPath)
+        .dropTagsOrAttributes(keySet, fullPath);
   }
 
   /**
@@ -1219,7 +1231,7 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    storageGroupManager
+    storageGroupSchemaManager
         .getBelongedSGMManager(fullPath)
         .setTagsOrAttributesValue(alterMap, fullPath);
   }
@@ -1234,7 +1246,7 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException {
-    storageGroupManager
+    storageGroupSchemaManager
         .getBelongedSGMManager(fullPath)
         .renameTagOrAttributeKey(oldKey, newKey, fullPath);
   }
@@ -1250,7 +1262,8 @@ public class MManager {
   public void collectMeasurementSchema(
       PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
     try {
-      for (SGMManager sgmManager : storageGroupManager.getInvolvedSGMManagers(prefixPath, true)) {
+      for (SGMManager sgmManager :
+          storageGroupSchemaManager.getInvolvedSGMManagers(prefixPath, true)) {
         sgmManager.collectMeasurementSchema(prefixPath, measurementSchemas);
       }
     } catch (MetadataException ignored) {
@@ -1266,7 +1279,8 @@ public class MManager {
   public void collectTimeseriesSchema(
       PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
     try {
-      for (SGMManager sgmManager : storageGroupManager.getInvolvedSGMManagers(prefixPath, true)) {
+      for (SGMManager sgmManager :
+          storageGroupSchemaManager.getInvolvedSGMManagers(prefixPath, true)) {
         sgmManager.collectTimeseriesSchema(prefixPath, timeseriesSchemas);
       }
     } catch (MetadataException ignored) {
@@ -1302,7 +1316,8 @@ public class MManager {
    */
   public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
       throws MetadataException {
-    Map<String, List<PartialPath>> sgPathMap = storageGroupManager.groupPathByStorageGroup(path);
+    Map<String, List<PartialPath>> sgPathMap =
+        storageGroupSchemaManager.groupPathByStorageGroup(path);
     if (logger.isDebugEnabled()) {
       logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
     }
@@ -1472,7 +1487,7 @@ public class MManager {
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
     try {
-      return storageGroupManager
+      return storageGroupSchemaManager
           .getBelongedSGMManager(plan.getDevicePath())
           .getSeriesSchemasAndReadLockDevice(plan);
     } catch (StorageGroupNotSetException e) {
@@ -1482,7 +1497,7 @@ public class MManager {
         throw e;
       }
 
-      return storageGroupManager
+      return storageGroupSchemaManager
           .getBelongedSGMManager(plan.getDevicePath())
           .getSeriesSchemasAndReadLockDevice(plan);
     }
@@ -1505,7 +1520,7 @@ public class MManager {
     Template template = templateManager.getTemplate(plan.getName());
 
     for (PartialPath path : template.getRelatedStorageGroup()) {
-      if (!storageGroupManager
+      if (!storageGroupSchemaManager
           .getBelongedSGMManager(path)
           .isTemplateAppendable(template, plan.getMeasurements())) {
         isTemplateAppendable = false;
@@ -1590,13 +1605,15 @@ public class MManager {
   public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
     Set<String> result = new HashSet<>();
     if (templateName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      for (SGMManager sgmManager : storageGroupManager.getAllSGMManagers()) {
+      for (SGMManager sgmManager : storageGroupSchemaManager.getAllSGMManagers()) {
         result.addAll(sgmManager.getPathsSetTemplate(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
       }
     } else {
       for (PartialPath path : templateManager.getTemplate(templateName).getRelatedStorageGroup()) {
         result.addAll(
-            storageGroupManager.getBelongedSGMManager(path).getPathsSetTemplate(templateName));
+            storageGroupSchemaManager
+                .getBelongedSGMManager(path)
+                .getPathsSetTemplate(templateName));
       }
     }
 
@@ -1606,13 +1623,15 @@ public class MManager {
   public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
     Set<String> result = new HashSet<>();
     if (templateName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      for (SGMManager sgmManager : storageGroupManager.getAllSGMManagers()) {
+      for (SGMManager sgmManager : storageGroupSchemaManager.getAllSGMManagers()) {
         result.addAll(sgmManager.getPathsUsingTemplate(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
       }
     } else {
       for (PartialPath path : templateManager.getTemplate(templateName).getRelatedStorageGroup()) {
         result.addAll(
-            storageGroupManager.getBelongedSGMManager(path).getPathsUsingTemplate(templateName));
+            storageGroupSchemaManager
+                .getBelongedSGMManager(path)
+                .getPathsUsingTemplate(templateName));
       }
     }
 
@@ -1639,7 +1658,7 @@ public class MManager {
     PartialPath path = new PartialPath(plan.getPrefixPath());
     try {
       ensureStorageGroup(path);
-      storageGroupManager.getBelongedSGMManager(path).setSchemaTemplate(plan);
+      storageGroupSchemaManager.getBelongedSGMManager(path).setSchemaTemplate(plan);
     } catch (StorageGroupAlreadySetException e) {
       throw new MetadataException("Template should not be set above storageGroup");
     }
@@ -1647,7 +1666,7 @@ public class MManager {
 
   public synchronized void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
     try {
-      storageGroupManager
+      storageGroupSchemaManager
           .getBelongedSGMManager(new PartialPath(plan.getPrefixPath()))
           .unsetSchemaTemplate(plan);
     } catch (StorageGroupNotSetException e) {
@@ -1657,7 +1676,9 @@ public class MManager {
 
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
     try {
-      storageGroupManager.getBelongedSGMManager(plan.getPrefixPath()).setUsingSchemaTemplate(plan);
+      storageGroupSchemaManager
+          .getBelongedSGMManager(plan.getPrefixPath())
+          .setUsingSchemaTemplate(plan);
     } catch (StorageGroupNotSetException e) {
       throw new MetadataException(
           String.format(
@@ -1666,7 +1687,7 @@ public class MManager {
   }
 
   IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
-    return storageGroupManager
+    return storageGroupSchemaManager
         .getBelongedSGMManager(node.getPartialPath())
         .setUsingSchemaTemplate(node);
   }
@@ -1703,7 +1724,7 @@ public class MManager {
   @TestOnly
   public void initForMultiMManagerTest() {
     templateManager = TemplateManager.getNewInstanceForTest();
-    storageGroupManager = StorageGroupManager.getNewInstanceForTest();
+    storageGroupSchemaManager = StorageGroupSchemaManager.getNewInstanceForTest();
     init();
   }
 

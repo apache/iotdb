@@ -44,24 +44,24 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
 // This class implements all the interfaces for storage group management. The MTreeAboveSg is used
 // to manage all the storage groups and MNodes above storage group.
-public class StorageGroupManager implements IStorageGroupManager {
+public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(StorageGroupManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(StorageGroupSchemaManager.class);
 
   private MTreeAboveSG mtree;
 
   private static class StorageGroupManagerHolder {
 
-    private static final StorageGroupManager INSTANCE = new StorageGroupManager();
+    private static final StorageGroupSchemaManager INSTANCE = new StorageGroupSchemaManager();
 
     private StorageGroupManagerHolder() {}
   }
 
-  public static StorageGroupManager getInstance() {
+  public static StorageGroupSchemaManager getInstance() {
     return StorageGroupManagerHolder.INSTANCE;
   }
 
-  private StorageGroupManager() {
+  private StorageGroupSchemaManager() {
     mtree = new MTreeAboveSG();
   }
 
@@ -190,8 +190,8 @@ public class StorageGroupManager implements IStorageGroupManager {
   }
 
   @Override
-  public boolean isPathExist(PartialPath path) {
-    return mtree.isPathExist(path);
+  public boolean isStorageGroupAlreadySet(PartialPath path) {
+    return mtree.isStorageGroupAlreadySet(path);
   }
 
   @Override
@@ -249,7 +249,7 @@ public class StorageGroupManager implements IStorageGroupManager {
   }
 
   @TestOnly
-  public static StorageGroupManager getNewInstanceForTest() {
-    return new StorageGroupManager();
+  public static StorageGroupSchemaManager getNewInstanceForTest() {
+    return new StorageGroupSchemaManager();
   }
 }

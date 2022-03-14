@@ -130,7 +130,7 @@ public class MTreeBelowSGTest {
   public void testAddAndQueryPath() {
     MTreeBelowSG storageGroup = null;
     try {
-      assertFalse(root.isPathExist(new PartialPath("root.a")));
+      assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.a")));
       assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a")));
       storageGroup = getStorageGroup(new PartialPath("root.a"));
 
@@ -196,7 +196,7 @@ public class MTreeBelowSGTest {
   public void testAddAndQueryPathWithAlias() {
     MTreeBelowSG storageGroup = null;
     try {
-      assertFalse(root.isPathExist(new PartialPath("root.a")));
+      assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.a")));
       assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a")));
       storageGroup = getStorageGroup(new PartialPath("root.a"));
 
@@ -335,7 +335,7 @@ public class MTreeBelowSGTest {
     MTreeBelowSG storageGroup = null;
     try {
       storageGroup = getStorageGroup(new PartialPath("root.laptop.d1"));
-      assertTrue(root.isPathExist(new PartialPath("root.laptop.d1")));
+      assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
       assertTrue(root.checkStorageGroupByPath(new PartialPath("root.laptop.d1")));
       assertEquals(
           "root.laptop.d1",
@@ -398,9 +398,9 @@ public class MTreeBelowSGTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(root.isPathExist(new PartialPath("root.laptop.d1.s1")));
-    assertFalse(root.isPathExist(new PartialPath("root.laptop.d1")));
-    assertTrue(root.isPathExist(new PartialPath("root.laptop")));
+    assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1.s1")));
+    assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
+    assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop")));
   }
 
   @Test
@@ -503,7 +503,7 @@ public class MTreeBelowSGTest {
     String path1 = "root";
     String sgPath1 = "root.vehicle";
     MTreeBelowSG storageGroup = getStorageGroup(new PartialPath(sgPath1));
-    assertTrue(root.isPathExist(new PartialPath(path1)));
+    assertTrue(root.isStorageGroupAlreadySet(new PartialPath(path1)));
     try {
       storageGroup.createTimeseries(
           new PartialPath("root.vehicle.d1.s1"),

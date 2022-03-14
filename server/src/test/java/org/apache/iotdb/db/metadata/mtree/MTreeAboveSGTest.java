@@ -86,9 +86,9 @@ public class MTreeAboveSGTest {
     MTreeAboveSG root = new MTreeAboveSG();
     String path1 = "root";
     root.setStorageGroup(new PartialPath("root.laptop"));
-    assertTrue(root.isPathExist(new PartialPath(path1)));
-    assertTrue(root.isPathExist(new PartialPath("root.laptop")));
-    assertTrue(root.isPathExist(new PartialPath("root.laptop.d1")));
+    assertTrue(root.isStorageGroupAlreadySet(new PartialPath(path1)));
+    assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop")));
+    assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
   }
 
   @Test
@@ -120,12 +120,12 @@ public class MTreeAboveSGTest {
     MTreeAboveSG root = new MTreeAboveSG();
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
-      assertTrue(root.isPathExist(new PartialPath("root.laptop.d1")));
+      assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
       assertTrue(root.checkStorageGroupByPath(new PartialPath("root.laptop.d1")));
       assertEquals(
           "root.laptop.d1",
           root.getBelongedStorageGroup(new PartialPath("root.laptop.d1")).getFullPath());
-      assertTrue(root.isPathExist(new PartialPath("root.laptop.d1.s1")));
+      assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1.s1")));
       assertTrue(root.checkStorageGroupByPath(new PartialPath("root.laptop.d1.s1")));
       assertEquals(
           "root.laptop.d1",
@@ -152,9 +152,9 @@ public class MTreeAboveSGTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(root.isPathExist(new PartialPath("root.laptop.d1")));
-    assertTrue(root.isPathExist(new PartialPath("root.laptop")));
-    assertTrue(root.isPathExist(new PartialPath("root.laptop.d2")));
+    assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
+    assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop")));
+    assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d2")));
   }
 
   @Test
