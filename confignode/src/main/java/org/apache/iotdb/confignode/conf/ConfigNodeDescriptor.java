@@ -55,29 +55,33 @@ public class ConfigNodeDescriptor {
     }
   }
 
-  public URL getPropsUrl() {
-    // The same logic as IoTDBDescriptor
-    String url = System.getProperty(ConfigNodeConstant.CONFIG_NODE_CONF, null);
-    if (url == null) {
-      url = System.getProperty(ConfigNodeConstant.CONFIG_NODE_HOME, null);
-      if (url != null) {
-        url = url + File.separatorChar + "conf" + File.separatorChar + ConfigNodeConf.CONF_NAME;
-      } else {
-        URL uri = ConfigNodeConf.class.getResource("/" + ConfigNodeConf.CONF_NAME);
-        if (uri != null) {
-          return uri;
-        }
-        LOGGER.warn(
-            "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file {}, use default configuration",
-            ConfigNodeConf.CONF_NAME);
-        return null;
+  public String getPropsDir() {
+    // Check if CONFIG_NODE_CONF is set
+    String propsDir = System.getProperty(ConfigNodeConstant.CONFIG_NODE_CONF, null);
+    if (propsDir == null) {
+      // Check if CONFIG_NODE_HOME is set
+      propsDir = System.getProperty(ConfigNodeConstant.CONFIG_NODE_HOME, null);
+      if (propsDir == null) {
+        // When start ConfigNode with script, CONFIG_NODE_CONF and CONFIG_NODE_HOME must be set.
+        // Therefore, this case is TestOnly
+        propsDir = ConfigNodeConstant.CONF_DIR;
       }
-    } else if (!url.endsWith(".properties")) {
-      url += File.separator + ConfigNodeConf.CONF_NAME;
     }
 
+    return propsDir;
+  }
+
+  public URL getPropsUrl() {
+    String url = getPropsDir();
+
+    // Add props prefix
     if (!url.startsWith("file:") && !url.startsWith("classpath:")) {
       url = "file:" + url;
+    }
+
+    // Add props suffix
+    if (!url.endsWith(".properties")) {
+      url += File.separator + ConfigNodeConstant.CONF_NAME;
     }
 
     try {

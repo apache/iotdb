@@ -16,34 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.conf;
+package org.apache.iotdb.confignode.exception.conf;
 
-public class ConfigNodeConf {
+import org.apache.iotdb.confignode.exception.ConfigNodeException;
 
-  // Number of DeviceGroups per StorageGroup
-  private int deviceGroupCount = 10000;
+public class ConfigurationException extends ConfigNodeException {
 
-  // DeviceGroup hash executor class
-  private String deviceGroupHashExecutorClass =
-      "org.apache.iotdb.confignode.manager.hash.BKDRHashExecutor";
-
-  public ConfigNodeConf() {
-    // empty constructor
-  }
-
-  public int getDeviceGroupCount() {
-    return deviceGroupCount;
-  }
-
-  public void setDeviceGroupCount(int deviceGroupCount) {
-    this.deviceGroupCount = deviceGroupCount;
-  }
-
-  public String getDeviceGroupHashExecutorClass() {
-    return deviceGroupHashExecutorClass;
-  }
-
-  public void setDeviceGroupHashExecutorClass(String deviceGroupHashExecutorClass) {
-    this.deviceGroupHashExecutorClass = deviceGroupHashExecutorClass;
+  public ConfigurationException(String parameter, String badValue, String correctValue) {
+    super(
+        String.format(
+            "Parameter %s can not be %s, please set to: %s.", parameter, badValue, correctValue));
   }
 }

@@ -18,28 +18,30 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-public class ConfigNodeConstant {
+import org.apache.iotdb.confignode.utils.ConfigNodeEnvironmentUtils;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
-  // when running the program in IDE, we can not get the version info using
-  // getImplementationVersion()
-  public static final String VERSION =
-    ConfigNodeConstant.class.getPackage().getImplementationVersion() != null
-      ? ConfigNodeConstant.class.getPackage().getImplementationVersion()
-      : "UNKNOWN";
+import java.net.URL;
 
-  public static final String CONFIG_NODE_CONF = "CONFIG_NODE_CONF";
+public class ConfigNodeConfigurationTest {
 
-  public static final String CONFIG_NODE_HOME = "CONFIG_NODE_HOME";
+  @Before
+  public void setUp() {
+    ConfigNodeEnvironmentUtils.envSetUp();
+  }
 
-  public static final String DATA_DIR = "data";
+  @After
+  public void teardown() {
+    ConfigNodeEnvironmentUtils.cleanEnv();
+  }
 
-  public static final String CONF_DIR = "conf";
-
-  public static final String CONF_NAME = "iotdb-confignode.properties";
-
-  public static final String SPECIAL_CONF_NAME = "iotdb-confignode-special.properties";
-
-  private ConfigNodeConstant() {
-    // empty constructor
+  @Test
+  public void checkRepeatConfigurationTest() {
+    URL u1 = ConfigNodeEnvironmentUtils.class.getResource("/");
+    URL u2 = ConfigNodeDescriptor.class.getResource("/");
+    int z = 233;
   }
 }
