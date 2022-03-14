@@ -141,12 +141,13 @@ public class MTreeBelowSG implements Serializable {
   private String mtreeSnapshotTmpPath;
 
   // region MTree initialization, clear and serialization
-  public MTreeBelowSG(IStorageGroupMNode storageGroupMNode) {
+  public MTreeBelowSG(IStorageGroupMNode storageGroupMNode) throws IOException {
     this.storageGroupMNode = storageGroupMNode;
     levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
+    init();
   }
 
-  public void init() throws IOException {
+  private void init() throws IOException {
     mtreeSnapshotPath =
         IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
             + File.separator
@@ -172,6 +173,11 @@ public class MTreeBelowSG implements Serializable {
       IStorageGroupMNode recoveredTree =
           deserializeFrom(mtreeSnapshot, storageGroupMNode.getFullPath());
       if (recoveredTree != null) {
+        // when executing this method, the MTree is initializing, which means this.storageGroup now
+        // takes no subTree info
+        // The subTree of storageGroupMNode will recover from snapshot
+        // add recoveredTree to MTree by replace the storageGroupMNode with the recovered one from
+        // snapshot
         this.storageGroupMNode.getParent().replaceChild(storageGroupMNode.getName(), recoveredTree);
         this.storageGroupMNode = recoveredTree;
         logger.debug(
@@ -182,11 +188,6 @@ public class MTreeBelowSG implements Serializable {
 
   public IStorageGroupMNode getStorageGroupMNode() {
     return this.storageGroupMNode;
-  }
-
-  public void setStorageGroupMNode(IStorageGroupMNode storageGroupMNode) {
-    this.storageGroupMNode = storageGroupMNode;
-    levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
   }
 
   public void clear() {

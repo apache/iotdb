@@ -111,6 +111,11 @@ public abstract class MNode implements IMNode {
   }
 
   @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
+    newMNode.setParent(parent);
+  }
+
+  @Override
   public boolean isEmptyInternal() {
     return !IoTDBConstant.PATH_ROOT.equals(name)
         && !isStorageGroup()

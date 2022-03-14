@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -49,7 +50,18 @@ public class StorageGroupManager implements IStorageGroupManager {
 
   private MTreeAboveSG mtree;
 
-  public StorageGroupManager() {
+  private static class StorageGroupManagerHolder {
+
+    private static final StorageGroupManager INSTANCE = new StorageGroupManager();
+
+    private StorageGroupManagerHolder() {}
+  }
+
+  public static StorageGroupManager getInstance() {
+    return StorageGroupManagerHolder.INSTANCE;
+  }
+
+  private StorageGroupManager() {
     mtree = new MTreeAboveSG();
   }
 
@@ -79,6 +91,7 @@ public class StorageGroupManager implements IStorageGroupManager {
 
   @Override
   public void setStorageGroup(PartialPath path) throws MetadataException {
+    // mtree.setStorageGroup ensures that the storageGroupMNode
     IStorageGroupMNode storageGroupMNode = mtree.setStorageGroup(path);
     SGMManager sgmManager = new SGMManager();
     storageGroupMNode.setSGMManager(sgmManager);
@@ -237,5 +250,10 @@ public class StorageGroupManager implements IStorageGroupManager {
   @Override
   public String getMetadataInString() {
     return mtree.toString();
+  }
+
+  @TestOnly
+  public static StorageGroupManager getNewInstanceForTest() {
+    return new StorageGroupManager();
   }
 }

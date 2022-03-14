@@ -148,7 +148,7 @@ public class MManager {
   private boolean initialized;
 
   private TimeseriesStatistics timeseriesStatistics = TimeseriesStatistics.getInstance();
-  private IStorageGroupManager storageGroupManager;
+  private IStorageGroupManager storageGroupManager = StorageGroupManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
 
   // region MManager Singleton
@@ -175,7 +175,7 @@ public class MManager {
       if (schemaFolder.mkdirs()) {
         logger.info("create system folder {}", schemaFolder.getAbsolutePath());
       } else {
-        logger.info("create system folder {} failed.", schemaFolder.getAbsolutePath());
+        logger.error("create system folder {} failed.", schemaFolder.getAbsolutePath());
       }
     }
   }
@@ -189,7 +189,6 @@ public class MManager {
     try {
       timeseriesStatistics.init();
       templateManager.init();
-      storageGroupManager = new StorageGroupManager();
       storageGroupManager.init();
 
     } catch (IOException e) {
@@ -249,7 +248,7 @@ public class MManager {
   public synchronized void clear() {
     try {
       storageGroupManager.clear();
-      this.templateManager.clear();
+      templateManager.clear();
       timeseriesStatistics.clear();
       initialized = false;
     } catch (IOException e) {
@@ -1675,10 +1674,14 @@ public class MManager {
    * Attention!!!!!, this method could only be used for Tests involving multiple mmanagers. The
    * singleton of templateManager and tagManager will cause interference between mmanagers if one of
    * the mmanagers invoke init method or clear method
+   *
+   * <p>todo remove this method after delete or refactor the SlotPartitionTableTest in cluster
+   * module
    */
   @TestOnly
   public void initForMultiMManagerTest() {
     templateManager = TemplateManager.getNewInstanceForTest();
+    storageGroupManager = StorageGroupManager.getNewInstanceForTest();
     init();
   }
 

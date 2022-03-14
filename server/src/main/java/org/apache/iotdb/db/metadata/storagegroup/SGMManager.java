@@ -33,6 +33,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.NoTemplateOnMNodeException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
@@ -220,7 +221,7 @@ public class SGMManager {
 
   // Because the writer will be used later and should not be closed here.
   @SuppressWarnings("squid:S2093")
-  public synchronized void init(IStorageGroupMNode storageGroupMNode) {
+  public synchronized void init(IStorageGroupMNode storageGroupMNode) throws MetadataException {
     if (initialized) {
       return;
     }
@@ -231,10 +232,10 @@ public class SGMManager {
     File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
-        logger.info("create storage group schema folder {}", sgSchemaFolder.getAbsolutePath());
+        logger.info("create storage group schema folder {}", sgSchemaDirPath);
       } else {
-        logger.info(
-            "create storage group schema folder {} failed.", sgSchemaFolder.getAbsolutePath());
+        logger.error("create storage group schema folder {} failed.", sgSchemaDirPath);
+        throw new SchemaDirCreationFailureException(sgSchemaDirPath);
       }
     }
     logFilePath = sgSchemaDirPath + File.separator + MetadataConstant.METADATA_LOG;
@@ -246,9 +247,7 @@ public class SGMManager {
       isRecovering = true;
 
       tagManager = new TagManager(sgSchemaDirPath);
-      tagManager.init();
       mtree = new MTreeBelowSG(storageGroupMNode);
-      mtree.init();
 
       int lineNumber = initFromLog(logFile);
 
@@ -424,12 +423,6 @@ public class SGMManager {
   // endregion
 
   // region Interfaces for Storage Group Info query and operation
-
-  public void setStorageGroupMNode(IStorageGroupMNode storageGroupMNode) {
-    if (mtree != null) {
-      mtree.setStorageGroupMNode(storageGroupMNode);
-    }
-  }
 
   public void setTTL(long dataTTL) throws MetadataException, IOException {
     mtree.getStorageGroupMNode().setDataTTL(dataTTL);

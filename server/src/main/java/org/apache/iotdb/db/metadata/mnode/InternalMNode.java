@@ -150,36 +150,21 @@ public class InternalMNode extends MNode {
       return;
     }
 
-    // newChildNode builds parent-child relationship
-    Map<String, IMNode> grandChildren = oldChildNode.getChildren();
-    if (!grandChildren.isEmpty()) {
-      newChildNode.setChildren(grandChildren);
-      grandChildren.forEach(
-          (grandChildName, grandChildNode) -> grandChildNode.setParent(newChildNode));
-    }
-
-    if (newChildNode.isEntity() && oldChildNode.isEntity()) {
-      Map<String, IMeasurementMNode> grandAliasChildren =
-          oldChildNode.getAsEntityMNode().getAliasChildren();
-      if (!grandAliasChildren.isEmpty()) {
-        newChildNode.getAsEntityMNode().setAliasChildren(grandAliasChildren);
-        grandAliasChildren.forEach(
-            (grandAliasChildName, grandAliasChild) -> grandAliasChild.setParent(newChildNode));
-      }
-      newChildNode.getAsEntityMNode().setUseTemplate(oldChildNode.isUseTemplate());
-    }
-
-    if (newChildNode.isStorageGroup() && oldChildNode.isStorageGroup()) {
-      newChildNode
-          .getAsStorageGroupMNode()
-          .setSGMManager(oldChildNode.getAsStorageGroupMNode().getSGMManager());
-    }
-
-    newChildNode.setSchemaTemplate(oldChildNode.getSchemaTemplate());
-
-    newChildNode.setParent(this);
+    oldChildNode.moveDataToNewMNode(newChildNode);
 
     children.replace(oldChildName, newChildNode);
+  }
+
+  @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
+    super.moveDataToNewMNode(newMNode);
+
+    newMNode.setSchemaTemplate(schemaTemplate);
+    newMNode.setUseTemplate(useTemplate);
+
+    if (children != null) {
+      children.forEach(newMNode::addChild);
+    }
   }
 
   @Override

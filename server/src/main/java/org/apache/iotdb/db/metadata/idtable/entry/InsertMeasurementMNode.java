@@ -160,6 +160,11 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
+    throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
+  }
+
+  @Override
   public Map<String, IMNode> getChildren() {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }

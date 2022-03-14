@@ -136,6 +136,19 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   }
 
   @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
+    super.moveDataToNewMNode(newMNode);
+
+    if (newMNode.isEntity()) {
+      IEntityMNode newEntityMNode = newMNode.getAsEntityMNode();
+      newEntityMNode.setAligned(isAligned);
+      if (aliasChildren != null) {
+        aliasChildren.forEach(newMNode.getAsEntityMNode()::addAlias);
+      }
+    }
+  }
+
+  @Override
   public boolean isEntity() {
     return true;
   }

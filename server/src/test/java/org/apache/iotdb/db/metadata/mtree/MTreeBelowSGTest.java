@@ -41,6 +41,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -73,7 +74,11 @@ public class MTreeBelowSGTest {
   private MTreeBelowSG getStorageGroup(PartialPath path) throws MetadataException {
     IStorageGroupMNode storageGroupMNode = root.setStorageGroup(path);
     storageGroupMNode.setSGMManager(new SGMManager());
-    return new MTreeBelowSG(storageGroupMNode);
+    try {
+      return new MTreeBelowSG(storageGroupMNode);
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
   }
 
   @Test
@@ -196,7 +201,7 @@ public class MTreeBelowSGTest {
     try {
       assertFalse(root.isPathExist(new PartialPath("root.a")));
       assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a")));
-      storageGroup = new MTreeBelowSG(root.setStorageGroup(new PartialPath("root.a")));
+      storageGroup = getStorageGroup(new PartialPath("root.a"));
 
       storageGroup.createTimeseries(
           new PartialPath("root.a.d0.s0"),

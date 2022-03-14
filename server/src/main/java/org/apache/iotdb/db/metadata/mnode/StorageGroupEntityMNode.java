@@ -56,7 +56,14 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
   public void setSGMManager(SGMManager sgmManager) {
     if (this.sgmManager == null) {
       this.sgmManager = sgmManager;
-      sgmManager.setStorageGroupMNode(this);
+    }
+  }
+
+  @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
+    super.moveDataToNewMNode(newMNode);
+    if (newMNode.isStorageGroup()) {
+      newMNode.getAsStorageGroupMNode().setSGMManager(this.sgmManager);
     }
   }
 

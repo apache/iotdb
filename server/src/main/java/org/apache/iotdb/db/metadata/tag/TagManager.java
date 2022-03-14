@@ -68,11 +68,8 @@ public class TagManager {
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<IMeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
 
-  public TagManager(String sgSchemaDirPath) {
+  public TagManager(String sgSchemaDirPath) throws IOException {
     this.sgSchemaDirPath = sgSchemaDirPath;
-  }
-
-  public void init() throws IOException {
     tagLogFile = new TagLogFile(sgSchemaDirPath, MetadataConstant.TAG_LOG);
   }
 

@@ -53,7 +53,12 @@ public interface IMNode extends Serializable {
 
   void deleteChild(String name);
 
+  // this method will replace the oldChild with the newChild, the data of oldChild will be moved to
+  // newChild
   void replaceChild(String oldChildName, IMNode newChildNode);
+
+  // this method will move all the reference or value of current node's attributes to newMNode
+  void moveDataToNewMNode(IMNode newMNode);
 
   Map<String, IMNode> getChildren();
 
