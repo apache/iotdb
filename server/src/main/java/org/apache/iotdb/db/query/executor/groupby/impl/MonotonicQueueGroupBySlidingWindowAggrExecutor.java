@@ -23,21 +23,27 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.executor.groupby.GroupBySlidingWindowAggrExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class MinValueGroupBySlidingWindowAggrExecutor extends GroupBySlidingWindowAggrExecutor {
+import java.util.Comparator;
 
-  public MinValueGroupBySlidingWindowAggrExecutor(
-      TSDataType dataType, String aggrFuncName, boolean ascending) {
+public class MonotonicQueueGroupBySlidingWindowAggrExecutor
+    extends GroupBySlidingWindowAggrExecutor {
+
+  private final Comparator<Object> comparator;
+
+  public MonotonicQueueGroupBySlidingWindowAggrExecutor(
+      TSDataType dataType, String aggrFuncName, boolean ascending, Comparator<Object> comparator) {
     super(dataType, aggrFuncName, ascending);
+    this.comparator = comparator;
   }
 
   @Override
   public void update(AggregateResult aggregateResult) {
-    Comparable<Object> minVal = (Comparable<Object>) aggregateResult.getResult();
-    if (minVal == null) {
+    Object res = aggregateResult.getResult();
+    if (res == null) {
       return;
     }
 
-    while (!deque.isEmpty() && minVal.compareTo(deque.getLast().getResult()) < 0) {
+    while (!deque.isEmpty() && comparator.compare(res, deque.getLast().getResult()) > 0) {
       deque.removeLast();
     }
     deque.addLast(aggregateResult);
