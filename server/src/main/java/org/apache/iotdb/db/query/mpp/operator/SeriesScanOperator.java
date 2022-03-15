@@ -16,11 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.mpp.exec;
+package org.apache.iotdb.db.query.mpp.operator;
 
-/**
- * State machine for a QueryExecution. It stores the states for the QueryExecution.
- * Others can register listeners when the state changes of the QueryExecution.
- */
-public class QueryStateMachine {
+public class SeriesScanOperator {
 }
