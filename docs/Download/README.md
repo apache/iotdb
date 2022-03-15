@@ -70,11 +70,25 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
     > sudo sysctl -w kern.ipc.somaxconn=65535
     ```
 
-- How to upgrade a minor version (e.g., from v0.11.0 to v0.11.3)?
+- How to upgrade a minor version (e.g., from v0.12.3 to v0.12.5)?
   * versions which have the same major version are compatible.
   * Just download and unzip the new version. Then modify the configuration files to keep consistent 
   with what you set in the old version.
   * stop the old vesion instance, and start the new one.
+
+- How to upgrade from v.12.x to v0.13.x?
+  * The data format (i.e., TsFile data) of v0.10.x and v0.11 are compatible, but the WAL file is
+    incompatible. So, you can follow the steps:
+  * **<font color=red> Execute `SET STSTEM TO READONLY` command in CLI. </font>**
+  * **<font color=red> Stop writing new data.</font>**
+  * Execute `flush` command to close all TsFiles.
+  * We recommend to back up all data files before upgrading for rolling back.
+  * Just download, unzip v0.13.x.zip, and modify conf/iotdb-engine.properties, **<font color=red> especially the unchangeable configurations like timestamp precision</font>**. Let all the
+    directories point to the data folder set in v0.12.x (or the backup folder). You can also modify
+    other settings if you want.
+  * Stop IoTDB v0.12.x instance, and then start v0.13.x.
+  * __NOTICE: V0.13 changes many settings in conf/iotdb-engine.properties, so do not use v0.12's
+    configuration file directly.__
 
 - How to upgrade from v.11.x or v0.10.x to v0.12.x?
   * Upgrading from v0.11 or v0.10 to v0.12 is similar as v0.9 to v0.10. The upgrade tool will rewrite the data files automatically.
