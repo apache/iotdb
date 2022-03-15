@@ -694,7 +694,9 @@ public class SchemaFile implements ISchemaFile {
               (int) (0.2 * pageInstCache.size()) > 0 ? (int) (0.2 * pageInstCache.size()) : 1;
           List<Integer> rmvIdx = new ArrayList<>();
 
-          for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
+          // FIXME: configure why still a concurrent modification inside a synchronized
+          Set<Map.Entry<Integer, ISchemaPage>> copyEntrySet = new LinkedHashSet<>(pageInstCache.entrySet());
+          for (Map.Entry<Integer, ISchemaPage> entry : copyEntrySet) {
             removeCnt--;
             entry.getValue().syncPageBuffer();
             flushPageToFile(entry.getValue());
