@@ -1569,6 +1569,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 1 |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
+<!--
 * enable\_id\_table
 
 |名字| enable\_id\_table |
@@ -1595,6 +1596,8 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |类型| bool |
 |默认值| false |
 |改后生效方式|重启服务生效|
+
+-->
 
 * concurrent\_writing\_time\_partition
 
