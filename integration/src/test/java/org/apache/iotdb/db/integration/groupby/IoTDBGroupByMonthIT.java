@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.integration.groupby;
 
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
@@ -247,6 +247,99 @@ public class IoTDBGroupByMonthIT {
         }
         Assert.assertTrue(cnt >= 28);
         Assert.assertTrue(cnt <= 31);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void groupBySlingWindowNaturalMonth1() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      String[] retArray1 = {
+        "10/31/2020:00:00:00", "61.0",
+        "11/30/2020:00:00:00", "62.0",
+        "12/31/2020:00:00:00", "59.0",
+        "01/31/2021:00:00:00", "29.0",
+        "02/28/2021:00:00:00", "1.0"
+      };
+
+      ((IoTDBConnection) connection).setTimeZone("GMT+00:00");
+      boolean hasResultSet =
+          statement.execute(
+              "select sum(temperature) from root.sg1.d1 "
+                  + "GROUP BY ([1604102400000, 1614556800000), 2mo, 1mo)");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String time = resultSet.getString(TIMESTAMP_STR);
+          String ans = resultSet.getString(sum("root.sg1.d1.temperature"));
+          Assert.assertEquals(retArray1[cnt++], df.format(Long.parseLong(time)));
+          Assert.assertEquals(retArray1[cnt++], ans);
+        }
+        Assert.assertEquals(retArray1.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void groupBySlingWindowNaturalMonth2() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      String[] retArray1 = {
+        "10/31/2020:00:00:00",
+        "30.0",
+        "11/10/2020:00:00:00",
+        "30.0",
+        "11/20/2020:00:00:00",
+        "30.0",
+        "11/30/2020:00:00:00",
+        "31.0",
+        "12/10/2020:00:00:00",
+        "31.0",
+        "12/20/2020:00:00:00",
+        "31.0",
+        "12/30/2020:00:00:00",
+        "31.0",
+        "01/09/2021:00:00:00",
+        "31.0",
+        "01/19/2021:00:00:00",
+        "31.0",
+        "01/29/2021:00:00:00",
+        "30.0",
+        "02/08/2021:00:00:00",
+        "21.0",
+        "02/18/2021:00:00:00",
+        "11.0",
+        "02/28/2021:00:00:00",
+        "1.0"
+      };
+
+      ((IoTDBConnection) connection).setTimeZone("GMT+00:00");
+      boolean hasResultSet =
+          statement.execute(
+              "select sum(temperature) from root.sg1.d1 "
+                  + "GROUP BY ([1604102400000, 1614556800000), 1mo, 10d)");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String time = resultSet.getString(TIMESTAMP_STR);
+          String ans = resultSet.getString(sum("root.sg1.d1.temperature"));
+          Assert.assertEquals(retArray1[cnt++], df.format(Long.parseLong(time)));
+          Assert.assertEquals(retArray1[cnt++], ans);
+        }
+        Assert.assertEquals(retArray1.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();

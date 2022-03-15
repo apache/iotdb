@@ -17,21 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.dataset.groupby;
+package org.apache.iotdb.db.query.aggregation;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
+public interface RemovableAggregateResult {
 
-import java.io.IOException;
-import java.util.List;
-
-/** Each executor calculates results of all aggregations on this aligned series */
-public interface AlignedGroupByExecutor {
-
-  /** add reusable result cache in executor */
-  void addAggregateResult(List<AggregateResult> aggregateResults);
-
-  /** calculate result in [curStartTime, curEndTime) */
-  List<List<AggregateResult>> calcAlignedResult(long curStartTime, long curEndTime)
-      throws IOException, QueryProcessException;
+  /**
+   * Remove another aggregateResult from this.
+   *
+   * <p>Note: aggregation window of another must be a subset of the current aggregation window.
+   */
+  void remove(AggregateResult another);
 }

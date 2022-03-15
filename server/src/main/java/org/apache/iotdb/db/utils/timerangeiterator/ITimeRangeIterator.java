@@ -17,24 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.dataset.groupby;
+package org.apache.iotdb.db.utils.timerangeiterator;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import java.io.IOException;
-import java.util.List;
+/** This interface used for iteratively generating aggregated time windows in GROUP BY query. */
+public interface ITimeRangeIterator {
 
-/** Each executor calculates results of all aggregations on this series */
-public interface GroupByExecutor {
+  /** return the first time range by sorting order */
+  Pair<Long, Long> getFirstTimeRange();
 
-  /** add reusable result cache in executor */
-  void addAggregateResult(AggregateResult aggrResult);
+  /**
+   * return the next time range according to curStartTime (the start time of the last returned time
+   * range)
+   */
+  Pair<Long, Long> getNextTimeRange(long curStartTime);
 
-  /** calculate result in [curStartTime, curEndTime) */
-  List<AggregateResult> calcResult(long curStartTime, long curEndTime)
-      throws IOException, QueryProcessException;
-
-  Pair<Long, Object> peekNextNotNullValue(long nextStartTime, long nextEndTime) throws IOException;
+  boolean isAscending();
 }
