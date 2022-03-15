@@ -262,7 +262,7 @@ public class TransportServiceImpl implements TransportService.Iface {
           return new TransportStatus(CONFLICT_CODE, "File digest check error.");
         }
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.error(e.getMessage());
         return new TransportStatus(ERROR_CODE, e.getMessage());
       }
 
