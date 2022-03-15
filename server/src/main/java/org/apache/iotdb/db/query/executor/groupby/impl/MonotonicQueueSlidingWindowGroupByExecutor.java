@@ -31,22 +31,24 @@ import java.util.Comparator;
  */
 public class MonotonicQueueSlidingWindowGroupByExecutor extends SlidingWindowGroupByExecutor {
 
-  private final Comparator<Object> comparator;
+  private final Comparator<AggregateResult> comparator;
 
   public MonotonicQueueSlidingWindowGroupByExecutor(
-      TSDataType dataType, String aggrFuncName, boolean ascending, Comparator<Object> comparator) {
+      TSDataType dataType,
+      String aggrFuncName,
+      boolean ascending,
+      Comparator<AggregateResult> comparator) {
     super(dataType, aggrFuncName, ascending);
     this.comparator = comparator;
   }
 
   @Override
   public void update(AggregateResult aggregateResult) {
-    Object res = aggregateResult.getResult();
-    if (res == null) {
+    if (aggregateResult.getResult() == null) {
       return;
     }
 
-    while (!deque.isEmpty() && comparator.compare(res, deque.getLast().getResult()) > 0) {
+    while (!deque.isEmpty() && comparator.compare(aggregateResult, deque.getLast()) > 0) {
       deque.removeLast();
     }
     deque.addLast(aggregateResult);

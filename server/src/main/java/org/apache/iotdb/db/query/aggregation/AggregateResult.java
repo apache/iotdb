@@ -267,8 +267,12 @@ public abstract class AggregateResult implements Cloneable {
     this.booleanValue = booleanValue;
   }
 
-  protected int getIntValue() {
+  public int getIntValue() {
     return intValue;
+  }
+
+  public int getIntAbsValue() {
+    return Math.abs(intValue);
   }
 
   public void setIntValue(int intValue) {
@@ -276,8 +280,12 @@ public abstract class AggregateResult implements Cloneable {
     this.intValue = intValue;
   }
 
-  protected long getLongValue() {
+  public long getLongValue() {
     return longValue;
+  }
+
+  public long getLongAbsValue() {
+    return Math.abs(longValue);
   }
 
   public void setLongValue(long longValue) {
@@ -285,8 +293,12 @@ public abstract class AggregateResult implements Cloneable {
     this.longValue = longValue;
   }
 
-  protected float getFloatValue() {
+  public float getFloatValue() {
     return floatValue;
+  }
+
+  public float getFloatAbsValue() {
+    return Math.abs(floatValue);
   }
 
   public void setFloatValue(float floatValue) {
@@ -294,8 +306,12 @@ public abstract class AggregateResult implements Cloneable {
     this.floatValue = floatValue;
   }
 
-  protected double getDoubleValue() {
+  public double getDoubleValue() {
     return doubleValue;
+  }
+
+  public double getDoubleAbsValue() {
+    return Math.abs(doubleValue);
   }
 
   public void setDoubleValue(double doubleValue) {

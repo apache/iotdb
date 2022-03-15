@@ -20,15 +20,50 @@
 package org.apache.iotdb.db.query.executor.groupby;
 
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.executor.groupby.impl.EmptyQueueSlidingWindowGroupByExecutor;
 import org.apache.iotdb.db.query.executor.groupby.impl.MonotonicQueueSlidingWindowGroupByExecutor;
 import org.apache.iotdb.db.query.executor.groupby.impl.NormalQueueSlidingWindowGroupByExecutor;
 import org.apache.iotdb.db.query.executor.groupby.impl.SmoothQueueSlidingWindowGroupByExecutor;
-import org.apache.iotdb.db.utils.TypeInferenceUtils;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.Comparator;
+
 public class SlidingWindowGroupByExecutorFactory {
+
+  /** comparators used for MonotonicQueueSlidingWindowGroupByExecutor */
+
+  // return a value greater than 0 if o1 is numerically greater than o2
+  private static final Comparator<AggregateResult>[] maxComparators =
+      new Comparator[] {
+        Comparator.comparingInt(AggregateResult::getIntValue),
+        Comparator.comparingLong(AggregateResult::getLongValue),
+        Comparator.comparing(AggregateResult::getFloatValue),
+        Comparator.comparingDouble(AggregateResult::getDoubleValue)
+      };
+
+  // return a value greater than 0 if o1 is numerically less than o2
+  private static final Comparator<AggregateResult>[] minComparators =
+      new Comparator[] {
+        maxComparators[0].reversed(),
+        maxComparators[1].reversed(),
+        maxComparators[2].reversed(),
+        maxComparators[3].reversed()
+      };
+
+  // return a value greater than 0 if abs(o1) is numerically greater than abs(o2)
+  // if abs(o1) == abs(o2), return a value greater than 0 if o1 is numerically greater than o2
+  private static final Comparator<AggregateResult>[] extremeComparators =
+      new Comparator[] {
+        Comparator.comparingInt(AggregateResult::getIntAbsValue)
+            .thenComparingInt(AggregateResult::getIntValue),
+        Comparator.comparingLong(AggregateResult::getLongAbsValue)
+            .thenComparingLong(AggregateResult::getLongValue),
+        Comparator.comparing(AggregateResult::getFloatAbsValue)
+            .thenComparing(AggregateResult::getFloatValue),
+        Comparator.comparingDouble(AggregateResult::getDoubleAbsValue)
+            .thenComparingDouble(AggregateResult::getDoubleValue)
+      };
 
   public static SlidingWindowGroupByExecutor getSlidingWindowGroupByExecutor(
       String aggrFuncName, TSDataType dataType, boolean ascending) {
@@ -43,29 +78,13 @@ public class SlidingWindowGroupByExecutorFactory {
         return new SmoothQueueSlidingWindowGroupByExecutor(dataType, aggrFuncName, ascending);
       case SQLConstant.MAX_VALUE:
         return new MonotonicQueueSlidingWindowGroupByExecutor(
-            dataType, aggrFuncName, ascending, (o1, o2) -> ((Comparable<Object>) o1).compareTo(o2));
+            dataType, aggrFuncName, ascending, maxComparators[dataType.ordinal() - 1]);
       case SQLConstant.MIN_VALUE:
         return new MonotonicQueueSlidingWindowGroupByExecutor(
-            dataType, aggrFuncName, ascending, (o1, o2) -> ((Comparable<Object>) o2).compareTo(o1));
+            dataType, aggrFuncName, ascending, minComparators[dataType.ordinal() - 1]);
       case SQLConstant.EXTREME:
         return new MonotonicQueueSlidingWindowGroupByExecutor(
-            dataType,
-            aggrFuncName,
-            ascending,
-            (o1, o2) -> {
-              TSDataType resultDataType =
-                  TypeInferenceUtils.getAggrDataType(aggrFuncName, dataType);
-              Comparable<Object> extVal = (Comparable<Object>) o1;
-              Comparable<Object> absExtVal = (Comparable<Object>) getAbsValue(o1, resultDataType);
-              Comparable<Object> candidateResult = (Comparable<Object>) o2;
-              Comparable<Object> absCandidateResult =
-                  (Comparable<Object>) getAbsValue(o2, resultDataType);
-              if (absExtVal.compareTo(absCandidateResult) == 0) {
-                return extVal.compareTo(candidateResult);
-              } else {
-                return absExtVal.compareTo(absCandidateResult);
-              }
-            });
+            dataType, aggrFuncName, ascending, extremeComparators[dataType.ordinal() - 1]);
       case SQLConstant.MIN_TIME:
       case SQLConstant.FIRST_VALUE:
         return !ascending
@@ -78,21 +97,6 @@ public class SlidingWindowGroupByExecutorFactory {
             : new EmptyQueueSlidingWindowGroupByExecutor(dataType, aggrFuncName, ascending);
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggrFuncName);
-    }
-  }
-
-  private static Object getAbsValue(Object v, TSDataType resultDataType) {
-    switch (resultDataType) {
-      case DOUBLE:
-        return Math.abs((Double) v);
-      case FLOAT:
-        return Math.abs((Float) v);
-      case INT32:
-        return Math.abs((Integer) v);
-      case INT64:
-        return Math.abs((Long) v);
-      default:
-        throw new UnSupportedDataTypeException(java.lang.String.valueOf(resultDataType));
     }
   }
 }
