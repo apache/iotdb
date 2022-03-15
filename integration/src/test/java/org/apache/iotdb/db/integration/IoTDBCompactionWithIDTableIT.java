@@ -42,7 +42,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class})
-public class IoTDBCompactionITWithIDTable {
+public class IoTDBCompactionWithIDTableIT {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBCompactionIT.class);
   private long prevPartitionInterval;
