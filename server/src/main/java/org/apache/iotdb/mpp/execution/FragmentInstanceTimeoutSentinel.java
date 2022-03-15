@@ -20,6 +20,7 @@ package org.apache.iotdb.mpp.execution;
 
 import org.apache.iotdb.mpp.execution.queue.IndexedBlockingQueue;
 import org.apache.iotdb.mpp.execution.task.FragmentInstanceTask;
+import org.apache.iotdb.mpp.execution.task.FragmentInstanceTaskStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,22 +32,52 @@ public class FragmentInstanceTimeoutSentinel extends Thread {
       LoggerFactory.getLogger(FragmentInstanceTimeoutSentinel.class);
 
   private final IndexedBlockingQueue<FragmentInstanceTask> queue;
+  private final FragmentInstanceTaskCallback timeoutCallback;
+  // the check interval in milliseconds if the queue head remains the same.
+  private static final int CHECK_INTERVAL = 100;
 
   public FragmentInstanceTimeoutSentinel(
-      String workerId, ThreadGroup tg, IndexedBlockingQueue<FragmentInstanceTask> queue) {
+      String workerId,
+      ThreadGroup tg,
+      IndexedBlockingQueue<FragmentInstanceTask> queue,
+      FragmentInstanceTaskCallback timeoutCallback) {
     super(tg, workerId);
     this.queue = queue;
+    this.timeoutCallback = timeoutCallback;
   }
 
   @Override
   public void run() {
-    try {
-      while (true) {
+    while (true) {
+      try {
         FragmentInstanceTask next = queue.poll();
-        // do logic here
+        next.lock();
+        try {
+          // if this task is already in an end state, it means that the resource releasing will be
+          // handled by other threads, we don't care anymore.
+          if (next.isEndState()) {
+            continue;
+          }
+          // if this task is not in end state and not timeout, we should push it back to the queue.
+          if (next.getDDL() > System.currentTimeMillis()) {
+            queue.push(next);
+            Thread.sleep(CHECK_INTERVAL);
+            continue;
+          }
+          next.setStatus(FragmentInstanceTaskStatus.ABORTED);
+        } finally {
+          next.unlock();
+        }
+        try {
+          // Or we should do something to abort
+          timeoutCallback.call(next);
+        } catch (Exception e) {
+          logger.error("Abort instance " + next.getId() + " failed", e);
+        }
+      } catch (InterruptedException e) {
+        logger.info("{} is interrupted.", this.getName());
+        break;
       }
-    } catch (InterruptedException e) {
-      logger.info("{} is interrupted.", this.getName());
     }
   }
 }

@@ -18,35 +18,10 @@
  */
 package org.apache.iotdb.mpp.execution;
 
-import org.apache.iotdb.mpp.execution.queue.IndexedBlockingQueue;
 import org.apache.iotdb.mpp.execution.task.FragmentInstanceTask;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-/** the worker thread of {@link FragmentInstanceTask} */
-public class FragmentInstanceTaskExecutor extends Thread {
-
-  private static final Logger logger = LoggerFactory.getLogger(FragmentInstanceTaskExecutor.class);
-
-  private final IndexedBlockingQueue<FragmentInstanceTask> queue;
-
-  public FragmentInstanceTaskExecutor(
-      String workerId, ThreadGroup tg, IndexedBlockingQueue<FragmentInstanceTask> queue) {
-    super(tg, workerId);
-    this.queue = queue;
-  }
-
-  @Override
-  public void run() {
-    while (true) {
-      try {
-        FragmentInstanceTask next = queue.poll();
-        // do logic here
-      } catch (InterruptedException e) {
-        logger.info("{} is interrupted.", this.getName());
-        break;
-      }
-    }
-  }
+/** A common interface for {@link FragmentInstanceTask} business logic callback */
+@FunctionalInterface
+public interface FragmentInstanceTaskCallback {
+  void call(FragmentInstanceTask task) throws Exception;
 }

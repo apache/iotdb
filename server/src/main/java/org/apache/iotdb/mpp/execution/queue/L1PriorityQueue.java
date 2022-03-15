@@ -28,10 +28,10 @@ import java.util.TreeMap;
  * <p>The time complexity of operations are:
  *
  * <ul>
- *   <li><b>{@link #size()}: </b> O(1).
  *   <li><b>{@link #remove(IDIndexedAccessible)} ()}: </b> O(logN).
  *   <li><b>{@link #push(IDIndexedAccessible)}: </b> O(logN).
  *   <li><b>{@link #poll()}: </b> O(logN).
+ *   <li><b>{@link #get(ID)}}: </b> O(1).
  * </ul>
  */
 public class L1PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlockingQueue<E> {
@@ -72,5 +72,15 @@ public class L1PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlock
   @Override
   protected E remove(E element) {
     return elements.remove(element);
+  }
+
+  @Override
+  protected boolean contains(E element) {
+    return elements.containsKey(element);
+  }
+
+  @Override
+  protected E get(E element) {
+    return elements.get(element);
   }
 }

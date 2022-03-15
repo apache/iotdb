@@ -70,6 +70,19 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
     return status;
   }
 
+  public boolean isEndState() {
+    return status == FragmentInstanceTaskStatus.ABORTED
+        || status == FragmentInstanceTaskStatus.FINISHED;
+  }
+
+  public void inputReady(FragmentInstanceID inputId) {
+    throw new UnsupportedOperationException("unsupported");
+  }
+
+  public void outputReady() {
+    throw new UnsupportedOperationException("unsupported");
+  }
+
   public void setStatus(FragmentInstanceTaskStatus status) {
     this.status = status;
   }
