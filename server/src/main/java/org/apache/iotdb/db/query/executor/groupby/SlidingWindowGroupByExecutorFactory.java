@@ -24,6 +24,7 @@ import org.apache.iotdb.db.query.executor.groupby.impl.EmptyQueueSlidingWindowGr
 import org.apache.iotdb.db.query.executor.groupby.impl.MonotonicQueueSlidingWindowGroupByExecutor;
 import org.apache.iotdb.db.query.executor.groupby.impl.NormalQueueSlidingWindowGroupByExecutor;
 import org.apache.iotdb.db.query.executor.groupby.impl.SmoothQueueSlidingWindowGroupByExecutor;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -52,7 +53,8 @@ public class SlidingWindowGroupByExecutorFactory {
             aggrFuncName,
             ascending,
             (o1, o2) -> {
-              TSDataType resultDataType = getResultDataType(dataType, aggrFuncName);
+              TSDataType resultDataType =
+                  TypeInferenceUtils.getAggrDataType(aggrFuncName, dataType);
               Comparable<Object> extVal = (Comparable<Object>) o1;
               Comparable<Object> absExtVal = (Comparable<Object>) getAbsValue(o1, resultDataType);
               Comparable<Object> candidateResult = (Comparable<Object>) o2;
@@ -91,26 +93,6 @@ public class SlidingWindowGroupByExecutorFactory {
         return Math.abs((Long) v);
       default:
         throw new UnSupportedDataTypeException(java.lang.String.valueOf(resultDataType));
-    }
-  }
-
-  private static TSDataType getResultDataType(TSDataType dataType, String aggrFuncName) {
-    switch (aggrFuncName.toLowerCase()) {
-      case SQLConstant.MIN_TIME:
-      case SQLConstant.MAX_TIME:
-      case SQLConstant.COUNT:
-        return TSDataType.INT64;
-      case SQLConstant.FIRST_VALUE:
-      case SQLConstant.LAST_VALUE:
-      case SQLConstant.MIN_VALUE:
-      case SQLConstant.MAX_VALUE:
-      case SQLConstant.EXTREME:
-        return dataType;
-      case SQLConstant.AVG:
-      case SQLConstant.SUM:
-        return TSDataType.DOUBLE;
-      default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
   }
 }
