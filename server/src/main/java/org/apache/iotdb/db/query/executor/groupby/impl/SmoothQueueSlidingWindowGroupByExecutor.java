@@ -24,6 +24,12 @@ import org.apache.iotdb.db.query.aggregation.RemovableAggregateResult;
 import org.apache.iotdb.db.query.executor.groupby.SlidingWindowGroupByExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+/**
+ * The aggregation result is calculated from all pre-aggregation results in the currently maintained
+ * queue when calculating the COUNT, SUM, and AVG. We implement by executing {@link
+ * AggregateResult#merge(AggregateResult)} when adding to queue and {@link
+ * RemovableAggregateResult#remove(AggregateResult)} when removing from queue.
+ */
 public class SmoothQueueSlidingWindowGroupByExecutor extends SlidingWindowGroupByExecutor {
 
   public SmoothQueueSlidingWindowGroupByExecutor(

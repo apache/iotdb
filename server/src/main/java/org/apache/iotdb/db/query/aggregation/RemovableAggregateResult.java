@@ -21,5 +21,10 @@ package org.apache.iotdb.db.query.aggregation;
 
 public interface RemovableAggregateResult {
 
+  /**
+   * Remove another aggregateResult from this.
+   *
+   * <p>Note: aggregation window of another must be a subset of the current aggregation window.
+   */
   void remove(AggregateResult another);
 }

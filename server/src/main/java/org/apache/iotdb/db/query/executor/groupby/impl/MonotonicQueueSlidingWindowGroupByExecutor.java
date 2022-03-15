@@ -25,6 +25,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Comparator;
 
+/**
+ * When computing MAX_VALUE, MIN_VALUE, EXTREME, we only add pre-aggregation results that maintain
+ * monotonicity to queue. The aggregation result always appears at the head of the queue.
+ */
 public class MonotonicQueueSlidingWindowGroupByExecutor extends SlidingWindowGroupByExecutor {
 
   private final Comparator<Object> comparator;

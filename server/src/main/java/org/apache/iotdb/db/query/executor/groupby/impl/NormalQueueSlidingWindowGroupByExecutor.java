@@ -23,6 +23,11 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.executor.groupby.SlidingWindowGroupByExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+/**
+ * When calculating MIN_TIME and FIRST_VALUE (MAX_TIME and LAST_VALUE in descending order), the
+ * aggregated result always appears at the head of the queue. We need to cache all pre-aggregated
+ * results in the queue.
+ */
 public class NormalQueueSlidingWindowGroupByExecutor extends SlidingWindowGroupByExecutor {
 
   public NormalQueueSlidingWindowGroupByExecutor(

@@ -23,7 +23,13 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.executor.groupby.SlidingWindowGroupByExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+/**
+ * When calculating MAX_TIME and LAST_VALUE (the MIN_TIME and FIRST_VALUE in descending order), the
+ * aggregation result always appears in the most recent pre-aggregation result. So, we do not need
+ * to cache the previous pre-aggregated results in the queue.
+ */
 public class EmptyQueueSlidingWindowGroupByExecutor extends SlidingWindowGroupByExecutor {
+
   public EmptyQueueSlidingWindowGroupByExecutor(
       TSDataType dataType, String aggrFuncName, boolean ascending) {
     super(dataType, aggrFuncName, ascending);

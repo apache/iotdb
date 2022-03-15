@@ -32,6 +32,7 @@ public abstract class SlidingWindowGroupByExecutor {
   protected long curStartTime;
   protected long curEndTime;
 
+  // cached AggregateResult of pre-aggregate windows
   protected Deque<AggregateResult> deque;
 
   // output aggregate result
