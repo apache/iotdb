@@ -79,7 +79,7 @@ public class ReceiverManager {
 
   public void stopPipe(String pipeName, String remoteIp) throws IOException {
     log.stopPipe(pipeName, remoteIp);
-    pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.PAUSE);
+    pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.STOP);
   }
 
   public void dropPipe(String pipeName, String remoteIp) throws IOException {

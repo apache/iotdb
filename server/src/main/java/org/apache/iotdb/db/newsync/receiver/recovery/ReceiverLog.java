@@ -69,7 +69,7 @@ public class ReceiverLog {
   }
 
   public void stopPipe(String pipeName, String remoteIp) throws IOException {
-    writeLog(pipeName, remoteIp, PipeStatus.PAUSE);
+    writeLog(pipeName, remoteIp, PipeStatus.STOP);
   }
 
   public void dropPipe(String pipeName, String remoteIp) throws IOException {

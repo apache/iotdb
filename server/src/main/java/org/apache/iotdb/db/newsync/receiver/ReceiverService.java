@@ -147,26 +147,26 @@ public class ReceiverService implements IService {
   }
 
   /** create and start a new pipe named pipeName */
-  public void createPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+  private void createPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     createDir(pipeName, remoteIp, createTime);
     receiverManager.createPipe(pipeName, remoteIp, createTime);
     collector.startPipe(pipeName, remoteIp, createTime);
   }
 
   /** start an existed pipe named pipeName */
-  public void startPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+  private void startPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverManager.startPipe(pipeName, remoteIp);
     collector.startPipe(pipeName, remoteIp, createTime);
   }
 
   /** stop an existed pipe named pipeName */
-  public void stopPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+  private void stopPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverManager.stopPipe(pipeName, remoteIp);
     collector.stopPipe(pipeName, remoteIp, createTime);
   }
 
   /** drop an existed pipe named pipeName */
-  public void dropPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+  private void dropPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverManager.dropPipe(pipeName, remoteIp);
     collector.stopPipe(pipeName, remoteIp, createTime);
     File dir = new File(SyncPathUtil.getReceiverPipeDir(pipeName, remoteIp, createTime));

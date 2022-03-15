@@ -20,6 +20,6 @@ package org.apache.iotdb.db.newsync.receiver.manager;
 
 public enum PipeStatus {
   RUNNING,
-  PAUSE,
+  STOP,
   DROP
 }
