@@ -26,11 +26,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import com.google.common.primitives.Bytes;
 import org.apache.commons.lang3.ArrayUtils;
-import org.rocksdb.ColumnFamilyHandle;
-import org.rocksdb.RocksDB;
-import org.rocksdb.RocksIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -84,12 +81,6 @@ public class RocksDBUtils {
     NODE_TYPE_ARRAY[NODE_TYPE_ENTITY] = RocksDBMNodeType.ENTITY;
     NODE_TYPE_ARRAY[NODE_TYPE_MEASUREMENT] = RocksDBMNodeType.MEASUREMENT;
     NODE_TYPE_ARRAY[NODE_TYPE_ALIAS] = RocksDBMNodeType.ALISA;
-  }
-
-  protected static byte[] constructDataBlock(byte type, String data) {
-    byte[] dataInBytes = data.getBytes();
-    int size = dataInBytes.length;
-    return Bytes.concat(new byte[] {type}, BytesUtils.intToBytes(size), dataInBytes);
   }
 
   protected static byte[] toInternalNodeKey(String levelPath) {
@@ -436,34 +427,15 @@ public class RocksDBUtils {
   }
 
   public static String[] toMetaNodes(byte[] rocksdbKey) {
-    String rawKey = new String(BytesUtils.subBytes(rocksdbKey, 1, rocksdbKey.length - 1));
+    String rawKey =
+        new String(
+            Objects.requireNonNull(BytesUtils.subBytes(rocksdbKey, 1, rocksdbKey.length - 1)));
     String[] nodes = rawKey.split(ESCAPE_PATH_SEPARATOR);
     nodes[0] = ROOT_STRING;
     for (int i = 1; i < nodes.length; i++) {
       nodes[i] = nodes[i].substring(1);
     }
     return nodes;
-  }
-
-  /**
-   * Statistics the number of all data entries for a specified column family
-   *
-   * @param rocksDB rocksdb
-   * @param columnFamilyHandle specified column family handle
-   * @return total number in this column family
-   */
-  public static long countNodesNum(RocksDB rocksDB, ColumnFamilyHandle columnFamilyHandle) {
-    RocksIterator iter;
-    if (columnFamilyHandle == null) {
-      iter = rocksDB.newIterator();
-    } else {
-      iter = rocksDB.newIterator(columnFamilyHandle);
-    }
-    long count = 0;
-    for (iter.seekToFirst(); iter.isValid(); iter.next()) {
-      count++;
-    }
-    return count;
   }
 
   public static String getPathByInnerName(String innerName) {
