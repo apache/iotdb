@@ -86,7 +86,7 @@ public class TsFilePipeData extends PipeData {
     long serialNumber = stream.readLong();
     String parentDirPath = ReadWriteIOUtils.readString(stream);
     String tsFileName = ReadWriteIOUtils.readString(stream);
-    return new TsFilePipeData(parentDirPath, tsFileName, serialNumber);
+    return new TsFilePipeData(parentDirPath == null ? "" : parentDirPath, tsFileName, serialNumber);
   }
 
   @Override
