@@ -280,8 +280,7 @@ public class TransportClient implements ITransportClient, Runnable {
       }
 
       int dataLength;
-      try {
-        RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r");
+      try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
         if (randomAccessFile.length() <= position) {
           break;
         }
