@@ -88,10 +88,40 @@ public class MetadataUpgrader {
 
   MManager manager = IoTDB.metaManager;
 
+  /**
+   * There are at most four files of old versions:
+   *
+   * <ol>
+   *   <li>snapshot: store the base MTree
+   *   <li>mlog: store the metadata operations based on the exising metadata stored in snapshot
+   *   <li>tag file: store the tag info of timeseries and snapshot and mlog both may hold offsets
+   *       pointing to some part of this file
+   *   <li>tmp snapshot: a tmp file generated during the process of creating snapshot; this file is
+   *       useless
+   * </ol>
+   *
+   * <p>The purpose of upgrader is to recover metadata from the existing files and split and store
+   * them into files in certain storage group dirs. The upgrader will execute the following steps in
+   * order:
+   *
+   * <ol>
+   *   <li>Deserialize the snapshot and recover the MRTree into memory
+   *   <li>Try set storage group based on the recovered StorageGroupMNodes and create timeseries
+   *       based on the recovered MeasurementMNode
+   *   <li>Redo the mlog
+   *   <li>delete the files of version, the order is:
+   *       <ol>
+   *         <li>mlog
+   *         <li>snapshot
+   *         <li>tag file
+   *         <li>tmp snapshot
+   *       </ol>
+   * </ol>
+   */
   public static synchronized void upgrade() throws IOException {
     MetadataUpgrader upgrader = new MetadataUpgrader();
     logger.info("Start upgrading metadata files.");
-    if (upgrader.clearEnv()) {
+    if (upgrader.clearEnvBeforeUpgrade()) {
       logger.info("Metadata files have already been upgraded.");
       return;
     }
@@ -99,6 +129,7 @@ public class MetadataUpgrader {
     try {
       upgrader.reloadMetadataFromSnapshot();
       upgrader.redoMLog();
+      upgrader.clearOldFiles();
       logger.info("Finish upgrading metadata files.");
     } finally {
       IoTDB.metaManager.clear();
@@ -107,7 +138,7 @@ public class MetadataUpgrader {
 
   private MetadataUpgrader() {}
 
-  public boolean clearEnv() throws IOException {
+  public boolean clearEnvBeforeUpgrade() throws IOException {
     if (mlogFile.exists()) {
       // the existence of old mlog means the upgrade was interrupted, thus clear the tmp results.
       File dir = new File(schemaDirPath);
@@ -141,6 +172,13 @@ public class MetadataUpgrader {
     }
   }
 
+  public void clearOldFiles() throws IOException {
+    deleteFile(mlogFile);
+    deleteFile(snapshotFile);
+    deleteFile(tagFile);
+    deleteFile(snapshotTmpFile);
+  }
+
   private void deleteFile(File file) throws IOException {
     if (!file.exists()) {
       return;
@@ -155,7 +193,6 @@ public class MetadataUpgrader {
   }
 
   public void reloadMetadataFromSnapshot() throws IOException {
-    deleteFile(snapshotTmpFile);
     Map<IStorageGroupMNode, List<IMeasurementMNode>> sgMeasurementMap =
         deserializeFrom(snapshotFile);
     IMeasurementSchema schema;
@@ -194,7 +231,6 @@ public class MetadataUpgrader {
         }
       }
     }
-    deleteFile(snapshotFile);
   }
 
   private Map<IStorageGroupMNode, List<IMeasurementMNode>> deserializeFrom(File mtreeSnapshot)
@@ -290,9 +326,6 @@ public class MetadataUpgrader {
     }
 
     processTemplatePlans(templatePlanQueue, manager);
-
-    deleteFile(mlogFile);
-    deleteFile(tagFile);
   }
 
   private void processPlanWithTag(PhysicalPlan plan, MManager manager, TagLogFile tagLogFile)
