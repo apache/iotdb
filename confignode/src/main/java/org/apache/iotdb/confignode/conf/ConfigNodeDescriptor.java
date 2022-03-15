@@ -64,8 +64,9 @@ public class ConfigNodeDescriptor {
       if (propsDir == null) {
         // When start ConfigNode with script, CONFIG_NODE_CONF and CONFIG_NODE_HOME must be set.
         // Therefore, this case is TestOnly
-        propsDir = ConfigNodeConstant.CONF_DIR;
+        // TODO: Specify a test dir
       }
+      propsDir = propsDir + File.separator + ConfigNodeConstant.CONF_DIR;
     }
 
     return propsDir;
@@ -73,6 +74,10 @@ public class ConfigNodeDescriptor {
 
   public URL getPropsUrl() {
     String url = getPropsDir();
+
+    if (url == null) {
+      return null;
+    }
 
     // Add props prefix
     if (!url.startsWith("file:") && !url.startsWith("classpath:")) {
@@ -94,7 +99,8 @@ public class ConfigNodeDescriptor {
   private void loadProps() {
     URL url = getPropsUrl();
     if (url == null) {
-      LOGGER.warn("Couldn't load the ConfigNode configuration from any of the known sources.");
+      LOGGER.warn(
+          "Couldn't load the ConfigNode configuration from any of the known sources. Use default configuration.");
       return;
     }
 

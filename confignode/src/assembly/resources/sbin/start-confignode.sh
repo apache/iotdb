@@ -46,14 +46,14 @@ done
 
 CONF_PARAMS=$*
 
-if [ -f "CONFIGNODE_CONF/confignode-env.sh" ]; then
+if [ -f "$CONFIGNODE_CONF/confignode-env.sh" ]; then
     if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
-      . "CONFIGNODE_CONF/confignode-env.sh" "printgc"
+      . "$CONFIGNODE_CONF/confignode-env.sh" "printgc"
     else
-        . "CONFIGNODE_CONF/confignode-env.sh"
+        . "$CONFIGNODE_CONF/confignode-env.sh"
     fi
 else
-    echo "can't find CONFIGNODE_CONF/confignode-env.sh"
+    echo "can't find $CONFIGNODE_CONF/confignode-env.sh"
 fi
 
 CLASSPATH=""
@@ -65,10 +65,9 @@ classname=org.apache.iotdb.confignode.service.ConfigNode
 launch_service()
 {
 	class="$1"
-	confignode_parms="confignode_parms -DCONFIGNODE_HOME=${CONFIGNODE_HOME}"
-	confignode_parms="confignode_parms -DCONFIGNODE_CONF=${CONFIGNODE_CONF}"
-	confignode_parms="confignode_parms -Dname=confignode\.ConfigNode"
-	exec "$JAVA" $illegal_access_params confignode_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" "$class" $CONF_PARAMS
+	confignode_parms="$confignode_parms -DCONFIGNODE_HOME=${CONFIGNODE_HOME}"
+	confignode_parms="$confignode_parms -DCONFIGNODE_CONF=${CONFIGNODE_CONF}"
+	exec "$JAVA" $illegal_access_params $confignode_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" "$class" $CONF_PARAMS
 	return $?
 }
 

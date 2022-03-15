@@ -27,6 +27,6 @@
         <version>0.13.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <artifactId>cluster-common-tools</artifactId>
+    <artifactId>iotdb-commons</artifactId>
     <name>IoTDB Cluster common tools</name>
 </project>

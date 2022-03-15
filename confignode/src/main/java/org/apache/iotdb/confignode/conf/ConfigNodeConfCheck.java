@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.Properties;
@@ -40,18 +41,17 @@ public class ConfigNodeConfCheck {
 
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
-  private Properties currentProperties;
   private Properties specialProperties;
 
   public void checkConfig()
       throws ConfigurationException, RepeatConfigurationException, IOException {
 
     String propsDir = ConfigNodeDescriptor.getInstance().getPropsDir();
-    File currentPropertiesFile = new File(propsDir + File.separator + ConfigNodeConstant.CONF_NAME);
-
-    currentProperties = new Properties();
-    FileInputStream inputStream = new FileInputStream(currentPropertiesFile);
-    currentProperties.load(inputStream);
+    if (propsDir == null) {
+      // Skip configuration check when developer mode or test mode
+      return;
+    }
+    specialProperties = new Properties();
 
     File specialPropertiesFile =
         new File(propsDir + File.separator + ConfigNodeConstant.SPECIAL_CONF_NAME);
@@ -60,7 +60,7 @@ public class ConfigNodeConfCheck {
         LOGGER.info(
             "Special configuration file {} for ConfigNode is created.",
             specialPropertiesFile.getAbsolutePath());
-        writeSpecialProperties();
+        writeSpecialProperties(specialPropertiesFile);
         return;
       } else {
         LOGGER.error(
@@ -70,40 +70,44 @@ public class ConfigNodeConfCheck {
       }
     }
 
-    inputStream = new FileInputStream(currentPropertiesFile);
+    FileInputStream inputStream = new FileInputStream(specialPropertiesFile);
     specialProperties.load(inputStream);
     checkSpecialProperties();
   }
 
-  private void writeSpecialProperties() {}
+  private void writeSpecialProperties(File specialPropertiesFile) {
+    specialProperties.setProperty("device_group_count", String.valueOf(conf.getDeviceGroupCount()));
+    specialProperties.setProperty(
+        "device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass());
+    try {
+      specialProperties.store(new FileOutputStream(specialPropertiesFile), "");
+    } catch (IOException e) {
+      LOGGER.error(
+          "Can't store special properties file {}.", specialPropertiesFile.getAbsolutePath());
+    }
+  }
 
   private void checkSpecialProperties() throws RepeatConfigurationException {
-    int deviceGroupCount =
+    int specialDeviceGroupCount =
         Integer.parseInt(
             specialProperties.getProperty(
                 "device_group_count", String.valueOf(conf.getDeviceGroupCount())));
-    int currentDeviceGroupCount =
-        Integer.parseInt(
-            currentProperties.getProperty(
-                "device_group_count", String.valueOf(conf.getDeviceGroupCount())));
-    if (deviceGroupCount != currentDeviceGroupCount) {
+    if (specialDeviceGroupCount != conf.getDeviceGroupCount()) {
       throw new RepeatConfigurationException(
           "device_group_count",
-          String.valueOf(currentDeviceGroupCount),
-          String.valueOf(deviceGroupCount));
+          String.valueOf(conf.getDeviceGroupCount()),
+          String.valueOf(specialDeviceGroupCount));
     }
 
-    String deviceGroupHashExecutorClass =
+    String specialDeviceGroupHashExecutorClass =
         specialProperties.getProperty(
             "device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass());
-    String currentDeviceGroupHashExecutorClass =
-        currentProperties.getProperty(
-            "device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass());
-    if (!Objects.equals(deviceGroupHashExecutorClass, currentDeviceGroupHashExecutorClass)) {
+    if (!Objects.equals(
+        specialDeviceGroupHashExecutorClass, conf.getDeviceGroupHashExecutorClass())) {
       throw new RepeatConfigurationException(
           "device_group_hash_executor_class",
-          currentDeviceGroupHashExecutorClass,
-          deviceGroupHashExecutorClass);
+          conf.getDeviceGroupHashExecutorClass(),
+          specialDeviceGroupHashExecutorClass);
     }
   }
 
