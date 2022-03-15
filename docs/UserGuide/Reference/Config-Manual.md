@@ -791,9 +791,9 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| compaction\_priority |
 |:---:|:---|
-|Description| Priority of compaction task. When it is balance, system executes all types of compaction equally; when it is inner_cross, system takes precedence over executing inner space compaction task; when it is cross_inner, system takes precedence over executing cross space compaction task |
+|Description| Priority of compaction task. When it is BALANCE, system executes all types of compaction equally; when it is INNER_CROSS, system takes precedence over executing inner space compaction task; when it is CROSS_INNER, system takes precedence over executing cross space compaction task |
 |Type| String |
-|Default| balance|
+|Default| BALANCE|
 |Effective|After restart system|
 
 * target\_compaction\_file\_size
