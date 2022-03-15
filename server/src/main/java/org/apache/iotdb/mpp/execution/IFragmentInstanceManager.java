@@ -26,7 +26,8 @@ public interface IFragmentInstanceManager {
   void submitFragmentInstance();
 
   /**
-   * the notifying interface for {@link DataBlockManager} when upstream data comes.
+   * the notifying interface for {@link org.apache.iotdb.mpp.shuffle.IDataBlockManager} when
+   * upstream data comes.
    *
    * @param instanceID the fragment instance to be notified.
    * @param upstreamInstanceId the upstream instance id.
@@ -34,7 +35,8 @@ public interface IFragmentInstanceManager {
   void inputBlockAvailable(FragmentInstanceID instanceID, FragmentInstanceID upstreamInstanceId);
 
   /**
-   * the notifying interface for {@link DataBlockManager} when downstream data has been consumed.
+   * the notifying interface for {@link org.apache.iotdb.mpp.shuffle.IDataBlockManager} when
+   * downstream data has been consumed.
    *
    * @param instanceID the fragment instance to be notified.
    * @param downstreamInstanceId the downstream instance id.
