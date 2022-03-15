@@ -37,12 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   private static final Logger LOG = LoggerFactory.getLogger(AlignedChunkGroupWriterImpl.class);
@@ -155,7 +150,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
         // check isNull by bitMap in tablet
         if (tablet.bitMaps != null
             && tablet.bitMaps[columnIndex] != null
-            && tablet.bitMaps[columnIndex].isMarked(row)) {
+            && !tablet.bitMaps[columnIndex].isMarked(row)) {
           isNull = true;
         }
         ValueChunkWriter valueChunkWriter =
