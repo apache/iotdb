@@ -97,7 +97,7 @@ public class SchemaFile implements ISchemaFile {
   int lastPageIndex; // last page index of the file, boundary to grow
 
   // work as a naive cache for page instance
-  Map<Integer, ISchemaPage> pageInstCache;
+  final Map<Integer, ISchemaPage> pageInstCache;
   ISchemaPage rootPage;
 
   // attributes for file
@@ -659,7 +659,11 @@ public class SchemaFile implements ISchemaFile {
       }
 
       if (pageInstCache.containsKey(pageIdx)) {
-        return pageInstCache.get(pageIdx);
+        synchronized (pageInstCache) {
+          if (pageInstCache.containsKey(pageIdx)) {
+            return pageInstCache.get(pageIdx);
+          }
+        }
       }
 
       ByteBuffer newBuf = ByteBuffer.allocate(PAGE_LENGTH);
