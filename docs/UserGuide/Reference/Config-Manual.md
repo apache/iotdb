@@ -1007,6 +1007,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 1 |
 |Effective|Only allowed to be modified in first start up|
 
+<!--
 * enable\_id\_table
 
 |Name| enable\_id\_table |
@@ -1033,6 +1034,8 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type| bool |
 |Default| false |
 |Effective|After restarting system|
+
+-->
 
 ### UDF
 
