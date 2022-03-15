@@ -32,7 +32,6 @@ import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -51,7 +50,6 @@ import java.util.Set;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertNull;
 
 public class MetaLogApplierTest extends IoTDBTest {
 
@@ -133,13 +131,5 @@ public class MetaLogApplierTest extends IoTDBTest {
     assertEquals(
         TSDataType.DOUBLE,
         IoTDB.metaManager.getSeriesType(new PartialPath("root" + ".applyMeta.s1")));
-  }
-
-  @Test
-  public void testApplyCreateSnapshot() {
-    CreateSnapshotPlan createSnapshotPlan = new CreateSnapshotPlan();
-    PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog(createSnapshotPlan);
-    applier.apply(physicalPlanLog);
-    assertNull(physicalPlanLog.getException());
   }
 }
