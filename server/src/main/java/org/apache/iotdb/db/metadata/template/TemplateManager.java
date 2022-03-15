@@ -90,46 +90,47 @@ public class TemplateManager {
   }
 
   private void recoverFromTemplateFile() throws IOException {
-    TemplateLogReader reader =
+    try (TemplateLogReader reader =
         new TemplateLogReader(
             IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
-            MetadataConstant.TEMPLATE_FILE);
-    PhysicalPlan plan;
-    int idx = 0;
-    while (reader.hasNext()) {
-      try {
-        plan = reader.next();
-        idx++;
-      } catch (Exception e) {
-        logger.error("Parse TemplateFile error at lineNumber {} because:", idx, e);
-        break;
-      }
-      if (plan == null) {
-        continue;
-      }
-      try {
-        switch (plan.getOperatorType()) {
-          case CREATE_TEMPLATE:
-            createSchemaTemplate((CreateTemplatePlan) plan);
-            break;
-          case APPEND_TEMPLATE:
-            appendSchemaTemplate((AppendTemplatePlan) plan);
-            break;
-          case PRUNE_TEMPLATE:
-            pruneSchemaTemplate((PruneTemplatePlan) plan);
-            break;
-          case DROP_TEMPLATE:
-            dropSchemaTemplate((DropTemplatePlan) plan);
-            break;
-          default:
-            throw new IOException(
-                "Template file corrupted. Read unknown plan type during recover.");
+            MetadataConstant.TEMPLATE_FILE); ) {
+      PhysicalPlan plan;
+      int idx = 0;
+      while (reader.hasNext()) {
+        try {
+          plan = reader.next();
+          idx++;
+        } catch (Exception e) {
+          logger.error("Parse TemplateFile error at lineNumber {} because:", idx, e);
+          break;
         }
-      } catch (MetadataException | IOException e) {
-        logger.error("Can not operate cmd {} in TemplateFile for err:", plan.getOperatorType(), e);
+        if (plan == null) {
+          continue;
+        }
+        try {
+          switch (plan.getOperatorType()) {
+            case CREATE_TEMPLATE:
+              createSchemaTemplate((CreateTemplatePlan) plan);
+              break;
+            case APPEND_TEMPLATE:
+              appendSchemaTemplate((AppendTemplatePlan) plan);
+              break;
+            case PRUNE_TEMPLATE:
+              pruneSchemaTemplate((PruneTemplatePlan) plan);
+              break;
+            case DROP_TEMPLATE:
+              dropSchemaTemplate((DropTemplatePlan) plan);
+              break;
+            default:
+              throw new IOException(
+                  "Template file corrupted. Read unknown plan type during recover.");
+          }
+        } catch (MetadataException | IOException e) {
+          logger.error(
+              "Can not operate cmd {} in TemplateFile for err:", plan.getOperatorType(), e);
+        }
       }
     }
-    reader.close();
   }
 
   public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
