@@ -115,7 +115,7 @@
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.assembly.version>3.1.0</maven.assembly.version>
+        <maven.assembly.version>3.1.1</maven.assembly.version>
         <scala.library.version>2.11</scala.library.version>
         <scala.version>2.11.12</scala.version>
         <hadoop2.version>2.10.1</hadoop2.version>
