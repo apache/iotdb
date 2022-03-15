@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.service.register;
 
 public enum ServiceType {
   JMX_SERVICE("JMX ServerService", "JMX ServerService"),
-  CLUSTER_RPC_SERVICE("Cluster RPC Service", "ClusterRPCService");
+  CLUSTER_RPC_SERVER("Cluster RPC Server", "ClusterRPCServer");
 
   private final String name;
   private final String jmxName;

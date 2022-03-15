@@ -71,6 +71,7 @@ public class ConfigNodeConfCheck {
     FileInputStream inputStream = new FileInputStream(specialPropertiesFile);
     specialProperties.load(inputStream);
     checkSpecialProperties();
+    inputStream.close();
   }
 
   /**

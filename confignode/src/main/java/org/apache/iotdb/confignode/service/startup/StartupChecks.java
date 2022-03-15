@@ -57,15 +57,15 @@ public class StartupChecks {
         }
       };
   private final List<StartupCheck> preChecks = new ArrayList<>();
-  private final List<StartupCheck> defaultTests = new ArrayList<>();
+  private final List<StartupCheck> defaultChecks = new ArrayList<>();
 
   public StartupChecks() {
-    defaultTests.add(checkJMXPort);
-    defaultTests.add(checkJDK);
+    defaultChecks.add(checkJMXPort);
+    defaultChecks.add(checkJDK);
   }
 
   public StartupChecks withDefaultTest() {
-    preChecks.addAll(defaultTests);
+    preChecks.addAll(defaultChecks);
     return this;
   }
 
