@@ -29,7 +29,9 @@ package org.apache.iotdb.mpp.execution.queue;
  * <p>3. Can push a non-null element to queue. When the queue is beyond the max size, an exception
  * will be thrown.
  *
- * <p>4. Can remove an element by a long type id.
+ * <p>4. Can remove an element by a type of {@link ID}.
+ *
+ * <p>5. Each element has the different ID.
  */
 public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
 
@@ -79,15 +81,17 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
     if (element == null) {
       throw new NullPointerException("pushed element is null");
     }
-    if (size + 1 > MAX_CAPACITY) {
+    int sizeDelta = contains(element) ? 0 : 1;
+    if (size + sizeDelta > MAX_CAPACITY) {
       throw new IllegalStateException("the queue is full");
     }
     pushToQueue(element);
+    size += sizeDelta;
     this.notifyAll();
   }
 
   /**
-   * Remove and return the element by a long id. It returns null if it doesn't exist.
+   * Remove and return the element by id. It returns null if it doesn't exist.
    *
    * @param id the id of the element to be removed.
    * @return the removed element.
@@ -100,6 +104,17 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
     }
     size--;
     return output;
+  }
+
+  /**
+   * Get the element by id. It returns null if it doesn't exist.
+   *
+   * @param id the id of the element.
+   * @return the removed element.
+   */
+  public synchronized E get(ID id) {
+    queryHolder.setId(id);
+    return get(queryHolder);
   }
 
   /**
@@ -139,10 +154,32 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
   protected abstract void pushToQueue(E element);
 
   /**
-   * Remove and return the element by a long id. It returns null if it doesn't exist.
+   * Remove and return the element by its ID. It returns null if it doesn't exist.
+   *
+   * <p>This implementation needn't be thread-safe.
    *
    * @param element the element to be removed.
    * @return the removed element.
    */
   protected abstract E remove(E element);
+
+  /**
+   * Check whether an element with the same ID exists.
+   *
+   * <p>This implementation needn't be thread-safe.
+   *
+   * @param element the element to be checked.
+   * @return true if an element with the same ID exists, otherwise false.
+   */
+  protected abstract boolean contains(E element);
+
+  /**
+   * Return the element with the same id of the input, null if it doesn't exist.
+   *
+   * <p>This implementation needn't be thread-safe.
+   *
+   * @param element the element to be queried.
+   * @return the element with the same id in the queue. Null if it doesn't exist.
+   */
+  protected abstract E get(E element);
 }

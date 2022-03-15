@@ -39,9 +39,8 @@ public interface IFragmentInstanceManager {
    * downstream data has been consumed.
    *
    * @param instanceID the fragment instance to be notified.
-   * @param downstreamInstanceId the downstream instance id.
    */
-  void outputBlockAvailable(FragmentInstanceID instanceID, FragmentInstanceID downstreamInstanceId);
+  void outputBlockAvailable(FragmentInstanceID instanceID);
 
   /**
    * abort all the instances in this query

@@ -26,6 +26,7 @@ import org.apache.iotdb.mpp.execution.queue.L1PriorityQueue;
 import org.apache.iotdb.mpp.execution.queue.L2PriorityQueue;
 import org.apache.iotdb.mpp.execution.task.FragmentInstanceID;
 import org.apache.iotdb.mpp.execution.task.FragmentInstanceTask;
+import org.apache.iotdb.mpp.execution.task.FragmentInstanceTaskStatus;
 
 import java.util.List;
 import java.util.Map;
@@ -40,7 +41,7 @@ public class FragmentInstanceManager implements IFragmentInstanceManager, IServi
 
   private final IndexedBlockingQueue<FragmentInstanceTask> readyQueue;
   private final IndexedBlockingQueue<FragmentInstanceTask> timeoutQueue;
-  private final Map<String, List<FragmentInstanceID>> queryMap;
+  private final Map<String, List<FragmentInstanceTask>> queryMap;
 
   private static final int MAX_CAPACITY = 1000; // TODO: load from config files
   private static final int WORKER_THREAD_NUM = 4; // TODO: load from config files
@@ -65,7 +66,9 @@ public class FragmentInstanceManager implements IFragmentInstanceManager, IServi
     for (int i = 0; i < WORKER_THREAD_NUM; i++) {
       new FragmentInstanceTaskExecutor("Worker-Thread-" + i, workerGroups, readyQueue).start();
     }
-    new FragmentInstanceTimeoutSentinel("Sentinel-Thread", workerGroups, timeoutQueue).start();
+    new FragmentInstanceTimeoutSentinel(
+            "Sentinel-Thread", workerGroups, timeoutQueue, this::abortFragmentInstanceTask)
+        .start();
   }
 
   @Override
@@ -79,15 +82,89 @@ public class FragmentInstanceManager implements IFragmentInstanceManager, IServi
   }
 
   @Override
-  public void submitFragmentInstance() {}
+  public void submitFragmentInstance() {
+    // TODO: pass a real task
+    FragmentInstanceTask task = new FragmentInstanceTask();
+
+    task.lock();
+    try {
+      timeoutQueue.push(task);
+      // TODO: if no upstream deps, set to ready
+      task.setStatus(FragmentInstanceTaskStatus.READY);
+      readyQueue.push(task);
+    } finally {
+      task.unlock();
+    }
+  }
 
   @Override
   public void inputBlockAvailable(
-      FragmentInstanceID instanceID, FragmentInstanceID upstreamInstanceId) {}
+      FragmentInstanceID instanceID, FragmentInstanceID upstreamInstanceId) {
+    FragmentInstanceTask task = timeoutQueue.get(instanceID);
+    if (task == null) {
+      return;
+    }
+    task.lock();
+    try {
+      if (task.getStatus() != FragmentInstanceTaskStatus.BLOCKED) {
+        return;
+      }
+      task.inputReady(instanceID);
+      if (task.getStatus() == FragmentInstanceTaskStatus.READY) {
+        readyQueue.push(task);
+      }
+    } finally {
+      task.unlock();
+    }
+  }
 
   @Override
-  public void outputBlockAvailable(
-      FragmentInstanceID instanceID, FragmentInstanceID downstreamInstanceId) {}
+  public void outputBlockAvailable(FragmentInstanceID instanceID) {
+    FragmentInstanceTask task = timeoutQueue.get(instanceID);
+    if (task == null) {
+      return;
+    }
+    task.lock();
+    try {
+      if (task.getStatus() != FragmentInstanceTaskStatus.BLOCKED) {
+        return;
+      }
+      task.outputReady();
+      if (task.getStatus() == FragmentInstanceTaskStatus.READY) {
+        readyQueue.push(task);
+      }
+    } finally {
+      task.unlock();
+    }
+  }
+
+  /** abort a {@link FragmentInstanceTask} */
+  void abortFragmentInstanceTask(FragmentInstanceTask task) {
+    List<FragmentInstanceTask> queryRelatedTasks = queryMap.remove(task.getId().getQueryId());
+    clearFragmentInstanceTask(task);
+    if (queryRelatedTasks != null) {
+      // if queryRelatedTask is not null, it means that the clean request comes from this node, not
+      // coordinator.
+      // TODO: tell coordinator
+      for (FragmentInstanceTask otherTask : queryRelatedTasks) {
+        clearFragmentInstanceTask(otherTask);
+      }
+    }
+    // TODO: call LocalMemoryManager to release resources
+  }
+
+  private void clearFragmentInstanceTask(FragmentInstanceTask task) {
+    task.lock();
+    try {
+      if (task.getStatus() != FragmentInstanceTaskStatus.FINISHED) {
+        task.setStatus(FragmentInstanceTaskStatus.ABORTED);
+      }
+      readyQueue.remove(task.getId());
+      timeoutQueue.remove(task.getId());
+    } finally {
+      task.unlock();
+    }
+  }
 
   @Override
   public void abortQuery(String queryId) {}
