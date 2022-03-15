@@ -77,7 +77,7 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
   * stop the old vesion instance, and start the new one.
 
 - How to upgrade from v.12.x to v0.13.x?
-  * The data format (i.e., TsFile data) of v0.10.x and v0.11 are compatible, but the WAL file is
+  * The data format (i.e., TsFile data) of v0.12.x and v0.13.x are compatible, but the WAL file is
     incompatible. So, you can follow the steps:
   * **<font color=red> Execute `SET STSTEM TO READONLY` command in CLI. </font>**
   * **<font color=red> Stop writing new data.</font>**
