@@ -36,6 +36,7 @@ public class SlidingWindowGroupByExecutorFactory {
   /** comparators used for MonotonicQueueSlidingWindowGroupByExecutor */
   private static final Map<TSDataType, Comparator<AggregateResult>> maxComparators =
       new HashMap<>();
+
   private static final Map<TSDataType, Comparator<AggregateResult>> minComparators =
       new HashMap<>();
   private static final Map<TSDataType, Comparator<AggregateResult>> extremeComparators =
