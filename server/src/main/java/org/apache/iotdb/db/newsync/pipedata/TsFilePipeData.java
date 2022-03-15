@@ -46,7 +46,7 @@ public class TsFilePipeData extends PipeData {
 
   public TsFilePipeData(String tsFilePath, long serialNumber) {
     super(serialNumber);
-    String sep = File.separator.equals("/") ? File.separator : "\\\\";
+    String sep = File.separator.equals("\\") ? "\\\\" : File.separator;
     String[] paths = tsFilePath.split(sep);
     tsFileName = paths[paths.length - 1];
     parentDirPath = tsFilePath.substring(0, tsFilePath.length() - tsFileName.length());
