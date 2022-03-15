@@ -568,8 +568,8 @@ public class SGMManager {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return deletion failed Timeseries
    */
-  public Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
+  public synchronized Pair<Integer, Set<String>> deleteTimeseries(
+      PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
     try {
       List<MeasurementPath> allTimeseries = mtree.getMeasurementPaths(pathPattern, isPrefixMatch);
 

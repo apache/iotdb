@@ -122,7 +122,7 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   }
 
   @Override
-  public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
+  public synchronized void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
     mtree.deleteStorageGroup(storageGroup);
   }
 

@@ -165,7 +165,8 @@ public class InternalMNode extends MNode {
     newMNode.setUseTemplate(useTemplate);
 
     if (children != null) {
-      children.forEach(newMNode::addChild);
+      newMNode.setChildren(children);
+      children.forEach((childName, childNode) -> childNode.setParent(newMNode));
     }
   }
 

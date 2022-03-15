@@ -143,7 +143,7 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
       IEntityMNode newEntityMNode = newMNode.getAsEntityMNode();
       newEntityMNode.setAligned(isAligned);
       if (aliasChildren != null) {
-        aliasChildren.forEach(newMNode.getAsEntityMNode()::addAlias);
+        newEntityMNode.setAliasChildren(aliasChildren);
       }
     }
   }
