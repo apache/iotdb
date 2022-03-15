@@ -25,7 +25,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -347,10 +346,7 @@ public class TsFileWriteApiTest {
       Tablet tablet = new Tablet(deviceId, measurementSchemas);
       long[] timestamps = tablet.timestamps;
       Object[] values = tablet.values;
-      tablet.bitMaps = new BitMap[measurementSchemas.size()];
-      for (int s = 0; s < measurementSchemas.size(); s++) {
-        tablet.bitMaps[s] = new BitMap(tablet.getMaxRowNumber());
-      }
+      tablet.initBitMaps();
       long sensorNum = measurementSchemas.size();
       long startTime = 0;
       for (long r = 0; r < 10000; r++) {
@@ -396,10 +392,7 @@ public class TsFileWriteApiTest {
       Tablet tablet = new Tablet(deviceId, measurementSchemas);
       long[] timestamps = tablet.timestamps;
       Object[] values = tablet.values;
-      tablet.bitMaps = new BitMap[measurementSchemas.size()];
-      for (int s = 0; s < measurementSchemas.size(); s++) {
-        tablet.bitMaps[s] = new BitMap(tablet.getMaxRowNumber());
-      }
+      tablet.initBitMaps();
       long sensorNum = measurementSchemas.size();
       long startTime = 0;
       for (long r = 0; r < 10000; r++) {
