@@ -110,6 +110,13 @@ public class Tablet {
     this.schemas = schemas;
   }
 
+  public void initBitMaps() {
+    this.bitMaps = new BitMap[schemas.size()];
+    for (int column = 0; column < schemas.size(); column++) {
+      this.bitMaps[column] = new BitMap(getMaxRowNumber());
+    }
+  }
+
   public void addTimestamp(int rowIndex, long timestamp) {
     timestamps[rowIndex] = timestamp;
   }
