@@ -21,7 +21,9 @@ package org.apache.iotdb.confignode.service;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfCheck;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.exception.ConfigNodeException;
-import org.apache.iotdb.confignode.exception.StartupException;
+import org.apache.iotdb.confignode.exception.startup.StartupException;
+import org.apache.iotdb.confignode.service.register.JMXService;
+import org.apache.iotdb.confignode.service.register.RegisterManager;
 import org.apache.iotdb.confignode.service.startup.StartupChecks;
 
 import org.slf4j.Logger;
@@ -46,6 +48,7 @@ public class ConfigNode implements ConfigNodeMBean {
 
   public static void main(String[] args) {
     try {
+      // Check parameters
       ConfigNodeConfCheck.getInstance().checkConfig();
     } catch (ConfigNodeException | IOException e) {
       LOGGER.error("Meet error when doing start checking", e);
@@ -59,6 +62,7 @@ public class ConfigNode implements ConfigNodeMBean {
   public void active() {
     StartupChecks checks = new StartupChecks().withDefaultTest();
     try {
+      // Startup environment check
       checks.verify();
     } catch (StartupException e) {
       LOGGER.error(
@@ -78,6 +82,7 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("{} has started.", ConfigNodeConstant.GLOBAL_NAME);
   }
 
+  /** Register services */
   private void setUp() throws StartupException {
     LOGGER.info("Setting up {}...", ConfigNodeConstant.GLOBAL_NAME);
     registerManager.register(JMXService.getInstance());

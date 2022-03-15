@@ -16,32 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.conf;
+package org.apache.iotdb.confignode.service.register;
 
-import org.apache.iotdb.confignode.utils.ConfigNodeEnvironmentUtils;
+public enum ServiceType {
+  JMX_SERVICE("JMX ServerService", "JMX ServerService"),
+  CLUSTER_RPC_SERVICE("Cluster RPC Service", "ClusterRPCService");
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+  private final String name;
+  private final String jmxName;
 
-import java.net.URL;
-
-public class ConfigNodeConfigurationTest {
-
-  @Before
-  public void setUp() {
-    ConfigNodeEnvironmentUtils.envSetUp();
+  ServiceType(String name, String jmxName) {
+    this.name = name;
+    this.jmxName = jmxName;
   }
 
-  @After
-  public void teardown() {
-    ConfigNodeEnvironmentUtils.cleanEnv();
+  public String getName() {
+    return name;
   }
 
-  @Test
-  public void checkRepeatConfigurationTest() {
-    URL u1 = ConfigNodeEnvironmentUtils.class.getResource("/");
-    URL u2 = ConfigNodeDescriptor.class.getResource("/");
-    int z = 233;
+  public String getJmxName() {
+    return jmxName;
+  }
+
+  private static String generateJmxName(String packageName, String jmxName) {
+    return String.format("%s:type=%s", packageName, jmxName);
   }
 }

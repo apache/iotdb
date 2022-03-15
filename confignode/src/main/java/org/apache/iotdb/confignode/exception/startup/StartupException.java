@@ -16,8 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.exception;
+package org.apache.iotdb.confignode.exception.startup;
 
+import org.apache.iotdb.confignode.exception.ConfigNodeException;
+
+/** Throws when there exists errors when startup checks */
 public class StartupException extends ConfigNodeException {
 
   public StartupException(String name, String message) {

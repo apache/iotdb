@@ -19,7 +19,7 @@
 package org.apache.iotdb.confignode.service.startup;
 
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
-import org.apache.iotdb.confignode.exception.StartupException;
+import org.apache.iotdb.confignode.exception.startup.StartupException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
+/** StartupChecks checks the startup environment for running ConfigNode */
 public class StartupChecks {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StartupChecks.class);

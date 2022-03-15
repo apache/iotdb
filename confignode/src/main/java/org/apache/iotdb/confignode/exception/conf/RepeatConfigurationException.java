@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.exception.conf;
 
 import org.apache.iotdb.confignode.exception.ConfigNodeException;
 
+/** Throws when there exists some special parameters are repeatedly defined */
 public class RepeatConfigurationException extends ConfigNodeException {
 
   public RepeatConfigurationException(String parameter, String badValue, String correctValue) {

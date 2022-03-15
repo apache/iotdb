@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.service;
+package org.apache.iotdb.confignode.service.register;
 
-import org.apache.iotdb.confignode.exception.StartupException;
+import org.apache.iotdb.confignode.exception.startup.StartupException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/** Manager any services that run in ConfigNode */
 public class RegisterManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RegisterManager.class);

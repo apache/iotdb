@@ -42,19 +42,6 @@ public class ConfigNodeDescriptor {
     return conf;
   }
 
-  public static ConfigNodeDescriptor getInstance() {
-    return ConfigNodeDescriptorHolder.INSTANCE;
-  }
-
-  private static class ConfigNodeDescriptorHolder {
-
-    private static final ConfigNodeDescriptor INSTANCE = new ConfigNodeDescriptor();
-
-    private ConfigNodeDescriptorHolder() {
-      // empty constructor
-    }
-  }
-
   public String getPropsDir() {
     // Check if CONFIG_NODE_CONF is set
     String propsDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, null);
@@ -122,6 +109,19 @@ public class ConfigNodeDescriptor {
 
     } catch (IOException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
+    }
+  }
+
+  public static ConfigNodeDescriptor getInstance() {
+    return ConfigNodeDescriptorHolder.INSTANCE;
+  }
+
+  private static class ConfigNodeDescriptorHolder {
+
+    private static final ConfigNodeDescriptor INSTANCE = new ConfigNodeDescriptor();
+
+    private ConfigNodeDescriptorHolder() {
+      // empty constructor
     }
   }
 }

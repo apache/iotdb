@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.confignode.exception.conf.ConfigurationException;
 import org.apache.iotdb.confignode.exception.conf.RepeatConfigurationException;
 
 import org.slf4j.Logger;
@@ -43,8 +42,7 @@ public class ConfigNodeConfCheck {
 
   private Properties specialProperties;
 
-  public void checkConfig()
-      throws ConfigurationException, RepeatConfigurationException, IOException {
+  public void checkConfig() throws RepeatConfigurationException, IOException {
 
     String propsDir = ConfigNodeDescriptor.getInstance().getPropsDir();
     if (propsDir == null) {
@@ -75,6 +73,10 @@ public class ConfigNodeConfCheck {
     checkSpecialProperties();
   }
 
+  /**
+   * There are some special parameters that can't be changed after once we start ConfigNode.
+   * Therefore, store them in iotdb-confignode-special.properties at the first startup
+   */
   private void writeSpecialProperties(File specialPropertiesFile) {
     specialProperties.setProperty("device_group_count", String.valueOf(conf.getDeviceGroupCount()));
     specialProperties.setProperty(
@@ -87,6 +89,7 @@ public class ConfigNodeConfCheck {
     }
   }
 
+  /** Ensure that special parameters are consistent with each startup except the first one */
   private void checkSpecialProperties() throws RepeatConfigurationException {
     int specialDeviceGroupCount =
         Integer.parseInt(

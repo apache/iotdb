@@ -16,10 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.service;
+package org.apache.iotdb.confignode.service.register;
 
-import org.apache.iotdb.confignode.exception.StartupException;
+import org.apache.iotdb.confignode.exception.startup.StartupException;
 
+/** Any services that run in ConfigNode should implement IService */
 public interface IService {
 
   /** Start current service. */
