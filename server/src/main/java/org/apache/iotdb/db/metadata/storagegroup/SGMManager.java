@@ -383,6 +383,10 @@ public class SGMManager {
     // delete all the storage group files
     File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath);
     File[] sgFiles = sgSchemaFolder.listFiles();
+    if (sgFiles == null) {
+      throw new MetadataException(
+          String.format("Can't get files in storage group schema dir %s", storageGroupFullPath));
+    }
     for (File file : sgFiles) {
       if (file.delete()) {
         logger.info("delete storage group schema folder {}", sgSchemaFolder.getAbsolutePath());

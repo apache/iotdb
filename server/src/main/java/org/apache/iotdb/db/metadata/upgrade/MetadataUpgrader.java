@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.upgrade;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
@@ -228,6 +227,8 @@ public class MetadataUpgrader {
           }
         } catch (MetadataException e) {
           logger.error("Error occurred during recovering metadata from snapshot", e);
+          e.printStackTrace();
+          throw new IOException(e);
         }
       }
     }
@@ -321,6 +322,8 @@ public class MetadataUpgrader {
           }
         } catch (MetadataException e) {
           logger.error("Error occurred during redo mlog: ", e);
+          e.printStackTrace();
+          throw new IOException(e);
         }
       }
     }
@@ -368,30 +371,25 @@ public class MetadataUpgrader {
     while (!templatePlanQueue.isEmpty()) {
       plan = templatePlanQueue.poll();
       try {
-        manager.operation(plan);
-      } catch (PathNotExistException pathNotExistException) {
-        try {
-          UnsetTemplatePlan unsetTemplatePlan = (UnsetTemplatePlan) plan;
-          processUnSetTemplateAboveSG(unsetTemplatePlan, manager);
-        } catch (MetadataException e) {
-          logger.error("Error occurred during redo mlog: ", e);
+        switch (plan.getOperatorType()) {
+          case SET_TEMPLATE:
+            processSetTemplate((SetTemplatePlan) plan, manager);
+            break;
+          case UNSET_TEMPLATE:
+            processUnSetTemplate((UnsetTemplatePlan) plan, manager);
+            break;
+          default:
+            manager.operation(plan);
         }
       } catch (MetadataException e) {
-        if (!e.getMessage().equals("Template should not be set above storageGroup")) {
-          logger.error("Error occurred during redo mlog: ", e);
-        }
-
-        try {
-          SetTemplatePlan setTemplatePlan = (SetTemplatePlan) plan;
-          processSetTemplateAboveSG(setTemplatePlan, manager);
-        } catch (MetadataException e1) {
-          logger.error("Error occurred during redo mlog: ", e1);
-        }
+        logger.error("Error occurred during redo mlog: ", e);
+        e.printStackTrace();
+        throw new IOException(e);
       }
     }
   }
 
-  private void processSetTemplateAboveSG(SetTemplatePlan setTemplatePlan, MManager manager)
+  private void processSetTemplate(SetTemplatePlan setTemplatePlan, MManager manager)
       throws MetadataException {
     PartialPath path = new PartialPath(setTemplatePlan.getPrefixPath());
     for (PartialPath storageGroupPath : manager.getMatchedStorageGroups(path, true)) {
@@ -400,7 +398,7 @@ public class MetadataUpgrader {
     }
   }
 
-  private void processUnSetTemplateAboveSG(UnsetTemplatePlan unsetTemplatePlan, MManager manager)
+  private void processUnSetTemplate(UnsetTemplatePlan unsetTemplatePlan, MManager manager)
       throws MetadataException {
     PartialPath path = new PartialPath(unsetTemplatePlan.getPrefixPath());
     for (PartialPath storageGroupPath : manager.getMatchedStorageGroups(path, true)) {
