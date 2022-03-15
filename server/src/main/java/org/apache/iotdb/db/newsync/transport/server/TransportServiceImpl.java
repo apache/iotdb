@@ -147,80 +147,78 @@ public class TransportServiceImpl implements TransportService.Iface {
     logger.debug("Invoke transportData method from client ip = {}", identityInfo.address);
 
     String fileDir = getFileDataDirPath(identityInfo);
-    synchronized (fileDir.intern()) {
-      Type type = metaInfo.type;
-      String fileName = metaInfo.fileName;
-      long startIndex = metaInfo.startIndex;
+    Type type = metaInfo.type;
+    String fileName = metaInfo.fileName;
+    long startIndex = metaInfo.startIndex;
 
-      // Check file start index valid
-      if (type == Type.FILE) {
-        try {
-          CheckResult result = checkStartIndexValid(new File(fileDir, fileName), startIndex);
-          if (!result.isResult()) {
-            return new TransportStatus(REBASE_CODE, result.getIndex());
-          }
-        } catch (IOException e) {
-          logger.error(e.getMessage());
-          return new TransportStatus(ERROR_CODE, e.getMessage());
-        }
-      }
-
-      // Check buff digest
-      int pos = buff.position();
-      MessageDigest messageDigest = null;
+    // Check file start index valid
+    if (type == Type.FILE) {
       try {
-        messageDigest = MessageDigest.getInstance("SHA-256");
-      } catch (NoSuchAlgorithmException e) {
+        CheckResult result = checkStartIndexValid(new File(fileDir, fileName), startIndex);
+        if (!result.isResult()) {
+          return new TransportStatus(REBASE_CODE, result.getIndex());
+        }
+      } catch (IOException e) {
         logger.error(e.getMessage());
         return new TransportStatus(ERROR_CODE, e.getMessage());
       }
-      messageDigest.update(buff);
-      byte[] digestBytes = new byte[digest.capacity()];
-      digest.get(digestBytes);
-      if (!Arrays.equals(messageDigest.digest(), digestBytes)) {
-        return new TransportStatus(RETRY_CODE, "Data digest check error, retry.");
-      }
+    }
 
-      if (type != Type.FILE) {
-        buff.position(pos);
+    // Check buff digest
+    int pos = buff.position();
+    MessageDigest messageDigest = null;
+    try {
+      messageDigest = MessageDigest.getInstance("SHA-256");
+    } catch (NoSuchAlgorithmException e) {
+      logger.error(e.getMessage());
+      return new TransportStatus(ERROR_CODE, e.getMessage());
+    }
+    messageDigest.update(buff);
+    byte[] digestBytes = new byte[digest.capacity()];
+    digest.get(digestBytes);
+    if (!Arrays.equals(messageDigest.digest(), digestBytes)) {
+      return new TransportStatus(RETRY_CODE, "Data digest check error, retry.");
+    }
+
+    if (type != Type.FILE) {
+      buff.position(pos);
+      int length = buff.capacity();
+      byte[] byteArray = new byte[length];
+      buff.get(byteArray);
+      try {
+        PipeData pipeData = PipeData.deserialize(byteArray);
+        if (type == Type.TSFILE) {
+          // Do with file
+          handleTsFilePipeData((TsFilePipeData) pipeData, fileDir);
+        }
+        PipeDataQueueFactory.getBufferedPipeDataQueue(getPipeLogDirPath(identityInfo))
+            .offer(pipeData);
+      } catch (IOException | IllegalPathException e) {
+        logger.error("Pipe data transport error, {}", e.getMessage());
+        return new TransportStatus(RETRY_CODE, "Data digest transport error " + e.getMessage());
+      }
+    } else {
+      // Write buff to {file}.patch
+      buff.position(pos);
+      File file = new File(fileDir, fileName + PATCH_SUFFIX);
+      try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw")) {
+        randomAccessFile.seek(startIndex);
         int length = buff.capacity();
         byte[] byteArray = new byte[length];
         buff.get(byteArray);
-        try {
-          PipeData pipeData = PipeData.deserialize(byteArray);
-          if (type == Type.TSFILE) {
-            // Do with file
-            handleTsFilePipeData((TsFilePipeData) pipeData, fileDir);
-          }
-          PipeDataQueueFactory.getBufferedPipeDataQueue(getPipeLogDirPath(identityInfo))
-              .offer(pipeData);
-        } catch (IOException | IllegalPathException e) {
-          logger.error("Pipe data transport error, {}", e.getMessage());
-        }
-      } else {
-        // Write buff to {file}.patch
-        buff.position(pos);
-        File file = new File(fileDir, fileName + PATCH_SUFFIX);
-        try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw")) {
-          randomAccessFile.seek(startIndex);
-          int length = buff.capacity();
-          byte[] byteArray = new byte[length];
-          buff.get(byteArray);
-          randomAccessFile.write(byteArray);
-          writeRecordFile(new File(fileDir, fileName + RECORD_SUFFIX), startIndex + length);
-          logger.debug(
-              "Sync "
-                  + fileName
-                  + " start at "
-                  + startIndex
-                  + " to "
-                  + (startIndex + length)
-                  + " is done.");
-        } catch (IOException e) {
-          logger.error(e.getMessage());
-          e.printStackTrace();
-          return new TransportStatus(ERROR_CODE, e.getMessage());
-        }
+        randomAccessFile.write(byteArray);
+        writeRecordFile(new File(fileDir, fileName + RECORD_SUFFIX), startIndex + length);
+        logger.debug(
+            "Sync "
+                + fileName
+                + " start at "
+                + startIndex
+                + " to "
+                + (startIndex + length)
+                + " is done.");
+      } catch (IOException e) {
+        logger.error(e.getMessage());
+        return new TransportStatus(ERROR_CODE, e.getMessage());
       }
     }
     return new TransportStatus(SUCCESS_CODE, "");
@@ -304,7 +302,7 @@ public class TransportServiceImpl implements TransportService.Iface {
    * @param fileDir path of file data dir
    */
   private void handleTsFilePipeData(TsFilePipeData tsFilePipeData, String fileDir) {
-    String tsFileName = tsFilePipeData.getFileName();
+    String tsFileName = tsFilePipeData.getTsFileName();
     File dir = new File(fileDir);
     File[] targetFiles =
         dir.listFiles((dir1, name) -> name.startsWith(tsFileName) && name.endsWith(PATCH_SUFFIX));
@@ -320,8 +318,7 @@ public class TransportServiceImpl implements TransportService.Iface {
         targetFile.renameTo(newFile);
       }
     }
-    tsFilePipeData.setSeparator(File.separator);
-    tsFilePipeData.setTsFilePath(dir.getAbsolutePath() + File.separator + tsFileName);
+    tsFilePipeData.setParentDirPath(dir.getAbsolutePath());
   }
 
   private String getFileDataDirPath(IdentityInfo identityInfo) {
