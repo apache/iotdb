@@ -51,6 +51,8 @@ public enum PrivilegeType {
   ALL,
   DELETE_STORAGE_GROUP(true);
 
+  private static final int PRIVILEGE_COUNT = values().length;
+
   private final boolean isPathRelevant;
 
   PrivilegeType() {
@@ -69,6 +71,6 @@ public enum PrivilegeType {
    * @return Whether this privilege need a seriesPath or not.
    */
   public static boolean isPathRelevant(int type) {
-    return values()[type].isPathRelevant;
+    return 0 <= type && type < PRIVILEGE_COUNT && values()[type].isPathRelevant;
   }
 }
