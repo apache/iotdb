@@ -340,7 +340,7 @@ public class TsFileWriteApiTest {
       measurementSchemas.add(new MeasurementSchema("s2", TSDataType.TEXT, TSEncoding.PLAIN));
       measurementSchemas.add(new MeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
 
-      // register nonAlign timeseries
+      // register nonAligned timeseries
       tsFileWriter.registerTimeseries(new Path(deviceId), measurementSchemas);
 
       Tablet tablet = new Tablet(deviceId, measurementSchemas);
@@ -386,7 +386,7 @@ public class TsFileWriteApiTest {
       measurementSchemas.add(new MeasurementSchema("s2", TSDataType.TEXT, TSEncoding.PLAIN));
       measurementSchemas.add(new MeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
 
-      // register nonAlign timeseries
+      // register aligned timeseries
       tsFileWriter.registerAlignedTimeseries(new Path(deviceId), measurementSchemas);
 
       Tablet tablet = new Tablet(deviceId, measurementSchemas);
