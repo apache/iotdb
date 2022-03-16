@@ -178,8 +178,7 @@ public class SchemaFile implements ISchemaFile {
 
     if (node.isStorageGroup()) {
       // Notice that it implies StorageGroupNode is always of 0L segmentAddress
-      curPage = getRootPage();
-      pageIndex = curPage.getPageIndex();
+      pageIndex = 0;
       curSegIdx = 0;
       isEntity = node.isEntity();
       setNodeAddress(node, 0L);
@@ -190,8 +189,9 @@ public class SchemaFile implements ISchemaFile {
       }
       pageIndex = SchemaFile.getPageIndex(curSegAddr);
       curSegIdx = SchemaFile.getSegIndex(curSegAddr);
-      curPage = getPageInstance(pageIndex);
     }
+    pageLock.writeLock(pageIndex); // temporary fix
+    curPage = getPageInstance(pageIndex);
 
     // Flush new child
     for (Map.Entry<String, IMNode> entry :
@@ -227,6 +227,10 @@ public class SchemaFile implements ISchemaFile {
           // get next page and retry
           pageIndex = SchemaFile.getPageIndex(npAddress);
           curSegIdx = SchemaFile.getSegIndex(npAddress);
+
+          pageLock.writeLock(pageIndex);
+          pageLock.writeUnlock(curPage.getPageIndex());
+
           curPage = getPageInstance(pageIndex);
           npAddress = curPage.write(curSegIdx, entry.getKey(), childBuffer);
         }
@@ -256,8 +260,14 @@ public class SchemaFile implements ISchemaFile {
           setNodeAddress(node, curSegAddr);
           updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
         }
+
+        pageLock.writeLock(newPage.getPageIndex());
+        pageLock.writeUnlock(curPage.getPageIndex());
+
         curPage = newPage;
         curPage.write(curSegIdx, entry.getKey(), childBuffer);
+      } finally {
+        pageLock.writeUnlock(curPage.getPageIndex());
       }
     }
 
@@ -698,13 +708,8 @@ public class SchemaFile implements ISchemaFile {
             // TODO: improve concurrent control
             // for any page involved in concurrent operation, it will not be evicted
             // this may produce an inefficient eviction
-            pageLock.writeLock(id);
-            try {
-              flushPageToFile(pageInstCache.get(id));
-              pageInstCache.remove(id);
-            } finally {
-              pageLock.writeUnlock(id);
-            }
+            flushPageToFile(pageInstCache.get(id));
+            pageInstCache.remove(id);
           }
         }
       }
@@ -812,12 +817,17 @@ public class SchemaFile implements ISchemaFile {
   }
 
   private void flushPageToFile(ISchemaPage src) throws IOException {
-    src.syncPageBuffer();
+    pageLock.writeLock(src.getPageIndex());
+    try {
+      src.syncPageBuffer();
 
-    ByteBuffer srcBuf = ByteBuffer.allocate(SchemaFile.PAGE_LENGTH);
-    src.getPageBuffer(srcBuf);
-    srcBuf.clear();
-    channel.write(srcBuf, getPageAddress(src.getPageIndex()));
+      ByteBuffer srcBuf = ByteBuffer.allocate(SchemaFile.PAGE_LENGTH);
+      src.getPageBuffer(srcBuf);
+      srcBuf.clear();
+      channel.write(srcBuf, getPageAddress(src.getPageIndex()));
+    } finally {
+      pageLock.writeUnlock(src.getPageIndex());
+    }
   }
 
   @TestOnly
