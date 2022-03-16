@@ -110,6 +110,12 @@ public class AggregationQueryOperator extends QueryOperator {
     List<String> aggregations = plan.getDeduplicatedAggregations();
     List<TSDataType> dataTypes = SchemaUtils.getSeriesTypesByPaths(plan.getDeduplicatedPaths());
 
+    // If it is the select current() aggregate function, the data type is text and there are no
+    // parameters
+    if (dataTypes.size() == 0) {
+      dataTypes.add(TSDataType.TEXT);
+    }
+
     for (int i = 0; i < aggregations.size(); i++) {
       if (!verifyIsAggregationDataTypeMatched(aggregations.get(i), dataTypes.get(i))) {
         return false;
@@ -131,6 +137,7 @@ public class AggregationQueryOperator extends QueryOperator {
       case SQLConstant.MAX_TIME:
       case SQLConstant.FIRST_VALUE:
       case SQLConstant.LAST_VALUE:
+      case SQLConstant.CURRENT:
       default:
         return true;
     }
