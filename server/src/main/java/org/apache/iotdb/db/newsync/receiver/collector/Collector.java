@@ -24,11 +24,10 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
-import org.apache.iotdb.db.newsync.pipedata.queue.BufferedPipeDataQueue;
 import org.apache.iotdb.db.newsync.pipedata.queue.PipeDataQueue;
+import org.apache.iotdb.db.newsync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.newsync.receiver.manager.ReceiverManager;
-import org.apache.iotdb.db.utils.TestOnly;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,15 +48,6 @@ public class Collector {
 
   public Collector() {
     taskFutures = new ConcurrentHashMap<>();
-  }
-
-  private static Map<String, BufferedPipeDataQueue> bufferedPipeDataQueueMap =
-      new ConcurrentHashMap<>();
-
-  @TestOnly
-  public static BufferedPipeDataQueue getPipeDataQueue(String pipeLogDir) {
-    return bufferedPipeDataQueueMap.computeIfAbsent(
-        pipeLogDir, i -> new BufferedPipeDataQueue(pipeLogDir));
   }
 
   public void startCollect() {
@@ -118,7 +108,8 @@ public class Collector {
     @Override
     public void run() {
       PipeDataQueue pipeDataQueue =
-          getPipeDataQueue(SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime));
+          PipeDataQueueFactory.getBufferedPipeDataQueue(
+              SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime));
       while (!Thread.interrupted()) {
         PipeData pipeData = null;
         try {
