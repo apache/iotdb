@@ -961,7 +961,7 @@ public class MManager {
         }
       }
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
-      if (!(node.isStorageGroup())) {
+      if (!(node.isStorageGroup()) && !isRecovering) {
         logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.getPartialPath()));
       }
       return node;
@@ -973,7 +973,7 @@ public class MManager {
       }
       // ignore set storage group concurrently
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
-      if (!(node.isStorageGroup())) {
+      if (!(node.isStorageGroup()) && !isRecovering) {
         logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.getPartialPath()));
       }
       return node;
