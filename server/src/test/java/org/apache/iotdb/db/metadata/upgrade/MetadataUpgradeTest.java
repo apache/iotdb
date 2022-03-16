@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.upgrade;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.tag.TagLogFile;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
@@ -42,6 +44,7 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.writelog.io.LogWriter;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -54,7 +57,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -91,7 +96,7 @@ public class MetadataUpgradeTest {
     manager.init();
 
     Assert.assertEquals(8, manager.getStorageGroupNum(new PartialPath("root.**"), false));
-    Assert.assertEquals(5, manager.getAllTimeseriesCount(new PartialPath("root.**")));
+    Assert.assertEquals(10, manager.getAllTimeseriesCount(new PartialPath("root.**")));
 
     ShowTimeSeriesPlan showTimeSeriesPlan =
         new ShowTimeSeriesPlan(
@@ -193,6 +198,20 @@ public class MetadataUpgradeTest {
 
       logWriter.setStorageGroup(new PartialPath("root.test.sg4"));
       logWriter.setStorageGroup(new PartialPath("root.unsetTemplate2.sg2"));
+
+      logWriter.force();
+    }
+
+    CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan = getCreateAlignedTimeseriesPlan();
+    LogWriter rawLogWriter =
+        new LogWriter(schemaDirPath + File.separator + MetadataConstant.METADATA_LOG, true);
+    try {
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);
+      createAlignedTimeSeriesPlan.formerSerialize(byteBuffer);
+      rawLogWriter.write(byteBuffer);
+      rawLogWriter.force();
+    } finally {
+      rawLogWriter.close();
     }
   }
 
@@ -214,6 +233,34 @@ public class MetadataUpgradeTest {
 
     return new CreateTemplatePlan(
         templateName, schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+  }
+
+  private CreateAlignedTimeSeriesPlan getCreateAlignedTimeseriesPlan() throws IllegalPathException {
+    PartialPath devicePath = new PartialPath("root.test.sg4.device");
+    List<String> measurements = Arrays.asList("as1", "as2", "as3", "as4", "as5");
+    List<TSDataType> tsDataTypes =
+        Arrays.asList(
+            TSDataType.DOUBLE,
+            TSDataType.TEXT,
+            TSDataType.FLOAT,
+            TSDataType.BOOLEAN,
+            TSDataType.INT32);
+    List<TSEncoding> tsEncodings =
+        Arrays.asList(
+            TSEncoding.PLAIN,
+            TSEncoding.PLAIN,
+            TSEncoding.PLAIN,
+            TSEncoding.PLAIN,
+            TSEncoding.PLAIN);
+    List<CompressionType> compressionTypes =
+        Arrays.asList(
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED);
+    return new CreateAlignedTimeSeriesPlan(
+        devicePath, measurements, tsDataTypes, tsEncodings, compressionTypes, null, null, null);
   }
 
   private void prepareTagFile() throws Exception {

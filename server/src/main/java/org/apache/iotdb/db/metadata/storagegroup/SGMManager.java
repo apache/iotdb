@@ -548,9 +548,12 @@ public class SGMManager {
       // update statistics and schemaDataTypeNumMap
       timeseriesStatistics.addTimeseries(plan.getMeasurements().size());
 
+      List<Long> tagOffsets = plan.getTagOffsets();
       for (int i = 0; i < measurements.size(); i++) {
-        if (!plan.getTagOffsets().isEmpty() && isRecovering) {
-          tagManager.recoverIndex(plan.getTagOffsets().get(i), measurementMNodeList.get(i));
+        if (tagOffsets != null && !plan.getTagOffsets().isEmpty() && isRecovering) {
+          if (tagOffsets.get(i) != -1) {
+            tagManager.recoverIndex(plan.getTagOffsets().get(i), measurementMNodeList.get(i));
+          }
         } else if (tagsList != null && !tagsList.isEmpty()) {
           if (tagsList.get(i) != null) {
             // tag key, tag value
@@ -560,7 +563,7 @@ public class SGMManager {
       }
 
       // write log
-      List<Long> tagOffsets = new ArrayList<>();
+      tagOffsets = new ArrayList<>();
       if (!isRecovering) {
         if ((tagsList != null && !tagsList.isEmpty())
             || (attributesList != null && !attributesList.isEmpty())) {
