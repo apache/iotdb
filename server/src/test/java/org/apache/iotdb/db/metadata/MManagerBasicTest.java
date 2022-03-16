@@ -34,12 +34,14 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -60,6 +62,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -2186,6 +2189,75 @@ public class MManagerBasicTest {
         Assert.assertEquals(String.format("%s is an illegal name.", measurementId), e.getMessage());
       }
     }
+  }
+
+  @Test
+  public void testCreateAlignedTimeseriesWithAliasAndTags() throws Exception {
+    MManager manager = IoTDB.metaManager;
+    manager.setStorageGroup(new PartialPath("root.laptop"));
+    PartialPath devicePath = new PartialPath("root.laptop.device");
+    List<String> measurements = Arrays.asList("s1", "s2", "s3", "s4", "s5");
+    List<TSDataType> tsDataTypes =
+        Arrays.asList(
+            TSDataType.DOUBLE,
+            TSDataType.TEXT,
+            TSDataType.FLOAT,
+            TSDataType.BOOLEAN,
+            TSDataType.INT32);
+    List<TSEncoding> tsEncodings =
+        Arrays.asList(
+            TSEncoding.PLAIN,
+            TSEncoding.PLAIN,
+            TSEncoding.PLAIN,
+            TSEncoding.PLAIN,
+            TSEncoding.PLAIN);
+    List<CompressionType> compressionTypes =
+        Arrays.asList(
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED);
+    List<String> aliasList = Arrays.asList("alias1", null, "alias2", null, null);
+    List<Map<String, String>> tagList = new ArrayList<>();
+    Map<String, String> tags = new HashMap<>();
+    tags.put("key", "value");
+    tagList.add(tags);
+    tagList.add(null);
+    tagList.add(null);
+    tagList.add(tags);
+    tagList.add(null);
+    CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
+        new CreateAlignedTimeSeriesPlan(
+            devicePath,
+            measurements,
+            tsDataTypes,
+            tsEncodings,
+            compressionTypes,
+            aliasList,
+            tagList,
+            null);
+    manager.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+
+    Assert.assertEquals(5, manager.getAllTimeseriesCount(new PartialPath("root.laptop.device.*")));
+    Assert.assertTrue(manager.isPathExist(new PartialPath("root.laptop.device.alias2")));
+
+    ShowTimeSeriesPlan showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(new PartialPath("root.**"), false, "key", "value", 0, 0, false);
+    List<ShowTimeSeriesResult> showTimeSeriesResults =
+        manager.showTimeseries(showTimeSeriesPlan, null);
+    Assert.assertEquals(2, showTimeSeriesResults.size());
+    showTimeSeriesResults =
+        showTimeSeriesResults.stream()
+            .sorted(Comparator.comparing(ShowResult::getName))
+            .collect(Collectors.toList());
+    ShowTimeSeriesResult result = showTimeSeriesResults.get(0);
+    Assert.assertEquals("root.laptop.device.s1", result.getName());
+    Assert.assertEquals("alias1", result.getAlias());
+    Assert.assertEquals(tags, result.getTag());
+    result = showTimeSeriesResults.get(1);
+    Assert.assertEquals("root.laptop.device.s4", result.getName());
+    Assert.assertEquals(tags, result.getTag());
   }
 
   @Test

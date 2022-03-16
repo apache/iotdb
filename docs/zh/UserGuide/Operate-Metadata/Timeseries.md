@@ -63,7 +63,7 @@ IoTDB> CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN 
 
 一组对齐序列中的序列可以有不同的数据类型、编码方式以及压缩方式。
 
-对齐的时间序列暂不支持设置别名、标签、属性。
+对齐的时间序列也支持设置别名、标签、属性。
 
 ## 删除时间序列
 

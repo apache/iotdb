@@ -265,7 +265,8 @@ public class MTreeBelowSG implements Serializable {
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
-      List<CompressionType> compressors)
+      List<CompressionType> compressors,
+      List<String> aliasList)
       throws MetadataException {
     List<IMeasurementMNode> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
@@ -276,9 +277,13 @@ public class MTreeBelowSG implements Serializable {
     // synchronize check and add, we need addChild operation be atomic.
     // only write operations on mtree will be synchronized
     synchronized (this) {
-      for (String measurement : measurements) {
-        if (cur.hasChild(measurement)) {
-          throw new PathAlreadyExistException(devicePath.getFullPath() + "." + measurement);
+      for (int i = 0; i < measurements.size(); i++) {
+        if (cur.hasChild(measurements.get(i))) {
+          throw new PathAlreadyExistException(devicePath.getFullPath() + "." + measurements.get(i));
+        }
+        if (aliasList != null && aliasList.get(i) != null && cur.hasChild(aliasList.get(i))) {
+          throw new AliasAlreadyExistException(
+              devicePath.getFullPath() + "." + measurements.get(i), aliasList.get(i));
         }
       }
 
@@ -310,8 +315,11 @@ public class MTreeBelowSG implements Serializable {
                 measurements.get(i),
                 new MeasurementSchema(
                     measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i)),
-                null);
+                aliasList == null ? null : aliasList.get(i));
         entityMNode.addChild(measurements.get(i), measurementMNode);
+        if (aliasList != null && aliasList.get(i) != null) {
+          entityMNode.addAlias(aliasList.get(i), measurementMNode);
+        }
         measurementMNodeList.add(measurementMNode);
       }
     }

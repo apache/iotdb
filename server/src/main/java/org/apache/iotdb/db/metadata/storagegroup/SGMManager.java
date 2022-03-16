@@ -539,7 +539,8 @@ public class SGMManager {
               measurements,
               plan.getDataTypes(),
               plan.getEncodings(),
-              plan.getCompressors());
+              plan.getCompressors(),
+              plan.getAliasList());
 
       // the cached mNode may be replaced by new entityMNode in mtree
       mNodeCache.invalidate(prefixPath);
@@ -550,23 +551,33 @@ public class SGMManager {
       for (int i = 0; i < measurements.size(); i++) {
         if (!plan.getTagOffsets().isEmpty() && isRecovering) {
           tagManager.recoverIndex(plan.getTagOffsets().get(i), measurementMNodeList.get(i));
-        } else if (plan.getTagsList() != null && !plan.getTagsList().isEmpty()) {
-          // tag key, tag value
-          tagManager.addIndex(plan.getTagsList().get(i), measurementMNodeList.get(i));
+        } else if (tagsList != null && !tagsList.isEmpty()) {
+          if (tagsList.get(i) != null) {
+            // tag key, tag value
+            tagManager.addIndex(tagsList.get(i), measurementMNodeList.get(i));
+          }
         }
       }
 
       // write log
       List<Long> tagOffsets = new ArrayList<>();
       if (!isRecovering) {
-        if ((plan.getTagsList() != null && !plan.getTagsList().isEmpty())
-            || (plan.getAttributesList() != null && !plan.getAttributesList().isEmpty())) {
+        if ((tagsList != null && !tagsList.isEmpty())
+            || (attributesList != null && !attributesList.isEmpty())) {
+          Map<String, String> tags;
+          Map<String, String> attributes;
           for (int i = 0; i < measurements.size(); i++) {
-            tagOffsets.add(tagManager.writeTagFile(tagsList.get(i), attributesList.get(i)));
+            tags = tagsList == null ? null : tagsList.get(i);
+            attributes = attributesList == null ? null : attributesList.get(i);
+            if (tags == null && attributes == null) {
+              tagOffsets.add(-1L);
+            } else {
+              tagOffsets.add(tagManager.writeTagFile(tags, attributes));
+            }
           }
         } else {
           for (int i = 0; i < measurements.size(); i++) {
-            tagOffsets.add(Long.parseLong("-1"));
+            tagOffsets.add(-1L);
           }
         }
         plan.setTagOffsets(tagOffsets);
