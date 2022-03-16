@@ -112,6 +112,15 @@ public abstract class Decoder {
         }
       case DICTIONARY:
         return new DictionaryDecoder();
+      case ZIGZAG:
+        switch (dataType) {
+          case INT32:
+            return new IntZigzagDecoder();
+          case INT64:
+            return new LongZigzagDecoder();
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
       case FREQ:
         return new FreqDecoder();
       default:

@@ -23,6 +23,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
+import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
@@ -640,6 +641,7 @@ public class PlanExecutor implements IPlanExecutor {
     queryDataSet.setRowOffset(queryPlan.getRowOffset());
     queryDataSet.setWithoutAllNull(queryPlan.isWithoutAllNull());
     queryDataSet.setWithoutAnyNull(queryPlan.isWithoutAnyNull());
+    queryDataSet.setWithoutNullColumnsIndex(queryPlan.getWithoutNullColumnsIndex());
     return queryDataSet;
   }
 
@@ -2182,34 +2184,30 @@ public class PlanExecutor implements IPlanExecutor {
     }
     List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
-    headerList.add(new PartialPath(COLUMN_ROLE, false));
-    headerList.add(new PartialPath(COLUMN_PRIVILEGE, false));
-    typeList.add(TSDataType.TEXT);
-    typeList.add(TSDataType.TEXT);
-    ListDataSet dataSet = new ListDataSet(headerList, typeList);
     int index = 0;
-    for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
-      if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+    if (IoTDBDescriptor.getInstance().getConfig().getAdminName().equals(userName)) {
+      headerList.add(new PartialPath(COLUMN_PRIVILEGE, false));
+      typeList.add(TSDataType.TEXT);
+      ListDataSet dataSet = new ListDataSet(headerList, typeList);
+      for (PrivilegeType privilegeType : PrivilegeType.values()) {
         RowRecord record = new RowRecord(index++);
-        Field roleF = new Field(TSDataType.TEXT);
-        roleF.setBinaryV(new Binary(""));
-        record.addField(roleF);
         Field privilegeF = new Field(TSDataType.TEXT);
-        privilegeF.setBinaryV(new Binary(pathPrivilege.toString()));
+        privilegeF.setBinaryV(new Binary(privilegeType.toString()));
         record.addField(privilegeF);
         dataSet.putRecord(record);
       }
-    }
-    for (String roleN : user.getRoleList()) {
-      Role role = authorizer.getRole(roleN);
-      if (role == null) {
-        continue;
-      }
-      for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+      return dataSet;
+    } else {
+      headerList.add(new PartialPath(COLUMN_ROLE, false));
+      headerList.add(new PartialPath(COLUMN_PRIVILEGE, false));
+      typeList.add(TSDataType.TEXT);
+      typeList.add(TSDataType.TEXT);
+      ListDataSet dataSet = new ListDataSet(headerList, typeList);
+      for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
         if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
           RowRecord record = new RowRecord(index++);
           Field roleF = new Field(TSDataType.TEXT);
-          roleF.setBinaryV(new Binary(roleN));
+          roleF.setBinaryV(new Binary(""));
           record.addField(roleF);
           Field privilegeF = new Field(TSDataType.TEXT);
           privilegeF.setBinaryV(new Binary(pathPrivilege.toString()));
@@ -2217,8 +2215,27 @@ public class PlanExecutor implements IPlanExecutor {
           dataSet.putRecord(record);
         }
       }
+      for (String roleN : user.getRoleList()) {
+        Role role = authorizer.getRole(roleN);
+        if (role == null) {
+          continue;
+        }
+        for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+          if (path == null
+              || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+            RowRecord record = new RowRecord(index++);
+            Field roleF = new Field(TSDataType.TEXT);
+            roleF.setBinaryV(new Binary(roleN));
+            record.addField(roleF);
+            Field privilegeF = new Field(TSDataType.TEXT);
+            privilegeF.setBinaryV(new Binary(pathPrivilege.toString()));
+            record.addField(privilegeF);
+            dataSet.putRecord(record);
+          }
+        }
+      }
+      return dataSet;
     }
-    return dataSet;
   }
 
   @SuppressWarnings("unused") // for the distributed version

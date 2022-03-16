@@ -71,6 +71,8 @@ public abstract class TSEncodingBuilder {
         return new Dictionary();
       case FREQ:
         return new Freq();
+      case ZIGZAG:
+        return new Zigzag();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -370,6 +372,26 @@ public abstract class TSEncodingBuilder {
         return new DictionaryEncoder();
       }
       throw new UnSupportedDataTypeException("DICTIONARY doesn't support data type: " + type);
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class Zigzag extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+          return new IntZigzagEncoder();
+        case INT64:
+          return new LongZigzagEncoder();
+        default:
+          throw new UnSupportedDataTypeException("GORILLA doesn't support data type: " + type);
+      }
     }
 
     @Override

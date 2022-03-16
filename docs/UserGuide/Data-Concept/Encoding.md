@@ -60,6 +60,9 @@ FREQ encoding is lossy. It transforms the time sequence to the frequency domain 
 
 > There are two parameters of FREQ encoding in the configuration file: `freq_snr` defines the signal-noise-ratio (SNR), `freq_block_size` defines the data size in a time-frequency transformation.
 
+* ZIGZAG 
+  
+ZIGZAG encoding maps signed integers to unsigned integers so that numbers with a small absolute value (for instance, -1) have a small variant encoded value too. It does this in a way that "zig-zags" back and forth through the positive and negative integers.
 
 ## Correspondence between data type and encoding
 
@@ -72,8 +75,8 @@ The five encodings described in the previous sections are applicable to differen
 |Data Type	|Supported Encoding|
 |:---:|:---:|
 |BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
-|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
+|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG|
+|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG|
 |FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
 |DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
 |TEXT	|PLAIN, DICTIONARY|

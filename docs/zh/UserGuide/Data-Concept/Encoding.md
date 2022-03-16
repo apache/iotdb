@@ -59,6 +59,10 @@ GORILLA 编码是一种无损编码，它比较适合编码前后值比较接近
 
 > 频域编码在配置文件中包括两个参数：`freq_snr`指定了编码的信噪比；`freq_block_size`指定了编码进行时频域变换的分组大小。
 
+* ZIGZAG 编码
+
+ZigZag编码将有符号整型映射到无符号整型，适合比较小的整数。
+
 ## 数据类型与编码的对应关系
 
 前文介绍的五种编码适用于不同的数据类型，若对应关系错误，则无法正确创建时间序列。数据类型与支持其编码的编码方式对应关系总结如表格 2-3。
@@ -70,8 +74,8 @@ GORILLA 编码是一种无损编码，它比较适合编码前后值比较接近
 |数据类型	|支持的编码|
 |:---:|:---:|
 |BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
-|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
+|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG|
+|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG|
 |FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
 |DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
 |TEXT	|PLAIN, DICTIONARY|

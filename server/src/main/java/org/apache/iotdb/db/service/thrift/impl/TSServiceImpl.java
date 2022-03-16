@@ -1762,7 +1762,9 @@ public class TSServiceImpl implements TSIService.Iface {
               dataTypes,
               encodings,
               compressors,
-              req.measurementAlias);
+              req.measurementAlias,
+              req.tagsList,
+              req.attributesList);
       TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
@@ -2081,12 +2083,12 @@ public class TSServiceImpl implements TSIService.Iface {
           .histogram(
               System.currentTimeMillis() - startTime,
               "operation_histogram",
-              MetricLevel.NORMAL,
+              MetricLevel.IMPORTANT,
               "name",
               operation.getName());
       MetricsService.getInstance()
           .getMetricManager()
-          .count(1, "operation_count", MetricLevel.NORMAL, "name", operation.getName());
+          .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
     }
   }
 }

@@ -22,7 +22,7 @@ package org.apache.iotdb.db.engine.compaction.inner;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
-import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -42,7 +42,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.SOURCE_INFO;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -102,13 +101,10 @@ public class InnerSpaceCompactionUtilsOldTest extends InnerCompactionTest {
     if (targetFile.exists()) {
       assertTrue(targetFile.delete());
     }
-    SizeTieredCompactionLogger sizeTieredCompactionLogger =
-        new SizeTieredCompactionLogger(
-            targetTsFileResource.getTsFilePath().concat(".compaction.log"));
-    for (TsFileResource resource : seqResources) {
-      sizeTieredCompactionLogger.logFileInfo(SOURCE_INFO, resource.getTsFile());
-    }
-    sizeTieredCompactionLogger.logSequence(true);
+    CompactionLogger sizeTieredCompactionLogger =
+        new CompactionLogger(
+            new File(targetTsFileResource.getTsFilePath().concat(".compaction.log")));
+    sizeTieredCompactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
     InnerSpaceCompactionUtils.compact(targetTsFileResource, seqResources);
     InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     sizeTieredCompactionLogger.close();
