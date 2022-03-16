@@ -63,7 +63,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_VERSION;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_FLAG;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ROOT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.PATH_SEPARATOR;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
 
 public class RocksDBReadWriteHandler {
 
@@ -414,17 +424,15 @@ public class RocksDBReadWriteHandler {
     return rocksDB.newIterator(columnFamilyHandle);
   }
 
-  public Set<String> getKeyByPrefix(String innerName) {
+  public void getKeyByPrefix(String innerName, Function<String, Boolean> function) {
     RocksIterator iterator = rocksDB.newIterator();
-    Set<String> result = new HashSet<>();
     for (iterator.seek(innerName.getBytes()); iterator.isValid(); iterator.next()) {
       String keyStr = new String(iterator.key());
       if (!keyStr.startsWith(innerName)) {
         break;
       }
-      result.add(keyStr);
+      function.apply(keyStr);
     }
-    return result;
   }
 
   public Map<byte[], byte[]> getKeyValueByPrefix(String innerName) {

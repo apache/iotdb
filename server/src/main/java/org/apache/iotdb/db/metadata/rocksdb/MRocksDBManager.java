@@ -118,6 +118,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -1177,14 +1178,22 @@ public class MRocksDBManager implements IMetaManager {
     }
     String innerNameByLevel =
         RocksDBUtils.getLevelPath(pathPattern.getNodes(), pathPattern.getNodeLength() - 1, level);
-    for (RocksDBMNodeType type : RocksDBMNodeType.values()) {
-      String getKeyByInnerNameLevel = type.value + innerNameByLevel;
-      int queryResult = readWriteHandler.getKeyByPrefix(getKeyByInnerNameLevel).size();
-      if (queryResult != 0) {
-        return queryResult;
-      }
-    }
-    return 0;
+    AtomicInteger atomicInteger = new AtomicInteger(0);
+    Function<String, Boolean> function =
+        s -> {
+          atomicInteger.incrementAndGet();
+          return true;
+        };
+    Arrays.stream(ALL_NODE_TYPE_ARRAY)
+        .parallel()
+        .forEach(
+            x -> {
+              String getKeyByInnerNameLevel =
+                  x + innerNameByLevel + RockDBConstants.PATH_SEPARATOR + level;
+              readWriteHandler.getKeyByPrefix(getKeyByInnerNameLevel, function);
+            });
+
+    return atomicInteger.get();
   }
 
   /**
@@ -1285,13 +1294,17 @@ public class MRocksDBManager implements IMetaManager {
                 pathPattern.getNodeLength())
             + RockDBConstants.PATH_SEPARATOR
             + pathPattern.getNodeLength();
+    Function<String, Boolean> function =
+        s -> {
+          result.add(RocksDBUtils.getPathByInnerName(s));
+          return true;
+        };
+
     Arrays.stream(ALL_NODE_TYPE_ARRAY)
         .parallel()
         .forEach(
             x -> {
-              for (String string : readWriteHandler.getKeyByPrefix(x + innerNameByLevel)) {
-                result.add(RocksDBUtils.getPathByInnerName(string));
-              }
+              readWriteHandler.getKeyByPrefix(x + innerNameByLevel, function);
             });
     return result;
   }
@@ -1423,16 +1436,18 @@ public class MRocksDBManager implements IMetaManager {
   /** Get all storage group paths */
   @Override
   public List<PartialPath> getAllStorageGroupPaths() {
-    List<PartialPath> allStorageGroupPath = new ArrayList<>();
-    Set<String> allStorageGroupInnerName =
-        readWriteHandler.getKeyByPrefix(String.valueOf(NODE_TYPE_SG));
-    for (String str : allStorageGroupInnerName) {
-      try {
-        allStorageGroupPath.add(new PartialPath(RocksDBUtils.getPathByInnerName(str)));
-      } catch (IllegalPathException e) {
-        throw new RuntimeException(e);
-      }
-    }
+    List<PartialPath> allStorageGroupPath = Collections.synchronizedList(new ArrayList<>());
+    Function<String, Boolean> function =
+        s -> {
+          try {
+            allStorageGroupPath.add(new PartialPath(RocksDBUtils.getPathByInnerName(s)));
+          } catch (IllegalPathException e) {
+            logger.error(e.getMessage());
+            return false;
+          }
+          return true;
+        };
+    readWriteHandler.getKeyByPrefix(String.valueOf(NODE_TYPE_SG), function);
     return allStorageGroupPath;
   }
 
