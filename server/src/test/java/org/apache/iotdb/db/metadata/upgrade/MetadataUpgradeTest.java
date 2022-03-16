@@ -236,8 +236,8 @@ public class MetadataUpgradeTest {
   }
 
   private CreateAlignedTimeSeriesPlan getCreateAlignedTimeseriesPlan() throws IllegalPathException {
-    PartialPath devicePath = new PartialPath("root.test.sg4.device");
-    List<String> measurements = Arrays.asList("as1", "as2", "as3", "as4", "as5");
+    PartialPath devicePath = new PartialPath("root.unsetTemplate1.sg1.device");
+    List<String> measurements = Arrays.asList("s1", "s2", "s3", "s4", "s5");
     List<TSDataType> tsDataTypes =
         Arrays.asList(
             TSDataType.DOUBLE,
