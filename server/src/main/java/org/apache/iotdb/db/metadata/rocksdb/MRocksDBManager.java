@@ -1170,6 +1170,11 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
+    // todo support wildcard
+    if (pathPattern.getFullPath().contains(ONE_LEVEL_PATH_WILDCARD)) {
+      throw new MetadataException(
+          "Wildcards are not currently supported for this operation [COUNT NODES pathPattern].");
+    }
     String innerNameByLevel =
         RocksDBUtils.getLevelPath(pathPattern.getNodes(), pathPattern.getNodeLength() - 1, level);
     for (RocksDBMNodeType type : RocksDBMNodeType.values()) {
