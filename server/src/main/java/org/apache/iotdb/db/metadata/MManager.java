@@ -1725,9 +1725,6 @@ public class MManager {
   }
 
   @TestOnly
-  public void flushAllMlogForTest() throws IOException {}
-
-  @TestOnly
   public Template getTemplate(String templateName) throws MetadataException {
     try {
       return templateManager.getTemplate(templateName);

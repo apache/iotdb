@@ -73,7 +73,6 @@ import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -140,7 +139,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *   <li>Interfaces only for Cluster module usage
  *   <li>Interfaces and Implementation for InsertPlan process
  *   <li>Interfaces and Implementation for Template operations
- *   <li>TestOnly Interfaces
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
@@ -1699,13 +1697,6 @@ public class SGMManager {
       }
     }
     return mountedMNode;
-  }
-  // endregion
-
-  // region TestOnly Interfaces
-  @TestOnly
-  public void flushAllMlogForTest() throws IOException {
-    logWriter.close();
   }
   // endregion
 }

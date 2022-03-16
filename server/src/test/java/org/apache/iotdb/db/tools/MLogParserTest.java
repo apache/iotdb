@@ -158,7 +158,7 @@ public class MLogParserTest {
 
     File file;
 
-    IoTDB.metaManager.flushAllMlogForTest();
+    IoTDB.metaManager.forceMlog();
     for (int i = 0; i < storageGroups.length; i++) {
       testParseMLog(storageGroups[i], mlogLineNum[i]);
       file = new File("target" + File.separator + "tmp" + File.separator + "text.mlog");
