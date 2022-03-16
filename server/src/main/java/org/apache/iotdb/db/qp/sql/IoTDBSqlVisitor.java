@@ -298,11 +298,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
 
     if (ctx.tagClause() != null) {
-      throw new SQLParserException("create aligned timeseries: tag is not supported yet.");
+      parseTagClause(ctx.tagClause(), createAlignedTimeSeriesOperator);
     }
 
     if (ctx.attributeClause() != null) {
-      throw new SQLParserException("create aligned timeseries: attribute is not supported yet.");
+      parseAttributeClause(ctx.attributeClause(), createAlignedTimeSeriesOperator);
     }
   }
 
@@ -2689,6 +2689,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     Map<String, String> tags = extractMap(ctx.propertyClause(), ctx.propertyClause(0));
     if (operator instanceof CreateTimeSeriesOperator) {
       ((CreateTimeSeriesOperator) operator).setTags(tags);
+    } else if (operator instanceof CreateAlignedTimeSeriesOperator) {
+      ((CreateAlignedTimeSeriesOperator) operator).addTagsList(tags);
     } else if (operator instanceof AlterTimeSeriesOperator) {
       ((AlterTimeSeriesOperator) operator).setTagsMap(tags);
     }
@@ -2698,6 +2700,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     Map<String, String> attributes = extractMap(ctx.propertyClause(), ctx.propertyClause(0));
     if (operator instanceof CreateTimeSeriesOperator) {
       ((CreateTimeSeriesOperator) operator).setAttributes(attributes);
+    } else if (operator instanceof CreateAlignedTimeSeriesOperator) {
+      ((CreateAlignedTimeSeriesOperator) operator).addAttributesList(attributes);
     } else if (operator instanceof AlterTimeSeriesOperator) {
       ((AlterTimeSeriesOperator) operator).setAttributesMap(attributes);
     }
