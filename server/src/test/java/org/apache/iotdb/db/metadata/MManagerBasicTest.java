@@ -254,6 +254,36 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
     assertFalse(manager.isPathExist(new PartialPath("root.1")));
+
+    assertFalse(manager.isPathExist(new PartialPath("root.template")));
+    assertFalse(manager.isPathExist(new PartialPath("root.template.d1")));
+
+    try {
+      manager.createTimeseries(
+          new PartialPath("root.template.d2"),
+          TSDataType.INT32,
+          TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    try {
+      manager.createSchemaTemplate(getCreateTemplatePlan());
+      manager.setSchemaTemplate(new SetTemplatePlan("template1", "root.template"));
+      manager.setUsingSchemaTemplate(new ActivateTemplatePlan(new PartialPath("root.template.d1")));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    assertTrue(manager.isPathExist(new PartialPath("root.template.d1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.template.d1.s11")));
+    assertFalse(manager.isPathExist(new PartialPath("root.template.d2.s11")));
+    assertTrue(manager.isPathExist(new PartialPath("root.template.d1.vector")));
+    assertTrue(manager.isPathExist(new PartialPath("root.template.d1.vector.s0")));
   }
 
   /**
