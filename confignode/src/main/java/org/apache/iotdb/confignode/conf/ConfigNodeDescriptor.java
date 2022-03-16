@@ -42,42 +42,38 @@ public class ConfigNodeDescriptor {
     return conf;
   }
 
-  public static ConfigNodeDescriptor getInstance() {
-    return ConfigNodeDescriptorHolder.INSTANCE;
-  }
-
-  private static class ConfigNodeDescriptorHolder {
-
-    private static final ConfigNodeDescriptor INSTANCE = new ConfigNodeDescriptor();
-
-    private ConfigNodeDescriptorHolder() {
-      // empty constructor
+  public String getPropsDir() {
+    // Check if CONFIG_NODE_CONF is set
+    String propsDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, null);
+    if (propsDir == null) {
+      // Check if CONFIG_NODE_HOME is set
+      propsDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
+      if (propsDir == null) {
+        // When start ConfigNode with script, CONFIG_NODE_CONF and CONFIG_NODE_HOME must be set.
+        // Therefore, this case is TestOnly
+        // TODO: Specify a test dir
+      }
+      propsDir = propsDir + File.separator + ConfigNodeConstant.CONF_DIR;
     }
+
+    return propsDir;
   }
 
   public URL getPropsUrl() {
-    // The same logic as IoTDBDescriptor
-    String url = System.getProperty(ConfigNodeConstant.CONFIG_NODE_CONF, null);
+    String url = getPropsDir();
+
     if (url == null) {
-      url = System.getProperty(ConfigNodeConstant.CONFIG_NODE_HOME, null);
-      if (url != null) {
-        url = url + File.separatorChar + "conf" + File.separatorChar + ConfigNodeConf.CONF_NAME;
-      } else {
-        URL uri = ConfigNodeConf.class.getResource("/" + ConfigNodeConf.CONF_NAME);
-        if (uri != null) {
-          return uri;
-        }
-        LOGGER.warn(
-            "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file {}, use default configuration",
-            ConfigNodeConf.CONF_NAME);
-        return null;
-      }
-    } else if (!url.endsWith(".properties")) {
-      url += File.separator + ConfigNodeConf.CONF_NAME;
+      return null;
     }
 
+    // Add props prefix
     if (!url.startsWith("file:") && !url.startsWith("classpath:")) {
       url = "file:" + url;
+    }
+
+    // Add props suffix
+    if (!url.endsWith(".properties")) {
+      url += File.separator + ConfigNodeConstant.CONF_NAME;
     }
 
     try {
@@ -90,7 +86,8 @@ public class ConfigNodeDescriptor {
   private void loadProps() {
     URL url = getPropsUrl();
     if (url == null) {
-      LOGGER.warn("Couldn't load the ConfigNode configuration from any of the known sources.");
+      LOGGER.warn(
+          "Couldn't load the ConfigNode configuration from any of the known sources. Use default configuration.");
       return;
     }
 
@@ -112,6 +109,19 @@ public class ConfigNodeDescriptor {
 
     } catch (IOException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
+    }
+  }
+
+  public static ConfigNodeDescriptor getInstance() {
+    return ConfigNodeDescriptorHolder.INSTANCE;
+  }
+
+  private static class ConfigNodeDescriptorHolder {
+
+    private static final ConfigNodeDescriptor INSTANCE = new ConfigNodeDescriptor();
+
+    private ConfigNodeDescriptorHolder() {
+      // empty constructor
     }
   }
 }

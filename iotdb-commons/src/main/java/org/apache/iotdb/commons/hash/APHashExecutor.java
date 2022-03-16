@@ -16,13 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.hash;
+package org.apache.iotdb.commons.hash;
 
-public class BKDRHashExecutor extends DeviceGroupHashExecutor {
+public class APHashExecutor extends DeviceGroupHashExecutor {
 
-  private static final int seed = 131;
-
-  public BKDRHashExecutor(int deviceGroupCount) {
+  public APHashExecutor(int deviceGroupCount) {
     super(deviceGroupCount);
   }
 
@@ -31,7 +29,11 @@ public class BKDRHashExecutor extends DeviceGroupHashExecutor {
     int hash = 0;
 
     for (int i = 0; i < device.length(); i++) {
-      hash = hash * seed + (int) device.charAt(i);
+      if ((i & 1) == 0) {
+        hash ^= ((hash << 7) ^ (int) device.charAt(i) ^ (hash >> 3));
+      } else {
+        hash ^= (~((hash << 11) ^ (int) device.charAt(i) ^ (hash >> 5)));
+      }
     }
     hash &= Integer.MAX_VALUE;
 

@@ -16,33 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.conf;
+package org.apache.iotdb.confignode.service.register;
 
-public class ConfigNodeConf {
+import org.apache.iotdb.confignode.exception.startup.StartupException;
 
-  // Number of DeviceGroups per StorageGroup
-  private int deviceGroupCount = 10000;
+/** Any services that run in ConfigNode should implement IService */
+public interface IService {
 
-  // DeviceGroup hash executor class
-  private String deviceGroupHashExecutorClass = "org.apache.iotdb.commons.hash.BKDRHashExecutor";
+  // TODO: Code optimize, reuse logic in iotdb-server
 
-  public ConfigNodeConf() {
-    // empty constructor
+  /** Start current service. */
+  void start() throws StartupException;
+
+  /**
+   * Stop current service. If current service uses thread or thread pool, current service should
+   * guarantee to putBack thread or thread pool.
+   */
+  void stop();
+
+  default void waitAndStop(long milliseconds) {
+    stop();
   }
 
-  public int getDeviceGroupCount() {
-    return deviceGroupCount;
+  default void shutdown(long milliseconds) {
+    waitAndStop(milliseconds);
   }
 
-  public void setDeviceGroupCount(int deviceGroupCount) {
-    this.deviceGroupCount = deviceGroupCount;
-  }
-
-  public String getDeviceGroupHashExecutorClass() {
-    return deviceGroupHashExecutorClass;
-  }
-
-  public void setDeviceGroupHashExecutorClass(String deviceGroupHashExecutorClass) {
-    this.deviceGroupHashExecutorClass = deviceGroupHashExecutorClass;
-  }
+  /**
+   * Get the name of the the service.
+   *
+   * @return current service name
+   */
+  ServiceType getID();
 }

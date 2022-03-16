@@ -16,23 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.hash;
+package org.apache.iotdb.confignode.service.register;
 
-public class SDBMHashExecutor extends DeviceGroupHashExecutor {
+public enum ServiceType {
+  JMX_SERVICE("JMX ServerService", "JMX ServerService"),
+  CLUSTER_RPC_SERVER("Cluster RPC Server", "ClusterRPCServer");
 
-  public SDBMHashExecutor(int deviceGroupCount) {
-    super(deviceGroupCount);
+  private final String name;
+  private final String jmxName;
+
+  ServiceType(String name, String jmxName) {
+    this.name = name;
+    this.jmxName = jmxName;
   }
 
-  @Override
-  public int getDeviceGroupID(String device) {
-    int hash = 0;
+  public String getName() {
+    return name;
+  }
 
-    for (int i = 0; i < device.length(); i++) {
-      hash = ((int) device.charAt(i) + (hash << 6) + (hash << 16) - hash);
-    }
-    hash &= Integer.MAX_VALUE;
+  public String getJmxName() {
+    return jmxName;
+  }
 
-    return hash % deviceGroupCount;
+  private static String generateJmxName(String packageName, String jmxName) {
+    return String.format("%s:type=%s", packageName, jmxName);
   }
 }
