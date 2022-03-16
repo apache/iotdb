@@ -39,6 +39,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -276,5 +277,11 @@ public class SenderService implements IService {
     this.pipeSinks = analyzer.getRecoveryAllPipeSinks();
     this.pipes = analyzer.getRecoveryAllPipes();
     this.runningPipe = analyzer.getRecoveryRunningPipe();
+  }
+
+  /** test */
+  @TestOnly
+  public Pipe getRunningPipe() {
+    return runningPipe;
   }
 }

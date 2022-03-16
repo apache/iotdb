@@ -2342,7 +2342,7 @@ public class PlanExecutor implements IPlanExecutor {
   private void createPipe(CreatePipePlan plan) throws QueryProcessException {
     try {
       SenderService.getInstance().addPipe(plan);
-      SenderService.getInstance().startPipe(plan.getPipeName());
+//      SenderService.getInstance().startPipe(plan.getPipeName());
     } catch (PipeException e) {
       throw new QueryProcessException("Create pipe error.", e);
     }

@@ -77,6 +77,7 @@ public class TransportHandler {
   }
 
   private void sendHeartbeat() {
+    // TODO async heartbeat in transport client
     //    transportClient.heartbeat(new SyncRequest(HEARTBEAT))
   }
 }

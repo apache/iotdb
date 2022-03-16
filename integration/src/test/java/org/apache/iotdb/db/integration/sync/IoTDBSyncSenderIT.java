@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.db.integration.sync;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 
+import org.checkerframework.checker.units.qual.A;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.experimental.categories.Category;
 
@@ -29,9 +32,34 @@ import java.io.IOException;
 
 @Category({LocalStandaloneTest.class})
 public class IoTDBSyncSenderIT {
+  private boolean enableSeqSpaceCompaction;
+  private boolean enableUnseqSpaceCompaction;
+  private boolean enableCrossSpaceCompaction;
+
   @Before
   public void setUp() throws StorageEngineException, IOException {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.envSetUp();
+    enableSeqSpaceCompaction =
+            IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
+    enableUnseqSpaceCompaction =
+            IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
+    enableCrossSpaceCompaction =
+            IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
+  }
+
+  @After
+  public void tearDown() throws StorageEngineException, IOException {
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    IoTDBDescriptor.getInstance()
+            .getConfig()
+            .setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
+    IoTDBDescriptor.getInstance()
+            .getConfig()
+            .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    EnvironmentUtils.cleanEnv();
   }
 }
