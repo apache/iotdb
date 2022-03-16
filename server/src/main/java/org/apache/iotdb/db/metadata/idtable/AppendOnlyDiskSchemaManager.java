@@ -155,11 +155,11 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
         loc += cur.entrySize;
       }
     } catch (IOException | MetadataException e) {
-      logger.info("Last entry is incomplete, we recover as much as we can");
+      logger.info("Last entry is incomplete, we will recover as much as we can.");
       try {
         outputStream.getChannel().truncate(loc);
-      } catch (IOException ex) {
-        logger.error("Failed at truncate file");
+      } catch (IOException ioException) {
+        logger.error("Failed at truncate file.", ioException);
       }
       this.loc = loc;
     }
