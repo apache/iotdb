@@ -230,8 +230,8 @@ public class SchemaFile implements ISchemaFile {
           pageIndex = SchemaFile.getPageIndex(npAddress);
           curSegIdx = SchemaFile.getSegIndex(npAddress);
 
-          pageLock.writeLock(pageIndex);
           pageLock.writeUnlock(curPage.getPageIndex());
+          pageLock.writeLock(pageIndex);
 
           curPage = getPageInstance(pageIndex);
           npAddress = curPage.write(curSegIdx, entry.getKey(), childBuffer);
@@ -297,8 +297,8 @@ public class SchemaFile implements ISchemaFile {
             getApplicableLinkedSegments(curPage, curSegIdx, entry.getKey(), childBuffer);
         if (existedSegAddr >= 0) {
           // get another existed segment
-          pageLock.writeLock(getPageIndex(existedSegAddr));
           pageLock.writeUnlock(curPage.getPageIndex());
+          pageLock.writeLock(getPageIndex(existedSegAddr));
 
           curPage = getPageInstance(getPageIndex(existedSegAddr));
           curSegIdx = getSegIndex(existedSegAddr);
@@ -595,8 +595,8 @@ public class SchemaFile implements ISchemaFile {
           }
           nextSegAddr = pivotPage.getNextSegAddress(pSegId);
 
-          pageLock.readLock(getPageIndex(nextSegAddr));
           pageLock.readUnlock(pivotPage.getPageIndex());
+          pageLock.readLock(getPageIndex(nextSegAddr));
         }
       } finally {
         pageLock.readUnlock(pivotPage.getPageIndex());
@@ -615,8 +615,8 @@ public class SchemaFile implements ISchemaFile {
           }
           prevSegAddr = pivotPage.getPrevSegAddress(pSegId);
 
-          pageLock.readLock(getPageIndex(prevSegAddr));
           pageLock.readUnlock(pivotPage.getPageIndex());
+          pageLock.readLock(getPageIndex(prevSegAddr));
         }
       } finally {
         pageLock.readUnlock(pivotPage.getPageIndex());
@@ -657,8 +657,8 @@ public class SchemaFile implements ISchemaFile {
           }
           nextSegAddr = nextPage.getNextSegAddress(getSegIndex(nextSegAddr));
 
-          pageLock.readLock(getPageIndex(nextSegAddr));
           pageLock.readUnlock(nextPage.getPageIndex());
+          pageLock.readLock(getPageIndex(nextSegAddr));
         }
       } finally {
         pageLock.readUnlock(nextPage.getPageIndex());
@@ -678,8 +678,8 @@ public class SchemaFile implements ISchemaFile {
           }
           prevSegAddr = prevPage.getPrevSegAddress(getSegIndex(prevSegAddr));
 
-          pageLock.readLock(getPageIndex(prevSegAddr));
           pageLock.readUnlock(prevPage.getPageIndex());
+          pageLock.readLock(getPageIndex(prevSegAddr));
         }
       } finally {
         pageLock.readUnlock(prevPage.getPageIndex());
