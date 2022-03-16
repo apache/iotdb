@@ -16,27 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.hash;
+package org.apache.iotdb.confignode.exception;
 
-public class APHashExecutor extends DeviceGroupHashExecutor {
+public abstract class ConfigNodeException extends Exception {
 
-  public APHashExecutor(int deviceGroupCount) {
-    super(deviceGroupCount);
-  }
-
-  @Override
-  public int getDeviceGroupID(String device) {
-    int hash = 0;
-
-    for (int i = 0; i < device.length(); i++) {
-      if ((i & 1) == 0) {
-        hash ^= ((hash << 7) ^ (int) device.charAt(i) ^ (hash >> 3));
-      } else {
-        hash ^= (~((hash << 11) ^ (int) device.charAt(i) ^ (hash >> 5)));
-      }
-    }
-    hash &= Integer.MAX_VALUE;
-
-    return hash % deviceGroupCount;
+  public ConfigNodeException(String message) {
+    super(message);
   }
 }

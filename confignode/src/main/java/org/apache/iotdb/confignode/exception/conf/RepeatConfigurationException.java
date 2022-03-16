@@ -16,16 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.hash;
+package org.apache.iotdb.confignode.exception.conf;
 
-/** All DeviceGroup hash algorithm executors must be subclasses of DeviceGroupHashExecutor */
-public abstract class DeviceGroupHashExecutor {
+import org.apache.iotdb.confignode.exception.ConfigNodeException;
 
-  protected final int deviceGroupCount;
+/** Throws when there exists some special parameters are repeatedly defined */
+public class RepeatConfigurationException extends ConfigNodeException {
 
-  public DeviceGroupHashExecutor(int deviceGroupCount) {
-    this.deviceGroupCount = deviceGroupCount;
+  public RepeatConfigurationException(String parameter, String badValue, String correctValue) {
+    super(
+        String.format(
+            "Parameter %s can not be %s, because you're already set to: %s.",
+            parameter, badValue, correctValue));
   }
-
-  public abstract int getDeviceGroupID(String device);
 }

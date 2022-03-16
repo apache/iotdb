@@ -90,6 +90,12 @@ public class IoTDBConfigCheck {
   private static final String VIRTUAL_STORAGE_GROUP_NUM = "virtual_storage_group_num";
   private static String virtualStorageGroupNum = String.valueOf(config.getVirtualStorageGroupNum());
 
+  private static final String ENABLE_ID_TABLE = "enable_id_table";
+  private static String enableIDTable = String.valueOf(config.isEnableIDTable());
+
+  private static final String ENABLE_ID_TABLE_LOG_FILE = "enable_id_table_log_file";
+  private static String enableIdTableLogFile = String.valueOf(config.isEnableIDTableLogFile());
+
   private static final String TIME_ENCODER_KEY = "time_encoder";
   private static String timeEncoderValue =
       String.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
@@ -150,6 +156,8 @@ public class IoTDBConfigCheck {
     systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
     systemProperties.put(VIRTUAL_STORAGE_GROUP_NUM, virtualStorageGroupNum);
     systemProperties.put(TIME_ENCODER_KEY, timeEncoderValue);
+    systemProperties.put(ENABLE_ID_TABLE, enableIDTable);
+    systemProperties.put(ENABLE_ID_TABLE_LOG_FILE, enableIdTableLogFile);
   }
 
   /**
@@ -340,6 +348,18 @@ public class IoTDBConfigCheck {
 
     if (!(properties.getProperty(TIME_ENCODER_KEY).equals(timeEncoderValue))) {
       throwException(TIME_ENCODER_KEY, timeEncoderValue);
+    }
+
+    if (!(properties.getProperty(TIME_ENCODER_KEY).equals(timeEncoderValue))) {
+      throwException(TIME_ENCODER_KEY, timeEncoderValue);
+    }
+
+    if (!(properties.getProperty(ENABLE_ID_TABLE).equals(enableIDTable))) {
+      throwException(ENABLE_ID_TABLE, enableIDTable);
+    }
+
+    if (!(properties.getProperty(ENABLE_ID_TABLE_LOG_FILE).equals(enableIdTableLogFile))) {
+      throwException(ENABLE_ID_TABLE_LOG_FILE, enableIdTableLogFile);
     }
   }
 

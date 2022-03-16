@@ -1,3 +1,4 @@
+#!/bin/sh
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,21 +18,18 @@
 # under the License.
 #
 
-####################
-### DeviceGroup Configuration
-####################
 
-# Number of DeviceGroups per StorageGroup
-# Datatype: int
-# device_group_count=10000
-
-# DeviceGroup hash algorithm
-# Datatype: String
-# These hashing algorithms are currently supported:
-# 1. org.apache.iotdb.commons.hash.BKDRHashExecutor(Default)
-# 2. org.apache.iotdb.commons.hash.APHashExecutor
-# 3. org.apache.iotdb.commons.hash.JSHashExecutor
-# 4. org.apache.iotdb.commons.hash.SDBMHashExecutor
-# Also, if you want to implement your own hash algorithm, you can inherit the DeviceGroupHashExecutor class and
-# modify this parameter to correspond to your Java class
-# device_group_hash_executor_class=org.apache.iotdb.commons.hash.BKDRHashExecutor
+CONFIGNODE_CONF="`dirname "$0"`/../conf"
+rpc_port=`sed '/^rpc_port=/!d;s/.*=//' ${CONFIGNODE_CONF}/iotdb-confignode.properties`
+if type lsof > /dev/null; then
+  PID=$(lsof -t -i:${rpc_port})
+else
+  PID=$(ps ax | grep -i 'ConfigNode' | grep java | grep -v grep | awk '{print $1}')
+fi
+if [ -z "$PID" ]; then
+  echo "No ConfigNode server to stop"
+  exit 1
+else
+  kill -s TERM $PID
+  echo "close ConfigNode"
+fi

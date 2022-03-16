@@ -16,33 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.conf;
+package org.apache.iotdb.commons.hash;
 
-public class ConfigNodeConf {
+public class SDBMHashExecutor extends DeviceGroupHashExecutor {
 
-  // Number of DeviceGroups per StorageGroup
-  private int deviceGroupCount = 10000;
-
-  // DeviceGroup hash executor class
-  private String deviceGroupHashExecutorClass = "org.apache.iotdb.commons.hash.BKDRHashExecutor";
-
-  public ConfigNodeConf() {
-    // empty constructor
+  public SDBMHashExecutor(int deviceGroupCount) {
+    super(deviceGroupCount);
   }
 
-  public int getDeviceGroupCount() {
-    return deviceGroupCount;
-  }
+  @Override
+  public int getDeviceGroupID(String device) {
+    int hash = 0;
 
-  public void setDeviceGroupCount(int deviceGroupCount) {
-    this.deviceGroupCount = deviceGroupCount;
-  }
+    for (int i = 0; i < device.length(); i++) {
+      hash = ((int) device.charAt(i) + (hash << 6) + (hash << 16) - hash);
+    }
+    hash &= Integer.MAX_VALUE;
 
-  public String getDeviceGroupHashExecutorClass() {
-    return deviceGroupHashExecutorClass;
-  }
-
-  public void setDeviceGroupHashExecutorClass(String deviceGroupHashExecutorClass) {
-    this.deviceGroupHashExecutorClass = deviceGroupHashExecutorClass;
+    return hash % deviceGroupCount;
   }
 }

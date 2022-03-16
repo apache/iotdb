@@ -16,25 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.hash;
+package org.apache.iotdb.confignode.exception.startup;
 
-public class JSHashExecutor extends DeviceGroupHashExecutor {
+import org.apache.iotdb.confignode.exception.ConfigNodeException;
 
-  private static final int base = 1315423911;
+/** Throws when there exists errors when startup checks */
+public class StartupException extends ConfigNodeException {
 
-  public JSHashExecutor(int deviceGroupCount) {
-    super(deviceGroupCount);
+  public StartupException(String name, String message) {
+    super(String.format("Failed to start [%s], because [%s]", name, message));
   }
 
-  @Override
-  public int getDeviceGroupID(String device) {
-    int hash = base;
-
-    for (int i = 0; i < device.length(); i++) {
-      hash ^= ((hash << 5) + (int) device.charAt(i) + (hash >> 2));
-    }
-    hash &= Integer.MAX_VALUE;
-
-    return hash % deviceGroupCount;
+  public StartupException(String message) {
+    super(message);
   }
 }

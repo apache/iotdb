@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.commons.hash.DeviceGroupHashExecutor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.manager.hash.DeviceGroupHashExecutor;
 import org.apache.iotdb.confignode.partition.PartitionTable;
 import org.apache.iotdb.confignode.service.balancer.LoadBalancer;
 
