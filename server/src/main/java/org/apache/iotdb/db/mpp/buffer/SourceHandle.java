@@ -20,22 +20,17 @@ package org.apache.iotdb.db.mpp.buffer;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.io.Closeable;
 import java.nio.ByteBuffer;
 
-public interface SinkHandler {
+public interface SourceHandle extends Closeable {
 
-  /** Get a future that will be completed when the buffer is not full. */
-  ListenableFuture<Void> isFull();
+  ByteBuffer receive();
 
-  /**
-   * Sends a tsBlock to an unpartitioned buffer. If no-more-pages has been set, the send tsBlock
-   * call is ignored. This can happen with limit queries.
-   */
-  void send(ByteBuffer tsBlock);
+  boolean isFinished();
 
-  /**
-   * Sends a tsBlock to a specific partition. If no-more-pages has been set, the send tsBlock call
-   * is ignored. This can happen with limit queries.
-   */
-  void send(int partition, ByteBuffer tsBlock);
+  ListenableFuture<Void> isBlocked();
+
+  @Override
+  void close();
 }
