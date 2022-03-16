@@ -702,7 +702,7 @@ public class SGMManager {
     }
 
     node = mtree.getDeviceNodeWithAutoCreating(path);
-    if (!(node.isStorageGroup())) {
+    if (!isRecovering) {
       logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.getPartialPath()));
     }
     return node;
