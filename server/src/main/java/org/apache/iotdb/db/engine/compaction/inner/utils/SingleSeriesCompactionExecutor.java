@@ -19,7 +19,10 @@
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionMetricsManager;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
+import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -28,7 +31,6 @@ import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -128,7 +130,7 @@ public class SingleSeriesCompactionExecutor {
 
     // after all the chunk of this sensor is read, flush the remaining data
     if (cachedChunk != null) {
-      flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
+      flushChunkToFileWriter(cachedChunk, cachedChunkMetadata, true);
       cachedChunk = null;
       cachedChunkMetadata = null;
     } else if (pointCountInChunkWriter != 0L) {
@@ -165,7 +167,7 @@ public class SingleSeriesCompactionExecutor {
     } else {
       // there is no points remaining in ChunkWriter and no cached chunk
       // flush it to file directly
-      flushChunkToFileWriter(chunk, chunkMetadata);
+      flushChunkToFileWriter(chunk, chunkMetadata, false);
     }
   }
 
@@ -260,7 +262,8 @@ public class SingleSeriesCompactionExecutor {
     }
   }
 
-  private void flushChunkToFileWriter(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
+  private void flushChunkToFileWriter(
+      Chunk chunk, ChunkMetadata chunkMetadata, boolean isCachedChunk) throws IOException {
     CompactionTaskManager.mergeRateLimiterAcquire(compactionRateLimiter, getChunkSize(chunk));
     if (chunkMetadata.getStartTime() < minStartTimestamp) {
       minStartTimestamp = chunkMetadata.getStartTime();
@@ -269,7 +272,11 @@ public class SingleSeriesCompactionExecutor {
       maxEndTimestamp = chunkMetadata.getEndTime();
     }
     if (enableMetrics) {
-      addMetrics(getChunkSize(chunk));
+      CompactionMetricsManager.recordIOSize(
+          CompactionType.INNER_SEQ_COMPACTION,
+          isCachedChunk ? ProcessChunkType.MERGE_CHUNK : ProcessChunkType.FLUSH_CHUNK,
+          false,
+          getChunkSize(chunk));
     }
     fileWriter.writeChunk(chunk, chunkMetadata);
   }
@@ -293,7 +300,7 @@ public class SingleSeriesCompactionExecutor {
       if (enableMetrics) {
         addMetrics(getChunkSize(cachedChunk));
       }
-      flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
+      flushChunkToFileWriter(cachedChunk, cachedChunkMetadata, true);
       cachedChunk = null;
       cachedChunkMetadata = null;
     }
@@ -310,14 +317,29 @@ public class SingleSeriesCompactionExecutor {
   }
 
   private void addMetrics(long byteNum) {
-    Counter counter =
-        MetricsService.getInstance()
-            .getMetricManager()
-            .getOrCreateCounter(
-                Metric.DATA_WRITTEN.toString(),
-                MetricLevel.IMPORTANT,
-                Tag.NAME.toString(),
-                "inner_compaction_written_in_kb");
-    counter.inc(byteNum / 1024L);
+    MetricsService.getInstance()
+        .getMetricManager()
+        .count(
+            byteNum / 1024L,
+            Metric.DATA_WRITTEN.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "compaction",
+            Tag.NAME.toString(),
+            "inner",
+            Tag.NAME.toString(),
+            "total");
+    MetricsService.getInstance()
+        .getMetricManager()
+        .count(
+            byteNum / 1024L,
+            Metric.DATA_WRITTEN.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "compaction",
+            Tag.NAME.toString(),
+            "inner",
+            Tag.NAME.toString(),
+            "flush_chunk");
   }
 }
