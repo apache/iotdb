@@ -623,4 +623,35 @@ public class IoTDBMetadataFetchIT {
 
     Assert.assertEquals(expected, actual);
   }
+
+  @Test
+  @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+  public void showAlignedTimeseriesWithAliasAndTags() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create aligned timeseries root.sg.d(s1(alias1) int32 tags(tag1=v1, tag2=v2), s2 double attributes(attr3=v3))");
+      String[] expected =
+          new String[] {
+            "root.sg.d.s1,alias1,root.sg,INT32,RLE,SNAPPY,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,",
+            "root.sg.d.s2,null,root.sg,DOUBLE,GORILLA,SNAPPY,null,{\"attr3\":\"v3\"},"
+          };
+
+      int num = 0;
+      boolean hasResultSet = statement.execute("show timeseries root.sg.d.*");
+      if (hasResultSet) {
+        try (ResultSet resultSet = statement.getResultSet()) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
+            }
+            Assert.assertEquals(expected[num++], builder.toString());
+          }
+        }
+      }
+      Assert.assertEquals(2, num);
+    }
+  }
 }
