@@ -99,6 +99,7 @@ public class SchemaFile implements ISchemaFile {
   // work as a naive cache for page instance
   final Map<Integer, ISchemaPage> pageInstCache;
   ISchemaPage rootPage;
+  PageLocks pageLock;
 
   // attributes for file
   File pmtFile;
@@ -134,6 +135,7 @@ public class SchemaFile implements ISchemaFile {
     channel = new RandomAccessFile(pmtFile, "rw").getChannel();
     headerContent = ByteBuffer.allocate(SchemaFile.FILE_HEADER_SIZE);
     pageInstCache = new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true);
+    pageLock = new PageLocks();
     dataTTL = ttl; // will be overwritten if to init
     this.isEntity = isEntity;
     initFileHeader();
@@ -171,7 +173,7 @@ public class SchemaFile implements ISchemaFile {
   public void writeMNode(IMNode node) throws MetadataException, IOException {
     int pageIndex;
     short curSegIdx;
-    ISchemaPage curPage;
+    ISchemaPage curPage = null;
 
     // Get corresponding page instance, segment id
     long curSegAddr = getNodeAddress(node);
@@ -190,8 +192,6 @@ public class SchemaFile implements ISchemaFile {
       pageIndex = SchemaFile.getPageIndex(curSegAddr);
       curSegIdx = SchemaFile.getSegIndex(curSegAddr);
     }
-    pageLock.writeLock(pageIndex); // temporary fix
-    curPage = getPageInstance(pageIndex);
 
     // Flush new child
     for (Map.Entry<String, IMNode> entry :
@@ -222,6 +222,8 @@ public class SchemaFile implements ISchemaFile {
       // to new segment
       // throw exception if record larger than one page
       try {
+        pageLock.writeLock(pageIndex); // temporary fix
+        curPage = getPageInstance(pageIndex);
         long npAddress = curPage.write(curSegIdx, entry.getKey(), childBuffer);
         while (npAddress > 0) {
           // get next page and retry
@@ -238,7 +240,7 @@ public class SchemaFile implements ISchemaFile {
       } catch (SchemaPageOverflowException e) {
         // there is no more next page, need allocate new page
         short newSegSize = SchemaFile.reEstimateSegSize(curPage.getSegmentSize(curSegIdx));
-        ISchemaPage newPage = getMinApplicablePageInMem(newSegSize);
+        ISchemaPage newPage = getAndLockMinApplicablePageInMem(newSegSize);
 
         if (newSegSize == curPage.getSegmentSize(curSegIdx)) {
           // segment on multi pages
@@ -261,7 +263,6 @@ public class SchemaFile implements ISchemaFile {
           updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
         }
 
-        pageLock.writeLock(newPage.getPageIndex());
         pageLock.writeUnlock(curPage.getPageIndex());
 
         curPage = newPage;
@@ -280,10 +281,12 @@ public class SchemaFile implements ISchemaFile {
 
       // Get segment actually contains the record
       long actualSegAddr = getTargetSegmentAddress(curSegAddr, entry.getKey());
-      curPage = getPageInstance(getPageIndex(actualSegAddr));
-      curSegIdx = getSegIndex(actualSegAddr);
 
       try {
+        pageLock.writeLock(getPageIndex(actualSegAddr));
+        curPage = getPageInstance(getPageIndex(actualSegAddr));
+        curSegIdx = getSegIndex(actualSegAddr);
+
         // if current segment has no more space for new record, it will re-allocate segment, if
         // failed, throw exception
         curPage.update(curSegIdx, entry.getKey(), childBuffer);
@@ -294,12 +297,15 @@ public class SchemaFile implements ISchemaFile {
             getApplicableLinkedSegments(curPage, curSegIdx, entry.getKey(), childBuffer);
         if (existedSegAddr >= 0) {
           // get another existed segment
+          pageLock.writeLock(getPageIndex(existedSegAddr));
+          pageLock.writeUnlock(curPage.getPageIndex());
+
           curPage = getPageInstance(getPageIndex(existedSegAddr));
           curSegIdx = getSegIndex(existedSegAddr);
         } else {
           // no next segment to write
           short newSegSize = reEstimateSegSize(curSegSize);
-          ISchemaPage newPage = getMinApplicablePageInMem(newSegSize);
+          ISchemaPage newPage = getAndLockMinApplicablePageInMem(newSegSize);
           long newSegAddr = newPage.transplantSegment(curPage, curSegIdx, newSegSize);
           short newSegId = getSegIndex(newSegAddr);
 
@@ -326,6 +332,8 @@ public class SchemaFile implements ISchemaFile {
             updateParentalRecord(node.getParent(), node.getName(), newSegAddr);
           }
 
+          pageLock.writeUnlock(curPage.getPageIndex());
+
           curPage = newPage;
           curSegAddr = newSegAddr;
           curSegIdx = newSegId;
@@ -341,6 +349,8 @@ public class SchemaFile implements ISchemaFile {
           // updated on an extended segment
           curPage.update(curSegIdx, entry.getKey(), childBuffer);
         }
+      } finally {
+        pageLock.writeUnlock(curPage.getPageIndex());
       }
     }
   }
@@ -558,32 +568,61 @@ public class SchemaFile implements ISchemaFile {
   private long getTargetSegmentAddress(long curSegAddr, String recKey)
       throws IOException, MetadataException {
     // TODO: improve efficiency
-    ISchemaPage curPage = getPageInstance(getPageIndex(curSegAddr));
+    ISchemaPage curPage = null;
     short curSegId = getSegIndex(curSegAddr);
 
-    if (curPage.hasRecordKeyInSegment(recKey, curSegId)) {
-      return curSegAddr;
+    pageLock.readLock(getPageIndex(curSegAddr));
+    try {
+      curPage = getPageInstance(getPageIndex(curSegAddr));
+
+      if (curPage.hasRecordKeyInSegment(recKey, curSegId)) {
+        return curSegAddr;
+      }
+    } finally {
+      pageLock.readUnlock(curPage.getPageIndex());
     }
 
+    ISchemaPage pivotPage = null;
     long nextSegAddr = curPage.getNextSegAddress(curSegId);
-    while (nextSegAddr >= 0) {
-      ISchemaPage pivotPage = getPageInstance(getPageIndex(nextSegAddr));
-      short pSegId = getSegIndex(nextSegAddr);
-      if (pivotPage.hasRecordKeyInSegment(recKey, pSegId)) {
-        return nextSegAddr;
+    if (nextSegAddr >= 0) {
+      try {
+        pageLock.readLock(getPageIndex(nextSegAddr));
+        while (nextSegAddr >= 0) {
+          pivotPage = getPageInstance(getPageIndex(nextSegAddr));
+          short pSegId = getSegIndex(nextSegAddr);
+          if (pivotPage.hasRecordKeyInSegment(recKey, pSegId)) {
+            return nextSegAddr;
+          }
+          nextSegAddr = pivotPage.getNextSegAddress(pSegId);
+
+          pageLock.readLock(getPageIndex(nextSegAddr));
+          pageLock.readUnlock(pivotPage.getPageIndex());
+        }
+      } finally {
+        pageLock.readUnlock(pivotPage.getPageIndex());
       }
-      nextSegAddr = pivotPage.getNextSegAddress(pSegId);
     }
 
     long prevSegAddr = curPage.getPrevSegAddress(curSegId);
-    while (prevSegAddr >= 0) {
-      ISchemaPage pivotPage = getPageInstance(getPageIndex(prevSegAddr));
-      short pSegId = getSegIndex(prevSegAddr);
-      if (pivotPage.hasRecordKeyInSegment(recKey, pSegId)) {
-        return prevSegAddr;
+    if (prevSegAddr >= 0) {
+      try {
+        pageLock.readLock(getPageIndex(prevSegAddr));
+        while (prevSegAddr >= 0) {
+          pivotPage = getPageInstance(getPageIndex(prevSegAddr));
+          short pSegId = getSegIndex(prevSegAddr);
+          if (pivotPage.hasRecordKeyInSegment(recKey, pSegId)) {
+            return prevSegAddr;
+          }
+          prevSegAddr = pivotPage.getPrevSegAddress(pSegId);
+
+          pageLock.readLock(getPageIndex(prevSegAddr));
+          pageLock.readUnlock(pivotPage.getPageIndex());
+        }
+      } finally {
+        pageLock.readUnlock(pivotPage.getPageIndex());
       }
-      prevSegAddr = pivotPage.getPrevSegAddress(pSegId);
     }
+
     return -1;
   }
 
@@ -604,30 +643,58 @@ public class SchemaFile implements ISchemaFile {
       return -1;
     }
 
+    ISchemaPage nextPage = null;
+
     short totalSize = (short) (key.getBytes().length + buffer.capacity() + 4 + 2);
     long nextSegAddr = curPage.getNextSegAddress(curSegId);
-    while (nextSegAddr >= 0) {
-      ISchemaPage nextPage = getPageInstance(getPageIndex(nextSegAddr));
-      if (nextPage.isSegmentCapableFor(getSegIndex(nextSegAddr), totalSize)) {
-        return nextSegAddr;
+    if (nextSegAddr >= 0) {
+      try {
+        pageLock.readLock(getPageIndex(nextSegAddr));
+        while (nextSegAddr >= 0) {
+          nextPage = getPageInstance(getPageIndex(nextSegAddr));
+          if (nextPage.isSegmentCapableFor(getSegIndex(nextSegAddr), totalSize)) {
+            return nextSegAddr;
+          }
+          nextSegAddr = nextPage.getNextSegAddress(getSegIndex(nextSegAddr));
+
+          pageLock.readLock(getPageIndex(nextSegAddr));
+          pageLock.readUnlock(nextPage.getPageIndex());
+        }
+      } finally {
+        pageLock.readUnlock(nextPage.getPageIndex());
       }
-      nextSegAddr = nextPage.getNextSegAddress(getSegIndex(nextSegAddr));
     }
 
+    ISchemaPage prevPage = null;
+
     long prevSegAddr = curPage.getPrevSegAddress(curSegId);
-    while (prevSegAddr >= 0) {
-      ISchemaPage prevPage = getPageInstance(getPageIndex(prevSegAddr));
-      if (prevPage.isSegmentCapableFor(getSegIndex(prevSegAddr), totalSize)) {
-        return prevSegAddr;
+    if (prevSegAddr >= 0) {
+      try {
+        pageLock.readLock(getPageIndex(prevSegAddr));
+        while (prevSegAddr >= 0) {
+          prevPage = getPageInstance(getPageIndex(prevSegAddr));
+          if (prevPage.isSegmentCapableFor(getSegIndex(prevSegAddr), totalSize)) {
+            return prevSegAddr;
+          }
+          prevSegAddr = prevPage.getPrevSegAddress(getSegIndex(prevSegAddr));
+
+          pageLock.readLock(getPageIndex(prevSegAddr));
+          pageLock.readUnlock(prevPage.getPageIndex());
+        }
+      } finally {
+        pageLock.readUnlock(prevPage.getPageIndex());
       }
-      prevSegAddr = prevPage.getPrevSegAddress(getSegIndex(prevSegAddr));
     }
     return -1;
   }
 
   private long preAllocateSegment(short size) throws IOException, MetadataException {
-    ISchemaPage page = getMinApplicablePageInMem(size);
-    return SchemaFile.getGlobalIndex(page.getPageIndex(), page.allocNewSegment(size));
+    ISchemaPage page = getAndLockMinApplicablePageInMem(size);
+    try {
+      return SchemaFile.getGlobalIndex(page.getPageIndex(), page.allocNewSegment(size));
+    } finally {
+      pageLock.writeUnlock(page.getPageIndex());
+    }
   }
 
   // endregion
@@ -639,14 +706,16 @@ public class SchemaFile implements ISchemaFile {
   }
 
   /**
-   * This method checks with cached page container, get a minimum applicable page for allocation.
+   * This method checks with cached page container, LOCK and return a minimum applicable page for
+   * allocation.
    *
    * @param size size of segment
    * @return
    */
-  private ISchemaPage getMinApplicablePageInMem(short size) throws IOException {
+  private ISchemaPage getAndLockMinApplicablePageInMem(short size) throws IOException {
     for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
-      if (entry.getValue().isCapableForSize(size)) {
+      if (entry.getValue().isCapableForSize(size)
+          && pageLock.findLock(entry.getKey()).writeLock().tryLock()) {
         return pageInstCache.get(entry.getKey());
       }
     }
@@ -662,36 +731,30 @@ public class SchemaFile implements ISchemaFile {
   private ISchemaPage getPageInstance(int pageIdx) throws IOException, MetadataException {
     // TODO: improve concurrent control
     //  since now one page may be evicted after returned but before updated
-    pageLock.writeLock(pageIdx);
-    try {
-      if (pageIdx > lastPageIndex) {
-        throw new MetadataException(String.format("Page index %d out of range.", pageIdx));
-      }
+    if (pageIdx > lastPageIndex) {
+      throw new MetadataException(String.format("Page index %d out of range.", pageIdx));
+    }
 
-      if (pageInstCache.containsKey(pageIdx)) {
-        synchronized (pageInstCache) {
-          if (pageInstCache.containsKey(pageIdx)) {
-            return pageInstCache.get(pageIdx);
-          }
+    if (pageInstCache.containsKey(pageIdx)) {
+      synchronized (pageInstCache) {
+        if (pageInstCache.containsKey(pageIdx)) {
+          return pageInstCache.get(pageIdx);
         }
       }
-
-      ByteBuffer newBuf = ByteBuffer.allocate(PAGE_LENGTH);
-
-      loadFromFile(newBuf, pageIdx);
-      addPageToCache(pageIdx, SchemaPage.loadPage(newBuf, pageIdx));
-      return pageInstCache.get(pageIdx);
-    } finally {
-      pageLock.writeUnlock(pageIdx);
     }
+
+    ByteBuffer newBuf = ByteBuffer.allocate(PAGE_LENGTH);
+
+    loadFromFile(newBuf, pageIdx);
+    addPageToCache(pageIdx, SchemaPage.loadPage(newBuf, pageIdx));
+    return pageInstCache.get(pageIdx);
   }
 
   private ISchemaPage allocateNewPage() throws IOException {
     lastPageIndex += 1;
+    pageLock.writeLock(lastPageIndex);
     ISchemaPage newPage = SchemaPage.initPage(ByteBuffer.allocate(PAGE_LENGTH), lastPageIndex);
-
     addPageToCache(newPage.getPageIndex(), newPage);
-
     return newPage;
   }
 
@@ -837,7 +900,7 @@ public class SchemaFile implements ISchemaFile {
 
   // endregion
 
-  private static class pageLock {
+  private class PageLocks {
 
     /**
      * number of reentrant read write lock. Notice that this number should be a prime number for
@@ -846,33 +909,32 @@ public class SchemaFile implements ISchemaFile {
     private static final int NUM_OF_LOCKS = 1039;
 
     /** locks array */
-    private static ReentrantReadWriteLock[] locks;
+    private ReentrantReadWriteLock[] locks;
 
-    // initialize locks
-    static {
+    protected PageLocks() {
       locks = new ReentrantReadWriteLock[NUM_OF_LOCKS];
       for (int i = 0; i < NUM_OF_LOCKS; i++) {
         locks[i] = new ReentrantReadWriteLock();
       }
     }
 
-    public static void readLock(int hash) {
+    public void readLock(int hash) {
       findLock(hash).readLock().lock();
     }
 
-    public static void readUnlock(int hash) {
+    public void readUnlock(int hash) {
       findLock(hash).readLock().unlock();
     }
 
-    public static void writeLock(int hash) {
+    public void writeLock(int hash) {
       findLock(hash).writeLock().lock();
     }
 
-    public static void writeUnlock(int hash) {
+    public void writeUnlock(int hash) {
       findLock(hash).writeLock().unlock();
     }
 
-    private static ReentrantReadWriteLock findLock(int hash) {
+    private ReentrantReadWriteLock findLock(int hash) {
       return locks[hash % NUM_OF_LOCKS];
     }
   }
