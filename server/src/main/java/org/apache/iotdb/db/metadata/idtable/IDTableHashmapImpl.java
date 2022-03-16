@@ -42,6 +42,7 @@ import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -273,6 +274,33 @@ public class IDTableHashmapImpl implements IDTable {
 
     // reuse device entry in map
     return idTables[slot].get(deviceID);
+  }
+
+  /**
+   * get schema from device and measurements
+   *
+   * @param deviceName device name of the time series
+   * @param measurementName measurement name of the time series
+   * @return schema entry of the timeseries
+   */
+  @Override
+  public IMeasurementSchema getSeriesSchema(String deviceName, String measurementName) {
+    DeviceEntry deviceEntry = getDeviceEntry(deviceName);
+    if (deviceEntry == null) {
+      return null;
+    }
+
+    SchemaEntry schemaEntry = deviceEntry.getSchemaEntry(measurementName);
+    if (schemaEntry == null) {
+      return null;
+    }
+
+    // build measurement schema
+    return new MeasurementSchema(
+        measurementName,
+        schemaEntry.getTSDataType(),
+        schemaEntry.getTSEncoding(),
+        schemaEntry.getCompressionType());
   }
 
   @Override
