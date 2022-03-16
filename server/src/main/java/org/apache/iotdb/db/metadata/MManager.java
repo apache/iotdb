@@ -407,7 +407,7 @@ public class MManager {
       throws MetadataException {
     createAlignedTimeSeries(
         new CreateAlignedTimeSeriesPlan(
-            prefixPath, measurements, dataTypes, encodings, compressors, null));
+            prefixPath, measurements, dataTypes, encodings, compressors, null, null, null));
   }
 
   /**

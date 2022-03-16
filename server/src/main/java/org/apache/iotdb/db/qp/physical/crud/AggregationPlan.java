@@ -153,7 +153,7 @@ public class AggregationPlan extends RawDataQueryPlan {
       String transformedPath = groupByLevelController.getGroupedPath(rawPath);
       AggregateResult result = groupPathsResultMap.get(transformedPath);
       if (result == null) {
-        groupPathsResultMap.put(transformedPath, aggregateResults.get(i));
+        groupPathsResultMap.put(transformedPath, aggregateResults.get(i).clone());
       } else {
         result.merge(aggregateResults.get(i));
         groupPathsResultMap.put(transformedPath, result);
@@ -178,6 +178,10 @@ public class AggregationPlan extends RawDataQueryPlan {
   public String getColumnForDisplay(String columnForReader, int pathIndex) {
     String columnForDisplay = columnForReader;
     if (isGroupByLevel()) {
+      if (resultColumns.get(pathIndex).hasAlias()) {
+        return resultColumns.get(pathIndex).getAlias();
+      }
+
       PartialPath path = paths.get(pathIndex);
       String functionName = aggregations.get(pathIndex);
       String aggregatePath =

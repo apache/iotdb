@@ -47,7 +47,7 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
         new ArrayList<>(groupByPlan.getDeduplicatedPaths()),
         groupByPlan.getDeduplicatedDataTypes(),
         groupByPlan.isAscending());
-    initGroupByEngineDataSetFields(context, groupByPlan);
+    initGroupByTimeDataSetFields(context, groupByPlan);
 
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
     this.metaGroupMember = metaGroupMember;

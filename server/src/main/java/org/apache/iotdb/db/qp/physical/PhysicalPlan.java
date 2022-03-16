@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -86,12 +87,13 @@ import java.util.Collections;
 import java.util.List;
 
 /** This class is a abstract class for all type of PhysicalPlan. */
-public abstract class PhysicalPlan {
+public abstract class PhysicalPlan implements IConsensusRequest {
   private static final Logger logger = LoggerFactory.getLogger(PhysicalPlan.class);
 
   private static final String SERIALIZATION_UNIMPLEMENTED = "serialization unimplemented";
 
   private boolean isQuery = false;
+
   private Operator.OperatorType operatorType;
   private static final int NULL_VALUE_LEN = -1;
 
@@ -187,6 +189,20 @@ public abstract class PhysicalPlan {
    */
   public void serialize(DataOutputStream stream) throws IOException {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
+  }
+
+  @Override
+  public void serializeRequest(ByteBuffer buffer) {
+    serialize(buffer);
+  }
+
+  @Override
+  public void deserializeRequest(ByteBuffer buffer) throws Exception {
+    try {
+      deserialize(buffer);
+    } catch (IllegalPathException | IOException e) {
+      throw new Exception(e);
+    }
   }
 
   /**

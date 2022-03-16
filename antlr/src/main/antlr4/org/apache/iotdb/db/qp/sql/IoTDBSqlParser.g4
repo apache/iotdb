@@ -394,7 +394,7 @@ fillClause
     ;
 
 withoutNullClause
-    : WITHOUT NULL_LITERAL (ALL | ANY)
+    : WITHOUT NULL_LITERAL (ALL | ANY) (LR_BRACKET expression (COMMA expression)* RR_BRACKET)?
     ;
 
 oldTypeClause

@@ -84,14 +84,15 @@ IoTDB> delete timeseries root.ln.wf02.*
 
   There are four optional clauses added in SHOW TIMESERIES, return information of time series 
   
+
 Timeseries information includes: timeseries path, alias of measurement, storage group it belongs to, data type, encoding type, compression type, tags and attributes.
- 
+
 Examples:
 
 * SHOW TIMESERIES
 
   presents all timeseries information in JSON form
- 
+
 * SHOW TIMESERIES <`PathPattern`> 
   
   returns all timeseries information matching the given <`PathPattern`>. SQL statements are as follows:
@@ -142,6 +143,7 @@ show timeseries root.ln.** limit 10 offset 10
 
   all the returned timeseries information should be sorted in descending order of the last timestamp of timeseries
   
+
 It is worth noting that when the queried path does not exist, the system will return no timeseries.  
 
 
@@ -179,7 +181,6 @@ It costs 0.004s
 Then the Metadata Tree will be as below:
 
 <center><img style="width:100%; max-width:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792176-1718f400-1201-11ea-861a-1a83c07ca144.jpg"></center>
-
 As can be seen, `root` is considered as `LEVEL=0`. So when you enter statements such as:
 
 ```
@@ -304,3 +305,35 @@ It costs 0.004s
 ```
 
 > Notice that, we only support one condition in the where clause. Either it's an equal filter or it is an `contains` filter. In both case, the property in the where condition must be a tag.
+
+create aligned timeseries
+
+```
+create aligned timeseries root.sg1.d1(s1 INT32 tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2), s2 DOUBLE tags(tag3=v3, tag4=v4) attributes(attr3=v3, attr4=v4))
+```
+
+The execution result is as follows:
+
+```
++--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+
+|    timeseries|alias|storage group|dataType|encoding|compression|                     tags|                 attributes|
++--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+
+|root.sg1.d1.s1| null|     root.sg1|   INT32|     RLE|     SNAPPY|{"tag1":"v1","tag2":"v2"}|{"attr2":"v2","attr1":"v1"}|
+|root.sg1.d1.s2| null|     root.sg1|  DOUBLE| GORILLA|     SNAPPY|{"tag4":"v4","tag3":"v3"}|{"attr4":"v4","attr3":"v3"}|
++--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+
+```
+
+Support query：
+
+```
+IoTDB> show storage group where tag1='v1'
+Msg: 401: Error occurred while parsing SQL to physical plan: line 1:19 mismatched input 'where' expecting {<EOF>, ';'}
+IoTDB> show timeseries where tag1='v1'
++--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+
+|    timeseries|alias|storage group|dataType|encoding|compression|                     tags|                 attributes|
++--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+
+|root.sg1.d1.s1| null|     root.sg1|   INT32|     RLE|     SNAPPY|{"tag1":"v1","tag2":"v2"}|{"attr2":"v2","attr1":"v1"}|
++--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+
+```
+
+The above operations are supported for timeseries tag, attribute updates, etc.
