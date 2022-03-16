@@ -26,9 +26,9 @@ import org.apache.iotdb.itbase.category.RemoteTest;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
@@ -89,15 +89,15 @@ public class IoTDBMetadataFetchIT {
     }
   }
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeTest();
 
     insertSQL();
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterTest();
   }
 
