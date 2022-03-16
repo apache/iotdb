@@ -692,6 +692,8 @@
                             <exclude>.pytest_cache/**</exclude>
                             <exclude>venv/**</exclude>
                             <exclude>apache_iotdb.egg-info/**</exclude>
+                            <exclude>**/iotdb/thrift/__init__.py</exclude>
+                            <exclude>**/iotdb/thrift/rpc/__init__.py</exclude>
                             <!-- Java SPI uses files in resources/META-INF/services-->
                             <exclude>**/resources/META-INF/services/**</exclude>
                             <!-- grafana plugin -->
