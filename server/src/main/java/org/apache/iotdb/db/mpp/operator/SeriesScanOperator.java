@@ -18,4 +18,22 @@
  */
 package org.apache.iotdb.db.mpp.operator;
 
-public class SeriesScanOperator {}
+import org.apache.iotdb.db.mpp.common.TsBlock;
+
+public class SeriesScanOperator implements Operator {
+
+  @Override
+  public OperatorContext getOperatorContext() {
+    return null;
+  }
+
+  @Override
+  public TsBlock next() {
+    return null;
+  }
+
+  @Override
+  public boolean hasNext() {
+    return false;
+  }
+}

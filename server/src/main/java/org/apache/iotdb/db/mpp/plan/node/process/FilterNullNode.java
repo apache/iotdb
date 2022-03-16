@@ -22,16 +22,16 @@ import org.apache.iotdb.db.mpp.common.WithoutPolicy;
 import org.apache.iotdb.db.mpp.plan.node.PlanNodeId;
 
 /** WithoutNode is used to discard specific rows from upstream node. */
-public class WithoutNode extends ProcessNode {
+public class FilterNullNode extends ProcessNode {
 
   // The policy to discard the result from upstream operator
   private WithoutPolicy discardPolicy;
 
-  public WithoutNode(PlanNodeId id) {
+  public FilterNullNode(PlanNodeId id) {
     super(id);
   }
 
-  public WithoutNode(PlanNodeId id, WithoutPolicy discardPolicy) {
+  public FilterNullNode(PlanNodeId id, WithoutPolicy discardPolicy) {
     this(id);
     this.discardPolicy = discardPolicy;
   }
