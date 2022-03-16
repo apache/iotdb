@@ -21,18 +21,20 @@ package org.apache.iotdb.db.newsync.receiver;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
+import org.apache.iotdb.db.newsync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.db.newsync.receiver.collector.Collector;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
 import org.apache.iotdb.db.newsync.receiver.manager.ReceiverManager;
-import org.apache.iotdb.db.newsync.transfer.SyncRequest;
-import org.apache.iotdb.db.newsync.transfer.SyncResponse;
+import org.apache.iotdb.db.newsync.transport.server.TransportServerManager;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.service.transport.thrift.SyncRequest;
+import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -69,8 +71,8 @@ public class ReceiverService implements IService {
               pipeInfo.getPipeName(), pipeInfo.getRemoteIp(), pipeInfo.getCreateTime());
         }
       }
-      // TODO: start socket
-    } catch (IOException e) {
+      TransportServerManager.getInstance().startService();
+    } catch (IOException | StartupException e) {
       logger.error(e.getMessage());
       return false;
     }
@@ -82,7 +84,8 @@ public class ReceiverService implements IService {
     try {
       receiverManager.stopServer();
       collector.stopCollect();
-      // TODO: stop socket and collector
+      // todo: how to stop?
+      TransportServerManager.getInstance().stopService();
     } catch (IOException e) {
       logger.error(e.getMessage());
       return false;
@@ -94,22 +97,22 @@ public class ReceiverService implements IService {
   // TODO: define exception
   // TODO: this is a mock interface
   public SyncResponse recMsg(SyncRequest request) throws IOException {
-    switch (request.getCode()) {
-      case SyncRequest.HEARTBEAT:
+    switch (request.getType()) {
+      case HEARTBEAT:
         List<PipeMessage> messages =
             receiverManager.getPipeMessages(
                 request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
         break;
-      case SyncRequest.CREATE:
+      case CREATE:
         createPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
         break;
-      case SyncRequest.START:
+      case START:
         startPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
         break;
-      case SyncRequest.STOP:
+      case STOP:
         stopPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
         break;
-      case SyncRequest.DROP:
+      case DROP:
         dropPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
         break;
     }
@@ -142,6 +145,8 @@ public class ReceiverService implements IService {
     collector.stopPipe(pipeName, remoteIp, createTime);
     File dir = new File(SyncPathUtil.getReceiverPipeDir(pipeName, remoteIp, createTime));
     FileUtils.deleteDirectory(dir);
+    PipeDataQueueFactory.removeBufferedPipeDataQueue(
+        SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime));
   }
 
   private void createDir(String pipeName, String remoteIp, long createTime) {
@@ -218,9 +223,9 @@ public class ReceiverService implements IService {
 
   @Override
   public void stop() {
-    stopPipeServer();
     try {
       receiverManager.close();
+      collector.stopCollect();
     } catch (IOException e) {
       logger.error(e.getMessage());
     }

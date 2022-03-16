@@ -29,6 +29,7 @@ import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.newsync.pipedata.queue.BufferedPipeDataQueue;
+import org.apache.iotdb.db.newsync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.db.newsync.receiver.collector.Collector;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -189,7 +190,7 @@ public class IoTDBSyncReceiverCollectorIT {
     Deletion deletion = new Deletion(new PartialPath("root.vehicle.**"), 0, 33, 38);
     PipeData pipeData = new DeletionPipeData(deletion, serialNum++);
     BufferedPipeDataQueue pipeDataQueue =
-        Collector.getPipeDataQueue(
+        PipeDataQueueFactory.getBufferedPipeDataQueue(
             SyncPathUtil.getReceiverPipeLogDir(pipeName1, remoteIp1, createdTime1));
     pipeDataQueue.offer(pipeData);
 
@@ -275,6 +276,7 @@ public class IoTDBSyncReceiverCollectorIT {
         Assert.fail();
       }
     }
+    pipeDataQueue.clear();
   }
 
   @Test
@@ -399,10 +401,10 @@ public class IoTDBSyncReceiverCollectorIT {
 
     // 3. create and start collector
     BufferedPipeDataQueue pipeDataQueue1 =
-        Collector.getPipeDataQueue(
+        PipeDataQueueFactory.getBufferedPipeDataQueue(
             SyncPathUtil.getReceiverPipeLogDir(pipeName1, remoteIp1, createdTime1));
     BufferedPipeDataQueue pipeDataQueue2 =
-        Collector.getPipeDataQueue(
+        PipeDataQueueFactory.getBufferedPipeDataQueue(
             SyncPathUtil.getReceiverPipeLogDir(pipeName2, remoteIp2, createdTime2));
     Collector collector = new Collector();
     collector.startCollect();
@@ -499,5 +501,7 @@ public class IoTDBSyncReceiverCollectorIT {
         Assert.fail();
       }
     }
+    pipeDataQueue2.clear();
+    pipeDataQueue1.clear();
   }
 }

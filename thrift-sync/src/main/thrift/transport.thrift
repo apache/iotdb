@@ -30,10 +30,12 @@ struct IdentityInfo{
   1:required string address
 
   // Sender needs to tell receiver its identity.
-  2:required string uuid
+  2:required string pipeName
+  3:required i64 createTime
 
   // The version of sender and receiver need to be the same.
-  3:required string version
+  4:required string version
+
 }
 
 enum Type {
@@ -41,6 +43,20 @@ enum Type {
   DELETION,
   PHYSICALPLAN,
   FILE
+}
+
+enum RequestType {
+  CREATE,
+  START,
+  STOP,
+  DROP,
+  HEARTBEAT
+}
+
+enum ResponseType {
+  INFO,
+  WARN,
+  ERROR
 }
 
 struct MetaInfo{
@@ -55,12 +71,14 @@ struct MetaInfo{
 }
 
 struct SyncRequest{
-  1:required i32 code
-  2:required string msg
+  1:required RequestType type
+  2:required string pipeName
+  3:required string remoteIp
+  4:required i64 createTime
 }
 
 struct SyncResponse{
-  1:required i32 code
+  1:required ResponseType type
   2:required string msg
 }
 
