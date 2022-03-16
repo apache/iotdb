@@ -68,8 +68,6 @@ for %%i in (%*) do (
 	) ELSE IF "!is_conf_path!" == "true" (
 		set is_conf_path=false
 		set CONFIGNODE_CONF=%%i
-	) ELSE (
-		set CONF_PARAMS=!CONF_PARAMS! %%i
 	)
 )
 
@@ -79,6 +77,7 @@ IF EXIST "%CONFIGNODE_CONF%\confignode-env.bat" (
     echo "can't find %CONFIGNODE_CONF%\confignode-env.bat"
     )
 
+set CONF_PARAMS=-s
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.confignode.service.ConfigNode
 if NOT DEFINED JAVA_HOME goto :err
 

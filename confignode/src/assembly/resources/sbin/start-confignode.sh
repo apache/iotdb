@@ -44,7 +44,7 @@ for arg do
   set -- "$@" "$arg"
 done
 
-CONF_PARAMS=$*
+CONF_PARAMS="-s "$*
 
 if [ -f "$CONFIGNODE_CONF/confignode-env.sh" ]; then
     if [ "$#" -ge "1" -a "$1" == "printgc" ]; then

@@ -18,7 +18,7 @@
  *
  */
 
-package org.apache.iotdb.db.utils;
+package org.apache.iotdb.commons.utils;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
