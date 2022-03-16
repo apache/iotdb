@@ -28,14 +28,29 @@ public interface SinkHandle {
   ListenableFuture<Void> isFull();
 
   /**
-   * Sends a tsBlock to an unpartitioned buffer. If no-more-pages has been set, the send tsBlock
+   * Sends a tsBlock to an unpartitioned buffer. If no-more-tsBlocks has been set, the send tsBlock
    * call is ignored. This can happen with limit queries.
    */
   void send(ByteBuffer tsBlock);
 
   /**
-   * Sends a tsBlock to a specific partition. If no-more-pages has been set, the send tsBlock call
-   * is ignored. This can happen with limit queries.
+   * Sends a tsBlock to a specific partition. If no-more-tsBlocks has been set, the send tsBlock
+   * call is ignored. This can happen with limit queries.
    */
   void send(int partition, ByteBuffer tsBlock);
+
+  /**
+   * Notify SinkHandle that no more tsBlocks will be sent. Any future calls to send a tsBlock are
+   * ignored.
+   */
+  void setNoMoreTsBlocks();
+
+  /** close the sink handle, discarding all tsBlocks which may still in memory buffer. */
+  void close();
+
+  /**
+   * Abort the sink handle, discarding all tsBlocks which may still in memory buffer, but blocking
+   * readers. It is expected that readers will be unblocked when the failed query is cleaned up.
+   */
+  void abort();
 }
