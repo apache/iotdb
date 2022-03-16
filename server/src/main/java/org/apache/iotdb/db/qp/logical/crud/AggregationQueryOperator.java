@@ -79,9 +79,10 @@ public class AggregationQueryOperator extends QueryOperator {
       // Currently, the aggregation function expression can only contain a timeseries operand.
       if (expression instanceof FunctionExpression
           && (expression.getExpressions().size() != 1
-              || !(expression.getExpressions().get(0) instanceof TimeSeriesOperand))) {
+              || !(expression.getExpressions().get(0) instanceof TimeSeriesOperand))
+          && expression.getExpressions().size() != 0) {
         throw new LogicalOperatorException(
-            "The argument of the aggregation function must be a time series.");
+            "The argument of the aggregation function must be a time series or null");
       }
     }
   }
