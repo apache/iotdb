@@ -43,9 +43,11 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 
@@ -157,8 +159,11 @@ public class SchemaFileTest {
 
     IMNode node = new InternalMNode(null, "a");
     ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(0L);
-    IMNode target = sf.getChildNode(node, "aa199");
-    Assert.assertEquals("aa199als", target.getAsMeasurementMNode().getAlias());
+    List<Integer> tryReadList = Arrays.asList(199, 1999, 2999, 3999, 4999, 5999);
+    for (Integer rid : tryReadList) {
+      IMNode target = sf.getChildNode(node, "aa" + rid);
+      Assert.assertEquals("aa" + rid + "als", target.getAsMeasurementMNode().getAlias());
+    }
     sf.close();
   }
 

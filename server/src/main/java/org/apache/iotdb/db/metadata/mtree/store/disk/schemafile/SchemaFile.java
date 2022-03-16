@@ -692,26 +692,18 @@ public class SchemaFile implements ISchemaFile {
         if (pageInstCache.size() >= PAGE_CACHE_SIZE) {
           int removeCnt =
               (int) (0.2 * pageInstCache.size()) > 0 ? (int) (0.2 * pageInstCache.size()) : 1;
-          List<Map.Entry<Integer, ISchemaPage>> rmvEntry = new ArrayList<>();
+          List<Integer> rmvIds = new ArrayList<>(pageInstCache.keySet()).subList(0, removeCnt);
 
-          // FIXME: configure why still a concurrent modification inside a synchronized
-          Set<Map.Entry<Integer, ISchemaPage>> copyEntrySet = new LinkedHashSet<>(pageInstCache.entrySet());
-          for (Map.Entry<Integer, ISchemaPage> entry : copyEntrySet) {
-            removeCnt--;
-            rmvEntry.add(entry);
-            if (removeCnt <= 0) {
-              break;
-            }
-          }
-
-          for (Map.Entry<Integer, ISchemaPage> entry: rmvEntry) {
+          for (Integer id : rmvIds) {
             // TODO: improve concurrent control
             // for any page involved in concurrent operation, it will not be evicted
             // this may produce an inefficient eviction
-            if (!pageLock.findLock(entry.getKey()).isWriteLocked()) {
-              entry.getValue().syncPageBuffer();
-              flushPageToFile(entry.getValue());
-              pageInstCache.remove(entry.getKey());
+            pageLock.writeLock(id);
+            try {
+              flushPageToFile(pageInstCache.get(id));
+              pageInstCache.remove(id);
+            } finally {
+              pageLock.writeUnlock(id);
             }
           }
         }

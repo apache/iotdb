@@ -30,13 +30,15 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class initiate a segment object with corresponding bytes. Implements add, get, remove
  * records methods. Act like a wrapper of a bytebuffer which reflects a segment.
  */
 public class Segment implements ISegment {
-  static ByteBuffer PRE_ALL_BUF = null; // to pre-allocate segment instantly
+  // control concurrency of the segment executing read and write
+  ReentrantReadWriteLock segWriteLock;
 
   // members load from buffer
   final ByteBuffer buffer;
@@ -68,6 +70,7 @@ public class Segment implements ISegment {
    * <li>var length: records
    */
   public Segment(ByteBuffer buffer, boolean override) {
+    segWriteLock = new ReentrantReadWriteLock();
     this.buffer = buffer;
     // determine from 3 kind: BLANK, EXISTED, CRACKED
     if (override) {
@@ -135,85 +138,90 @@ public class Segment implements ISegment {
    */
   @Override
   public int insertRecord(String key, ByteBuffer buf) throws RecordDuplicatedException {
-    int recordStartAddr = freeAddr - buf.capacity();
+    segWriteLock.writeLock().lock();
+    try {
+      int recordStartAddr = freeAddr - buf.capacity();
 
-    int newPairLength = pairLength + key.getBytes().length + 4 + 2;
-    if (recordStartAddr < Segment.SEG_HEADER_SIZE + newPairLength) {
-      return -1;
-    }
-    pairLength = (short) newPairLength;
-
-    int tarIdx = 0;
-
-    int head = 0;
-    int tail = keyAddressList.size() - 1;
-
-    if (tail == -1) {
-      // no element
-      tarIdx = 0;
-    } else if (tail == 0) {
-      // only one element
-      if (keyAddressList.get(0).left.compareTo(key) == 0) {
-        throw new RecordDuplicatedException(key);
+      int newPairLength = pairLength + key.getBytes().length + 4 + 2;
+      if (recordStartAddr < Segment.SEG_HEADER_SIZE + newPairLength) {
+        return -1;
       }
-      tarIdx = keyAddressList.get(0).left.compareTo(key) > 0 ? 0 : 1;
-    } else if (keyAddressList.get(head).left.compareTo(key) == 0
-        || keyAddressList.get(tail).left.compareTo(key) == 0) {
-      throw new RecordDuplicatedException(key);
-    } else if (keyAddressList.get(head).left.compareTo(key) > 0) {
-      tarIdx = 0;
-    } else if (keyAddressList.get(tail).left.compareTo(key) < 0) {
-      tarIdx = keyAddressList.size();
-    } else {
-      while (head != tail) {
-        int pivot = (head + tail) / 2;
-        if (pivot == keyAddressList.size() - 1) {
-          tarIdx = pivot;
-          break;
-        }
+      pairLength = (short) newPairLength;
 
-        if (keyAddressList.get(pivot).left.compareTo(key) == 0
-            || keyAddressList.get(pivot + 1).left.compareTo(key) == 0) {
+      int tarIdx = 0;
+
+      int head = 0;
+      int tail = keyAddressList.size() - 1;
+
+      if (tail == -1) {
+        // no element
+        tarIdx = 0;
+      } else if (tail == 0) {
+        // only one element
+        if (keyAddressList.get(0).left.compareTo(key) == 0) {
           throw new RecordDuplicatedException(key);
         }
-
-        if (keyAddressList.get(pivot).left.compareTo(key) < 0
-            && keyAddressList.get(pivot + 1).left.compareTo(key) > 0) {
-          tarIdx = pivot + 1;
-          break;
-        }
-
-        if (pivot == head || pivot == tail) {
-          if (keyAddressList.get(head).left.compareTo(key) > 0) {
-            tarIdx = head;
+        tarIdx = keyAddressList.get(0).left.compareTo(key) > 0 ? 0 : 1;
+      } else if (keyAddressList.get(head).left.compareTo(key) == 0
+          || keyAddressList.get(tail).left.compareTo(key) == 0) {
+        throw new RecordDuplicatedException(key);
+      } else if (keyAddressList.get(head).left.compareTo(key) > 0) {
+        tarIdx = 0;
+      } else if (keyAddressList.get(tail).left.compareTo(key) < 0) {
+        tarIdx = keyAddressList.size();
+      } else {
+        while (head != tail) {
+          int pivot = (head + tail) / 2;
+          if (pivot == keyAddressList.size() - 1) {
+            tarIdx = pivot;
+            break;
           }
-          if (keyAddressList.get(tail).left.compareTo(key) < 0) {
-            tarIdx = tail + 1;
+
+          if (keyAddressList.get(pivot).left.compareTo(key) == 0
+              || keyAddressList.get(pivot + 1).left.compareTo(key) == 0) {
+            throw new RecordDuplicatedException(key);
           }
-          break;
-        }
 
-        // impossible for pivot.cmp > 0 and (pivot+1).cmp < 0
-        if (keyAddressList.get(pivot).left.compareTo(key) > 0) {
-          tail = pivot;
-        }
+          if (keyAddressList.get(pivot).left.compareTo(key) < 0
+              && keyAddressList.get(pivot + 1).left.compareTo(key) > 0) {
+            tarIdx = pivot + 1;
+            break;
+          }
 
-        if (keyAddressList.get(pivot + 1).left.compareTo(key) < 0) {
-          head = pivot;
+          if (pivot == head || pivot == tail) {
+            if (keyAddressList.get(head).left.compareTo(key) > 0) {
+              tarIdx = head;
+            }
+            if (keyAddressList.get(tail).left.compareTo(key) < 0) {
+              tarIdx = tail + 1;
+            }
+            break;
+          }
+
+          // impossible for pivot.cmp > 0 and (pivot+1).cmp < 0
+          if (keyAddressList.get(pivot).left.compareTo(key) > 0) {
+            tail = pivot;
+          }
+
+          if (keyAddressList.get(pivot + 1).left.compareTo(key) < 0) {
+            head = pivot;
+          }
         }
       }
+
+      keyAddressList.add(tarIdx, new Pair<>(key, (short) recordStartAddr));
+
+      buf.clear();
+      this.buffer.position(recordStartAddr);
+      this.buffer.put(buf);
+
+      this.freeAddr = (short) recordStartAddr;
+      this.recordNum++;
+
+      return recordStartAddr - pairLength - Segment.SEG_HEADER_SIZE;
+    } finally {
+      segWriteLock.writeLock().unlock();
     }
-
-    keyAddressList.add(tarIdx, new Pair<>(key, (short) recordStartAddr));
-
-    buf.clear();
-    this.buffer.position(recordStartAddr);
-    this.buffer.put(buf);
-
-    this.freeAddr = (short) recordStartAddr;
-    this.recordNum++;
-
-    return recordStartAddr - pairLength - Segment.SEG_HEADER_SIZE;
   }
 
   @Override
@@ -223,42 +231,47 @@ public class Segment implements ISegment {
 
   @Override
   public IMNode getRecordAsIMNode(String key) {
-    int index = getRecordIndexByKey(key);
-    if (index < 0) {
-      return null;
+    segWriteLock.readLock().lock();
+    try {
+      int index = getRecordIndexByKey(key);
+      if (index < 0) {
+        return null;
+      }
+
+      short offset = getOffsetByIndex(index);
+      this.buffer.clear();
+      this.buffer.position(offset);
+      short len = RecordUtils.getRecordLength(this.buffer);
+      this.buffer.limit(offset + len);
+
+      return RecordUtils.buffer2Node(key, this.buffer);
+    } finally {
+      segWriteLock.readLock().unlock();
     }
-
-    short offset = getOffsetByIndex(index);
-    this.buffer.clear();
-    this.buffer.position(offset);
-    short len = RecordUtils.getRecordLength(this.buffer);
-    this.buffer.limit(offset + len);
-
-    return RecordUtils.buffer2Node(key, this.buffer);
   }
 
   @Override
   public boolean hasRecordKey(String key) {
-    for (Pair<String, Short> p : keyAddressList) {
-      if (p.left.equals(key)) {
-        return true;
-      }
-    }
-    return false;
+    return getRecordIndexByKey(key) > -1;
   }
 
   @Override
   public Queue<IMNode> getAllRecords() {
-    Queue<IMNode> res = new ArrayDeque<>();
-    this.buffer.clear();
-    for (Pair<String, Short> p : keyAddressList) {
-      this.buffer.limit(this.buffer.capacity());
-      this.buffer.position(p.right);
-      short len = RecordUtils.getRecordLength(this.buffer);
-      this.buffer.limit(p.right + len);
-      res.add(RecordUtils.buffer2Node(p.left, this.buffer));
+    segWriteLock.readLock().lock();
+    try {
+      Queue<IMNode> res = new ArrayDeque<>();
+      this.buffer.clear();
+      for (Pair<String, Short> p : keyAddressList) {
+        this.buffer.limit(this.buffer.capacity());
+        this.buffer.position(p.right);
+        short len = RecordUtils.getRecordLength(this.buffer);
+        this.buffer.limit(p.right + len);
+        res.add(RecordUtils.buffer2Node(p.left, this.buffer));
+      }
+      return res;
+    } finally {
+      segWriteLock.readLock().unlock();
     }
-    return res;
   }
 
   /**
@@ -269,84 +282,99 @@ public class Segment implements ISegment {
    */
   @Override
   public int updateRecord(String key, ByteBuffer buffer) throws SegmentOverflowException {
-    int idx = getRecordIndexByKey(key);
-    if (idx < 0) {
-      return -1;
-    }
-
-    this.buffer.clear();
-    buffer.clear();
-    this.buffer.position(keyAddressList.get(idx).right);
-    short oriLen = RecordUtils.getRecordLength(this.buffer);
-    short newLen = (short) buffer.capacity();
-    if (oriLen >= newLen) {
-      // update in place
-      this.buffer.limit(this.buffer.position() + oriLen);
-      this.buffer.put(buffer);
-    } else {
-      // allocate new space for record, modify key-address list, freeAddr
-      if (ISegment.SEG_HEADER_SIZE + pairLength + newLen > freeAddr) {
-        // not enough space
-        throw new SegmentOverflowException(idx);
+    segWriteLock.writeLock().lock();
+    try {
+      int idx = getRecordIndexByKey(key);
+      if (idx < 0) {
+        return -1;
       }
 
-      freeAddr = (short) (freeAddr - newLen);
-      keyAddressList.get(idx).right = freeAddr;
-      // it will not mark old record as expired
-      this.buffer.position(freeAddr);
-      this.buffer.limit(freeAddr + newLen);
-      this.buffer.put(buffer);
-    }
+      this.buffer.clear();
+      buffer.clear();
+      this.buffer.position(keyAddressList.get(idx).right);
+      short oriLen = RecordUtils.getRecordLength(this.buffer);
+      short newLen = (short) buffer.capacity();
+      if (oriLen >= newLen) {
+        // update in place
+        this.buffer.limit(this.buffer.position() + oriLen);
+        this.buffer.put(buffer);
+      } else {
+        // allocate new space for record, modify key-address list, freeAddr
+        if (ISegment.SEG_HEADER_SIZE + pairLength + newLen > freeAddr) {
+          // not enough space
+          throw new SegmentOverflowException(idx);
+        }
 
-    return idx;
+        freeAddr = (short) (freeAddr - newLen);
+        keyAddressList.get(idx).right = freeAddr;
+        // it will not mark old record as expired
+        this.buffer.position(freeAddr);
+        this.buffer.limit(freeAddr + newLen);
+        this.buffer.put(buffer);
+      }
+
+      return idx;
+    } finally {
+      segWriteLock.writeLock().unlock();
+    }
   }
 
   @Override
   public int removeRecord(String key) {
     // just modify keyAddressList, if the last record to delete, modify freeAddr
-    int idx = getRecordIndexByKey(key);
-    if (idx < 0) {
-      return -1;
+    segWriteLock.writeLock().lock();
+    try {
+      int idx = getRecordIndexByKey(key);
+      if (idx < 0) {
+        return -1;
+      }
+
+      if (keyAddressList.get(idx).right == freeAddr) {
+        this.buffer.clear();
+        this.buffer.position(freeAddr);
+        short len = RecordUtils.getRecordLength(this.buffer);
+        freeAddr += len;
+      }
+
+      // TODO: compact segment further as well
+      recordNum--;
+      pairLength -= 2;
+      pairLength -= key.getBytes().length + 4;
+      keyAddressList.remove(idx);
+
+      return idx;
+    } finally {
+      segWriteLock.writeLock().unlock();
     }
-
-    if (keyAddressList.get(idx).right == freeAddr) {
-      this.buffer.clear();
-      this.buffer.position(freeAddr);
-      short len = RecordUtils.getRecordLength(this.buffer);
-      freeAddr += len;
-    }
-
-    // TODO: compact segment further as well
-    recordNum--;
-    pairLength -= 2;
-    pairLength -= key.getBytes().length + 4;
-    keyAddressList.remove(idx);
-
-    return idx;
   }
 
   @Override
   public void syncBuffer() {
-    ByteBuffer prefBuffer = ByteBuffer.allocate(Segment.SEG_HEADER_SIZE + pairLength);
+    segWriteLock.readLock().lock();
+    try {
+      ByteBuffer prefBuffer = ByteBuffer.allocate(Segment.SEG_HEADER_SIZE + pairLength);
 
-    ReadWriteIOUtils.write(length, prefBuffer);
-    ReadWriteIOUtils.write(freeAddr, prefBuffer);
-    ReadWriteIOUtils.write(recordNum, prefBuffer);
-    ReadWriteIOUtils.write(pairLength, prefBuffer);
-    ReadWriteIOUtils.write(prevSegAddress, prefBuffer);
-    ReadWriteIOUtils.write(nextSegAddress, prefBuffer);
-    ReadWriteIOUtils.write(delFlag, prefBuffer);
+      ReadWriteIOUtils.write(length, prefBuffer);
+      ReadWriteIOUtils.write(freeAddr, prefBuffer);
+      ReadWriteIOUtils.write(recordNum, prefBuffer);
+      ReadWriteIOUtils.write(pairLength, prefBuffer);
+      ReadWriteIOUtils.write(prevSegAddress, prefBuffer);
+      ReadWriteIOUtils.write(nextSegAddress, prefBuffer);
+      ReadWriteIOUtils.write(delFlag, prefBuffer);
 
-    prefBuffer.position(Segment.SEG_HEADER_SIZE);
+      prefBuffer.position(Segment.SEG_HEADER_SIZE);
 
-    for (Pair<String, Short> pair : keyAddressList) {
-      ReadWriteIOUtils.write(pair.left, prefBuffer);
-      ReadWriteIOUtils.write(pair.right, prefBuffer);
+      for (Pair<String, Short> pair : keyAddressList) {
+        ReadWriteIOUtils.write(pair.left, prefBuffer);
+        ReadWriteIOUtils.write(pair.right, prefBuffer);
+      }
+
+      prefBuffer.clear();
+      this.buffer.clear();
+      this.buffer.put(prefBuffer);
+    } finally {
+      segWriteLock.readLock().unlock();
     }
-
-    prefBuffer.clear();
-    this.buffer.clear();
-    this.buffer.put(prefBuffer);
   }
 
   @Override
@@ -375,42 +403,47 @@ public class Segment implements ISegment {
    */
   @Override
   public void extendsTo(ByteBuffer newBuffer) {
-    short sizeGap = (short) (newBuffer.capacity() - length);
+    segWriteLock.readLock().lock();
+    try {
+      short sizeGap = (short) (newBuffer.capacity() - length);
 
-    this.buffer.clear();
-    newBuffer.clear();
-
-    if (sizeGap < 0) {
-      return;
-    }
-    if (sizeGap == 0) {
-      newBuffer.put(this.buffer);
       this.buffer.clear();
       newBuffer.clear();
-      return;
+
+      if (sizeGap < 0) {
+        return;
+      }
+      if (sizeGap == 0) {
+        newBuffer.put(this.buffer);
+        this.buffer.clear();
+        newBuffer.clear();
+        return;
+      }
+
+      ReadWriteIOUtils.write((short) newBuffer.capacity(), newBuffer);
+      ReadWriteIOUtils.write((short) (freeAddr + sizeGap), newBuffer);
+      ReadWriteIOUtils.write(recordNum, newBuffer);
+      ReadWriteIOUtils.write(pairLength, newBuffer);
+      ReadWriteIOUtils.write(prevSegAddress, newBuffer);
+      ReadWriteIOUtils.write(nextSegAddress, newBuffer);
+      ReadWriteIOUtils.write(delFlag, newBuffer);
+
+      newBuffer.position(ISegment.SEG_HEADER_SIZE);
+      for (Pair<String, Short> pair : keyAddressList) {
+        ReadWriteIOUtils.write(pair.left, newBuffer);
+        ReadWriteIOUtils.write((short) (pair.right + sizeGap), newBuffer);
+      }
+
+      this.buffer.clear();
+      this.buffer.position(freeAddr);
+      this.buffer.limit(length);
+      newBuffer.position(freeAddr + sizeGap);
+      newBuffer.put(this.buffer);
+      newBuffer.clear();
+      this.buffer.clear();
+    } finally {
+      segWriteLock.readLock().unlock();
     }
-
-    ReadWriteIOUtils.write((short) newBuffer.capacity(), newBuffer);
-    ReadWriteIOUtils.write((short) (freeAddr + sizeGap), newBuffer);
-    ReadWriteIOUtils.write(recordNum, newBuffer);
-    ReadWriteIOUtils.write(pairLength, newBuffer);
-    ReadWriteIOUtils.write(prevSegAddress, newBuffer);
-    ReadWriteIOUtils.write(nextSegAddress, newBuffer);
-    ReadWriteIOUtils.write(delFlag, newBuffer);
-
-    newBuffer.position(ISegment.SEG_HEADER_SIZE);
-    for (Pair<String, Short> pair : keyAddressList) {
-      ReadWriteIOUtils.write(pair.left, newBuffer);
-      ReadWriteIOUtils.write((short) (pair.right + sizeGap), newBuffer);
-    }
-
-    this.buffer.clear();
-    this.buffer.position(freeAddr);
-    this.buffer.limit(length);
-    newBuffer.position(freeAddr + sizeGap);
-    newBuffer.put(this.buffer);
-    newBuffer.clear();
-    this.buffer.clear();
   }
 
   // endregion
@@ -425,11 +458,16 @@ public class Segment implements ISegment {
   }
 
   protected void updateRecordSegAddr(String key, long newSegAddr) {
-    int index = getRecordIndexByKey(key);
-    short offset = getOffsetByIndex(index);
-    this.buffer.clear();
-    this.buffer.position(offset);
-    RecordUtils.updateSegAddr(this.buffer, newSegAddr);
+    segWriteLock.writeLock().lock();
+    try {
+      int index = getRecordIndexByKey(key);
+      short offset = getOffsetByIndex(index);
+      this.buffer.clear();
+      this.buffer.position(offset);
+      RecordUtils.updateSegAddr(this.buffer, newSegAddr);
+    } finally {
+      segWriteLock.writeLock().unlock();
+    }
   }
 
   public long getPrevSegAddress() {
@@ -458,7 +496,8 @@ public class Segment implements ISegment {
   private int getRecordIndexByKey(String key) {
     int head = 0;
     int tail = keyAddressList.size() - 1;
-    if (key.compareTo(keyAddressList.get(head).left) < 0
+    if (tail < 0
+        || key.compareTo(keyAddressList.get(head).left) < 0
         || key.compareTo(keyAddressList.get(tail).left) > 0) {
       return -1;
     }
