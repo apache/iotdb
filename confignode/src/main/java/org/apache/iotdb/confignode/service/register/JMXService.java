@@ -35,6 +35,8 @@ import java.lang.management.ManagementFactory;
 
 public class JMXService implements IService {
 
+  // TODO: Code optimize, reuse logic in iotdb-server
+
   private static final Logger LOGGER = LoggerFactory.getLogger(JMXService.class);
 
   /** function for registering MBean. */

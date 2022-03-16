@@ -36,6 +36,8 @@ import java.util.Properties;
  */
 public class ConfigNodeConfCheck {
 
+  // TODO: Code optimize, reuse logic in iotdb-server
+
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeConfCheck.class);
 
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();

@@ -23,6 +23,8 @@ import org.apache.iotdb.confignode.exception.startup.StartupException;
 /** Any services that run in ConfigNode should implement IService */
 public interface IService {
 
+  // TODO: Code optimize, reuse logic in iotdb-server
+
   /** Start current service. */
   void start() throws StartupException;
 

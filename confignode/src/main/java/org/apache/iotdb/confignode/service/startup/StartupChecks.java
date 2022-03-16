@@ -30,6 +30,8 @@ import java.util.List;
 /** StartupChecks checks the startup environment for running ConfigNode */
 public class StartupChecks {
 
+  // TODO: Code optimize, reuse logic in iotdb-server
+
   private static final Logger LOGGER = LoggerFactory.getLogger(StartupChecks.class);
   public static final StartupCheck checkJMXPort =
       () -> {

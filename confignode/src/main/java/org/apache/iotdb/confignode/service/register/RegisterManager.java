@@ -30,6 +30,8 @@ import java.util.List;
 /** Manager any services that run in ConfigNode */
 public class RegisterManager {
 
+  // TODO: Code optimize, reuse logic in iotdb-server
+
   private static final Logger LOGGER = LoggerFactory.getLogger(RegisterManager.class);
 
   private final List<IService> iServices;
