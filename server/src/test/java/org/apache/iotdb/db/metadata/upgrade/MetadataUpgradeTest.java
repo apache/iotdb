@@ -90,7 +90,7 @@ public class MetadataUpgradeTest {
     MetadataUpgrader.upgrade();
     manager.init();
 
-    Assert.assertEquals(4, manager.getStorageGroupNum(new PartialPath("root.**"), false));
+    Assert.assertEquals(8, manager.getStorageGroupNum(new PartialPath("root.**"), false));
     Assert.assertEquals(5, manager.getAllTimeseriesCount(new PartialPath("root.**")));
 
     ShowTimeSeriesPlan showTimeSeriesPlan =
@@ -115,7 +115,7 @@ public class MetadataUpgradeTest {
     result = resultList.get(1);
     Assert.assertEquals("root.test.sg2.d1.s1", result.getName());
 
-    Assert.assertEquals(3, manager.getPathsSetTemplate("template").size());
+    Assert.assertEquals(4, manager.getPathsSetTemplate("template").size());
     Assert.assertEquals(0, manager.getPathsSetTemplate("unsetTemplate").size());
 
     Assert.assertEquals(
@@ -154,7 +154,6 @@ public class MetadataUpgradeTest {
       logWriter.setStorageGroup(new PartialPath("root.test.sg2"));
 
       Map<String, String> tags = new HashMap<>();
-      tags = new HashMap<>();
       tags.put("t-k-1", "t-k-1-v-1");
       createTimeSeriesPlan =
           new CreateTimeSeriesPlan(
@@ -182,10 +181,18 @@ public class MetadataUpgradeTest {
           new AutoCreateDeviceMNodePlan(new PartialPath("root.test.sg3.d3")));
       logWriter.setUsingSchemaTemplate(new PartialPath("root.test.sg3.d3"));
 
-      logWriter.setStorageGroup(new PartialPath("root.template.sg"));
+      logWriter.setStorageGroup(new PartialPath("root.unsetTemplate1.sg1"));
       logWriter.createSchemaTemplate(getCreateTemplatePlan("unsetTemplate", "s1"));
-      logWriter.setSchemaTemplate(new SetTemplatePlan("unsetTemplate", "root.template"));
-      logWriter.unsetSchemaTemplate(new UnsetTemplatePlan("root.template", "unsetTemplate"));
+      logWriter.setSchemaTemplate(new SetTemplatePlan("unsetTemplate", "root.unsetTemplate1"));
+      logWriter.setStorageGroup(new PartialPath("root.unsetTemplate1.sg2"));
+      logWriter.unsetSchemaTemplate(new UnsetTemplatePlan("root.unsetTemplate1", "unsetTemplate"));
+
+      logWriter.setStorageGroup(new PartialPath("root.unsetTemplate2.sg1"));
+      logWriter.setSchemaTemplate(new SetTemplatePlan("unsetTemplate", "root.unsetTemplate2"));
+      logWriter.unsetSchemaTemplate(new UnsetTemplatePlan("root.unsetTemplate2", "unsetTemplate"));
+
+      logWriter.setStorageGroup(new PartialPath("root.test.sg4"));
+      logWriter.setStorageGroup(new PartialPath("root.unsetTemplate2.sg2"));
     }
   }
 

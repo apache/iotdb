@@ -38,6 +38,7 @@ import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
@@ -56,7 +57,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
@@ -297,7 +297,8 @@ public class MetadataUpgrader {
 
   public void redoMLog() throws IOException {
     PhysicalPlan plan;
-    Queue<PhysicalPlan> templatePlanQueue = new LinkedList<>();
+    // templateName -> path -> plan
+    Map<String, Map<String, SetTemplatePlan>> setTemplatePlanAboveSG = new HashMap<>();
     try (MLogReader mLogReader = new MLogReader(mlogFilePath);
         TagLogFile tagLogFile = new TagLogFile(schemaDirPath, MetadataConstant.TAG_LOG)) {
       while (mLogReader.hasNext()) {
@@ -305,17 +306,19 @@ public class MetadataUpgrader {
         try {
           switch (plan.getOperatorType()) {
             case CREATE_TIMESERIES:
-            case CHANGE_TAG_OFFSET:
-              processPlanWithTag(plan, manager, tagLogFile);
+              processCreateTimeseries((CreateTimeSeriesPlan) plan, manager, tagLogFile);
               break;
-            case CREATE_TEMPLATE:
-            case DROP_TEMPLATE:
-            case APPEND_TEMPLATE:
-            case PRUNE_TEMPLATE:
+            case CHANGE_TAG_OFFSET:
+              processChangeTagOffset((ChangeTagOffsetPlan) plan, manager, tagLogFile);
+              break;
+            case SET_STORAGE_GROUP:
+              processSetStorageGroup((SetStorageGroupPlan) plan, manager, setTemplatePlanAboveSG);
+              break;
             case SET_TEMPLATE:
-            case ACTIVATE_TEMPLATE:
+              processSetTemplate((SetTemplatePlan) plan, manager, setTemplatePlanAboveSG);
+              break;
             case UNSET_TEMPLATE:
-              templatePlanQueue.add(plan);
+              processUnSetTemplate((UnsetTemplatePlan) plan, manager, setTemplatePlanAboveSG);
               break;
             default:
               manager.operation(plan);
@@ -327,33 +330,27 @@ public class MetadataUpgrader {
         }
       }
     }
-
-    processTemplatePlans(templatePlanQueue, manager);
   }
 
-  private void processPlanWithTag(PhysicalPlan plan, MManager manager, TagLogFile tagLogFile)
+  private void processCreateTimeseries(
+      CreateTimeSeriesPlan createTimeSeriesPlan, MManager manager, TagLogFile tagLogFile)
       throws MetadataException, IOException {
     long offset;
-    switch (plan.getOperatorType()) {
-      case CREATE_TIMESERIES:
-        CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
-        offset = createTimeSeriesPlan.getTagOffset();
-        createTimeSeriesPlan.setTagOffset(-1);
-        createTimeSeriesPlan.setTags(null);
-        createTimeSeriesPlan.setAttributes(null);
-        manager.operation(plan);
-        if (offset != -1) {
-          rewriteTagAndAttribute(createTimeSeriesPlan.getPath(), offset, manager, tagLogFile);
-        }
-        break;
-      case CHANGE_TAG_OFFSET:
-        ChangeTagOffsetPlan changeTagOffsetPlan = (ChangeTagOffsetPlan) plan;
-        rewriteTagAndAttribute(
-            changeTagOffsetPlan.getPath(), changeTagOffsetPlan.getOffset(), manager, tagLogFile);
-        break;
-      default:
-        break;
+    offset = createTimeSeriesPlan.getTagOffset();
+    createTimeSeriesPlan.setTagOffset(-1);
+    createTimeSeriesPlan.setTags(null);
+    createTimeSeriesPlan.setAttributes(null);
+    manager.operation(createTimeSeriesPlan);
+    if (offset != -1) {
+      rewriteTagAndAttribute(createTimeSeriesPlan.getPath(), offset, manager, tagLogFile);
     }
+  }
+
+  private void processChangeTagOffset(
+      ChangeTagOffsetPlan changeTagOffsetPlan, MManager manager, TagLogFile tagLogFile)
+      throws MetadataException, IOException {
+    rewriteTagAndAttribute(
+        changeTagOffsetPlan.getPath(), changeTagOffsetPlan.getOffset(), manager, tagLogFile);
   }
 
   private void rewriteTagAndAttribute(
@@ -365,45 +362,64 @@ public class MetadataUpgrader {
     manager.addAttributes(pair.right, path);
   }
 
-  private void processTemplatePlans(Queue<PhysicalPlan> templatePlanQueue, MManager manager)
-      throws IOException {
-    PhysicalPlan plan;
-    while (!templatePlanQueue.isEmpty()) {
-      plan = templatePlanQueue.poll();
-      try {
-        switch (plan.getOperatorType()) {
-          case SET_TEMPLATE:
-            processSetTemplate((SetTemplatePlan) plan, manager);
-            break;
-          case UNSET_TEMPLATE:
-            processUnSetTemplate((UnsetTemplatePlan) plan, manager);
-            break;
-          default:
-            manager.operation(plan);
+  private void processSetStorageGroup(
+      SetStorageGroupPlan setStorageGroupPlan,
+      MManager manager,
+      Map<String, Map<String, SetTemplatePlan>> setTemplatePlanAboveSG)
+      throws IOException, MetadataException {
+    manager.operation(setStorageGroupPlan);
+    String storageGroupPath = setStorageGroupPlan.getPath().getFullPath();
+    String templatePath;
+    for (Map<String, SetTemplatePlan> pathPlanMap : setTemplatePlanAboveSG.values()) {
+      for (SetTemplatePlan setTemplatePlan : pathPlanMap.values()) {
+        templatePath = setTemplatePlan.getPrefixPath();
+        if (storageGroupPath.startsWith(templatePath)) {
+          manager.setSchemaTemplate(
+              new SetTemplatePlan(setTemplatePlan.getTemplateName(), storageGroupPath));
         }
-      } catch (MetadataException e) {
-        logger.error("Error occurred during redo mlog: ", e);
-        e.printStackTrace();
-        throw new IOException(e);
       }
     }
   }
 
-  private void processSetTemplate(SetTemplatePlan setTemplatePlan, MManager manager)
+  private void processSetTemplate(
+      SetTemplatePlan setTemplatePlan,
+      MManager manager,
+      Map<String, Map<String, SetTemplatePlan>> setTemplatePlanAboveSG)
       throws MetadataException {
     PartialPath path = new PartialPath(setTemplatePlan.getPrefixPath());
-    for (PartialPath storageGroupPath : manager.getMatchedStorageGroups(path, true)) {
-      setTemplatePlan.setPrefixPath(storageGroupPath.getFullPath());
-      manager.setSchemaTemplate(setTemplatePlan);
+    List<PartialPath> storageGroupPathList = manager.getMatchedStorageGroups(path, true);
+    if (storageGroupPathList.size() > 1 || !path.equals(storageGroupPathList.get(0))) {
+      String templateName = setTemplatePlan.getTemplateName();
+      if (!setTemplatePlanAboveSG.containsKey(templateName)) {
+        setTemplatePlanAboveSG.put(templateName, new HashMap<>());
+      }
+      setTemplatePlanAboveSG
+          .get(templateName)
+          .put(setTemplatePlan.getPrefixPath(), setTemplatePlan);
+    }
+
+    for (PartialPath storageGroupPath : storageGroupPathList) {
+      manager.setSchemaTemplate(
+          new SetTemplatePlan(setTemplatePlan.getTemplateName(), storageGroupPath.getFullPath()));
     }
   }
 
-  private void processUnSetTemplate(UnsetTemplatePlan unsetTemplatePlan, MManager manager)
+  private void processUnSetTemplate(
+      UnsetTemplatePlan unsetTemplatePlan,
+      MManager manager,
+      Map<String, Map<String, SetTemplatePlan>> setTemplatePlanAboveSG)
       throws MetadataException {
     PartialPath path = new PartialPath(unsetTemplatePlan.getPrefixPath());
-    for (PartialPath storageGroupPath : manager.getMatchedStorageGroups(path, true)) {
-      unsetTemplatePlan.setPrefixPath(storageGroupPath.getFullPath());
-      manager.unsetSchemaTemplate(unsetTemplatePlan);
+    List<PartialPath> storageGroupPathList = manager.getMatchedStorageGroups(path, true);
+    if (storageGroupPathList.size() > 1 || !path.equals(storageGroupPathList.get(0))) {
+      setTemplatePlanAboveSG
+          .get(unsetTemplatePlan.getTemplateName())
+          .remove(unsetTemplatePlan.getPrefixPath());
+    }
+    for (PartialPath storageGroupPath : storageGroupPathList) {
+      manager.unsetSchemaTemplate(
+          new UnsetTemplatePlan(
+              storageGroupPath.getFullPath(), unsetTemplatePlan.getTemplateName()));
     }
   }
 }
