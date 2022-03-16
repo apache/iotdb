@@ -586,42 +586,36 @@ public class TsFileResource {
     boolean success = false;
     switch (status) {
       case CLOSED:
-        {
-          if (this.status != TsFileResourceStatus.DELETED) {
-            this.status = TsFileResourceStatus.CLOSED;
-            success = true;
-          }
-          break;
+        if (this.status != TsFileResourceStatus.DELETED) {
+          this.status = TsFileResourceStatus.CLOSED;
+          success = true;
         }
+        break;
       case UNCLOSED:
-        // Can we set a tsfile resource to unclosed status?
+        // Print a stack trace in a warn statement.
         this.status = TsFileResourceStatus.UNCLOSED;
+        RuntimeException e = new RuntimeException();
+        LOGGER.warn("The status of {} is setting to unclosed", file, e);
         break;
       case DELETED:
-        {
-          if (this.status == TsFileResourceStatus.CLOSED
-              || this.status == TsFileResourceStatus.COMPACTING) {
-            this.status = TsFileResourceStatus.DELETED;
-            success = true;
-          }
+        if (this.status == TsFileResourceStatus.CLOSED
+            || this.status == TsFileResourceStatus.COMPACTING) {
+          this.status = TsFileResourceStatus.DELETED;
+          success = true;
         }
         break;
       case COMPACTING:
-        {
-          if (this.status == TsFileResourceStatus.COMPACTION_CANDIDATE) {
-            this.status = TsFileResourceStatus.COMPACTING;
-            success = true;
-          }
-          break;
+        if (this.status == TsFileResourceStatus.COMPACTION_CANDIDATE) {
+          this.status = TsFileResourceStatus.COMPACTING;
+          success = true;
         }
+        break;
       case COMPACTION_CANDIDATE:
-        {
-          if (this.status == TsFileResourceStatus.CLOSED) {
-            this.status = TsFileResourceStatus.COMPACTION_CANDIDATE;
-            success = true;
-          }
-          break;
+        if (this.status == TsFileResourceStatus.CLOSED) {
+          this.status = TsFileResourceStatus.COMPACTION_CANDIDATE;
+          success = true;
         }
+        break;
       default:
         break;
     }
