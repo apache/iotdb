@@ -1267,16 +1267,27 @@ public class MRocksDBManager implements IMetaManager {
    */
   @Override
   public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
-    Set<String> result = new HashSet<>();
+    // todo support wildcard
+    if (pathPattern.getFullPath().contains(ONE_LEVEL_PATH_WILDCARD)) {
+      throw new MetadataException(
+          "Wildcards are not currently supported for this operation [SHOW CHILD PATHS pathPattern].");
+    }
+    Set<String> result = Collections.synchronizedSet(new HashSet<>());
     String innerNameByLevel =
         RocksDBUtils.getLevelPath(
-            pathPattern.getNodes(),
-            pathPattern.getNodeLength() - 1,
-            pathPattern.getNodeLength() + 1);
-    Set<String> allKeyByPrefix = readWriteHandler.getKeyByPrefix(innerNameByLevel);
-    for (String str : allKeyByPrefix) {
-      result.add(RocksDBUtils.getPathByInnerName(str));
-    }
+                pathPattern.getNodes(),
+                pathPattern.getNodeLength() - 1,
+                pathPattern.getNodeLength())
+            + RockDBConstants.PATH_SEPARATOR
+            + pathPattern.getNodeLength();
+    Arrays.stream(ALL_NODE_TYPE_ARRAY)
+        .parallel()
+        .forEach(
+            x -> {
+              for (String string : readWriteHandler.getKeyByPrefix(x + innerNameByLevel)) {
+                result.add(RocksDBUtils.getPathByInnerName(string));
+              }
+            });
     return result;
   }
 
