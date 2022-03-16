@@ -468,8 +468,9 @@ public class MTreeBelowSG implements Serializable {
           return false;
         }
         cur = upperTemplate.getDirectNode(nodeNames[i]);
+      } else {
+        cur = cur.getChild(nodeNames[i]);
       }
-      cur = cur.getChild(nodeNames[i]);
       if (cur.isMeasurement()) {
         return i == nodeNames.length - 1;
       }
