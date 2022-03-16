@@ -37,4 +37,9 @@ public class PipeDataQueueFactory {
     return bufferedPipeDataQueueMap.computeIfAbsent(
         pipeLogDir, i -> new BufferedPipeDataQueue(pipeLogDir));
   }
+
+  public static void removeBufferedPipeDataQueue(String pipeLogDir) {
+    BufferedPipeDataQueue queue = bufferedPipeDataQueueMap.remove(pipeLogDir);
+    queue.clear();
+  }
 }

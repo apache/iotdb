@@ -74,7 +74,7 @@ public class BufferedPipeDataQueueTest {
               new FileOutputStream(
                   new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(0)), false));
       for (int i = 0; i < 4; i++) {
-        new TsFilePipeData(null, i).serialize(pipeLogOutput1);
+        new TsFilePipeData("", i).serialize(pipeLogOutput1);
       }
       pipeLogOutput1.close();
       // pipelog2: 4~10
@@ -83,7 +83,7 @@ public class BufferedPipeDataQueueTest {
               new FileOutputStream(
                   new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(4)), false));
       for (int i = 4; i < 11; i++) {
-        new TsFilePipeData(null, i).serialize(pipeLogOutput2);
+        new TsFilePipeData("", i).serialize(pipeLogOutput2);
       }
       pipeLogOutput2.close();
       // pipelog3: 11 without pipedata
@@ -99,7 +99,8 @@ public class BufferedPipeDataQueueTest {
       pipeDataQueue.clear();
       Assert.assertFalse(pipeLogDir.exists());
     } catch (Exception e) {
-      Assert.fail();
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -141,7 +142,7 @@ public class BufferedPipeDataQueueTest {
             Thread.currentThread().interrupt();
           }
         });
-    pipeDataQueue.offer(new TsFilePipeData(null, 0));
+    pipeDataQueue.offer(new TsFilePipeData("", 0));
     try {
       Thread.sleep(3000);
     } catch (InterruptedException e) {
@@ -243,7 +244,7 @@ public class BufferedPipeDataQueueTest {
       BufferedPipeDataQueue pipeDataQueue = new BufferedPipeDataQueue(pipeLogDir.getPath());
       Assert.assertEquals(1, pipeDataQueue.getCommitSerialNumber());
       Assert.assertEquals(10, pipeDataQueue.getLastMaxSerialNumber());
-      PipeData offerPipeData = new TsFilePipeData(null, 11);
+      PipeData offerPipeData = new TsFilePipeData("", 11);
       pipeDataList.add(offerPipeData);
       pipeDataQueue.offer(offerPipeData);
 

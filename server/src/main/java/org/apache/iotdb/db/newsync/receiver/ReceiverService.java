@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.sync.PipeServerException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
+import org.apache.iotdb.db.newsync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.db.newsync.receiver.collector.Collector;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeMessage;
@@ -171,6 +172,8 @@ public class ReceiverService implements IService {
     collector.stopPipe(pipeName, remoteIp, createTime);
     File dir = new File(SyncPathUtil.getReceiverPipeDir(pipeName, remoteIp, createTime));
     FileUtils.deleteDirectory(dir);
+    PipeDataQueueFactory.removeBufferedPipeDataQueue(
+        SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime));
   }
 
   private void createDir(String pipeName, String remoteIp, long createTime) {
@@ -256,6 +259,7 @@ public class ReceiverService implements IService {
   public void stop() {
     try {
       receiverManager.close();
+      collector.stopCollect();
     } catch (IOException e) {
       logger.error(e.getMessage());
     }

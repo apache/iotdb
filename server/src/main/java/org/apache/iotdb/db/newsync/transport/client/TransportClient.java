@@ -281,19 +281,15 @@ public class TransportClient implements ITransportClient, Runnable {
       }
 
       int dataLength;
-      try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r");
-          ByteArrayOutputStream byteArrayOutputStream =
-              new ByteArrayOutputStream(TransportConstant.DATA_CHUNK_SIZE)) {
+      try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
         if (randomAccessFile.length() <= position) {
           break;
         }
         randomAccessFile.seek(position);
         while ((dataLength = randomAccessFile.read(buffer)) != -1) {
           messageDigest.reset();
-          byteArrayOutputStream.write(buffer, 0, dataLength);
           messageDigest.update(buffer, 0, dataLength);
-          ByteBuffer buffToSend = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-          byteArrayOutputStream.reset();
+          ByteBuffer buffToSend = ByteBuffer.wrap(buffer, 0, dataLength);
           MetaInfo metaInfo = new MetaInfo(Type.FILE, file.getName(), position);
 
           TransportStatus status = null;

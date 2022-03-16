@@ -41,37 +41,33 @@ import java.util.Objects;
 public class TsFilePipeData extends PipeData {
   private static final Logger logger = LoggerFactory.getLogger(TsFilePipeData.class);
 
-  private String tsFilePath;
-  private String separator;
+  private String parentDirPath;
+  private String tsFileName;
 
   public TsFilePipeData(String tsFilePath, long serialNumber) {
     super(serialNumber);
-    this.tsFilePath = tsFilePath;
-    this.separator = File.separator;
+    String sep = File.separator.equals("\\") ? "\\\\" : File.separator;
+    String[] paths = tsFilePath.split(sep);
+    tsFileName = paths[paths.length - 1];
+    parentDirPath = tsFilePath.substring(0, tsFilePath.length() - tsFileName.length());
   }
 
-  public TsFilePipeData(String tsFilePath, String separator, long serialNumber) {
+  public TsFilePipeData(String parentDirPath, String tsFileName, long serialNumber) {
     super(serialNumber);
-    this.tsFilePath = tsFilePath;
-    this.separator = separator;
+    this.parentDirPath = parentDirPath;
+    this.tsFileName = tsFileName;
   }
 
-  public void setSeparator(String separator) {
-    this.separator = separator;
+  public void setParentDirPath(String parentDirPath) {
+    this.parentDirPath = parentDirPath;
+  }
+
+  public String getTsFileName() {
+    return tsFileName;
   }
 
   public String getTsFilePath() {
-    return tsFilePath;
-  }
-
-  public void setTsFilePath(String tsFilePath) {
-    this.tsFilePath = tsFilePath;
-  }
-
-  public String getFileName() {
-    String sep = separator.equals("/") ? separator : "\\\\";
-    String[] paths = tsFilePath.split(sep);
-    return paths[paths.length - 1];
+    return parentDirPath + File.separator + tsFileName;
   }
 
   @Override
@@ -82,20 +78,20 @@ public class TsFilePipeData extends PipeData {
   @Override
   public long serialize(DataOutputStream stream) throws IOException {
     return super.serialize(stream)
-        + ReadWriteIOUtils.write(tsFilePath, stream)
-        + ReadWriteIOUtils.write(separator, stream);
+        + ReadWriteIOUtils.write(parentDirPath, stream)
+        + ReadWriteIOUtils.write(tsFileName, stream);
   }
 
   public static TsFilePipeData deserialize(DataInputStream stream) throws IOException {
     long serialNumber = stream.readLong();
-    String tsFilePath = ReadWriteIOUtils.readString(stream);
-    String separator = ReadWriteIOUtils.readString(stream);
-    return new TsFilePipeData(tsFilePath, separator, serialNumber);
+    String parentDirPath = ReadWriteIOUtils.readString(stream);
+    String tsFileName = ReadWriteIOUtils.readString(stream);
+    return new TsFilePipeData(parentDirPath == null ? "" : parentDirPath, tsFileName, serialNumber);
   }
 
   @Override
   public ILoader createLoader() {
-    return new TsFileLoader(new File(tsFilePath));
+    return new TsFileLoader(new File(getTsFilePath()));
   }
 
   @Override
@@ -107,7 +103,7 @@ public class TsFilePipeData extends PipeData {
   }
 
   public List<File> getTsFiles() throws FileNotFoundException {
-    File tsFile = new File(tsFilePath).getAbsoluteFile();
+    File tsFile = new File(getTsFilePath()).getAbsoluteFile();
     File resource = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
     File mods = new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
 
@@ -133,18 +129,18 @@ public class TsFilePipeData extends PipeData {
       try {
         Thread.sleep(SyncConstant.DEFAULT_WAITING_FOR_TSFILE_CLOSE_MILLISECONDS);
       } catch (InterruptedException e) {
-        logger.warn(String.format("Be Interrupted when waiting for tsfile %s closed", tsFilePath));
+        logger.warn(String.format("Be Interrupted when waiting for tsfile %s closed", tsFileName));
       }
       logger.info(
           String.format(
               "Waiting for tsfile %s close, retry %d / %d.",
-              tsFilePath, (i + 1), SyncConstant.DEFAULT_WAITING_FOR_TSFILE_RETRY_NUMBER));
+              tsFileName, (i + 1), SyncConstant.DEFAULT_WAITING_FOR_TSFILE_RETRY_NUMBER));
     }
     return false;
   }
 
   private boolean isTsFileClosed() {
-    File tsFile = new File(tsFilePath).getAbsoluteFile();
+    File tsFile = new File(getTsFilePath()).getAbsoluteFile();
     File resource = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
     return resource.exists();
   }
@@ -155,7 +151,7 @@ public class TsFilePipeData extends PipeData {
         + "serialNumber="
         + serialNumber
         + ", tsFilePath='"
-        + tsFilePath
+        + getTsFilePath()
         + '\''
         + '}';
   }
@@ -165,13 +161,13 @@ public class TsFilePipeData extends PipeData {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     TsFilePipeData pipeData = (TsFilePipeData) o;
-    return Objects.equals(tsFilePath, pipeData.tsFilePath)
-        && Objects.equals(separator, pipeData.separator)
+    return Objects.equals(parentDirPath, pipeData.parentDirPath)
+        && Objects.equals(tsFileName, pipeData.tsFileName)
         && Objects.equals(serialNumber, pipeData.serialNumber);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tsFilePath, separator, serialNumber);
+    return Objects.hash(parentDirPath, tsFileName, serialNumber);
   }
 }

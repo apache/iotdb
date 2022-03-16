@@ -144,7 +144,7 @@ public class TransportServiceTest {
     compareFile(modsFiles[0], modsFile);
 
     // 6. check pipedata
-    tsFilePipeData.setTsFilePath(fileDir.getAbsolutePath() + File.separator + tsfile.getName());
+    tsFilePipeData.setParentDirPath(fileDir.getAbsolutePath());
     ExecutorService es1 = Executors.newSingleThreadExecutor();
     List<PipeData> resPipeData = new ArrayList<>();
     es1.execute(
