@@ -576,6 +576,139 @@ public class IoTDBLastIT {
     }
   }
 
+  @Test
+  public void lastWithLessThanFilterTest() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      long lastTimestamp;
+      statement.execute("SELECT LAST temperature FROM root.ln.wf01.wt01");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(resultSet.next());
+        lastTimestamp = resultSet.getTimestamp(1).getTime();
+      }
+
+      statement.execute("select last temperature from root.ln.wf01.wt01 where time < 100");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertFalse(resultSet.next());
+      }
+
+      statement.execute("select last temperature from root.ln.wf01.wt01 where time < 200");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(100, resultSet.getTimestamp(1).getTime());
+        Assert.assertFalse(resultSet.wasNull());
+        Assert.assertEquals("root.ln.wf01.wt01.temperature", resultSet.getString(2));
+        Assert.assertFalse(resultSet.wasNull());
+        Assert.assertEquals("25.1", resultSet.getString(3));
+        Assert.assertFalse(resultSet.wasNull());
+        Assert.assertEquals("DOUBLE", resultSet.getString(4));
+        Assert.assertFalse(resultSet.wasNull());
+        Assert.assertFalse(resultSet.next());
+      }
+
+      // Test if the last value cache is effected.
+      statement.execute("SELECT LAST temperature FROM root.ln.wf01.wt01");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(lastTimestamp, resultSet.getTimestamp(1).getTime());
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void lastWithLessThanOrEqualToFilterTest() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      long lastTimestamp;
+      statement.execute("SELECT LAST temperature FROM root.ln.wf01.wt01");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(resultSet.next());
+        lastTimestamp = resultSet.getTimestamp(1).getTime();
+      }
+
+      statement.execute("SELECT LAST temperature FROM root.ln.wf01.wt01 WHERE time <= 50");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertFalse(resultSet.next());
+      }
+      statement.execute("SELECT LAST temperature FROM root.ln.wf01.wt01 WHERE time <= 100");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(100, resultSet.getTimestamp(1).getTime());
+        Assert.assertFalse(resultSet.wasNull());
+        Assert.assertEquals("root.ln.wf01.wt01.temperature", resultSet.getString(2));
+        Assert.assertFalse(resultSet.wasNull());
+        Assert.assertEquals("25.1", resultSet.getString(3));
+        Assert.assertFalse(resultSet.wasNull());
+        Assert.assertEquals("DOUBLE", resultSet.getString(4));
+        Assert.assertFalse(resultSet.wasNull());
+        Assert.assertFalse(resultSet.next());
+      }
+
+      // Test if the last value cache is effected.
+      statement.execute("SELECT LAST temperature FROM root.ln.wf01.wt01");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(lastTimestamp, resultSet.getTimestamp(1).getTime());
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void lastWithCompoundFilterTest() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      long lastTimestamp;
+      statement.execute("SELECT LAST temperature FROM root.ln.wf01.wt01");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(resultSet.next());
+        lastTimestamp = resultSet.getTimestamp(1).getTime();
+      }
+
+      statement.execute(
+          "SELECT LAST temperature FROM root.ln.wf01.wt01 WHERE time > 100 AND time < 200");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertFalse(resultSet.next());
+      }
+
+      statement.execute(
+          "SELECT LAST temperature FROM root.ln.wf01.wt01 WHERE time > 100 AND time < 200 OR time > 250 AND time <= 300");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(300, resultSet.getTimestamp(1).getTime());
+        Assert.assertFalse(resultSet.wasNull());
+        Assert.assertEquals("root.ln.wf01.wt01.temperature", resultSet.getString(2));
+        Assert.assertFalse(resultSet.wasNull());
+        Assert.assertEquals("15.7", resultSet.getString(3));
+        Assert.assertFalse(resultSet.wasNull());
+        Assert.assertEquals("DOUBLE", resultSet.getString(4));
+        Assert.assertFalse(resultSet.wasNull());
+        Assert.assertFalse(resultSet.next());
+      }
+
+      // Test if the last value cache is effected.
+      statement.execute("SELECT LAST temperature FROM root.ln.wf01.wt01");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(lastTimestamp, resultSet.getTimestamp(1).getTime());
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   private void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

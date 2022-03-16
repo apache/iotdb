@@ -73,6 +73,7 @@ import org.apache.iotdb.db.service.metrics.Operation;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -1761,7 +1762,9 @@ public class TSServiceImpl implements TSIService.Iface {
               dataTypes,
               encodings,
               compressors,
-              req.measurementAlias);
+              req.measurementAlias,
+              req.tagsList,
+              req.attributesList);
       TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
@@ -2077,12 +2080,15 @@ public class TSServiceImpl implements TSIService.Iface {
     if (CONFIG.isEnablePerformanceStat()) {
       MetricsService.getInstance()
           .getMetricManager()
-          .getOrCreateHistogram("operation_histogram", "name", operation.getName())
-          .update(System.currentTimeMillis() - startTime);
+          .histogram(
+              System.currentTimeMillis() - startTime,
+              "operation_histogram",
+              MetricLevel.IMPORTANT,
+              "name",
+              operation.getName());
       MetricsService.getInstance()
           .getMetricManager()
-          .getOrCreateCounter("operation_count", "name", operation.getName())
-          .inc();
+          .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
     }
   }
 }

@@ -54,6 +54,11 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
     collectSelectedFilesInfo();
   }
 
+  @Override
+  public void setSourceFilesToCompactionCandidate() {
+    this.selectedTsFileResourceList.forEach(x -> x.setCompactionCandidate(true));
+  }
+
   private void collectSelectedFilesInfo() {
     selectedFileSize = 0L;
     sumOfCompactionCount = 0;

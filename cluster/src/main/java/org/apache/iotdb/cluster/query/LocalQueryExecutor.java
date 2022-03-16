@@ -56,11 +56,11 @@ import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
-import org.apache.iotdb.db.query.dataset.groupby.LocalGroupByExecutor;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.db.query.executor.groupby.GroupByExecutor;
+import org.apache.iotdb.db.query.executor.groupby.impl.LocalGroupByExecutor;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.service.IoTDB;
@@ -1051,13 +1051,13 @@ public class LocalQueryExecutor {
       expression = new GlobalTimeExpression(filter);
     }
 
-    List<Pair<Boolean, TimeValuePair>> timeValuePairs =
+    List<TimeValuePair> timeValuePairs =
         LastQueryExecutor.calculateLastPairForSeriesLocally(
             seriesPaths, dataTypes, queryContext, expression, request.getDeviceMeasurements());
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    for (Pair<Boolean, TimeValuePair> timeValuePair : timeValuePairs) {
-      SerializeUtils.serializeTVPair(timeValuePair.right, dataOutputStream);
+    for (TimeValuePair timeValuePair : timeValuePairs) {
+      SerializeUtils.serializeTVPair(timeValuePair, dataOutputStream);
     }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }

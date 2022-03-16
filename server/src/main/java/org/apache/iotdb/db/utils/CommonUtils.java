@@ -34,6 +34,7 @@ import io.airlift.airline.ParseCommandUnrecognizedException;
 import io.airlift.airline.ParseOptionConversionException;
 import io.airlift.airline.ParseOptionMissingException;
 import io.airlift.airline.ParseOptionMissingValueException;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -99,13 +100,21 @@ public class CommonUtils {
         case BOOLEAN:
           return parseBoolean(value);
         case INT32:
-          return Integer.parseInt(value);
+          return Integer.parseInt(StringUtils.trim(value));
         case INT64:
-          return Long.parseLong(value);
+          return Long.parseLong(StringUtils.trim(value));
         case FLOAT:
-          return Float.parseFloat(value);
+          float f = Float.parseFloat(value);
+          if (Float.isInfinite(f)) {
+            throw new NumberFormatException("The input float value is Infinity");
+          }
+          return f;
         case DOUBLE:
-          return Double.parseDouble(value);
+          double d = Double.parseDouble(value);
+          if (Double.isInfinite(d)) {
+            throw new NumberFormatException("The input double value is Infinity");
+          }
+          return d;
         case TEXT:
           if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
               || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {

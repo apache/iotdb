@@ -40,7 +40,7 @@ In root directory:
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.13.0-SNAPSHOT</version>
+      <version>0.14.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
@@ -286,7 +286,9 @@ public List<String> showMeasurementsInTemplate(String templateName);
 public List<String> showMeasurementsInTemplate(String templateName, String pattern);
 ```
 
-To implement schema template, you can  set the measurement template named 'templateName' at path 'prefixPath'.
+To implement schema template, you can set the measurement template named 'templateName' at path 'prefixPath'.
+
+**Please notice that, we strongly recommend not setting templates on the nodes above the storage group to accommodate future updates and collaboration between modules.**
 
 ``` java
 void setSchemaTemplate(String templateName, String prefixPath)
@@ -539,7 +541,7 @@ To use the APIs, add dependency in your pom file:
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-thrift-cluster</artifactId>
-      <version>0.13.0-SNAPSHOT</version>
+      <version>0.14.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
