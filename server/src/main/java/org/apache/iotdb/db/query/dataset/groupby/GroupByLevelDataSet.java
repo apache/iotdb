@@ -41,7 +41,7 @@ public class GroupByLevelDataSet extends QueryDataSet {
   private List<RowRecord> records = new ArrayList<>();
   private int index = 0;
 
-  public GroupByLevelDataSet(GroupByTimePlan plan, GroupByEngineDataSet dataSet)
+  public GroupByLevelDataSet(GroupByTimePlan plan, GroupByTimeEngineDataSet dataSet)
       throws IOException {
     this.paths = new ArrayList<>(plan.getDeduplicatedPaths());
     this.dataTypes = plan.getDeduplicatedDataTypes();

@@ -26,7 +26,7 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.utils.ClientUtils;
-import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
 import org.apache.commons.pool2.PooledObject;

@@ -20,14 +20,11 @@ package org.apache.iotdb.confignode.conf;
 
 public class ConfigNodeConf {
 
-  public static final String CONF_NAME = "iotdb-confignode.properties";
-
   // Number of DeviceGroups per StorageGroup
   private int deviceGroupCount = 10000;
 
   // DeviceGroup hash executor class
-  private String deviceGroupHashExecutorClass =
-      "org.apache.iotdb.confignode.manager.hash.BKDRHashExecutor";
+  private String deviceGroupHashExecutorClass = "org.apache.iotdb.commons.hash.BKDRHashExecutor";
 
   public ConfigNodeConf() {
     // empty constructor

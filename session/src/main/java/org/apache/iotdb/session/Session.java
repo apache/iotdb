@@ -510,7 +510,37 @@ public class Session {
       throws IoTDBConnectionException, StatementExecutionException {
     TSCreateAlignedTimeseriesReq request =
         getTSCreateAlignedTimeseriesReq(
-            deviceId, measurements, dataTypes, encodings, compressors, measurementAliasList);
+            deviceId,
+            measurements,
+            dataTypes,
+            encodings,
+            compressors,
+            measurementAliasList,
+            null,
+            null);
+    defaultSessionConnection.createAlignedTimeseries(request);
+  }
+
+  public void createAlignedTimeseries(
+      String deviceId,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      List<String> measurementAliasList,
+      List<Map<String, String>> tagsList,
+      List<Map<String, String>> attributesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSCreateAlignedTimeseriesReq request =
+        getTSCreateAlignedTimeseriesReq(
+            deviceId,
+            measurements,
+            dataTypes,
+            encodings,
+            compressors,
+            measurementAliasList,
+            tagsList,
+            attributesList);
     defaultSessionConnection.createAlignedTimeseries(request);
   }
 
@@ -520,7 +550,9 @@ public class Session {
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
       List<CompressionType> compressors,
-      List<String> measurementAliasList) {
+      List<String> measurementAliasList,
+      List<Map<String, String>> tagsList,
+      List<Map<String, String>> attributesList) {
     TSCreateAlignedTimeseriesReq request = new TSCreateAlignedTimeseriesReq();
     request.setPrefixPath(prefixPath);
     request.setMeasurements(measurements);
@@ -529,6 +561,8 @@ public class Session {
     request.setCompressors(
         compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
     request.setMeasurementAlias(measurementAliasList);
+    request.setTagsList(tagsList);
+    request.setAttributesList(attributesList);
     return request;
   }
 

@@ -209,7 +209,14 @@ public class SingleSeriesCompactionExecutor {
   }
 
   private void writeCachedChunkIntoChunkWriter() throws IOException {
-    cachedChunk.getData().flip();
+    if (cachedChunk.getData().position() != 0) {
+      // If the position of cache chunk data buffer is 0,
+      // it means that the cache chunk is the first chunk cached,
+      // and it hasn't merged with any chunk yet.
+      // If we flip it, both the position and limit in the buffer will be 0,
+      // which leads to the lost of data.
+      cachedChunk.getData().flip();
+    }
     writeChunkIntoChunkWriter(cachedChunk);
     cachedChunk = null;
     cachedChunkMetadata = null;
