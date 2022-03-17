@@ -21,12 +21,12 @@ package org.apache.iotdb.metrics.dropwizard;
 
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
+import com.codahale.metrics.MetricRegistry;
+
 import java.util.*;
 
 /** the unique identifier of a metric, include a name and some tags. */
 public class MetricName {
-  public static final String SEPARATOR = ":";
-
   private String name;
   private MetricLevel metricLevel;
   private Map<String, String> tags;
@@ -57,10 +57,13 @@ public class MetricName {
    * @return the flat string
    */
   public String toFlatString() {
-    StringBuilder stringBuilder = new StringBuilder(name).append("_");
-    tags.forEach((k, v) -> stringBuilder.append(k).append(SEPARATOR).append(v).append("_"));
-    stringBuilder.deleteCharAt(stringBuilder.length() - 1);
-    return stringBuilder.toString();
+    String[] labels = new String[2 * tags.size()];
+    int index = 0;
+    for (Map.Entry<String, String> tag : tags.entrySet()) {
+      labels[index++] = tag.getKey().replace(".", "");
+      labels[index++] = tag.getValue().replace(".", "");
+    }
+    return MetricRegistry.name(name.replace(".", ""), labels);
   }
 
   /**
