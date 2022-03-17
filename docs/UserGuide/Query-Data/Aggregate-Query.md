@@ -47,6 +47,7 @@ The aggregate functions supported by IoTDB are as follows:
 | LAST_VALUE    | Find the value with the largest timestamp.                   | All data types           | Consistent with input data type     |
 | MAX_TIME      | Find the maximum timestamp.                                  | All data Types           | Timestamp                           |
 | MIN_TIME      | Find the minimum timestamp.                                  | All data Types           | Timestamp                           |
+| CURRENT       | Find the current system time                                               |                          | TEXT                                |
 
 **Example:** Count Points
 
@@ -63,6 +64,24 @@ Result:
 +-------------------------------+
 Total line number = 1
 It costs 0.016s
+```
+
+**Example:** Find the current system time
+
+```sql
+select current();
+```
+
+Result:
+
+```
++-------------------+
+|          current()|
++-------------------+
+|2022-03-17 15:11:15|
++-------------------+
+Total line number = 1
+It costs 0.003s
 ```
 
 ## Aggregation By Level
