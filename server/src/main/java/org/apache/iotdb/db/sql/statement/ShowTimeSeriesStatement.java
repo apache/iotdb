@@ -19,29 +19,16 @@
 
 package org.apache.iotdb.db.sql.statement;
 
-import org.apache.iotdb.db.sql.constant.StatementType;
+public class ShowTimeSeriesStatement extends Statement {
 
-/**
- * This class is a superclass of all statements.
- *
- * <p>In Apache IoTDB, a Statement is obtained by traversing the AST via {@link
- * org.apache.iotdb.db.sql.parser.IoTDBSqlVisitor} containing all semantic information.
- */
-public abstract class Statement {
+  int limit = -1;
+  int offset = 0;
 
-  protected StatementType statementType = StatementType.NULL;
-
-  protected Statement() {}
-
-  public void setType(StatementType statementType) {
-    this.statementType = statementType;
+  public void setLimit(int limit) {
+    this.limit = limit;
   }
 
-  public StatementType getType() {
-    return statementType;
-  }
-
-  public boolean isQuery() {
-    return statementType == StatementType.QUERY;
+  public void setOffset(int offset) {
+    this.offset = offset;
   }
 }

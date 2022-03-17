@@ -17,31 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.statement;
+package org.apache.iotdb.db.sql.statement.component;
 
-import org.apache.iotdb.db.sql.constant.StatementType;
+import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 
-/**
- * This class is a superclass of all statements.
- *
- * <p>In Apache IoTDB, a Statement is obtained by traversing the AST via {@link
- * org.apache.iotdb.db.sql.parser.IoTDBSqlVisitor} containing all semantic information.
- */
-public abstract class Statement {
+public class GroupByLevelComponent {
 
-  protected StatementType statementType = StatementType.NULL;
+  protected GroupByLevelController groupByLevelController;
+  protected int[] levels;
 
-  protected Statement() {}
-
-  public void setType(StatementType statementType) {
-    this.statementType = statementType;
+  public int[] getLevels() {
+    return levels;
   }
 
-  public StatementType getType() {
-    return statementType;
+  public void setLevels(int[] levels) {
+    this.levels = levels;
   }
 
-  public boolean isQuery() {
-    return statementType == StatementType.QUERY;
+  public void setGroupByLevelController(GroupByLevelController groupByLevelController) {
+    this.groupByLevelController = groupByLevelController;
+  }
+
+  public GroupByLevelController getGroupByLevelController() {
+    return groupByLevelController;
   }
 }

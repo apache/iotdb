@@ -16,32 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.sql.statement.filter;
 
-package org.apache.iotdb.db.sql.statement;
+import org.apache.iotdb.db.sql.constant.FilterConstant.FilterType;
 
-import org.apache.iotdb.db.sql.constant.StatementType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * This class is a superclass of all statements.
- *
- * <p>In Apache IoTDB, a Statement is obtained by traversing the AST via {@link
- * org.apache.iotdb.db.sql.parser.IoTDBSqlVisitor} containing all semantic information.
+ * This class presents series condition which is general(e.g. numerical comparison) or defined by
+ * user. Function is used for bottom operator.<br>
+ * FunctionFilter has a {@code seriesPath}, and other filter condition.
  */
-public abstract class Statement {
+public class FunctionFilter extends QueryFilter {
 
-  protected StatementType statementType = StatementType.NULL;
+  private static final Logger logger = LoggerFactory.getLogger(FunctionFilter.class);
 
-  protected Statement() {}
-
-  public void setType(StatementType statementType) {
-    this.statementType = statementType;
+  public FunctionFilter(FilterType filterType) {
+    super(filterType);
   }
 
-  public StatementType getType() {
-    return statementType;
+  /** reverse func. */
+  public void reverseFunc() {
+    // Implemented by subclass
   }
 
-  public boolean isQuery() {
-    return statementType == StatementType.QUERY;
+  @Override
+  public void addChildOperator(QueryFilter op) {
+    logger.error("cannot add child to leaf FilterOperator, now it's FunctionOperator");
   }
 }

@@ -17,31 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.statement;
+package org.apache.iotdb.db.sql.statement.component;
 
-import org.apache.iotdb.db.sql.constant.StatementType;
+import org.apache.iotdb.db.sql.statement.filter.QueryFilter;
 
-/**
- * This class is a superclass of all statements.
- *
- * <p>In Apache IoTDB, a Statement is obtained by traversing the AST via {@link
- * org.apache.iotdb.db.sql.parser.IoTDBSqlVisitor} containing all semantic information.
- */
-public abstract class Statement {
+public class WhereCondition {
 
-  protected StatementType statementType = StatementType.NULL;
+  private QueryFilter queryFilter;
 
-  protected Statement() {}
-
-  public void setType(StatementType statementType) {
-    this.statementType = statementType;
+  public WhereCondition(QueryFilter queryFilter) {
+    this.queryFilter = queryFilter;
   }
 
-  public StatementType getType() {
-    return statementType;
+  public QueryFilter getQueryFilter() {
+    return queryFilter;
   }
 
-  public boolean isQuery() {
-    return statementType == StatementType.QUERY;
+  public void setQueryFilter(QueryFilter queryFilter) {
+    this.queryFilter = queryFilter;
   }
 }

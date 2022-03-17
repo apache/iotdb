@@ -19,29 +19,9 @@
 
 package org.apache.iotdb.db.sql.statement;
 
-import org.apache.iotdb.db.sql.constant.StatementType;
+public class UDTFQueryStatement extends QueryStatement {
 
-/**
- * This class is a superclass of all statements.
- *
- * <p>In Apache IoTDB, a Statement is obtained by traversing the AST via {@link
- * org.apache.iotdb.db.sql.parser.IoTDBSqlVisitor} containing all semantic information.
- */
-public abstract class Statement {
-
-  protected StatementType statementType = StatementType.NULL;
-
-  protected Statement() {}
-
-  public void setType(StatementType statementType) {
-    this.statementType = statementType;
-  }
-
-  public StatementType getType() {
-    return statementType;
-  }
-
-  public boolean isQuery() {
-    return statementType == StatementType.QUERY;
+  public UDTFQueryStatement(QueryStatement queryStatement) {
+    super(queryStatement);
   }
 }

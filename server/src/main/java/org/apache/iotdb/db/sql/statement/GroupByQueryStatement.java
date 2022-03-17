@@ -19,29 +19,22 @@
 
 package org.apache.iotdb.db.sql.statement;
 
-import org.apache.iotdb.db.sql.constant.StatementType;
+import org.apache.iotdb.db.sql.statement.component.GroupByTimeComponent;
 
-/**
- * This class is a superclass of all statements.
- *
- * <p>In Apache IoTDB, a Statement is obtained by traversing the AST via {@link
- * org.apache.iotdb.db.sql.parser.IoTDBSqlVisitor} containing all semantic information.
- */
-public abstract class Statement {
+/** TODO */
+public class GroupByQueryStatement extends AggregationQueryStatement {
 
-  protected StatementType statementType = StatementType.NULL;
+  protected GroupByTimeComponent groupByTimeComponent;
 
-  protected Statement() {}
-
-  public void setType(StatementType statementType) {
-    this.statementType = statementType;
+  public GroupByQueryStatement(QueryStatement queryStatement) {
+    super(queryStatement);
   }
 
-  public StatementType getType() {
-    return statementType;
+  public GroupByTimeComponent getGroupByTimeComponent() {
+    return groupByTimeComponent;
   }
 
-  public boolean isQuery() {
-    return statementType == StatementType.QUERY;
+  public void setGroupByTimeComponent(GroupByTimeComponent groupByTimeComponent) {
+    this.groupByTimeComponent = groupByTimeComponent;
   }
 }

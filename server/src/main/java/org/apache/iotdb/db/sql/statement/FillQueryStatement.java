@@ -19,29 +19,17 @@
 
 package org.apache.iotdb.db.sql.statement;
 
-import org.apache.iotdb.db.sql.constant.StatementType;
+import org.apache.iotdb.db.sql.statement.component.FillComponent;
 
-/**
- * This class is a superclass of all statements.
- *
- * <p>In Apache IoTDB, a Statement is obtained by traversing the AST via {@link
- * org.apache.iotdb.db.sql.parser.IoTDBSqlVisitor} containing all semantic information.
- */
-public abstract class Statement {
+public class FillQueryStatement extends QueryStatement {
 
-  protected StatementType statementType = StatementType.NULL;
+  FillComponent fillComponent;
 
-  protected Statement() {}
-
-  public void setType(StatementType statementType) {
-    this.statementType = statementType;
+  public FillComponent getFillComponent() {
+    return fillComponent;
   }
 
-  public StatementType getType() {
-    return statementType;
-  }
-
-  public boolean isQuery() {
-    return statementType == StatementType.QUERY;
+  public void setFillComponent(FillComponent fillComponent) {
+    this.fillComponent = fillComponent;
   }
 }

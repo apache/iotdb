@@ -1284,7 +1284,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private void parseGroupByTimeClause(IoTDBSqlParser.GroupByTimeClauseContext ctx) {
     GroupByClauseComponent groupByClauseComponent = new GroupByClauseComponent();
-    groupByClauseComponent.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
+    groupByClauseComponent.setLeftCRightO(ctx.timeRange().LS_BRACKET() != null);
     // parse timeUnit
     groupByClauseComponent.setUnit(
         parseTimeUnitOrSlidingStep(
@@ -1303,7 +1303,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       groupByClauseComponent.setSlidingStepByMonth(groupByClauseComponent.isIntervalByMonth());
     }
 
-    parseTimeInterval(ctx.timeInterval(), groupByClauseComponent);
+    parseTimeInterval(ctx.timeRange(), groupByClauseComponent);
 
     if (ctx.LEVEL() != null && ctx.INTEGER_LITERAL() != null) {
       int[] levels = new int[ctx.INTEGER_LITERAL().size()];
@@ -1317,7 +1317,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private void parseGroupByFillClause(IoTDBSqlParser.GroupByFillClauseContext ctx) {
     GroupByFillClauseComponent groupByFillClauseComponent = new GroupByFillClauseComponent();
-    groupByFillClauseComponent.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
+    groupByFillClauseComponent.setLeftCRightO(ctx.timeRange().LS_BRACKET() != null);
     // parse timeUnit
     groupByFillClauseComponent.setUnit(
         parseTimeUnitOrSlidingStep(
@@ -1337,7 +1337,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           groupByFillClauseComponent.isIntervalByMonth());
     }
 
-    parseTimeInterval(ctx.timeInterval(), groupByFillClauseComponent);
+    parseTimeInterval(ctx.timeRange(), groupByFillClauseComponent);
 
     if (ctx.fillClause().oldTypeClause().size() > 0) {
       // old type fill logic
@@ -1414,8 +1414,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private void parseTimeInterval(
-      IoTDBSqlParser.TimeIntervalContext timeInterval,
-      GroupByClauseComponent groupByClauseComponent) {
+      IoTDBSqlParser.TimeRangeContext timeInterval, GroupByClauseComponent groupByClauseComponent) {
     long currentTime = DatetimeUtils.currentTime();
     long startTime = parseTimeValue(timeInterval.timeValue(0), currentTime);
     long endTime = parseTimeValue(timeInterval.timeValue(1), currentTime);

@@ -17,31 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.statement;
+package org.apache.iotdb.db.sql.statement.component;
 
-import org.apache.iotdb.db.sql.constant.StatementType;
+import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-/**
- * This class is a superclass of all statements.
- *
- * <p>In Apache IoTDB, a Statement is obtained by traversing the AST via {@link
- * org.apache.iotdb.db.sql.parser.IoTDBSqlVisitor} containing all semantic information.
- */
-public abstract class Statement {
+import java.util.Map;
 
-  protected StatementType statementType = StatementType.NULL;
+public class FillComponent {
 
-  protected Statement() {}
+  private Map<TSDataType, IFill> fillTypes;
+  private IFill singleFill;
 
-  public void setType(StatementType statementType) {
-    this.statementType = statementType;
+  public FillComponent() {}
+
+  public Map<TSDataType, IFill> getFillTypes() {
+    return fillTypes;
   }
 
-  public StatementType getType() {
-    return statementType;
+  public IFill getSingleFill() {
+    return singleFill;
   }
 
-  public boolean isQuery() {
-    return statementType == StatementType.QUERY;
+  public void setFillTypes(Map<TSDataType, IFill> fillTypes) {
+    this.fillTypes = fillTypes;
+  }
+
+  public void setSingleFill(IFill singleFill) {
+    this.singleFill = singleFill;
   }
 }
