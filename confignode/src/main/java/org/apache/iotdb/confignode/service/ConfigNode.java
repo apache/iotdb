@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.confignode.service;
 
-import org.apache.iotdb.confignode.conf.ConfigNodeConfCheck;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
-import org.apache.iotdb.confignode.exception.ConfigNodeException;
 import org.apache.iotdb.confignode.exception.startup.StartupException;
 import org.apache.iotdb.confignode.service.register.JMXService;
 import org.apache.iotdb.confignode.service.register.RegisterManager;
@@ -28,8 +26,6 @@ import org.apache.iotdb.confignode.service.startup.StartupChecks;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 public class ConfigNode implements ConfigNodeMBean {
 
@@ -47,16 +43,17 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   public static void main(String[] args) {
-    try {
-      // Check parameters
-      ConfigNodeConfCheck.getInstance().checkConfig();
-    } catch (ConfigNodeException | IOException e) {
-      LOGGER.error("Meet error when doing start checking", e);
-      System.exit(1);
-    }
+    new ConfigNodeCommandLine().doMain(args);
+  }
 
-    ConfigNode daemon = ConfigNode.getInstance();
-    daemon.active();
+  /** Register services */
+  private void setUp() throws StartupException {
+    LOGGER.info("Setting up {}...", ConfigNodeConstant.GLOBAL_NAME);
+    registerManager.register(JMXService.getInstance());
+    JMXService.registerMBean(getInstance(), mbeanName);
+    LOGGER.info(
+        "Congratulation, {} is set up successfully. Now, enjoy yourself!",
+        ConfigNodeConstant.GLOBAL_NAME);
   }
 
   public void active() {
@@ -80,16 +77,6 @@ public class ConfigNode implements ConfigNodeMBean {
     }
 
     LOGGER.info("{} has started.", ConfigNodeConstant.GLOBAL_NAME);
-  }
-
-  /** Register services */
-  private void setUp() throws StartupException {
-    LOGGER.info("Setting up {}...", ConfigNodeConstant.GLOBAL_NAME);
-    registerManager.register(JMXService.getInstance());
-    JMXService.registerMBean(getInstance(), mbeanName);
-    LOGGER.info(
-        "Congratulation, {} is set up successfully. Now, enjoy yourself!",
-        ConfigNodeConstant.GLOBAL_NAME);
   }
 
   public void deactivate() {

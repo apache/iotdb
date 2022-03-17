@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.idtable;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
-import org.apache.iotdb.db.utils.TestOnly;
 
 import java.io.IOException;
 import java.util.Collection;
