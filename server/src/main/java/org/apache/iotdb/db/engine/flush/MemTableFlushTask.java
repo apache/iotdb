@@ -163,7 +163,7 @@ public class MemTableFlushTask {
               System.currentTimeMillis() - start,
               TimeUnit.MILLISECONDS,
               Metric.COST_TASK.toString(),
-              MetricLevel.NORMAL,
+              MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               "flush");
     }

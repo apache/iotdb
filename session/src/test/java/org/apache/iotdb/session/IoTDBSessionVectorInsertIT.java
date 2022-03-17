@@ -462,7 +462,14 @@ public class IoTDBSessionVectorInsertIT {
       compressors.add(CompressionType.SNAPPY);
     }
     session.createAlignedTimeseries(
-        "root.sg.d", multiMeasurementComponents, dataTypes, encodings, compressors, null);
+        "root.sg.d",
+        multiMeasurementComponents,
+        dataTypes,
+        encodings,
+        compressors,
+        null,
+        null,
+        null);
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));

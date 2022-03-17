@@ -54,6 +54,9 @@ Usage restrictions: When using GORILLA to encode INT32 data, you need to ensure 
 
 DICTIONARY encoding is lossless. It is suitable for TEXT data with low cardinality (i.e. low number of distinct values). It is not recommended to use it for high-cardinality data. 
 
+* ZIGZAG 
+  
+ZIGZAG encoding maps signed integers to unsigned integers so that numbers with a small absolute value (for instance, -1) have a small variant encoded value too. It does this in a way that "zig-zags" back and forth through the positive and negative integers.
 
 ## Correspondence between data type and encoding
 
@@ -66,8 +69,8 @@ The five encodings described in the previous sections are applicable to differen
 |Data Type	|Supported Encoding|
 |:---:|:---:|
 |BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA|
-|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA|
+|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA, ZIGZAG|
+|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA, ZIGZAG|
 |FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |TEXT	|PLAIN, DICTIONARY|

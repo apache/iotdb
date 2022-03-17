@@ -698,4 +698,26 @@ public class DatetimeUtils {
         throw new IllegalArgumentException("time precision must be one of: h,m,s,ms,u,n");
     }
   }
+
+  public static final long MS_TO_MONTH = 30 * 86400_000L;
+
+  /**
+   * add natural months based on the startTime to avoid edge cases, ie 2/28
+   *
+   * @param startTime current start time
+   * @param numMonths numMonths is updated in hasNextWithoutConstraint()
+   * @return nextStartTime
+   */
+  public static long calcIntervalByMonth(long startTime, long numMonths) {
+    Calendar calendar = Calendar.getInstance();
+    calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
+    calendar.setTimeInMillis(startTime);
+    boolean isLastDayOfMonth =
+        calendar.get(Calendar.DAY_OF_MONTH) == calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
+    calendar.add(Calendar.MONTH, (int) (numMonths));
+    if (isLastDayOfMonth) {
+      calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
+    }
+    return calendar.getTimeInMillis();
+  }
 }

@@ -47,6 +47,10 @@ public class TimeSelector {
     return heapSize == 0;
   }
 
+  public int size() {
+    return heapSize;
+  }
+
   public void add(long time) {
     if (heapSize == 0) {
       timeHeap[0] = time;
@@ -69,6 +73,20 @@ public class TimeSelector {
     }
 
     lastTime = minTime;
+    return minTime;
+  }
+
+  public long first() {
+    long minTime = timeHeap[0];
+
+    while (minTime == lastTime) {
+      timeHeap[0] = timeHeap[heapSize - 1];
+      percolateDown(0, timeHeap[0]);
+      --heapSize;
+
+      minTime = timeHeap[0];
+    }
+
     return minTime;
   }
 

@@ -61,7 +61,7 @@ public class FlushManager implements FlushManagerMBean, IService {
             .getMetricManager()
             .getOrCreateAutoGauge(
                 Metric.QUEUE.toString(),
-                MetricLevel.NORMAL,
+                MetricLevel.IMPORTANT,
                 flushPool,
                 AbstractPoolManager::getWaitingTasksNumber,
                 Tag.NAME.toString(),
@@ -72,7 +72,7 @@ public class FlushManager implements FlushManagerMBean, IService {
             .getMetricManager()
             .getOrCreateAutoGauge(
                 Metric.QUEUE.toString(),
-                MetricLevel.NORMAL,
+                MetricLevel.IMPORTANT,
                 flushPool,
                 AbstractPoolManager::getWorkingTasksNumber,
                 Tag.NAME.toString(),

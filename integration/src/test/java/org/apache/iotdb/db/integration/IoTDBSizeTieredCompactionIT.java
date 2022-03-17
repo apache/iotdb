@@ -1016,8 +1016,8 @@ public class IoTDBSizeTieredCompactionIT {
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(2);
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
     int originCandidateNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     CompactionPriority compactionPriority =
         IoTDBDescriptor.getInstance().getConfig().getCompactionPriority();
     IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.INNER_CROSS);
@@ -1093,7 +1093,7 @@ public class IoTDBSizeTieredCompactionIT {
       IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(compactionPriority);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(originCandidateNum);
+          .setMaxInnerCompactionCandidateFileNum(originCandidateNum);
     }
   }
 

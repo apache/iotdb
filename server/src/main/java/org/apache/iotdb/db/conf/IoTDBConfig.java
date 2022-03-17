@@ -414,8 +414,11 @@ public class IoTDBConfig {
    */
   private long compactionAcquireWriteLockTimeout = 60_000L;
 
-  /** The max candidate file num in compaction */
-  private int maxCompactionCandidateFileNum = 30;
+  /** The max candidate file num in inner space compaction */
+  private int maxInnerCompactionCandidateFileNum = 30;
+
+  /** The max candidate file num in cross space compaction */
+  private int maxCrossCompactionCandidateFileNum = 1000;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
@@ -600,6 +603,13 @@ public class IoTDBConfig {
   private long continuousQueryMinimumEveryInterval = 1000;
 
   /**
+   * The size of log buffer for every CQ management operation plan. If the size of a CQ management
+   * operation plan is larger than this parameter, the CQ management operation plan will be rejected
+   * by CQManager. Unit: byte
+   */
+  private int cqlogBufferSize = 1024 * 1024;
+
+  /**
    * The maximum number of rows can be processed in insert-tablet-plan when executing select-into
    * statements.
    */
@@ -675,18 +685,6 @@ public class IoTDBConfig {
 
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
   private boolean enablePartition = false;
-
-  /** whether enable MTree snapshot */
-  private boolean enableMTreeSnapshot = false;
-
-  /** Interval line number of mlog.txt when creating a checkpoint and saving snapshot of mtree */
-  private int mtreeSnapshotInterval = 100000;
-
-  /**
-   * Threshold interval time of MTree modification. If the last modification time is less than this
-   * threshold, MTree snapshot will not be created. Default: 1 hour(3600 seconds) Unit: second
-   */
-  private int mtreeSnapshotThresholdTime = 3600;
 
   /**
    * Time range for partitioning data inside each storage group, the unit is second. Default time is
@@ -879,30 +877,6 @@ public class IoTDBConfig {
 
   public void setEnablePartition(boolean enablePartition) {
     this.enablePartition = enablePartition;
-  }
-
-  public boolean isEnableMTreeSnapshot() {
-    return enableMTreeSnapshot;
-  }
-
-  public void setEnableMTreeSnapshot(boolean enableMTreeSnapshot) {
-    this.enableMTreeSnapshot = enableMTreeSnapshot;
-  }
-
-  public int getMtreeSnapshotInterval() {
-    return mtreeSnapshotInterval;
-  }
-
-  public void setMtreeSnapshotInterval(int mtreeSnapshotInterval) {
-    this.mtreeSnapshotInterval = mtreeSnapshotInterval;
-  }
-
-  public int getMtreeSnapshotThresholdTime() {
-    return mtreeSnapshotThresholdTime;
-  }
-
-  public void setMtreeSnapshotThresholdTime(int mtreeSnapshotThresholdTime) {
-    this.mtreeSnapshotThresholdTime = mtreeSnapshotThresholdTime;
   }
 
   public long getPartitionInterval() {
@@ -1569,6 +1543,14 @@ public class IoTDBConfig {
 
   public void setContinuousQueryMinimumEveryInterval(long minimumEveryInterval) {
     this.continuousQueryMinimumEveryInterval = minimumEveryInterval;
+  }
+
+  public int getCqlogBufferSize() {
+    return cqlogBufferSize;
+  }
+
+  public void setCqlogBufferSize(int cqlogBufferSize) {
+    this.cqlogBufferSize = cqlogBufferSize;
   }
 
   public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
@@ -2470,12 +2452,20 @@ public class IoTDBConfig {
     this.compactionScheduleIntervalInMs = compactionScheduleIntervalInMs;
   }
 
-  public int getMaxCompactionCandidateFileNum() {
-    return maxCompactionCandidateFileNum;
+  public int getMaxInnerCompactionCandidateFileNum() {
+    return maxInnerCompactionCandidateFileNum;
   }
 
-  public void setMaxCompactionCandidateFileNum(int maxCompactionCandidateFileNum) {
-    this.maxCompactionCandidateFileNum = maxCompactionCandidateFileNum;
+  public void setMaxInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum) {
+    this.maxInnerCompactionCandidateFileNum = maxInnerCompactionCandidateFileNum;
+  }
+
+  public int getMaxCrossCompactionCandidateFileNum() {
+    return maxCrossCompactionCandidateFileNum;
+  }
+
+  public void setMaxCrossCompactionCandidateFileNum(int maxCrossCompactionCandidateFileNum) {
+    this.maxCrossCompactionCandidateFileNum = maxCrossCompactionCandidateFileNum;
   }
 
   public long getCompactionSubmissionIntervalInMs() {

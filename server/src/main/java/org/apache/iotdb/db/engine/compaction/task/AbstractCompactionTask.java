@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +51,8 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     this.currentTaskNum = currentTaskNum;
   }
 
+  public abstract void setSourceFilesToCompactionCandidate();
+
   protected abstract void doCompaction() throws Exception;
 
   @Override
@@ -70,8 +71,6 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       }
       this.currentTaskNum.decrementAndGet();
     }
-
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {}
 
     return null;
   }
