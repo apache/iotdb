@@ -153,7 +153,7 @@ public class AggregationPlan extends RawDataQueryPlan {
       String transformedPath = groupByLevelController.getGroupedPath(rawPath);
       AggregateResult result = groupPathsResultMap.get(transformedPath);
       if (result == null) {
-        groupPathsResultMap.put(transformedPath, aggregateResults.get(i));
+        groupPathsResultMap.put(transformedPath, aggregateResults.get(i).clone());
       } else {
         result.merge(aggregateResults.get(i));
         groupPathsResultMap.put(transformedPath, result);

@@ -47,18 +47,18 @@ public class MNodeLevelCounter extends CounterTraverser {
 
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    return false;
+    return processLevelMatchedMNode(node, level);
   }
 
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+    return processLevelMatchedMNode(node, level);
+  }
+
+  private boolean processLevelMatchedMNode(IMNode node, int level) {
     // move the cursor the given level when matched
     if (level < targetLevel) {
       return false;
-    }
-    while (level > targetLevel) {
-      node = node.getParent();
-      level--;
     }
     // record processed node so they will not be processed twice
     if (!processedNodes.contains(node)) {

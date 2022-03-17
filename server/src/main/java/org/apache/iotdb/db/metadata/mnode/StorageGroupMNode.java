@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.storagegroup.SGMManager;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
 import java.io.IOException;
@@ -33,6 +34,8 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
    */
   private long dataTTL;
 
+  private SGMManager sgmManager;
+
   public StorageGroupMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
@@ -46,6 +49,26 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
   @Override
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
+  }
+
+  @Override
+  public SGMManager getSGMManager() {
+    return sgmManager;
+  }
+
+  @Override
+  public void setSGMManager(SGMManager sgmManager) {
+    if (this.sgmManager == null) {
+      this.sgmManager = sgmManager;
+    }
+  }
+
+  @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
+    super.moveDataToNewMNode(newMNode);
+    if (newMNode.isStorageGroup()) {
+      newMNode.getAsStorageGroupMNode().setSGMManager(this.sgmManager);
+    }
   }
 
   @Override

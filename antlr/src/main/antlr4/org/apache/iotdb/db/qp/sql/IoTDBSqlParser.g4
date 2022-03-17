@@ -37,7 +37,7 @@ statement
 ddlStatement
     : setStorageGroup | createStorageGroup | createTimeseries
     | createSchemaTemplate | createTimeseriesOfSchemaTemplate
-    | createFunction | createTrigger | createContinuousQuery | createSnapshot
+    | createFunction | createTrigger | createContinuousQuery
     | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
@@ -141,11 +141,7 @@ cqGroupByTimeClause
     ;
 
 resampleClause
-    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)? (BOUNDARY dateExpression)?;
-
-// Create Snapshot for Schema
-createSnapshot
-    : CREATE SNAPSHOT FOR SCHEMA
+    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)? (BOUNDARY dateExpression)?
     ;
 
 // Alter Timeseries
