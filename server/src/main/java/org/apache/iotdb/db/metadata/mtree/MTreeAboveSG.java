@@ -39,7 +39,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeAboveSGLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.storagegroup.SGMManager;
+import org.apache.iotdb.db.metadata.storagegroup.MManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -77,7 +77,7 @@ public class MTreeAboveSG {
 
   public void clear() {
     for (IStorageGroupMNode storageGroupMNode : getAllStorageGroupNodes()) {
-      storageGroupMNode.getSGMManager().clear();
+      storageGroupMNode.getMManager().clear();
     }
     this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
   }
@@ -133,10 +133,10 @@ public class MTreeAboveSG {
             new StorageGroupMNode(
                 cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
 
-        // init SGMManager
-        SGMManager sgmManager = new SGMManager();
-        storageGroupMNode.setSGMManager(sgmManager);
-        sgmManager.init(storageGroupMNode);
+        // init MManager
+        MManager mManager = new MManager();
+        storageGroupMNode.setMManager(mManager);
+        mManager.init(storageGroupMNode);
 
         IMNode result = cur.addChild(nodeNames[i], storageGroupMNode);
 
@@ -145,7 +145,7 @@ public class MTreeAboveSG {
         }
 
         // another thread executed addChild before adding the prepared storageGroupMNode to MTree
-        sgmManager.deleteStorageGroup();
+        mManager.deleteStorageGroup();
         throw new StorageGroupAlreadySetException(path.getFullPath(), true);
       }
     }
@@ -158,7 +158,7 @@ public class MTreeAboveSG {
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the storage group node sg1
     cur.deleteChild(storageGroupMNode.getName());
-    storageGroupMNode.getSGMManager().deleteStorageGroup();
+    storageGroupMNode.getMManager().deleteStorageGroup();
 
     // delete node a while retain root.a.sg2
     while (cur.getParent() != null && cur.getChildren().size() == 0) {
@@ -542,7 +542,7 @@ public class MTreeAboveSG {
               child.getName(),
               child
                   .getAsStorageGroupMNode()
-                  .getSGMManager()
+                  .getMManager()
                   .getMetadataInJson()
                   .get(child.getFullPath()));
         } else {

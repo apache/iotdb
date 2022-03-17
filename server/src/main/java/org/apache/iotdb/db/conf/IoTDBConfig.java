@@ -448,7 +448,7 @@ public class IoTDBConfig {
   private boolean enableMonitorSeriesWrite = false;
 
   /** Cache size of {@code checkAndGetDataTypeCache} in {@link SchemaEngine}. */
-  private int mManagerCacheSize = 300000;
+  private int mManagerCacheSize = 10000;
 
   /** Cache size of {@code checkAndGetDataTypeCache} in {@link SchemaEngine}. */
   private int mRemoteSchemaCacheSize = 100000;
