@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.qp.utils;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.db.utils.TestOnly;
 
 import java.time.DateTimeException;
 import java.time.Instant;

@@ -1063,7 +1063,10 @@ public class IoTDBSessionSimpleIT {
           tsDataTypes,
           tsEncodings,
           compressionTypes,
-          Arrays.asList("alias1", "alias2", "alias3"));
+          Arrays.asList("alias1", "alias2", "alias3"),
+          null,
+          null);
+
       fail("Exception expected");
     } catch (StatementExecutionException e) {
       assertTrue(

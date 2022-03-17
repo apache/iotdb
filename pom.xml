@@ -102,6 +102,7 @@
         <module>flink-iotdb-connector</module>
         <module>distribution</module>
         <module>hive-connector</module>
+        <module>iotdb-commons</module>
         <module>confignode</module>
         <module>cluster</module>
         <module>cross-tests</module>
@@ -495,6 +496,11 @@
             </dependency>
             <dependency>
                 <groupId>io.airlift</groupId>
+                <artifactId>units</artifactId>
+                <version>1.6</version>
+            </dependency>
+            <dependency>
+                <groupId>io.airlift</groupId>
                 <artifactId>airline</artifactId>
                 <version>${airline.version}</version>
             </dependency>
@@ -686,6 +692,8 @@
                             <exclude>.pytest_cache/**</exclude>
                             <exclude>venv/**</exclude>
                             <exclude>apache_iotdb.egg-info/**</exclude>
+                            <exclude>**/iotdb/thrift/__init__.py</exclude>
+                            <exclude>**/iotdb/thrift/rpc/__init__.py</exclude>
                             <!-- Java SPI uses files in resources/META-INF/services-->
                             <exclude>**/resources/META-INF/services/**</exclude>
                             <!-- grafana plugin -->

@@ -109,6 +109,8 @@ public class IDTableTest {
               Arrays.asList(
                   TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
               Arrays.asList(compressionType, compressionType, compressionType),
+              null,
+              null,
               null);
 
       manager.createAlignedTimeSeries(plan);
@@ -188,6 +190,8 @@ public class IDTableTest {
               Arrays.asList(
                   TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
               Arrays.asList(compressionType, compressionType, compressionType),
+              null,
+              null,
               null);
 
       manager.createAlignedTimeSeries(plan);
