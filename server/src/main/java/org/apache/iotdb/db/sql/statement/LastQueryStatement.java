@@ -21,12 +21,11 @@ package org.apache.iotdb.db.sql.statement;
 
 public class LastQueryStatement extends QueryStatement {
 
-  public LastQueryStatement(QueryStatement queryStatement) {
-    super(queryStatement);
+  public LastQueryStatement() {
+    super();
   }
 
-  @Override
-  public void check() {
-    super.check();
+  public LastQueryStatement(QueryStatement queryStatement) {
+    super(queryStatement);
   }
 }

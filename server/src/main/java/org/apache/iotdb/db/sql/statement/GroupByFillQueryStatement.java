@@ -25,6 +25,10 @@ public class GroupByFillQueryStatement extends GroupByQueryStatement {
 
   FillComponent fillComponent;
 
+  public GroupByFillQueryStatement() {
+    super();
+  }
+
   public GroupByFillQueryStatement(QueryStatement queryStatement) {
     super(queryStatement);
   }

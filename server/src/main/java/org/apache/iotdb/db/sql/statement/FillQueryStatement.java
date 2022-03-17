@@ -25,6 +25,10 @@ public class FillQueryStatement extends QueryStatement {
 
   FillComponent fillComponent;
 
+  public FillQueryStatement() {
+    super();
+  }
+
   public FillComponent getFillComponent() {
     return fillComponent;
   }

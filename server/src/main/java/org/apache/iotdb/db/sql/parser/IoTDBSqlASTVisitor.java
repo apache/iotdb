@@ -206,7 +206,7 @@ public class IoTDBSqlASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitGroupByTimeStatement(IoTDBSqlParser.GroupByTimeStatementContext ctx) {
-    queryStatement = new GroupByQueryStatement(queryStatement);
+    queryStatement = new GroupByQueryStatement();
 
     // parse group by time clause
     parseGroupByTimeClause(ctx.groupByTimeClause());
@@ -299,7 +299,7 @@ public class IoTDBSqlASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Group By Level Clause
   @Override
   public Statement visitGroupByLevelStatement(IoTDBSqlParser.GroupByLevelStatementContext ctx) {
-    queryStatement = new AggregationQueryStatement(queryStatement);
+    queryStatement = new AggregationQueryStatement();
 
     // parse GroupByLevel clause
     parseGroupByLevelClause(ctx.groupByLevelClause());
@@ -377,7 +377,7 @@ public class IoTDBSqlASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitGroupByFillStatement(IoTDBSqlParser.GroupByFillStatementContext ctx) {
-    queryStatement = new GroupByFillQueryStatement(queryStatement);
+    queryStatement = new GroupByFillQueryStatement();
 
     // parse GroupByTime with FIll
     parseGroupByFillClause(ctx.groupByFillClause());

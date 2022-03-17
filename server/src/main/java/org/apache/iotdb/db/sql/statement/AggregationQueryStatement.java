@@ -23,7 +23,12 @@ import org.apache.iotdb.db.sql.statement.component.GroupByLevelComponent;
 
 public class AggregationQueryStatement extends QueryStatement {
 
+  // GROUP BY LEVEL clause
   protected GroupByLevelComponent groupByLevelComponent;
+
+  public AggregationQueryStatement() {
+    super();
+  }
 
   public AggregationQueryStatement(QueryStatement queryStatement) {
     super(queryStatement);
@@ -35,10 +40,5 @@ public class AggregationQueryStatement extends QueryStatement {
 
   public void setGroupByLevelComponent(GroupByLevelComponent groupByLevelComponent) {
     this.groupByLevelComponent = groupByLevelComponent;
-  }
-
-  @Override
-  public void check() {
-    super.check();
   }
 }

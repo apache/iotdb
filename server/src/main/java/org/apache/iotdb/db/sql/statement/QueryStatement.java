@@ -32,7 +32,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * In Apache IoTDB, SELECT statement is used to retrieve data from one or more selected time series.
+ * Base class of SELECT statement.
  *
  * <p>Here is the syntax definition of SELECT statement:
  *
@@ -202,6 +202,4 @@ public class QueryStatement extends Statement {
   public void setIndexType(IndexType indexType) {
     this.indexType = indexType;
   }
-
-  public void check() {}
 }

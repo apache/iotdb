@@ -21,10 +21,13 @@ package org.apache.iotdb.db.sql.statement;
 
 import org.apache.iotdb.db.sql.statement.component.GroupByTimeComponent;
 
-/** TODO */
 public class GroupByQueryStatement extends AggregationQueryStatement {
 
   protected GroupByTimeComponent groupByTimeComponent;
+
+  public GroupByQueryStatement() {
+    super();
+  }
 
   public GroupByQueryStatement(QueryStatement queryStatement) {
     super(queryStatement);
