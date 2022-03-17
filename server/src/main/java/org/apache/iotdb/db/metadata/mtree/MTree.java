@@ -1767,6 +1767,13 @@ public class MTree implements Serializable {
             : template.getRelatedStorageGroup();
     List<String> resSet = new ArrayList<>();
     for (PartialPath sgPath : initPath) {
+      // before Traverser refactored as 0.14, need check storage group alone
+      if (getNodeByPath(sgPath).getSchemaTemplate() != null) {
+        if (templateName.equals(ONE_LEVEL_PATH_WILDCARD)
+            || templateName.equals(getNodeByPath(sgPath).getSchemaTemplate().getName())) {
+          resSet.add(sgPath.getFullPath());
+        }
+      }
       CollectorTraverser<Set<String>> setTemplatePaths =
           new CollectorTraverser<Set<String>>(
               this.root, sgPath.concatNode(MULTI_LEVEL_PATH_WILDCARD)) {
@@ -1812,6 +1819,14 @@ public class MTree implements Serializable {
     List<String> result = new ArrayList<>();
 
     for (PartialPath sgPath : initPath) {
+      // before Traverser refactored as 0.14, need check storage group alone
+      if (getNodeByPath(sgPath).getSchemaTemplate() != null
+          && getNodeByPath(sgPath).isUseTemplate()) {
+        if (templateName.equals(ONE_LEVEL_PATH_WILDCARD)
+            || templateName.equals(getNodeByPath(sgPath).getSchemaTemplate().getName())) {
+          result.add(sgPath.getFullPath());
+        }
+      }
       CollectorTraverser<Set<String>> usingTemplatePaths =
           new CollectorTraverser<Set<String>>(
               this.root, sgPath.concatNode(MULTI_LEVEL_PATH_WILDCARD)) {
