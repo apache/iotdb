@@ -107,7 +107,7 @@ public class IoTDBSyncReceiverIT {
     EnvironmentUtils.envSetUp();
     try {
       ReceiverService.getInstance().startPipeServer();
-      new Socket("localhost", 5555);
+      new Socket("localhost", 5555).close();
     } catch (Exception e) {
       Assert.fail("Failed to start pipe server because " + e.getMessage());
     }
@@ -131,7 +131,7 @@ public class IoTDBSyncReceiverIT {
 
   /** cannot stop */
   @Test
-  public void testStopPipeServerCheck() throws Exception {
+  public void testStopPipeServerCheck() {
     ReceiverService.getInstance()
         .recMsg(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
     try {
@@ -140,6 +140,8 @@ public class IoTDBSyncReceiverIT {
     } catch (PipeServerException e) {
       // nothing
     }
+    ReceiverService.getInstance()
+        .recMsg(new SyncRequest(RequestType.DROP, pipeName1, remoteIp1, createdTime1));
   }
 
   @Test
