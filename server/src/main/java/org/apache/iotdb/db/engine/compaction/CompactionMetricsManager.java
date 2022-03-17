@@ -80,7 +80,7 @@ public class CompactionMetricsManager {
             .getMetricManager()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
-                MetricLevel.NORMAL,
+                MetricLevel.IMPORTANT,
                 Tag.NAME.toString(),
                 "compaction_" + taskType,
                 Tag.STATUS.toString(),
@@ -92,7 +92,7 @@ public class CompactionMetricsManager {
             .getMetricManager()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
-                MetricLevel.NORMAL,
+                MetricLevel.IMPORTANT,
                 Tag.NAME.toString(),
                 "compaction_" + taskType,
                 Tag.STATUS.toString(),
@@ -104,7 +104,7 @@ public class CompactionMetricsManager {
             .getMetricManager()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
-                MetricLevel.NORMAL,
+                MetricLevel.IMPORTANT,
                 Tag.NAME.toString(),
                 "compaction_" + taskType,
                 Tag.STATUS.toString(),
@@ -116,7 +116,7 @@ public class CompactionMetricsManager {
             .getMetricManager()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
-                MetricLevel.NORMAL,
+                MetricLevel.IMPORTANT,
                 Tag.NAME.toString(),
                 "compaction_" + taskType,
                 Tag.STATUS.toString(),
@@ -128,7 +128,7 @@ public class CompactionMetricsManager {
                 task.getTimeCost(),
                 TimeUnit.MILLISECONDS,
                 Metric.COST_TASK.toString(),
-                MetricLevel.NORMAL,
+                MetricLevel.IMPORTANT,
                 Tag.NAME.toString(),
                 "compaction",
                 Tag.NAME.toString(),
@@ -139,7 +139,7 @@ public class CompactionMetricsManager {
               .count(
                   1,
                   Metric.COMPACTION_TASK_COUNT.toString(),
-                  MetricLevel.NORMAL,
+                  MetricLevel.IMPORTANT,
                   Tag.NAME.toString(),
                   "inner_compaction_count",
                   Tag.TYPE.toString(),
@@ -152,7 +152,7 @@ public class CompactionMetricsManager {
               .count(
                   1,
                   Metric.COMPACTION_TASK_COUNT.toString(),
-                  MetricLevel.NORMAL,
+                  MetricLevel.IMPORTANT,
                   Tag.NAME.toString(),
                   "cross_compaction_count");
         }
