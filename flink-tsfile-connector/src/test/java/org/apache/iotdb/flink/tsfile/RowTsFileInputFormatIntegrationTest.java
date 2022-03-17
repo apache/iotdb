@@ -37,7 +37,7 @@ import java.util.stream.StreamSupport;
 import static org.junit.Assert.assertArrayEquals;
 
 /** ITCases for RowTsFileInputFormat. */
-public class RowTsFileInputFormatIT extends RowTsFileInputFormatTestBase {
+public class RowTsFileInputFormatIntegrationTest extends RowTsFileInputFormatTestBase {
 
   private ExecutionEnvironment env;
   private StreamExecutionEnvironment senv;
