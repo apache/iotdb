@@ -40,6 +40,8 @@ public class PipeDataQueueFactory {
 
   public static void removeBufferedPipeDataQueue(String pipeLogDir) {
     BufferedPipeDataQueue queue = bufferedPipeDataQueueMap.remove(pipeLogDir);
-    queue.clear();
+    if (queue != null) {
+      queue.clear();
+    }
   }
 }

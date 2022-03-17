@@ -100,7 +100,7 @@ public class IoTDBSyncReceiverIT {
     EnvironmentUtils.shutdownDaemon();
     File srcDir = new File(IoTDBDescriptor.getInstance().getConfig().getDataDirs()[0]);
     if (tmpDir.exists()) {
-      tmpDir.delete();
+      FileUtils.deleteDirectory(tmpDir);
     }
     FileUtils.moveDirectory(srcDir, tmpDir);
     EnvironmentUtils.cleanEnv();
@@ -118,6 +118,7 @@ public class IoTDBSyncReceiverIT {
   @After
   public void tearDown() throws Exception {
     client.close();
+    ReceiverService.getInstance().stopPipeServer();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     IoTDBDescriptor.getInstance()
         .getConfig()
@@ -207,6 +208,9 @@ public class IoTDBSyncReceiverIT {
               DatetimeUtils.convertLongToDate(createdTime2), fields.get(3).getStringValue());
         }
       }
+      // clean
+      ReceiverService.getInstance()
+          .recMsg(new SyncRequest(RequestType.DROP, pipeName2, remoteIp2, createdTime2));
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());
