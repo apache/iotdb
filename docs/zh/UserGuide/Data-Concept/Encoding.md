@@ -53,6 +53,9 @@ GORILLA 编码是一种无损编码，它比较适合编码前后值比较接近
 
 字典编码是一种无损编码。它适合编码基数小的数据（即数据去重后唯一值数量小）。不推荐用于基数大的数据。
 
+* ZIGZAG 编码
+
+ZigZag编码将有符号整型映射到无符号整型，适合比较小的整数。
 
 ## 数据类型与编码的对应关系
 
@@ -65,8 +68,8 @@ GORILLA 编码是一种无损编码，它比较适合编码前后值比较接近
 |数据类型	|支持的编码|
 |:---:|:---:|
 |BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA|
-|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA|
+|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA, ZIGZAG|
+|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA, ZIGZAG|
 |FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |TEXT	|PLAIN, DICTIONARY|

@@ -742,7 +742,14 @@ public class CMManager extends MManager {
 
     CreateAlignedTimeSeriesPlan plan =
         new CreateAlignedTimeSeriesPlan(
-            insertPlan.getDevicePath(), measurements, dataTypes, encodings, compressors, null);
+            insertPlan.getDevicePath(),
+            measurements,
+            dataTypes,
+            encodings,
+            compressors,
+            null,
+            null,
+            null);
     TSStatus result;
     try {
       result = coordinator.processPartitionedPlan(plan);

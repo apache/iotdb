@@ -1762,7 +1762,9 @@ public class TSServiceImpl implements TSIService.Iface {
               dataTypes,
               encodings,
               compressors,
-              req.measurementAlias);
+              req.measurementAlias,
+              req.tagsList,
+              req.attributesList);
       TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {

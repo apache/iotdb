@@ -314,6 +314,8 @@ struct TSCreateAlignedTimeseriesReq {
   5: required list<i32> encodings
   6: required list<i32> compressors
   7: optional list<string> measurementAlias
+  8: optional list<map<string, string>> tagsList
+  9: optional list<map<string, string>> attributesList
 }
 
 struct TSRawDataQueryReq {

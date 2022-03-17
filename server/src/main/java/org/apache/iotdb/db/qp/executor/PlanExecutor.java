@@ -356,9 +356,6 @@ public class PlanExecutor implements IPlanExecutor {
         StorageEngine.getInstance()
             .removePartitions(((DeletePartitionPlan) plan).getStorageGroupName(), filter);
         return true;
-      case CREATE_SCHEMA_SNAPSHOT:
-        operateCreateSnapshot();
-        return true;
       case CREATE_FUNCTION:
         return operateCreateFunction((CreateFunctionPlan) plan);
       case DROP_FUNCTION:
@@ -513,10 +510,6 @@ public class PlanExecutor implements IPlanExecutor {
     TimeSeriesMetadataCache.getInstance().clear();
   }
 
-  private void operateCreateSnapshot() {
-    IoTDB.metaManager.createMTreeSnapshot();
-  }
-
   private void operateKillQuery(KillQueryPlan killQueryPlan) throws QueryIdNotExsitException {
     QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
     long killQueryId = killQueryPlan.getQueryId();
@@ -641,6 +634,7 @@ public class PlanExecutor implements IPlanExecutor {
     queryDataSet.setRowOffset(queryPlan.getRowOffset());
     queryDataSet.setWithoutAllNull(queryPlan.isWithoutAllNull());
     queryDataSet.setWithoutAnyNull(queryPlan.isWithoutAnyNull());
+    queryDataSet.setWithoutNullColumnsIndex(queryPlan.getWithoutNullColumnsIndex());
     return queryDataSet;
   }
 

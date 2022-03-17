@@ -18,10 +18,16 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.metadata.storagegroup.SGMManager;
+
 /** This interface defines a StorageGroupMNode's operation interfaces. */
 public interface IStorageGroupMNode extends IMNode {
 
   long getDataTTL();
 
   void setDataTTL(long dataTTL);
+
+  SGMManager getSGMManager();
+
+  void setSGMManager(SGMManager sgmManager);
 }
