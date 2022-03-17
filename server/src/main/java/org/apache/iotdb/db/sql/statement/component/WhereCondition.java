@@ -25,6 +25,8 @@ public class WhereCondition {
 
   private QueryFilter queryFilter;
 
+  public WhereCondition() {}
+
   public WhereCondition(QueryFilter queryFilter) {
     this.queryFilter = queryFilter;
   }
