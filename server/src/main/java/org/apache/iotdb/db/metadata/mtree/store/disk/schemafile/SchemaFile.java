@@ -99,7 +99,6 @@ public class SchemaFile implements ISchemaFile {
   // work as a naive cache for page instance
   final Map<Integer, ISchemaPage> pageInstCache;
   ISchemaPage rootPage;
-  PageLocks pageLock;
 
   // attributes for file
   File pmtFile;
@@ -135,7 +134,6 @@ public class SchemaFile implements ISchemaFile {
     channel = new RandomAccessFile(pmtFile, "rw").getChannel();
     headerContent = ByteBuffer.allocate(SchemaFile.FILE_HEADER_SIZE);
     pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
-    pageLock = new PageLocks();
     dataTTL = ttl; // will be overwritten if to init
     this.isEntity = isEntity;
     initFileHeader();
@@ -222,16 +220,12 @@ public class SchemaFile implements ISchemaFile {
       // to new segment
       // throw exception if record larger than one page
       try {
-        pageLock.writeLock(pageIndex); // temporary fix
         curPage = getPageInstance(pageIndex);
         long npAddress = curPage.write(curSegIdx, entry.getKey(), childBuffer);
         while (npAddress > 0) {
           // get next page and retry
           pageIndex = SchemaFile.getPageIndex(npAddress);
           curSegIdx = SchemaFile.getSegIndex(npAddress);
-
-          pageLock.writeUnlock(curPage.getPageIndex());
-          pageLock.writeLock(pageIndex);
 
           curPage = getPageInstance(pageIndex);
           npAddress = curPage.write(curSegIdx, entry.getKey(), childBuffer);
@@ -240,7 +234,7 @@ public class SchemaFile implements ISchemaFile {
       } catch (SchemaPageOverflowException e) {
         // there is no more next page, need allocate new page
         short newSegSize = SchemaFile.reEstimateSegSize(curPage.getSegmentSize(curSegIdx));
-        ISchemaPage newPage = getAndLockMinApplicablePageInMem(newSegSize);
+        ISchemaPage newPage = getMinApplicablePageInMem(newSegSize);
 
         if (newSegSize == curPage.getSegmentSize(curSegIdx)) {
           // segment on multi pages
@@ -263,12 +257,8 @@ public class SchemaFile implements ISchemaFile {
           updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
         }
 
-        pageLock.writeUnlock(curPage.getPageIndex());
-
         curPage = newPage;
         curPage.write(curSegIdx, entry.getKey(), childBuffer);
-      } finally {
-        pageLock.writeUnlock(curPage.getPageIndex());
       }
     }
 
@@ -283,7 +273,6 @@ public class SchemaFile implements ISchemaFile {
       long actualSegAddr = getTargetSegmentAddress(curSegAddr, entry.getKey());
 
       try {
-        pageLock.writeLock(getPageIndex(actualSegAddr));
         curPage = getPageInstance(getPageIndex(actualSegAddr));
         curSegIdx = getSegIndex(actualSegAddr);
 
@@ -297,15 +286,12 @@ public class SchemaFile implements ISchemaFile {
             getApplicableLinkedSegments(curPage, curSegIdx, entry.getKey(), childBuffer);
         if (existedSegAddr >= 0) {
           // get another existed segment
-          pageLock.writeUnlock(curPage.getPageIndex());
-          pageLock.writeLock(getPageIndex(existedSegAddr));
-
           curPage = getPageInstance(getPageIndex(existedSegAddr));
           curSegIdx = getSegIndex(existedSegAddr);
         } else {
           // no next segment to write
           short newSegSize = reEstimateSegSize(curSegSize);
-          ISchemaPage newPage = getAndLockMinApplicablePageInMem(newSegSize);
+          ISchemaPage newPage = getMinApplicablePageInMem(newSegSize);
           long newSegAddr = newPage.transplantSegment(curPage, curSegIdx, newSegSize);
           short newSegId = getSegIndex(newSegAddr);
 
@@ -332,8 +318,6 @@ public class SchemaFile implements ISchemaFile {
             updateParentalRecord(node.getParent(), node.getName(), newSegAddr);
           }
 
-          pageLock.writeUnlock(curPage.getPageIndex());
-
           curPage = newPage;
           curSegAddr = newSegAddr;
           curSegIdx = newSegId;
@@ -349,8 +333,6 @@ public class SchemaFile implements ISchemaFile {
           // updated on an extended segment
           curPage.update(curSegIdx, entry.getKey(), childBuffer);
         }
-      } finally {
-        pageLock.writeUnlock(curPage.getPageIndex());
       }
     }
   }
@@ -571,56 +553,31 @@ public class SchemaFile implements ISchemaFile {
     ISchemaPage curPage = null;
     short curSegId = getSegIndex(curSegAddr);
 
-    pageLock.readLock(getPageIndex(curSegAddr));
-    try {
-      curPage = getPageInstance(getPageIndex(curSegAddr));
+    curPage = getPageInstance(getPageIndex(curSegAddr));
 
-      if (curPage.hasRecordKeyInSegment(recKey, curSegId)) {
-        return curSegAddr;
-      }
-    } finally {
-      pageLock.readUnlock(curPage.getPageIndex());
+    if (curPage.hasRecordKeyInSegment(recKey, curSegId)) {
+      return curSegAddr;
     }
 
     ISchemaPage pivotPage = null;
     long nextSegAddr = curPage.getNextSegAddress(curSegId);
-    if (nextSegAddr >= 0) {
-      try {
-        pageLock.readLock(getPageIndex(nextSegAddr));
-        while (nextSegAddr >= 0) {
-          pivotPage = getPageInstance(getPageIndex(nextSegAddr));
-          short pSegId = getSegIndex(nextSegAddr);
-          if (pivotPage.hasRecordKeyInSegment(recKey, pSegId)) {
-            return nextSegAddr;
-          }
-          nextSegAddr = pivotPage.getNextSegAddress(pSegId);
-
-          pageLock.readUnlock(pivotPage.getPageIndex());
-          pageLock.readLock(getPageIndex(nextSegAddr));
-        }
-      } finally {
-        pageLock.readUnlock(pivotPage.getPageIndex());
+    while (nextSegAddr >= 0) {
+      pivotPage = getPageInstance(getPageIndex(nextSegAddr));
+      short pSegId = getSegIndex(nextSegAddr);
+      if (pivotPage.hasRecordKeyInSegment(recKey, pSegId)) {
+        return nextSegAddr;
       }
+      nextSegAddr = pivotPage.getNextSegAddress(pSegId);
     }
 
     long prevSegAddr = curPage.getPrevSegAddress(curSegId);
-    if (prevSegAddr >= 0) {
-      try {
-        pageLock.readLock(getPageIndex(prevSegAddr));
-        while (prevSegAddr >= 0) {
-          pivotPage = getPageInstance(getPageIndex(prevSegAddr));
-          short pSegId = getSegIndex(prevSegAddr);
-          if (pivotPage.hasRecordKeyInSegment(recKey, pSegId)) {
-            return prevSegAddr;
-          }
-          prevSegAddr = pivotPage.getPrevSegAddress(pSegId);
-
-          pageLock.readUnlock(pivotPage.getPageIndex());
-          pageLock.readLock(getPageIndex(prevSegAddr));
-        }
-      } finally {
-        pageLock.readUnlock(pivotPage.getPageIndex());
+    while (prevSegAddr >= 0) {
+      pivotPage = getPageInstance(getPageIndex(prevSegAddr));
+      short pSegId = getSegIndex(prevSegAddr);
+      if (pivotPage.hasRecordKeyInSegment(recKey, pSegId)) {
+        return prevSegAddr;
       }
+      prevSegAddr = pivotPage.getPrevSegAddress(pSegId);
     }
 
     return -1;
@@ -643,58 +600,30 @@ public class SchemaFile implements ISchemaFile {
       return -1;
     }
 
-    ISchemaPage nextPage = null;
-
     short totalSize = (short) (key.getBytes().length + buffer.capacity() + 4 + 2);
     long nextSegAddr = curPage.getNextSegAddress(curSegId);
-    if (nextSegAddr >= 0) {
-      try {
-        pageLock.readLock(getPageIndex(nextSegAddr));
-        while (nextSegAddr >= 0) {
-          nextPage = getPageInstance(getPageIndex(nextSegAddr));
-          if (nextPage.isSegmentCapableFor(getSegIndex(nextSegAddr), totalSize)) {
-            return nextSegAddr;
-          }
-          nextSegAddr = nextPage.getNextSegAddress(getSegIndex(nextSegAddr));
-
-          pageLock.readUnlock(nextPage.getPageIndex());
-          pageLock.readLock(getPageIndex(nextSegAddr));
-        }
-      } finally {
-        pageLock.readUnlock(nextPage.getPageIndex());
+    while (nextSegAddr >= 0) {
+      ISchemaPage nextPage = getPageInstance(getPageIndex(nextSegAddr));
+      if (nextPage.isSegmentCapableFor(getSegIndex(nextSegAddr), totalSize)) {
+        return nextSegAddr;
       }
+      nextSegAddr = nextPage.getNextSegAddress(getSegIndex(nextSegAddr));
     }
 
-    ISchemaPage prevPage = null;
-
     long prevSegAddr = curPage.getPrevSegAddress(curSegId);
-    if (prevSegAddr >= 0) {
-      try {
-        pageLock.readLock(getPageIndex(prevSegAddr));
-        while (prevSegAddr >= 0) {
-          prevPage = getPageInstance(getPageIndex(prevSegAddr));
-          if (prevPage.isSegmentCapableFor(getSegIndex(prevSegAddr), totalSize)) {
-            return prevSegAddr;
-          }
-          prevSegAddr = prevPage.getPrevSegAddress(getSegIndex(prevSegAddr));
-
-          pageLock.readUnlock(prevPage.getPageIndex());
-          pageLock.readLock(getPageIndex(prevSegAddr));
-        }
-      } finally {
-        pageLock.readUnlock(prevPage.getPageIndex());
+    while (prevSegAddr >= 0) {
+      ISchemaPage prevPage = getPageInstance(getPageIndex(prevSegAddr));
+      if (prevPage.isSegmentCapableFor(getSegIndex(prevSegAddr), totalSize)) {
+        return prevSegAddr;
       }
+      prevSegAddr = prevPage.getPrevSegAddress(getSegIndex(prevSegAddr));
     }
     return -1;
   }
 
   private long preAllocateSegment(short size) throws IOException, MetadataException {
-    ISchemaPage page = getAndLockMinApplicablePageInMem(size);
-    try {
-      return SchemaFile.getGlobalIndex(page.getPageIndex(), page.allocNewSegment(size));
-    } finally {
-      pageLock.writeUnlock(page.getPageIndex());
-    }
+    ISchemaPage page = getMinApplicablePageInMem(size);
+    return SchemaFile.getGlobalIndex(page.getPageIndex(), page.allocNewSegment(size));
   }
 
   // endregion
@@ -712,10 +641,9 @@ public class SchemaFile implements ISchemaFile {
    * @param size size of segment
    * @return
    */
-  private ISchemaPage getAndLockMinApplicablePageInMem(short size) throws IOException {
+  private ISchemaPage getMinApplicablePageInMem(short size) throws IOException {
     for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
-      if (entry.getValue().isCapableForSize(size)
-          && pageLock.findLock(entry.getKey()).writeLock().tryLock()) {
+      if (entry.getValue().isCapableForSize(size)) {
         return pageInstCache.get(entry.getKey());
       }
     }
@@ -750,7 +678,6 @@ public class SchemaFile implements ISchemaFile {
 
   private ISchemaPage allocateNewPage() throws IOException {
     lastPageIndex += 1;
-    pageLock.writeLock(lastPageIndex);
     ISchemaPage newPage = SchemaPage.initPage(ByteBuffer.allocate(PAGE_LENGTH), lastPageIndex);
     addPageToCache(newPage.getPageIndex(), newPage);
     return newPage;
@@ -874,17 +801,12 @@ public class SchemaFile implements ISchemaFile {
   }
 
   private void flushPageToFile(ISchemaPage src) throws IOException {
-    pageLock.writeLock(src.getPageIndex());
-    try {
-      src.syncPageBuffer();
+    src.syncPageBuffer();
 
-      ByteBuffer srcBuf = ByteBuffer.allocate(SchemaFile.PAGE_LENGTH);
-      src.getPageBuffer(srcBuf);
-      srcBuf.clear();
-      channel.write(srcBuf, getPageAddress(src.getPageIndex()));
-    } finally {
-      pageLock.writeUnlock(src.getPageIndex());
-    }
+    ByteBuffer srcBuf = ByteBuffer.allocate(SchemaFile.PAGE_LENGTH);
+    src.getPageBuffer(srcBuf);
+    srcBuf.clear();
+    channel.write(srcBuf, getPageAddress(src.getPageIndex()));
   }
 
   @TestOnly
