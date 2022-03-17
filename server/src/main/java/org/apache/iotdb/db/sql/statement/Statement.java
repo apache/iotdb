@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.sql.statement;
 
 import org.apache.iotdb.db.sql.constant.StatementType;
+import org.apache.iotdb.db.sql.parser.IoTDBSqlASTVisitor;
 
 /**
  * This class is a superclass of all statements.
  *
- * <p>In Apache IoTDB, a Statement is obtained by traversing the AST via {@link
- * org.apache.iotdb.db.sql.parser.IoTDBSqlVisitor} containing all semantic information.
+ * <p>A Statement containing all semantic information is obtained by traversing the AST via {@link
+ * IoTDBSqlASTVisitor}.
  */
 public abstract class Statement {
 
