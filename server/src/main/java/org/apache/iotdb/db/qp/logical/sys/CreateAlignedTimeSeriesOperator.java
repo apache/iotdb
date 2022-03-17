@@ -42,7 +42,7 @@ public class CreateAlignedTimeSeriesOperator extends Operator {
   private List<TSDataType> dataTypes = new ArrayList<>();
   private List<TSEncoding> encodings = new ArrayList<>();
   private List<CompressionType> compressors = new ArrayList<>();
-  private List<String> aliasList = null;
+  private List<String> aliasList = new ArrayList<>();
   private List<Map<String, String>> tagsList = new ArrayList<>();
   private List<Map<String, String>> attributesList = new ArrayList<>();
   private List<Long> tagOffsets = null;

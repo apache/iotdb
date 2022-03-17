@@ -16,55 +16,43 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.counter;
+package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.HashSet;
 import java.util.Set;
 
-//
+public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
 
-/**
- * This Traverser implements node count function. On finding a path matching the given pattern, if
- * the path is longer than the specified level, MNodeLevelCounter finds the node of the specified
- * level on the path and counts it. The same node will not be counted more than once.
- */
-public class MNodeLevelCounter extends CounterTraverser {
+  protected Set<IStorageGroupMNode> involvedStorageGroupMNodes = new HashSet<>();
 
-  // level query option
-  protected int targetLevel;
-
-  private Set<IMNode> processedNodes = new HashSet<>();
-
-  public MNodeLevelCounter(IMNode startNode, PartialPath path, int targetLevel)
-      throws MetadataException {
+  public MNodeAboveSGCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
-    this.targetLevel = targetLevel;
   }
 
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    return processLevelMatchedMNode(node, level);
+    if (node.isStorageGroup()) {
+      involvedStorageGroupMNodes.add(node.getAsStorageGroupMNode());
+      return true;
+    }
+    return super.processInternalMatchedMNode(node, idx, level);
   }
 
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    return processLevelMatchedMNode(node, level);
+    if (node.isStorageGroup()) {
+      involvedStorageGroupMNodes.add(node.getAsStorageGroupMNode());
+      return true;
+    }
+    return super.processFullMatchedMNode(node, idx, level);
   }
 
-  private boolean processLevelMatchedMNode(IMNode node, int level) {
-    // move the cursor the given level when matched
-    if (level < targetLevel) {
-      return false;
-    }
-    // record processed node so they will not be processed twice
-    if (!processedNodes.contains(node)) {
-      processedNodes.add(node);
-      count++;
-    }
-    return true;
+  public Set<IStorageGroupMNode> getInvolvedStorageGroupMNodes() {
+    return involvedStorageGroupMNodes;
   }
 }

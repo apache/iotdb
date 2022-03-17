@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,25 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.metadata.template;
 
-package org.apache.iotdb.db.qp.logical.sys;
-
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
-import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class CreateSnapshotOperator extends Operator {
+import java.io.IOException;
 
-  public CreateSnapshotOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.CREATE_SCHEMA_SNAPSHOT;
+public class TemplateLogReader implements AutoCloseable {
+
+  private MLogReader logReader;
+
+  public TemplateLogReader(String schemaDir, String fileName) throws IOException {
+    logReader = new MLogReader(schemaDir, fileName);
+  }
+
+  public boolean hasNext() {
+    return logReader.hasNext();
+  }
+
+  public PhysicalPlan next() {
+    return logReader.next();
   }
 
   @Override
-  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
-      throws QueryProcessException {
-    return new CreateSnapshotPlan();
+  public void close() {
+    logReader.close();
   }
 }
