@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.mpp.shuffle;
+package org.apache.iotdb.db.mpp.buffer;
 
+import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceID;
+import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
 import org.apache.iotdb.mpp.common.ITSBlock;
-import org.apache.iotdb.mpp.execution.task.FragmentInstanceID;
-import org.apache.iotdb.mpp.execution.task.FragmentInstanceTask;
 
 public interface IDataBlockManager {
 

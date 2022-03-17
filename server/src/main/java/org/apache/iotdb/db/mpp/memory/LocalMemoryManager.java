@@ -17,29 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.mpp.common;
-
-import org.apache.iotdb.tsfile.read.common.RowRecord;
+package org.apache.iotdb.db.mpp.memory;
 
 /**
- * Intermediate result for most of ExecOperators. The TsBlock contains data from one or more columns
- * and constructs them as a row based view The columns can be series, aggregation result for one
- * series or scalar value (such as deviceName). The TsBlock also contains the metadata to describe
- * the columns.
+ * Manages memory of a data node. The memory is divided into two memory pools so that the memory for
+ * read and for write can be isolated.
  */
-public class ITSBlock {
+public class LocalMemoryManager {
 
-  private TsBlockMetadata metadata;
+  private final long maxBytes;
+  private final MemoryPool queryPool;
 
-  public boolean hasNext() {
-    return false;
+  public LocalMemoryManager() {
+    long maxMemory = Runtime.getRuntime().maxMemory();
+    // Save 20% memory for untracked allocations.
+    maxBytes = (long) (maxMemory * 0.8);
+    // Allocate 50% memory for query execution.
+    queryPool = new MemoryPool("query", (long) (maxBytes * 0.5));
   }
 
-  public RowRecord getNext() {
-    return null;
+  public long getMaxBytes() {
+    return maxBytes;
   }
 
-  public TsBlockMetadata getMetadata() {
-    return metadata;
+  public MemoryPool getQueryPool() {
+    return queryPool;
   }
 }

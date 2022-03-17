@@ -16,9 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.mpp.execution;
+package org.apache.iotdb.db.mpp.schedule;
 
-import org.apache.iotdb.mpp.execution.task.FragmentInstanceTask;
+import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
 
-/** The execution context of a {@link FragmentInstanceTask} */
-public class ExecutionContext {}
+/** A common interface for {@link FragmentInstanceTask} business logic callback */
+@FunctionalInterface
+public interface FragmentInstanceTaskCallback {
+  void call(FragmentInstanceTask task) throws Exception;
+}

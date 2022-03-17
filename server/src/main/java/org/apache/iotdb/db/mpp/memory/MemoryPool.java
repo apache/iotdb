@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.mpp.memory;
+package org.apache.iotdb.db.mpp.memory;
 
 import org.apache.commons.lang3.Validate;
 

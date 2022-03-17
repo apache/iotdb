@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.mpp.execution.queue;
+package org.apache.iotdb.db.mpp.schedule.queue;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -24,12 +24,11 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-public class L1PriorityQueueTest {
-
+public class L2PriorityQueueTest {
   @Test
   public void testPollBlocked() throws InterruptedException {
     IndexedBlockingQueue<QueueElement> queue =
-        new L1PriorityQueue<>(
+        new L2PriorityQueue<>(
             10,
             (o1, o2) -> {
               if (o1.equals(o2)) {
@@ -64,7 +63,7 @@ public class L1PriorityQueueTest {
   @Test
   public void testPushExceedCapacity() {
     IndexedBlockingQueue<QueueElement> queue =
-        new L1PriorityQueue<>(
+        new L2PriorityQueue<>(
             1,
             (o1, o2) -> {
               if (o1.equals(o2)) {
@@ -89,13 +88,18 @@ public class L1PriorityQueueTest {
   @Test
   public void testPushAndPoll() throws InterruptedException {
     IndexedBlockingQueue<QueueElement> queue =
-        new L1PriorityQueue<>(
+        new L2PriorityQueue<>(
             10,
             (o1, o2) -> {
               if (o1.equals(o2)) {
                 return 0;
               }
-              return Integer.compare(o1.getValue(), o2.getValue());
+              int res = Integer.compare(o1.getValue(), o2.getValue());
+              if (res != 0) {
+                return res;
+              }
+              return String.CASE_INSENSITIVE_ORDER.compare(
+                  o1.getId().toString(), o2.getId().toString());
             },
             new QueueElement(new QueueElement.QueueElementID(0), 0));
     QueueElement e1 = new QueueElement(new QueueElement.QueueElementID(1), 10);
@@ -109,7 +113,12 @@ public class L1PriorityQueueTest {
     Assert.assertEquals(2, queue.size());
     Assert.assertEquals(e2.getId().toString(), queue.poll().getId().toString());
     Assert.assertEquals(1, queue.size());
+    // L1: 5 -> 20 L2: 10
+    QueueElement e3 = new QueueElement(new QueueElement.QueueElementID(3), 10);
+    queue.push(e3);
     Assert.assertEquals(e1e.getId().toString(), queue.poll().getId().toString());
+    Assert.assertEquals(1, queue.size());
+    Assert.assertEquals(e3.getId().toString(), queue.poll().getId().toString());
     Assert.assertEquals(0, queue.size());
   }
 }

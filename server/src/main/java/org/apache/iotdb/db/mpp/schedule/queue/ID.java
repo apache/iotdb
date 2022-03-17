@@ -16,22 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.mpp.execution.task;
+package org.apache.iotdb.db.mpp.schedule.queue;
 
-/** the status enum of {@link FragmentInstanceTask} */
-public enum FragmentInstanceTaskStatus {
-  /* Ready to be executed */
-  READY,
-
-  /* Being executed */
-  RUNNING,
-
-  /* Waiting upstream input or output consumed by downstream FragmentInstances */
-  BLOCKED,
-
-  /* Interrupted caused by timeout or coordinator's cancellation */
-  ABORTED,
-
-  /* Finished by met the EOF of upstream inputs */
-  FINISHED,
-}
+/** A simple interface to indicate the id type */
+public interface ID {}
