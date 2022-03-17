@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.mpp.execution;
+package org.apache.iotdb.db.mpp.schedule;
 
-import org.apache.iotdb.mpp.execution.queue.IndexedBlockingQueue;
-import org.apache.iotdb.mpp.execution.task.FragmentInstanceTask;
-import org.apache.iotdb.mpp.execution.task.FragmentInstanceTaskStatus;
+import org.apache.iotdb.db.mpp.schedule.queue.IndexedBlockingQueue;
+import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
+import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

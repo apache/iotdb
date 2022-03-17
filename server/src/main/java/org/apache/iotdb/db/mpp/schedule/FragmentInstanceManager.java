@@ -16,17 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.mpp.execution;
+package org.apache.iotdb.db.mpp.schedule;
 
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.mpp.schedule.queue.IndexedBlockingQueue;
+import org.apache.iotdb.db.mpp.schedule.queue.L1PriorityQueue;
+import org.apache.iotdb.db.mpp.schedule.queue.L2PriorityQueue;
+import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceID;
+import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
+import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskStatus;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.mpp.execution.queue.IndexedBlockingQueue;
-import org.apache.iotdb.mpp.execution.queue.L1PriorityQueue;
-import org.apache.iotdb.mpp.execution.queue.L2PriorityQueue;
-import org.apache.iotdb.mpp.execution.task.FragmentInstanceID;
-import org.apache.iotdb.mpp.execution.task.FragmentInstanceTask;
-import org.apache.iotdb.mpp.execution.task.FragmentInstanceTaskStatus;
 
 import java.util.List;
 import java.util.Map;

@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.mpp.execution.task;
+package org.apache.iotdb.db.mpp.schedule.task;
 
-import org.apache.iotdb.mpp.execution.queue.ID;
+import org.apache.iotdb.db.mpp.schedule.queue.ID;
 
 import org.jetbrains.annotations.NotNull;
 

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.mpp.execution.queue;
+package org.apache.iotdb.db.mpp.schedule.queue;
 
 /**
  * The base class of a special kind of blocking queue, which has these characters:

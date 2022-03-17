@@ -16,31 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.schedule.task;
 
-package org.apache.iotdb.mpp.memory;
+/** the status enum of {@link FragmentInstanceTask} */
+public enum FragmentInstanceTaskStatus {
+  /* Ready to be executed */
+  READY,
 
-/**
- * Manages memory of a data node. The memory is divided into two memory pools so that the memory for
- * read and for write can be isolated.
- */
-public class LocalMemoryManager {
+  /* Being executed */
+  RUNNING,
 
-  private final long maxBytes;
-  private final MemoryPool queryPool;
+  /* Waiting upstream input or output consumed by downstream FragmentInstances */
+  BLOCKED,
 
-  public LocalMemoryManager() {
-    long maxMemory = Runtime.getRuntime().maxMemory();
-    // Save 20% memory for untracked allocations.
-    maxBytes = (long) (maxMemory * 0.8);
-    // Allocate 50% memory for query execution.
-    queryPool = new MemoryPool("query", (long) (maxBytes * 0.5));
-  }
+  /* Interrupted caused by timeout or coordinator's cancellation */
+  ABORTED,
 
-  public long getMaxBytes() {
-    return maxBytes;
-  }
-
-  public MemoryPool getQueryPool() {
-    return queryPool;
-  }
+  /* Finished by met the EOF of upstream inputs */
+  FINISHED,
 }

@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.mpp.execution;
+package org.apache.iotdb.db.mpp.schedule;
 
-import org.apache.iotdb.mpp.execution.task.FragmentInstanceID;
+import org.apache.iotdb.db.mpp.buffer.IDataBlockManager;
+import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceID;
 
 /** the interface of fragment instance scheduling */
 public interface IFragmentInstanceManager {
@@ -26,8 +27,7 @@ public interface IFragmentInstanceManager {
   void submitFragmentInstance();
 
   /**
-   * the notifying interface for {@link org.apache.iotdb.mpp.shuffle.IDataBlockManager} when
-   * upstream data comes.
+   * the notifying interface for {@link IDataBlockManager} when upstream data comes.
    *
    * @param instanceID the fragment instance to be notified.
    * @param upstreamInstanceId the upstream instance id.
@@ -35,8 +35,7 @@ public interface IFragmentInstanceManager {
   void inputBlockAvailable(FragmentInstanceID instanceID, FragmentInstanceID upstreamInstanceId);
 
   /**
-   * the notifying interface for {@link org.apache.iotdb.mpp.shuffle.IDataBlockManager} when
-   * downstream data has been consumed.
+   * the notifying interface for {@link IDataBlockManager} when downstream data has been consumed.
    *
    * @param instanceID the fragment instance to be notified.
    */
