@@ -142,7 +142,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
-public class MManager {
+public class SchemaRegion {
 
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupSchemaManager.class);
 
@@ -169,8 +169,8 @@ public class MManager {
   private TagManager tagManager;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
-  public MManager() {
-    int cacheSize = config.getmManagerCacheSize();
+  public SchemaRegion() {
+    int cacheSize = config.getSchemaRegionCacheSize();
     mNodeCache =
         Caffeine.newBuilder()
             .maximumSize(cacheSize)

@@ -184,7 +184,7 @@ public class IoTDBConfig {
 
   /**
    * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan is
-   * larger than this parameter, then the MetaData operation plan will be rejected by MManager.
+   * larger than this parameter, then the MetaData operation plan will be rejected by SchemaRegion.
    * Unit: byte
    */
   private int mlogBufferSize = 1024 * 1024;
@@ -448,7 +448,7 @@ public class IoTDBConfig {
   private boolean enableMonitorSeriesWrite = false;
 
   /** Cache size of {@code checkAndGetDataTypeCache} in {@link SchemaEngine}. */
-  private int mManagerCacheSize = 10000;
+  private int schemaRegionCacheSize = 10000;
 
   /** Cache size of {@code checkAndGetDataTypeCache} in {@link SchemaEngine}. */
   private int mRemoteSchemaCacheSize = 100000;
@@ -1231,12 +1231,12 @@ public class IoTDBConfig {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
   }
 
-  public int getmManagerCacheSize() {
-    return mManagerCacheSize;
+  public int getSchemaRegionCacheSize() {
+    return schemaRegionCacheSize;
   }
 
-  void setmManagerCacheSize(int mManagerCacheSize) {
-    this.mManagerCacheSize = mManagerCacheSize;
+  void setSchemaRegionCacheSize(int schemaRegionCacheSize) {
+    this.schemaRegionCacheSize = schemaRegionCacheSize;
   }
 
   public int getmRemoteSchemaCacheSize() {
