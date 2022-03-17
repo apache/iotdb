@@ -3,6 +3,7 @@ package org.apache.iotdb.db.metadata.rocksdb;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -71,25 +72,25 @@ public class MRocksDBBenchmark {
     benchmarkResults.add(result);
   }
 
-  //  public void testMeasurementNodeQuery(Collection<String> queryTsSet) {
-  //    RocksDBTestTask<String> task =
-  //        new RocksDBTestTask<>(queryTsSet, RocksDBTestUtils.WRITE_CLIENT_NUM, 10000);
-  //    RocksDBTestTask.BenchmarkResult result =
-  //        task.runWork(
-  //            s -> {
-  //              try {
-  //                IMNode node = rocksDBManager.getMeasurementMNode(new PartialPath(s));
-  //                if (node != null) {
-  //                  node.toString();
-  //                }
-  //                return true;
-  //              } catch (Exception e) {
-  //                return false;
-  //              }
-  //            },
-  //            "MeasurementNodeQuery");
-  //    benchmarkResults.add(result);
-  //  }
+  public void testMeasurementNodeQuery(Collection<String> queryTsSet) {
+    RocksDBBenchmarkTask<String> task =
+        new RocksDBBenchmarkTask<>(queryTsSet, RocksDBTestUtils.WRITE_CLIENT_NUM, 10000);
+    RocksDBBenchmarkTask.BenchmarkResult result =
+        task.runWork(
+            s -> {
+              try {
+                IMNode node = rocksDBManager.getMeasurementMNode(new PartialPath(s));
+                if (node != null) {
+                  node.toString();
+                }
+                return true;
+              } catch (Exception e) {
+                return false;
+              }
+            },
+            "MeasurementNodeQuery");
+    benchmarkResults.add(result);
+  }
 
   public void testNodeChildrenQuery(Collection<String> queryTsSet) {
     RocksDBBenchmarkTask<String> task =

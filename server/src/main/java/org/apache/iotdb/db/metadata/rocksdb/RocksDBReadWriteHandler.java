@@ -29,10 +29,14 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.primitives.Bytes;
+import org.rocksdb.BlockBasedTableConfig;
+import org.rocksdb.BloomFilter;
+import org.rocksdb.Cache;
 import org.rocksdb.ColumnFamilyDescriptor;
 import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.ColumnFamilyOptions;
 import org.rocksdb.DBOptions;
+import org.rocksdb.Filter;
 import org.rocksdb.Holder;
 import org.rocksdb.InfoLogLevel;
 import org.rocksdb.LRUCache;
@@ -40,8 +44,10 @@ import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
+import org.rocksdb.Statistics;
 import org.rocksdb.WriteBatch;
 import org.rocksdb.WriteOptions;
+import org.rocksdb.util.SizeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,17 +69,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_VERSION;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_FLAG;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ROOT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.PATH_SEPARATOR;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
+import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
 
 public class RocksDBReadWriteHandler {
 
@@ -102,14 +98,31 @@ public class RocksDBReadWriteHandler {
 
   public RocksDBReadWriteHandler() throws RocksDBException {
     Options options = new Options();
-    options.setCreateIfMissing(true);
-    options.setAllowMmapReads(true);
-    options.setRowCache(new LRUCache(9000000));
-    options.setDbWriteBufferSize(16 * 1024 * 1024);
-
     org.rocksdb.Logger rocksDBLogger = new RockDBLogger(options, logger);
     rocksDBLogger.setInfoLogLevel(InfoLogLevel.ERROR_LEVEL);
-    options.setLogger(rocksDBLogger);
+
+    options
+        .setCreateIfMissing(true)
+        .setAllowMmapReads(true)
+        .setWriteBufferSize(64 * SizeUnit.KB)
+        .setMaxWriteBufferNumber(6)
+        .setMaxBackgroundJobs(10)
+        .setStatistics(new Statistics())
+        .setLogger(rocksDBLogger);
+
+    final Filter bloomFilter = new BloomFilter(64);
+
+    final BlockBasedTableConfig table_options = new BlockBasedTableConfig();
+    Cache cache = new LRUCache(20 * 1024 * 1024 * 1024, 6);
+    table_options
+        .setBlockCache(cache)
+        .setFilterPolicy(bloomFilter)
+        .setBlockSizeDeviation(5)
+        .setBlockRestartInterval(10)
+        .setCacheIndexAndFilterBlocks(true)
+        .setBlockCacheCompressed(new LRUCache(10 * 1024 * 1024 * 1024, 6));
+
+    options.setTableFormatConfig(table_options);
 
     DBOptions dbOptions = new DBOptions(options);
 

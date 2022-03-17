@@ -45,6 +45,12 @@ public class RocksDBBenchmarkEngine {
     String schemaDir = config.getSchemaDir();
     String logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
+    System.out.println(logFile.getAbsolutePath());
+  }
+
+  public static void main(String[] args) {
+    RocksDBBenchmarkEngine engine = new RocksDBBenchmarkEngine();
+    engine.startTest();
   }
 
   @Test
@@ -59,6 +65,7 @@ public class RocksDBBenchmarkEngine {
       MRocksDBBenchmark mRocksDBBenchmark = new MRocksDBBenchmark(rocksDBManager);
       mRocksDBBenchmark.testStorageGroupCreation(storageGroups);
       mRocksDBBenchmark.testTimeSeriesCreation(timeSeriesSet);
+      mRocksDBBenchmark.testMeasurementNodeQuery(measurementPathSet);
       RocksDBTestUtils.printReport(mRocksDBBenchmark.benchmarkResults, "rocksDB");
       RocksDBTestUtils.printMemInfo("Benchmark finished");
     } catch (IOException | MetadataException e) {
