@@ -354,7 +354,7 @@ public class IoTDBEncodingIT {
       statement.execute("insert into root.db_0.tab0(time,salary) values(4,2200)");
       statement.execute("flush");
 
-      int[] groundtruth = new int[] {1100, 1200, 1300, 1400};
+      int[] groundtruth = new int[] {1200, 1100, 2200, 1000};
       int[] result = new int[4];
       try (ResultSet resultSet = statement.executeQuery("select * from root.db_0.tab0")) {
         int index = 0;
