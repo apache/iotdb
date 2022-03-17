@@ -27,11 +27,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.metrics.Metric;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -287,7 +283,11 @@ public class SingleSeriesCompactionExecutor {
       CompactionTaskManager.mergeRateLimiterAcquire(
           compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       if (enableMetrics) {
-        addMetrics(chunkWriter.estimateMaxSeriesMemSize());
+        CompactionMetricsManager.recordIOSize(
+            CompactionType.INNER_SEQ_COMPACTION,
+            ProcessChunkType.DESERIALIZE_CHUNK,
+            false,
+            chunkWriter.estimateMaxSeriesMemSize());
       }
       chunkWriter.writeToFileWriter(fileWriter);
       pointCountInChunkWriter = 0L;
@@ -297,9 +297,6 @@ public class SingleSeriesCompactionExecutor {
   private void flushCachedChunkIfLargeEnough() throws IOException {
     if (cachedChunk.getChunkStatistic().getCount() >= targetChunkPointNum
         || getChunkSize(cachedChunk) >= targetChunkSize) {
-      if (enableMetrics) {
-        addMetrics(getChunkSize(cachedChunk));
-      }
       flushChunkToFileWriter(cachedChunk, cachedChunkMetadata, true);
       cachedChunk = null;
       cachedChunkMetadata = null;
@@ -310,36 +307,13 @@ public class SingleSeriesCompactionExecutor {
     CompactionTaskManager.mergeRateLimiterAcquire(
         compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
     if (enableMetrics) {
-      addMetrics(chunkWriter.estimateMaxSeriesMemSize());
+      CompactionMetricsManager.recordIOSize(
+          CompactionType.INNER_SEQ_COMPACTION,
+          ProcessChunkType.DESERIALIZE_CHUNK,
+          false,
+          chunkWriter.estimateMaxSeriesMemSize());
     }
     chunkWriter.writeToFileWriter(fileWriter);
     pointCountInChunkWriter = 0L;
-  }
-
-  private void addMetrics(long byteNum) {
-    MetricsService.getInstance()
-        .getMetricManager()
-        .count(
-            byteNum / 1024L,
-            Metric.DATA_WRITTEN.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            "compaction",
-            Tag.NAME.toString(),
-            "inner",
-            Tag.NAME.toString(),
-            "total");
-    MetricsService.getInstance()
-        .getMetricManager()
-        .count(
-            byteNum / 1024L,
-            Metric.DATA_WRITTEN.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            "compaction",
-            Tag.NAME.toString(),
-            "inner",
-            Tag.NAME.toString(),
-            "flush_chunk");
   }
 }

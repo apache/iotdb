@@ -19,13 +19,12 @@
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionMetricsManager;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
+import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.service.metrics.Metric;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.type.Counter;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileAlignedSeriesReaderIterator;
@@ -38,6 +37,8 @@ import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+
+import com.google.common.util.concurrent.RateLimiter;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -57,6 +58,8 @@ public class AlignedSeriesCompactionExecutor {
   private final AlignedChunkWriterImpl chunkWriter;
   private final List<IMeasurementSchema> schemaList;
   private long remainingPointInChunkWriter = 0L;
+  private final RateLimiter rateLimiter =
+      CompactionTaskManager.getInstance().getMergeWriteRateLimiter();
 
   private final long chunkSizeThreshold =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -125,6 +128,15 @@ public class AlignedSeriesCompactionExecutor {
     }
 
     if (remainingPointInChunkWriter != 0L) {
+      CompactionTaskManager.mergeRateLimiterAcquire(
+          rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
+      if (enableMetrics) {
+        CompactionMetricsManager.recordIOSize(
+            CompactionType.INNER_SEQ_COMPACTION,
+            ProcessChunkType.DESERIALIZE_CHUNK,
+            true,
+            chunkWriter.estimateMaxSeriesMemSize());
+      }
       chunkWriter.writeToFileWriter(writer);
     }
   }
@@ -156,23 +168,17 @@ public class AlignedSeriesCompactionExecutor {
   private void flushChunkWriterIfLargeEnough() throws IOException {
     if (remainingPointInChunkWriter >= chunkPointNumThreshold
         || chunkWriter.estimateMaxSeriesMemSize() >= chunkSizeThreshold * schemaList.size()) {
+      CompactionTaskManager.mergeRateLimiterAcquire(
+          rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       if (enableMetrics) {
-        addMetrics(chunkWriter.estimateMaxSeriesMemSize());
+        CompactionMetricsManager.recordIOSize(
+            CompactionType.INNER_SEQ_COMPACTION,
+            ProcessChunkType.DESERIALIZE_CHUNK,
+            true,
+            chunkWriter.estimateMaxSeriesMemSize());
       }
       chunkWriter.writeToFileWriter(writer);
       remainingPointInChunkWriter = 0L;
     }
-  }
-
-  private void addMetrics(long byteNum) {
-    Counter counter =
-        MetricsService.getInstance()
-            .getMetricManager()
-            .getOrCreateCounter(
-                Metric.DATA_WRITTEN.toString(),
-                MetricLevel.IMPORTANT,
-                Tag.NAME.toString(),
-                "inner_compaction_written_in_kb");
-    counter.inc(byteNum / 1024);
   }
 }
