@@ -399,7 +399,8 @@ public class IoTDBNestedQueryIT {
       } catch (SQLException e) {
         Assert.assertTrue(
             e.getMessage()
-                .contains("The argument of the aggregation function must be a time series."));
+                .contains(
+                    "The argument of the aggregation function must be a time series or null."));
       }
     } catch (SQLException e) {
       e.printStackTrace();

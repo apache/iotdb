@@ -82,7 +82,7 @@ public class AggregationQueryOperator extends QueryOperator {
               || !(expression.getExpressions().get(0) instanceof TimeSeriesOperand))
           && expression.getExpressions().size() != 0) {
         throw new LogicalOperatorException(
-            "The argument of the aggregation function must be a time series or null");
+            "The argument of the aggregation function must be a time series or null.");
       }
     }
   }

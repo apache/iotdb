@@ -817,7 +817,7 @@ public class AggregationExecutor {
         TSDataType dataType = resultData.getResultDataType();
         record.addField(resultData.getResult(), dataType);
       }
-      if (aggregateResultList.size() == 0) {
+      if (plan.getPaths().contains(null)) {
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         record.addField(Binary.valueOf(df.format(System.currentTimeMillis())), TSDataType.TEXT);
         dataTypes.add(TSDataType.TEXT);
