@@ -1056,8 +1056,11 @@ public class Session {
           genTSInsertStringRecordsReq(deviceIds, times, measurementsList, valuesList, false);
       try {
         defaultSessionConnection.insertRecords(request);
-      } catch (RedirectException ignored) {
-        // ignore
+      } catch (RedirectException e) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
+        }
       }
     }
   }
@@ -1090,8 +1093,11 @@ public class Session {
           genTSInsertStringRecordsReq(deviceIds, times, measurementsList, valuesList, true);
       try {
         defaultSessionConnection.insertRecords(request);
-      } catch (RedirectException ignored) {
-        // ignore
+      } catch (RedirectException e) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
+        }
       }
     }
   }
@@ -1173,8 +1179,11 @@ public class Session {
           genTSInsertRecordsReq(deviceIds, times, measurementsList, typesList, valuesList, false);
       try {
         defaultSessionConnection.insertRecords(request);
-      } catch (RedirectException ignored) {
-        // ignore
+      } catch (RedirectException e) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
+        }
       }
     }
   }
@@ -1208,8 +1217,11 @@ public class Session {
           genTSInsertRecordsReq(deviceIds, times, measurementsList, typesList, valuesList, true);
       try {
         defaultSessionConnection.insertRecords(request);
-      } catch (RedirectException ignored) {
-        // ignore
+      } catch (RedirectException e) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
+        }
       }
     }
   }
@@ -1691,8 +1703,11 @@ public class Session {
           genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, false);
       try {
         defaultSessionConnection.insertTablets(request);
-      } catch (RedirectException ignored) {
-        // ignored
+      } catch (RedirectException e) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
+        }
       }
     }
   }
@@ -1726,8 +1741,11 @@ public class Session {
           genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, true);
       try {
         defaultSessionConnection.insertTablets(request);
-      } catch (RedirectException ignored) {
-        // ignored
+      } catch (RedirectException e) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
+        }
       }
     }
   }

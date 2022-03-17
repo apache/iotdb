@@ -514,7 +514,7 @@ If you can not get a session connection in 60 seconds, there is a warning log bu
 If a session has finished an operation, it will be put back to the pool automatically.
 If a session connection is broken, the session will be removed automatically and the pool will try 
 to create a new session and redo the operation.
-You can also specify an url list of multiple reachable nodes when creating a SessionPool, just as you would when creating a Session. To ensure high availability of clients in a DoubleWrite solution(0.13) or distributed cluster.
+You can also specify an url list of multiple reachable nodes when creating a SessionPool, just as you would when creating a Session. To ensure high availability of clients in distributed cluster.
 
 For query operations:
 

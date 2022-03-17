@@ -499,7 +499,7 @@ void testInsertTablets(Map<String, Tablet> tablets)
 
 当一个连接被用完后，他会自动返回池中等待下次被使用；
 当一个连接损坏后，他会从池中被删除，并重建一个连接重新执行用户的操作；
-你还可以像创建 Session 那样在创建 SessionPool 时指定多个可连接节点的 url，以保证双活方案（0.13）或分布式集群中客户端的高可用性。
+你还可以像创建 Session 那样在创建 SessionPool 时指定多个可连接节点的 url，以保证分布式集群中客户端的高可用性。
 
 对于查询操作：
 
