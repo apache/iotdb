@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 
 public class CompactionMetricsManager {
 
-  public static void recordIOInfo(
+  public static void recordWriteInfo(
       CompactionType compactionType,
       ProcessChunkType processChunkType,
       boolean aligned,
@@ -62,6 +62,17 @@ public class CompactionMetricsManager {
             "compaction",
             Tag.NAME.toString(),
             "total");
+  }
+
+  public static void recordReadInfo(long byteNum) {
+    MetricsService.getInstance()
+        .getMetricManager()
+        .count(
+            byteNum,
+            Metric.DATA_READ.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "compaction");
   }
 
   public static void recordTaskInfo(AbstractCompactionTask task, CompactionTaskStatus status) {

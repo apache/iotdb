@@ -101,6 +101,11 @@ public class SingleSeriesCompactionExecutor {
       List<ChunkMetadata> chunkMetadataList = readerListPair.right;
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         Chunk currentChunk = reader.readMemChunk(chunkMetadata);
+        if (enableMetrics) {
+          CompactionMetricsManager.recordReadInfo(
+              currentChunk.getHeader().getSerializedSize()
+                  + currentChunk.getHeader().getDataSize());
+        }
 
         // if this chunk is modified, deserialize it into points
         if (chunkMetadata.getDeleteIntervalList() != null) {
@@ -272,7 +277,7 @@ public class SingleSeriesCompactionExecutor {
       maxEndTimestamp = chunkMetadata.getEndTime();
     }
     if (enableMetrics) {
-      CompactionMetricsManager.recordIOInfo(
+      CompactionMetricsManager.recordWriteInfo(
           CompactionType.INNER_SEQ_COMPACTION,
           isCachedChunk ? ProcessChunkType.MERGE_CHUNK : ProcessChunkType.FLUSH_CHUNK,
           false,
@@ -287,7 +292,7 @@ public class SingleSeriesCompactionExecutor {
       CompactionTaskManager.mergeRateLimiterAcquire(
           compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       if (enableMetrics) {
-        CompactionMetricsManager.recordIOInfo(
+        CompactionMetricsManager.recordWriteInfo(
             CompactionType.INNER_SEQ_COMPACTION,
             ProcessChunkType.DESERIALIZE_CHUNK,
             false,
@@ -311,7 +316,7 @@ public class SingleSeriesCompactionExecutor {
     CompactionTaskManager.mergeRateLimiterAcquire(
         compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
     if (enableMetrics) {
-      CompactionMetricsManager.recordIOInfo(
+      CompactionMetricsManager.recordWriteInfo(
           CompactionType.INNER_SEQ_COMPACTION,
           ProcessChunkType.DESERIALIZE_CHUNK,
           false,

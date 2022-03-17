@@ -122,8 +122,11 @@ public class AlignedSeriesCompactionExecutor {
       TsFileAlignedSeriesReaderIterator readerIterator =
           new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadataList, schemaList);
       while (readerIterator.hasNext()) {
-        AlignedChunkReader chunkReader = readerIterator.nextReader();
-        compactOneAlignedChunk(chunkReader);
+        Pair<AlignedChunkReader, Long> chunkReaderAndChunkSize = readerIterator.nextReader();
+        if (enableMetrics) {
+          CompactionMetricsManager.recordReadInfo(chunkReaderAndChunkSize.right);
+        }
+        compactOneAlignedChunk(chunkReaderAndChunkSize.left);
       }
     }
 
@@ -131,7 +134,7 @@ public class AlignedSeriesCompactionExecutor {
       CompactionTaskManager.mergeRateLimiterAcquire(
           rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       if (enableMetrics) {
-        CompactionMetricsManager.recordIOInfo(
+        CompactionMetricsManager.recordWriteInfo(
             CompactionType.INNER_SEQ_COMPACTION,
             ProcessChunkType.DESERIALIZE_CHUNK,
             true,
@@ -171,7 +174,7 @@ public class AlignedSeriesCompactionExecutor {
       CompactionTaskManager.mergeRateLimiterAcquire(
           rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       if (enableMetrics) {
-        CompactionMetricsManager.recordIOInfo(
+        CompactionMetricsManager.recordWriteInfo(
             CompactionType.INNER_SEQ_COMPACTION,
             ProcessChunkType.DESERIALIZE_CHUNK,
             true,
