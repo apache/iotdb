@@ -376,7 +376,11 @@ public class SessionPool {
     if (shouldCreate) {
       // create a new one.
       if (logger.isDebugEnabled()) {
-        logger.debug("Create a new Session {}, {}, {}, {}", host, port, user, password);
+        if (nodeUrls == null) {
+          logger.debug("Create a new Session {}, {}, {}, {}", host, port, user, password);
+        } else {
+          logger.debug("Create a new redirect Session {}, {}, {}", nodeUrls, user, password);
+        }
       }
 
       session = constructNewSession();

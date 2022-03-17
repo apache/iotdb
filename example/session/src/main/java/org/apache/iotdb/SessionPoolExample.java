@@ -73,7 +73,7 @@ public class SessionPoolExample {
     queryByRowRecord(redirectSessionPool);
     Thread.sleep(1000);
     queryByIterator(redirectSessionPool);
-    customSessionPool.close();
+    redirectSessionPool.close();
     service.shutdown();
   }
 
