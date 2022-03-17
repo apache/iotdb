@@ -192,6 +192,9 @@ public class MetadataUpgrader {
   }
 
   public void reloadMetadataFromSnapshot() throws IOException {
+    if (!snapshotFile.exists()) {
+      return;
+    }
     Map<IStorageGroupMNode, List<IMeasurementMNode>> sgMeasurementMap =
         deserializeFrom(snapshotFile);
     IMeasurementSchema schema;
