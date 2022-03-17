@@ -690,20 +690,18 @@ public class IoTDBDescriptor {
       }
 
       // id table related configuration
-      //      conf.setDeviceIDTransformationMethod(
-      //          properties.getProperty(
-      //              "device_id_transformation_method", conf.getDeviceIDTransformationMethod()));
+      conf.setDeviceIDTransformationMethod(
+          properties.getProperty(
+              "device_id_transformation_method", conf.getDeviceIDTransformationMethod()));
 
-      //      conf.setEnableIDTable(
-      //          Boolean.parseBoolean(
-      //              properties.getProperty("enable_id_table",
-      // String.valueOf(conf.isEnableIDTable()))));
+      conf.setEnableIDTable(
+          Boolean.parseBoolean(
+              properties.getProperty("enable_id_table", String.valueOf(conf.isEnableIDTable()))));
 
-      //      conf.setEnableIDTableLogFile(
-      //          Boolean.parseBoolean(
-      //              properties.getProperty(
-      //                  "enable_id_table_log_file",
-      // String.valueOf(conf.isEnableIDTableLogFile()))));
+      conf.setEnableIDTableLogFile(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_id_table_log_file", String.valueOf(conf.isEnableIDTableLogFile()))));
 
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
