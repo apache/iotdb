@@ -148,12 +148,9 @@ public class IoTDBSyncReceiverIT {
   @Test
   public void testPipeOperation() {
     try {
-      ReceiverService.getInstance()
-          .recMsg(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
-      ReceiverService.getInstance()
-          .recMsg(new SyncRequest(RequestType.CREATE, pipeName2, remoteIp2, createdTime2));
-      ReceiverService.getInstance()
-          .recMsg(new SyncRequest(RequestType.STOP, pipeName2, remoteIp2, createdTime2));
+      client.heartbeat(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
+      client.heartbeat(new SyncRequest(RequestType.CREATE, pipeName2, remoteIp2, createdTime2));
+      client.heartbeat(new SyncRequest(RequestType.STOP, pipeName2, remoteIp2, createdTime2));
       QueryDataSet allDataSet = ReceiverService.getInstance().showPipe(new ShowPipeServerPlan(""));
       while (allDataSet.hasNext()) {
         RowRecord rowRecord = allDataSet.next();
@@ -185,10 +182,8 @@ public class IoTDBSyncReceiverIT {
           DatetimeUtils.convertLongToDate(createdTime2), fields.get(3).getStringValue());
       Assert.assertFalse(pipe2DataSet.hasNext());
 
-      ReceiverService.getInstance()
-          .recMsg(new SyncRequest(RequestType.DROP, pipeName1, remoteIp1, createdTime1));
-      ReceiverService.getInstance()
-          .recMsg(new SyncRequest(RequestType.START, pipeName2, remoteIp2, createdTime2));
+      client.heartbeat(new SyncRequest(RequestType.DROP, pipeName1, remoteIp1, createdTime1));
+      client.heartbeat(new SyncRequest(RequestType.START, pipeName2, remoteIp2, createdTime2));
       allDataSet = ReceiverService.getInstance().showPipe(new ShowPipeServerPlan(""));
       while (allDataSet.hasNext()) {
         rowRecord = allDataSet.next();
@@ -209,8 +204,7 @@ public class IoTDBSyncReceiverIT {
         }
       }
       // clean
-      ReceiverService.getInstance()
-          .recMsg(new SyncRequest(RequestType.DROP, pipeName2, remoteIp2, createdTime2));
+      client.heartbeat(new SyncRequest(RequestType.DROP, pipeName2, remoteIp2, createdTime2));
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());
@@ -221,8 +215,7 @@ public class IoTDBSyncReceiverIT {
   public void testReceiveDataAndLoad() {
     try {
       // 1. create pipe
-      ReceiverService.getInstance()
-          .recMsg(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
+      client.heartbeat(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
 
       // 2. send pipe data
       int serialNum = 0;
@@ -318,8 +311,7 @@ public class IoTDBSyncReceiverIT {
       SyncTestUtil.checkResult(sql2, columnNames2, retArray2);
 
       // 4. stop pipe
-      ReceiverService.getInstance()
-          .recMsg(new SyncRequest(RequestType.STOP, pipeName1, remoteIp1, createdTime1));
+      client.heartbeat(new SyncRequest(RequestType.STOP, pipeName1, remoteIp1, createdTime1));
       client.senderTransport(
           new DeletionPipeData(
               new Deletion(new PartialPath("root.vehicle.**"), 0, 0, 99), serialNum++));
@@ -332,8 +324,7 @@ public class IoTDBSyncReceiverIT {
       Assert.assertEquals(ResponseType.WARN, response1.type);
 
       // 5. restart pipe
-      ReceiverService.getInstance()
-          .recMsg(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
+      client.heartbeat(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
       Thread.sleep(1000);
       SyncTestUtil.checkResult(sql1, columnNames1, new String[] {});
       // check heartbeat
@@ -343,8 +334,7 @@ public class IoTDBSyncReceiverIT {
       Assert.assertEquals(ResponseType.INFO, response2.type);
 
       // 6. drop pipe
-      ReceiverService.getInstance()
-          .recMsg(new SyncRequest(RequestType.DROP, pipeName1, remoteIp1, createdTime1));
+      client.heartbeat(new SyncRequest(RequestType.DROP, pipeName1, remoteIp1, createdTime1));
       client.senderTransport(
           new DeletionPipeData(
               new Deletion(new PartialPath("root.sg1.**"), 0, 0, 99), serialNum++));
