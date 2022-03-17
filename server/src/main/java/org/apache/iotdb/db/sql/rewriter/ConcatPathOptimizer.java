@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.strategy.optimizer;
+package org.apache.iotdb.db.sql.rewriter;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -29,34 +29,19 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.db.qp.logical.crud.FromComponent;
-import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.InOperator;
-import org.apache.iotdb.db.qp.logical.crud.LikeOperator;
-import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.RegexpOperator;
-import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
-import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
+import org.apache.iotdb.db.qp.logical.crud.*;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
-import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /** concat paths in select and from clause. */
-public class ConcatPathOptimizer implements ILogicalOptimizer {
+public class ConcatPathOptimizer implements IStatementRewriter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConcatPathOptimizer.class);
 

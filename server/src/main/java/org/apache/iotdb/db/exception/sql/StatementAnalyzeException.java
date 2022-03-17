@@ -16,20 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.runtime;
 
-public class SQLParserException extends RuntimeException {
-  private static final long serialVersionUID = 3249707655860110299L;
+package org.apache.iotdb.db.exception.sql;
 
-  public SQLParserException() {
-    super("Error format in SQL statement, please check whether SQL statement is correct.");
-  }
+import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.db.sql.constant.FilterConstant;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public SQLParserException(String message) {
-    super(message);
-  }
+public class StatementAnalyzeException extends IoTDBException {
 
-  public SQLParserException(String type, String message) {
-    super(String.format("Unsupported type: [%s]. " + message, type));
-  }
+    public StatementAnalyzeException(String message) {
+        super(message, TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
+    }
+
+    public StatementAnalyzeException(String filterOperator, FilterConstant.FilterType filterType) {
+        super(
+                String.format(
+                        "Unknown token in [%s]: [%s], [%s].",
+                        filterOperator, filterType, FilterConstant.filterNames.get(filterType)),
+                TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
+    }
 }

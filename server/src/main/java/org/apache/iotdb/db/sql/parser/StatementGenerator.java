@@ -22,6 +22,7 @@ package org.apache.iotdb.db.sql.parser;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.qp.strategy.SQLParseError;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
@@ -147,8 +148,8 @@ public class StatementGenerator {
 
     CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
 
-    org.apache.iotdb.db.qp.sql.IoTDBSqlParser parser1 =
-        new org.apache.iotdb.db.qp.sql.IoTDBSqlParser(tokens1);
+    IoTDBSqlParser parser1 =
+        new IoTDBSqlParser(tokens1);
     parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
     parser1.removeErrorListeners();
     parser1.addErrorListener(SQLParseError.INSTANCE);
