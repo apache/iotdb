@@ -77,11 +77,11 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
         if (groupByExecutors.size() == 1) {
           // a series is only managed by one group
           List<AggregateResult> aggregateResults;
-          answers = new Object[] {5.0, 2.0, 10.0, 0.0, 4.0, 4.0, 0.0, 4.0, 0.0, 4.0};
+          answers = new Object[] {5.0, 2.0, 10.0, 0.0, 4.0, 4.0, 0.0, 4.0, 0.0, 4.0, 0.0};
           aggregateResults = groupByExecutor.calcResult(0, 5);
           checkAggregations(aggregateResults, answers);
 
-          answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0, 9.0};
+          answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0, 9.0, 5.0};
           aggregateResults = groupByExecutor.calcResult(5, 10);
           checkAggregations(aggregateResults, answers);
         } else {
@@ -137,12 +137,12 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
           List<AggregateResult> aggregateResults;
           answers =
               new Object[] {
-                2.0, 3.5, 7.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0,
+                2.0, 3.5, 7.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0
               };
           aggregateResults = groupByExecutor.calcResult(0, 5);
           checkAggregations(aggregateResults, answers);
 
-          answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0, 9.0};
+          answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0, 9.0, 5.0};
           aggregateResults = groupByExecutor.calcResult(5, 10);
           checkAggregations(aggregateResults, answers);
         } else {
