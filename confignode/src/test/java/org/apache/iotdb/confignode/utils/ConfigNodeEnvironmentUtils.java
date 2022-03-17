@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.confignode.utils;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.service.ConfigNode;
 
 import org.apache.commons.io.FileUtils;
-import org.jetbrains.annotations.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
