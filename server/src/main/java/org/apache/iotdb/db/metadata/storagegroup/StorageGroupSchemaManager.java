@@ -22,7 +22,7 @@ package org.apache.iotdb.db.metadata.storagegroup;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -205,7 +205,7 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
 
   @Override
   public Pair<List<PartialPath>, List<SGMManager>> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, MManager.StorageGroupFilter filter)
+      PartialPath pathPattern, int nodeLevel, SchemaEngine.StorageGroupFilter filter)
       throws MetadataException {
     Pair<List<PartialPath>, Set<IStorageGroupMNode>> resultAboveSG =
         mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);

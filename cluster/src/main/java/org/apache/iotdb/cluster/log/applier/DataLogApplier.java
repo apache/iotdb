@@ -128,7 +128,7 @@ public class DataLogApplier extends BaseApplier {
     boolean hasSync = false;
     for (InsertTabletPlan insertTabletPlan : plan.getInsertTabletPlanList()) {
       try {
-        IoTDB.metaManager.getBelongedStorageGroup(insertTabletPlan.getDevicePath());
+        IoTDB.schemaEngine.getBelongedStorageGroup(insertTabletPlan.getDevicePath());
       } catch (StorageGroupNotSetException e) {
         try {
           if (!hasSync) {
@@ -150,7 +150,7 @@ public class DataLogApplier extends BaseApplier {
     boolean hasSync = false;
     for (InsertRowPlan insertRowPlan : plan.getInsertRowPlanList()) {
       try {
-        IoTDB.metaManager.getBelongedStorageGroup(insertRowPlan.getDevicePath());
+        IoTDB.schemaEngine.getBelongedStorageGroup(insertRowPlan.getDevicePath());
       } catch (StorageGroupNotSetException e) {
         try {
           if (!hasSync) {
@@ -170,7 +170,7 @@ public class DataLogApplier extends BaseApplier {
   private void applyInsert(InsertPlan plan)
       throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     try {
-      IoTDB.metaManager.getBelongedStorageGroup(plan.getDevicePath());
+      IoTDB.schemaEngine.getBelongedStorageGroup(plan.getDevicePath());
     } catch (StorageGroupNotSetException e) {
       // the sg may not exist because the node does not catch up with the leader, retry after
       // synchronization

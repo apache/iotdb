@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.cluster.partition;
 
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.SchemaEngine;
 
 import org.powermock.reflect.Whitebox;
 
@@ -26,26 +26,26 @@ import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
-public class MManagerWhiteBox {
+public class SchemaEngineWhiteBox {
 
-  public static MManager newMManager(String logFilePath) {
-    Constructor<MManager> constructor = getMManagerConstructor();
+  public static SchemaEngine newSchemaEngine(String logFilePath) {
+    Constructor<SchemaEngine> constructor = getSchemaEngineConstructor();
     constructor.setAccessible(true);
     try {
-      MManager manager = constructor.newInstance();
+      SchemaEngine schemaEngine = constructor.newInstance();
       new File(logFilePath).getParentFile().mkdirs();
-      Whitebox.setInternalState(manager, "logFilePath", logFilePath);
-      manager.initForMultiMManagerTest();
-      return manager;
+      Whitebox.setInternalState(schemaEngine, "logFilePath", logFilePath);
+      schemaEngine.initForMultiSchemaEngineTest();
+      return schemaEngine;
     } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
       e.printStackTrace();
     }
     return null;
   }
 
-  private static Constructor<MManager> getMManagerConstructor() {
+  private static Constructor<SchemaEngine> getSchemaEngineConstructor() {
     try {
-      return MManager.class.getDeclaredConstructor();
+      return SchemaEngine.class.getDeclaredConstructor();
     } catch (NoSuchMethodException e) {
       e.printStackTrace();
     }

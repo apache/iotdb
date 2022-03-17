@@ -198,7 +198,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
     SnapshotInstaller defaultInstaller = metaSimpleSnapshot.getDefaultInstaller(metaGroupMember);
     defaultInstaller.install(metaSimpleSnapshot, -1, false);
 
-    Map<PartialPath, Long> storageGroupsTTL = IoTDB.metaManager.getStorageGroupsTTL();
+    Map<PartialPath, Long> storageGroupsTTL = IoTDB.schemaEngine.getStorageGroupsTTL();
     for (int i = 0; i < 10; i++) {
       PartialPath partialPath = new PartialPath("root.ln.sg" + i);
       assertEquals(i, (long) storageGroupsTTL.get(partialPath));
@@ -306,7 +306,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
       SnapshotInstaller defaultInstaller = metaSimpleSnapshot.getDefaultInstaller(metaGroupMember);
       defaultInstaller.install(metaSimpleSnapshot, -1, false);
 
-      Map<PartialPath, Long> storageGroupsTTL = IoTDB.metaManager.getStorageGroupsTTL();
+      Map<PartialPath, Long> storageGroupsTTL = IoTDB.schemaEngine.getStorageGroupsTTL();
       for (int i = 0; i < 10; i++) {
         PartialPath partialPath = new PartialPath("root.ln.sg" + i);
         assertNull(storageGroupsTTL.get(partialPath));

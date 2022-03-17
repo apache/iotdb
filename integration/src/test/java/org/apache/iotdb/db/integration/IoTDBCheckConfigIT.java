@@ -105,7 +105,7 @@ public class IoTDBCheckConfigIT {
   public void testAlterTimeEncoderAfterStartService() throws Exception {
     EnvironmentUtils.shutdownDaemon();
     EnvironmentUtils.stopDaemon();
-    IoTDB.metaManager.clear();
+    IoTDB.schemaEngine.clear();
     systemProperties.put("time_encoder", "REGULAR");
     writeSystemFile();
     EnvironmentUtils.reactiveDaemon();
@@ -123,7 +123,7 @@ public class IoTDBCheckConfigIT {
   public void testSameTimeEncoderAfterStartService() throws Exception {
     EnvironmentUtils.shutdownDaemon();
     EnvironmentUtils.stopDaemon();
-    IoTDB.metaManager.clear();
+    IoTDB.schemaEngine.clear();
     systemProperties.put("time_encoder", "TS_2DIFF");
     writeSystemFile();
     EnvironmentUtils.reactiveDaemon();

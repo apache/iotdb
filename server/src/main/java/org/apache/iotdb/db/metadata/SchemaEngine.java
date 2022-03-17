@@ -116,8 +116,8 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * <p>The codes are divided into the following code regions:
  *
  * <ol>
- *   <li>MManager Singleton
- *   <li>Interfaces and Implementation of MManager initialization、snapshot、recover and clear
+ *   <li>SchemaEngine Singleton
+ *   <li>Interfaces and Implementation of SchemaEngine initialization、snapshot、recover and clear
  *   <li>Interfaces and Implementation of Operating PhysicalPlans of Metadata
  *   <li>Interfaces and Implementation for Timeseries operation
  *   <li>Interfaces and Implementation for StorageGroup and TTL operation
@@ -140,9 +140,9 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
-public class MManager {
+public class SchemaEngine {
 
-  private static final Logger logger = LoggerFactory.getLogger(MManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
 
   public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
 
@@ -157,24 +157,24 @@ public class MManager {
       StorageGroupSchemaManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
 
-  // region MManager Singleton
-  private static class MManagerHolder {
+  // region SchemaEngine Singleton
+  private static class SchemaEngineHolder {
 
-    private MManagerHolder() {
+    private SchemaEngineHolder() {
       // allowed to do nothing
     }
 
-    private static final MManager INSTANCE = new MManager();
+    private static final SchemaEngine INSTANCE = new SchemaEngine();
   }
 
   /** we should not use this function in other place, but only in IoTDB class */
-  public static MManager getInstance() {
-    return MManagerHolder.INSTANCE;
+  public static SchemaEngine getInstance() {
+    return SchemaEngineHolder.INSTANCE;
   }
   // endregion
 
-  // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
-  protected MManager() {
+  // region Interfaces and Implementation of SchemaEngine initialization、snapshot、recover and clear
+  protected SchemaEngine() {
     String schemaDir = config.getSchemaDir();
     File schemaFolder = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!schemaFolder.exists()) {
@@ -226,9 +226,9 @@ public class MManager {
             Metric.QUANTITY.toString(),
             MetricLevel.IMPORTANT,
             this,
-            mManager -> {
+            schemaEngine -> {
               try {
-                return mManager.getDevicesNum(new PartialPath("root.**"));
+                return schemaEngine.getDevicesNum(new PartialPath("root.**"));
               } catch (MetadataException e) {
                 logger.error("get deviceNum error", e);
               }
@@ -243,9 +243,9 @@ public class MManager {
             Metric.QUANTITY.toString(),
             MetricLevel.IMPORTANT,
             this,
-            mManager -> {
+            schemaEngine -> {
               try {
-                return mManager.getStorageGroupNum(new PartialPath("root.**"), false);
+                return schemaEngine.getStorageGroupNum(new PartialPath("root.**"), false);
               } catch (MetadataException e) {
                 logger.error("get storageGroupNum error", e);
               }
@@ -275,7 +275,7 @@ public class MManager {
 
       initialized = false;
     } catch (IOException e) {
-      logger.error("Error occurred when clearing MManager:", e);
+      logger.error("Error occurred when clearing SchemaEngine:", e);
     }
   }
   // endregion
@@ -1710,15 +1710,15 @@ public class MManager {
   }
 
   /**
-   * Attention!!!!!, this method could only be used for Tests involving multiple mmanagers. The
-   * singleton of templateManager and tagManager will cause interference between mmanagers if one of
-   * the mmanagers invoke init method or clear method
+   * Attention!!!!!, this method could only be used for Tests involving multiple schemaEngines. The
+   * singleton of templateManager and tagManager will cause interference between schemaEngines if
+   * one of the schemaEngines invoke init method or clear method
    *
    * <p>todo remove this method after delete or refactor the SlotPartitionTableTest in cluster
    * module
    */
   @TestOnly
-  public void initForMultiMManagerTest() {
+  public void initForMultiSchemaEngineTest() {
     templateManager = TemplateManager.getNewInstanceForTest();
     storageGroupSchemaManager = StorageGroupSchemaManager.getNewInstanceForTest();
     init();

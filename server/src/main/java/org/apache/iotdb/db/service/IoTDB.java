@@ -33,7 +33,7 @@ import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
@@ -58,7 +58,7 @@ public class IoTDB implements IoTDBMBean {
   private final String mbeanName =
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
   private static final RegisterManager registerManager = new RegisterManager();
-  public static MManager metaManager = MManager.getInstance();
+  public static SchemaEngine schemaEngine = SchemaEngine.getInstance();
   public static ServiceProvider serviceProvider;
   private static boolean clusterMode = false;
 
@@ -78,8 +78,8 @@ public class IoTDB implements IoTDBMBean {
     daemon.active();
   }
 
-  public static void setMetaManager(MManager metaManager) {
-    IoTDB.metaManager = metaManager;
+  public static void setSchemaEngine(SchemaEngine schemaEngine) {
+    IoTDB.schemaEngine = schemaEngine;
   }
 
   public static void setServiceProvider(ServiceProvider serviceProvider) {
@@ -122,7 +122,7 @@ public class IoTDB implements IoTDBMBean {
     setUncaughtExceptionHandler();
     registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
-    initMManager();
+    initSchemaEngine();
     initServiceProvider();
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
@@ -198,9 +198,9 @@ public class IoTDB implements IoTDBMBean {
     logger.info("IoTDB is deactivated.");
   }
 
-  private void initMManager() {
+  private void initSchemaEngine() {
     long time = System.currentTimeMillis();
-    IoTDB.metaManager.init();
+    IoTDB.schemaEngine.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
     logger.info(

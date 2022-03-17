@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.storagegroup;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -192,7 +192,7 @@ public interface IStorageGroupSchemaManager {
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
 
   Pair<List<PartialPath>, List<SGMManager>> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, MManager.StorageGroupFilter filter)
+      PartialPath pathPattern, int nodeLevel, SchemaEngine.StorageGroupFilter filter)
       throws MetadataException;
 
   /**
