@@ -309,12 +309,12 @@ public class AggregateResultTest {
     currentValueAggrResult2.updateResultFromStatistics(statistics2);
     currentValueAggrResult1.merge(currentValueAggrResult2);
 
-    Assert.assertEquals(Binary.valueOf("2018-12-30 00:00:00"), currentValueAggrResult1.getResult());
+    Assert.assertEquals(Binary.valueOf("2018-12-30 00:00:01"), currentValueAggrResult1.getResult());
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     currentValueAggrResult1.serializeTo(outputStream);
     ByteBuffer byteBuffer = ByteBuffer.wrap(outputStream.toByteArray());
     AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
-    Assert.assertEquals(Binary.valueOf("2018-12-30 00:00:00"), result.getResult());
+    Assert.assertEquals(Binary.valueOf("2018-12-30 00:00:01"), result.getResult());
   }
 }
