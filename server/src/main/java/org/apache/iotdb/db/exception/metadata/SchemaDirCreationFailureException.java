@@ -16,18 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+package org.apache.iotdb.db.exception.metadata;
 
-import org.apache.iotdb.db.metadata.storagegroup.SGMManager;
+public class SchemaDirCreationFailureException extends MetadataException {
 
-/** This interface defines a StorageGroupMNode's operation interfaces. */
-public interface IStorageGroupMNode extends IMNode {
-
-  long getDataTTL();
-
-  void setDataTTL(long dataTTL);
-
-  SGMManager getSGMManager();
-
-  void setSGMManager(SGMManager sgmManager);
+  public SchemaDirCreationFailureException(String dirPath) {
+    super(String.format("create storage group schema folder %s failed.", dirPath));
+  }
 }

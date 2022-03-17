@@ -506,6 +506,27 @@ public class Session {
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
       List<CompressionType> compressors,
+      List<String> measurementAliasList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSCreateAlignedTimeseriesReq request =
+        getTSCreateAlignedTimeseriesReq(
+            deviceId,
+            measurements,
+            dataTypes,
+            encodings,
+            compressors,
+            measurementAliasList,
+            null,
+            null);
+    defaultSessionConnection.createAlignedTimeseries(request);
+  }
+
+  public void createAlignedTimeseries(
+      String deviceId,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
       List<String> measurementAliasList,
       List<Map<String, String>> tagsList,
       List<Map<String, String>> attributesList)

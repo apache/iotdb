@@ -29,7 +29,6 @@ import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -102,7 +101,6 @@ public class PartitionUtils {
         || plan instanceof PruneTemplatePlan
         || plan instanceof CreateFunctionPlan
         || plan instanceof DropFunctionPlan
-        || plan instanceof CreateSnapshotPlan
         || plan instanceof SetSystemModePlan;
   }
 

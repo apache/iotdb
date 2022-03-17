@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.CrossSpaceCompactionWriter;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -124,10 +126,13 @@ public class CompactionUtils {
     Set<String> allMeasurements = alignedMeasurementIterator.getAllMeasurements();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String measurement : allMeasurements) {
-      // TODO: use IDTable
       try {
-        measurementSchemas.add(
-            IoTDB.metaManager.getSeriesSchema(new PartialPath(device, measurement)));
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
+          measurementSchemas.add(IDTableManager.getInstance().getSeriesSchema(device, measurement));
+        } else {
+          measurementSchemas.add(
+              IoTDB.metaManager.getSeriesSchema(new PartialPath(device, measurement)));
+        }
       } catch (PathNotExistException e) {
         logger.info("A deleted path is skipped: {}", e.getMessage());
       }
@@ -173,8 +178,12 @@ public class CompactionUtils {
     for (String measurement : allMeasurements) {
       List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
       try {
-        measurementSchemas.add(
-            IoTDB.metaManager.getSeriesSchema(new PartialPath(device, measurement)));
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
+          measurementSchemas.add(IDTableManager.getInstance().getSeriesSchema(device, measurement));
+        } else {
+          measurementSchemas.add(
+              IoTDB.metaManager.getSeriesSchema(new PartialPath(device, measurement)));
+        }
       } catch (PathNotExistException e) {
         logger.info("A deleted path is skipped: {}", e.getMessage());
         continue;

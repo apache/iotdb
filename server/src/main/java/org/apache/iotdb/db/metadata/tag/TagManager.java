@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.tag;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -64,32 +63,14 @@ public class TagManager {
   private static final Logger logger = LoggerFactory.getLogger(TagManager.class);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  private String sgSchemaDirPath;
   private TagLogFile tagLogFile;
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<IMeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
 
-  private static class TagManagerHolder {
-
-    private TagManagerHolder() {
-      // allowed to do nothing
-    }
-
-    private static final TagManager INSTANCE = new TagManager();
-  }
-
-  public static TagManager getInstance() {
-    return TagManagerHolder.INSTANCE;
-  }
-
-  @TestOnly
-  public static TagManager getNewInstanceForTest() {
-    return new TagManager();
-  }
-
-  private TagManager() {}
-
-  public void init() throws IOException {
-    tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
+  public TagManager(String sgSchemaDirPath) throws IOException {
+    this.sgSchemaDirPath = sgSchemaDirPath;
+    tagLogFile = new TagLogFile(sgSchemaDirPath, MetadataConstant.TAG_LOG);
   }
 
   public void recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {

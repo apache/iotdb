@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -33,12 +34,14 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -59,6 +62,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -254,6 +258,36 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
     assertFalse(manager.isPathExist(new PartialPath("root.1")));
+
+    assertFalse(manager.isPathExist(new PartialPath("root.template")));
+    assertFalse(manager.isPathExist(new PartialPath("root.template.d1")));
+
+    try {
+      manager.createTimeseries(
+          new PartialPath("root.template.d2"),
+          TSDataType.INT32,
+          TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    try {
+      manager.createSchemaTemplate(getCreateTemplatePlan());
+      manager.setSchemaTemplate(new SetTemplatePlan("template1", "root.template"));
+      manager.setUsingSchemaTemplate(new ActivateTemplatePlan(new PartialPath("root.template.d1")));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    assertTrue(manager.isPathExist(new PartialPath("root.template.d1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.template.d1.s11")));
+    assertFalse(manager.isPathExist(new PartialPath("root.template.d2.s11")));
+    assertTrue(manager.isPathExist(new PartialPath("root.template.d1.vector")));
+    assertTrue(manager.isPathExist(new PartialPath("root.template.d1.vector.s0")));
   }
 
   /**
@@ -446,7 +480,7 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testRecover() {
+  public void testRecover() throws Exception {
 
     MManager manager = IoTDB.metaManager;
 
@@ -497,21 +531,19 @@ public class MManagerBasicTest {
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
-      MManager recoverManager = new MManager();
-      recoverManager.initForMultiMManagerTest();
+      EnvironmentUtils.restartDaemon();
 
-      assertTrue(recoverManager.isStorageGroup(new PartialPath("root.laptop.d1")));
-      assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop.d2")));
-      assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop.d3")));
-      assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop")));
+      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d1")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d2")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d3")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop")));
       // prefix with *
       assertEquals(
           devices,
-          recoverManager.getMatchedDevices(new PartialPath("root.**"), false).stream()
+          manager.getMatchedDevices(new PartialPath("root.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
-      recoverManager.clear();
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1247,7 +1279,7 @@ public class MManagerBasicTest {
       fail();
     } catch (Exception e) {
       assertEquals(
-          "Path [root.tree.sg0.GPS.s9] overlaps with [treeTemplate] on [GPS]", e.getMessage());
+          "Path [root.tree.sg0.GPS] overlaps with [treeTemplate] on [GPS]", e.getMessage());
     }
 
     CreateTimeSeriesPlan createTimeSeriesPlan4 =
@@ -2190,6 +2222,75 @@ public class MManagerBasicTest {
   }
 
   @Test
+  public void testCreateAlignedTimeseriesWithAliasAndTags() throws Exception {
+    MManager manager = IoTDB.metaManager;
+    manager.setStorageGroup(new PartialPath("root.laptop"));
+    PartialPath devicePath = new PartialPath("root.laptop.device");
+    List<String> measurements = Arrays.asList("s1", "s2", "s3", "s4", "s5");
+    List<TSDataType> tsDataTypes =
+        Arrays.asList(
+            TSDataType.DOUBLE,
+            TSDataType.TEXT,
+            TSDataType.FLOAT,
+            TSDataType.BOOLEAN,
+            TSDataType.INT32);
+    List<TSEncoding> tsEncodings =
+        Arrays.asList(
+            TSEncoding.PLAIN,
+            TSEncoding.PLAIN,
+            TSEncoding.PLAIN,
+            TSEncoding.PLAIN,
+            TSEncoding.PLAIN);
+    List<CompressionType> compressionTypes =
+        Arrays.asList(
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED);
+    List<String> aliasList = Arrays.asList("alias1", null, "alias2", null, null);
+    List<Map<String, String>> tagList = new ArrayList<>();
+    Map<String, String> tags = new HashMap<>();
+    tags.put("key", "value");
+    tagList.add(tags);
+    tagList.add(null);
+    tagList.add(null);
+    tagList.add(tags);
+    tagList.add(null);
+    CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
+        new CreateAlignedTimeSeriesPlan(
+            devicePath,
+            measurements,
+            tsDataTypes,
+            tsEncodings,
+            compressionTypes,
+            aliasList,
+            tagList,
+            null);
+    manager.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+
+    Assert.assertEquals(5, manager.getAllTimeseriesCount(new PartialPath("root.laptop.device.*")));
+    Assert.assertTrue(manager.isPathExist(new PartialPath("root.laptop.device.alias2")));
+
+    ShowTimeSeriesPlan showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(new PartialPath("root.**"), false, "key", "value", 0, 0, false);
+    List<ShowTimeSeriesResult> showTimeSeriesResults =
+        manager.showTimeseries(showTimeSeriesPlan, null);
+    Assert.assertEquals(2, showTimeSeriesResults.size());
+    showTimeSeriesResults =
+        showTimeSeriesResults.stream()
+            .sorted(Comparator.comparing(ShowResult::getName))
+            .collect(Collectors.toList());
+    ShowTimeSeriesResult result = showTimeSeriesResults.get(0);
+    Assert.assertEquals("root.laptop.device.s1", result.getName());
+    Assert.assertEquals("alias1", result.getAlias());
+    Assert.assertEquals(tags, result.getTag());
+    result = showTimeSeriesResults.get(1);
+    Assert.assertEquals("root.laptop.device.s4", result.getName());
+    Assert.assertEquals(tags, result.getTag());
+  }
+
+  @Test
   public void testAutoCreateAlignedTimeseriesWhileInsert() {
     MManager manager = IoTDB.metaManager;
 
@@ -2263,6 +2364,9 @@ public class MManagerBasicTest {
       Assert.assertEquals(
           "Storage group is not set for current seriesPath: [root.ln.sg2.device1.sensor1]",
           e.getMessage());
+    } catch (StorageGroupAlreadySetException e) {
+      Assert.assertEquals(
+          "some children of root.ln have already been set to storage group", e.getMessage());
     } catch (MetadataException e) {
       fail(e.getMessage());
     }

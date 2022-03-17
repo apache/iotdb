@@ -272,7 +272,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       IoTDBSqlParser.AttributeClausesContext ctx,
       CreateAlignedTimeSeriesOperator createAlignedTimeSeriesOperator) {
     if (ctx.alias() != null) {
-      throw new SQLParserException("create aligned timeseries: alias is not supported yet.");
+      createAlignedTimeSeriesOperator.addAliasList(
+          parseNodeName(ctx.alias().nodeNameCanInExpr().getText()));
+    } else {
+      createAlignedTimeSeriesOperator.addAliasList(null);
     }
 
     String dataTypeString = ctx.dataType.getText().toUpperCase();
@@ -299,10 +302,14 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     if (ctx.tagClause() != null) {
       parseTagClause(ctx.tagClause(), createAlignedTimeSeriesOperator);
+    } else {
+      createAlignedTimeSeriesOperator.addTagsList(null);
     }
 
     if (ctx.attributeClause() != null) {
       parseAttributeClause(ctx.attributeClause(), createAlignedTimeSeriesOperator);
+    } else {
+      createAlignedTimeSeriesOperator.addAttributesList(null);
     }
   }
 
@@ -580,13 +587,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.BOUNDARY() != null) {
       operator.setFirstExecutionTimeBoundary(parseDateExpression(ctx.dateExpression()));
     }
-  }
-
-  // Create Snapshot for Schema
-
-  @Override
-  public Operator visitCreateSnapshot(IoTDBSqlParser.CreateSnapshotContext ctx) {
-    return new CreateSnapshotOperator(SQLConstant.TOK_CREATE_SCHEMA_SNAPSHOT);
   }
 
   // Alter Timeseries
