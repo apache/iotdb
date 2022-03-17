@@ -19,6 +19,8 @@
  */
 package org.apache.iotdb.db.newsync.pipedata.queue;
 
+import org.apache.iotdb.db.utils.TestOnly;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -42,6 +44,13 @@ public class PipeDataQueueFactory {
     BufferedPipeDataQueue queue = bufferedPipeDataQueueMap.remove(pipeLogDir);
     if (queue != null) {
       queue.clear();
+    }
+  }
+
+  @TestOnly
+  public static void clear() {
+    for (PipeDataQueue pipeDataQueue : bufferedPipeDataQueueMap.values()) {
+      pipeDataQueue.clear();
     }
   }
 }

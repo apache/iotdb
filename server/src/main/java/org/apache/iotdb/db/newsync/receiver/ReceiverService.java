@@ -149,6 +149,7 @@ public class ReceiverService implements IService {
 
   /** create and start a new pipe named pipeName */
   private void createPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+    logger.info("create Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
     createDir(pipeName, remoteIp, createTime);
     receiverManager.createPipe(pipeName, remoteIp, createTime);
     collector.startPipe(pipeName, remoteIp, createTime);
@@ -156,24 +157,27 @@ public class ReceiverService implements IService {
 
   /** start an existed pipe named pipeName */
   private void startPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+    logger.info("start Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
     receiverManager.startPipe(pipeName, remoteIp);
     collector.startPipe(pipeName, remoteIp, createTime);
   }
 
   /** stop an existed pipe named pipeName */
   private void stopPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+    logger.info("stop Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
     receiverManager.stopPipe(pipeName, remoteIp);
     collector.stopPipe(pipeName, remoteIp, createTime);
   }
 
   /** drop an existed pipe named pipeName */
   private void dropPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+    logger.info("drop Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
     receiverManager.dropPipe(pipeName, remoteIp);
     collector.stopPipe(pipeName, remoteIp, createTime);
-    File dir = new File(SyncPathUtil.getReceiverPipeDir(pipeName, remoteIp, createTime));
-    FileUtils.deleteDirectory(dir);
     PipeDataQueueFactory.removeBufferedPipeDataQueue(
         SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime));
+    File dir = new File(SyncPathUtil.getReceiverPipeDir(pipeName, remoteIp, createTime));
+    FileUtils.deleteDirectory(dir);
   }
 
   private void createDir(String pipeName, String remoteIp, long createTime) {

@@ -84,14 +84,22 @@ public class Collector {
 
   public void startPipe(String pipeName, String remoteIp, long createTime) {
     String dir = SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
-    ScanTask task = new ScanTask(pipeName, remoteIp, createTime);
-    taskFutures.put(dir, executorService.submit(task));
+    synchronized (dir.intern()) {
+      if (!taskFutures.containsKey(dir)) {
+        ScanTask task = new ScanTask(pipeName, remoteIp, createTime);
+        taskFutures.put(dir, executorService.submit(task));
+      }
+    }
   }
 
   public void stopPipe(String pipeName, String remoteIp, long createTime) {
     String dir = SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
-    taskFutures.get(dir).cancel(true);
-    taskFutures.remove(dir);
+    synchronized (dir.intern()) {
+      if (taskFutures.containsKey(dir)) {
+        taskFutures.get(dir).cancel(true);
+        taskFutures.remove(dir);
+      }
+    }
   }
 
   private class ScanTask implements Runnable {
