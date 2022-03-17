@@ -17,13 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.storagegroup;
+package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -92,31 +91,31 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   }
 
   @Override
-  public SGMManager getBelongedSGMManager(PartialPath path) throws MetadataException {
-    return mtree.getStorageGroupNodeByPath(path).getSGMManager();
+  public SchemaRegion getBelongedSchemaRegion(PartialPath path) throws MetadataException {
+    return mtree.getStorageGroupNodeByPath(path).getSchemaRegion();
   }
 
   @Override
-  public SGMManager getSGMManagerByStorageGroupPath(PartialPath path) throws MetadataException {
-    return getStorageGroupNodeByStorageGroupPath(path).getSGMManager();
+  public SchemaRegion getSchemaRegionByStorageGroupPath(PartialPath path) throws MetadataException {
+    return getStorageGroupNodeByStorageGroupPath(path).getSchemaRegion();
   }
 
   @Override
-  public List<SGMManager> getInvolvedSGMManagers(PartialPath pathPattern, boolean isPrefixMatch)
+  public List<SchemaRegion> getInvolvedSchemaRegions(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    List<SGMManager> result = new ArrayList<>();
+    List<SchemaRegion> result = new ArrayList<>();
     for (IStorageGroupMNode storageGroupMNode :
         mtree.getInvolvedStorageGroupNodes(pathPattern, isPrefixMatch)) {
-      result.add(storageGroupMNode.getSGMManager());
+      result.add(storageGroupMNode.getSchemaRegion());
     }
     return result;
   }
 
   @Override
-  public List<SGMManager> getAllSGMManagers() {
-    List<SGMManager> result = new ArrayList<>();
+  public List<SchemaRegion> getAllSchemaRegions() {
+    List<SchemaRegion> result = new ArrayList<>();
     for (IStorageGroupMNode storageGroupMNode : mtree.getAllStorageGroupNodes()) {
-      result.add(storageGroupMNode.getSGMManager());
+      result.add(storageGroupMNode.getSchemaRegion());
     }
     return result;
   }
@@ -192,52 +191,52 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   }
 
   @Override
-  public Pair<Integer, List<SGMManager>> getNodesCountInGivenLevel(
+  public Pair<Integer, List<SchemaRegion>> getNodesCountInGivenLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     Pair<Integer, Set<IStorageGroupMNode>> resultAboveSG =
         mtree.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
-    List<SGMManager> sgmManagers = new LinkedList<>();
+    List<SchemaRegion> schemaRegions = new LinkedList<>();
     for (IStorageGroupMNode storageGroupMNode : resultAboveSG.right) {
-      sgmManagers.add(storageGroupMNode.getSGMManager());
+      schemaRegions.add(storageGroupMNode.getSchemaRegion());
     }
-    return new Pair<>(resultAboveSG.left, sgmManagers);
+    return new Pair<>(resultAboveSG.left, schemaRegions);
   }
 
   @Override
-  public Pair<List<PartialPath>, List<SGMManager>> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, MManager.StorageGroupFilter filter)
+  public Pair<List<PartialPath>, List<SchemaRegion>> getNodesListInGivenLevel(
+      PartialPath pathPattern, int nodeLevel, SchemaEngine.StorageGroupFilter filter)
       throws MetadataException {
     Pair<List<PartialPath>, Set<IStorageGroupMNode>> resultAboveSG =
         mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);
-    List<SGMManager> sgmManagers = new LinkedList<>();
+    List<SchemaRegion> schemaRegions = new LinkedList<>();
     for (IStorageGroupMNode storageGroupMNode : resultAboveSG.right) {
-      sgmManagers.add(storageGroupMNode.getSGMManager());
+      schemaRegions.add(storageGroupMNode.getSchemaRegion());
     }
-    return new Pair<>(resultAboveSG.left, sgmManagers);
+    return new Pair<>(resultAboveSG.left, schemaRegions);
   }
 
   @Override
-  public Pair<Set<String>, List<SGMManager>> getChildNodePathInNextLevel(PartialPath pathPattern)
+  public Pair<Set<String>, List<SchemaRegion>> getChildNodePathInNextLevel(PartialPath pathPattern)
       throws MetadataException {
     Pair<Set<String>, Set<IStorageGroupMNode>> resultAboveSG =
         mtree.getChildNodePathInNextLevel(pathPattern);
-    List<SGMManager> sgmManagers = new LinkedList<>();
+    List<SchemaRegion> schemaRegions = new LinkedList<>();
     for (IStorageGroupMNode storageGroupMNode : resultAboveSG.right) {
-      sgmManagers.add(storageGroupMNode.getSGMManager());
+      schemaRegions.add(storageGroupMNode.getSchemaRegion());
     }
-    return new Pair<>(resultAboveSG.left, sgmManagers);
+    return new Pair<>(resultAboveSG.left, schemaRegions);
   }
 
   @Override
-  public Pair<Set<String>, List<SGMManager>> getChildNodeNameInNextLevel(PartialPath pathPattern)
+  public Pair<Set<String>, List<SchemaRegion>> getChildNodeNameInNextLevel(PartialPath pathPattern)
       throws MetadataException {
     Pair<Set<String>, Set<IStorageGroupMNode>> resultAboveSG =
         mtree.getChildNodeNameInNextLevel(pathPattern);
-    List<SGMManager> sgmManagers = new LinkedList<>();
+    List<SchemaRegion> schemaRegions = new LinkedList<>();
     for (IStorageGroupMNode storageGroupMNode : resultAboveSG.right) {
-      sgmManagers.add(storageGroupMNode.getSGMManager());
+      schemaRegions.add(storageGroupMNode.getSchemaRegion());
     }
-    return new Pair<>(resultAboveSG.left, sgmManagers);
+    return new Pair<>(resultAboveSG.left, schemaRegions);
   }
 
   @Override

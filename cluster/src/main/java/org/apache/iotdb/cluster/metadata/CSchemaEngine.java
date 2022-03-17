@@ -47,7 +47,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -127,9 +127,9 @@ import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.waitForThreadPo
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 @SuppressWarnings("java:S1135") // ignore todos
-public class CMManager extends MManager {
+public class CSchemaEngine extends SchemaEngine {
 
-  private static final Logger logger = LoggerFactory.getLogger(CMManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(CSchemaEngine.class);
 
   private ReentrantReadWriteLock cacheLock = new ReentrantReadWriteLock();
   // only cache the series who is writing, we need not to cache series who is reading
@@ -139,20 +139,20 @@ public class CMManager extends MManager {
   private MetaGroupMember metaGroupMember;
   private Coordinator coordinator;
 
-  private CMManager() {
+  private CSchemaEngine() {
     super();
     metaPuller = MetaPuller.getInstance();
     int remoteCacheSize = config.getmRemoteSchemaCacheSize();
     mRemoteMetaCache = new RemoteMetaCache(remoteCacheSize);
   }
 
-  private static class MManagerHolder {
+  private static class CSchemaEngineHolder {
 
-    private MManagerHolder() {
+    private CSchemaEngineHolder() {
       // allowed to do nothing
     }
 
-    private static final CMManager INSTANCE = new CMManager();
+    private static final CSchemaEngine INSTANCE = new CSchemaEngine();
   }
 
   /**
@@ -160,8 +160,8 @@ public class CMManager extends MManager {
    *
    * @return
    */
-  public static CMManager getInstance() {
-    return CMManager.MManagerHolder.INSTANCE;
+  public static CSchemaEngine getInstance() {
+    return CSchemaEngineHolder.INSTANCE;
   }
 
   /**
@@ -569,7 +569,7 @@ public class CMManager extends MManager {
         if (ready[i]) {
           continue;
         }
-        if (IoTDB.metaManager.isStorageGroup(storageGroups.get(i))) {
+        if (IoTDB.schemaEngine.isStorageGroup(storageGroups.get(i))) {
           ready[i] = true;
         } else {
           allReady = false;

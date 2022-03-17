@@ -153,7 +153,7 @@ public class EnvironmentUtils {
       BloomFilterCache.getInstance().clear();
     }
     // close metadata
-    IoTDB.metaManager.clear();
+    IoTDB.schemaEngine.clear();
 
     QueryTimeManager.getInstance().clear();
 
@@ -314,7 +314,7 @@ public class EnvironmentUtils {
   public static void restartDaemon() throws Exception {
     shutdownDaemon();
     stopDaemon();
-    IoTDB.metaManager.clear();
+    IoTDB.schemaEngine.clear();
     IDTableManager.getInstance().clear();
     TsFileResourceManager.getInstance().clear();
     reactiveDaemon();

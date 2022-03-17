@@ -997,7 +997,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 
 |名字| metadata\_node\_cache\_size |
 |:---:|:---|
-|描述| Manager的缓存大小。所有路径检查和将具有相应路径的MManager中的TSDataType的缓存，都将被用作提高写入速度。|
+|描述| SchemaRegion的缓存大小。所有路径检查和将具有相应路径的SchemaRegion中的TSDataType的缓存，都将被用作提高写入速度。|
 |类型|Int32|
 |默认值| 300000 |
 |改后生效方式|重启服务生效|

@@ -16,11 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.storagegroup;
+package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -45,30 +44,31 @@ public interface IStorageGroupSchemaManager {
   void setStorageGroup(PartialPath path) throws MetadataException;
 
   /**
-   * Get the target sgMManager, which the given path belongs to. The path must be a fullPath without
-   * wildcards, * or **. This method is the first step when there's a task on one certain path,
-   * e.g., root.sg1 is a storage group and path = root.sg1.d1, return sgMManager of root.sg1. If
-   * there's no storage group on the given path, StorageGroupNotSetException will be thrown.
+   * Get the target SchemaRegion, which the given path belongs to. The path must be a fullPath
+   * without wildcards, * or **. This method is the first step when there's a task on one certain
+   * path, e.g., root.sg1 is a storage group and path = root.sg1.d1, return SchemaRegion of
+   * root.sg1. If there's no storage group on the given path, StorageGroupNotSetException will be
+   * thrown.
    */
-  SGMManager getBelongedSGMManager(PartialPath path) throws MetadataException;
+  SchemaRegion getBelongedSchemaRegion(PartialPath path) throws MetadataException;
 
   /**
-   * Get sgMManager, which the given path represented.
+   * Get SchemaRegion, which the given path represented.
    *
    * @param path the path of the target storage group
    */
-  SGMManager getSGMManagerByStorageGroupPath(PartialPath path) throws MetadataException;
+  SchemaRegion getSchemaRegionByStorageGroupPath(PartialPath path) throws MetadataException;
 
   /**
-   * Get the target sgMManager, which will be involved/covered by the given pathPattern. The path
+   * Get the target SchemaRegion, which will be involved/covered by the given pathPattern. The path
    * may contain wildcards, * or **. This method is the first step when there's a task on multiple
    * paths represented by the given pathPattern. If isPrefixMatch, all storage groups under the
    * prefixPath that matches the given pathPattern will be collected.
    */
-  List<SGMManager> getInvolvedSGMManagers(PartialPath pathPattern, boolean isPrefixMatch)
+  List<SchemaRegion> getInvolvedSchemaRegions(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
-  List<SGMManager> getAllSGMManagers();
+  List<SchemaRegion> getAllSchemaRegions();
 
   /**
    * Delete storage groups of given paths from MTree. Log format: "delete_storage_group,sg1,sg2,sg3"
@@ -181,24 +181,24 @@ public interface IStorageGroupSchemaManager {
    * To calculate the count of nodes in the given level for given path pattern. If using prefix
    * match, the path pattern is used to match prefix path. All nodes start with the matched prefix
    * path will be counted. This method only count in nodes above storage group. Nodes below storage
-   * group, including storage group node will be counted by certain SGMManager. The involved storage
-   * groups will be collected to count nodes below storage group.
+   * group, including storage group node will be counted by certain SchemaRegion. The involved
+   * storage groups will be collected to count nodes below storage group.
    *
    * @param pathPattern a path pattern or a full path
    * @param level the level should match the level of the path
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-  Pair<Integer, List<SGMManager>> getNodesCountInGivenLevel(
+  Pair<Integer, List<SchemaRegion>> getNodesCountInGivenLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
 
-  Pair<List<PartialPath>, List<SGMManager>> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, MManager.StorageGroupFilter filter)
+  Pair<List<PartialPath>, List<SchemaRegion>> getNodesListInGivenLevel(
+      PartialPath pathPattern, int nodeLevel, SchemaEngine.StorageGroupFilter filter)
       throws MetadataException;
 
   /**
    * Get child node path in the next level of the given path pattern. This method only count in
    * nodes above storage group. Nodes below storage group, including storage group node will be
-   * counted by certain SGMManager.
+   * counted by certain SchemaRegion.
    *
    * <p>give pathPattern and the child nodes is those matching pathPattern.*
    *
@@ -208,13 +208,13 @@ public interface IStorageGroupSchemaManager {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  Pair<Set<String>, List<SGMManager>> getChildNodePathInNextLevel(PartialPath pathPattern)
+  Pair<Set<String>, List<SchemaRegion>> getChildNodePathInNextLevel(PartialPath pathPattern)
       throws MetadataException;
 
   /**
    * Get child node path in the next level of the given path pattern. This method only count in
    * nodes above storage group. Nodes below storage group, including storage group node will be
-   * counted by certain SGMManager.
+   * counted by certain SchemaRegion.
    *
    * <p>give pathPattern and the child nodes is those matching pathPattern.*
    *
@@ -224,7 +224,7 @@ public interface IStorageGroupSchemaManager {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  Pair<Set<String>, List<SGMManager>> getChildNodeNameInNextLevel(PartialPath pathPattern)
+  Pair<Set<String>, List<SchemaRegion>> getChildNodeNameInNextLevel(PartialPath pathPattern)
       throws MetadataException;
 
   /** Get metadata in string */

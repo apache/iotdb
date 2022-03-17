@@ -42,7 +42,7 @@ import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTaskDescriptor;
-import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.CSchemaEngine;
 import org.apache.iotdb.cluster.partition.NodeAdditionResult;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -876,7 +876,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
       plan.getPlanFromFailed();
     }
 
-    return ((CMManager) IoTDB.metaManager).createTimeseries(plan);
+    return ((CSchemaEngine) IoTDB.schemaEngine).createTimeseries(plan);
   }
 
   /**
@@ -889,7 +889,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
     }
 
     Set<Integer> slotSet = new HashSet<>(slots);
-    List<PartialPath> allStorageGroupNames = IoTDB.metaManager.getAllStorageGroupPaths();
+    List<PartialPath> allStorageGroupNames = IoTDB.schemaEngine.getAllStorageGroupPaths();
     TimePartitionFilter filter =
         (storageGroupName, timePartitionId) -> {
           int slot =

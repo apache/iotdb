@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.storagegroup;
+package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -34,8 +34,6 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
@@ -142,7 +140,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
-public class SGMManager {
+public class SchemaRegion {
 
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupSchemaManager.class);
 
@@ -169,8 +167,8 @@ public class SGMManager {
   private TagManager tagManager;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
-  public SGMManager() {
-    int cacheSize = config.getmManagerCacheSize();
+  public SchemaRegion() {
+    int cacheSize = config.getSchemaRegionCacheSize();
     mNodeCache =
         Caffeine.newBuilder()
             .maximumSize(cacheSize)
@@ -804,7 +802,7 @@ public class SGMManager {
 
   // region Interfaces for level Node info Query
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, MManager.StorageGroupFilter filter)
+      PartialPath pathPattern, int nodeLevel, SchemaEngine.StorageGroupFilter filter)
       throws MetadataException {
     return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, filter);
   }

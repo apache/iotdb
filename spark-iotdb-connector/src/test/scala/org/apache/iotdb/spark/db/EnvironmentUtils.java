@@ -122,7 +122,7 @@ public class EnvironmentUtils {
       BloomFilterCache.getInstance().clear();
     }
     // close metadata
-    IoTDB.metaManager.clear();
+    IoTDB.schemaEngine.clear();
     MetricsService.getInstance().stop();
     // delete all directory
     cleanAllDir();
@@ -157,7 +157,7 @@ public class EnvironmentUtils {
 
   /** disable memory control</br> this function should be called before all code in the setup */
   public static void envSetUp() throws StartupException {
-    IoTDB.metaManager.init();
+    IoTDB.schemaEngine.init();
     createAllDir();
     IAuthorizer authorizer;
     try {

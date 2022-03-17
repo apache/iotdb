@@ -45,7 +45,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.apache.iotdb.db.metadata.MManager.TIME_SERIES_TREE_HEADER;
+import static org.apache.iotdb.db.metadata.SchemaEngine.TIME_SERIES_TREE_HEADER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 

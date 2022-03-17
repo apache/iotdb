@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -184,7 +184,7 @@ public class IoTDBConfig {
 
   /**
    * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan is
-   * larger than this parameter, then the MetaData operation plan will be rejected by MManager.
+   * larger than this parameter, then the MetaData operation plan will be rejected by SchemaRegion.
    * Unit: byte
    */
   private int mlogBufferSize = 1024 * 1024;
@@ -447,10 +447,10 @@ public class IoTDBConfig {
   /** Set true to enable writing monitor time series. */
   private boolean enableMonitorSeriesWrite = false;
 
-  /** Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}. */
-  private int mManagerCacheSize = 300000;
+  /** Cache size of {@code checkAndGetDataTypeCache} in {@link SchemaEngine}. */
+  private int schemaRegionCacheSize = 10000;
 
-  /** Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}. */
+  /** Cache size of {@code checkAndGetDataTypeCache} in {@link SchemaEngine}. */
   private int mRemoteSchemaCacheSize = 100000;
 
   /** Is external sort enable. */
@@ -1231,12 +1231,12 @@ public class IoTDBConfig {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
   }
 
-  public int getmManagerCacheSize() {
-    return mManagerCacheSize;
+  public int getSchemaRegionCacheSize() {
+    return schemaRegionCacheSize;
   }
 
-  void setmManagerCacheSize(int mManagerCacheSize) {
-    this.mManagerCacheSize = mManagerCacheSize;
+  void setSchemaRegionCacheSize(int schemaRegionCacheSize) {
+    this.schemaRegionCacheSize = schemaRegionCacheSize;
   }
 
   public int getmRemoteSchemaCacheSize() {
