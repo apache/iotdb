@@ -18,11 +18,9 @@
  */
 package org.apache.iotdb.db.sql.rewriter;
 
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.sql.statement.filter.BasicFunctionFilter;
 import org.apache.iotdb.db.sql.statement.filter.QueryFilter;
 
 import java.util.ArrayList;
@@ -84,7 +82,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
     if (!children.isEmpty() && allIsBasic(children)) {
       children.sort(Comparator.comparing(o -> o.getSinglePath().getFullPath()));
     }
-    List<FilterOperator> ret = new ArrayList<>();
+    List<QueryFilter> ret = new ArrayList<>();
     int firstNonSingleIndex = mergeSingleFilters(ret, filter);
 
     // add last null child
@@ -92,9 +90,9 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private int mergeSingleFilters(List<FilterOperator> ret, FilterOperator filter) {
-    List<FilterOperator> children = filter.getChildren();
-    List<FilterOperator> tempExtrNode = null;
+  private int mergeSingleFilters(List<QueryFilter> ret, QueryFilter filter) {
+    List<QueryFilter> children = filter.getChildren();
+    List<QueryFilter> tempExtrNode = null;
     PartialPath tempPath;
     PartialPath childPath = null;
     int firstNonSingleIndex;
@@ -112,7 +110,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
       } else if (childPath.equals(tempPath)) {
         // successive next single child with same seriesPath,merge it with previous children
         // if not duplicate
-        FilterOperator child = children.get(firstNonSingleIndex);
+        QueryFilter child = children.get(firstNonSingleIndex);
         if (!tempExtrNode.contains(child)) {
           tempExtrNode.add(child);
         }
@@ -126,7 +124,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
           childPath = tempPath;
         } else {
           // add a new inner node
-          FilterOperator newFilter = new FilterOperator(filter.getFilterType(), true);
+          QueryFilter newFilter = new QueryFilter(filter.getFilterType(), true);
           newFilter.setSinglePath(childPath);
           newFilter.setChildren(tempExtrNode);
           ret.add(newFilter);
@@ -142,7 +140,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
         ret.add(tempExtrNode.get(0));
       } else {
         // add a new inner node
-        FilterOperator newFil = new FilterOperator(filter.getFilterType(), true);
+        QueryFilter newFil = new QueryFilter(filter.getFilterType(), true);
         newFil.setSinglePath(childPath);
         newFil.setChildren(tempExtrNode);
         ret.add(newFil);
@@ -152,8 +150,8 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
   }
 
   private PartialPath addLastNullChild(
-      List<FilterOperator> ret, FilterOperator filter, int i, PartialPath childPath) {
-    List<FilterOperator> children = filter.getChildren();
+      List<QueryFilter> ret, QueryFilter filter, int i, PartialPath childPath) {
+    List<QueryFilter> children = filter.getChildren();
     for (; i < children.size(); i++) {
       ret.add(children.get(i));
     }
@@ -170,9 +168,9 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
     }
   }
 
-  private boolean allIsBasic(List<FilterOperator> children) {
-    for (FilterOperator child : children) {
-      if (!(child instanceof BasicFunctionOperator)) {
+  private boolean allIsBasic(List<QueryFilter> children) {
+    for (QueryFilter child : children) {
+      if (!(child instanceof BasicFunctionFilter)) {
         return false;
       }
     }

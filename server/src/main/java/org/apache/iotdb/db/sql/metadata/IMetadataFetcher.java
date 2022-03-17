@@ -17,13 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.rewriter;
+package org.apache.iotdb.db.sql.metadata;
 
-import org.apache.iotdb.db.sql.statement.Statement;
-
-/** provide a statement, rewriter it. */
-@FunctionalInterface
-public interface IStatementRewriter {
-
-  Statement rewrite(Statement statement);
-}
+public interface IMetadataFetcher {}

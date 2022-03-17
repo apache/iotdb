@@ -53,16 +53,16 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
 
 public class StatementGenerator {
 
-  public Statement createStatement(
+  public static Statement createStatement(
       String sql, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion) {
     return invokeParser(sql, zoneId, clientVersion);
   }
 
-  public Statement createStatement(String sql, ZoneId zoneId) {
+  public static Statement createStatement(String sql, ZoneId zoneId) {
     return invokeParser(sql, zoneId, IoTDBConstant.ClientVersion.V_0_13);
   }
 
-  public Statement createStatement(TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
+  public static Statement createStatement(TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
       throws IllegalPathException {
     // construct query statement
     QueryStatement queryStatement = new QueryStatement();
@@ -106,7 +106,7 @@ public class StatementGenerator {
     return queryStatement;
   }
 
-  public Statement createStatement(TSLastDataQueryReq req, ZoneId zoneId)
+  public static Statement createStatement(TSLastDataQueryReq req, ZoneId zoneId)
       throws IllegalPathException {
     // construct query statement
     LastQueryStatement lastQueryStatement = new LastQueryStatement();
@@ -134,7 +134,7 @@ public class StatementGenerator {
     return lastQueryStatement;
   }
 
-  private Statement invokeParser(
+  private static Statement invokeParser(
       String sql, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion) {
     ASTVisitor astVisitor = new ASTVisitor();
     astVisitor.setZoneId(zoneId);
@@ -148,8 +148,7 @@ public class StatementGenerator {
 
     CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
 
-    IoTDBSqlParser parser1 =
-        new IoTDBSqlParser(tokens1);
+    IoTDBSqlParser parser1 = new IoTDBSqlParser(tokens1);
     parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
     parser1.removeErrorListeners();
     parser1.addErrorListener(SQLParseError.INSTANCE);

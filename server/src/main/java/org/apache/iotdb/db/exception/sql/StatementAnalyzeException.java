@@ -25,15 +25,15 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 public class StatementAnalyzeException extends IoTDBException {
 
-    public StatementAnalyzeException(String message) {
-        super(message, TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
-    }
+  public StatementAnalyzeException(String message) {
+    super(message, TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
+  }
 
-    public StatementAnalyzeException(String filterOperator, FilterConstant.FilterType filterType) {
-        super(
-                String.format(
-                        "Unknown token in [%s]: [%s], [%s].",
-                        filterOperator, filterType, FilterConstant.filterNames.get(filterType)),
-                TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
-    }
+  public StatementAnalyzeException(String filterOperator, FilterConstant.FilterType filterType) {
+    super(
+        String.format(
+            "Unknown token in [%s]: [%s], [%s].",
+            filterOperator, filterType, FilterConstant.filterNames.get(filterType)),
+        TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
+  }
 }

@@ -31,8 +31,8 @@ import java.util.Set;
 public class RemoveNotOptimizer implements IFilterOptimizer {
 
   /**
-   * get DNF(disjunctive normal form) for this filter tree. Before getDNF, this op tree
-   * must be binary, in another word, each non-leaf node has exactly two children.
+   * get DNF(disjunctive normal form) for this filter tree. Before getDNF, this op tree must be
+   * binary, in another word, each non-leaf node has exactly two children.
    *
    * @return optimized filter
    * @throws StatementAnalyzeException exception in RemoveNot optimizing

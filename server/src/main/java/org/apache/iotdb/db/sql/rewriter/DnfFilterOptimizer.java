@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.sql.rewriter;
 
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.sql.constant.FilterConstant.FilterType;
+import org.apache.iotdb.db.sql.statement.filter.QueryFilter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,39 +31,39 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
    * get DNF(disjunctive normal form) for this filter operator tree. Before getDnf, this op tree
    * must be binary, in another word, each non-leaf node has exactly two children.
    *
-   * @return FilterOperator optimized operator
-   * @throws LogicalOptimizeException exception in DNF optimize
+   * @return QueryFilter optimized filter
+   * @throws StatementAnalyzeException exception in DNF optimize
    */
   @Override
-  public FilterOperator optimize(FilterOperator filter) throws LogicalOptimizeException {
+  public QueryFilter optimize(QueryFilter filter) throws StatementAnalyzeException {
     return getDnf(filter);
   }
 
   private void dealWithLeftAndRightAndChildren(
-      List<FilterOperator> leftAndChildren,
-      List<FilterOperator> rightAndChildren,
-      List<FilterOperator> newChildrenList)
-      throws LogicalOptimizeException {
-    for (FilterOperator leftAndChild : leftAndChildren) {
-      for (FilterOperator rightAndChild : rightAndChildren) {
-        FilterOperator r = mergeToConjunction(leftAndChild.copy(), rightAndChild.copy());
+      List<QueryFilter> leftAndChildren,
+      List<QueryFilter> rightAndChildren,
+      List<QueryFilter> newChildrenList)
+      throws StatementAnalyzeException {
+    for (QueryFilter leftAndChild : leftAndChildren) {
+      for (QueryFilter rightAndChild : rightAndChildren) {
+        QueryFilter r = mergeToConjunction(leftAndChild.copy(), rightAndChild.copy());
         newChildrenList.add(r);
       }
     }
   }
 
-  private FilterOperator getDnf(FilterOperator filter) throws LogicalOptimizeException {
+  private QueryFilter getDnf(QueryFilter filter) throws StatementAnalyzeException {
     if (filter.isLeaf()) {
       return filter;
     }
-    List<FilterOperator> childOperators = filter.getChildren();
+    List<QueryFilter> childOperators = filter.getChildren();
     if (childOperators.size() != 2) {
-      throw new LogicalOptimizeException(
+      throw new StatementAnalyzeException(
           "node :" + filter.getFilterName() + " has " + childOperators.size() + " children");
     }
-    FilterOperator left = getDnf(childOperators.get(0));
-    FilterOperator right = getDnf(childOperators.get(1));
-    List<FilterOperator> newChildrenList = new ArrayList<>();
+    QueryFilter left = getDnf(childOperators.get(0));
+    QueryFilter right = getDnf(childOperators.get(1));
+    List<QueryFilter> newChildrenList = new ArrayList<>();
     switch (filter.getFilterType()) {
       case KW_OR:
         addChildOpInOr(left, newChildrenList);
@@ -79,7 +79,7 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
         }
         break;
       default:
-        throw new LogicalOptimizeException(
+        throw new StatementAnalyzeException(
             "get DNF failed, this tokenType is:" + filter.getFilterType());
     }
     filter.setChildren(newChildrenList);
@@ -95,14 +95,14 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
    * @param operator1 To be merged operator
    * @param operator2 To be merged operator
    * @return merged operator
-   * @throws LogicalOptimizeException exception in DNF optimizing
+   * @throws StatementAnalyzeException exception in DNF optimizing
    */
-  private FilterOperator mergeToConjunction(FilterOperator operator1, FilterOperator operator2)
-      throws LogicalOptimizeException {
-    List<FilterOperator> retChildrenList = new ArrayList<>();
+  private QueryFilter mergeToConjunction(QueryFilter operator1, QueryFilter operator2)
+      throws StatementAnalyzeException {
+    List<QueryFilter> retChildrenList = new ArrayList<>();
     addChildOpInAnd(operator1, retChildrenList);
     addChildOpInAnd(operator2, retChildrenList);
-    FilterOperator ret = new FilterOperator(FilterType.KW_AND, false);
+    QueryFilter ret = new QueryFilter(FilterType.KW_AND, false);
     ret.setChildren(retChildrenList);
     return ret;
   }
@@ -115,12 +115,12 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
    * @param child operator
    * @return children operator
    */
-  private List<FilterOperator> getAndChild(FilterOperator child) {
+  private List<QueryFilter> getAndChild(QueryFilter child) {
     if (child.getFilterType() == FilterType.KW_OR) {
       return child.getChildren();
     } else {
       // other token type means leaf node or and
-      List<FilterOperator> ret = new ArrayList<>();
+      List<QueryFilter> ret = new ArrayList<>();
       ret.add(child);
       return ret;
     }
@@ -132,16 +132,16 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
    *
    * @param operator which children should be added in new children list
    * @param newChildrenList new children list
-   * @throws LogicalOptimizeException exception in DNF optimizing
+   * @throws StatementAnalyzeException exception in DNF optimizing
    */
-  private void addChildOpInAnd(FilterOperator operator, List<FilterOperator> newChildrenList)
-      throws LogicalOptimizeException {
+  private void addChildOpInAnd(QueryFilter operator, List<QueryFilter> newChildrenList)
+      throws StatementAnalyzeException {
     if (operator.isLeaf()) {
       newChildrenList.add(operator);
     } else if (operator.getFilterType() == FilterType.KW_AND) {
       newChildrenList.addAll(operator.getChildren());
     } else {
-      throw new LogicalOptimizeException(
+      throw new StatementAnalyzeException(
           "add all children of an OR operator to newChildrenList in AND");
     }
   }
@@ -153,7 +153,7 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
    * @param operator to be added in new children list
    * @param newChildrenList new children list
    */
-  private void addChildOpInOr(FilterOperator operator, List<FilterOperator> newChildrenList) {
+  private void addChildOpInOr(QueryFilter operator, List<QueryFilter> newChildrenList) {
     if (operator.isLeaf() || operator.getFilterType() == FilterType.KW_AND) {
       newChildrenList.add(operator);
     } else {
