@@ -134,7 +134,7 @@ public class SchemaFile implements ISchemaFile {
 
     channel = new RandomAccessFile(pmtFile, "rw").getChannel();
     headerContent = ByteBuffer.allocate(SchemaFile.FILE_HEADER_SIZE);
-    pageInstCache = new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true);
+    pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
     pageLock = new PageLocks();
     dataTTL = ttl; // will be overwritten if to init
     this.isEntity = isEntity;
@@ -736,10 +736,8 @@ public class SchemaFile implements ISchemaFile {
     }
 
     if (pageInstCache.containsKey(pageIdx)) {
-      synchronized (pageInstCache) {
-        if (pageInstCache.containsKey(pageIdx)) {
-          return pageInstCache.get(pageIdx);
-        }
+      if (pageInstCache.containsKey(pageIdx)) {
+        return pageInstCache.get(pageIdx);
       }
     }
 
@@ -761,20 +759,16 @@ public class SchemaFile implements ISchemaFile {
   private void addPageToCache(int pageIndex, ISchemaPage page) throws IOException {
     pageInstCache.put(pageIndex, page);
     if (pageInstCache.size() >= PAGE_CACHE_SIZE) {
-      synchronized (pageInstCache) {
-        if (pageInstCache.size() >= PAGE_CACHE_SIZE) {
-          int removeCnt =
-              (int) (0.2 * pageInstCache.size()) > 0 ? (int) (0.2 * pageInstCache.size()) : 1;
-          List<Integer> rmvIds = new ArrayList<>(pageInstCache.keySet()).subList(0, removeCnt);
+      int removeCnt =
+          (int) (0.2 * pageInstCache.size()) > 0 ? (int) (0.2 * pageInstCache.size()) : 1;
+      List<Integer> rmvIds = new ArrayList<>(pageInstCache.keySet()).subList(0, removeCnt);
 
-          for (Integer id : rmvIds) {
-            // TODO: improve concurrent control
-            // for any page involved in concurrent operation, it will not be evicted
-            // this may produce an inefficient eviction
-            flushPageToFile(pageInstCache.get(id));
-            pageInstCache.remove(id);
-          }
-        }
+      for (Integer id : rmvIds) {
+        // TODO: improve concurrent control
+        // for any page involved in concurrent operation, it will not be evicted
+        // this may produce an inefficient eviction
+        flushPageToFile(pageInstCache.get(id));
+        pageInstCache.remove(id);
       }
     }
   }
