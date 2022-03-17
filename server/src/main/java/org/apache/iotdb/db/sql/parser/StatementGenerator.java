@@ -135,7 +135,7 @@ public class StatementGenerator {
 
   private Statement invokeParser(
       String sql, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion) {
-    IoTDBSqlASTVisitor astVisitor = new IoTDBSqlASTVisitor();
+    ASTVisitor astVisitor = new ASTVisitor();
     astVisitor.setZoneId(zoneId);
     astVisitor.setClientVersion(clientVersion);
 

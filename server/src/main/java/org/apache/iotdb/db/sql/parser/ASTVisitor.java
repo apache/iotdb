@@ -57,7 +57,7 @@ import static org.apache.iotdb.db.index.common.IndexConstant.*;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
 
 /** Parse AST to Statement. */
-public class IoTDBSqlASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
+public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private static final String DELETE_RANGE_ERROR_MSG =
       "For delete statement, where clause can only contain atomic expressions like : "
