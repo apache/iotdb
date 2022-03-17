@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.metadata.SchemaRegion;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.storagegroup.SchemaRegion;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
 import java.io.IOException;

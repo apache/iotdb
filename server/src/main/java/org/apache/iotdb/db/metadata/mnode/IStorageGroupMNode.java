@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.storagegroup.SchemaRegion;
+import org.apache.iotdb.db.metadata.SchemaRegion;
 
 /** This interface defines a StorageGroupMNode's operation interfaces. */
 public interface IStorageGroupMNode extends IMNode {
