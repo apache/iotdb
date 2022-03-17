@@ -52,11 +52,20 @@ public class CurrentValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(IBatchDataIterator batchIterator)
-      throws IOException, QueryProcessException {}
+      throws IOException, QueryProcessException {
+    updateResultFromPageData(batchIterator, Long.MIN_VALUE, Long.MAX_VALUE);
+  }
 
   @Override
   public void updateResultFromPageData(
-      IBatchDataIterator batchIterator, long minBound, long maxBound) throws IOException {}
+      IBatchDataIterator batchIterator, long minBound, long maxBound) throws IOException {
+    while (batchIterator.hasNext(minBound, maxBound)
+        && batchIterator.currentTime() < maxBound
+        && batchIterator.currentTime() >= minBound) {
+      updateResult((Comparable<Object>) batchIterator.currentValue());
+      batchIterator.next();
+    }
+  }
 
   @Override
   public void updateResultUsingTimestamps(
@@ -83,4 +92,13 @@ public class CurrentValueAggrResult extends AggregateResult {
 
   @Override
   protected void serializeSpecificFields(OutputStream outputStream) throws IOException {}
+
+  private void updateResult(Comparable<Object> currentValue) {
+    if (currentValue == null) {
+      return;
+    }
+    if (!hasCandidateResult()) {
+      setValue(currentValue);
+    }
+  }
 }

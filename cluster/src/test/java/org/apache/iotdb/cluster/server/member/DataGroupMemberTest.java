@@ -1203,7 +1203,7 @@ public class DataGroupMemberTest extends BaseMember {
         for (ByteBuffer byteBuffer : byteBuffers) {
           aggregateResults.add(AggregateResult.deserializeFrom(byteBuffer));
         }
-        answers = new Object[] {15.0, 12.0, 180.0, 5.0, 19.0, 19.0, 5.0, 19.0, 5.0, 19.0};
+        answers = new Object[] {15.0, 12.0, 180.0, 5.0, 19.0, 19.0, 5.0, 19.0, 5.0, 19.0, 5.0};
         checkAggregates(answers, aggregateResults);
       } finally {
         dataGroupMember.closeLogManager();
