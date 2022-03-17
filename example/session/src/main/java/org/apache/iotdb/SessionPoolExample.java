@@ -32,31 +32,54 @@ import java.util.concurrent.Executors;
 
 public class SessionPoolExample {
 
-  private static SessionPool pool;
+  private static SessionPool customSessionPool;
+  private static SessionPool redirectSessionPool;
   private static ExecutorService service;
 
   public static void main(String[] args)
       throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
-    pool =
+    // Custom SessionPool
+    //    customSessionPool =
+    //        new SessionPool.Builder()
+    //            .host("127.0.0.1")
+    //            .port(6667)
+    //            .user("root")
+    //            .password("root")
+    //            .maxSize(3)
+    //            .build();
+    //    service = Executors.newFixedThreadPool(10);
+    //
+    //    insertRecord(customSessionPool);
+    //    queryByRowRecord(customSessionPool);
+    //    Thread.sleep(1000);
+    //    queryByIterator(customSessionPool);
+    //    customSessionPool.close();
+    //    service.shutdown();
+
+    // Redirect-able SessionPool
+    List<String> nodeUrls = new ArrayList<>();
+    nodeUrls.add("127.0.0.1:6667");
+    nodeUrls.add("127.0.0.1:6668");
+    redirectSessionPool =
         new SessionPool.Builder()
-            .host("127.0.0.1")
-            .port(6667)
+            .nodeUrls(nodeUrls)
             .user("root")
             .password("root")
             .maxSize(3)
             .build();
     service = Executors.newFixedThreadPool(10);
 
-    insertRecord();
-    queryByRowRecord();
+    insertRecord(redirectSessionPool);
+    queryByRowRecord(redirectSessionPool);
     Thread.sleep(1000);
-    queryByIterator();
-    pool.close();
+    queryByIterator(redirectSessionPool);
+    customSessionPool.close();
     service.shutdown();
   }
 
   // more insert example, see SessionExample.java
-  private static void insertRecord() throws StatementExecutionException, IoTDBConnectionException {
+  private static void insertRecord(SessionPool sessionPool)
+      throws StatementExecutionException, IoTDBConnectionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
@@ -72,17 +95,17 @@ public class SessionPoolExample {
       values.add(1L);
       values.add(2L);
       values.add(3L);
-      pool.insertRecord(deviceId, time, measurements, types, values);
+      sessionPool.insertRecord(deviceId, time, measurements, types, values);
     }
   }
 
-  private static void queryByRowRecord() {
+  private static void queryByRowRecord(SessionPool sessionPool) {
     for (int i = 0; i < 1; i++) {
       service.submit(
           () -> {
             SessionDataSetWrapper wrapper = null;
             try {
-              wrapper = pool.executeQueryStatement("select * from root.sg1.d1");
+              wrapper = sessionPool.executeQueryStatement("select * from root.sg1.d1");
               System.out.println(wrapper.getColumnNames());
               System.out.println(wrapper.getColumnTypes());
               while (wrapper.hasNext()) {
@@ -92,19 +115,19 @@ public class SessionPoolExample {
               e.printStackTrace();
             } finally {
               // remember to close data set finally!
-              pool.closeResultSet(wrapper);
+              sessionPool.closeResultSet(wrapper);
             }
           });
     }
   }
 
-  private static void queryByIterator() {
+  private static void queryByIterator(SessionPool sessionPool) {
     for (int i = 0; i < 1; i++) {
       service.submit(
           () -> {
             SessionDataSetWrapper wrapper = null;
             try {
-              wrapper = pool.executeQueryStatement("select * from root.sg1.d1");
+              wrapper = sessionPool.executeQueryStatement("select * from root.sg1.d1");
               // get DataIterator like JDBC
               DataIterator dataIterator = wrapper.iterator();
               System.out.println(wrapper.getColumnNames());
@@ -120,7 +143,7 @@ public class SessionPoolExample {
               e.printStackTrace();
             } finally {
               // remember to close data set finally!
-              pool.closeResultSet(wrapper);
+              sessionPool.closeResultSet(wrapper);
             }
           });
     }
