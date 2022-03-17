@@ -2397,8 +2397,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       // non-pure-constant sub-expression, otherwise the timestamp of the row cannot be inferred.
       if (!hasNonPureConstantSubExpression) {
         throw new SQLParserException(
-                "Invalid function expression, all the arguments are constant operands: "
-                        + functionClause.getText());
+            "Invalid function expression, all the arguments are constant operands: "
+                + functionClause.getText());
       }
     }
 
