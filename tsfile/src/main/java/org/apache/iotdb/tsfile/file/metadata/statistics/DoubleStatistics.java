@@ -160,6 +160,12 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
+  public Double getCurrentValue() {
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.DOUBLE, "current"));
+  }
+
+  @Override
   protected void mergeStatisticsValue(Statistics<Double> stats) {
     DoubleStatistics doubleStats = (DoubleStatistics) stats;
     if (this.isEmpty) {

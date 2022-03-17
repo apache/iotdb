@@ -35,6 +35,7 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   private Binary firstValue = new Binary("");
   private Binary lastValue = new Binary("");
+  private Binary currentValue = new Binary("");
   static final int BINARY_STATISTICS_FIXED_RAM_SIZE = 32;
 
   @Override
@@ -57,9 +58,10 @@ public class BinaryStatistics extends Statistics<Binary> {
    * @param first the first value
    * @param last the last value
    */
-  public void initializeStats(Binary first, Binary last) {
+  public void initializeStats(Binary first, Binary last, Binary currentValue) {
     this.firstValue = first;
     this.lastValue = last;
+    this.currentValue = currentValue;
   }
 
   private void updateStats(Binary firstValue, Binary lastValue) {
@@ -113,10 +115,16 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
+  public Binary getCurrentValue() {
+    return currentValue;
+  }
+
+  @Override
   protected void mergeStatisticsValue(Statistics<Binary> stats) {
     BinaryStatistics stringStats = (BinaryStatistics) stats;
     if (isEmpty) {
-      initializeStats(stringStats.getFirstValue(), stringStats.getLastValue());
+      initializeStats(
+          stringStats.getFirstValue(), stringStats.getLastValue(), stringStats.getCurrentValue());
       isEmpty = false;
     } else {
       updateStats(
@@ -130,7 +138,7 @@ public class BinaryStatistics extends Statistics<Binary> {
   @Override
   void updateStats(Binary value) {
     if (isEmpty) {
-      initializeStats(value, value);
+      initializeStats(value, value, value);
       isEmpty = false;
     } else {
       updateStats(value, value);

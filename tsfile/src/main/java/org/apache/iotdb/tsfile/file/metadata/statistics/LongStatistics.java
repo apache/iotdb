@@ -129,6 +129,12 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
+  public Long getCurrentValue() {
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.INT64, "current"));
+  }
+
+  @Override
   void updateStats(long value) {
     if (isEmpty) {
       initializeStats(value, value, value, value, value);

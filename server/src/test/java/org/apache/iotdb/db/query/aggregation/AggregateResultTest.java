@@ -25,6 +25,7 @@ import org.apache.iotdb.db.query.aggregation.impl.AvgAggrResult;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -290,5 +291,30 @@ public class AggregateResultTest {
     ByteBuffer byteBuffer = ByteBuffer.wrap(outputStream.toByteArray());
     AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
     Assert.assertEquals(2d, (double) result.getResult(), 0.01);
+  }
+
+  @Test
+  public void currentValueAggrResultTest() throws QueryProcessException, IOException {
+    AggregateResult currentValueAggrResult1 =
+        AggregateResultFactory.getAggrResultByName(SQLConstant.CURRENT, TSDataType.TEXT, true);
+    AggregateResult currentValueAggrResult2 =
+        AggregateResultFactory.getAggrResultByName(SQLConstant.CURRENT, TSDataType.TEXT, true);
+
+    Statistics statistics1 = Statistics.getStatsByType(TSDataType.TEXT);
+    Statistics statistics2 = Statistics.getStatsByType(TSDataType.TEXT);
+    statistics1.update(1L, Binary.valueOf("2018-12-30 00:00:00"));
+    statistics2.update(2L, Binary.valueOf("2018-12-30 00:00:01"));
+
+    currentValueAggrResult1.updateResultFromStatistics(statistics1);
+    currentValueAggrResult2.updateResultFromStatistics(statistics2);
+    currentValueAggrResult1.merge(currentValueAggrResult2);
+
+    Assert.assertEquals(Binary.valueOf("2018-12-30 00:00:00"), currentValueAggrResult1.getResult());
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    currentValueAggrResult1.serializeTo(outputStream);
+    ByteBuffer byteBuffer = ByteBuffer.wrap(outputStream.toByteArray());
+    AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
+    Assert.assertEquals(Binary.valueOf("2018-12-30 00:00:00"), result.getResult());
   }
 }

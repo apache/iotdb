@@ -152,6 +152,12 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
+  public Integer getCurrentValue() {
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.INT32, "current"));
+  }
+
+  @Override
   protected void mergeStatisticsValue(Statistics<Integer> stats) {
     IntegerStatistics intStats = (IntegerStatistics) stats;
     if (isEmpty) {

@@ -76,6 +76,11 @@ public class TimeStatistics extends Statistics<Long> {
   }
 
   @Override
+  public Long getCurrentValue() {
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, "current"));
+  }
+
+  @Override
   void updateStats(long value) {
     throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, "update stats"));
   }
