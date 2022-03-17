@@ -32,54 +32,51 @@ import java.util.concurrent.Executors;
 
 public class SessionPoolExample {
 
-  private static SessionPool customSessionPool;
-  private static SessionPool redirectSessionPool;
+  private static SessionPool sessionPool;
   private static ExecutorService service;
 
-  public static void main(String[] args)
-      throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
-    // Custom SessionPool
-    //    customSessionPool =
-    //        new SessionPool.Builder()
-    //            .host("127.0.0.1")
-    //            .port(6667)
-    //            .user("root")
-    //            .password("root")
-    //            .maxSize(3)
-    //            .build();
-    //    service = Executors.newFixedThreadPool(10);
-    //
-    //    insertRecord(customSessionPool);
-    //    queryByRowRecord(customSessionPool);
-    //    Thread.sleep(1000);
-    //    queryByIterator(customSessionPool);
-    //    customSessionPool.close();
-    //    service.shutdown();
+  /** Build a custom SessionPool for this example */
+  private static void constructCustomSessionPool() {
+    sessionPool =
+        new SessionPool.Builder()
+            .host("127.0.0.1")
+            .port(6667)
+            .user("root")
+            .password("root")
+            .maxSize(3)
+            .build();
+  }
 
-    // Redirect-able SessionPool
+  /** Build a redirect-able SessionPool for this example */
+  private static void constructRedirectSessionPool() {
     List<String> nodeUrls = new ArrayList<>();
     nodeUrls.add("127.0.0.1:6667");
     nodeUrls.add("127.0.0.1:6668");
-    redirectSessionPool =
+    sessionPool =
         new SessionPool.Builder()
             .nodeUrls(nodeUrls)
             .user("root")
             .password("root")
             .maxSize(3)
             .build();
-    service = Executors.newFixedThreadPool(10);
+  }
 
-    insertRecord(redirectSessionPool);
-    queryByRowRecord(redirectSessionPool);
+  public static void main(String[] args)
+      throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
+    // Choose the SessionPool you going to use
+    constructRedirectSessionPool();
+
+    service = Executors.newFixedThreadPool(10);
+    insertRecord();
+    queryByRowRecord();
     Thread.sleep(1000);
-    queryByIterator(redirectSessionPool);
-    redirectSessionPool.close();
+    queryByIterator();
+    sessionPool.close();
     service.shutdown();
   }
 
   // more insert example, see SessionExample.java
-  private static void insertRecord(SessionPool sessionPool)
-      throws StatementExecutionException, IoTDBConnectionException {
+  private static void insertRecord() throws StatementExecutionException, IoTDBConnectionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
@@ -99,7 +96,7 @@ public class SessionPoolExample {
     }
   }
 
-  private static void queryByRowRecord(SessionPool sessionPool) {
+  private static void queryByRowRecord() {
     for (int i = 0; i < 1; i++) {
       service.submit(
           () -> {
@@ -121,7 +118,7 @@ public class SessionPoolExample {
     }
   }
 
-  private static void queryByIterator(SessionPool sessionPool) {
+  private static void queryByIterator() {
     for (int i = 0; i < 1; i++) {
       service.submit(
           () -> {
