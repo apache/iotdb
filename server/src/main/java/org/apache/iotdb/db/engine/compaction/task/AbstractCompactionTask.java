@@ -21,22 +21,14 @@ package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossCompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
-import org.apache.iotdb.db.service.metrics.Metric;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.type.Counter;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -51,6 +43,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   protected String fullStorageGroupName;
   protected long timePartition;
   protected final AtomicInteger currentTaskNum;
+  protected long timeCost = 0L;
 
   public AbstractCompactionTask(
       String fullStorageGroupName, long timePartition, AtomicInteger currentTaskNum) {
@@ -70,6 +63,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
     } finally {
+      timeCost = System.currentTimeMillis() - startTime;
       if (!(this instanceof RewriteCrossCompactionRecoverTask)
           && !(this instanceof SizeTieredCompactionRecoverTask)) {
         CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
@@ -77,42 +71,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       this.currentTaskNum.decrementAndGet();
     }
 
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .timer(
-              System.currentTimeMillis() - startTime,
-              TimeUnit.MILLISECONDS,
-              Metric.COST_TASK.toString(),
-              MetricLevel.NORMAL,
-              Tag.NAME.toString(),
-              "compaction");
-      if (this instanceof AbstractInnerSpaceCompactionTask) {
-        Counter counter =
-            MetricsService.getInstance()
-                .getMetricManager()
-                .getOrCreateCounter(
-                    Metric.COMPACTION_TASK_COUNT.toString(),
-                    MetricLevel.NORMAL,
-                    Tag.NAME.toString(),
-                    "inner_compaction_count",
-                    Tag.TYPE.toString(),
-                    ((AbstractInnerSpaceCompactionTask) this).isSequence()
-                        ? "sequence"
-                        : "unsequence");
-        counter.inc();
-      } else if (this instanceof AbstractCrossSpaceCompactionTask) {
-        Counter counter =
-            MetricsService.getInstance()
-                .getMetricManager()
-                .getOrCreateCounter(
-                    Metric.COMPACTION_TASK_COUNT.toString(),
-                    MetricLevel.NORMAL,
-                    Tag.NAME.toString(),
-                    "cross_compaction_count");
-        counter.inc();
-      }
-    }
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {}
 
     return null;
   }
@@ -144,4 +103,8 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   }
 
   public abstract void resetCompactionCandidateStatusForAllSourceFiles();
+
+  public long getTimeCost() {
+    return timeCost;
+  }
 }

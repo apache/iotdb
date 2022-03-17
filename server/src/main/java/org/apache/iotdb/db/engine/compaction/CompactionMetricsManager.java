@@ -18,16 +18,22 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
+import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
+import java.util.concurrent.TimeUnit;
+
 public class CompactionMetricsManager {
 
-  public static void recordIOSize(
+  public static void recordIOInfo(
       CompactionType compactionType,
       ProcessChunkType processChunkType,
       boolean aligned,
@@ -56,5 +62,101 @@ public class CompactionMetricsManager {
             "compaction",
             Tag.NAME.toString(),
             "total");
+  }
+
+  public static void recordTaskInfo(AbstractCompactionTask task, CompactionTaskStatus status) {
+    String taskType = "unknown";
+    boolean isInnerTask = false;
+    if (task instanceof AbstractInnerSpaceCompactionTask) {
+      isInnerTask = true;
+      taskType = "inner";
+    } else if (task instanceof AbstractCrossSpaceCompactionTask) {
+      taskType = "cross";
+    }
+
+    switch (status) {
+      case ADD_TO_QUEUE:
+        MetricsService.getInstance()
+            .getMetricManager()
+            .getOrCreateGauge(
+                Metric.QUEUE.toString(),
+                MetricLevel.NORMAL,
+                Tag.NAME.toString(),
+                "compaction_" + taskType,
+                Tag.STATUS.toString(),
+                "waiting")
+            .incr(1);
+        break;
+      case POLL_FROM_QUEUE:
+        MetricsService.getInstance()
+            .getMetricManager()
+            .getOrCreateGauge(
+                Metric.QUEUE.toString(),
+                MetricLevel.NORMAL,
+                Tag.NAME.toString(),
+                "compaction_" + taskType,
+                Tag.STATUS.toString(),
+                "waiting")
+            .decr(1);
+        break;
+      case READY_TO_EXECUTE:
+        MetricsService.getInstance()
+            .getMetricManager()
+            .getOrCreateGauge(
+                Metric.QUEUE.toString(),
+                MetricLevel.NORMAL,
+                Tag.NAME.toString(),
+                "compaction_" + taskType,
+                Tag.STATUS.toString(),
+                "running")
+            .incr(1);
+        break;
+      case FINISHED:
+        MetricsService.getInstance()
+            .getMetricManager()
+            .getOrCreateGauge(
+                Metric.QUEUE.toString(),
+                MetricLevel.NORMAL,
+                Tag.NAME.toString(),
+                "compaction_" + taskType,
+                Tag.STATUS.toString(),
+                "running")
+            .decr(1);
+        MetricsService.getInstance()
+            .getMetricManager()
+            .timer(
+                task.getTimeCost(),
+                TimeUnit.MILLISECONDS,
+                Metric.COST_TASK.toString(),
+                MetricLevel.NORMAL,
+                Tag.NAME.toString(),
+                "compaction",
+                Tag.NAME.toString(),
+                isInnerTask ? "inner" : "cross");
+        if (isInnerTask) {
+          MetricsService.getInstance()
+              .getMetricManager()
+              .count(
+                  1,
+                  Metric.COMPACTION_TASK_COUNT.toString(),
+                  MetricLevel.NORMAL,
+                  Tag.NAME.toString(),
+                  "inner_compaction_count",
+                  Tag.TYPE.toString(),
+                  ((AbstractInnerSpaceCompactionTask) task).isSequence()
+                      ? "sequence"
+                      : "unsequence");
+        } else {
+          MetricsService.getInstance()
+              .getMetricManager()
+              .count(
+                  1,
+                  Metric.COMPACTION_TASK_COUNT.toString(),
+                  MetricLevel.NORMAL,
+                  Tag.NAME.toString(),
+                  "cross_compaction_count");
+        }
+        break;
+    }
   }
 }

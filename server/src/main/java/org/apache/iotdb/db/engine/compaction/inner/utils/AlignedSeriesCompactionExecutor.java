@@ -131,7 +131,7 @@ public class AlignedSeriesCompactionExecutor {
       CompactionTaskManager.mergeRateLimiterAcquire(
           rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       if (enableMetrics) {
-        CompactionMetricsManager.recordIOSize(
+        CompactionMetricsManager.recordIOInfo(
             CompactionType.INNER_SEQ_COMPACTION,
             ProcessChunkType.DESERIALIZE_CHUNK,
             true,
@@ -171,7 +171,7 @@ public class AlignedSeriesCompactionExecutor {
       CompactionTaskManager.mergeRateLimiterAcquire(
           rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       if (enableMetrics) {
-        CompactionMetricsManager.recordIOSize(
+        CompactionMetricsManager.recordIOInfo(
             CompactionType.INNER_SEQ_COMPACTION,
             ProcessChunkType.DESERIALIZE_CHUNK,
             true,

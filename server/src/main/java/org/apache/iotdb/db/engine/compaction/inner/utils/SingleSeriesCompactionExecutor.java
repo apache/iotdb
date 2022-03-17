@@ -268,7 +268,7 @@ public class SingleSeriesCompactionExecutor {
       maxEndTimestamp = chunkMetadata.getEndTime();
     }
     if (enableMetrics) {
-      CompactionMetricsManager.recordIOSize(
+      CompactionMetricsManager.recordIOInfo(
           CompactionType.INNER_SEQ_COMPACTION,
           isCachedChunk ? ProcessChunkType.MERGE_CHUNK : ProcessChunkType.FLUSH_CHUNK,
           false,
@@ -283,7 +283,7 @@ public class SingleSeriesCompactionExecutor {
       CompactionTaskManager.mergeRateLimiterAcquire(
           compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       if (enableMetrics) {
-        CompactionMetricsManager.recordIOSize(
+        CompactionMetricsManager.recordIOInfo(
             CompactionType.INNER_SEQ_COMPACTION,
             ProcessChunkType.DESERIALIZE_CHUNK,
             false,
@@ -307,7 +307,7 @@ public class SingleSeriesCompactionExecutor {
     CompactionTaskManager.mergeRateLimiterAcquire(
         compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
     if (enableMetrics) {
-      CompactionMetricsManager.recordIOSize(
+      CompactionMetricsManager.recordIOInfo(
           CompactionType.INNER_SEQ_COMPACTION,
           ProcessChunkType.DESERIALIZE_CHUNK,
           false,

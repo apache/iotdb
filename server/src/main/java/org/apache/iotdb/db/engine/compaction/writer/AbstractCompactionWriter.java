@@ -140,7 +140,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     if (measurementPointCount % 10 == 0 && checkChunkSize()) {
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
       if (enableMetrics) {
-        CompactionMetricsManager.recordIOSize(
+        CompactionMetricsManager.recordIOInfo(
             this instanceof CrossSpaceCompactionWriter
                 ? CompactionType.CROSS_COMPACTION
                 : CompactionType.INNER_UNSEQ_COMPACTION,
