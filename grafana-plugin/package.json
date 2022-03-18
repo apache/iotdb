@@ -23,7 +23,7 @@
     "@types/lodash": "latest"
   },
   "engines": {
-    "node": ">=12"
+    "node": ">=14"
   },
   "dependencies": {
     "@grafana/runtime": "^8.3.2",
