@@ -114,7 +114,7 @@ public class AggregationQueryOperator extends QueryOperator {
 
     // If it is the select current() aggregate function, the data type is text and there are no
     // parameters
-    if ("current".equalsIgnoreCase(String.valueOf(aggregations.get(0)))) {
+    if (aggregations.size() == 0) {
       dataTypes.add(TSDataType.TEXT);
     }
 
