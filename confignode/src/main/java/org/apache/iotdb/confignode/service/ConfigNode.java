@@ -38,7 +38,7 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private static final RegisterManager registerManager = new RegisterManager();
 
-  public ConfigNode() {
+  private ConfigNode() {
     // empty constructor
   }
 

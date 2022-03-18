@@ -100,14 +100,6 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   // TODO: better to throw exception if the client can not be get. Then we can remove this field.
   private boolean printClientConnectionErrorStack = false;
 
-  // establish the cluster as a seed
-  private static final String MODE_START = "-s";
-  // join an established cluster
-  private static final String MODE_ADD = "-a";
-  // send a request to remove a node, more arguments: ip-of-removed-node
-  // metaport-of-removed-node
-  private static final String MODE_REMOVE = "-r";
-
   private MetaGroupMember metaGroupMember;
 
   private DataGroupEngine dataGroupEngine;
