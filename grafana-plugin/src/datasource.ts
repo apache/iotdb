@@ -41,7 +41,7 @@ export class DataSource extends DataSourceApi<IoTDBQuery, IoTDBOptions> {
 
   async query(options: DataQueryRequest<IoTDBQuery>): Promise<DataQueryResponse> {
     const { range } = options;
-    const dataFrames = options.targets.map(target => {
+    const dataFrames = options.targets.map((target) => {
       target.startTime = range!.from.valueOf();
       target.endTime = range!.to.valueOf();
       if (options) {
@@ -64,8 +64,8 @@ export class DataSource extends DataSourceApi<IoTDBQuery, IoTDBOptions> {
       return this.doRequest(target);
     });
     return Promise.all(dataFrames)
-      .then(a => a.reduce((accumulator, value) => accumulator.concat(value), []))
-      .then(data => ({ data }));
+      .then((a) => a.reduce((accumulator, value) => accumulator.concat(value), []))
+      .then((data) => ({ data }));
   }
 
   async doRequest(query: IoTDBQuery) {
@@ -81,8 +81,8 @@ export class DataSource extends DataSourceApi<IoTDBQuery, IoTDBOptions> {
         data: JSON.stringify(query),
         headers: myHeader,
       })
-      .then(response => response.data)
-      .then(a => {
+      .then((response) => response.data)
+      .then((a) => {
         if (a.hasOwnProperty('expressions') && a.expressions !== null) {
           let dataframes: any = [];
           a.expressions.map((v: any, index: any) => {
@@ -125,14 +125,14 @@ export class DataSource extends DataSourceApi<IoTDBQuery, IoTDBOptions> {
         data: sql,
         headers: myHeader,
       })
-      .then(response => {
+      .then((response) => {
         if (response.data instanceof Array) {
           return response.data;
         } else {
           throw 'the result is not array';
         }
       })
-      .then(data => data.map(toMetricFindValue));
+      .then((data) => data.map(toMetricFindValue));
   }
 
   async testDatasource() {
@@ -147,7 +147,7 @@ export class DataSource extends DataSourceApi<IoTDBQuery, IoTDBOptions> {
     });
     let status = '';
     let message = '';
-    await response.then(res => {
+    await response.then((res) => {
       if (res.data.code === 200) {
         status = 'success';
         message = 'Success';
