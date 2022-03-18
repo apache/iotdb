@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.service.startup;
 
-import org.apache.iotdb.confignode.exception.startup.StartupException;
+import org.apache.iotdb.commons.exception.StartupException;
 
 @FunctionalInterface
 public interface StartupCheck {

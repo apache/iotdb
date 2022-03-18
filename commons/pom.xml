@@ -34,6 +34,18 @@
         <commons.it.skip>${commons.test.skip}</commons.it.skip>
         <commons.ut.skip>${commons.test.skip}</commons.ut.skip>
     </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.thrift</groupId>
+            <artifactId>libthrift</artifactId>
+            <version>${thrift.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>service-rpc</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
     <build>
         <plugins>
             <!--

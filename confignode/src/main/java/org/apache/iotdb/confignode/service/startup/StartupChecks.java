@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.confignode.service.startup;
 
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
-import org.apache.iotdb.confignode.exception.startup.StartupException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

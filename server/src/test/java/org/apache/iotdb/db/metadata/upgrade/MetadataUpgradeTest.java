@@ -67,7 +67,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 
 public class MetadataUpgradeTest {
 

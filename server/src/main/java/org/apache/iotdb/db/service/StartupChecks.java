@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.slf4j.Logger;
