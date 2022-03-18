@@ -505,6 +505,11 @@
                 <version>${airline.version}</version>
             </dependency>
             <dependency>
+              <groupId>io.airlift</groupId>
+              <artifactId>concurrent</artifactId>
+              <version>214</version>
+            </dependency>
+            <dependency>
                 <groupId>org.fusesource.mqtt-client</groupId>
                 <artifactId>mqtt-client</artifactId>
                 <version>1.12</version>

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.schedule;
 
-import org.apache.iotdb.db.mpp.buffer.IDataBlockManager;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceID;
 
 /** the interface of fragment instance scheduling */

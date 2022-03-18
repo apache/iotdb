@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,12 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.buffer;
 
-namespace java org.apache.iotdb.mpp.common.rpc.thrift
+import org.apache.iotdb.db.mpp.common.TsBlock;
 
+import com.google.common.util.concurrent.ListenableFuture;
 
-struct FragmentInstanceID {
-  1: required string queryID
-  2: required string fragmentID
-  3: required string instanceID
+import java.io.Closeable;
+
+public interface ISourceHandle extends Closeable {
+
+  /** Get a {@link TsBlock} from the input buffer. */
+  TsBlock receive();
+
+  /** Check if there are more tsblocks. */
+  boolean isFinished();
+
+  /** Get a future that will be completed when the input buffer is not empty. */
+  ListenableFuture<Void> isBlocked();
+
+  /** Close the handle. Discarding all tsblocks which may still be in memory buffer. */
+  @Override
+  void close();
 }

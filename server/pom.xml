@@ -105,6 +105,10 @@
             </exclusions>
         </dependency>
         <dependency>
+          <groupId>io.airlift</groupId>
+          <artifactId>concurrent</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-server</artifactId>
             <version>${jetty.version}</version>
