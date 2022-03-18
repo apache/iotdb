@@ -51,13 +51,14 @@ Shell > uzip iotdb-<version>.zip
 
 您可以获取已发布的源码 [https://iotdb.apache.org/Download/](https://iotdb.apache.org/Download/) ，或者从 [https://github.com/apache/iotdb/tree/master](https://github.com/apache/iotdb/tree/master) git 仓库获取
 
-源码克隆后，进入到源码文件夹目录下。如果您想编译已经发布过的版本，可以先用`git checkout -b my_{project.version} v{project.version}`命令新建一个分支。比如您要编译0.12.4这个版本，您可以用如下命令去切换分支：
+源码克隆后，进入到源码文件夹目录下。如果您想编译已经发布过的版本，可以先用`git checkout -b my_{project.version} v{project.version}`命令新建并切换分支。比如您要编译0.12.4这个版本，您可以用如下命令去切换分支：
 
 ```shell
 > git checkout -b my_0.12.4 v0.12.4
 ```
 
 切换分支之后就可以使用以下命令进行编译：
+
 ```
 > mvn clean package -pl server -am -Dmaven.test.skip=true
 ```
