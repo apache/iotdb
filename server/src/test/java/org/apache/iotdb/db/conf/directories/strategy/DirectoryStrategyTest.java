@@ -21,7 +21,6 @@ package org.apache.iotdb.db.conf.directories.strategy;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.junit.After;
 import org.junit.Before;
@@ -45,7 +44,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(PowerMockRunner.class)
 @PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*", "org.w3c.*"})
-@PrepareForTest(CommonUtils.class)
+@PrepareForTest(JVMCommonUtils.class)
 public class DirectoryStrategyTest {
 
   List<String> dataDirList;
@@ -62,7 +61,7 @@ public class DirectoryStrategyTest {
     fullDirIndexSet.add(1);
     fullDirIndexSet.add(3);
 
-    PowerMockito.mockStatic(CommonUtils.class);
+    PowerMockito.mockStatic(JVMCommonUtils.class);
     for (int i = 0; i < dataDirList.size(); i++) {
       boolean res = !fullDirIndexSet.contains(i);
       PowerMockito.when(JVMCommonUtils.hasSpace(dataDirList.get(i))).thenReturn(res);
