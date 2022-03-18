@@ -94,7 +94,7 @@ public class AggregationPlan extends RawDataQueryPlan {
       respColumns.add(resultColumn.getResultColumnName());
     }
     seriesTypes.addAll(SchemaUtils.getSeriesTypesByPaths(paths, aggregations));
-    if (aggregations.get(0).equalsIgnoreCase("current")) {
+    if (aggregations.contains("current")) {
       seriesTypes.remove(null);
       seriesTypes.add(TSDataType.TEXT);
     }
