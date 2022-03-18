@@ -2382,7 +2382,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     FunctionExpression functionExpression =
         new FunctionExpression(parseIdentifier(functionClause.functionName().getText()));
 
-    if (functionClause.expression().size() != 0) {
+    if (!functionExpression.getFunctionName().equalsIgnoreCase("current")) {
       // expressions
       boolean hasNonPureConstantSubExpression = false;
       for (IoTDBSqlParser.ExpressionContext expression : functionClause.expression()) {

@@ -80,9 +80,11 @@ public class AggregationQueryOperator extends QueryOperator {
       if (expression instanceof FunctionExpression
           && (expression.getExpressions().size() != 1
               || !(expression.getExpressions().get(0) instanceof TimeSeriesOperand))
-          && expression.getExpressions().size() != 0) {
+          && !"current"
+              .equalsIgnoreCase(
+                  String.valueOf(((FunctionExpression) expression).getFunctionName()))) {
         throw new LogicalOperatorException(
-            "The argument of the aggregation function must be a time series or null.");
+            "The argument of the aggregation function must be a time series.");
       }
     }
   }
@@ -112,7 +114,7 @@ public class AggregationQueryOperator extends QueryOperator {
 
     // If it is the select current() aggregate function, the data type is text and there are no
     // parameters
-    if (dataTypes.size() == 0) {
+    if ("current".equalsIgnoreCase(String.valueOf(aggregations.get(0)))) {
       dataTypes.add(TSDataType.TEXT);
     }
 
