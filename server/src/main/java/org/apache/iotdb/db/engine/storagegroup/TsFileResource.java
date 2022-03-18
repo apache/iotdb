@@ -582,44 +582,41 @@ public class TsFileResource {
     return this.status == TsFileResourceStatus.COMPACTION_CANDIDATE;
   }
 
-  public boolean setStatus(TsFileResourceStatus status) {
-    boolean success = false;
+  public void setStatus(TsFileResourceStatus status) {
     switch (status) {
       case CLOSED:
         if (this.status != TsFileResourceStatus.DELETED) {
           this.status = TsFileResourceStatus.CLOSED;
-          success = true;
         }
         break;
       case UNCLOSED:
         // Print a stack trace in a warn statement.
-        this.status = TsFileResourceStatus.UNCLOSED;
-        RuntimeException e = new RuntimeException();
-        LOGGER.warn("The status of {} is setting to unclosed", file, e);
-        break;
+        throw new RuntimeException("Cannot set the status of a TsFileResource to UNCLOSED");
       case DELETED:
-        if (this.status == TsFileResourceStatus.CLOSED
-            || this.status == TsFileResourceStatus.COMPACTING) {
+        if (this.status != TsFileResourceStatus.UNCLOSED) {
           this.status = TsFileResourceStatus.DELETED;
-          success = true;
+        } else {
+          throw new RuntimeException(
+              "Cannot set the status of an unclosed TsFileResource to DELETED");
         }
         break;
       case COMPACTING:
         if (this.status == TsFileResourceStatus.COMPACTION_CANDIDATE) {
           this.status = TsFileResourceStatus.COMPACTING;
-          success = true;
+        } else {
+          throw new RuntimeException(
+              "Cannot set the status of TsFileResource to COMPACTING while its status is "
+                  + status);
         }
         break;
       case COMPACTION_CANDIDATE:
         if (this.status == TsFileResourceStatus.CLOSED) {
           this.status = TsFileResourceStatus.COMPACTION_CANDIDATE;
-          success = true;
         }
         break;
       default:
         break;
     }
-    return success;
   }
 
   /**

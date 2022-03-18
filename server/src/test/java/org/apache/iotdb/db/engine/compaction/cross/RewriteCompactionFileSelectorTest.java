@@ -610,11 +610,12 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                       + 0
                       + ".tsfile"));
       TsFileResource fileResource = new TsFileResource(file);
-      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      if (i - 11 != 3) {
+        fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      }
       prepareFile(fileResource, i, 1, i);
       seqList.add(fileResource);
     }
-    seqList.get(3).setStatus(TsFileResourceStatus.UNCLOSED);
     int unseqFileNum = 4;
     // 4 unseq files [7~9] [10~13] [14~16] [17~18]
     for (int i = 0; i < unseqFileNum; i++) {
