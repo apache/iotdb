@@ -9,6 +9,11 @@ on:
     branches:
       - master
       - "new_*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
