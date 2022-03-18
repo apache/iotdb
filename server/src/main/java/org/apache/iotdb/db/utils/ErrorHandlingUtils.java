@@ -80,7 +80,8 @@ public class ErrorHandlingUtils {
     if (status != null) {
       // ignore logging sg not ready exception
       if (status.getCode() != TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode()) {
-        LOGGER.error("Status code: {}, Query Statement: {} failed", status.getCode(), operation, e);
+        LOGGER.error("Status code: {}, Query Statement: {} failed", status.getCode(), operation);
+        LOGGER.error(e.toString());
       }
       return status;
     } else {
