@@ -20,10 +20,6 @@
 package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.statemachine.IStateMachine;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -31,9 +27,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-
-public class DataRegionStateMachine implements IStateMachine {
+public class DataRegionStateMachine extends BaseStateMachine {
 
   private static final Logger logger = LoggerFactory.getLogger(DataRegionStateMachine.class);
 
@@ -44,28 +38,14 @@ public class DataRegionStateMachine implements IStateMachine {
   public void stop() {}
 
   @Override
-  public TSStatus write(IConsensusRequest request) {
-    PhysicalPlan plan;
-    if (request instanceof ByteBufferConsensusRequest) {
-      try {
-        plan = PhysicalPlan.Factory.create(((ByteBufferConsensusRequest) request).getContent());
-      } catch (IOException | IllegalPathException e) {
-        logger.error("Deserialization error for write plan : {}", request);
-        return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      }
-    } else if (request instanceof PhysicalPlan) {
-      plan = (PhysicalPlan) request;
-    } else {
-      logger.error("Unexpected write plan : {}", request);
-      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-    }
+  public TSStatus write(PhysicalPlan plan) {
     logger.info("Execute write plan in DataRegionStateMachine : {}", plan);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
-  public DataSet read(IConsensusRequest request) {
-    logger.info("Execute read plan in DataRegionStateMachine: {}", request);
+  public DataSet read(PhysicalPlan plan) {
+    logger.info("Execute read plan in DataRegionStateMachine: {}", plan);
     return null;
   }
 }
