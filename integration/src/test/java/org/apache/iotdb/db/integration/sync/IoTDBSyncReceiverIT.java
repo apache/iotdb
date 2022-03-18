@@ -335,6 +335,7 @@ public class IoTDBSyncReceiverIT {
 
       // 6. drop pipe
       client.heartbeat(new SyncRequest(RequestType.DROP, pipeName1, remoteIp1, createdTime1));
+      Thread.sleep(500);
       client.senderTransport(
           new DeletionPipeData(
               new Deletion(new PartialPath("root.sg1.**"), 0, 0, 99), serialNum++));
