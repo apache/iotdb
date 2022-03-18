@@ -69,6 +69,15 @@ Shell > uzip iotdb-<version>.zip
 +- tools/      <-- system tools
 ```
 
+如果您想要编译项目中的某个模块，您可以在源码文件夹中使用`mvn clean package -pl {module.name} -am -Dmaven.test.skip=true`命令进行编译。如果您需要的是带依赖的 jar 包，您可以在编译命令后面加上`-P get-jar-with-dependencies`参数。比如您想编译带依赖的 jdbc jar 包，您就可以使用以下命令进行编译：  
+
+```shell
+> mvn clean package -pl jdbc -am "-Dmaven.test.skip=true"  -P get-jar-with-dependencies
+```
+
+编译完成后就可以在`{module.name}/target`目录中找到需要的包了。
+
+
 ### 通过 Docker 安装 (Dockerfile)
 
 Apache IoTDB 的 Docker 镜像已经上传至 [https://hub.docker.com/r/apache/iotdb](https://hub.docker.com/r/apache/iotdb)，
