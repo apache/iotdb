@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.consensus.exception;
 
-import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.ConsensusGroupId;
-import org.apache.iotdb.consensus.common.Peer;
 
 public class PeerNotInGroupException extends ConsensusException {
   public PeerNotInGroupException(ConsensusGroupId groupId) {

@@ -23,7 +23,9 @@ import org.apache.iotdb.consensus.common.Peer;
 
 public class PeerAlreadyInGroupException extends ConsensusException {
   public PeerAlreadyInGroupException(ConsensusGroupId groupId, Peer peer) {
-    super(String.format("peer %s:%d already in group %d",
+    super(
+        String.format(
+            "peer %s:%d already in group %d",
             peer.getEndpoint().getIp(), peer.getEndpoint().getPort(), groupId.getId()));
   }
 }

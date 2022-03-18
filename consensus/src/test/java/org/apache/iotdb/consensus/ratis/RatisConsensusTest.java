@@ -135,7 +135,7 @@ public class RatisConsensusTest {
 
     @Override
     public ByteBuffer serializeTSStatus(TSStatus tsStatus) {
-      return ByteBuffer.wrap(new byte[]{});
+      return ByteBuffer.wrap(new byte[] {});
     }
 
     @Override
