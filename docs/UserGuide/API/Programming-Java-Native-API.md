@@ -286,7 +286,9 @@ public List<String> showMeasurementsInTemplate(String templateName);
 public List<String> showMeasurementsInTemplate(String templateName, String pattern);
 ```
 
-To implement schema template, you can  set the measurement template named 'templateName' at path 'prefixPath'.
+To implement schema template, you can set the measurement template named 'templateName' at path 'prefixPath'.
+
+**Please notice that, we strongly recommend not setting templates on the nodes above the storage group to accommodate future updates and collaboration between modules.**
 
 ``` java
 void setSchemaTemplate(String templateName, String prefixPath)

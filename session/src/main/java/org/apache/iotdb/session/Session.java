@@ -1581,7 +1581,7 @@ public class Session {
    */
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
+    TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
     try {
       getSessionConnection(tablet.deviceId).insertTablet(request);
     } catch (RedirectException e) {
@@ -1601,8 +1601,7 @@ public class Session {
    */
   public void insertAlignedTablet(Tablet tablet)
       throws StatementExecutionException, IoTDBConnectionException {
-    tablet.setAligned(true);
-    insertTablet(tablet);
+    insertAlignedTablet(tablet, false);
   }
 
   /**
@@ -1613,11 +1612,15 @@ public class Session {
    */
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    tablet.setAligned(true);
-    insertTablet(tablet, sorted);
+    TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, true);
+    try {
+      getSessionConnection(tablet.deviceId).insertTablet(request);
+    } catch (RedirectException e) {
+      handleRedirection(tablet.deviceId, e.getEndPoint());
+    }
   }
 
-  private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted)
+  private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted, boolean isAligned)
       throws BatchExecutionException {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
@@ -1631,7 +1634,7 @@ public class Session {
     }
 
     request.setPrefixPath(tablet.deviceId);
-    request.setIsAligned(tablet.isAligned());
+    request.setIsAligned(isAligned);
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
     request.setValues(SessionUtils.getValueBuffer(tablet));
     request.setSize(tablet.rowSize);
@@ -1661,9 +1664,10 @@ public class Session {
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     if (enableCacheLeader) {
-      insertTabletsWithLeaderCache(tablets, sorted);
+      insertTabletsWithLeaderCache(tablets, sorted, false);
     } else {
-      TSInsertTabletsReq request = genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted);
+      TSInsertTabletsReq request =
+          genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, false);
       try {
         defaultSessionConnection.insertTablets(request);
       } catch (RedirectException e) {
@@ -1685,10 +1689,7 @@ public class Session {
    */
   public void insertAlignedTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
-    for (Tablet tablet : tablets.values()) {
-      tablet.setAligned(true);
-    }
-    insertTablets(tablets, false);
+    insertAlignedTablets(tablets, false);
   }
 
   /**
@@ -1716,36 +1717,34 @@ public class Session {
     }
   }
 
-  private void insertTabletsWithLeaderCache(Map<String, Tablet> tablets, boolean sorted)
+  private void insertTabletsWithLeaderCache(
+      Map<String, Tablet> tablets, boolean sorted, boolean isAligned)
       throws IoTDBConnectionException, StatementExecutionException {
     Map<SessionConnection, TSInsertTabletsReq> tabletGroup = new HashMap<>();
     for (Entry<String, Tablet> entry : tablets.entrySet()) {
       final SessionConnection connection = getSessionConnection(entry.getKey());
       TSInsertTabletsReq request =
           tabletGroup.computeIfAbsent(connection, k -> new TSInsertTabletsReq());
-      updateTSInsertTabletsReq(request, entry.getValue(), sorted);
+      updateTSInsertTabletsReq(request, entry.getValue(), sorted, isAligned);
     }
 
     insertByGroup(tabletGroup, SessionConnection::insertTablets);
   }
 
-  private TSInsertTabletsReq genTSInsertTabletsReq(List<Tablet> tablets, boolean sorted)
-      throws BatchExecutionException {
+  private TSInsertTabletsReq genTSInsertTabletsReq(
+      List<Tablet> tablets, boolean sorted, boolean isAligned) throws BatchExecutionException {
     TSInsertTabletsReq request = new TSInsertTabletsReq();
     if (tablets.isEmpty()) {
       throw new BatchExecutionException("No tablet is inserting!");
     }
-    boolean isFirstTabletAligned = tablets.get(0).isAligned();
     for (Tablet tablet : tablets) {
-      if (isFirstTabletAligned != tablet.isAligned()) {
-        throw new BatchExecutionException("The tablets should be all aligned or non-aligned!");
-      }
-      updateTSInsertTabletsReq(request, tablet, sorted);
+      updateTSInsertTabletsReq(request, tablet, sorted, isAligned);
     }
     return request;
   }
 
-  private void updateTSInsertTabletsReq(TSInsertTabletsReq request, Tablet tablet, boolean sorted)
+  private void updateTSInsertTabletsReq(
+      TSInsertTabletsReq request, Tablet tablet, boolean sorted, boolean isAligned)
       throws BatchExecutionException {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
@@ -1753,10 +1752,7 @@ public class Session {
     request.addToPrefixPaths(tablet.deviceId);
     List<String> measurements = new ArrayList<>();
     List<Integer> dataTypes = new ArrayList<>();
-
-    if (tablet.isAligned()) {
-      request.setIsAligned(true);
-    }
+    request.setIsAligned(isAligned);
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
       measurements.add(measurementSchema.getMeasurementId());
       dataTypes.add(measurementSchema.getType().ordinal());
@@ -1783,7 +1779,7 @@ public class Session {
    */
   public void testInsertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
+    TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
     defaultSessionConnection.testInsertTablet(request);
   }
 
@@ -1802,7 +1798,8 @@ public class Session {
    */
   public void testInsertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertTabletsReq request = genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted);
+    TSInsertTabletsReq request =
+        genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, false);
     defaultSessionConnection.testInsertTablets(request);
   }
 

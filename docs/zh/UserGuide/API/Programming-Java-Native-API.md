@@ -279,6 +279,7 @@ public List<String> showMeasurementsInTemplate(String templateName, String patte
 ```
 
 * 将名为'templateName'的元数据模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的元数据模板
+* **请注意，我们强烈建议您将模板设置在存储组或存储组下层的节点中，以更好地适配未来版本更新及各模块的协作**
 
 ``` java
 void setSchemaTemplate(String templateName, String prefixPath)

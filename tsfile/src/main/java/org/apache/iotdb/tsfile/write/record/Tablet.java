@@ -63,8 +63,6 @@ public class Tablet {
   public int rowSize;
   /** the maximum number of rows for this tablet */
   private final int maxRowNumber;
-  /** whether this tablet store data of aligned timeseries or not */
-  private boolean isAligned;
 
   /**
    * Return a tablet with default specified row number. This is the standard constructor (all Tablet
@@ -95,13 +93,7 @@ public class Tablet {
 
     int indexInSchema = 0;
     for (MeasurementSchema schema : schemas) {
-      if (schema.getType() == TSDataType.VECTOR) {
-        for (String measurementId : schema.getSubMeasurementsList()) {
-          measurementIndex.put(measurementId, indexInSchema);
-        }
-      } else {
-        measurementIndex.put(schema.getMeasurementId(), indexInSchema);
-      }
+      measurementIndex.put(schema.getMeasurementId(), indexInSchema);
       indexInSchema++;
     }
 
@@ -116,6 +108,13 @@ public class Tablet {
 
   public void setSchemas(List<MeasurementSchema> schemas) {
     this.schemas = schemas;
+  }
+
+  public void initBitMaps() {
+    this.bitMaps = new BitMap[schemas.size()];
+    for (int column = 0; column < schemas.size(); column++) {
+      this.bitMaps[column] = new BitMap(getMaxRowNumber());
+    }
   }
 
   public void addTimestamp(int rowIndex, long timestamp) {
@@ -300,13 +299,5 @@ public class Tablet {
         throw new UnSupportedDataTypeException(String.format(NOT_SUPPORT_DATATYPE, dataType));
     }
     return valueOccupation;
-  }
-
-  public boolean isAligned() {
-    return isAligned;
-  }
-
-  public void setAligned(boolean aligned) {
-    isAligned = aligned;
   }
 }

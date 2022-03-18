@@ -46,6 +46,7 @@ public class TsFileForceAppendWrite {
     if (f.exists()) {
       Files.delete(f.toPath());
     }
+
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
 
       // add measurements into file schema

@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.13.0-SNAPSHOT</version>
+        <version>0.13.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-grafana-plugin</artifactId>
@@ -93,6 +93,26 @@
                                 </configuration>
                             </execution>
                         </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-clean-plugin</artifactId>
+                        <configuration>
+                            <filesets>
+                                <fileset>
+                                    <directory>${basedir}/node</directory>
+                                </fileset>
+                                <fileset>
+                                    <directory>${basedir}/node_modules</directory>
+                                </fileset>
+                                <fileset>
+                                    <directory>${basedir}/dist</directory>
+                                </fileset>
+                                <fileset>
+                                    <directory>${basedir}/coverage</directory>
+                                </fileset>
+                            </filesets>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
