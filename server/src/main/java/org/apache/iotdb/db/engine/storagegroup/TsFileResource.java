@@ -591,7 +591,10 @@ public class TsFileResource {
         break;
       case UNCLOSED:
         // Print a stack trace in a warn statement.
-        throw new RuntimeException("Cannot set the status of a TsFileResource to UNCLOSED");
+        RuntimeException e = new RuntimeException();
+        LOGGER.error("Setting the status of a TsFileResource to UNCLOSED", e);
+        this.status = TsFileResourceStatus.UNCLOSED;
+        break;
       case DELETED:
         if (this.status != TsFileResourceStatus.UNCLOSED) {
           this.status = TsFileResourceStatus.DELETED;
