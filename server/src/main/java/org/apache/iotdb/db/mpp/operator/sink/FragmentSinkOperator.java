@@ -19,25 +19,43 @@
 package org.apache.iotdb.db.mpp.operator.sink;
 
 import org.apache.iotdb.db.mpp.common.TsBlock;
-import org.apache.iotdb.db.mpp.operator.Operator;
+import org.apache.iotdb.db.mpp.operator.OperatorContext;
 
-public interface SinkOperator extends Operator {
+import com.google.common.util.concurrent.ListenableFuture;
 
-  /**
-   * Sends a tsBlock to an unpartitioned buffer. If no-more-tsBlocks has been set, the send tsBlock
-   * call is ignored. This can happen with limit queries.
-   */
-  void send(TsBlock tsBlock);
+public class FragmentSinkOperator implements SinkOperator {
 
-  /**
-   * Notify SinkHandle that no more tsBlocks will be sent. Any future calls to send a tsBlock are
-   * ignored.
-   */
-  void setNoMoreTsBlocks();
+  @Override
+  public OperatorContext getOperatorContext() {
+    return null;
+  }
 
-  /**
-   * Abort the sink handle, discarding all tsBlocks which may still in memory buffer, but blocking
-   * readers. It is expected that readers will be unblocked when the failed query is cleaned up.
-   */
-  void abort();
+  @Override
+  public ListenableFuture<Void> isBlocked() {
+    return SinkOperator.super.isBlocked();
+  }
+
+  @Override
+  public TsBlock next() {
+    return null;
+  }
+
+  @Override
+  public boolean hasNext() {
+    return false;
+  }
+
+  @Override
+  public void close() throws Exception {
+    SinkOperator.super.close();
+  }
+
+  @Override
+  public void send(TsBlock tsBlock) {}
+
+  @Override
+  public void setNoMoreTsBlocks() {}
+
+  @Override
+  public void abort() {}
 }
