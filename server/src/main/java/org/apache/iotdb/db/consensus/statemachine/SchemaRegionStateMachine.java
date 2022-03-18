@@ -27,7 +27,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SchemaRegionStateMachine extends DataRegionStateMachine {
+public class SchemaRegionStateMachine extends BaseStateMachine {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionStateMachine.class);
 
@@ -38,14 +38,14 @@ public class SchemaRegionStateMachine extends DataRegionStateMachine {
   public void stop() {}
 
   @Override
-  public TSStatus write(PhysicalPlan plan) {
-    logger.info("Execute write plan in DataRegionStateMachine : {}", plan);
+  protected TSStatus write(PhysicalPlan plan) {
+    logger.info("Execute write plan in SchemaRegionStateMachine : {}", plan);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
-  public DataSet read(PhysicalPlan plan) {
-    logger.info("Execute read plan in DataRegionStateMachine: {}", plan);
+  protected DataSet read(PhysicalPlan plan) {
+    logger.info("Execute read plan in SchemaRegionStateMachine: {}", plan);
     return null;
   }
 }

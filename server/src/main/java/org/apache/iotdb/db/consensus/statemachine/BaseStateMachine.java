@@ -56,7 +56,7 @@ public abstract class BaseStateMachine implements IStateMachine {
     return write(plan);
   }
 
-  public abstract TSStatus write(PhysicalPlan plan);
+  protected abstract TSStatus write(PhysicalPlan plan);
 
   @Override
   public DataSet read(IConsensusRequest request) {
@@ -70,5 +70,5 @@ public abstract class BaseStateMachine implements IStateMachine {
     return read(plan);
   }
 
-  public abstract DataSet read(PhysicalPlan plan);
+  protected abstract DataSet read(PhysicalPlan plan);
 }

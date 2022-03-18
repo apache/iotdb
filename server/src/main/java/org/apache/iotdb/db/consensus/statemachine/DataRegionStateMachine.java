@@ -38,13 +38,13 @@ public class DataRegionStateMachine extends BaseStateMachine {
   public void stop() {}
 
   @Override
-  public TSStatus write(PhysicalPlan plan) {
+  protected TSStatus write(PhysicalPlan plan) {
     logger.info("Execute write plan in DataRegionStateMachine : {}", plan);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
-  public DataSet read(PhysicalPlan plan) {
+  protected DataSet read(PhysicalPlan plan) {
     logger.info("Execute read plan in DataRegionStateMachine: {}", plan);
     return null;
   }
