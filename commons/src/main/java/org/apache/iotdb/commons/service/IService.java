@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.service;
 
+import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 
 public interface IService {
@@ -35,7 +36,7 @@ public interface IService {
     stop();
   }
 
-  default void shutdown(long milliseconds) {
+  default void shutdown(long milliseconds) throws ShutdownException {
     waitAndStop(milliseconds);
   }
 
