@@ -31,7 +31,7 @@ import org.apache.iotdb.confignode.service.thrift.server.ConfigNodeRPCServerProc
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ConfigNode implements ConfigNodeMBean {
+public class ConfigNode {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
 
   private final String mbeanName =
