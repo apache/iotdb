@@ -16,24 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator;
+package org.apache.iotdb.db.mpp.execution.executor;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
+import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
 
-/**
- * Contains information about {@link Operator} execution.
- *
- * <p>Not thread-safe.
- */
-public class OperatorContext {
 
-  private final int operatorId;
-  private final PlanNodeId planNodeId;
-  private final String operatorType;
+public class InstanceExecutor {
 
-  public OperatorContext(int operatorId, PlanNodeId planNodeId, String operatorType) {
-    this.operatorId = operatorId;
-    this.planNodeId = planNodeId;
-    this.operatorType = operatorType;
-  }
+    /**
+     * TODO native implementation, should be replaced later
+     * @param instance executable fragment instance
+     * @param handle instance handle
+     * @return ListenableFuture indicate the instance's end state
+     */
+    public ListenableFuture<Void> enqueueInstance(ExecFragmentInstance instance, InstanceHandle handle) {
+        return SettableFuture.create();
+    }
+
 }

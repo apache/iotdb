@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import org.apache.iotdb.db.mpp.plan.FragmentInstance;
+import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
 import java.util.List;
 

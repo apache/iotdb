@@ -16,24 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator;
+package org.apache.iotdb.db.mpp.operator.sink;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.operator.Operator;
 
-/**
- * Contains information about {@link Operator} execution.
- *
- * <p>Not thread-safe.
- */
-public class OperatorContext {
+import java.nio.ByteBuffer;
 
-  private final int operatorId;
-  private final PlanNodeId planNodeId;
-  private final String operatorType;
+public interface SinkOperator extends Operator {
 
-  public OperatorContext(int operatorId, PlanNodeId planNodeId, String operatorType) {
-    this.operatorId = operatorId;
-    this.planNodeId = planNodeId;
-    this.operatorType = operatorType;
-  }
+    /**
+     * Sends a tsBlock to an unpartitioned buffer. If no-more-tsBlocks has been set, the send tsBlock
+     * call is ignored. This can happen with limit queries.
+     */
+    void send(ByteBuffer tsBlock);
+
+    /**
+     * Notify SinkHandle that no more tsBlocks will be sent. Any future calls to send a tsBlock are
+     * ignored.
+     */
+    void setNoMoreTsBlocks();
+
+    /**
+     * Abort the sink handle, discarding all tsBlocks which may still in memory buffer, but blocking
+     * readers. It is expected that readers will be unblocked when the failed query is cleaned up.
+     */
+    void abort();
 }

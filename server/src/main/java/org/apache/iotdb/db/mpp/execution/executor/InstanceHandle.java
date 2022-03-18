@@ -16,24 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator;
+package org.apache.iotdb.db.mpp.execution.executor;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.common.InstanceId;
 
-/**
- * Contains information about {@link Operator} execution.
- *
- * <p>Not thread-safe.
- */
-public class OperatorContext {
 
-  private final int operatorId;
-  private final PlanNodeId planNodeId;
-  private final String operatorType;
+// TODO should contain more fields, add as you want
+public class InstanceHandle {
 
-  public OperatorContext(int operatorId, PlanNodeId planNodeId, String operatorType) {
-    this.operatorId = operatorId;
-    this.planNodeId = planNodeId;
-    this.operatorType = operatorType;
-  }
+    private final InstanceId taskId;
+
+    public InstanceHandle(InstanceId taskId) {
+        this.taskId = taskId;
+    }
 }

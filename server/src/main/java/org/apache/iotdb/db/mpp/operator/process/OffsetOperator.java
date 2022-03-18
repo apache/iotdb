@@ -16,24 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator;
+package org.apache.iotdb.db.mpp.operator.process;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.db.mpp.common.TsBlock;
+import org.apache.iotdb.db.mpp.operator.OperatorContext;
 
-/**
- * Contains information about {@link Operator} execution.
- *
- * <p>Not thread-safe.
- */
-public class OperatorContext {
+public class OffsetOperator implements ProcessOperator {
 
-  private final int operatorId;
-  private final PlanNodeId planNodeId;
-  private final String operatorType;
+    @Override
+    public OperatorContext getOperatorContext() {
+        return null;
+    }
 
-  public OperatorContext(int operatorId, PlanNodeId planNodeId, String operatorType) {
-    this.operatorId = operatorId;
-    this.planNodeId = planNodeId;
-    this.operatorType = operatorType;
-  }
+    @Override
+    public ListenableFuture<Void> isBlocked() {
+        return ProcessOperator.super.isBlocked();
+    }
+
+    @Override
+    public TsBlock next() {
+        return null;
+    }
+
+    @Override
+    public boolean hasNext() {
+        return false;
+    }
+
+    @Override
+    public void close() throws Exception {
+        ProcessOperator.super.close();
+    }
 }
