@@ -49,6 +49,7 @@ class TSEncoding(Enum):
     REGULAR = 7
     GORILLA = 8
     ZIGZAG = 9
+    FREQ = 10
 
     # this method is implemented to avoid the issue reported by:
     # https://bugs.python.org/issue30545

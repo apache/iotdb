@@ -53,6 +53,12 @@ GORILLA 编码是一种无损编码，它比较适合编码前后值比较接近
 
 字典编码是一种无损编码。它适合编码基数小的数据（即数据去重后唯一值数量小）。不推荐用于基数大的数据。
 
+* 频域编码 （FREQ）
+
+频域编码是一种有损编码，它将时序数据变换为频域，仅保留部分高能量的频域分量。该编码适合于具有明显周期性的数据。
+
+> 频域编码在配置文件中包括两个参数：`freq_snr`指定了编码的信噪比，该参数增大会同时降低压缩比和精度损失；`freq_block_size`指定了编码进行时频域变换的分组大小，推荐不对默认值进行修改。参数影响的实验结果和分析详见设计文档。
+
 * ZIGZAG 编码
 
 ZigZag编码将有符号整型映射到无符号整型，适合比较小的整数。
@@ -68,10 +74,10 @@ ZigZag编码将有符号整型映射到无符号整型，适合比较小的整�
 |数据类型	|支持的编码|
 |:---:|:---:|
 |BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA, ZIGZAG|
-|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA, ZIGZAG|
-|FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA|
-|DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA|
+|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG|
+|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG|
+|FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
+|DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
 |TEXT	|PLAIN, DICTIONARY|
 
 </div>
