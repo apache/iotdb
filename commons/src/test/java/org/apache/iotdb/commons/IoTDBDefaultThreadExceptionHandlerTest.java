@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.concurrent;
+package org.apache.iotdb.commons;
 
 import org.junit.After;
 import org.junit.Before;
