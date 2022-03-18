@@ -94,10 +94,27 @@ public class SessionPool {
   // whether the queue is closed.
   private boolean closed;
 
+  // Redirect-able SessionPool
+  private final List<String> nodeUrls;
+
   public SessionPool(String host, int port, String user, String password, int maxSize) {
     this(
         host,
         port,
+        user,
+        password,
+        maxSize,
+        Config.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        null,
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+  }
+
+  public SessionPool(List<String> nodeUrls, String user, String password, int maxSize) {
+    this(
+        nodeUrls,
         user,
         password,
         maxSize,
@@ -114,6 +131,21 @@ public class SessionPool {
     this(
         host,
         port,
+        user,
+        password,
+        maxSize,
+        Config.DEFAULT_FETCH_SIZE,
+        60_000,
+        enableCompression,
+        null,
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+  }
+
+  public SessionPool(
+      List<String> nodeUrls, String user, String password, int maxSize, boolean enableCompression) {
+    this(
+        nodeUrls,
         user,
         password,
         maxSize,
@@ -148,10 +180,45 @@ public class SessionPool {
   }
 
   public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      int maxSize,
+      boolean enableCompression,
+      boolean enableCacheLeader) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        maxSize,
+        Config.DEFAULT_FETCH_SIZE,
+        60_000,
+        enableCompression,
+        null,
+        enableCacheLeader,
+        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+  }
+
+  public SessionPool(
       String host, int port, String user, String password, int maxSize, ZoneId zoneId) {
     this(
         host,
         port,
+        user,
+        password,
+        maxSize,
+        Config.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        zoneId,
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+  }
+
+  public SessionPool(
+      List<String> nodeUrls, String user, String password, int maxSize, ZoneId zoneId) {
+    this(
+        nodeUrls,
         user,
         password,
         maxSize,
@@ -179,6 +246,7 @@ public class SessionPool {
     this.maxSize = maxSize;
     this.host = host;
     this.port = port;
+    this.nodeUrls = null;
     this.user = user;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -187,6 +255,60 @@ public class SessionPool {
     this.zoneId = zoneId;
     this.enableCacheLeader = enableCacheLeader;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
+  }
+
+  public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableCompression,
+      ZoneId zoneId,
+      boolean enableCacheLeader,
+      int connectionTimeoutInMs) {
+    this.maxSize = maxSize;
+    this.host = null;
+    this.port = -1;
+    this.nodeUrls = nodeUrls;
+    this.user = user;
+    this.password = password;
+    this.fetchSize = fetchSize;
+    this.waitToGetSessionTimeoutInMs = waitToGetSessionTimeoutInMs;
+    this.enableCompression = enableCompression;
+    this.zoneId = zoneId;
+    this.enableCacheLeader = enableCacheLeader;
+    this.connectionTimeoutInMs = connectionTimeoutInMs;
+  }
+
+  private Session constructNewSession() {
+    Session session;
+    if (nodeUrls == null) {
+      // Construct custom Session
+      session =
+          new Session.Builder()
+              .host(host)
+              .port(port)
+              .username(user)
+              .password(password)
+              .fetchSize(fetchSize)
+              .zoneId(zoneId)
+              .enableCacheLeader(enableCacheLeader)
+              .build();
+    } else {
+      // Construct redirect-able Session
+      session =
+          new Session.Builder()
+              .nodeUrls(nodeUrls)
+              .username(user)
+              .password(password)
+              .fetchSize(fetchSize)
+              .zoneId(zoneId)
+              .enableCacheLeader(enableCacheLeader)
+              .build();
+    }
+    return session;
   }
 
   // if this method throws an exception, either the server is broken, or the ip/port/user/password
@@ -255,9 +377,15 @@ public class SessionPool {
     if (shouldCreate) {
       // create a new one.
       if (logger.isDebugEnabled()) {
-        logger.debug("Create a new Session {}, {}, {}, {}", host, port, user, password);
+        if (nodeUrls == null) {
+          logger.debug("Create a new Session {}, {}, {}, {}", host, port, user, password);
+        } else {
+          logger.debug("Create a new redirect Session {}, {}, {}", nodeUrls, user, password);
+        }
       }
-      session = new Session(host, port, user, password, fetchSize, zoneId, enableCacheLeader);
+
+      session = constructNewSession();
+
       try {
         session.open(enableCompression, connectionTimeoutInMs);
         // avoid someone has called close() the session pool
@@ -353,7 +481,7 @@ public class SessionPool {
 
   @SuppressWarnings({"squid:S2446"})
   private void tryConstructNewSession() {
-    Session session = new Session(host, port, user, password, fetchSize, zoneId, enableCacheLeader);
+    Session session = constructNewSession();
     try {
       session.open(enableCompression, connectionTimeoutInMs);
       // avoid someone has called close() the session pool
@@ -2161,6 +2289,7 @@ public class SessionPool {
 
     private String host = Config.DEFAULT_HOST;
     private int port = Config.DEFAULT_PORT;
+    private List<String> nodeUrls = null;
     private int maxSize = Config.DEFAULT_SESSION_POOL_MAX_SIZE;
     private String user = Config.DEFAULT_USER;
     private String password = Config.DEFAULT_PASSWORD;
@@ -2178,6 +2307,11 @@ public class SessionPool {
 
     public Builder port(int port) {
       this.port = port;
+      return this;
+    }
+
+    public Builder nodeUrls(List<String> nodeUrls) {
+      this.nodeUrls = nodeUrls;
       return this;
     }
 
@@ -2227,18 +2361,32 @@ public class SessionPool {
     }
 
     public SessionPool build() {
-      return new SessionPool(
-          host,
-          port,
-          user,
-          password,
-          maxSize,
-          fetchSize,
-          waitToGetSessionTimeoutInMs,
-          enableCompression,
-          zoneId,
-          enableCacheLeader,
-          connectionTimeoutInMs);
+      if (nodeUrls == null) {
+        return new SessionPool(
+            host,
+            port,
+            user,
+            password,
+            maxSize,
+            fetchSize,
+            waitToGetSessionTimeoutInMs,
+            enableCompression,
+            zoneId,
+            enableCacheLeader,
+            connectionTimeoutInMs);
+      } else {
+        return new SessionPool(
+            nodeUrls,
+            user,
+            password,
+            maxSize,
+            fetchSize,
+            waitToGetSessionTimeoutInMs,
+            enableCompression,
+            zoneId,
+            enableCacheLeader,
+            connectionTimeoutInMs);
+      }
     }
   }
 }
