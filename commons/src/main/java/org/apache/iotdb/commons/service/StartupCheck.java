@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.commons.service;
 
 import org.apache.iotdb.commons.exception.StartupException;
 

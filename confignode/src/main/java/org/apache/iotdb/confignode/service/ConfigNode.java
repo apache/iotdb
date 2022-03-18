@@ -22,9 +22,9 @@ import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.service.StartupChecks;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
-import org.apache.iotdb.confignode.service.startup.StartupChecks;
 import org.apache.iotdb.confignode.service.thrift.server.ConfigNodeRPCServer;
 import org.apache.iotdb.confignode.service.thrift.server.ConfigNodeRPCServerProcessor;
 

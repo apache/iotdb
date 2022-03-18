@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.commons.service;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +46,7 @@ public class StartupChecks {
       };
   public static final StartupCheck checkJDK =
       () -> {
-        int version = CommonUtils.getJdkVersion();
+        int version = JVMCommonUtils.getJdkVersion();
         if (version < IoTDBConstant.MIN_SUPPORTED_JDK_VERSION) {
           throw new StartupException(
               String.format(
