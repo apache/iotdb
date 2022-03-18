@@ -18,21 +18,22 @@
  */
 package org.apache.iotdb.db.mpp.execution.executor;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
 
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 
 public class InstanceExecutor {
 
-    /**
-     * TODO native implementation, should be replaced later
-     * @param instance executable fragment instance
-     * @param handle instance handle
-     * @return ListenableFuture indicate the instance's end state
-     */
-    public ListenableFuture<Void> enqueueInstance(ExecFragmentInstance instance, InstanceHandle handle) {
-        return SettableFuture.create();
-    }
-
+  /**
+   * TODO native implementation, should be replaced later
+   *
+   * @param instance executable fragment instance
+   * @param handle instance handle
+   * @return ListenableFuture indicate the instance's end state
+   */
+  public ListenableFuture<Void> enqueueInstance(
+      ExecFragmentInstance instance, InstanceHandle handle) {
+    return SettableFuture.create();
+  }
 }

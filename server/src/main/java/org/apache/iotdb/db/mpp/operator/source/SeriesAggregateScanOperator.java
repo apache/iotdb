@@ -18,39 +18,40 @@
  */
 package org.apache.iotdb.db.mpp.operator.source;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.iotdb.db.mpp.common.TsBlock;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
 public class SeriesAggregateScanOperator implements SourceOperator {
-    @Override
-    public OperatorContext getOperatorContext() {
-        return null;
-    }
+  @Override
+  public OperatorContext getOperatorContext() {
+    return null;
+  }
 
-    @Override
-    public ListenableFuture<Void> isBlocked() {
-        return SourceOperator.super.isBlocked();
-    }
+  @Override
+  public ListenableFuture<Void> isBlocked() {
+    return SourceOperator.super.isBlocked();
+  }
 
-    @Override
-    public TsBlock next() {
-        return null;
-    }
+  @Override
+  public TsBlock next() {
+    return null;
+  }
 
-    @Override
-    public boolean hasNext() {
-        return false;
-    }
+  @Override
+  public boolean hasNext() {
+    return false;
+  }
 
-    @Override
-    public void close() throws Exception {
-        SourceOperator.super.close();
-    }
+  @Override
+  public void close() throws Exception {
+    SourceOperator.super.close();
+  }
 
-    @Override
-    public PlanNodeId getSourceId() {
-        return null;
-    }
+  @Override
+  public PlanNodeId getSourceId() {
+    return null;
+  }
 }

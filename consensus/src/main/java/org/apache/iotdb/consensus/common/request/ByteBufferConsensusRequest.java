@@ -15,20 +15,30 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 
-package org.apache.iotdb.db.utils;
+package org.apache.iotdb.consensus.common.request;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.nio.ByteBuffer;
 
-@Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
-@Retention(RetentionPolicy.SOURCE)
-/**
- * TestOnly implies that the method should only be used in the tests, otherwise its functionality is
- * not guaranteed and may interfere with the normal code.
- */
-public @interface TestOnly {}
+/*
+In general, for the requests from the leader, we can directly strong-cast the class to reduce
+the cost of deserialization during the execution of the leader state machine. For the requests
+received by the followers, the responsibility of deserialization can generally be transferred
+to the state machine layer
+*/
+public class ByteBufferConsensusRequest implements IConsensusRequest {
+
+  private final ByteBuffer byteBuffer;
+
+  public ByteBufferConsensusRequest(ByteBuffer byteBuffer) {
+    this.byteBuffer = byteBuffer;
+  }
+
+  @Override
+  public void serializeRequest(ByteBuffer buffer) {}
+
+  public ByteBuffer getContent() {
+    return byteBuffer;
+  }
+}

@@ -18,6 +18,4 @@
  */
 package org.apache.iotdb.db.mpp.sql.tree;
 
-public class Expression {
-
-}
+public class Expression {}

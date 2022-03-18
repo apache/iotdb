@@ -21,6 +21,4 @@ package org.apache.iotdb.db.mpp.operator.process;
 import org.apache.iotdb.db.mpp.operator.Operator;
 
 // TODO should think about what interfaces should this ProcessOperator have
-public interface ProcessOperator extends Operator {
-
-}
+public interface ProcessOperator extends Operator {}

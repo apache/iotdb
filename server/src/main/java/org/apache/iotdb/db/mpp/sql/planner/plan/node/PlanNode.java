@@ -18,14 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
-
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 
-/**
- * The base class of query executable operators, which is used to compose logical query plan.
- */
+/** The base class of query executable operators, which is used to compose logical query plan. */
 // TODO: consider how to restrict the children type for each type of ExecOperator
 public abstract class PlanNode {
 

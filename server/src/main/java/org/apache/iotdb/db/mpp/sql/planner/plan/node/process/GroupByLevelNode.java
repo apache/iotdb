@@ -42,7 +42,8 @@ public class GroupByLevelNode extends ProcessNode {
 
   private List<String> columnNames;
 
-  public GroupByLevelNode(PlanNodeId id, PlanNode child, int[] groupByLevels, List<String> columnNames) {
+  public GroupByLevelNode(
+      PlanNodeId id, PlanNode child, int[] groupByLevels, List<String> columnNames) {
     super(id);
     this.child = child;
     this.groupByLevels = groupByLevels;

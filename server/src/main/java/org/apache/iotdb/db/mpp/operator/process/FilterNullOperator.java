@@ -18,34 +18,35 @@
  */
 package org.apache.iotdb.db.mpp.operator.process;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.iotdb.db.mpp.common.TsBlock;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
 public class FilterNullOperator implements ProcessOperator {
 
-    @Override
-    public OperatorContext getOperatorContext() {
-        return null;
-    }
+  @Override
+  public OperatorContext getOperatorContext() {
+    return null;
+  }
 
-    @Override
-    public ListenableFuture<Void> isBlocked() {
-        return ProcessOperator.super.isBlocked();
-    }
+  @Override
+  public ListenableFuture<Void> isBlocked() {
+    return ProcessOperator.super.isBlocked();
+  }
 
-    @Override
-    public TsBlock next() {
-        return null;
-    }
+  @Override
+  public TsBlock next() {
+    return null;
+  }
 
-    @Override
-    public boolean hasNext() {
-        return false;
-    }
+  @Override
+  public boolean hasNext() {
+    return false;
+  }
 
-    @Override
-    public void close() throws Exception {
-        ProcessOperator.super.close();
-    }
+  @Override
+  public void close() throws Exception {
+    ProcessOperator.super.close();
+  }
 }

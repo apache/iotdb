@@ -20,9 +20,9 @@ package org.apache.iotdb.db.mpp.common;
 
 public class InstanceId {
 
-    private final String fullId;
+  private final String fullId;
 
-    public InstanceId(String fullId) {
-        this.fullId = fullId;
-    }
+  public InstanceId(String fullId) {
+    this.fullId = fullId;
+  }
 }

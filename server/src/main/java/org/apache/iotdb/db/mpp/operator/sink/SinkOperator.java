@@ -24,21 +24,21 @@ import java.nio.ByteBuffer;
 
 public interface SinkOperator extends Operator {
 
-    /**
-     * Sends a tsBlock to an unpartitioned buffer. If no-more-tsBlocks has been set, the send tsBlock
-     * call is ignored. This can happen with limit queries.
-     */
-    void send(ByteBuffer tsBlock);
+  /**
+   * Sends a tsBlock to an unpartitioned buffer. If no-more-tsBlocks has been set, the send tsBlock
+   * call is ignored. This can happen with limit queries.
+   */
+  void send(ByteBuffer tsBlock);
 
-    /**
-     * Notify SinkHandle that no more tsBlocks will be sent. Any future calls to send a tsBlock are
-     * ignored.
-     */
-    void setNoMoreTsBlocks();
+  /**
+   * Notify SinkHandle that no more tsBlocks will be sent. Any future calls to send a tsBlock are
+   * ignored.
+   */
+  void setNoMoreTsBlocks();
 
-    /**
-     * Abort the sink handle, discarding all tsBlocks which may still in memory buffer, but blocking
-     * readers. It is expected that readers will be unblocked when the failed query is cleaned up.
-     */
-    void abort();
+  /**
+   * Abort the sink handle, discarding all tsBlocks which may still in memory buffer, but blocking
+   * readers. It is expected that readers will be unblocked when the failed query is cleaned up.
+   */
+  void abort();
 }

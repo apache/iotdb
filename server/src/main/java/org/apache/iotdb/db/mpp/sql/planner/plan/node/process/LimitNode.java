@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+
+import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 

@@ -24,53 +24,53 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 
 public abstract class PlanVisitor<R, C> {
 
-    public abstract R visitPlan(PlanNode node, C context);
+  public abstract R visitPlan(PlanNode node, C context);
 
-    public R visitSeriesScan(SeriesScanNode node, C context) {
-        return visitPlan(node, context);
-    }
+  public R visitSeriesScan(SeriesScanNode node, C context) {
+    return visitPlan(node, context);
+  }
 
-    public R visitSeriesAggregate(SeriesAggregateScanNode node, C context) {
-        return visitPlan(node, context);
-    }
+  public R visitSeriesAggregate(SeriesAggregateScanNode node, C context) {
+    return visitPlan(node, context);
+  }
 
-    public R visitDeviceMerge(DeviceMergeNode node, C context) {
-        return visitPlan(node, context);
-    }
+  public R visitDeviceMerge(DeviceMergeNode node, C context) {
+    return visitPlan(node, context);
+  }
 
-    public R visitFill(FillNode node, C context) {
-        return visitPlan(node, context);
-    }
+  public R visitFill(FillNode node, C context) {
+    return visitPlan(node, context);
+  }
 
-    public R visitFilter(FilterNode node, C context) {
-        return visitPlan(node, context);
-    }
+  public R visitFilter(FilterNode node, C context) {
+    return visitPlan(node, context);
+  }
 
-    public R visitFilterNull(FilterNullNode node, C context) {
-        return visitPlan(node, context);
-    }
+  public R visitFilterNull(FilterNullNode node, C context) {
+    return visitPlan(node, context);
+  }
 
-    public R visitGroupByLevel(GroupByLevelNode node, C context) {
-        return visitPlan(node, context);
-    }
+  public R visitGroupByLevel(GroupByLevelNode node, C context) {
+    return visitPlan(node, context);
+  }
 
-    public R visitLimit(LimitNode node, C context) {
-        return visitPlan(node, context);
-    }
+  public R visitLimit(LimitNode node, C context) {
+    return visitPlan(node, context);
+  }
 
-    public R visitOffset(OffsetNode node, C context) {
-        return visitPlan(node, context);
-    }
+  public R visitOffset(OffsetNode node, C context) {
+    return visitPlan(node, context);
+  }
 
-    public R visitRowBasedSeriesAggregate(AggregateNode node, C context) {
-        return visitPlan(node, context);
-    }
+  public R visitRowBasedSeriesAggregate(AggregateNode node, C context) {
+    return visitPlan(node, context);
+  }
 
-    public R visitSort(SortNode node, C context) {
-        return visitPlan(node, context);
-    }
+  public R visitSort(SortNode node, C context) {
+    return visitPlan(node, context);
+  }
 
-    public R visitTimeJoin(TimeJoinNode node, C context) {
-        return visitPlan(node, context);
-    }
+  public R visitTimeJoin(TimeJoinNode node, C context) {
+    return visitPlan(node, context);
+  }
 }

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.db.mpp.common.TsBlock;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 
 // TODO: consider whether it is necessary to make PlanFragment as a TreeNode

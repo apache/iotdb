@@ -24,54 +24,39 @@ import java.util.stream.Stream;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 
 public enum InstanceState {
-    /**
-     * Instance is planned but has not been scheduled yet. An instance will
-     * be in the planned state until, the dependencies of the instance
-     * have begun producing output.
-     */
-    PLANNED(false),
-    /**
-     * Instance is running.
-     */
-    RUNNING(false),
-    /**
-     * Instance has finished executing and output is left to be consumed.
-     * In this state, there will be no new drivers, the existing drivers have finished
-     * and the output buffer of the instance is at-least in a 'no-more-tsBlocks' state.
-     */
-    FLUSHING(false),
-    /**
-     * Instance has finished executing and all output has been consumed.
-     */
-    FINISHED(true),
-    /**
-     * Instance was canceled by a user.
-     */
-    CANCELED(true),
-    /**
-     * Instance was aborted due to a failure in the query. The failure
-     * was not in this instance.
-     */
-    ABORTED(true),
-    /**
-     * Instance execution failed.
-     */
-    FAILED(true);
+  /**
+   * Instance is planned but has not been scheduled yet. An instance will be in the planned state
+   * until, the dependencies of the instance have begun producing output.
+   */
+  PLANNED(false),
+  /** Instance is running. */
+  RUNNING(false),
+  /**
+   * Instance has finished executing and output is left to be consumed. In this state, there will be
+   * no new drivers, the existing drivers have finished and the output buffer of the instance is
+   * at-least in a 'no-more-tsBlocks' state.
+   */
+  FLUSHING(false),
+  /** Instance has finished executing and all output has been consumed. */
+  FINISHED(true),
+  /** Instance was canceled by a user. */
+  CANCELED(true),
+  /** Instance was aborted due to a failure in the query. The failure was not in this instance. */
+  ABORTED(true),
+  /** Instance execution failed. */
+  FAILED(true);
 
-    public static final Set<InstanceState> TERMINAL_TASK_STATES = Stream.of(InstanceState.values()).filter(InstanceState::isDone).collect(toImmutableSet());
+  public static final Set<InstanceState> TERMINAL_TASK_STATES =
+      Stream.of(InstanceState.values()).filter(InstanceState::isDone).collect(toImmutableSet());
 
-    private final boolean doneState;
+  private final boolean doneState;
 
-    InstanceState(boolean doneState)
-    {
-        this.doneState = doneState;
-    }
+  InstanceState(boolean doneState) {
+    this.doneState = doneState;
+  }
 
-    /**
-     * Is this a terminal state.
-     */
-    public boolean isDone()
-    {
-        return doneState;
-    }
+  /** Is this a terminal state. */
+  public boolean isDone() {
+    return doneState;
+  }
 }

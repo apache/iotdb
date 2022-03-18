@@ -20,25 +20,21 @@ package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.db.mpp.common.InstanceId;
 
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-
 public class InstanceContext {
 
-    private InstanceId id;
+  private InstanceId id;
 
-    private final long createNanos = System.nanoTime();
+  private final long createNanos = System.nanoTime();
 
-//    private final GcMonitor gcMonitor;
-//    private final AtomicLong startNanos = new AtomicLong();
-//    private final AtomicLong startFullGcCount = new AtomicLong(-1);
-//    private final AtomicLong startFullGcTimeNanos = new AtomicLong(-1);
-//    private final AtomicLong endNanos = new AtomicLong();
-//    private final AtomicLong endFullGcCount = new AtomicLong(-1);
-//    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
+  //    private final GcMonitor gcMonitor;
+  //    private final AtomicLong startNanos = new AtomicLong();
+  //    private final AtomicLong startFullGcCount = new AtomicLong(-1);
+  //    private final AtomicLong startFullGcTimeNanos = new AtomicLong(-1);
+  //    private final AtomicLong endNanos = new AtomicLong();
+  //    private final AtomicLong endFullGcCount = new AtomicLong(-1);
+  //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
 
-
-    public InstanceContext(InstanceId id) {
-        this.id = id;
-    }
+  public InstanceContext(InstanceId id) {
+    this.id = id;
+  }
 }

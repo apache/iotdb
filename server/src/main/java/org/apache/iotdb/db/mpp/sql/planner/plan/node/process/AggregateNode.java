@@ -28,9 +28,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * This node is used to aggregate required series from multiple sources. The source data will be input as a TsBlock,
- * it may be raw data or partial aggregation result.
- * This node will output the final series aggregated result represented by TsBlock.
+ * This node is used to aggregate required series from multiple sources. The source data will be
+ * input as a TsBlock, it may be raw data or partial aggregation result. This node will output the
+ * final series aggregated result represented by TsBlock.
  */
 public class AggregateNode extends ProcessNode {
   // The parameter of `group by time`
@@ -46,7 +46,11 @@ public class AggregateNode extends ProcessNode {
   private final List<PlanNode> children;
   private final List<String> columnNames;
 
-  public AggregateNode(PlanNodeId id, Map<String, FunctionExpression> aggregateFuncMap, List<PlanNode> children, List<String> columnNames) {
+  public AggregateNode(
+      PlanNodeId id,
+      Map<String, FunctionExpression> aggregateFuncMap,
+      List<PlanNode> children,
+      List<String> columnNames) {
     super(id);
     this.aggregateFuncMap = aggregateFuncMap;
     this.children = children;
@@ -67,6 +71,4 @@ public class AggregateNode extends ProcessNode {
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitRowBasedSeriesAggregate(this, context);
   }
-
-
 }

@@ -46,8 +46,11 @@ public class TimeJoinNode extends ProcessNode {
 
   private List<PlanNode> children;
 
-
-  public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder, FilterNullPolicy filterNullPolicy, List<PlanNode> children) {
+  public TimeJoinNode(
+      PlanNodeId id,
+      OrderBy mergeOrder,
+      FilterNullPolicy filterNullPolicy,
+      List<PlanNode> children) {
     super(id);
     this.mergeOrder = mergeOrder;
     this.filterNullPolicy = filterNullPolicy;
@@ -61,7 +64,9 @@ public class TimeJoinNode extends ProcessNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return children.stream().flatMap(child -> child.getOutputColumnNames().stream()).collect(Collectors.toList());
+    return children.stream()
+        .flatMap(child -> child.getOutputColumnNames().stream())
+        .collect(Collectors.toList());
   }
 
   @Override

@@ -45,24 +45,24 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class MManagerImproveTest {
+public class SchemaEngineImproveTest {
 
-  private static Logger logger = LoggerFactory.getLogger(MManagerImproveTest.class);
+  private static Logger logger = LoggerFactory.getLogger(SchemaEngineImproveTest.class);
 
   private static final int TIMESERIES_NUM = 1000;
   private static final int DEVICE_NUM = 10;
-  private static MManager mManager = null;
+  private static SchemaEngine schemaEngine = null;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    mManager = IoTDB.metaManager;
-    mManager.setStorageGroup(new PartialPath("root.t1.v2"));
+    schemaEngine = IoTDB.schemaEngine;
+    schemaEngine.setStorageGroup(new PartialPath("root.t1.v2"));
 
     for (int j = 0; j < DEVICE_NUM; j++) {
       for (int i = 0; i < TIMESERIES_NUM; i++) {
         String p = "root.t1.v2.d" + j + ".s" + i;
-        mManager.createTimeseries(
+        schemaEngine.createTimeseries(
             new PartialPath(p),
             TSDataType.TEXT,
             TSEncoding.PLAIN,
@@ -74,16 +74,16 @@ public class MManagerImproveTest {
 
   @Test
   public void checkSetUp() throws IllegalPathException {
-    mManager = IoTDB.metaManager;
+    schemaEngine = IoTDB.schemaEngine;
 
-    assertTrue(mManager.isPathExist(new PartialPath("root.t1.v2.d3.s5")));
-    assertFalse(mManager.isPathExist(new PartialPath("root.t1.v2.d9.s" + TIMESERIES_NUM)));
-    assertFalse(mManager.isPathExist(new PartialPath("root.t10")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.t1.v2.d3.s5")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.t1.v2.d9.s" + TIMESERIES_NUM)));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.t10")));
   }
 
   @Test
   public void analyseTimeCost() throws MetadataException {
-    mManager = IoTDB.metaManager;
+    schemaEngine = IoTDB.schemaEngine;
 
     long string_combine, path_exist, list_init, check_filelevel, get_seriestype;
     string_combine = path_exist = list_init = check_filelevel = get_seriestype = 0;
@@ -94,7 +94,7 @@ public class MManagerImproveTest {
 
     long startTime = System.currentTimeMillis();
     for (int i = 0; i < 100000; i++) {
-      assertTrue(mManager.isPathExist(new PartialPath(path)));
+      assertTrue(schemaEngine.isPathExist(new PartialPath(path)));
     }
     long endTime = System.currentTimeMillis();
     path_exist += endTime - startTime;
@@ -105,7 +105,7 @@ public class MManagerImproveTest {
 
     startTime = System.currentTimeMillis();
     for (int i = 0; i < 100000; i++) {
-      TSDataType dataType = mManager.getSeriesType(new PartialPath(path));
+      TSDataType dataType = schemaEngine.getSeriesType(new PartialPath(path));
       assertEquals(TSDataType.TEXT, dataType);
     }
     endTime = System.currentTimeMillis();
@@ -122,8 +122,8 @@ public class MManagerImproveTest {
       throws MetadataException {
     for (String measurement : measurementList) {
       String path = deviceId + TsFileConstant.PATH_SEPARATOR + measurement;
-      assertTrue(mManager.isPathExist(new PartialPath(path)));
-      TSDataType dataType = mManager.getSeriesType(new PartialPath(path));
+      assertTrue(schemaEngine.isPathExist(new PartialPath(path)));
+      TSDataType dataType = schemaEngine.getSeriesType(new PartialPath(path));
       assertEquals(TSDataType.TEXT, dataType);
     }
   }
@@ -132,14 +132,14 @@ public class MManagerImproveTest {
       throws MetadataException {
     for (String measurement : measurementList) {
       String path = deviceId + TsFileConstant.PATH_SEPARATOR + measurement;
-      TSDataType dataType = mManager.getSeriesType(new PartialPath(path));
+      TSDataType dataType = schemaEngine.getSeriesType(new PartialPath(path));
       assertEquals(TSDataType.TEXT, dataType);
     }
   }
 
   private void doCacheTest(String deviceId, List<String> measurementList) throws MetadataException {
     try {
-      IMNode node = mManager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId));
+      IMNode node = schemaEngine.getDeviceNodeWithAutoCreate(new PartialPath(deviceId));
       for (String s : measurementList) {
         assertTrue(node.hasChild(s));
         IMeasurementMNode measurementNode = node.getChild(s).getAsMeasurementMNode();
@@ -153,7 +153,7 @@ public class MManagerImproveTest {
 
   @Test
   public void improveTest() throws MetadataException {
-    mManager = IoTDB.metaManager;
+    schemaEngine = IoTDB.schemaEngine;
 
     String[] deviceIdList = new String[DEVICE_NUM];
     for (int i = 0; i < DEVICE_NUM; i++) {

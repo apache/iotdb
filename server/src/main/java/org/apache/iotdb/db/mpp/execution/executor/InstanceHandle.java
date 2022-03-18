@@ -20,13 +20,12 @@ package org.apache.iotdb.db.mpp.execution.executor;
 
 import org.apache.iotdb.db.mpp.common.InstanceId;
 
-
 // TODO should contain more fields, add as you want
 public class InstanceHandle {
 
-    private final InstanceId taskId;
+  private final InstanceId taskId;
 
-    public InstanceHandle(InstanceId taskId) {
-        this.taskId = taskId;
-    }
+  public InstanceHandle(InstanceId taskId) {
+    this.taskId = taskId;
+  }
 }

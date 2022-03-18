@@ -23,5 +23,5 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
 public interface SourceOperator extends Operator {
 
-    PlanNodeId getSourceId();
+  PlanNodeId getSourceId();
 }

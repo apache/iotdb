@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+
+import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 
@@ -30,7 +31,8 @@ import java.util.List;
 public class FilterNode extends ProcessNode {
 
   private final PlanNode child;
-  // TODO we need to rename it to something like expression in order to distinguish from Operator class
+  // TODO we need to rename it to something like expression in order to distinguish from Operator
+  // class
   private final FilterOperator predicate;
 
   public FilterNode(PlanNodeId id, PlanNode child, FilterOperator predicate) {

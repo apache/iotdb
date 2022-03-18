@@ -17,20 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.consensus.ratis;
+package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.statemachine.IStateMachine;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RatisDataRegionStateMachine implements IStateMachine {
+public class SchemaRegionStateMachine extends BaseStateMachine {
 
-  private static final Logger logger = LoggerFactory.getLogger(RatisDataRegionStateMachine.class);
+  private static final Logger logger = LoggerFactory.getLogger(SchemaRegionStateMachine.class);
 
   @Override
   public void start() {}
@@ -39,16 +38,14 @@ public class RatisDataRegionStateMachine implements IStateMachine {
   public void stop() {}
 
   @Override
-  public TSStatus write(IConsensusRequest request) {
-    if (request instanceof InsertRowPlan) {
-      logger.info("Execute write plan : {}", request);
-    }
-    return new TSStatus(200);
+  protected TSStatus write(PhysicalPlan plan) {
+    logger.info("Execute write plan in SchemaRegionStateMachine : {}", plan);
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
-  public DataSet read(IConsensusRequest request) {
-    logger.info("Execute read plan : {}", request);
+  protected DataSet read(PhysicalPlan plan) {
+    logger.info("Execute read plan in SchemaRegionStateMachine: {}", plan);
     return null;
   }
 }

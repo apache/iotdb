@@ -77,16 +77,16 @@ public class TemplateTest {
   public void testTemplate() throws MetadataException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
-    MManager manager = IoTDB.metaManager;
-    manager.createSchemaTemplate(plan);
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    schemaEngine.createSchemaTemplate(plan);
 
     // set device template
     SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg1.d1");
 
-    manager.setSchemaTemplate(setTemplatePlan);
+    schemaEngine.setSchemaTemplate(setTemplatePlan);
 
-    IMNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
-    node = manager.setUsingSchemaTemplate(node);
+    IMNode node = schemaEngine.getDeviceNode(new PartialPath("root.sg1.d1"));
+    node = schemaEngine.setUsingSchemaTemplate(node);
 
     MeasurementSchema s11 =
         new MeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
@@ -94,23 +94,23 @@ public class TemplateTest {
 
     Set<IMeasurementSchema> allSchema =
         new HashSet<>(node.getSchemaTemplate().getSchemaMap().values());
-    manager.getAllMeasurementByDevicePath(new PartialPath("root.sg1.d1")).stream()
+    schemaEngine.getAllMeasurementByDevicePath(new PartialPath("root.sg1.d1")).stream()
         .map(MeasurementPath::getMeasurementSchema)
         .forEach(allSchema::remove);
 
     assertTrue(allSchema.isEmpty());
 
-    IMeasurementMNode mNode = manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s11"));
+    IMeasurementMNode mNode = schemaEngine.getMeasurementMNode(new PartialPath("root.sg1.d1.s11"));
     IMeasurementMNode mNode2 =
-        manager.getMeasurementMNode(new PartialPath("root.sg1.d1.vector.s2"));
+        schemaEngine.getMeasurementMNode(new PartialPath("root.sg1.d1.vector.s2"));
     assertNotNull(mNode);
     assertEquals(mNode.getSchema(), s11);
     assertNotNull(mNode2);
     assertEquals(
-        mNode2.getSchema(), manager.getTemplate("template1").getSchemaMap().get("vector.s2"));
+        mNode2.getSchema(), schemaEngine.getTemplate("template1").getSchemaMap().get("vector.s2"));
 
     try {
-      manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s100"));
+      schemaEngine.getMeasurementMNode(new PartialPath("root.sg1.d1.s100"));
       fail();
     } catch (PathNotExistException e) {
       assertEquals("Path [root.sg1.d1.s100] does not exist", e.getMessage());
@@ -121,11 +121,11 @@ public class TemplateTest {
   public void testTemplateInnerTree() {
     CreateTemplatePlan plan = getTreeTemplatePlan();
     Template template;
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
 
     try {
-      manager.createSchemaTemplate(plan);
-      template = manager.getTemplate("treeTemplate");
+      schemaEngine.createSchemaTemplate(plan);
+      template = schemaEngine.getTemplate("treeTemplate");
       assertEquals(4, template.getMeasurementsCount());
       assertEquals("d1", template.getPathNodeInTemplate("d1").getName());
       assertEquals(null, template.getPathNodeInTemplate("notExists"));
@@ -299,35 +299,35 @@ public class TemplateTest {
    */
   @Test
   public void testShowTemplates() throws MetadataException, QueryProcessException {
-    MManager manager = IoTDB.metaManager;
-    assertEquals(0, manager.getAllTemplates().size());
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    assertEquals(0, schemaEngine.getAllTemplates().size());
     CreateTemplatePlan plan1 = getTreeTemplatePlan();
     CreateTemplatePlan plan2 = getCreateTemplatePlan();
-    manager.createSchemaTemplate(plan1);
-    manager.createSchemaTemplate(plan2);
+    schemaEngine.createSchemaTemplate(plan1);
+    schemaEngine.createSchemaTemplate(plan2);
 
-    assertEquals("[template1, treeTemplate]", manager.getAllTemplates().toString());
+    assertEquals("[template1, treeTemplate]", schemaEngine.getAllTemplates().toString());
 
     for (int i = 0; i < 3; i++) {
       SetTemplatePlan setTemplatePlan =
           new SetTemplatePlan("template1", String.format("root.sg%d.d%d", i, i + 1));
-      manager.setSchemaTemplate(setTemplatePlan);
+      schemaEngine.setSchemaTemplate(setTemplatePlan);
     }
 
     assertEquals(
         new HashSet<>(Arrays.asList("root.sg1.d2", "root.sg0.d1", "root.sg2.d3")),
-        manager.getPathsSetTemplate("*"));
-    assertEquals(new HashSet<>(Arrays.asList()), manager.getPathsSetTemplate("treeTemplate"));
+        schemaEngine.getPathsSetTemplate("*"));
+    assertEquals(new HashSet<>(Arrays.asList()), schemaEngine.getPathsSetTemplate("treeTemplate"));
 
     for (int i = 0; i < 3; i++) {
       SetTemplatePlan setTemplatePlan =
           new SetTemplatePlan("treeTemplate", String.format("root.tsg%d.d%d", i + 9, i + 10));
-      manager.setSchemaTemplate(setTemplatePlan);
+      schemaEngine.setSchemaTemplate(setTemplatePlan);
     }
 
     assertEquals(
         new HashSet<>(Arrays.asList("root.tsg10.d11", "root.tsg11.d12", "root.tsg9.d10")),
-        manager.getPathsSetTemplate("treeTemplate"));
+        schemaEngine.getPathsSetTemplate("treeTemplate"));
     assertEquals(
         new HashSet<>(
             Arrays.asList(
@@ -337,7 +337,7 @@ public class TemplateTest {
                 "root.sg1.d2",
                 "root.sg0.d1",
                 "root.sg2.d3")),
-        manager.getPathsSetTemplate("*"));
+        schemaEngine.getPathsSetTemplate("*"));
 
     PlanExecutor exe1 = new PlanExecutor();
     exe1.insert(getInsertRowPlan("root.sg0.d1", "s11"));
@@ -346,17 +346,17 @@ public class TemplateTest {
 
     assertEquals(
         new HashSet<>(Arrays.asList("root.tsg10.d11", "root.sg1.d2", "root.sg0.d1")),
-        manager.getPathsUsingTemplate("*"));
+        schemaEngine.getPathsUsingTemplate("*"));
 
     try {
-      manager.createSchemaTemplate(plan1);
+      schemaEngine.createSchemaTemplate(plan1);
       fail();
     } catch (MetadataException e) {
       assertEquals("Duplicated template name: treeTemplate", e.getMessage());
     }
 
     try {
-      manager.dropSchemaTemplate(new DropTemplatePlan("treeTemplate"));
+      schemaEngine.dropSchemaTemplate(new DropTemplatePlan("treeTemplate"));
       fail();
     } catch (MetadataException e) {
       assertEquals(
@@ -366,39 +366,39 @@ public class TemplateTest {
 
   @Test
   public void testShowAllSchemas() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     CreateTemplatePlan plan1 = getTreeTemplatePlan();
     CreateTemplatePlan plan2 = getCreateTemplatePlan();
-    manager.createSchemaTemplate(plan1);
-    manager.createSchemaTemplate(plan2);
-    assertEquals(4, manager.getSchemasInTemplate("treeTemplate", "").size());
-    assertEquals(2, manager.getSchemasInTemplate("treeTemplate", "GPS").size());
-    assertEquals(11, manager.getSchemasInTemplate("template1", "").size());
-    assertEquals(10, manager.getSchemasInTemplate("template1", "vector").size());
+    schemaEngine.createSchemaTemplate(plan1);
+    schemaEngine.createSchemaTemplate(plan2);
+    assertEquals(4, schemaEngine.getSchemasInTemplate("treeTemplate", "").size());
+    assertEquals(2, schemaEngine.getSchemasInTemplate("treeTemplate", "GPS").size());
+    assertEquals(11, schemaEngine.getSchemasInTemplate("template1", "").size());
+    assertEquals(10, schemaEngine.getSchemasInTemplate("template1", "vector").size());
   }
 
   @Test
   public void testDropTemplate() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     CreateTemplatePlan plan1 = getTreeTemplatePlan();
     CreateTemplatePlan plan2 = getCreateTemplatePlan();
-    manager.createSchemaTemplate(plan1);
-    manager.createSchemaTemplate(plan2);
+    schemaEngine.createSchemaTemplate(plan1);
+    schemaEngine.createSchemaTemplate(plan2);
 
-    assertEquals("[template1, treeTemplate]", manager.getAllTemplates().toString());
+    assertEquals("[template1, treeTemplate]", schemaEngine.getAllTemplates().toString());
 
     try {
-      manager.createSchemaTemplate(plan2);
+      schemaEngine.createSchemaTemplate(plan2);
       fail();
     } catch (MetadataException e) {
       assertEquals("Duplicated template name: template1", e.getMessage());
     }
 
     SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg.d0");
-    manager.setSchemaTemplate(setTemplatePlan);
+    schemaEngine.setSchemaTemplate(setTemplatePlan);
 
     try {
-      manager.dropSchemaTemplate(new DropTemplatePlan("template1"));
+      schemaEngine.dropSchemaTemplate(new DropTemplatePlan("template1"));
       fail();
     } catch (MetadataException e) {
       assertEquals(
@@ -406,47 +406,47 @@ public class TemplateTest {
     }
 
     UnsetTemplatePlan unsetPlan = new UnsetTemplatePlan("root.sg.d0", "template1");
-    manager.unsetSchemaTemplate(unsetPlan);
+    schemaEngine.unsetSchemaTemplate(unsetPlan);
 
-    manager.dropSchemaTemplate(new DropTemplatePlan("template1"));
-    assertEquals("[treeTemplate]", manager.getAllTemplates().toString());
-    manager.createSchemaTemplate(plan2);
-    assertEquals("[template1, treeTemplate]", manager.getAllTemplates().toString());
-    manager.dropSchemaTemplate(new DropTemplatePlan("template1"));
-    manager.dropSchemaTemplate(new DropTemplatePlan("treeTemplate"));
+    schemaEngine.dropSchemaTemplate(new DropTemplatePlan("template1"));
+    assertEquals("[treeTemplate]", schemaEngine.getAllTemplates().toString());
+    schemaEngine.createSchemaTemplate(plan2);
+    assertEquals("[template1, treeTemplate]", schemaEngine.getAllTemplates().toString());
+    schemaEngine.dropSchemaTemplate(new DropTemplatePlan("template1"));
+    schemaEngine.dropSchemaTemplate(new DropTemplatePlan("treeTemplate"));
   }
 
   @Test
   public void testTemplateAlignment() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
-    manager.createTimeseries(
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    schemaEngine.createTimeseries(
         new PartialPath("root.laptop.d0"),
         TSDataType.INT32,
         TSEncoding.PLAIN,
         CompressionType.GZIP,
         null);
-    manager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.laptop.d1.s1"),
         TSDataType.INT32,
         TSEncoding.PLAIN,
         CompressionType.GZIP,
         null);
-    manager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.laptop.d1.s2"),
         TSDataType.INT32,
         TSEncoding.PLAIN,
         CompressionType.GZIP,
         null);
-    manager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.laptop.d1.ss.t1"),
         TSDataType.INT32,
         TSEncoding.PLAIN,
         CompressionType.GZIP,
         null);
 
-    manager.createSchemaTemplate(getDirectAlignedTemplate());
+    schemaEngine.createSchemaTemplate(getDirectAlignedTemplate());
     try {
-      manager.setSchemaTemplate(new SetTemplatePlan("templateDA", "root.laptop.d1"));
+      schemaEngine.setSchemaTemplate(new SetTemplatePlan("templateDA", "root.laptop.d1"));
       fail();
     } catch (Exception e) {
       assertEquals(

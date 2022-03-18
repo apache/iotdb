@@ -15,26 +15,20 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
-import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-public class CreateSnapshotOperator extends Operator {
-
-  public CreateSnapshotOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.CREATE_SCHEMA_SNAPSHOT;
-  }
-
-  @Override
-  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
-      throws QueryProcessException {
-    return new CreateSnapshotPlan();
-  }
-}
+@Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
+@Retention(RetentionPolicy.SOURCE)
+/**
+ * TestOnly implies that the method should only be used in the tests, otherwise its functionality is
+ * not guaranteed and may interfere with the normal code.
+ */
+public @interface TestOnly {}
