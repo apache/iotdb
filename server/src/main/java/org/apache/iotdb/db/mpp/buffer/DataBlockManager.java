@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
 
@@ -27,10 +28,7 @@ import org.apache.commons.lang3.Validate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-
-import static io.airlift.concurrent.Threads.daemonThreadsNamed;
 
 public class DataBlockManager {
 
@@ -110,7 +108,7 @@ public class DataBlockManager {
     this.localMemoryManager = Validate.notNull(localMemoryManager);
     // TODO: configurable number of threads
     scheduledExecutorService =
-        Executors.newScheduledThreadPool(5, daemonThreadsNamed("data-block-client-callback-%s"));
+        IoTDBThreadPoolFactory.newScheduledThreadPoolWithDaemon(5, "get-data-block");
     clientFactory = new DataBlockServiceClientFactory();
     sourceHandles = new HashMap<>();
     sinkHandles = new HashMap<>();
