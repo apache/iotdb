@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.sql.statement.component;
 
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -131,13 +130,13 @@ public class ResultColumn {
    *     aggregated together later.
    */
   public void concat(
-          List<PartialPath> prefixPaths, List<ResultColumn> resultColumns, boolean needAliasCheck)
-          throws StatementAnalyzeException {
+      List<PartialPath> prefixPaths, List<ResultColumn> resultColumns, boolean needAliasCheck)
+      throws StatementAnalyzeException {
     List<Expression> resultExpressions = new ArrayList<>();
     expression.concat(prefixPaths, resultExpressions);
     if (needAliasCheck && 1 < resultExpressions.size()) {
       throw new StatementAnalyzeException(
-              String.format("alias '%s' can only be matched with one time series", alias));
+          String.format("alias '%s' can only be matched with one time series", alias));
     }
     for (Expression resultExpression : resultExpressions) {
       resultColumns.add(new ResultColumn(resultExpression, alias));

@@ -23,12 +23,11 @@ import org.apache.iotdb.db.sql.statement.Statement;
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
 public class Analysis {
 
-    private Statement statement;
+  private Statement statement;
 
-    public Analysis() {
-    }
+  public Analysis() {}
 
-    public void setStatement(Statement rewrittenStatement) {
-        this.statement = rewrittenStatement;
-    }
+  public void setStatement(Statement rewrittenStatement) {
+    this.statement = rewrittenStatement;
+  }
 }

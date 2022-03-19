@@ -27,5 +27,6 @@ import org.apache.iotdb.db.sql.statement.Statement;
 @FunctionalInterface
 public interface IStatementRewriter {
 
-  Statement rewrite(Statement statement) throws StatementAnalyzeException, PathNumOverLimitException;
+  Statement rewrite(Statement statement)
+      throws StatementAnalyzeException, PathNumOverLimitException;
 }

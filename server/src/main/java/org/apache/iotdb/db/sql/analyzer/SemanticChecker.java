@@ -24,11 +24,11 @@ import org.apache.iotdb.db.sql.statement.Statement;
 
 public class SemanticChecker {
 
-    private SemanticChecker() {}
+  private SemanticChecker() {}
 
-    public static void check(Statement statement) {
-        if (statement instanceof QueryStatement) {
-            ((QueryStatement) statement).check();
-        }
+  public static void check(Statement statement) {
+    if (statement instanceof QueryStatement) {
+      ((QueryStatement) statement).check();
     }
+  }
 }

@@ -33,33 +33,34 @@ import org.apache.iotdb.db.sql.statement.filter.QueryFilter;
 
 public class StatementAnalyzer {
 
-    public Analysis analyze(Statement statement) throws StatementAnalyzeException, PathNumOverLimitException {
-        Analysis analysis = new Analysis();
-        SemanticChecker.check(statement);
-        QueryStatement rewrittenStatement = (QueryStatement) new ConcatPathRewriter().rewrite(statement);
-        // TODO: check access permissions here
-        optimizeQueryFilter(rewrittenStatement);
-        analysis.setStatement(rewrittenStatement);
-        return analysis;
-    }
+  public Analysis analyze(Statement statement)
+      throws StatementAnalyzeException, PathNumOverLimitException {
+    Analysis analysis = new Analysis();
+    SemanticChecker.check(statement);
+    QueryStatement rewrittenStatement =
+        (QueryStatement) new ConcatPathRewriter().rewrite(statement);
+    // TODO: check access permissions here
+    optimizeQueryFilter(rewrittenStatement);
+    analysis.setStatement(rewrittenStatement);
+    return analysis;
+  }
 
-    /**
-     * given an unoptimized query operator and return an optimized result.
-     *
-     * @param statement unoptimized query operator
-     * @throws StatementAnalyzeException exception in query optimizing
-     */
-    private void optimizeQueryFilter(QueryStatement statement)
-            throws StatementAnalyzeException {
-        WhereCondition whereCondition = statement.getWhereCondition();
-        if (whereCondition == null) {
-            return;
-        }
-        QueryFilter filter = whereCondition.getQueryFilter();
-        filter = new RemoveNotOptimizer().optimize(filter);
-        filter = new DnfFilterOptimizer().optimize(filter);
-        filter = new MergeSingleFilterOptimizer().optimize(filter);
-        whereCondition.setQueryFilter(filter);
-        statement.setWhereCondition(whereCondition);
+  /**
+   * given an unoptimized query operator and return an optimized result.
+   *
+   * @param statement unoptimized query operator
+   * @throws StatementAnalyzeException exception in query optimizing
+   */
+  private void optimizeQueryFilter(QueryStatement statement) throws StatementAnalyzeException {
+    WhereCondition whereCondition = statement.getWhereCondition();
+    if (whereCondition == null) {
+      return;
     }
+    QueryFilter filter = whereCondition.getQueryFilter();
+    filter = new RemoveNotOptimizer().optimize(filter);
+    filter = new DnfFilterOptimizer().optimize(filter);
+    filter = new MergeSingleFilterOptimizer().optimize(filter);
+    whereCondition.setQueryFilter(filter);
+    statement.setWhereCondition(whereCondition);
+  }
 }

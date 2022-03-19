@@ -33,22 +33,18 @@ import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
-
 import org.apache.iotdb.db.sql.statement.QueryStatement;
 import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.db.sql.statement.component.FromComponent;
 import org.apache.iotdb.db.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.sql.statement.component.SelectComponent;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-/**
- * This rewriter:
- * 1. concat paths in select and from clause.
- * 2. remove wildcards
- */
+/** This rewriter: 1. concat paths in select and from clause. 2. remove wildcards */
 public class ConcatPathRewriter implements IStatementRewriter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConcatPathRewriter.class);
@@ -107,10 +103,12 @@ public class ConcatPathRewriter implements IStatementRewriter {
     if (queryStatement.getWithoutPolicy() != null
         && !queryStatement.getWithoutPolicy().getWithoutNullColumns().isEmpty()) {
       List<Expression> withoutNullColumns = new ArrayList<>();
-      for (Expression expression :
-          queryStatement.getWithoutPolicy().getWithoutNullColumns()) {
+      for (Expression expression : queryStatement.getWithoutPolicy().getWithoutNullColumns()) {
         concatWithoutNullColumns(
-            prefixPaths, expression, withoutNullColumns, queryStatement.getSelectComponent().getAliasSet());
+            prefixPaths,
+            expression,
+            withoutNullColumns,
+            queryStatement.getSelectComponent().getAliasSet());
       }
       queryStatement.getWithoutPolicy().setWithoutNullColumns(withoutNullColumns);
     }

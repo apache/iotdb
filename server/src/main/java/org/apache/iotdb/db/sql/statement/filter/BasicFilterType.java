@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 
 /** all basic operator in filter. */
 public enum BasicFilterType {
