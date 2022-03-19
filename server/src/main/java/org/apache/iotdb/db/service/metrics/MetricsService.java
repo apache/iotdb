@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.service.metrics;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.JMXService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.JMXService;
-import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.metrics.MetricService;
 import org.apache.iotdb.metrics.config.MetricConfig;

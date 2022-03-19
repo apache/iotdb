@@ -29,6 +29,7 @@ import java.util.List;
 
 /** Consensus module base class. Each method should be thread-safe */
 public interface IConsensus {
+
   void start();
 
   void stop();

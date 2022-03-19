@@ -20,11 +20,12 @@ package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MeasurementGroup {
+public class MeasurementGroup implements Serializable {
   private boolean isAligned;
   private Map<String, MeasurementSchema> measurementSchemaMap;
 

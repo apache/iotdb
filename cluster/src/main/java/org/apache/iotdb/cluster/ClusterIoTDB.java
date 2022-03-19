@@ -32,7 +32,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
-import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.CSchemaEngine;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotStrategy;
@@ -56,20 +56,20 @@ import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.server.service.MetaSyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.JMXService;
+import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ConfigurationException;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.JMXService;
-import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.TAsyncClientManager;
@@ -99,14 +99,6 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   // TODO: better to throw exception if the client can not be get. Then we can remove this field.
   private boolean printClientConnectionErrorStack = false;
-
-  // establish the cluster as a seed
-  private static final String MODE_START = "-s";
-  // join an established cluster
-  private static final String MODE_ADD = "-a";
-  // send a request to remove a node, more arguments: ip-of-removed-node
-  // metaport-of-removed-node
-  private static final String MODE_REMOVE = "-r";
 
   private MetaGroupMember metaGroupMember;
 
@@ -159,9 +151,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
             IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
     metaGroupMember = new MetaGroupMember(protocolFactory, thisNode, coordinator);
     IoTDB.setClusterMode();
-    IoTDB.setMetaManager(CMManager.getInstance());
-    ((CMManager) IoTDB.metaManager).setMetaGroupMember(metaGroupMember);
-    ((CMManager) IoTDB.metaManager).setCoordinator(coordinator);
+    IoTDB.setSchemaEngine(CSchemaEngine.getInstance());
+    ((CSchemaEngine) IoTDB.schemaEngine).setMetaGroupMember(metaGroupMember);
+    ((CSchemaEngine) IoTDB.schemaEngine).setCoordinator(coordinator);
     MetaPuller.getInstance().init(metaGroupMember);
     // set coordinator for serviceProvider construction
     try {

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -45,7 +45,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.apache.iotdb.db.metadata.MManager.TIME_SERIES_TREE_HEADER;
+import static org.apache.iotdb.db.metadata.SchemaEngine.TIME_SERIES_TREE_HEADER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 

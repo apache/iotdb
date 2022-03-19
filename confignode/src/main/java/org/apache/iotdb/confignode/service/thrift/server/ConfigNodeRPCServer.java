@@ -18,46 +18,88 @@
  */
 package org.apache.iotdb.confignode.service.thrift.server;
 
-import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
+import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.service.ThriftService;
+import org.apache.iotdb.commons.service.ThriftServiceThread;
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
-import org.apache.iotdb.confignode.rpc.thrift.DataPartitionInfo;
-import org.apache.iotdb.confignode.rpc.thrift.DeleteStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.GetDataPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.GetSchemaPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo;
-import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupoReq;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
-import org.apache.thrift.TException;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
-public class ConfigNodeRPCServer implements ConfigIService.Iface {
+public class ConfigNodeRPCServer extends ThriftService {
 
-  private ConfigManager configManager;
+  private ConfigNodeConf config = ConfigNodeDescriptor.getInstance().getConf();
 
-  public ConfigNodeRPCServer() {
-    this.configManager = new ConfigManager();
+  private ConfigNodeRPCServerProcessor configNodeRPCServerProcessor;
+
+  private ConfigNodeRPCServer() {}
+
+  @Override
+  public ThriftService getImplementation() {
+    return ConfigNodeRPCServer.getInstance();
   }
 
   @Override
-  public TSStatus setStorageGroup(SetStorageGroupoReq req) throws TException {
-    return null;
+  public ServiceType getID() {
+    return ServiceType.CONFIG_NODE_SERVICE;
   }
 
   @Override
-  public TSStatus deleteStorageGroup(DeleteStorageGroupReq req) throws TException {
-    return null;
+  public void initSyncedServiceImpl(Object configNodeRPCServerProcessor) {
+    this.configNodeRPCServerProcessor = (ConfigNodeRPCServerProcessor) configNodeRPCServerProcessor;
+    super.initSyncedServiceImpl(this.configNodeRPCServerProcessor);
   }
 
   @Override
-  public SchemaPartitionInfo getSchemaPartition(GetSchemaPartitionReq req) throws TException {
-    return null;
+  public void initTProcessor() throws InstantiationException {
+    if (processor == null) {
+      throw new InstantiationException("ConfigNodeRPCServerProcessor is null");
+    }
+
+    processor = new ConfigIService.Processor<>(configNodeRPCServerProcessor);
   }
 
   @Override
-  public DataPartitionInfo getDataPartition(GetDataPartitionReq req) throws TException {
-    return null;
+  public void initThriftServiceThread() throws IllegalAccessException {
+
+    try {
+      thriftServiceThread =
+          new ThriftServiceThread(
+              processor,
+              getID().getName(),
+              ThreadName.CLUSTER_RPC_CLIENT.getName(),
+              getBindIP(),
+              getBindPort(),
+              config.getRpcMaxConcurrentClientNum(),
+              config.getThriftServerAwaitTimeForStopService(),
+              new ConfigNodeRPCServiceHandler(configNodeRPCServerProcessor),
+              config.isRpcThriftCompressionEnabled());
+    } catch (RPCServiceException e) {
+      throw new IllegalAccessException(e.getMessage());
+    }
+    thriftServiceThread.setName(ThreadName.CLUSTER_RPC_SERVICE.getName());
   }
 
-  // TODO: Interfaces for data operations
+  @Override
+  public String getBindIP() {
+    return config.getRpcAddress();
+  }
+
+  @Override
+  public int getBindPort() {
+    return config.getRpcPort();
+  }
+
+  public static ConfigNodeRPCServer getInstance() {
+    return ConfigNodeRPCServerHolder.INSTANCE;
+  }
+
+  private static class ConfigNodeRPCServerHolder {
+
+    private static final ConfigNodeRPCServer INSTANCE = new ConfigNodeRPCServer();
+
+    private ConfigNodeRPCServerHolder() {}
+  }
 }
