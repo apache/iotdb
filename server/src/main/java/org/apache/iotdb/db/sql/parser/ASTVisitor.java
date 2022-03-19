@@ -69,7 +69,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   /** For create-cq clause and select-into clause, used to match "{x}", where x is an integer. */
   private static final Pattern leveledPathNodePattern = Pattern.compile("\\$\\{\\w+}");
 
+  // TODO: add comment
   private ZoneId zoneId;
+
+  // TODO: add comment
   private IoTDBConstant.ClientVersion clientVersion = IoTDBConstant.ClientVersion.V_0_13;
 
   public void setZoneId(ZoneId zoneId) {

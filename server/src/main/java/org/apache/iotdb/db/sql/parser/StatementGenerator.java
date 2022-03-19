@@ -51,6 +51,7 @@ import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 
+/** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
 
   public static Statement createStatement(
