@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.sql.statement.component;
 
+/** This class maintains information of {@code GROUP BY} clause. */
 public class GroupByTimeComponent {
 
   // [startTime, endTime)

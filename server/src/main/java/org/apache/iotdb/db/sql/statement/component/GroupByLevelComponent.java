@@ -21,6 +21,7 @@ package org.apache.iotdb.db.sql.statement.component;
 
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 
+/** This class maintains information of {@code GROUP BY LEVEL} clause. */
 public class GroupByLevelComponent {
 
   protected GroupByLevelController groupByLevelController;

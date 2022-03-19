@@ -24,6 +24,7 @@ import org.apache.iotdb.db.query.expression.Expression;
 import java.util.ArrayList;
 import java.util.List;
 
+/** This class maintains information of {@code WITHOUT NULL} clause. */
 public class WithoutPolicy {
 
   WithoutPolicyType withoutPolicyType = WithoutPolicyType.NULL;

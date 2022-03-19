@@ -35,6 +35,7 @@ import java.util.Objects;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
 
+/** fuzzy query structure RegexpFilter. */
 public class RegexpFilter extends FunctionFilter {
 
   protected String value;

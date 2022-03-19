@@ -21,6 +21,7 @@ package org.apache.iotdb.db.sql.statement.component;
 
 import org.apache.iotdb.db.sql.statement.filter.QueryFilter;
 
+/** This class maintains information of {@code WHERE} clause. */
 public class WhereCondition {
 
   private QueryFilter queryFilter;

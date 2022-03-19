@@ -43,7 +43,7 @@ public class InFilter extends FunctionFilter {
   protected Set<String> values;
 
   /**
-   * In Operator Constructor.
+   * In Filter Constructor.
    *
    * @param filterType filter Type
    * @param path path

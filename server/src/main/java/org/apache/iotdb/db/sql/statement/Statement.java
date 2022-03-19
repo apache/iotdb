@@ -25,8 +25,8 @@ import org.apache.iotdb.db.sql.parser.ASTVisitor;
 /**
  * This class is a superclass of all statements.
  *
- * <p>A Statement containing all semantic information is obtained by traversing the AST via {@link
- * ASTVisitor}.
+ * <p>A Statement containing all semantic information of an SQL. It is obtained by traversing the
+ * AST via {@link ASTVisitor}.
  */
 public abstract class Statement {
 

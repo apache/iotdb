@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.sql.statement.filter;
 
-import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.sql.constant.FilterConstant;
 import org.apache.iotdb.db.sql.constant.FilterConstant.FilterType;
@@ -156,11 +155,10 @@ public enum BasicFilterType {
   };
 
   /**
-   * BasicOperatorType Constructor.
+   * BasicFilterType Constructor.
    *
    * @param filterType token in Int Type
    * @return basic operator type
-   * @throws LogicalOperatorException Logical Operator Exception
    */
   public static BasicFilterType getBasicOpBySymbol(FilterType filterType)
       throws SQLParserException {

@@ -35,7 +35,7 @@ import java.util.Objects;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
 
-/** fuzzy query structure LikeOperator. */
+/** fuzzy query structure LikeFilter. */
 public class LikeFilter extends FunctionFilter {
 
   protected String value;

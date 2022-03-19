@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Map;
 
+/** This class maintains information of {@code FILL} clause. */
 public class FillComponent {
 
   private Map<TSDataType, IFill> fillTypes;

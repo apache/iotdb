@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.sql.statement.component;
 
+/** The alignment of query result set */
 public enum ResultSetFormat {
   ALIGN_BY_TIME,
   ALIGN_BY_DEVICE,

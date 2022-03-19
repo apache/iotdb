@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-/** This class maintains information from SELECT clause. */
+/** This class maintains information of {@code SELECT} clause. */
 public class SelectComponent {
 
   private final ZoneId zoneId;

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.exception.sql;
 
-import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.sql.constant.FilterConstant;
 import org.apache.iotdb.rpc.TSStatusCode;
 

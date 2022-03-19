@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.sql.statement.component;
 
-/** The traversal order for operators by timestamp */
+/** The order of query result set by timestamp */
 public enum OrderBy {
   TIMESTAMP_ASC,
-  TIMESTAMP_DESC,
-  DEVICE_NAME_ASC,
-  DEVICE_NAME_DESC,
+  TIMESTAMP_DESC
 }

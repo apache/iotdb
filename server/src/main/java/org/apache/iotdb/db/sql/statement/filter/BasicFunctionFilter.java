@@ -44,7 +44,7 @@ public class BasicFunctionFilter extends FunctionFilter {
   private BasicFilterType funcToken;
 
   /**
-   * BasicFunctionOperator Constructor.
+   * BasicFunctionFilter Constructor.
    *
    * @param filterType filter Type
    * @param path path
