@@ -17,11 +17,39 @@
  * under the License.
  */
 
-namespace java org.apache.iotdb.mpp.common.rpc.thrift
+namespace java org.apache.iotdb.mpp.rpc.thrift
 
 
-struct FragmentInstanceID {
-  1: required string queryID
-  2: required string fragmentID
-  3: required string instanceID
+struct FragmentInstanceId {
+  1: required string queryId
+  2: required string fragmentId
+  3: required string instanceId
+}
+
+struct GetDataBlockReqest {
+  1: required FragmentInstanceId fragnemtInstanceId
+  2: required i64 blockId
+}
+
+struct GetDataBlockResponse {
+  1: required list<binary> tsBlocks
+}
+
+struct NewDataBlockEvent {
+  1: required FragmentInstanceId fragmentInstanceId
+  2: required string operatorId
+  3: required i64 blockId
+}
+
+struct EndOfDataBlockEvent {
+  1: required FragmentInstanceId fragmentInstanceId
+  2: required string operatorId
+}
+
+service DataBlockService {
+  GetDataBlockResponse getDataBlock(GetDataBlockReqest req);
+
+  void onNewDataBlockEvent(NewDataBlockEvent e);
+
+  void onEndOfDataBlockEvent(EndOfDataBlockEvent e);
 }

@@ -23,7 +23,7 @@ import org.apache.iotdb.db.mpp.schedule.queue.ID;
 import org.jetbrains.annotations.NotNull;
 
 /** the class of id of the fragment instance */
-public class FragmentInstanceID implements ID, Comparable<FragmentInstanceTask> {
+public class FragmentInstanceID implements ID, Comparable<FragmentInstanceID> {
 
   private final String instanceId;
   private final String fragmentId;
@@ -61,7 +61,7 @@ public class FragmentInstanceID implements ID, Comparable<FragmentInstanceTask> 
 
   // This is the default comparator of FragmentInstanceID
   @Override
-  public int compareTo(@NotNull FragmentInstanceTask o) {
+  public int compareTo(@NotNull FragmentInstanceID o) {
     return String.CASE_INSENSITIVE_ORDER.compare(this.toString(), o.toString());
   }
 }
