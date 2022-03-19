@@ -609,12 +609,16 @@ public class TsFileResource {
         } else {
           throw new RuntimeException(
               "Cannot set the status of TsFileResource to COMPACTING while its status is "
-                  + status);
+                  + this.status);
         }
         break;
       case COMPACTION_CANDIDATE:
         if (this.status == TsFileResourceStatus.CLOSED) {
           this.status = TsFileResourceStatus.COMPACTION_CANDIDATE;
+        } else {
+          throw new RuntimeException(
+              "Cannot set the status of TsFileResource to COMPACTION_CANDIDATE while its status is "
+                  + this.status);
         }
         break;
       default:

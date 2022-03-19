@@ -58,7 +58,13 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
   @Override
   public void setSourceFilesToCompactionCandidate() {
     this.selectedTsFileResourceList.forEach(
-        x -> x.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
+        tsFileResource -> {
+          try {
+            tsFileResource.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE);
+          } catch (Exception e) {
+            LOGGER.error("Exception occurs when setting compaction candidate", e);
+          }
+        });
   }
 
   private void collectSelectedFilesInfo() {
