@@ -24,34 +24,38 @@ import org.apache.iotdb.consensus.common.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.consensus.common.GroupType;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.standalone.StandAloneConsensus;
 import org.apache.iotdb.consensus.statemachine.EmptyStateMachine;
-import org.apache.iotdb.db.consensus.ratis.RatisDataRegionStateMachine;
-import org.apache.iotdb.db.consensus.ratis.RatisSchemaRegionStateMachine;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.statemachine.DataRegionStateMachine;
+import org.apache.iotdb.db.consensus.statemachine.SchemaRegionStateMachine;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 
-public class ConsensusMain {
+public class ConsensusExample {
 
-  public static void main(String[] args) throws IllegalPathException {
-
+  public static void main(String[] args) throws IllegalPathException, IOException {
     IConsensus consensusImpl =
         new StandAloneConsensus(
             id -> {
               switch (id.getType()) {
                 case SchemaRegion:
-                  return new RatisSchemaRegionStateMachine();
+                  return new SchemaRegionStateMachine();
                 case DataRegion:
-                  return new RatisDataRegionStateMachine();
+                  return new DataRegionStateMachine();
               }
               return new EmptyStateMachine();
             });
     consensusImpl.start();
     InsertRowPlan plan = getInsertRowPlan();
+
     ConsensusGroupId dataRegionId = new ConsensusGroupId(GroupType.DataRegion, 0);
     ConsensusGroupId schemaRegionId = new ConsensusGroupId(GroupType.SchemaRegion, 1);
     consensusImpl.addConsensusGroup(
@@ -60,8 +64,22 @@ public class ConsensusMain {
     consensusImpl.addConsensusGroup(
         schemaRegionId,
         Collections.singletonList(new Peer(schemaRegionId, new Endpoint("0.0.0.0", 6667))));
+
+    // The leader node can pass memory structures directly to the consensus layer
     consensusImpl.write(dataRegionId, plan);
     consensusImpl.write(schemaRegionId, plan);
+
+    // TODO pooling to reduce GC overhead
+    ByteBuffer buffer =
+        ByteBuffer.allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize());
+    plan.serialize(buffer);
+    buffer.flip();
+
+    // the follower node can pass ByteBuffer into the consensus layer without deserializing it
+    consensusImpl.write(dataRegionId, new ByteBufferConsensusRequest(buffer));
+    buffer.flip();
+    consensusImpl.write(schemaRegionId, new ByteBufferConsensusRequest(buffer));
+
     consensusImpl.stop();
   }
 
