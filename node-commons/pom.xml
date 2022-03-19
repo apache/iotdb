@@ -28,7 +28,8 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-commons</artifactId>
-    <name>IoTDB commons</name>
+    <name>Node Commons</name>
+    <description>Common modules of the server and config node</description>
     <properties>
         <commons.test.skip>false</commons.test.skip>
         <commons.it.skip>${commons.test.skip}</commons.it.skip>
