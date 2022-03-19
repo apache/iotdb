@@ -65,9 +65,6 @@ public class ConfigNodeConf {
   private String systemDir =
       ConfigNodeConstant.DATA_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
-  /** Schema directory, including storage set of values. */
-  private String schemaDir = systemDir + File.separator + IoTDBConstant.SCHEMA_FOLDER_NAME;
-
   /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {
     ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.DATA_DIR
