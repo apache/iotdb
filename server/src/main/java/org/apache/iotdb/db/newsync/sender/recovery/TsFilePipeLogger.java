@@ -72,10 +72,10 @@ public class TsFilePipeLogger {
   private void serializeModsOffset(File modsOffsetFile, long modsOffset) {
     try {
       SyncPathUtil.createFile(modsOffsetFile);
-      BufferedWriter bw = new BufferedWriter(new FileWriter(modsOffsetFile));
-      bw.write(String.valueOf(modsOffset));
-      bw.flush();
-      bw.close();
+      try (BufferedWriter bw = new BufferedWriter(new FileWriter(modsOffsetFile))) {
+        bw.write(String.valueOf(modsOffset));
+        bw.flush();
+      }
     } catch (IOException e) {
       logger.warn(
           String.format(
@@ -118,7 +118,10 @@ public class TsFilePipeLogger {
     while (!file.getName().equals(IoTDBConstant.SEQUENCE_FLODER_NAME)
         && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FLODER_NAME)) {
       file = file.getParentFile();
-      builder = new StringBuilder(file.getName()).append(File.separator).append(builder);
+      builder =
+          new StringBuilder(file.getName())
+              .append(IoTDBConstant.FILE_NAME_SEPARATOR)
+              .append(builder);
     }
     return builder.toString();
   }

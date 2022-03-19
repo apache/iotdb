@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.newsync.sender.pipe;
 
 import org.apache.iotdb.db.exception.PipeException;
+import org.apache.iotdb.db.newsync.pipedata.PipeData;
 
 public interface Pipe {
   void start() throws PipeException;
@@ -35,6 +36,10 @@ public interface Pipe {
   long getCreateTime();
 
   PipeStatus getStatus();
+
+  PipeData take() throws InterruptedException;
+
+  void commit();
 
   // a new pipe should be stop status
   enum PipeStatus {

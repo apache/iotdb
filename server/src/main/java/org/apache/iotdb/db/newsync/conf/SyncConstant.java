@@ -39,6 +39,8 @@ public class SyncConstant {
   public static final String HISTORY_PIPE_LOG_NAME = PIPE_LOG_NAME_SUFFIX + ".history";
   public static final String COMMIT_LOG_NAME = "commit.log";
 
+  public static final String UNKNOWN_IP = "UNKNOWN";
+
   public static final String SENDER_LOG_NAME = "senderService.log";
   public static final String PLAN_SERIALIZE_SPLIT_CHARACTER = ",";
   public static final String SENDER_LOG_SPLIT_CHARACTER = " ";

@@ -78,11 +78,11 @@ public class SchemaPipeData extends PipeData {
     return new SchemaLoader(plan);
   }
 
-  @Override
-  public void sendToTransport() {
-    // senderTransport(getBytes(), this);
-    // System.out.println(this);
-  }
+//  @Override
+//  public void sendToTransport() {
+//    // senderTransport(getBytes(), this);
+//    // System.out.println(this);
+//  }
 
   @Override
   public String toString() {

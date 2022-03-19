@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.StorageGroupManager;
 import org.apache.iotdb.db.exception.PipeException;
+import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
@@ -119,7 +120,7 @@ public class TsFilePipe implements Pipe {
         isCollectingRealTimeData = true;
       }
 
-      //      transportHandler.start();
+      transportHandler.start();
       status = PipeStatus.RUNNING;
     } catch (IOException e) {
       logger.error(
@@ -127,6 +128,12 @@ public class TsFilePipe implements Pipe {
               "Clear pipe dir %s error, because %s.",
               SyncPathUtil.getSenderPipeDir(name, createTime), e));
       throw new PipeException("Start error, can not clear pipe log.");
+    } catch (SyncConnectionException e) {
+      logger.warn(String.format("%s pipe sends START request error, because %s.", name, e));
+      throw new PipeException(
+          String.format(
+              "Start error, because %s, please check receiver server is open and net.",
+              e.getMessage()));
     }
   }
 
@@ -151,7 +158,7 @@ public class TsFilePipe implements Pipe {
         File hardLink =
             pipeLog.createTsFileAndModsHardlink(
                 historyTsFiles.get(i).left, historyTsFiles.get(i).right);
-        historyData.add(new TsFilePipeData(hardLink.getPath(), serialNumber));
+        historyData.add(new TsFilePipeData(hardLink.getParent(), hardLink.getName(), serialNumber));
       } catch (IOException e) {
         logger.warn(
             String.format(
@@ -263,8 +270,9 @@ public class TsFilePipe implements Pipe {
     collectRealTimeDataLock.lock();
     try {
       maxSerialNumber += 1L;
+      File hardlink = pipeLog.createTsFileHardlink(tsFile);
       PipeData tsFileData =
-          new TsFilePipeData(pipeLog.createTsFileHardlink(tsFile).getPath(), maxSerialNumber);
+          new TsFilePipeData(hardlink.getParent(), hardlink.getName(), maxSerialNumber);
       realTimeQueue.offer(tsFileData);
     } catch (IOException e) {
       logger.warn(
@@ -287,6 +295,7 @@ public class TsFilePipe implements Pipe {
   }
 
   /** transport data * */
+  @Override
   public PipeData take() throws InterruptedException {
     if (!historyQueue.isEmpty()) {
       return historyQueue.take();
@@ -305,6 +314,7 @@ public class TsFilePipe implements Pipe {
     return pullPipeData;
   }
 
+  @Override
   public void commit() {
     if (!historyQueue.isEmpty()) {
       historyQueue.commit();
@@ -334,7 +344,13 @@ public class TsFilePipe implements Pipe {
       isCollectingRealTimeData = true;
     }
 
-    transportHandler.stop();
+    try {
+      transportHandler.stop();
+    } catch (SyncConnectionException e) {
+      logger.warn(String.format("%s pipe sends STOP request error, because %s.", name, e));
+      throw new PipeException(
+          "Stop error, can not connect to receiver, please check receiver server is open and net.");
+    }
     status = PipeStatus.STOP;
   }
 
@@ -366,6 +382,12 @@ public class TsFilePipe implements Pipe {
       logger.warn(
           String.format(
               "Interrupted when waiting for clear pipe %s %d, because %s", name, createTime, e));
+      throw new PipeException("Drop error, be interrupted, please try again.");
+    } catch (SyncConnectionException e) {
+      logger.warn(String.format("%s pipe sends START request error, because %s.", name, e));
+      throw new PipeException(
+          "Drop error, can not connect to receiver, please check receiver server is open and net, and try again.");
+      // the status is running, but transport client is stop.
     }
 
     try {

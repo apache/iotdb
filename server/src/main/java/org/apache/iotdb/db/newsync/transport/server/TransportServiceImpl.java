@@ -306,7 +306,6 @@ public class TransportServiceImpl implements TransportService.Iface {
     File dir = new File(fileDir);
     File[] targetFiles =
         dir.listFiles((dir1, name) -> name.startsWith(tsFileName) && name.endsWith(PATCH_SUFFIX));
-    // TODO: same name ?
     if (targetFiles != null) {
       for (File targetFile : targetFiles) {
         File newFile =
@@ -319,6 +318,13 @@ public class TransportServiceImpl implements TransportService.Iface {
       }
     }
     tsFilePipeData.setParentDirPath(dir.getAbsolutePath());
+    File recordFile = new File(fileDir, tsFileName + RECORD_SUFFIX);
+    try {
+      Files.deleteIfExists(recordFile.toPath());
+    } catch (IOException e) {
+      logger.warn(
+          String.format("Delete record file %s error, because %s.", recordFile.getPath(), e));
+    }
   }
 
   private String getFileDataDirPath(IdentityInfo identityInfo) {

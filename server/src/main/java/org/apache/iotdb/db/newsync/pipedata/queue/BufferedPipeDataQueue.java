@@ -24,7 +24,6 @@ import org.apache.iotdb.db.newsync.conf.SyncPathUtil;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.utils.FileUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

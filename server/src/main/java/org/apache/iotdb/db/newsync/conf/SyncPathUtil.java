@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.newsync.conf;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -90,5 +91,10 @@ public class SyncPathUtil {
       file.getParentFile().mkdirs();
     }
     return file.createNewFile();
+  }
+
+  public static String createMsg(String msg) {
+    return String.format(
+        "[%s] %s", DatetimeUtils.convertLongToDate(DatetimeUtils.currentTime()), msg);
   }
 }

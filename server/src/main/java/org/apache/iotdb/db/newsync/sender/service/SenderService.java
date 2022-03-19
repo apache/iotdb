@@ -61,11 +61,13 @@ public class SenderService implements IService {
   private List<Pipe> pipes;
 
   private Pipe runningPipe;
+  private String runningMsg;
 
   private SenderService() {
-    pipeSinks = new HashMap<>();
-    pipes = new ArrayList<>();
-    senderLogger = new SenderLogger();
+    this.pipeSinks = new HashMap<>();
+    this.pipes = new ArrayList<>();
+    this.senderLogger = new SenderLogger();
+    this.runningMsg = "";
   }
 
   private static class SenderServiceHolder {
@@ -142,7 +144,7 @@ public class SenderService implements IService {
   }
 
   /** pipe * */
-  public void addPipe(CreatePipePlan plan) throws PipeException {
+  public synchronized void addPipe(CreatePipePlan plan) throws PipeException {
     // common check
     if (runningPipe != null && runningPipe.getStatus() != Pipe.PipeStatus.DROP) {
       throw new PipeException(
@@ -191,7 +193,7 @@ public class SenderService implements IService {
       ITransportClient transportClient =
           new TransportClient(
               pipe, ((IoTDBPipeSink) pipeSink).getIp(), ((IoTDBPipeSink) pipeSink).getPort());
-      pipe.setTransportHandler(new TransportHandler(transportClient, pipe.getName()));
+      pipe.setTransportHandler(new TransportHandler(transportClient, pipe.getName(), pipe.getCreateTime()));
     } catch (IOException e) {
       throw new PipeException(
           String.format(
@@ -200,7 +202,7 @@ public class SenderService implements IService {
     return pipe;
   }
 
-  public void stopPipe(String pipeName) throws PipeException {
+  public synchronized void stopPipe(String pipeName) throws PipeException {
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == Pipe.PipeStatus.RUNNING) {
       runningPipe.stop();
@@ -208,7 +210,7 @@ public class SenderService implements IService {
     senderLogger.operatePipe(pipeName, Operator.OperatorType.STOP_PIPE);
   }
 
-  public void startPipe(String pipeName) throws PipeException {
+  public synchronized void startPipe(String pipeName) throws PipeException {
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == Pipe.PipeStatus.STOP) {
       runningPipe.start();
@@ -216,7 +218,7 @@ public class SenderService implements IService {
     senderLogger.operatePipe(pipeName, Operator.OperatorType.START_PIPE);
   }
 
-  public void dropPipe(String pipeName) throws PipeException {
+  public synchronized void dropPipe(String pipeName) throws PipeException {
     checkRunningPipeExistAndName(pipeName);
     runningPipe.drop();
     senderLogger.operatePipe(pipeName, Operator.OperatorType.DROP_PIPE);
@@ -224,6 +226,10 @@ public class SenderService implements IService {
 
   public List<Pipe> getAllPipes() {
     return new ArrayList<>(pipes);
+  }
+
+  public synchronized String getPipeMsg(Pipe pipe) {
+    return pipe == runningPipe ? runningMsg : "";
   }
 
   private void checkRunningPipeExistAndName(String pipeName) throws PipeException {
@@ -239,7 +245,38 @@ public class SenderService implements IService {
   }
 
   /** transport */
-  public void recMsg(SyncResponse response) {}
+  public synchronized void recMsg(SyncResponse response) {
+    if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
+      logger.warn(String.format("No running pipe for receiving msg %s.", response));
+      return;
+    }
+    logger.info(String.format("%s from receiver: %s", response.type.name(), response.msg));
+    switch (response.type) {
+      case INFO:
+        break;
+      case ERROR:
+        try {
+          runningPipe.stop();
+        } catch (PipeException e) {
+          logger.error(
+              String.format(
+                  "Stop pipe %s when meeting error in sender service, because %s.",
+                  runningPipe.getName(), e));
+        }
+      case WARN:
+        if (runningMsg.length() > 0) {
+          runningMsg += System.lineSeparator();
+        }
+        runningMsg += (response.type.name() + " " + response.msg);
+        senderLogger.recordMsg(
+            runningPipe.getName(),
+            runningPipe.getStatus() == Pipe.PipeStatus.RUNNING
+                ? Operator.OperatorType.START_PIPE
+                : Operator.OperatorType.STOP_PIPE,
+            response.msg);
+        break;
+    }
+  }
 
   /** IService * */
   @Override
@@ -277,6 +314,7 @@ public class SenderService implements IService {
     this.pipeSinks = analyzer.getRecoveryAllPipeSinks();
     this.pipes = analyzer.getRecoveryAllPipes();
     this.runningPipe = analyzer.getRecoveryRunningPipe();
+    this.runningMsg = analyzer.getRecoveryRunningMsg();
   }
 
   /** test */

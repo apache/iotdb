@@ -65,20 +65,20 @@ public class DeletionPipeData extends PipeData {
     return new DeletionLoader(deletion);
   }
 
-  @Override
-  public void sendToTransport() {
-    try (ByteArrayOutputStream bytesStream = new ByteArrayOutputStream();
-        DataOutputStream stream = new DataOutputStream(bytesStream)) {
-      serialize(stream);
-      // senderTransport(bytesStream.toArray, this);
-      // System.out.println(this);
-    } catch (IOException e) {
-      logger.warn(
-          String.format(
-              "Serialize deletion pipeData %s error, can not send to transport, because %s.",
-              this, e));
-    }
-  }
+//  @Override
+//  public void sendToTransport() {
+//    try (ByteArrayOutputStream bytesStream = new ByteArrayOutputStream();
+//        DataOutputStream stream = new DataOutputStream(bytesStream)) {
+//      serialize(stream);
+//      // senderTransport(bytesStream.toArray, this);
+//      // System.out.println(this);
+//    } catch (IOException e) {
+//      logger.warn(
+//          String.format(
+//              "Serialize deletion pipeData %s error, can not send to transport, because %s.",
+//              this, e));
+//    }
+//  }
 
   @Override
   public String toString() {
