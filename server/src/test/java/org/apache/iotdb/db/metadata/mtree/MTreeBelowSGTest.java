@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata.mtree;
 
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.SchemaEngine;
@@ -53,12 +52,15 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class MTreeBelowSGTest {
+public abstract class MTreeBelowSGTest {
 
   MTreeAboveSG root;
 
+  protected abstract void setConfig();
+
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
+    setConfig();
     EnvironmentUtils.envSetUp();
     root = new MTreeAboveSG();
   }
@@ -331,7 +333,7 @@ public class MTreeBelowSGTest {
   }
 
   @Test
-  public void testSetStorageGroup() throws IllegalPathException {
+  public void testSetStorageGroup() throws MetadataException {
     // set storage group first
     MTreeBelowSG storageGroup = null;
     try {

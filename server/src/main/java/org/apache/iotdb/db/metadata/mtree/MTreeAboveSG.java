@@ -34,6 +34,8 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveSGCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
@@ -50,6 +52,7 @@ import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -68,12 +71,17 @@ public class MTreeAboveSG {
   public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
   private IMNode root;
+  private IMTreeStore store;
 
-  public MTreeAboveSG() {
-    this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+  public MTreeAboveSG() throws MetadataException, IOException {
+    init();
   }
 
-  public void init() {}
+  public void init() throws MetadataException, IOException {
+    this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+    store = new MemMTreeStore();
+    store.init();
+  }
 
   public void clear() {
     for (IStorageGroupMNode storageGroupMNode : getAllStorageGroupNodes()) {
@@ -264,7 +272,7 @@ public class MTreeAboveSG {
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
     StorageGroupCollector<List<PartialPath>> collector =
-        new StorageGroupCollector<List<PartialPath>>(root, pathPattern) {
+        new StorageGroupCollector<List<PartialPath>>(root, pathPattern, store) {
           @Override
           protected void collectStorageGroup(IStorageGroupMNode node) {
             result.add(node.getPartialPath());
@@ -305,7 +313,7 @@ public class MTreeAboveSG {
       throws MetadataException {
     Map<String, List<PartialPath>> result = new HashMap<>();
     StorageGroupCollector<Map<String, String>> collector =
-        new StorageGroupCollector<Map<String, String>>(root, path) {
+        new StorageGroupCollector<Map<String, String>>(root, path, store) {
           @Override
           protected void collectStorageGroup(IStorageGroupMNode node) {
             PartialPath sgPath = node.getPartialPath();
@@ -327,7 +335,7 @@ public class MTreeAboveSG {
    */
   public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    CounterTraverser counter = new StorageGroupCounter(root, pathPattern);
+    CounterTraverser counter = new StorageGroupCounter(root, pathPattern, store);
     counter.setPrefixMatch(isPrefixMatch);
     counter.traverse();
     return counter.getCount();
@@ -376,7 +384,7 @@ public class MTreeAboveSG {
       PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
     List<IStorageGroupMNode> result = new ArrayList<>();
     StorageGroupCollector<List<IStorageGroupMNode>> collector =
-        new StorageGroupCollector<List<IStorageGroupMNode>>(root, pathPattern) {
+        new StorageGroupCollector<List<IStorageGroupMNode>>(root, pathPattern, store) {
           @Override
           protected void collectStorageGroup(IStorageGroupMNode node) {
             result.add(node);
@@ -435,7 +443,8 @@ public class MTreeAboveSG {
    */
   public Pair<Integer, Set<IStorageGroupMNode>> getNodesCountInGivenLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-    MNodeAboveSGLevelCounter counter = new MNodeAboveSGLevelCounter(root, pathPattern, level);
+    MNodeAboveSGLevelCounter counter =
+        new MNodeAboveSGLevelCounter(root, pathPattern, store, level);
     counter.setPrefixMatch(isPrefixMatch);
     counter.traverse();
     return new Pair<>(counter.getCount(), counter.getInvolvedStorageGroupMNodes());
@@ -446,7 +455,7 @@ public class MTreeAboveSG {
       PartialPath pathPattern, int nodeLevel, SchemaEngine.StorageGroupFilter filter)
       throws MetadataException {
     MNodeAboveSGCollector<List<PartialPath>> collector =
-        new MNodeAboveSGCollector<List<PartialPath>>(root, pathPattern) {
+        new MNodeAboveSGCollector<List<PartialPath>>(root, pathPattern, store) {
           @Override
           protected void transferToResult(IMNode node) {
             resultSet.add(getCurrentPartialPath(node));
@@ -478,7 +487,7 @@ public class MTreeAboveSG {
     try {
       MNodeAboveSGCollector<Set<String>> collector =
           new MNodeAboveSGCollector<Set<String>>(
-              root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
+              root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store) {
             @Override
             protected void transferToResult(IMNode node) {
               resultSet.add(getCurrentPartialPath(node).getFullPath());
@@ -511,7 +520,7 @@ public class MTreeAboveSG {
     try {
       MNodeAboveSGCollector<Set<String>> collector =
           new MNodeAboveSGCollector<Set<String>>(
-              root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
+              root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store) {
             @Override
             protected void transferToResult(IMNode node) {
               resultSet.add(node.getName());

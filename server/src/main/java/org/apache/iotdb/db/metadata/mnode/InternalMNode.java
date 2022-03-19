@@ -23,7 +23,6 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 
 import java.io.IOException;
-import java.util.Map;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the

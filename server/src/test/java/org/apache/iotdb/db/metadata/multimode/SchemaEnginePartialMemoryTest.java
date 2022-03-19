@@ -16,31 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.service.traverser.counter;
+package org.apache.iotdb.db.metadata.multimode;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-// This class implements the entity count function.
-public class EntityCounter extends CounterTraverser {
-
-  public EntityCounter(IMNode startNode, PartialPath path, IMTreeStore store)
-      throws MetadataException {
-    super(startNode, path, store);
-  }
-
+public class SchemaEnginePartialMemoryTest extends SchemaEngineDiskModeTest {
   @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    return false;
-  }
-
-  @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isEntity()) {
-      count++;
-    }
-    return false;
+  protected void setMemSize() {
+    IoTDBDescriptor.getInstance().getConfig().setCachedMetadataSizeInPersistentMode(5);
   }
 }

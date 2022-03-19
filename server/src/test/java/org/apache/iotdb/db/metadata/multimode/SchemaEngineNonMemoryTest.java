@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.multimode;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-public class MManagerNonMemoryTest extends MManagerDiskModeTest {
+public class SchemaEngineNonMemoryTest extends SchemaEngineDiskModeTest {
 
   @Override
   protected void setMemSize() {

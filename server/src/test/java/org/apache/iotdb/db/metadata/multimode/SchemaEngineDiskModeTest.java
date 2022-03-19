@@ -16,25 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.service.traverser.counter;
+package org.apache.iotdb.db.metadata.multimode;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.service.traverser.Traverser;
-import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.SchemaEngineBasicTest;
 
-// This class define the count as traversal result.
-public abstract class CounterTraverser extends Traverser {
-
-  protected int count;
-
-  public CounterTraverser(IMNode startNode, PartialPath path, IMTreeStore store)
-      throws MetadataException {
-    super(startNode, path, store);
+public abstract class SchemaEngineDiskModeTest extends SchemaEngineBasicTest {
+  @Override
+  protected void setConfig() {
+    IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(true);
+    setMemSize();
   }
 
-  public int getCount() {
-    return count;
-  }
+  protected abstract void setMemSize();
 }

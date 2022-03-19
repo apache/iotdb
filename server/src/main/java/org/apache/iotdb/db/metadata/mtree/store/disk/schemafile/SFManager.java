@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;

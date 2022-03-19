@@ -30,7 +30,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
+import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -205,7 +205,7 @@ public class SchemaEngine {
       templateManager.init();
       storageGroupSchemaManager.init();
 
-    } catch (IOException e) {
+    } catch (MetadataException | IOException e) {
       logger.error(
           "Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
@@ -629,6 +629,11 @@ public class SchemaEngine {
    */
   public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
+    // todo this is for test assistance, refactor this to support massive timeseries
+    if (pathPattern.getFullPath().equals("root.**")
+        && templateManager.getAllTemplateName().isEmpty()) {
+      return (int) timeseriesStatistics.getTotalSeriesNumber();
+    }
     int count = 0;
     for (SchemaRegion schemaRegion :
         storageGroupSchemaManager.getInvolvedSchemaRegions(pathPattern, isPrefixMatch)) {

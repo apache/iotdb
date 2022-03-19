@@ -16,34 +16,47 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.service.traverser.counter;
+package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
-// This method implements the measurement count function.
-// One MultiMeasurement will only be count once.
-public class MeasurementCounter extends CounterTraverser {
+// This class implements storage group path collection function.
+public abstract class StorageGroupCollector<T> extends CollectorTraverser<T> {
 
-  public MeasurementCounter(IMNode startNode, PartialPath path, IMTreeStore store)
+  protected boolean collectInternal = false;
+
+  public StorageGroupCollector(IMNode startNode, PartialPath path, IMTreeStore store)
       throws MetadataException {
     super(startNode, path, store);
-    isMeasurementTraverser = true;
   }
 
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+    if (node.isStorageGroup()) {
+      if (collectInternal) {
+        collectStorageGroup(node.getAsStorageGroupMNode());
+      }
+      return true;
+    }
     return false;
   }
 
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (!node.isMeasurement()) {
-      return false;
+    if (node.isStorageGroup()) {
+      collectStorageGroup(node.getAsStorageGroupMNode());
+      return true;
     }
-    count++;
-    return true;
+    return false;
+  }
+
+  protected abstract void collectStorageGroup(IStorageGroupMNode node);
+
+  public void setCollectInternal(boolean collectInternal) {
+    this.collectInternal = collectInternal;
   }
 }

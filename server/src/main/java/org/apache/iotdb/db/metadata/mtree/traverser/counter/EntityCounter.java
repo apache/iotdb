@@ -16,26 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.service.traverser.collector;
+package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
-// This class defines EntityMNode as target node and defines the Entity process framework.
-public abstract class EntityCollector<T> extends CollectorTraverser<T> {
+// This class implements the entity count function.
+public class EntityCounter extends CounterTraverser {
 
-  public EntityCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+  public EntityCounter(IMNode startNode, PartialPath path, IMTreeStore store)
       throws MetadataException {
     super(startNode, path, store);
-  }
-
-  public EntityCollector(
-      IMNode startNode, PartialPath path, IMTreeStore store, int limit, int offset)
-      throws MetadataException {
-    super(startNode, path, store, limit, offset);
   }
 
   @Override
@@ -44,22 +37,10 @@ public abstract class EntityCollector<T> extends CollectorTraverser<T> {
   }
 
   @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
-      throws MetadataException {
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
     if (node.isEntity()) {
-      if (hasLimit) {
-        curOffset += 1;
-        if (curOffset < offset) {
-          return true;
-        }
-      }
-      collectEntity(node.getAsEntityMNode());
-      if (hasLimit) {
-        count += 1;
-      }
+      count++;
     }
     return false;
   }
-
-  protected abstract void collectEntity(IEntityMNode node) throws MetadataException;
 }

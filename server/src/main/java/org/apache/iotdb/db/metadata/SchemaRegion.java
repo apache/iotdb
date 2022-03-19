@@ -31,12 +31,9 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.NoTemplateOnMNodeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
-import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
@@ -85,8 +82,8 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import com.google.gson.JsonObject;
 import com.github.benmanes.caffeine.cache.RemovalCause;
+import com.google.gson.JsonObject;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -370,7 +367,8 @@ public class SchemaRegion {
   // region Interfaces for Storage Group Info query and operation
 
   public void setTTL(long dataTTL) throws MetadataException, IOException {
-    mtree.getStorageGroupMNode().setDataTTL(dataTTL);
+    IStorageGroupMNode storageGroupMNode = mtree.getStorageGroupMNode();
+    storageGroupMNode.setDataTTL(dataTTL);
     mtree.updateMNode(storageGroupMNode);
     if (!isRecovering) {
       logWriter.setTTL(new PartialPath(storageGroupFullPath), dataTTL);
@@ -450,30 +448,31 @@ public class SchemaRegion {
         // the cached mNode may be replaced by new entityMNode in mtree
         mNodeCache.invalidate(path.getDevicePath());
 
-      // update statistics and schemaDataTypeNumMap
-      timeseriesStatistics.addTimeseries(1);
+        // update statistics and schemaDataTypeNumMap
+        timeseriesStatistics.addTimeseries(1);
 
-      // update tag index
-      if (offset != -1 && isRecovering) {
-        // the timeseries has already been created and now system is recovering, using the tag info
-        // in tagFile to recover index directly
-        tagManager.recoverIndex(offset, leafMNode);
-      } else if (plan.getTags() != null) {
-        // tag key, tag value
-        tagManager.addIndex(plan.getTags(), leafMNode);
-      }
-
-      // write log
-      if (!isRecovering) {
-        // either tags or attributes is not empty
-        if ((plan.getTags() != null && !plan.getTags().isEmpty())
-            || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
-          offset = tagManager.writeTagFile(plan.getTags(), plan.getAttributes());
+        // update tag index
+        if (offset != -1 && isRecovering) {
+          // the timeseries has already been created and now system is recovering, using the tag
+          // info
+          // in tagFile to recover index directly
+          tagManager.recoverIndex(offset, leafMNode);
+        } else if (plan.getTags() != null) {
+          // tag key, tag value
+          tagManager.addIndex(plan.getTags(), leafMNode);
         }
-        plan.setTagOffset(offset);
-        logWriter.createTimeseries(plan);
-      }
-      leafMNode.setOffset(offset);
+
+        // write log
+        if (!isRecovering) {
+          // either tags or attributes is not empty
+          if ((plan.getTags() != null && !plan.getTags().isEmpty())
+              || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
+            offset = tagManager.writeTagFile(plan.getTags(), plan.getAttributes());
+          }
+          plan.setTagOffset(offset);
+          logWriter.createTimeseries(plan);
+        }
+        leafMNode.setOffset(offset);
         mtree.updateMNode(leafMNode);
 
       } finally {
@@ -723,7 +722,6 @@ public class SchemaRegion {
         return node;
       } catch (MetadataException e) {
         // the node in mNodeCache has been evicted, thus get it via the following progress
-        shouldSetStorageGroup = false;
       }
     } catch (Exception e) {
       if (e.getCause() instanceof MetadataException) {
@@ -776,7 +774,8 @@ public class SchemaRegion {
 
   /** Get metadata in Json format */
   public JsonObject getMetadataInJson() {
-    return mtree.toJson();
+    //    return mtree.toJson();
+    return null;
   }
 
   // region Interfaces for metadata count
@@ -788,11 +787,6 @@ public class SchemaRegion {
    */
   public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    // todo this is for test assistance, refactor this to support massive timeseries
-    if (pathPattern.getFullPath().equals("root.**")
-        && templateManager.getAllTemplateName().isEmpty()) {
-      return (int) totalSeriesNumber.get();
-    }
     return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
   }
 
@@ -1761,7 +1755,7 @@ public class SchemaRegion {
       IMNode node = getDeviceNodeWithAutoCreate(path);
 
       try {
-        TemplateManager.getInstance().checkTemplateCompatible(template, node);
+        TemplateManager.getInstance().checkIsTemplateCompatible(template, node);
         mtree.checkIsTemplateCompatibleWithChild(node, template);
         node.setSchemaTemplate(template);
         mtree.updateMNode(node);

@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -60,12 +61,10 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
     return StorageGroupManagerHolder.INSTANCE;
   }
 
-  private StorageGroupSchemaManager() {
-    mtree = new MTreeAboveSG();
-  }
+  private StorageGroupSchemaManager() {}
 
-  public synchronized void init() {
-    mtree.init();
+  public synchronized void init() throws MetadataException, IOException {
+    mtree = new MTreeAboveSG();
     File dir = new File(IoTDBDescriptor.getInstance().getConfig().getSchemaDir());
     File[] sgDirs = dir.listFiles((dir1, name) -> name.startsWith(PATH_ROOT + PATH_SEPARATOR));
     if (sgDirs != null) {

@@ -16,46 +16,50 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.counter;
+package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
-import java.util.HashSet;
-import java.util.Set;
+// This class defines EntityMNode as target node and defines the Entity process framework.
+public abstract class EntityCollector<T> extends CollectorTraverser<T> {
 
-public class MNodeAboveSGLevelCounter extends MNodeLevelCounter {
-
-  protected Set<IStorageGroupMNode> involvedStorageGroupMNodes = new HashSet<>();
-
-  public MNodeAboveSGLevelCounter(
-      IMNode startNode, PartialPath path, IMTreeStore store, int targetLevel)
+  public EntityCollector(IMNode startNode, PartialPath path, IMTreeStore store)
       throws MetadataException {
-    super(startNode, path, store, targetLevel);
+    super(startNode, path, store);
+  }
+
+  public EntityCollector(
+      IMNode startNode, PartialPath path, IMTreeStore store, int limit, int offset)
+      throws MetadataException {
+    super(startNode, path, store, limit, offset);
   }
 
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(node.getAsStorageGroupMNode());
-      return true;
-    }
-    return super.processInternalMatchedMNode(node, idx, level);
+    return false;
   }
 
   @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(node.getAsStorageGroupMNode());
-      return true;
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+      throws MetadataException {
+    if (node.isEntity()) {
+      if (hasLimit) {
+        curOffset += 1;
+        if (curOffset < offset) {
+          return true;
+        }
+      }
+      collectEntity(node.getAsEntityMNode());
+      if (hasLimit) {
+        count += 1;
+      }
     }
-    return super.processFullMatchedMNode(node, idx, level);
+    return false;
   }
 
-  public Set<IStorageGroupMNode> getInvolvedStorageGroupMNodes() {
-    return involvedStorageGroupMNodes;
-  }
+  protected abstract void collectEntity(IEntityMNode node) throws MetadataException;
 }
