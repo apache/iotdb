@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.sql.parser;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
@@ -49,7 +49,7 @@ import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 
 public class StatementGenerator {
 
