@@ -18,15 +18,15 @@
  */
 package org.apache.iotdb.db.service.thrift.impl;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
-import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -358,7 +358,7 @@ public class TSServiceImpl implements TSIService.Iface {
     try {
       switch (req.getType()) {
         case "METADATA_IN_JSON":
-          resp.setMetadataInJson(IoTDB.metaManager.getMetadataInString());
+          resp.setMetadataInJson(IoTDB.schemaEngine.getMetadataInString());
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":
@@ -389,11 +389,11 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   protected List<MeasurementPath> getPaths(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getMeasurementPaths(path);
+    return IoTDB.schemaEngine.getMeasurementPaths(path);
   }
 
   protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getSeriesType(path);
+    return IoTDB.schemaEngine.getSeriesType(path);
   }
 
   private boolean executeInsertRowsPlan(InsertRowsPlan insertRowsPlan, List<TSStatus> result) {
@@ -1762,7 +1762,9 @@ public class TSServiceImpl implements TSIService.Iface {
               dataTypes,
               encodings,
               compressors,
-              req.measurementAlias);
+              req.measurementAlias,
+              req.tagsList,
+              req.attributesList);
       TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
@@ -1953,36 +1955,36 @@ public class TSServiceImpl implements TSIService.Iface {
       switch (TemplateQueryType.values()[req.getQueryType()]) {
         case COUNT_MEASUREMENTS:
           resp.setQueryType(TemplateQueryType.COUNT_MEASUREMENTS.ordinal());
-          resp.setCount(IoTDB.metaManager.countMeasurementsInTemplate(req.name));
+          resp.setCount(IoTDB.schemaEngine.countMeasurementsInTemplate(req.name));
           break;
         case IS_MEASUREMENT:
           path = req.getMeasurement();
           resp.setQueryType(TemplateQueryType.IS_MEASUREMENT.ordinal());
-          resp.setResult(IoTDB.metaManager.isMeasurementInTemplate(req.name, path));
+          resp.setResult(IoTDB.schemaEngine.isMeasurementInTemplate(req.name, path));
           break;
         case PATH_EXIST:
           path = req.getMeasurement();
           resp.setQueryType(TemplateQueryType.PATH_EXIST.ordinal());
-          resp.setResult(IoTDB.metaManager.isPathExistsInTemplate(req.name, path));
+          resp.setResult(IoTDB.schemaEngine.isPathExistsInTemplate(req.name, path));
           break;
         case SHOW_MEASUREMENTS:
           path = req.getMeasurement();
           resp.setQueryType(TemplateQueryType.SHOW_MEASUREMENTS.ordinal());
-          resp.setMeasurements(IoTDB.metaManager.getMeasurementsInTemplate(req.name, path));
+          resp.setMeasurements(IoTDB.schemaEngine.getMeasurementsInTemplate(req.name, path));
           break;
         case SHOW_TEMPLATES:
           resp.setQueryType(TemplateQueryType.SHOW_TEMPLATES.ordinal());
-          resp.setMeasurements(new ArrayList<>(IoTDB.metaManager.getAllTemplates()));
+          resp.setMeasurements(new ArrayList<>(IoTDB.schemaEngine.getAllTemplates()));
           break;
         case SHOW_SET_TEMPLATES:
           path = req.getName();
           resp.setQueryType(TemplateQueryType.SHOW_SET_TEMPLATES.ordinal());
-          resp.setMeasurements(new ArrayList<>(IoTDB.metaManager.getPathsSetTemplate(path)));
+          resp.setMeasurements(new ArrayList<>(IoTDB.schemaEngine.getPathsSetTemplate(path)));
           break;
         case SHOW_USING_TEMPLATES:
           path = req.getName();
           resp.setQueryType(TemplateQueryType.SHOW_USING_TEMPLATES.ordinal());
-          resp.setMeasurements(new ArrayList<>(IoTDB.metaManager.getPathsUsingTemplate(path)));
+          resp.setMeasurements(new ArrayList<>(IoTDB.schemaEngine.getPathsUsingTemplate(path)));
           break;
       }
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully"));

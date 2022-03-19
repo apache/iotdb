@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -191,7 +191,7 @@ public class SingleSeriesCompactionExecutor {
 
   /** Deserialize a chunk into points and write it to the chunkWriter */
   private void writeChunkIntoChunkWriter(Chunk chunk) throws IOException {
-    IChunkReader chunkReader = new ChunkReaderByTimestamp(chunk);
+    IChunkReader chunkReader = new ChunkReader(chunk, null);
     while (chunkReader.hasNextSatisfiedPage()) {
       IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
       while (batchIterator.hasNextTimeValuePair()) {
@@ -209,7 +209,14 @@ public class SingleSeriesCompactionExecutor {
   }
 
   private void writeCachedChunkIntoChunkWriter() throws IOException {
-    cachedChunk.getData().flip();
+    if (cachedChunk.getData().position() != 0) {
+      // If the position of cache chunk data buffer is 0,
+      // it means that the cache chunk is the first chunk cached,
+      // and it hasn't merged with any chunk yet.
+      // If we flip it, both the position and limit in the buffer will be 0,
+      // which leads to the lost of data.
+      cachedChunk.getData().flip();
+    }
     writeChunkIntoChunkWriter(cachedChunk);
     cachedChunk = null;
     cachedChunkMetadata = null;

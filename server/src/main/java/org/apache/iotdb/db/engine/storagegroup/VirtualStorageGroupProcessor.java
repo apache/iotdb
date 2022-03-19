@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -76,7 +77,6 @@ import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.MmapUtil;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -121,7 +121,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
@@ -1181,7 +1181,7 @@ public class VirtualStorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        IoTDB.metaManager.updateLastCache(
+        IoTDB.schemaEngine.updateLastCache(
             plan.getDevicePath().concatNode(plan.getMeasurements()[i]),
             plan.composeLastTimeValuePair(i),
             true,
@@ -1189,7 +1189,7 @@ public class VirtualStorageGroupProcessor {
       } else {
         // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
         // update last cache
-        IoTDB.metaManager.updateLastCache(
+        IoTDB.schemaEngine.updateLastCache(
             mNodes[i], plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     }
@@ -1231,7 +1231,7 @@ public class VirtualStorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        IoTDB.metaManager.updateLastCache(
+        IoTDB.schemaEngine.updateLastCache(
             plan.getDevicePath().concatNode(plan.getMeasurements()[i]),
             plan.composeTimeValuePair(i),
             true,
@@ -1239,7 +1239,7 @@ public class VirtualStorageGroupProcessor {
       } else {
         // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
         // update last cache
-        IoTDB.metaManager.updateLastCache(
+        IoTDB.schemaEngine.updateLastCache(
             mNodes[i], plan.composeTimeValuePair(i), true, latestFlushedTime);
       }
     }
@@ -1927,7 +1927,7 @@ public class VirtualStorageGroupProcessor {
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
-      Set<PartialPath> devicePaths = IoTDB.metaManager.getBelongedDevices(path);
+      Set<PartialPath> devicePaths = IoTDB.schemaEngine.getBelongedDevices(path);
       for (PartialPath device : devicePaths) {
         // delete Last cache record if necessary
         tryToDeleteLastCache(device, path, startTime, endTime);
@@ -2082,7 +2082,7 @@ public class VirtualStorageGroupProcessor {
       return;
     }
     try {
-      IoTDB.metaManager.deleteLastCacheByDevice(deviceId, originalPath, startTime, endTime);
+      IoTDB.schemaEngine.deleteLastCacheByDevice(deviceId, originalPath, startTime, endTime);
     } catch (MetadataException e) {
       throw new WriteProcessException(e);
     }
@@ -2366,7 +2366,7 @@ public class VirtualStorageGroupProcessor {
       return;
     }
     try {
-      IoTDB.metaManager.deleteLastCacheByDevice(deviceId);
+      IoTDB.schemaEngine.deleteLastCacheByDevice(deviceId);
     } catch (MetadataException e) {
       // the path doesn't cache in cluster mode now, ignore
     }

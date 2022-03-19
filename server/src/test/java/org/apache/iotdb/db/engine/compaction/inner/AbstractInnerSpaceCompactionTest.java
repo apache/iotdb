@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -58,7 +58,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public abstract class AbstractInnerSpaceCompactionTest {
   protected static final Logger logger =
@@ -130,7 +130,7 @@ public abstract class AbstractInnerSpaceCompactionTest {
     }
 
     EnvironmentUtils.envSetUp();
-    IoTDB.metaManager.init();
+    IoTDB.schemaEngine.init();
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
     tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
@@ -147,11 +147,11 @@ public abstract class AbstractInnerSpaceCompactionTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = COMPACTION_TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    IoTDB.schemaEngine.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
             measurementSchema.getType(),
             measurementSchema.getEncodingType(),
@@ -239,7 +239,7 @@ public abstract class AbstractInnerSpaceCompactionTest {
     unseqResources.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.metaManager.clear();
+    IoTDB.schemaEngine.clear();
     EnvironmentUtils.cleanEnv();
     if (tempSGDir.exists()) {
       FileUtils.deleteDirectory(tempSGDir);

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -53,7 +53,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public abstract class InnerCompactionTest {
 
@@ -79,7 +79,7 @@ public abstract class InnerCompactionTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException, Exception {
     EnvironmentUtils.envSetUp();
-    IoTDB.metaManager.init();
+    IoTDB.schemaEngine.init();
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
   }
@@ -92,7 +92,7 @@ public abstract class InnerCompactionTest {
     unseqResources.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.metaManager.clear();
+    IoTDB.schemaEngine.clear();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -107,11 +107,11 @@ public abstract class InnerCompactionTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = COMPACTION_TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    IoTDB.schemaEngine.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
             measurementSchema.getType(),
             measurementSchema.getEncodingType(),

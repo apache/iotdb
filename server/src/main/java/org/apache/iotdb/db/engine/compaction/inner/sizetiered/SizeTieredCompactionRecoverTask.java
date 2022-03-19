@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
@@ -174,9 +173,6 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
                   true);
         } else {
           handleSuccess = handleWithoutAllSourceFilesExist(sourceFileIdentifiers);
-          if (logAnalyzer.isLogFromOld()) {
-            appendCompactionModificationsFromOld(targetResource);
-          }
         }
       }
     } catch (IOException e) {
@@ -273,7 +269,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         handleSuccess = false;
       }
     }
-    // delete remaining source files
+    // delete remaining source files and resource files
     if (!InnerSpaceCompactionUtils.deleteTsFilesInDisk(
         remainSourceTsFileResources, fullStorageGroupName)) {
       LOGGER.error(
@@ -298,26 +294,6 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
       }
     }
     return null;
-  }
-
-  /**
-   * Append compaction modifications from previous version (<0.13) to target mods file.
-   *
-   * @param targetResource
-   */
-  private void appendCompactionModificationsFromOld(TsFileResource targetResource)
-      throws IOException {
-    File compactionModsFileFromOld =
-        new File(
-            tsFileManager.getStorageGroupDir()
-                + File.separator
-                + IoTDBConstant.COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD);
-    if (compactionModsFileFromOld.exists()) {
-      ModificationFile compactionModsFile =
-          new ModificationFile(compactionModsFileFromOld.getPath());
-      RewriteCrossCompactionRecoverTask.appendCompactionModificationsFromOld(
-          targetResource, compactionModsFile);
-    }
   }
 
   /** Return whether compaction log file is from previous version (<0.13). */

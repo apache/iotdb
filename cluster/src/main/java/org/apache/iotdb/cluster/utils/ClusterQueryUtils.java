@@ -44,7 +44,7 @@ public class ClusterQueryUtils {
   }
 
   public static void checkPathExistence(PartialPath path) throws QueryProcessException {
-    if (!IoTDB.metaManager.isPathExist(path)) {
+    if (!IoTDB.schemaEngine.isPathExist(path)) {
       try {
         MetaPuller.getInstance().pullTimeSeriesSchemas(Collections.singletonList(path), null);
       } catch (MetadataException e) {

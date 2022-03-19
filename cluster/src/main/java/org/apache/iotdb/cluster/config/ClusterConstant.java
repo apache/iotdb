@@ -19,7 +19,7 @@
 package org.apache.iotdb.cluster.config;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 public class ClusterConstant {
 

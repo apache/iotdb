@@ -36,7 +36,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Properties;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 
 public class SyncLogDequeSerializerTest extends IoTDBTest {
 

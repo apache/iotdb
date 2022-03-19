@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.conf.rest;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
