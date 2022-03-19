@@ -24,6 +24,7 @@ import org.apache.iotdb.integration.env.ConfigFactory;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -32,8 +33,10 @@ import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.Locale;
 
 import static org.apache.iotdb.db.constant.TestConstant.avg;
@@ -1025,6 +1028,32 @@ public class IoTDBAggregationIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void timeWasNullTest() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select max_value(temperature),count(status) from root.ln.wf01.wt01 group by ([0, 600), 100ms);");
+      Assert.assertTrue(hasResultSet);
+      ResultSet resultSet = statement.getResultSet();
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      int columnCount = metaData.getColumnCount();
+      while (resultSet.next()) {
+        for (int i = 1; i <= columnCount; i++) {
+          int ct = metaData.getColumnType(i);
+          if (ct == Types.TIMESTAMP) {
+            if (resultSet.wasNull()) {
+              Assert.assertTrue(false);
+            } else {
+              Assert.assertTrue(true);
+            }
+          }
+        }
+      }
     }
   }
 }
