@@ -23,6 +23,7 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
@@ -129,8 +130,8 @@ public class RatisConsensus implements IConsensus {
     RaftClient client = clientMap.get(Utils.toRatisGroupId(groupId));
     TSStatus writeResult = null;
     try {
-      Message message =
-          Message.valueOf(ByteString.copyFrom(serializer.serializeRequest(IConsensusRequest)));
+      ByteBufferConsensusRequest request = (ByteBufferConsensusRequest) IConsensusRequest;
+      Message message = Message.valueOf(ByteString.copyFrom(request.getContent()));
       RaftClientReply reply = client.io().send(message);
       writeResult =
           serializer.deserializeTSStatus(reply.getMessage().getContent().asReadOnlyByteBuffer());
@@ -143,12 +144,13 @@ public class RatisConsensus implements IConsensus {
   }
 
   @Override
-  public ConsensusReadResponse read(ConsensusGroupId groupId, IConsensusRequest IConsensusRequest) {
+  public synchronized ConsensusReadResponse read(
+      ConsensusGroupId groupId, IConsensusRequest IConsensusRequest) {
     RaftClient client = clientMap.get(Utils.toRatisGroupId(groupId));
     RaftClientReply reply = null;
     try {
-      Message message =
-          Message.valueOf(ByteString.copyFrom(serializer.serializeRequest(IConsensusRequest)));
+      ByteBufferConsensusRequest request = (ByteBufferConsensusRequest) IConsensusRequest;
+      Message message = Message.valueOf(ByteString.copyFrom(request.getContent()));
       // TODO Ratis sendReadOnly may return stale results, check it later
       reply = client.io().sendReadOnly(message);
     } catch (IOException e) {
@@ -340,7 +342,21 @@ public class RatisConsensus implements IConsensus {
 
   @Override
   public ConsensusGenericResponse transferLeader(ConsensusGroupId groupId, Peer newLeader) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+    RaftGroupId raftGroupId = Utils.toRatisGroupId(groupId);
+    RaftClient client = clientMap.getOrDefault(raftGroupId, null);
+    if (client == null) {
+      return failed(new ConsensusWrongGroupException(groupId));
+    }
+    RaftPeer newRaftLeader = Utils.toRaftPeer(newLeader);
+
+    RaftClientReply reply = null;
+    try {
+      // TODO tuning for timeoutMs
+      reply = client.admin().transferLeadership(newRaftLeader.getId(), 2000);
+    } catch (IOException e) {
+      return failed(new RatisRequestFailedException());
+    }
+    return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
 
   @Override

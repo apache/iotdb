@@ -19,16 +19,11 @@
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.nio.ByteBuffer;
 
 public interface IRatisSerializer {
-
-  ByteBuffer serializeRequest(IConsensusRequest request);
-
-  IConsensusRequest deserializeRequest(ByteBuffer buffer);
 
   ByteBuffer serializeTSStatus(TSStatus tsStatus);
 

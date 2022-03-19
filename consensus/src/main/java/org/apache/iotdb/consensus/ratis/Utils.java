@@ -43,7 +43,7 @@ public class Utils {
   }
 
   public static RaftPeer toRaftPeer(Endpoint endpoint) {
-    String Id = String.format("%s:%d", endpoint.getIp(), endpoint.getPort());
+    String Id = String.format("%s-%d", endpoint.getIp(), endpoint.getPort());
     return RaftPeer.newBuilder().setId(Id).setAddress(IP_PORT(endpoint)).build();
   }
 

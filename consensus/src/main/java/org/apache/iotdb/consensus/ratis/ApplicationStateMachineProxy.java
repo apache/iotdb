@@ -19,6 +19,7 @@
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -54,7 +55,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     updateLastAppliedTermIndex(log.getTerm(), log.getIndex());
 
     IConsensusRequest request =
-        serializer.deserializeRequest(
+        new ByteBufferConsensusRequest(
             log.getStateMachineLogEntry().getLogData().asReadOnlyByteBuffer());
     TSStatus result = applicationStateMachine.write(request);
 
@@ -65,7 +66,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   @Override
   public CompletableFuture<Message> query(Message request) {
     IConsensusRequest req =
-        serializer.deserializeRequest(request.getContent().asReadOnlyByteBuffer());
+        new ByteBufferConsensusRequest(request.getContent().asReadOnlyByteBuffer());
     DataSet result = applicationStateMachine.read(req);
     return CompletableFuture.completedFuture(
         Message.valueOf(ByteString.copyFrom(serializer.serializeDataSet(result))));
