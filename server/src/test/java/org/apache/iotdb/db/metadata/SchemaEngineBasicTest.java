@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -33,12 +34,14 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -59,6 +62,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -94,30 +98,30 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testAddPathAndExist() throws IllegalPathException {
-    MManager manager = IoTDB.metaManager;
-    assertTrue(manager.isPathExist(new PartialPath("root")));
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root")));
 
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.laptop")));
 
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop.d1"));
-      manager.setStorageGroup(new PartialPath("root.1"));
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop.d1"));
+      schemaEngine.setStorageGroup(new PartialPath("root.1"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
-    assertTrue(manager.isPathExist(new PartialPath("root.1")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.1")));
 
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop"));
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
     } catch (MetadataException e) {
       Assert.assertEquals(
           "some children of root.laptop have already been set to storage group", e.getMessage());
     }
 
     try {
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s0"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
@@ -127,67 +131,67 @@ public abstract class SchemaEngineBasicTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.s1")));
     try {
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
           compressionType,
           Collections.emptyMap());
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.1_2"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.\"1.2.3\""),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.1.2.3"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
 
-      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
-      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.1_2")));
-      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.\"1.2.3\"")));
-      assertTrue(manager.isPathExist(new PartialPath("root.1.2")));
-      assertTrue(manager.isPathExist(new PartialPath("root.1.2.3")));
+      assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.s1")));
+      assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.1_2")));
+      assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.\"1.2.3\"")));
+      assertTrue(schemaEngine.isPathExist(new PartialPath("root.1.2")));
+      assertTrue(schemaEngine.isPathExist(new PartialPath("root.1.2.3")));
     } catch (MetadataException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.s1"));
+      schemaEngine.deleteTimeseries(new PartialPath("root.laptop.d1.s1"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.s1")));
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.s0"));
+      schemaEngine.deleteTimeseries(new PartialPath("root.laptop.d1.s0"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop")));
-    assertTrue(manager.isPathExist(new PartialPath("root")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root")));
 
     try {
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
@@ -199,7 +203,7 @@ public abstract class SchemaEngineBasicTest {
     }
 
     try {
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s0"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
@@ -210,24 +214,24 @@ public abstract class SchemaEngineBasicTest {
       fail(e1.getMessage());
     }
 
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d2")));
-    assertFalse(manager.checkStorageGroupByPath(new PartialPath("root.laptop.d2")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.laptop.d2")));
+    assertFalse(schemaEngine.checkStorageGroupByPath(new PartialPath("root.laptop.d2")));
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.s0"));
+      schemaEngine.deleteTimeseries(new PartialPath("root.laptop.d1.s0"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.s1"));
+      schemaEngine.deleteTimeseries(new PartialPath("root.laptop.d1.s1"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop1"));
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop1"));
     } catch (MetadataException e) {
       Assert.assertEquals(
           String.format(
@@ -237,37 +241,68 @@ public abstract class SchemaEngineBasicTest {
     }
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.1_2"));
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.\"1.2.3\""));
-      manager.deleteTimeseries(new PartialPath("root.1.2.3"));
+      schemaEngine.deleteTimeseries(new PartialPath("root.laptop.d1.1_2"));
+      schemaEngine.deleteTimeseries(new PartialPath("root.laptop.d1.\"1.2.3\""));
+      schemaEngine.deleteTimeseries(new PartialPath("root.1.2.3"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.1_2")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.\"1.2.3\"")));
-    assertFalse(manager.isPathExist(new PartialPath("root.1.2.3")));
-    assertFalse(manager.isPathExist(new PartialPath("root.1.2")));
-    assertTrue(manager.isPathExist(new PartialPath("root.1")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.1_2")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.\"1.2.3\"")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.1.2.3")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.1.2")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.1")));
 
     try {
-      manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.1")));
+      schemaEngine.deleteStorageGroups(Collections.singletonList(new PartialPath("root.1")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(manager.isPathExist(new PartialPath("root.1")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.1")));
+
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.template")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.template.d1")));
+
+    try {
+      schemaEngine.createTimeseries(
+          new PartialPath("root.template.d2"),
+          TSDataType.INT32,
+          TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    try {
+      schemaEngine.createSchemaTemplate(getCreateTemplatePlan());
+      schemaEngine.setSchemaTemplate(new SetTemplatePlan("template1", "root.template"));
+      schemaEngine.setUsingSchemaTemplate(
+          new ActivateTemplatePlan(new PartialPath("root.template.d1")));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.template.d1")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.template.d1.s11")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.template.d2.s11")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.template.d1.vector")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.template.d1.vector.s0")));
   }
 
   /**
    * Test if the PathNotExistException can be correctly thrown when the path to be deleted does not
-   * exist. See {@link MManager#deleteTimeseries(PartialPath)}.
+   * exist. See {@link SchemaEngine#deleteTimeseries(PartialPath)}.
    */
   @Test
   public void testDeleteNonExistentTimeseries() {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     try {
-      manager.deleteTimeseries(new PartialPath("root.non.existent"));
+      schemaEngine.deleteTimeseries(new PartialPath("root.non.existent"));
       fail();
     } catch (PathNotExistException e) {
       assertEquals("Path [root.non.existent] does not exist", e.getMessage());
@@ -280,22 +315,22 @@ public abstract class SchemaEngineBasicTest {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Test
   public void testCreateAlignedTimeseries() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop"));
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
     try {
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s0"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
           compressionType,
           Collections.emptyMap());
-      manager.createAlignedTimeSeries(
+      schemaEngine.createAlignedTimeSeries(
           new PartialPath("root.laptop.d1.aligned_device"),
           Arrays.asList("s1", "s2", "s3"),
           Arrays.asList(
@@ -310,33 +345,33 @@ public abstract class SchemaEngineBasicTest {
       fail(e.getMessage());
     }
 
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s1")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s3")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s1")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s3")));
 
-    manager.deleteTimeseries(new PartialPath("root.laptop.d1.aligned_device.*"));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s1")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s3")));
+    schemaEngine.deleteTimeseries(new PartialPath("root.laptop.d1.aligned_device.*"));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s1")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s3")));
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.s0"));
+      schemaEngine.deleteTimeseries(new PartialPath("root.laptop.d1.s0"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.laptop.d1")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.s0")));
 
     try {
-      manager.createAlignedTimeSeries(
+      schemaEngine.createAlignedTimeSeries(
           new PartialPath("root.laptop.d1.aligned_device"),
           Arrays.asList("s0", "s2", "s4"),
           Arrays.asList(
@@ -351,70 +386,70 @@ public abstract class SchemaEngineBasicTest {
       fail(e.getMessage());
     }
 
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s0")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s4")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s0")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s4")));
   }
 
   @Test
   @SuppressWarnings("squid:S5783")
   public void testGetAllTimeseriesCount() {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
 
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop"));
-      manager.createTimeseries(
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d0"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s2.t1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s3"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d2.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d2.s2"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
 
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.**")), 6);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.**")), 6);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*")), 1);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.*")), 4);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.**")), 5);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.*.t1")), 1);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")), 2);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**")), 3);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.*")), 2);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2.s1")), 1);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2.**")), 2);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop")), 0);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d3.s1")), 0);
+      assertEquals(schemaEngine.getAllTimeseriesCount(new PartialPath("root.**")), 6);
+      assertEquals(schemaEngine.getAllTimeseriesCount(new PartialPath("root.laptop.**")), 6);
+      assertEquals(schemaEngine.getAllTimeseriesCount(new PartialPath("root.laptop.*")), 1);
+      assertEquals(schemaEngine.getAllTimeseriesCount(new PartialPath("root.laptop.*.*")), 4);
+      assertEquals(schemaEngine.getAllTimeseriesCount(new PartialPath("root.laptop.*.**")), 5);
+      assertEquals(schemaEngine.getAllTimeseriesCount(new PartialPath("root.laptop.*.*.t1")), 1);
+      assertEquals(schemaEngine.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")), 2);
+      assertEquals(schemaEngine.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**")), 3);
+      assertEquals(schemaEngine.getAllTimeseriesCount(new PartialPath("root.laptop.d1.*")), 2);
+      assertEquals(schemaEngine.getAllTimeseriesCount(new PartialPath("root.laptop.d2.s1")), 1);
+      assertEquals(schemaEngine.getAllTimeseriesCount(new PartialPath("root.laptop.d2.**")), 2);
+      assertEquals(schemaEngine.getAllTimeseriesCount(new PartialPath("root.laptop")), 0);
+      assertEquals(schemaEngine.getAllTimeseriesCount(new PartialPath("root.laptop.d3.s1")), 0);
 
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -425,23 +460,23 @@ public abstract class SchemaEngineBasicTest {
   @Test
   public void testSetStorageGroupAndExist() {
 
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
 
     try {
-      assertFalse(manager.isStorageGroup(new PartialPath("root")));
-      assertFalse(manager.isStorageGroup(new PartialPath("root1.laptop.d2")));
+      assertFalse(schemaEngine.isStorageGroup(new PartialPath("root")));
+      assertFalse(schemaEngine.isStorageGroup(new PartialPath("root1.laptop.d2")));
 
-      manager.setStorageGroup(new PartialPath("root.laptop.d1"));
-      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d1")));
-      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d2")));
-      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop")));
-      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d1.s1")));
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop.d1"));
+      assertTrue(schemaEngine.isStorageGroup(new PartialPath("root.laptop.d1")));
+      assertFalse(schemaEngine.isStorageGroup(new PartialPath("root.laptop.d2")));
+      assertFalse(schemaEngine.isStorageGroup(new PartialPath("root.laptop")));
+      assertFalse(schemaEngine.isStorageGroup(new PartialPath("root.laptop.d1.s1")));
 
-      manager.setStorageGroup(new PartialPath("root.laptop.d2"));
-      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d1")));
-      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d2")));
-      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d3")));
-      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop")));
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop.d2"));
+      assertTrue(schemaEngine.isStorageGroup(new PartialPath("root.laptop.d1")));
+      assertTrue(schemaEngine.isStorageGroup(new PartialPath("root.laptop.d2")));
+      assertFalse(schemaEngine.isStorageGroup(new PartialPath("root.laptop.d3")));
+      assertFalse(schemaEngine.isStorageGroup(new PartialPath("root.laptop")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -449,30 +484,30 @@ public abstract class SchemaEngineBasicTest {
   }
 
   @Test
-  public void testRecover() {
+  public void testRecover() throws Exception {
 
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
 
     try {
 
-      manager.setStorageGroup(new PartialPath("root.laptop.d1"));
-      manager.setStorageGroup(new PartialPath("root.laptop.d2"));
-      manager.createTimeseries(
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop.d1"));
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop.d2"));
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d2.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d1")));
-      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d2")));
-      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d3")));
-      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop")));
+      assertTrue(schemaEngine.isStorageGroup(new PartialPath("root.laptop.d1")));
+      assertTrue(schemaEngine.isStorageGroup(new PartialPath("root.laptop.d2")));
+      assertFalse(schemaEngine.isStorageGroup(new PartialPath("root.laptop.d3")));
+      assertFalse(schemaEngine.isStorageGroup(new PartialPath("root.laptop")));
       Set<String> devices =
           new TreeSet<String>() {
             {
@@ -483,41 +518,37 @@ public abstract class SchemaEngineBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          manager.getMatchedDevices(new PartialPath("root.**"), false).stream()
+          schemaEngine.getMatchedDevices(new PartialPath("root.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
-      manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop.d2")));
-      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d1")));
-      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d2")));
-      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d3")));
-      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop")));
+      schemaEngine.deleteStorageGroups(
+          Collections.singletonList(new PartialPath("root.laptop.d2")));
+      assertTrue(schemaEngine.isStorageGroup(new PartialPath("root.laptop.d1")));
+      assertFalse(schemaEngine.isStorageGroup(new PartialPath("root.laptop.d2")));
+      assertFalse(schemaEngine.isStorageGroup(new PartialPath("root.laptop.d3")));
+      assertFalse(schemaEngine.isStorageGroup(new PartialPath("root.laptop")));
       devices.remove("root.laptop.d2");
       // prefix with *
       assertEquals(
           devices,
-          manager.getMatchedDevices(new PartialPath("root.**"), false).stream()
+          schemaEngine.getMatchedDevices(new PartialPath("root.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
-      // todo fix me while recover from schemaFile
-      manager.clear();
-      MManager recoverManager = new MManager();
-      recoverManager.initForMultiMManagerTest();
+      EnvironmentUtils.restartDaemon();
 
-      assertTrue(recoverManager.isStorageGroup(new PartialPath("root.laptop.d1")));
-      assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop.d2")));
-      assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop.d3")));
-      assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop")));
+      assertTrue(schemaEngine.isStorageGroup(new PartialPath("root.laptop.d1")));
+      assertFalse(schemaEngine.isStorageGroup(new PartialPath("root.laptop.d2")));
+      assertFalse(schemaEngine.isStorageGroup(new PartialPath("root.laptop.d3")));
+      assertFalse(schemaEngine.isStorageGroup(new PartialPath("root.laptop")));
       // prefix with *
       assertEquals(
           devices,
-          recoverManager.getMatchedDevices(new PartialPath("root.**"), false).stream()
+          schemaEngine.getMatchedDevices(new PartialPath("root.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
-      recoverManager.clear();
-      manager.init();
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -527,17 +558,17 @@ public abstract class SchemaEngineBasicTest {
   @Test
   public void testGetAllFileNamesByPath() {
 
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop.d1"));
-      manager.setStorageGroup(new PartialPath("root.laptop.d2"));
-      manager.createTimeseries(
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop.d1"));
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop.d2"));
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d2.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
@@ -547,12 +578,13 @@ public abstract class SchemaEngineBasicTest {
       List<PartialPath> list = new ArrayList<>();
 
       list.add(new PartialPath("root.laptop.d1"));
-      assertEquals(list, manager.getBelongedStorageGroups(new PartialPath("root.laptop.d1.s1")));
-      assertEquals(list, manager.getBelongedStorageGroups(new PartialPath("root.laptop.d1")));
+      assertEquals(
+          list, schemaEngine.getBelongedStorageGroups(new PartialPath("root.laptop.d1.s1")));
+      assertEquals(list, schemaEngine.getBelongedStorageGroups(new PartialPath("root.laptop.d1")));
 
       list.add(new PartialPath("root.laptop.d2"));
-      assertEquals(list, manager.getBelongedStorageGroups(new PartialPath("root.laptop.**")));
-      assertEquals(list, manager.getBelongedStorageGroups(new PartialPath("root.**")));
+      assertEquals(list, schemaEngine.getBelongedStorageGroups(new PartialPath("root.laptop.**")));
+      assertEquals(list, schemaEngine.getBelongedStorageGroups(new PartialPath("root.**")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -561,40 +593,46 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testCheckStorageExistOfPath() {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
 
     try {
-      assertTrue(manager.getMeasurementPaths(new PartialPath("root")).isEmpty());
-      assertTrue(manager.getBelongedStorageGroups(new PartialPath("root")).isEmpty());
-      assertTrue(manager.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
+      assertTrue(schemaEngine.getMeasurementPaths(new PartialPath("root")).isEmpty());
+      assertTrue(schemaEngine.getBelongedStorageGroups(new PartialPath("root")).isEmpty());
+      assertTrue(schemaEngine.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
       assertTrue(
-          manager.getBelongedStorageGroups(new PartialPath("root.vehicle.device")).isEmpty());
+          schemaEngine.getBelongedStorageGroups(new PartialPath("root.vehicle.device")).isEmpty());
       assertTrue(
-          manager
+          schemaEngine
               .getBelongedStorageGroups(new PartialPath("root.vehicle.device.sensor"))
               .isEmpty());
 
-      manager.setStorageGroup(new PartialPath("root.vehicle"));
-      assertFalse(manager.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
+      schemaEngine.setStorageGroup(new PartialPath("root.vehicle"));
+      assertFalse(schemaEngine.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
       assertFalse(
-          manager.getBelongedStorageGroups(new PartialPath("root.vehicle.device")).isEmpty());
+          schemaEngine.getBelongedStorageGroups(new PartialPath("root.vehicle.device")).isEmpty());
       assertFalse(
-          manager
+          schemaEngine
               .getBelongedStorageGroups(new PartialPath("root.vehicle.device.sensor"))
               .isEmpty());
-      assertTrue(manager.getBelongedStorageGroups(new PartialPath("root.vehicle1")).isEmpty());
+      assertTrue(schemaEngine.getBelongedStorageGroups(new PartialPath("root.vehicle1")).isEmpty());
       assertTrue(
-          manager.getBelongedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
+          schemaEngine.getBelongedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
 
-      manager.setStorageGroup(new PartialPath("root.vehicle1.device"));
+      schemaEngine.setStorageGroup(new PartialPath("root.vehicle1.device"));
       assertTrue(
-          manager.getBelongedStorageGroups(new PartialPath("root.vehicle1.device1")).isEmpty());
+          schemaEngine
+              .getBelongedStorageGroups(new PartialPath("root.vehicle1.device1"))
+              .isEmpty());
       assertTrue(
-          manager.getBelongedStorageGroups(new PartialPath("root.vehicle1.device2")).isEmpty());
+          schemaEngine
+              .getBelongedStorageGroups(new PartialPath("root.vehicle1.device2"))
+              .isEmpty());
       assertTrue(
-          manager.getBelongedStorageGroups(new PartialPath("root.vehicle1.device3")).isEmpty());
+          schemaEngine
+              .getBelongedStorageGroups(new PartialPath("root.vehicle1.device3"))
+              .isEmpty());
       assertFalse(
-          manager.getBelongedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
+          schemaEngine.getBelongedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -603,22 +641,22 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testShowChildNodesWithGivenPrefix() {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop"));
-      manager.createTimeseries(
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d2.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s2"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
@@ -628,10 +666,11 @@ public abstract class SchemaEngineBasicTest {
       Set<String> nodes2 = new HashSet<>(Arrays.asList("laptop"));
       Set<String> nodes3 = new HashSet<>(Arrays.asList("d1", "d2"));
       Set<String> nexLevelNodes1 =
-          manager.getChildNodeNameInNextLevel(new PartialPath("root.laptop.d1"));
-      Set<String> nexLevelNodes2 = manager.getChildNodeNameInNextLevel(new PartialPath("root"));
+          schemaEngine.getChildNodeNameInNextLevel(new PartialPath("root.laptop.d1"));
+      Set<String> nexLevelNodes2 =
+          schemaEngine.getChildNodeNameInNextLevel(new PartialPath("root"));
       Set<String> nexLevelNodes3 =
-          manager.getChildNodeNameInNextLevel(new PartialPath("root.laptop"));
+          schemaEngine.getChildNodeNameInNextLevel(new PartialPath("root.laptop"));
       // usual condition
       assertEquals(nodes, nexLevelNodes1);
       assertEquals(nodes2, nexLevelNodes2);
@@ -678,11 +717,11 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testSetStorageGroupWithIllegalName() {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     try {
       PartialPath path1 = new PartialPath("root.laptop\n");
       try {
-        manager.setStorageGroup(path1);
+        schemaEngine.setStorageGroup(path1);
         fail();
       } catch (MetadataException e) {
       }
@@ -692,7 +731,7 @@ public abstract class SchemaEngineBasicTest {
     try {
       PartialPath path2 = new PartialPath("root.laptop\t");
       try {
-        manager.setStorageGroup(path2);
+        schemaEngine.setStorageGroup(path2);
         fail();
       } catch (MetadataException e) {
       }
@@ -703,11 +742,11 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testCreateTimeseriesWithIllegalName() {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     try {
       PartialPath path1 = new PartialPath("root.laptop.d1\n.s1");
       try {
-        manager.createTimeseries(
+        schemaEngine.createTimeseries(
             path1, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY, null);
         fail();
       } catch (MetadataException e) {
@@ -718,7 +757,7 @@ public abstract class SchemaEngineBasicTest {
     try {
       PartialPath path2 = new PartialPath("root.laptop.d1\t.s1");
       try {
-        manager.createTimeseries(
+        schemaEngine.createTimeseries(
             path2, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY, null);
         fail();
       } catch (MetadataException e) {
@@ -730,17 +769,17 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testGetDevicesWithGivenPrefix() {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
 
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop"));
-      manager.createTimeseries(
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d2.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
@@ -752,11 +791,11 @@ public abstract class SchemaEngineBasicTest {
       // usual condition
       assertEquals(
           devices,
-          manager.getMatchedDevices(new PartialPath("root.laptop.**"), false).stream()
+          schemaEngine.getMatchedDevices(new PartialPath("root.laptop.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
-      manager.setStorageGroup(new PartialPath("root.vehicle"));
-      manager.createTimeseries(
+      schemaEngine.setStorageGroup(new PartialPath("root.vehicle"));
+      schemaEngine.createTimeseries(
           new PartialPath("root.vehicle.d1.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
@@ -766,7 +805,7 @@ public abstract class SchemaEngineBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          manager.getMatchedDevices(new PartialPath("root.**"), false).stream()
+          schemaEngine.getMatchedDevices(new PartialPath("root.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
     } catch (MetadataException e) {
@@ -777,7 +816,7 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testGetChildNodePathInNextLevel() {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     String[] res =
         new String[] {
           "[root.laptop, root.vehicle]",
@@ -792,88 +831,95 @@ public abstract class SchemaEngineBasicTest {
         };
 
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop"));
-      manager.setStorageGroup(new PartialPath("root.vehicle"));
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
+      schemaEngine.setStorageGroup(new PartialPath("root.vehicle"));
 
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.b1.d1.s0"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.b1.d1.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.b1.d2.s0"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.b2.d1.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.b2.d1.s3"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.b2.d2.s2"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.vehicle.b1.d0.s0"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.vehicle.b1.d2.s2"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.vehicle.b1.d3.s3"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.vehicle.b2.d0.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
 
-      assertEquals(res[0], manager.getChildNodePathInNextLevel(new PartialPath("root")).toString());
       assertEquals(
-          res[1], manager.getChildNodePathInNextLevel(new PartialPath("root.laptop")).toString());
+          res[0], schemaEngine.getChildNodePathInNextLevel(new PartialPath("root")).toString());
+      assertEquals(
+          res[1],
+          schemaEngine.getChildNodePathInNextLevel(new PartialPath("root.laptop")).toString());
       assertEquals(
           res[2],
-          manager.getChildNodePathInNextLevel(new PartialPath("root.laptop.b1")).toString());
+          schemaEngine.getChildNodePathInNextLevel(new PartialPath("root.laptop.b1")).toString());
       assertEquals(
-          res[3], manager.getChildNodePathInNextLevel(new PartialPath("root.*")).toString());
+          res[3], schemaEngine.getChildNodePathInNextLevel(new PartialPath("root.*")).toString());
       assertEquals(
-          res[4], manager.getChildNodePathInNextLevel(new PartialPath("root.*.b1")).toString());
+          res[4],
+          schemaEngine.getChildNodePathInNextLevel(new PartialPath("root.*.b1")).toString());
       assertEquals(
-          res[5], manager.getChildNodePathInNextLevel(new PartialPath("root.l*.b1")).toString());
+          res[5],
+          schemaEngine.getChildNodePathInNextLevel(new PartialPath("root.l*.b1")).toString());
       assertEquals(
-          res[6], manager.getChildNodePathInNextLevel(new PartialPath("root.v*.*")).toString());
+          res[6],
+          schemaEngine.getChildNodePathInNextLevel(new PartialPath("root.v*.*")).toString());
       assertEquals(
-          res[7], manager.getChildNodePathInNextLevel(new PartialPath("root.l*.b*.*")).toString());
+          res[7],
+          schemaEngine.getChildNodePathInNextLevel(new PartialPath("root.l*.b*.*")).toString());
       assertEquals(
-          res[8], manager.getChildNodePathInNextLevel(new PartialPath("root.laptopp")).toString());
+          res[8],
+          schemaEngine.getChildNodePathInNextLevel(new PartialPath("root.laptopp")).toString());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -884,16 +930,16 @@ public abstract class SchemaEngineBasicTest {
   public void testTemplate() throws MetadataException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
-    MManager manager = IoTDB.metaManager;
-    manager.createSchemaTemplate(plan);
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    schemaEngine.createSchemaTemplate(plan);
 
     // set device template
     SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg1.d1");
 
-    manager.setSchemaTemplate(setTemplatePlan);
+    schemaEngine.setSchemaTemplate(setTemplatePlan);
 
-    IMNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
-    node = manager.setUsingSchemaTemplate(node);
+    IMNode node = schemaEngine.getDeviceNode(new PartialPath("root.sg1.d1"));
+    node = schemaEngine.setUsingSchemaTemplate(node);
 
     MeasurementSchema s11 =
         new MeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
@@ -905,23 +951,23 @@ public abstract class SchemaEngineBasicTest {
           "root.sg1.d1.vector" + TsFileConstant.PATH_SEPARATOR + schema.getMeasurementId());
     }
     for (MeasurementPath measurementPath :
-        manager.getMeasurementPaths(new PartialPath("root.sg1.**"))) {
+        schemaEngine.getMeasurementPaths(new PartialPath("root.sg1.**"))) {
       allSchema.remove(measurementPath.toString());
     }
     allSchema.remove("root.sg1.d1.vector.s11");
     assertTrue(allSchema.isEmpty());
 
-    IMeasurementMNode mNode = manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s11"));
+    IMeasurementMNode mNode = schemaEngine.getMeasurementMNode(new PartialPath("root.sg1.d1.s11"));
     IMeasurementMNode mNode2 =
-        manager.getMeasurementMNode(new PartialPath("root.sg1.d1.vector.s2"));
+        schemaEngine.getMeasurementMNode(new PartialPath("root.sg1.d1.vector.s2"));
     assertNotNull(mNode);
     assertEquals(mNode.getSchema(), s11);
     assertNotNull(mNode2);
     assertEquals(
-        mNode2.getSchema(), manager.getTemplate("template1").getSchemaMap().get("vector.s2"));
+        mNode2.getSchema(), schemaEngine.getTemplate("template1").getSchemaMap().get("vector.s2"));
 
     try {
-      manager.getMeasurementMNode(new PartialPath("root.sg1.d1.s100"));
+      schemaEngine.getMeasurementMNode(new PartialPath("root.sg1.d1.s100"));
       fail();
     } catch (PathNotExistException e) {
       assertEquals("Path [root.sg1.d1.s100] does not exist", e.getMessage());
@@ -955,7 +1001,7 @@ public abstract class SchemaEngineBasicTest {
       plan =
           new CreateTemplatePlan(
               "treeTemplate", measurementList, dataTypeList, encodingList, compressionTypes);
-      IoTDB.metaManager.createSchemaTemplate(plan);
+      IoTDB.schemaEngine.createSchemaTemplate(plan);
     } catch (MetadataException e) {
       assertEquals("encoding RLE does not support TEXT", e.getMessage());
     }
@@ -965,8 +1011,8 @@ public abstract class SchemaEngineBasicTest {
         new CreateTemplatePlan(
             "treeTemplate", measurementList, dataTypeList, encodingList, compressionTypes);
 
-    IoTDB.metaManager.createSchemaTemplate(planb);
-    Template template = IoTDB.metaManager.getTemplate("treeTemplate");
+    IoTDB.schemaEngine.createSchemaTemplate(planb);
+    Template template = IoTDB.schemaEngine.getTemplate("treeTemplate");
     assertEquals("[d1.s1, GPS.x, GPS.y, s2]", template.getAllMeasurementsPaths().toString());
 
     List<String> appendMeasurements = Arrays.asList("a1", "a2");
@@ -983,7 +1029,7 @@ public abstract class SchemaEngineBasicTest {
             appendEncodings,
             appendCompressor);
     try {
-      IoTDB.metaManager.appendSchemaTemplate(plana);
+      IoTDB.schemaEngine.appendSchemaTemplate(plana);
     } catch (MetadataException e) {
       assertEquals("encoding RLE does not support TEXT", e.getMessage());
     }
@@ -997,7 +1043,7 @@ public abstract class SchemaEngineBasicTest {
             appendDataTypes,
             appendEncodings,
             appendCompressor);
-    IoTDB.metaManager.appendSchemaTemplate(planab);
+    IoTDB.schemaEngine.appendSchemaTemplate(planab);
     assertEquals(
         "[a1, a2, d1.s1, GPS.x, GPS.y, s2]", template.getAllMeasurementsPaths().toString());
   }
@@ -1006,11 +1052,11 @@ public abstract class SchemaEngineBasicTest {
   public void testTemplateInnerTree() {
     CreateTemplatePlan plan = getTreeTemplatePlan();
     Template template;
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
 
     try {
-      manager.createSchemaTemplate(plan);
-      template = manager.getTemplate("treeTemplate");
+      schemaEngine.createSchemaTemplate(plan);
+      template = schemaEngine.getTemplate("treeTemplate");
       assertEquals(4, template.getMeasurementsCount());
       assertEquals("d1", template.getPathNodeInTemplate("d1").getName());
       assertNull(template.getPathNodeInTemplate("notExists"));
@@ -1166,27 +1212,27 @@ public abstract class SchemaEngineBasicTest {
             compressionTypes);
     SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg.1");
     UnsetTemplatePlan unsetTemplatePlan = new UnsetTemplatePlan("root.sg.1", "template1");
-    MManager manager = IoTDB.metaManager;
-    manager.createSchemaTemplate(createTemplatePlan);
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    schemaEngine.createSchemaTemplate(createTemplatePlan);
 
     // path does not exist test
     try {
-      manager.unsetSchemaTemplate(unsetTemplatePlan);
+      schemaEngine.unsetSchemaTemplate(unsetTemplatePlan);
       fail("No exception thrown.");
     } catch (Exception e) {
       assertEquals("Path [root.sg.1] does not exist", e.getMessage());
     }
 
-    manager.setSchemaTemplate(setTemplatePlan);
+    schemaEngine.setSchemaTemplate(setTemplatePlan);
 
     // template unset test
-    manager.unsetSchemaTemplate(unsetTemplatePlan);
-    manager.setSchemaTemplate(setTemplatePlan);
+    schemaEngine.unsetSchemaTemplate(unsetTemplatePlan);
+    schemaEngine.setSchemaTemplate(setTemplatePlan);
 
     // no template on path test
-    manager.unsetSchemaTemplate(unsetTemplatePlan);
+    schemaEngine.unsetSchemaTemplate(unsetTemplatePlan);
     try {
-      manager.unsetSchemaTemplate(unsetTemplatePlan);
+      schemaEngine.unsetSchemaTemplate(unsetTemplatePlan);
       fail("No exception thrown.");
     } catch (Exception e) {
       assertEquals("NO template on root.sg.1", e.getMessage());
@@ -1196,15 +1242,15 @@ public abstract class SchemaEngineBasicTest {
   @Test
   public void testTemplateAndTimeSeriesCompatibility() throws MetadataException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
-    MManager manager = IoTDB.metaManager;
-    manager.createSchemaTemplate(plan);
-    manager.createSchemaTemplate(getTreeTemplatePlan());
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    schemaEngine.createSchemaTemplate(plan);
+    schemaEngine.createSchemaTemplate(getTreeTemplatePlan());
 
     // set device template
     SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg1.d1");
 
-    manager.setSchemaTemplate(setTemplatePlan);
-    manager.setSchemaTemplate(new SetTemplatePlan("treeTemplate", "root.tree.sg0"));
+    schemaEngine.setSchemaTemplate(setTemplatePlan);
+    schemaEngine.setSchemaTemplate(new SetTemplatePlan("treeTemplate", "root.tree.sg0"));
 
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(
@@ -1217,7 +1263,7 @@ public abstract class SchemaEngineBasicTest {
             null,
             null);
 
-    manager.createTimeseries(createTimeSeriesPlan);
+    schemaEngine.createTimeseries(createTimeSeriesPlan);
 
     CreateTimeSeriesPlan createTimeSeriesPlan2 =
         new CreateTimeSeriesPlan(
@@ -1231,7 +1277,7 @@ public abstract class SchemaEngineBasicTest {
             null);
 
     try {
-      manager.createTimeseries(createTimeSeriesPlan2);
+      schemaEngine.createTimeseries(createTimeSeriesPlan2);
       fail();
     } catch (Exception e) {
       assertEquals("Path [root.sg1.d1.s11] already exists in [template1]", e.getMessage());
@@ -1249,7 +1295,7 @@ public abstract class SchemaEngineBasicTest {
             null);
 
     try {
-      manager.createTimeseries(createTimeSeriesPlan3);
+      schemaEngine.createTimeseries(createTimeSeriesPlan3);
       fail();
     } catch (Exception e) {
       assertEquals(
@@ -1267,15 +1313,15 @@ public abstract class SchemaEngineBasicTest {
             null,
             null);
 
-    manager.createTimeseries(createTimeSeriesPlan4);
+    schemaEngine.createTimeseries(createTimeSeriesPlan4);
   }
 
   @Test
   public void testTemplateAndNodePathCompatibility() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     CreateTemplatePlan plan = getCreateTemplatePlan();
-    manager.createSchemaTemplate(plan);
-    manager.createSchemaTemplate(getTreeTemplatePlan());
+    schemaEngine.createSchemaTemplate(plan);
+    schemaEngine.createSchemaTemplate(getTreeTemplatePlan());
 
     // set device template
     SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg1.d1");
@@ -1293,9 +1339,9 @@ public abstract class SchemaEngineBasicTest {
             null,
             null);
 
-    manager.createTimeseries(createTimeSeriesPlan);
+    schemaEngine.createTimeseries(createTimeSeriesPlan);
 
-    manager.createTimeseries(
+    schemaEngine.createTimeseries(
         new CreateTimeSeriesPlan(
             new PartialPath("root.tree.sg0.s1"),
             TSDataType.INT32,
@@ -1306,7 +1352,7 @@ public abstract class SchemaEngineBasicTest {
             null,
             null));
 
-    manager.createTimeseries(
+    schemaEngine.createTimeseries(
         new CreateTimeSeriesPlan(
             new PartialPath("root.tree.sg1.dn.sn"),
             TSDataType.INT32,
@@ -1317,7 +1363,7 @@ public abstract class SchemaEngineBasicTest {
             null,
             null));
 
-    manager.createTimeseries(
+    schemaEngine.createTimeseries(
         new CreateTimeSeriesPlan(
             new PartialPath("root.tree.sg2.dn.sn"),
             TSDataType.INT32,
@@ -1328,7 +1374,7 @@ public abstract class SchemaEngineBasicTest {
             null,
             null));
 
-    manager.createTimeseries(
+    schemaEngine.createTimeseries(
         new CreateTimeSeriesPlan(
             new PartialPath("root.tree.sg3.dn.sn"),
             TSDataType.INT32,
@@ -1351,12 +1397,12 @@ public abstract class SchemaEngineBasicTest {
     SetTemplatePlan planEx1 = new SetTemplatePlan("treeTemplate", "root.tree.sg1");
     SetTemplatePlan planEx2 = new SetTemplatePlan("treeTemplate", "root.tree.sg2");
     SetTemplatePlan planEx3 = new SetTemplatePlan("treeTemplate", "root.tree.sg3");
-    manager.setSchemaTemplate(planEx1);
-    manager.setSchemaTemplate(planEx2);
-    manager.setSchemaTemplate(planEx3);
+    schemaEngine.setSchemaTemplate(planEx1);
+    schemaEngine.setSchemaTemplate(planEx2);
+    schemaEngine.setSchemaTemplate(planEx3);
 
     try {
-      manager.unsetSchemaTemplate(new UnsetTemplatePlan("root.tree.*", "treeTemplate"));
+      schemaEngine.unsetSchemaTemplate(new UnsetTemplatePlan("root.tree.*", "treeTemplate"));
       fail();
     } catch (IllegalPathException e) {
       assertEquals(
@@ -1364,10 +1410,10 @@ public abstract class SchemaEngineBasicTest {
           e.getMessage());
     }
 
-    manager.setSchemaTemplate(setSchemaTemplatePlan2);
-    manager.unsetSchemaTemplate(new UnsetTemplatePlan("root.tree.sg0", "treeTemplate"));
+    schemaEngine.setSchemaTemplate(setSchemaTemplatePlan2);
+    schemaEngine.unsetSchemaTemplate(new UnsetTemplatePlan("root.tree.sg0", "treeTemplate"));
     try {
-      manager.setSchemaTemplate(setTemplatePlan);
+      schemaEngine.setSchemaTemplate(setTemplatePlan);
       fail();
     } catch (MetadataException e) {
       assertEquals(
@@ -1375,7 +1421,7 @@ public abstract class SchemaEngineBasicTest {
           e.getMessage());
     }
 
-    manager.createTimeseries(
+    schemaEngine.createTimeseries(
         new CreateTimeSeriesPlan(
             new PartialPath("root.tree.sg0.GPS.speed"),
             TSDataType.INT32,
@@ -1387,7 +1433,7 @@ public abstract class SchemaEngineBasicTest {
             null));
 
     try {
-      manager.setSchemaTemplate(setSchemaTemplatePlan2);
+      schemaEngine.setSchemaTemplate(setSchemaTemplatePlan2);
       fail();
     } catch (MetadataException e) {
       assertEquals(
@@ -1395,7 +1441,7 @@ public abstract class SchemaEngineBasicTest {
           e.getMessage());
     }
 
-    manager.deleteTimeseries(new PartialPath("root.sg1.d1.s11"));
+    schemaEngine.deleteTimeseries(new PartialPath("root.sg1.d1.s11"));
   }
 
   @Test
@@ -1473,38 +1519,38 @@ public abstract class SchemaEngineBasicTest {
 
     SetTemplatePlan setPlan5 = new SetTemplatePlan("template2", "root.sg1.d1");
 
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
 
-    manager.createSchemaTemplate(plan1);
-    manager.createSchemaTemplate(plan2);
+    schemaEngine.createSchemaTemplate(plan1);
+    schemaEngine.createSchemaTemplate(plan2);
 
-    manager.setStorageGroup(new PartialPath("root.sg1"));
-    manager.setStorageGroup(new PartialPath("root.sg2"));
-    manager.setStorageGroup(new PartialPath("root.sg3"));
+    schemaEngine.setStorageGroup(new PartialPath("root.sg1"));
+    schemaEngine.setStorageGroup(new PartialPath("root.sg2"));
+    schemaEngine.setStorageGroup(new PartialPath("root.sg3"));
 
     try {
-      manager.setSchemaTemplate(setPlan1);
-      manager.setSchemaTemplate(setPlan2);
+      schemaEngine.setSchemaTemplate(setPlan1);
+      schemaEngine.setSchemaTemplate(setPlan2);
     } catch (MetadataException e) {
       fail();
     }
 
     try {
-      manager.setSchemaTemplate(setPlan3);
+      schemaEngine.setSchemaTemplate(setPlan3);
       fail();
     } catch (MetadataException e) {
       assertEquals("Template already exists on root.sg1", e.getMessage());
     }
 
     try {
-      manager.setSchemaTemplate(setPlan4);
+      schemaEngine.setSchemaTemplate(setPlan4);
       fail();
     } catch (MetadataException e) {
       assertEquals("Template already exists on root.sg2.d1", e.getMessage());
     }
 
     try {
-      manager.setSchemaTemplate(setPlan5);
+      schemaEngine.setSchemaTemplate(setPlan5);
       fail();
     } catch (MetadataException e) {
       assertEquals("Template already exists on root.sg1", e.getMessage());
@@ -1513,9 +1559,9 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testShowTimeseries() {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     try {
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s0"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
@@ -1527,7 +1573,7 @@ public abstract class SchemaEngineBasicTest {
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.s0"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+          schemaEngine.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.s0", result.get(0).getName());
     } catch (MetadataException e) {
@@ -1583,26 +1629,28 @@ public abstract class SchemaEngineBasicTest {
             encodingList,
             compressionTypes);
     CreateTemplatePlan treePlan = getTreeTemplatePlan();
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     try {
-      manager.createSchemaTemplate(plan);
-      manager.createSchemaTemplate(treePlan);
+      schemaEngine.createSchemaTemplate(plan);
+      schemaEngine.createSchemaTemplate(treePlan);
 
       // set device template
 
       SetTemplatePlan setSchemaTemplatePlan = new SetTemplatePlan("template1", "root.laptop.d1");
       SetTemplatePlan setSchemaTemplatePlan1 = new SetTemplatePlan("treeTemplate", "root.tree.d0");
-      manager.setSchemaTemplate(setSchemaTemplatePlan);
-      manager.setSchemaTemplate(setSchemaTemplatePlan1);
-      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
-      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.tree.d0")));
+      schemaEngine.setSchemaTemplate(setSchemaTemplatePlan);
+      schemaEngine.setSchemaTemplate(setSchemaTemplatePlan1);
+      schemaEngine.setUsingSchemaTemplate(
+          schemaEngine.getDeviceNode(new PartialPath("root.laptop.d1")));
+      schemaEngine.setUsingSchemaTemplate(
+          schemaEngine.getDeviceNode(new PartialPath("root.tree.d0")));
 
       // show timeseries root.tree.d0
       ShowTimeSeriesPlan showTreeTSPlan =
           new ShowTimeSeriesPlan(
               new PartialPath("root.tree.d0.**"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> treeShowResult =
-          manager.showTimeseries(showTreeTSPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+          schemaEngine.showTimeseries(showTreeTSPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(4, treeShowResult.size());
       Set<String> checkSet = new HashSet<>();
       checkSet.add("root.tree.d0.d1.s1");
@@ -1619,7 +1667,7 @@ public abstract class SchemaEngineBasicTest {
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.s0"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> result =
-          manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+          schemaEngine.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.s0", result.get(0).getName());
 
@@ -1627,7 +1675,7 @@ public abstract class SchemaEngineBasicTest {
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+      result = schemaEngine.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.vector.s1", result.get(0).getName());
@@ -1635,7 +1683,7 @@ public abstract class SchemaEngineBasicTest {
       // show timeseries root.laptop.d1.(s1,s2,s3)
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(new PartialPath("root.laptop.**"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+      result = schemaEngine.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       assertEquals(4, result.size());
       Set<String> set = new HashSet<>();
       for (int i = 1; i < result.size(); i++) {
@@ -1658,7 +1706,7 @@ public abstract class SchemaEngineBasicTest {
       ShowTimeSeriesPlan showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
               new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
-      manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+      schemaEngine.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     } catch (MetadataException e) {
       assertEquals(
           "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
@@ -1668,19 +1716,20 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void minimumTestForWildcardInTemplate() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     CreateTemplatePlan treePlan = getTreeTemplatePlan();
-    manager.createSchemaTemplate(treePlan);
+    schemaEngine.createSchemaTemplate(treePlan);
 
     // set device template
     SetTemplatePlan setSchemaTemplatePlan1 = new SetTemplatePlan("treeTemplate", "root.tree.d0");
-    manager.setSchemaTemplate(setSchemaTemplatePlan1);
-    manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.tree.d0")));
+    schemaEngine.setSchemaTemplate(setSchemaTemplatePlan1);
+    schemaEngine.setUsingSchemaTemplate(
+        schemaEngine.getDeviceNode(new PartialPath("root.tree.d0")));
 
     ShowTimeSeriesPlan showTimeSeriesPlan =
         new ShowTimeSeriesPlan(new PartialPath("root.tree.**.s1"), false, null, null, 0, 0, false);
     List<ShowTimeSeriesResult> result =
-        manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+        schemaEngine.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     assertEquals(1, result.size());
   }
 
@@ -1715,18 +1764,19 @@ public abstract class SchemaEngineBasicTest {
             dataTypeList,
             encodingList,
             compressionTypes);
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     try {
-      manager.createSchemaTemplate(plan);
-      manager.createSchemaTemplate(getTreeTemplatePlan());
+      schemaEngine.createSchemaTemplate(plan);
+      schemaEngine.createSchemaTemplate(getTreeTemplatePlan());
 
       // set device template
       SetTemplatePlan setSchemaTemplatePlan = new SetTemplatePlan("template1", "root.laptop.d1");
-      manager.setSchemaTemplate(setSchemaTemplatePlan);
-      manager.setSchemaTemplate(new SetTemplatePlan("treeTemplate", "root.tree.d0"));
-      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
+      schemaEngine.setSchemaTemplate(setSchemaTemplatePlan);
+      schemaEngine.setSchemaTemplate(new SetTemplatePlan("treeTemplate", "root.tree.d0"));
+      schemaEngine.setUsingSchemaTemplate(
+          schemaEngine.getDeviceNode(new PartialPath("root.laptop.d1")));
 
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.computer.d1.s2"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
@@ -1734,22 +1784,32 @@ public abstract class SchemaEngineBasicTest {
           null);
 
       SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.computer");
-      manager.setSchemaTemplate(setTemplatePlan);
-      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.computer.d1")));
-      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.tree.d0")));
-      manager.getDeviceNodeWithAutoCreate(new PartialPath("root.tree.d0.v0"));
-      manager.getDeviceNodeWithAutoCreate(new PartialPath("root.tree.d0.v1"));
-      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.tree.d0.v0")));
-      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.tree.d0.v1")));
+      schemaEngine.setSchemaTemplate(setTemplatePlan);
+      schemaEngine.setUsingSchemaTemplate(
+          schemaEngine.getDeviceNode(new PartialPath("root.computer.d1")));
+      schemaEngine.setUsingSchemaTemplate(
+          schemaEngine.getDeviceNode(new PartialPath("root.tree.d0")));
+      schemaEngine.getDeviceNodeWithAutoCreate(new PartialPath("root.tree.d0.v0"));
+      schemaEngine.getDeviceNodeWithAutoCreate(new PartialPath("root.tree.d0.v1"));
+      schemaEngine.setUsingSchemaTemplate(
+          schemaEngine.getDeviceNode(new PartialPath("root.tree.d0.v0")));
+      schemaEngine.setUsingSchemaTemplate(
+          schemaEngine.getDeviceNode(new PartialPath("root.tree.d0.v1")));
 
-      Assert.assertEquals(2, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**")));
-      Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s1")));
-      Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.s1")));
-      Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.s2")));
-      Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.**")));
-      Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer.**")));
-      Assert.assertEquals(12, manager.getAllTimeseriesCount(new PartialPath("root.tree.**")));
-      Assert.assertEquals(17, manager.getAllTimeseriesCount(new PartialPath("root.**")));
+      Assert.assertEquals(
+          2, schemaEngine.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**")));
+      Assert.assertEquals(
+          1, schemaEngine.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s1")));
+      Assert.assertEquals(
+          1, schemaEngine.getAllTimeseriesCount(new PartialPath("root.computer.d1.s1")));
+      Assert.assertEquals(
+          1, schemaEngine.getAllTimeseriesCount(new PartialPath("root.computer.d1.s2")));
+      Assert.assertEquals(
+          3, schemaEngine.getAllTimeseriesCount(new PartialPath("root.computer.d1.**")));
+      Assert.assertEquals(
+          3, schemaEngine.getAllTimeseriesCount(new PartialPath("root.computer.**")));
+      Assert.assertEquals(12, schemaEngine.getAllTimeseriesCount(new PartialPath("root.tree.**")));
+      Assert.assertEquals(17, schemaEngine.getAllTimeseriesCount(new PartialPath("root.**")));
 
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -1788,62 +1848,64 @@ public abstract class SchemaEngineBasicTest {
             dataTypeList,
             encodingList,
             compressionTypes);
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
 
     try {
-      manager.createSchemaTemplate(plan);
-      manager.createSchemaTemplate(getTreeTemplatePlan());
+      schemaEngine.createSchemaTemplate(plan);
+      schemaEngine.createSchemaTemplate(getTreeTemplatePlan());
       // set device template
       SetTemplatePlan setSchemaTemplatePlan = new SetTemplatePlan("template1", "root.laptop.d1");
-      manager.setSchemaTemplate(setSchemaTemplatePlan);
-      manager.setSchemaTemplate(new SetTemplatePlan("treeTemplate", "root.tree.d0"));
-      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
-      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.tree.d0")));
+      schemaEngine.setSchemaTemplate(setSchemaTemplatePlan);
+      schemaEngine.setSchemaTemplate(new SetTemplatePlan("treeTemplate", "root.tree.d0"));
+      schemaEngine.setUsingSchemaTemplate(
+          schemaEngine.getDeviceNode(new PartialPath("root.laptop.d1")));
+      schemaEngine.setUsingSchemaTemplate(
+          schemaEngine.getDeviceNode(new PartialPath("root.tree.d0")));
 
       try {
-        manager.setUsingSchemaTemplate(
+        schemaEngine.setUsingSchemaTemplate(
             new ActivateTemplatePlan(new PartialPath("root.non.existed.path")));
         fail();
       } catch (MetadataException e) {
         assertEquals("Path [root.non.existed.path] has not been set any template.", e.getMessage());
       }
 
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d2.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
 
-      Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.d1")));
-      Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.d2")));
-      Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.*")));
-      Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.**")));
-      Assert.assertEquals(3, manager.getDevicesNum(new PartialPath("root.tree.**")));
-      Assert.assertEquals(5, manager.getDevicesNum(new PartialPath("root.**")));
+      Assert.assertEquals(1, schemaEngine.getDevicesNum(new PartialPath("root.laptop.d1")));
+      Assert.assertEquals(1, schemaEngine.getDevicesNum(new PartialPath("root.laptop.d2")));
+      Assert.assertEquals(2, schemaEngine.getDevicesNum(new PartialPath("root.laptop.*")));
+      Assert.assertEquals(2, schemaEngine.getDevicesNum(new PartialPath("root.laptop.**")));
+      Assert.assertEquals(3, schemaEngine.getDevicesNum(new PartialPath("root.tree.**")));
+      Assert.assertEquals(5, schemaEngine.getDevicesNum(new PartialPath("root.**")));
 
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.a.s3"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
 
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d2.a.s3"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
 
-      Assert.assertEquals(4, manager.getDevicesNum(new PartialPath("root.laptop.**")));
+      Assert.assertEquals(4, schemaEngine.getDevicesNum(new PartialPath("root.laptop.**")));
 
-      manager.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
-      Assert.assertEquals(3, manager.getDevicesNum(new PartialPath("root.laptop.**")));
-      manager.deleteTimeseries(new PartialPath("root.laptop.d2.a.s3"));
-      Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.**")));
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.a.s3"));
-      Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.**")));
+      schemaEngine.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
+      Assert.assertEquals(3, schemaEngine.getDevicesNum(new PartialPath("root.laptop.**")));
+      schemaEngine.deleteTimeseries(new PartialPath("root.laptop.d2.a.s3"));
+      Assert.assertEquals(2, schemaEngine.getDevicesNum(new PartialPath("root.laptop.**")));
+      schemaEngine.deleteTimeseries(new PartialPath("root.laptop.d1.a.s3"));
+      Assert.assertEquals(1, schemaEngine.getDevicesNum(new PartialPath("root.laptop.**")));
 
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -1853,54 +1915,54 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testTotalSeriesNumber() throws Exception {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
 
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop"));
-      manager.createTimeseries(
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d0"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s2.t1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s3"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d2.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d2.s2"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
 
-      assertEquals(6, manager.getTotalSeriesNumber());
+      assertEquals(6, schemaEngine.getTotalSeriesNumber());
       EnvironmentUtils.restartDaemon();
-      assertEquals(6, manager.getTotalSeriesNumber());
-      manager.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
-      assertEquals(5, manager.getTotalSeriesNumber());
-      manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop")));
-      assertEquals(0, manager.getTotalSeriesNumber());
+      assertEquals(6, schemaEngine.getTotalSeriesNumber());
+      schemaEngine.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
+      assertEquals(5, schemaEngine.getTotalSeriesNumber());
+      schemaEngine.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop")));
+      assertEquals(0, schemaEngine.getTotalSeriesNumber());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1909,27 +1971,27 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testStorageGroupNameWithHyphen() throws IllegalPathException {
-    MManager manager = IoTDB.metaManager;
-    assertTrue(manager.isPathExist(new PartialPath("root")));
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root")));
 
-    assertFalse(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.group-with-hyphen")));
 
     try {
-      manager.setStorageGroup(new PartialPath("root.group-with-hyphen"));
+      schemaEngine.setStorageGroup(new PartialPath("root.group-with-hyphen"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
-    assertTrue(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.group-with-hyphen")));
   }
 
   @Test
   public void testCreateAlignedTimeseriesAndInsertWithMismatchDataType() {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop"));
-      manager.createAlignedTimeSeries(
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
+      schemaEngine.createAlignedTimeSeries(
           new PartialPath("root.laptop.d1.aligned_device"),
           Arrays.asList("s1", "s2", "s3"),
           Arrays.asList(
@@ -1962,8 +2024,8 @@ public abstract class SchemaEngineBasicTest {
           new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
-      IMNode node = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(3, manager.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
+      IMNode node = schemaEngine.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertEquals(3, schemaEngine.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -1973,10 +2035,10 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testCreateAlignedTimeseriesAndInsertWithNotAlignedData() {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop"));
-      manager.createAlignedTimeSeries(
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
+      schemaEngine.createAlignedTimeSeries(
           new PartialPath("root.laptop.d1.aligned_device"),
           Arrays.asList("s1", "s2", "s3"),
           Arrays.asList(
@@ -1991,7 +2053,7 @@ public abstract class SchemaEngineBasicTest {
     }
 
     try {
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new CreateTimeSeriesPlan(
               new PartialPath("root.laptop.d1.aligned_device.s4"),
               TSDataType.valueOf("FLOAT"),
@@ -2031,7 +2093,7 @@ public abstract class SchemaEngineBasicTest {
           new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
-      manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      schemaEngine.getSeriesSchemasAndReadLockDevice(insertRowPlan);
       fail();
     } catch (Exception e) {
       Assert.assertEquals(
@@ -2042,10 +2104,10 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testCreateTimeseriesAndInsertWithMismatchDataType() {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop"));
-      manager.createTimeseries(
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s0"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
@@ -2066,8 +2128,8 @@ public abstract class SchemaEngineBasicTest {
           new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
-      IMNode node = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(1, manager.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
+      IMNode node = schemaEngine.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertEquals(1, schemaEngine.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertEquals(1, insertRowPlan.getFailedMeasurementNumber());
 
@@ -2079,16 +2141,16 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testCreateTimeseriesAndInsertWithAlignedData() {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop"));
-      manager.createTimeseries(
+      schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.aligned_device.s1"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
           compressionType,
           Collections.emptyMap());
-      manager.createTimeseries(
+      schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.aligned_device.s2"),
           TSDataType.valueOf("INT64"),
           TSEncoding.valueOf("RLE"),
@@ -2099,7 +2161,7 @@ public abstract class SchemaEngineBasicTest {
     }
 
     try {
-      manager.createAlignedTimeSeries(
+      schemaEngine.createAlignedTimeSeries(
           new PartialPath("root.laptop.d1.aligned_device"),
           Arrays.asList("s3", "s4", "s5"),
           Arrays.asList(
@@ -2137,7 +2199,7 @@ public abstract class SchemaEngineBasicTest {
           new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
-      manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      schemaEngine.getSeriesSchemasAndReadLockDevice(insertRowPlan);
       fail();
     } catch (Exception e) {
       Assert.assertEquals(
@@ -2148,14 +2210,14 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testCreateAlignedTimeseriesWithIllegalNames() throws Exception {
-    MManager manager = IoTDB.metaManager;
-    manager.setStorageGroup(new PartialPath("root.laptop"));
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
     PartialPath deviceId = new PartialPath("root.laptop.d1");
     String[] measurementIds = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
     for (String measurementId : measurementIds) {
       PartialPath path = deviceId.concatNode(measurementId);
       try {
-        manager.createAlignedTimeSeries(
+        schemaEngine.createAlignedTimeSeries(
             path,
             Arrays.asList("s1", "s2", "s3"),
             Arrays.asList(
@@ -2178,7 +2240,7 @@ public abstract class SchemaEngineBasicTest {
     PartialPath path = deviceId.concatNode("t1");
     for (String measurementId : measurementIds) {
       try {
-        manager.createAlignedTimeSeries(
+        schemaEngine.createAlignedTimeSeries(
             path,
             Arrays.asList(measurementId, "s2", "s3"),
             Arrays.asList(
@@ -2196,8 +2258,78 @@ public abstract class SchemaEngineBasicTest {
   }
 
   @Test
+  public void testCreateAlignedTimeseriesWithAliasAndTags() throws Exception {
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
+    PartialPath devicePath = new PartialPath("root.laptop.device");
+    List<String> measurements = Arrays.asList("s1", "s2", "s3", "s4", "s5");
+    List<TSDataType> tsDataTypes =
+        Arrays.asList(
+            TSDataType.DOUBLE,
+            TSDataType.TEXT,
+            TSDataType.FLOAT,
+            TSDataType.BOOLEAN,
+            TSDataType.INT32);
+    List<TSEncoding> tsEncodings =
+        Arrays.asList(
+            TSEncoding.PLAIN,
+            TSEncoding.PLAIN,
+            TSEncoding.PLAIN,
+            TSEncoding.PLAIN,
+            TSEncoding.PLAIN);
+    List<CompressionType> compressionTypes =
+        Arrays.asList(
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED);
+    List<String> aliasList = Arrays.asList("alias1", null, "alias2", null, null);
+    List<Map<String, String>> tagList = new ArrayList<>();
+    Map<String, String> tags = new HashMap<>();
+    tags.put("key", "value");
+    tagList.add(tags);
+    tagList.add(null);
+    tagList.add(null);
+    tagList.add(tags);
+    tagList.add(null);
+    CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
+        new CreateAlignedTimeSeriesPlan(
+            devicePath,
+            measurements,
+            tsDataTypes,
+            tsEncodings,
+            compressionTypes,
+            aliasList,
+            tagList,
+            null);
+    schemaEngine.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+
+    Assert.assertEquals(
+        5, schemaEngine.getAllTimeseriesCount(new PartialPath("root.laptop.device.*")));
+    Assert.assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.device.alias2")));
+
+    ShowTimeSeriesPlan showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(new PartialPath("root.**"), false, "key", "value", 0, 0, false);
+    List<ShowTimeSeriesResult> showTimeSeriesResults =
+        schemaEngine.showTimeseries(showTimeSeriesPlan, null);
+    Assert.assertEquals(2, showTimeSeriesResults.size());
+    showTimeSeriesResults =
+        showTimeSeriesResults.stream()
+            .sorted(Comparator.comparing(ShowResult::getName))
+            .collect(Collectors.toList());
+    ShowTimeSeriesResult result = showTimeSeriesResults.get(0);
+    Assert.assertEquals("root.laptop.device.s1", result.getName());
+    Assert.assertEquals("alias1", result.getAlias());
+    Assert.assertEquals(tags, result.getTag());
+    result = showTimeSeriesResults.get(1);
+    Assert.assertEquals("root.laptop.device.s4", result.getName());
+    Assert.assertEquals(tags, result.getTag());
+  }
+
+  @Test
   public void testAutoCreateAlignedTimeseriesWhileInsert() {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
 
     try {
       long time = 1L;
@@ -2218,22 +2350,22 @@ public abstract class SchemaEngineBasicTest {
       insertRowPlan.setMeasurementMNodes(
           new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
-      manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      schemaEngine.getSeriesSchemasAndReadLockDevice(insertRowPlan);
 
-      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s1")));
-      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
+      assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s1")));
+      assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
 
       insertRowPlan.setMeasurements(new String[] {"s3", "s4"});
-      manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s3")));
-      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s4")));
+      schemaEngine.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s3")));
+      assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s4")));
 
       insertRowPlan.setMeasurements(new String[] {"s2", "s5"});
-      manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s5")));
+      schemaEngine.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertTrue(schemaEngine.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s5")));
 
       insertRowPlan.setMeasurements(new String[] {"s2", "s3"});
-      manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      schemaEngine.getSeriesSchemasAndReadLockDevice(insertRowPlan);
 
     } catch (MetadataException | IOException e) {
       fail();
@@ -2242,7 +2374,7 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testGetStorageGroupNodeByPath() {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     PartialPath partialPath = null;
 
     try {
@@ -2252,7 +2384,7 @@ public abstract class SchemaEngineBasicTest {
     }
 
     try {
-      manager.setStorageGroup(partialPath);
+      schemaEngine.setStorageGroup(partialPath);
     } catch (MetadataException e) {
       fail(e.getMessage());
     }
@@ -2264,11 +2396,14 @@ public abstract class SchemaEngineBasicTest {
     }
 
     try {
-      manager.getStorageGroupNodeByPath(partialPath);
+      schemaEngine.getStorageGroupNodeByPath(partialPath);
     } catch (StorageGroupNotSetException e) {
       Assert.assertEquals(
           "Storage group is not set for current seriesPath: [root.ln.sg2.device1.sensor1]",
           e.getMessage());
+    } catch (StorageGroupAlreadySetException e) {
+      Assert.assertEquals(
+          "some children of root.ln have already been set to storage group", e.getMessage());
     } catch (MetadataException e) {
       fail(e.getMessage());
     }
@@ -2276,29 +2411,29 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testMeasurementIdWhileInsert() throws Exception {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
 
     PartialPath deviceId = new PartialPath("root.sg.d");
     InsertPlan insertPlan;
 
     insertPlan = getInsertPlan("\"a+b\"");
-    manager.getSeriesSchemasAndReadLockDevice(insertPlan);
-    assertTrue(manager.isPathExist(deviceId.concatNode("\"a+b\"")));
+    schemaEngine.getSeriesSchemasAndReadLockDevice(insertPlan);
+    assertTrue(schemaEngine.isPathExist(deviceId.concatNode("\"a+b\"")));
 
     insertPlan = getInsertPlan("\"a.b\"");
-    manager.getSeriesSchemasAndReadLockDevice(insertPlan);
-    assertTrue(manager.isPathExist(deviceId.concatNode("\"a.b\"")));
+    schemaEngine.getSeriesSchemasAndReadLockDevice(insertPlan);
+    assertTrue(schemaEngine.isPathExist(deviceId.concatNode("\"a.b\"")));
 
     insertPlan = getInsertPlan("\"a“（Φ）”b\"");
-    manager.getSeriesSchemasAndReadLockDevice(insertPlan);
-    assertTrue(manager.isPathExist(deviceId.concatNode("\"a“（Φ）”b\"")));
+    schemaEngine.getSeriesSchemasAndReadLockDevice(insertPlan);
+    assertTrue(schemaEngine.isPathExist(deviceId.concatNode("\"a“（Φ）”b\"")));
 
     String[] illegalMeasurementIds = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
     for (String measurementId : illegalMeasurementIds) {
       insertPlan = getInsertPlan(measurementId);
       try {
-        manager.getSeriesSchemasAndReadLockDevice(insertPlan);
-        assertFalse(manager.isPathExist(deviceId.concatNode(measurementId)));
+        schemaEngine.getSeriesSchemasAndReadLockDevice(insertPlan);
+        assertFalse(schemaEngine.isPathExist(deviceId.concatNode(measurementId)));
       } catch (MetadataException e) {
         e.printStackTrace();
       }
@@ -2318,12 +2453,12 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testTemplateSchemaNameCheckWhileCreate() {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     String[] illegalSchemaNames = {"a+b", "time", "timestamp", "TIME", "TIMESTAMP"};
     for (String schemaName : illegalSchemaNames) {
       CreateTemplatePlan plan = getCreateTemplatePlan(schemaName);
       try {
-        manager.createSchemaTemplate(plan);
+        schemaEngine.createSchemaTemplate(plan);
       } catch (MetadataException e) {
         Assert.assertEquals(String.format("%s is an illegal name.", schemaName), e.getMessage());
       }
@@ -2352,10 +2487,10 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testDeviceNodeAfterAutoCreateTimeseriesFailure() throws Exception {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
 
     PartialPath sg1 = new PartialPath("root.a.sg");
-    manager.setStorageGroup(sg1);
+    schemaEngine.setStorageGroup(sg1);
 
     PartialPath deviceId = new PartialPath("root.a.d");
     String[] measurementList = {"s"};
@@ -2366,51 +2501,51 @@ public abstract class SchemaEngineBasicTest {
     insertPlan.getDataTypes()[0] = TSDataType.INT32;
 
     try {
-      manager.getSeriesSchemasAndReadLockDevice(insertPlan);
+      schemaEngine.getSeriesSchemasAndReadLockDevice(insertPlan);
       fail();
     } catch (MetadataException e) {
       Assert.assertEquals(
           "some children of root.a have already been set to storage group", e.getMessage());
-      Assert.assertFalse(manager.isPathExist(new PartialPath("root.a.d")));
+      Assert.assertFalse(schemaEngine.isPathExist(new PartialPath("root.a.d")));
     }
   }
 
   @Test
   public void testTimeseriesDeletionWithEntityUsingTemplate() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
-    manager.setStorageGroup(new PartialPath("root.sg"));
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    schemaEngine.setStorageGroup(new PartialPath("root.sg"));
 
     CreateTemplatePlan plan = getCreateTemplatePlan("s1");
-    manager.createSchemaTemplate(plan);
+    schemaEngine.createSchemaTemplate(plan);
     SetTemplatePlan setPlan = new SetTemplatePlan("template1", "root.sg.d1");
-    manager.setSchemaTemplate(setPlan);
-    manager.createTimeseries(
+    schemaEngine.setSchemaTemplate(setPlan);
+    schemaEngine.createTimeseries(
         new PartialPath("root.sg.d1.s2"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.sg.d1")));
-    manager.deleteTimeseries(new PartialPath("root.sg.d1.s2"));
-    assertTrue(manager.isPathExist(new PartialPath("root.sg.d1")));
+    schemaEngine.setUsingSchemaTemplate(schemaEngine.getDeviceNode(new PartialPath("root.sg.d1")));
+    schemaEngine.deleteTimeseries(new PartialPath("root.sg.d1.s2"));
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root.sg.d1")));
 
-    manager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.sg.d2.s2"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    manager.deleteTimeseries(new PartialPath("root.sg.d2.s2"));
-    assertFalse(manager.isPathExist(new PartialPath("root.sg.d2")));
+    schemaEngine.deleteTimeseries(new PartialPath("root.sg.d2.s2"));
+    assertFalse(schemaEngine.isPathExist(new PartialPath("root.sg.d2")));
   }
 
   @Test
   public void testTagIndexRecovery() throws Exception {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
     PartialPath path = new PartialPath("root.sg.d.s");
     Map<String, String> tags = new HashMap<>();
     tags.put("description", "oldValue");
-    manager.createTimeseries(
+    schemaEngine.createTimeseries(
         new CreateTimeSeriesPlan(
             path,
             TSDataType.valueOf("INT32"),
@@ -2425,38 +2560,38 @@ public abstract class SchemaEngineBasicTest {
         new ShowTimeSeriesPlan(
             new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
     List<ShowTimeSeriesResult> results =
-        manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+        schemaEngine.showTimeseries(showTimeSeriesPlan, new QueryContext());
 
     assertEquals(1, results.size());
     Map<String, String> resultTag = results.get(0).getTag();
     assertEquals("oldValue", resultTag.get("description"));
 
     tags.put("description", "newValue");
-    manager.upsertTagsAndAttributes(null, tags, null, path);
+    schemaEngine.upsertTagsAndAttributes(null, tags, null, path);
 
     showTimeSeriesPlan =
         new ShowTimeSeriesPlan(
             new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
-    results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+    results = schemaEngine.showTimeseries(showTimeSeriesPlan, new QueryContext());
 
     assertEquals(1, results.size());
     resultTag = results.get(0).getTag();
     assertEquals("newValue", resultTag.get("description"));
 
-    manager.clear();
-    manager.init();
+    schemaEngine.clear();
+    schemaEngine.init();
 
     showTimeSeriesPlan =
         new ShowTimeSeriesPlan(
             new PartialPath("root.sg.d.s"), true, "description", "oldValue", 0, 0, false);
-    results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+    results = schemaEngine.showTimeseries(showTimeSeriesPlan, new QueryContext());
 
     assertEquals(0, results.size());
 
     showTimeSeriesPlan =
         new ShowTimeSeriesPlan(
             new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
-    results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+    results = schemaEngine.showTimeseries(showTimeSeriesPlan, new QueryContext());
 
     assertEquals(1, results.size());
     resultTag = results.get(0).getTag();
@@ -2465,7 +2600,7 @@ public abstract class SchemaEngineBasicTest {
 
   @Test
   public void testTagCreationViaMLogPlanDuringMetadataSync() throws Exception {
-    MManager manager = IoTDB.metaManager;
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
 
     PartialPath path = new PartialPath("root.sg.d.s");
     Map<String, String> tags = new HashMap<>();
@@ -2483,16 +2618,16 @@ public abstract class SchemaEngineBasicTest {
     // mock that the plan has already been executed on sender and receiver will redo this plan
     plan.setTagOffset(10);
 
-    manager.operation(plan);
+    schemaEngine.operation(plan);
 
     ShowTimeSeriesPlan showTimeSeriesPlan =
         new ShowTimeSeriesPlan(new PartialPath("root.sg.d.s"), true, "type", "test", 0, 0, false);
     List<ShowTimeSeriesResult> results =
-        manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+        schemaEngine.showTimeseries(showTimeSeriesPlan, new QueryContext());
     assertEquals(1, results.size());
     Map<String, String> resultTag = results.get(0).getTag();
     assertEquals("test", resultTag.get("type"));
 
-    assertEquals(0, manager.getMeasurementMNode(path).getOffset());
+    assertEquals(0, schemaEngine.getMeasurementMNode(path).getOffset());
   }
 }

@@ -18,18 +18,19 @@
  */
 package org.apache.iotdb.db.service.metrics;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.JMXService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.JMXService;
-import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.metrics.MetricService;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,11 +83,17 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
     logger.info("start collecting fileSize and fileCount of wal/seq/unseq");
     String walDir = DirectoryManager.getInstance().getWALFolder();
     metricManager.getOrCreateAutoGauge(
-        Metric.FILE_SIZE.toString(), walDir, FileUtils::getDirSize, Tag.NAME.toString(), "wal");
+        Metric.FILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        walDir,
+        FileUtils::getDirSize,
+        Tag.NAME.toString(),
+        "wal");
 
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
         dataDirs,
         value ->
             Stream.of(value)
@@ -100,6 +107,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "seq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
         dataDirs,
         value ->
             Stream.of(value)
@@ -113,6 +121,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "unseq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
         walDir,
         value -> {
           File walFolder = new File(value);
@@ -125,6 +134,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "wal");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
         dataDirs,
         value ->
             Stream.of(value)
@@ -140,6 +150,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "seq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
         dataDirs,
         value ->
             Stream.of(value)

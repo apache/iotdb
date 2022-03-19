@@ -89,7 +89,7 @@ public class CompactionSchedulerTest {
   public void setUp() throws MetadataException, IOException {
     CompactionClearUtils.clearAllCompactionFiles();
     EnvironmentUtils.cleanAllDir();
-    IoTDB.metaManager.init();
+    IoTDB.schemaEngine.init();
     File basicOutputDir = new File(TestConstant.BASE_OUTPUT_PATH);
     IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.INNER_CROSS);
     if (!basicOutputDir.exists()) {
@@ -113,7 +113,7 @@ public class CompactionSchedulerTest {
     new CompactionConfigRestorer().restoreCompactionConfig();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.metaManager.clear();
+    IoTDB.schemaEngine.clear();
     CompactionClearUtils.clearAllCompactionFiles();
     EnvironmentUtils.cleanAllDir();
     CompactionClearUtils.deleteEmptyDir(new File("target"));
@@ -147,14 +147,14 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
     String sgName = COMPACTION_TEST_SG + "test1";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -165,7 +165,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -260,7 +260,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
 
@@ -282,14 +282,14 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setCrossCompactionMemoryBudget(2 * 1024 * 1024L * 1024L);
     String sgName = COMPACTION_TEST_SG + "test2";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -300,7 +300,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -386,7 +386,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
 
@@ -407,11 +407,11 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
     String sgName = COMPACTION_TEST_SG + "test3";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -422,7 +422,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -494,7 +494,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
 
@@ -515,14 +515,14 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
     String sgName = COMPACTION_TEST_SG + "test4";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -533,7 +533,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -592,7 +592,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
   /**
@@ -613,11 +613,11 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
     String sgName = COMPACTION_TEST_SG + "test5";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -628,7 +628,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -718,7 +718,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
 
@@ -740,11 +740,11 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
     String sgName = COMPACTION_TEST_SG + "test6";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -755,7 +755,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -837,7 +837,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
   /**
@@ -857,11 +857,11 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
     String sgName = COMPACTION_TEST_SG + "test7";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -872,7 +872,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -950,7 +950,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
   /**
@@ -970,11 +970,11 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
     String sgName = COMPACTION_TEST_SG + "test8";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -985,7 +985,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -1049,7 +1049,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
   /**
@@ -1069,11 +1069,11 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test9";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -1084,7 +1084,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -1161,7 +1161,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
   /**
@@ -1184,11 +1184,11 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test10";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -1199,7 +1199,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -1280,7 +1280,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setEnableCrossSpaceCompaction(prevEnableCrossCompaction);
@@ -1303,11 +1303,11 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test11";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -1318,7 +1318,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -1398,7 +1398,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
 
@@ -1419,11 +1419,11 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test12";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -1434,7 +1434,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -1517,7 +1517,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
 
@@ -1538,11 +1538,11 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test13";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -1553,7 +1553,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -1639,7 +1639,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
   /**
@@ -1659,11 +1659,11 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test14";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -1674,7 +1674,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -1768,7 +1768,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
   /**
@@ -1788,11 +1788,11 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test16";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -1803,7 +1803,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -1885,7 +1885,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
 

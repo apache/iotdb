@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.engine.compaction.task;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
 import org.slf4j.Logger;
@@ -79,8 +79,7 @@ public class CompactionRecoverTask {
           continue;
         }
         File[] compactionLogs =
-            RewriteCrossSpaceCompactionLogger.findCrossSpaceCompactionLogs(
-                timePartitionDir.getPath());
+            CompactionLogger.findCrossSpaceCompactionLogs(timePartitionDir.getPath());
         for (File compactionLog : compactionLogs) {
           logger.info("calling cross compaction task");
           IoTDBDescriptor.getInstance()
@@ -104,7 +103,7 @@ public class CompactionRecoverTask {
         new File(
             tsFileManager.getStorageGroupDir()
                 + File.separator
-                + RewriteCrossSpaceCompactionLogger.COMPACTION_LOG_NAME_FEOM_OLD);
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_FROM_OLD);
     if (mergeLogFromOldVersion.exists()) {
       logger.info("calling cross compaction task to recover from previous version.");
       IoTDBDescriptor.getInstance()

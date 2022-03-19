@@ -57,6 +57,8 @@ IoTDB> set schema template t1 to root.sg1.d1
 
 After setting the schema template, you can insert data into the timeseries. For example, suppose there's a storage group root.sg1 and t1 has been set to root.sg1.d1, then timeseries like root.sg1.d1.temperature and root.sg1.d1.status are available and data points can be inserted.
 
+**Please notice that, we strongly recommend NOT setting templates on the nodes above the storage group to accommodate future updates and collaboration between modules.**
+
 **Attention**: Before inserting data, timeseries defined by the schema template will not be created. You can use the following SQL statement to create the timeseries before inserting data:
 
 ```shell

@@ -18,12 +18,16 @@
  */
 package org.apache.iotdb.db.qp;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -32,15 +36,18 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,85 +60,85 @@ public class PlannerTest {
 
   private CompressionType compressionType =
       TSFileDescriptor.getInstance().getConfig().getCompressor();
-  private MManager mManager = IoTDB.metaManager;
+  private SchemaEngine schemaEngine = IoTDB.schemaEngine;
   private Planner processor = new Planner();
 
   static {
-    IoTDB.metaManager.init();
+    IoTDB.schemaEngine.init();
   }
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    mManager.setStorageGroup(new PartialPath("root.vehicle"));
-    mManager.setStorageGroup(new PartialPath("root.vehicle1"));
-    mManager.createTimeseries(
+    schemaEngine.setStorageGroup(new PartialPath("root.vehicle"));
+    schemaEngine.setStorageGroup(new PartialPath("root.vehicle1"));
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.device1.sensor1"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    mManager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.device1.sensor2"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    mManager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.device1.sensor3"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    mManager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.device2.sensor1"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    mManager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.device2.sensor2"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    mManager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.device2.sensor3"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    mManager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle1.device1.sensor1"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    mManager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle1.device1.sensor2"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    mManager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle1.device1.sensor3"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    mManager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle1.device2.sensor1"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    mManager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle1.device2.sensor2"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    mManager.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle1.device2.sensor3"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
@@ -272,5 +279,20 @@ public class PlannerTest {
             tsLastDataQueryReq, ZoneId.of("Asia/Shanghai"), IoTDBConstant.ClientVersion.V_0_13);
     assertEquals(OperatorType.LAST, physicalPlan.getOperatorType());
     assertEquals(paths.get(0), physicalPlan.getPaths().get(0).getFullPath());
+  }
+
+  @Test
+  public void testRootPrivilege()
+      throws QueryProcessException, StorageEngineException, IOException, InterruptedException,
+          QueryFilterOptimizationException, MetadataException {
+    String listRootPrivilegeStatement = "list user privileges root";
+    PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(listRootPrivilegeStatement);
+    PlanExecutor executor = new PlanExecutor();
+    QueryDataSet queryDataSet = executor.processQuery(physicalPlan, null);
+    for (PrivilegeType privilegeType : PrivilegeType.values()) {
+      if (queryDataSet.hasNext()) {
+        assertEquals(String.valueOf(queryDataSet.next().getFields()), "[" + privilegeType + "]");
+      }
+    }
   }
 }
