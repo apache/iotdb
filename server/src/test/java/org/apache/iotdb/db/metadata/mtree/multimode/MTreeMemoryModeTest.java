@@ -19,10 +19,9 @@
 package org.apache.iotdb.db.metadata.mtree.multimode;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.mtree.MTreeTestCase;
 
-public class MTreeMemoryModeTest extends MTreeTestCase {
-  @Override
+public class MTreeMemoryModeTest {
+  //  @Override
   protected void setConfig() {
     IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(false);
   }

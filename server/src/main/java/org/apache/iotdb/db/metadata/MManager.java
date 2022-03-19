@@ -48,7 +48,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mtree.service.MTreeService;
+import org.apache.iotdb.db.metadata.mtree.service.MTreeBelowSG;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.tag.TagManager;
@@ -199,7 +199,7 @@ public class MManager {
   private File logFile;
   private MLogWriter logWriter;
 
-  private MTreeService mtree;
+  private MTreeBelowSG mtree;
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager = TagManager.getInstance();
@@ -293,7 +293,7 @@ public class MManager {
       isRecovering = true;
 
       tagManager.init();
-      mtree = new MTreeService();
+      mtree = new MTreeBelowSG();
       mtree.init();
 
       int lineNumber = initFromLog(logFile);

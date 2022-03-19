@@ -126,14 +126,14 @@ import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTim
  *   <li>Interfaces and Implementation for Template check
  * </ol>
  */
-public class MTreeService implements Serializable {
+public class MTreeBelowSG implements Serializable {
 
-  private static final Logger logger = LoggerFactory.getLogger(MTreeService.class);
+  private static final Logger logger = LoggerFactory.getLogger(MTreeBelowSG.class);
   private IMNode root;
   private IMTreeStore store;
 
   // region MTree initialization, clear and serialization
-  public MTreeService() {}
+  public MTreeBelowSG() {}
 
   public void init() throws MetadataException, IOException {
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePersistentSchema()) {

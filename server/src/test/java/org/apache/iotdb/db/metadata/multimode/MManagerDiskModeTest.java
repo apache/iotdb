@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.metadata.multimode;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.MManagerBasicTestCase;
+import org.apache.iotdb.db.metadata.SchemaEngineBasicTest;
 
-public abstract class MManagerDiskModeTest extends MManagerBasicTestCase {
+public abstract class MManagerDiskModeTest extends SchemaEngineBasicTest {
   @Override
   protected void setConfig() {
     IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(true);
