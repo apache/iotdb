@@ -18,18 +18,21 @@
  */
 package org.apache.iotdb.confignode.conf;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.rpc.RpcUtils;
+
+import java.io.File;
 
 public class ConfigNodeConf {
 
   /** could set ip or hostname */
-  private String rpcAddress;
+  private String rpcAddress = "0.0.0.0";
 
   /** used for communication between data node and config node */
-  private int rpcPort;
+  private int rpcPort = 22277;
 
   /** used for communication between data node and data node */
-  private Long internalPort;
+  private int internalPort = 22278;
 
   /** every node should have the same config_node_address_lists */
   private String addressLists;
@@ -57,6 +60,18 @@ public class ConfigNodeConf {
 
   /** just for test wait for 60 second by default. */
   private int thriftServerAwaitTimeForStopService = 60;
+
+  /** System directory, including version file for each storage group and metadata */
+  private String systemDir =
+      ConfigNodeConstant.DATA_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
+
+  /** Schema directory, including storage set of values. */
+  private String schemaDir = systemDir + File.separator + IoTDBConstant.SCHEMA_FOLDER_NAME;
+
+  /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
+  private String[] dataDirs = {
+    ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.DATA_DIR
+  };
 
   public ConfigNodeConf() {
     // empty constructor
@@ -134,11 +149,11 @@ public class ConfigNodeConf {
     this.rpcPort = rpcPort;
   }
 
-  public Long getInternalPort() {
+  public int getInternalPort() {
     return internalPort;
   }
 
-  public void setInternalPort(Long internalPort) {
+  public void setInternalPort(int internalPort) {
     this.internalPort = internalPort;
   }
 
@@ -156,5 +171,21 @@ public class ConfigNodeConf {
 
   public void setThriftServerAwaitTimeForStopService(int thriftServerAwaitTimeForStopService) {
     this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
+  }
+
+  public String getSystemDir() {
+    return systemDir;
+  }
+
+  public void setSystemDir(String systemDir) {
+    this.systemDir = systemDir;
+  }
+
+  public String[] getDataDirs() {
+    return dataDirs;
+  }
+
+  public void setDataDirs(String[] dataDirs) {
+    this.dataDirs = dataDirs;
   }
 }

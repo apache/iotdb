@@ -44,17 +44,13 @@ public class ConfigNodeConfCheck {
 
   private Properties specialProperties;
 
-  public void checkConfig() throws RepeatConfigurationException, IOException {
-
-    String propsDir = ConfigNodeDescriptor.getInstance().getPropsDir();
-    if (propsDir == null) {
-      // Skip configuration check when developer mode or test mode
-      return;
-    }
+  private ConfigNodeConfCheck() {
     specialProperties = new Properties();
+  }
 
+  public void checkConfig() throws RepeatConfigurationException, IOException {
     File specialPropertiesFile =
-        new File(propsDir + File.separator + ConfigNodeConstant.SPECIAL_CONF_NAME);
+        new File(conf.getSystemDir() + File.separator + ConfigNodeConstant.SPECIAL_CONF_NAME);
     if (!specialPropertiesFile.exists()) {
       if (specialPropertiesFile.createNewFile()) {
         LOGGER.info(
@@ -66,7 +62,7 @@ public class ConfigNodeConfCheck {
         LOGGER.error(
             "Can't create special configuration file {} for ConfigNode. IoTDB-ConfigNode is shutdown.",
             specialPropertiesFile.getAbsolutePath());
-        System.exit(-1);
+        throw new IOException("Can't create special configuration file");
       }
     }
 
@@ -128,9 +124,5 @@ public class ConfigNodeConfCheck {
 
   public static ConfigNodeConfCheck getInstance() {
     return ConfigNodeConfCheckHolder.INSTANCE;
-  }
-
-  private ConfigNodeConfCheck() {
-    LOGGER.info("Starting IoTDB Cluster ConfigNode " + ConfigNodeConstant.VERSION);
   }
 }
