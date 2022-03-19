@@ -101,7 +101,7 @@ public class WildcardsRemover {
     // Calculate the Cartesian product of extendedExpressions to get the actual expressions after
     // removing all wildcards. We use actualExpressions to collect them.
     List<List<Expression>> actualExpressions = new ArrayList<>();
-    ConcatPathOptimizer.cartesianProduct(
+    ConcatPathRewriter.cartesianProduct(
         extendedExpressions, actualExpressions, 0, new ArrayList<>());
 
     // Apply the soffset & slimit control to the actualExpressions and return the remaining

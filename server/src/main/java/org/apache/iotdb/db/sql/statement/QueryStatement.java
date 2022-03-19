@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.sql.statement;
 
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.index.common.IndexType;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.sql.constant.StatementType;
 import org.apache.iotdb.db.sql.statement.component.FromComponent;
 import org.apache.iotdb.db.sql.statement.component.OrderBy;
@@ -201,5 +204,13 @@ public class QueryStatement extends Statement {
 
   public void setIndexType(IndexType indexType) {
     this.indexType = indexType;
+  }
+
+  public boolean isGroupByLevel() {
+    return false;
+  };
+
+  public void check(){
+
   }
 }

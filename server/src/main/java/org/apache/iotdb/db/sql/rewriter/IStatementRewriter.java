@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.sql.rewriter;
 
+import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.sql.statement.Statement;
 
 /** provide a statement, rewriter it. */
 @FunctionalInterface
 public interface IStatementRewriter {
 
-  Statement rewrite(Statement statement);
+  Statement rewrite(Statement statement) throws StatementAnalyzeException, PathNumOverLimitException;
 }

@@ -18,5 +18,17 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
+import org.apache.iotdb.db.sql.statement.Statement;
+
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {}
+public class Analysis {
+
+    private Statement statement;
+
+    public Analysis() {
+    }
+
+    public void setStatement(Statement rewrittenStatement) {
+        this.statement = rewrittenStatement;
+    }
+}

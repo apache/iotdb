@@ -23,28 +23,35 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.crud.*;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
 
+import org.apache.iotdb.db.sql.statement.QueryStatement;
+import org.apache.iotdb.db.sql.statement.Statement;
+import org.apache.iotdb.db.sql.statement.component.FromComponent;
+import org.apache.iotdb.db.sql.statement.component.ResultColumn;
+import org.apache.iotdb.db.sql.statement.component.SelectComponent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-/** concat paths in select and from clause. */
-public class ConcatPathOptimizer implements IStatementRewriter {
+/**
+ * This rewriter:
+ * 1. concat paths in select and from clause.
+ * 2. remove wildcards
+ */
+public class ConcatPathRewriter implements IStatementRewriter {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConcatPathOptimizer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConcatPathRewriter.class);
 
   private static final String WARNING_NO_SUFFIX_PATHS =
       "failed to concat series paths because the given query operator didn't have suffix paths";
@@ -52,33 +59,29 @@ public class ConcatPathOptimizer implements IStatementRewriter {
       "failed to concat series paths because the given query operator didn't have prefix paths";
 
   @Override
-  public Operator transform(Operator operator)
-      throws LogicalOptimizeException, PathNumOverLimitException {
-    QueryOperator queryOperator = (QueryOperator) operator;
-    if (!optimizable(queryOperator)) {
-      return queryOperator;
+  public Statement rewrite(Statement statement)
+      throws StatementAnalyzeException, PathNumOverLimitException {
+    QueryStatement queryStatement = (QueryStatement) statement;
+    if (!rewritable(queryStatement)) {
+      return queryStatement;
     }
 
-    concatSelect(queryOperator);
-    concatWithoutNullColumns(queryOperator);
-    removeWildcardsInSelectPaths(queryOperator);
-    removeWildcardsWithoutNullColumns(queryOperator);
-    concatFilterAndRemoveWildcards(queryOperator);
-    return queryOperator;
+    concatSelect(queryStatement);
+    concatWithoutNullColumns(queryStatement);
+    removeWildcardsInSelectPaths(queryStatement);
+    removeWildcardsWithoutNullColumns(queryStatement);
+    concatFilterAndRemoveWildcards(queryStatement);
+    return queryStatement;
   }
 
-  private boolean optimizable(QueryOperator queryOperator) {
-    if (queryOperator.isAlignByDevice()) {
-      return false;
-    }
-
-    SelectComponent select = queryOperator.getSelectComponent();
+  private boolean rewritable(QueryStatement queryStatement) {
+    SelectComponent select = queryStatement.getSelectComponent();
     if (select == null || select.getResultColumns().isEmpty()) {
       LOGGER.warn(WARNING_NO_SUFFIX_PATHS);
       return false;
     }
 
-    FromComponent from = queryOperator.getFromComponent();
+    FromComponent from = queryStatement.getFromComponent();
     if (from == null || from.getPrefixPaths().isEmpty()) {
       LOGGER.warn(WARNING_NO_PREFIX_PATHS);
       return false;
@@ -87,29 +90,29 @@ public class ConcatPathOptimizer implements IStatementRewriter {
     return true;
   }
 
-  private void concatSelect(QueryOperator queryOperator) throws LogicalOptimizeException {
-    List<PartialPath> prefixPaths = queryOperator.getFromComponent().getPrefixPaths();
+  private void concatSelect(QueryStatement queryStatement) throws StatementAnalyzeException {
+    List<PartialPath> prefixPaths = queryStatement.getFromComponent().getPrefixPaths();
     List<ResultColumn> resultColumns = new ArrayList<>();
-    for (ResultColumn suffixColumn : queryOperator.getSelectComponent().getResultColumns()) {
-      boolean needAliasCheck = suffixColumn.hasAlias() && !queryOperator.isGroupByLevel();
+    for (ResultColumn suffixColumn : queryStatement.getSelectComponent().getResultColumns()) {
+      boolean needAliasCheck = suffixColumn.hasAlias() && !queryStatement.isGroupByLevel();
       suffixColumn.concat(prefixPaths, resultColumns, needAliasCheck);
     }
-    queryOperator.getSelectComponent().setResultColumns(resultColumns);
+    queryStatement.getSelectComponent().setResultColumns(resultColumns);
   }
 
-  private void concatWithoutNullColumns(QueryOperator queryOperator)
-      throws LogicalOptimizeException {
-    List<PartialPath> prefixPaths = queryOperator.getFromComponent().getPrefixPaths();
+  private void concatWithoutNullColumns(QueryStatement queryStatement)
+      throws StatementAnalyzeException {
+    List<PartialPath> prefixPaths = queryStatement.getFromComponent().getPrefixPaths();
     // has without null columns
-    if (queryOperator.getSpecialClauseComponent() != null
-        && !queryOperator.getSpecialClauseComponent().getWithoutNullColumns().isEmpty()) {
+    if (queryStatement.getWithoutPolicy() != null
+        && !queryStatement.getWithoutPolicy().getWithoutNullColumns().isEmpty()) {
       List<Expression> withoutNullColumns = new ArrayList<>();
       for (Expression expression :
-          queryOperator.getSpecialClauseComponent().getWithoutNullColumns()) {
+          queryStatement.getWithoutPolicy().getWithoutNullColumns()) {
         concatWithoutNullColumns(
-            prefixPaths, expression, withoutNullColumns, queryOperator.getAliasSet());
+            prefixPaths, expression, withoutNullColumns, queryStatement.getSelectComponent().getAliasSet());
       }
-      queryOperator.getSpecialClauseComponent().setWithoutNullColumns(withoutNullColumns);
+      queryStatement.getWithoutPolicy().setWithoutNullColumns(withoutNullColumns);
     }
   }
 
@@ -118,7 +121,7 @@ public class ConcatPathOptimizer implements IStatementRewriter {
       Expression expression,
       List<Expression> withoutNullColumns,
       Set<String> aliasSet)
-      throws LogicalOptimizeException {
+      throws StatementAnalyzeException {
     if (expression instanceof TimeSeriesOperand) {
       TimeSeriesOperand timeSeriesOperand = (TimeSeriesOperand) expression;
       if (timeSeriesOperand
@@ -137,7 +140,7 @@ public class ConcatPathOptimizer implements IStatementRewriter {
                                 .getPath()
                                 .getFirstNode()))); // split path To nodes
           } catch (IllegalPathException e) {
-            throw new LogicalOptimizeException(e.getMessage());
+            throw new StatementAnalyzeException(e.getMessage());
           }
         }
         withoutNullColumns.add(expression);
@@ -157,24 +160,24 @@ public class ConcatPathOptimizer implements IStatementRewriter {
     }
   }
 
-  private void removeWildcardsInSelectPaths(QueryOperator queryOperator)
+  private void removeWildcardsInSelectPaths(QueryStatement queryStatement)
       throws LogicalOptimizeException, PathNumOverLimitException {
-    if (queryOperator.getIndexType() != null) {
+    if (queryStatement.getIndexType() != null) {
       return;
     }
 
     List<ResultColumn> resultColumns = new ArrayList<>();
     // Only used for group by level
     GroupByLevelController groupByLevelController = null;
-    if (queryOperator.isGroupByLevel()) {
-      groupByLevelController = new GroupByLevelController(queryOperator);
-      queryOperator.resetSLimitOffset();
+    if (queryStatement.isGroupByLevel()) {
+      groupByLevelController = new GroupByLevelController(queryStatement);
+      queryStatement.resetSLimitOffset();
       resultColumns = new LinkedList<>();
     }
 
-    WildcardsRemover wildcardsRemover = new WildcardsRemover(queryOperator);
-    for (ResultColumn resultColumn : queryOperator.getSelectComponent().getResultColumns()) {
-      boolean needAliasCheck = resultColumn.hasAlias() && !queryOperator.isGroupByLevel();
+    WildcardsRemover wildcardsRemover = new WildcardsRemover(queryStatement);
+    for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+      boolean needAliasCheck = resultColumn.hasAlias() && !queryStatement.isGroupByLevel();
       resultColumn.removeWildcards(wildcardsRemover, resultColumns, needAliasCheck);
       if (groupByLevelController != null) {
         groupByLevelController.control(resultColumn, resultColumns);
@@ -184,9 +187,9 @@ public class ConcatPathOptimizer implements IStatementRewriter {
       }
     }
     wildcardsRemover.checkIfSoffsetIsExceeded(resultColumns);
-    queryOperator.getSelectComponent().setResultColumns(resultColumns);
+    queryStatement.getSelectComponent().setResultColumns(resultColumns);
     if (groupByLevelController != null) {
-      queryOperator.getSpecialClauseComponent().setGroupByLevelController(groupByLevelController);
+      queryStatement.getSpecialClauseComponent().setGroupByLevelController(groupByLevelController);
     }
   }
 

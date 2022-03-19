@@ -19,4 +19,6 @@
 
 package org.apache.iotdb.db.sql.metadata;
 
-public interface IMetadataFetcher {}
+public interface IMetadataFetcher {
+
+}

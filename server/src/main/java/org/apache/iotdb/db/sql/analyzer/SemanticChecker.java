@@ -17,33 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.statement;
+package org.apache.iotdb.db.sql.analyzer;
 
-import org.apache.iotdb.db.sql.statement.component.GroupByLevelComponent;
+import org.apache.iotdb.db.sql.statement.QueryStatement;
+import org.apache.iotdb.db.sql.statement.Statement;
 
-public class AggregationQueryStatement extends QueryStatement {
+public class SemanticChecker {
 
-  // GROUP BY LEVEL clause
-  protected GroupByLevelComponent groupByLevelComponent;
+    private SemanticChecker() {}
 
-  public AggregationQueryStatement() {
-    super();
-  }
-
-  public AggregationQueryStatement(QueryStatement queryStatement) {
-    super(queryStatement);
-  }
-
-  public GroupByLevelComponent getGroupByLevelComponent() {
-    return groupByLevelComponent;
-  }
-
-  public void setGroupByLevelComponent(GroupByLevelComponent groupByLevelComponent) {
-    this.groupByLevelComponent = groupByLevelComponent;
-  }
-
-  @Override
-  public boolean isGroupByLevel() {
-    return groupByLevelComponent != null && groupByLevelComponent.getLevels().length > 0;
-  };
+    public static void check(Statement statement) {
+        if (statement instanceof QueryStatement) {
+            ((QueryStatement) statement).check();
+        }
+    }
 }
