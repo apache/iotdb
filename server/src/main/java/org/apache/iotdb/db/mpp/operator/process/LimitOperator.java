@@ -19,29 +19,53 @@
 package org.apache.iotdb.db.mpp.operator.process;
 
 import org.apache.iotdb.db.mpp.common.TsBlock;
+import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
+
 public class LimitOperator implements ProcessOperator {
+
+  private final OperatorContext operatorContext;
+  private long remainingLimit;
+  private final Operator child;
+
+  public LimitOperator(OperatorContext operatorContext, long limit, Operator child) {
+    this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
+    checkArgument(limit >= 0, "limit must be at least zero");
+    this.remainingLimit = limit;
+    this.child = requireNonNull(child, "child operator is null");
+  }
+
   @Override
   public OperatorContext getOperatorContext() {
-    return null;
+    return operatorContext;
   }
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    return ProcessOperator.super.isBlocked();
+    return child.isBlocked();
   }
 
   @Override
   public TsBlock next() {
-    return null;
+    TsBlock block = child.next();
+    TsBlock res = block;
+    if (block.getCount() <= remainingLimit) {
+      remainingLimit -= block.getCount();
+    } else {
+      res = block.getRegion(0, (int) remainingLimit);
+      remainingLimit = 0;
+    }
+    return res;
   }
 
   @Override
   public boolean hasNext() {
-    return false;
+    return child.hasNext();
   }
 
   @Override

@@ -19,10 +19,21 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.db.mpp.common.InstanceId;
+import org.apache.iotdb.db.mpp.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class InstanceContext {
 
   private InstanceId id;
+
+  // TODO if we split one fragment instance into multiple pipelines to run, we need to replace it
+  // with CopyOnWriteArrayList or some other thread safe data structure
+  private final List<OperatorContext> operatorContexts = new ArrayList<>();
 
   private final long createNanos = System.nanoTime();
 
@@ -36,5 +47,21 @@ public class InstanceContext {
 
   public InstanceContext(InstanceId id) {
     this.id = id;
+  }
+
+  public OperatorContext addOperatorContext(
+      int operatorId, PlanNodeId planNodeId, String operatorType) {
+    checkArgument(operatorId >= 0, "operatorId is negative");
+
+    for (OperatorContext operatorContext : operatorContexts) {
+      checkArgument(
+          operatorId != operatorContext.getOperatorId(),
+          "A context already exists for operatorId %s",
+          operatorId);
+    }
+
+    OperatorContext operatorContext = new OperatorContext(operatorId, planNodeId, operatorType);
+    operatorContexts.add(operatorContext);
+    return operatorContext;
   }
 }

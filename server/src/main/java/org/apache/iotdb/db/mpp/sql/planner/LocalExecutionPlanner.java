@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.sql.planner;
 
 import org.apache.iotdb.db.mpp.execution.InstanceContext;
 import org.apache.iotdb.db.mpp.operator.Operator;
+import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
@@ -86,7 +87,12 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitLimit(LimitNode node, LocalExecutionPlanContext context) {
-      return super.visitLimit(node, context);
+      Operator child = node.getChild().accept(this, context);
+      return new LimitOperator(
+          context.taskContext.addOperatorContext(
+              context.getNextOperatorId(), node.getId(), LimitOperator.class.getSimpleName()),
+          node.getLimit(),
+          child);
     }
 
     @Override
