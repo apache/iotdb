@@ -58,9 +58,5 @@ public interface IMTreeStore {
 
   void unPin(IMNode node);
 
-  void createSnapshot() throws IOException;
-
   void clear();
-
-  String toString();
 }

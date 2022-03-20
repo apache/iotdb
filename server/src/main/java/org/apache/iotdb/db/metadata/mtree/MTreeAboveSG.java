@@ -78,16 +78,19 @@ public class MTreeAboveSG {
   }
 
   public void init() throws MetadataException, IOException {
-    this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
     store = new MemMTreeStore();
     store.init();
+    this.root = store.getRoot();
   }
 
   public void clear() {
     for (IStorageGroupMNode storageGroupMNode : getAllStorageGroupNodes()) {
       storageGroupMNode.getSchemaRegion().clear();
     }
-    this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+    if (store != null) {
+      store.clear();
+    }
+    this.root = null;
   }
 
   /**

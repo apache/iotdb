@@ -774,8 +774,7 @@ public class SchemaRegion {
 
   /** Get metadata in Json format */
   public JsonObject getMetadataInJson() {
-    //    return mtree.toJson();
-    return null;
+    return mtree.toJson();
   }
 
   // region Interfaces for metadata count

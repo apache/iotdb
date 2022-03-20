@@ -68,6 +68,9 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,6 +124,7 @@ import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTim
  */
 public class MTreeBelowSG implements Serializable {
 
+  public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
   private static final Logger logger = LoggerFactory.getLogger(MTreeBelowSG.class);
 
   private IMTreeStore store;
@@ -153,13 +157,45 @@ public class MTreeBelowSG implements Serializable {
     storageGroupMNode = null;
   }
 
-  public void createSnapshot() throws IOException {
-    store.createSnapshot();
+  public JsonObject toJson() {
+    JsonObject jsonObject = new JsonObject();
+    jsonObject.add(
+        storageGroupMNode.getFullPath(),
+        mNodeToJSON(storageGroupMNode, storageGroupMNode.getName()));
+    return jsonObject;
   }
 
-  @Override
-  public String toString() {
-    return store.toString();
+  private JsonObject mNodeToJSON(IMNode node, String storageGroupName) {
+    JsonObject jsonObject = new JsonObject();
+    if (node.isMeasurement()) {
+      IMeasurementMNode leafMNode = node.getAsMeasurementMNode();
+      jsonObject.add("DataType", GSON.toJsonTree(leafMNode.getSchema().getType()));
+      jsonObject.add("Encoding", GSON.toJsonTree(leafMNode.getSchema().getEncodingType()));
+      jsonObject.add("Compressor", GSON.toJsonTree(leafMNode.getSchema().getCompressor()));
+      if (leafMNode.getSchema().getProps() != null) {
+        jsonObject.addProperty("args", leafMNode.getSchema().getProps().toString());
+      }
+      jsonObject.addProperty("StorageGroup", storageGroupName);
+    } else {
+      if (node.isStorageGroup()) {
+        storageGroupName = node.getFullPath();
+      }
+      try {
+        IMNodeIterator iterator = store.getChildrenIterator(node);
+        try {
+          IMNode child;
+          while (iterator.hasNext()) {
+            child = iterator.next();
+            jsonObject.add(child.getName(), mNodeToJSON(child, storageGroupName));
+          }
+        } finally {
+          iterator.close();
+        }
+      } catch (MetadataException e) {
+        logger.error("Error occurred when parse mtree to string. {}", node.getFullPath(), e);
+      }
+    }
+    return jsonObject;
   }
   // endregion
 

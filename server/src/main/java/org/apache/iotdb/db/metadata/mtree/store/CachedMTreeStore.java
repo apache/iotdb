@@ -339,9 +339,6 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
-  @Override
-  public void createSnapshot() throws IOException {}
-
   /** clear all the data of MTreeStore in memory and disk. */
   @Override
   public void clear() {
