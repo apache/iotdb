@@ -56,12 +56,6 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: ${{ matrix.java }}
-      - name: Cache Maven packages
-        uses: actions/cache@v2
-        with:
-          path: ~/.mz
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2-
       - name: Check Apache Rat
         run: mvn -B apache-rat:check
       - name: Download Hadoop Tools if Needed
@@ -106,14 +100,14 @@ jobs:
       - name: Test Server Module with Maven
         shell: bash
         if: ${{ matrix.it_task == 'server'}}
-        run: source ~/.bash_profile && ./mvnw -B clean integration-test -Dtest.port.closed=true -pl server -am -DskipTests=true -Diotdb.test.only=true
+        run: source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -pl server -am -DskipTests=true -Diotdb.test.only=true
       - name: Test Cluster Module with Maven
         shell: bash
         if: ${{ matrix.it_task == 'cluster'}}
-        run: source ~/.bash_profile && ./mvnw -B clean integration-test -Dtest.port.closed=true -pl cluster -am -DskipTests=true -Dcluster.test.only=true
+        run: source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -pl cluster -am -DskipTests=true -Dcluster.test.only=true
       - name: Test Other Modules with Maven
         shell: bash
         if: ${{ matrix.it_task == 'others'}}
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
-        run: source ~/.bash_profile && ./mvnw -B clean verify -Dtest.port.closed=true -Diotdb.test.skip=true -Dcluster.test.skip=true -P '!influxdb-protocol'
+        run: source ~/.bash_profile && mvn -B clean verify -Dtest.port.closed=true -Diotdb.test.skip=true -Dcluster.test.skip=true -P '!influxdb-protocol'
 
