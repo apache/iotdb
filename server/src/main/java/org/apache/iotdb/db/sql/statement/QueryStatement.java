@@ -61,13 +61,13 @@ public class QueryStatement extends Statement {
   protected FromComponent fromComponent;
   protected WhereCondition whereCondition;
 
-  // row limit and offset for result set. The default value is -1, which means no limit
-  protected int rowLimit = -1;
+  // row limit and offset for result set. The default value is 0, which means no limit
+  protected int rowLimit = 0;
   // row offset for result set. The default value is 0
   protected int rowOffset = 0;
 
-  // series limit and offset for result set. The default value is -1, which means no limit
-  protected int seriesLimit = -1;
+  // series limit and offset for result set. The default value is 0, which means no limit
+  protected int seriesLimit = 0;
   // series offset for result set. The default value is 0
   protected int seriesOffset = 0;
 
@@ -82,6 +82,12 @@ public class QueryStatement extends Statement {
 
   // TODO: add comments
   protected IndexType indexType;
+
+  /**
+   * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
+   * DML use prefixMatch.
+   */
+  protected boolean isPrefixMatchPath = false;
 
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
@@ -157,6 +163,12 @@ public class QueryStatement extends Statement {
 
   public void setSeriesOffset(int seriesOffset) {
     this.seriesOffset = seriesOffset;
+  }
+
+  /** Reset sLimit and sOffset. */
+  public void resetSLimitOffset() {
+    this.seriesLimit = 0;
+    this.seriesOffset = 0;
   }
 
   public WithoutPolicy getWithoutPolicy() {

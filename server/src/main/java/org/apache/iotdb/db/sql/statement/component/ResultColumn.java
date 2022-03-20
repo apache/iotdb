@@ -22,6 +22,7 @@ package org.apache.iotdb.db.sql.statement.component;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
@@ -134,6 +135,28 @@ public class ResultColumn {
       throws StatementAnalyzeException {
     List<Expression> resultExpressions = new ArrayList<>();
     expression.concat(prefixPaths, resultExpressions);
+    if (needAliasCheck && 1 < resultExpressions.size()) {
+      throw new StatementAnalyzeException(
+          String.format("alias '%s' can only be matched with one time series", alias));
+    }
+    for (Expression resultExpression : resultExpressions) {
+      resultColumns.add(new ResultColumn(resultExpression, alias));
+    }
+  }
+
+  /**
+   * @param wildcardsRemover used to remove wildcards from {@code expression} and apply slimit &
+   *     soffset control
+   * @param resultColumns used to collect the result columns
+   * @param needAliasCheck used to skip illegal alias judgement here. Including !isGroupByLevel
+   *     because count(*) may be * unfolded to more than one expression, but it still can be
+   *     aggregated together later.
+   */
+  public void removeWildcards(
+      WildcardsRemover wildcardsRemover, List<ResultColumn> resultColumns, boolean needAliasCheck)
+      throws StatementAnalyzeException {
+    List<Expression> resultExpressions = new ArrayList<>();
+    expression.removeWildcards(wildcardsRemover, resultExpressions);
     if (needAliasCheck && 1 < resultExpressions.size()) {
       throw new StatementAnalyzeException(
           String.format("alias '%s' can only be matched with one time series", alias));

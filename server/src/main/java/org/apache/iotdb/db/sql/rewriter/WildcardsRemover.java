@@ -21,14 +21,14 @@ package org.apache.iotdb.db.sql.rewriter;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.sql.statement.QueryStatement;
+import org.apache.iotdb.db.sql.statement.component.ResultColumn;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -50,16 +50,14 @@ public class WildcardsRemover {
    * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
    * DML use prefixMatch.
    */
-  private boolean isPrefixMatch;
+  private final boolean isPrefixMatch;
 
-  public WildcardsRemover(QueryOperator queryOperator) {
-    isPrefixMatch = queryOperator.isPrefixMatchPath();
-    if (queryOperator.getSpecialClauseComponent() != null) {
-      soffset = queryOperator.getSpecialClauseComponent().getSeriesOffset();
-      currentOffset = soffset;
-      final int slimit = queryOperator.getSpecialClauseComponent().getSeriesLimit();
-      currentLimit = slimit == 0 ? currentLimit : Math.min(slimit, currentLimit);
-    }
+  public WildcardsRemover(QueryStatement queryStatement) {
+    isPrefixMatch = queryStatement.isPrefixMatchPath();
+    soffset = queryStatement.getSeriesOffset();
+    currentOffset = soffset;
+    final int slimit = queryStatement.getSeriesLimit();
+    currentLimit = slimit == 0 ? currentLimit : Math.min(slimit, currentLimit);
   }
 
   private WildcardsRemover(boolean isPrefixMatch) {
@@ -67,22 +65,22 @@ public class WildcardsRemover {
   }
 
   public List<MeasurementPath> removeWildcardFrom(PartialPath path)
-      throws LogicalOptimizeException {
+      throws StatementAnalyzeException {
     try {
       Pair<List<MeasurementPath>, Integer> pair =
-          IoTDB.metaManager.getMeasurementPathsWithAlias(
+          IoTDB.schemaEngine.getMeasurementPathsWithAlias(
               path, currentLimit, currentOffset, isPrefixMatch);
       consumed += pair.right;
       currentOffset -= Math.min(currentOffset, pair.right);
       currentLimit -= pair.left.size();
       return pair.left;
     } catch (MetadataException e) {
-      throw new LogicalOptimizeException("error occurred when removing star: " + e.getMessage());
+      throw new StatementAnalyzeException("error occurred when removing star: " + e.getMessage());
     }
   }
 
   public List<List<Expression>> removeWildcardsFrom(List<Expression> expressions)
-      throws LogicalOptimizeException {
+      throws StatementAnalyzeException {
     // One by one, remove the wildcards from the input expressions. In most cases, an expression
     // will produce multiple expressions after removing the wildcards. We use extendedExpressions to
     // collect the produced expressions.
@@ -133,9 +131,9 @@ public class WildcardsRemover {
   }
 
   public void checkIfSoffsetIsExceeded(List<ResultColumn> resultColumns)
-      throws LogicalOptimizeException {
+      throws StatementAnalyzeException {
     if (consumed == 0 ? soffset != 0 : resultColumns.isEmpty()) {
-      throw new LogicalOptimizeException(
+      throw new StatementAnalyzeException(
           String.format(
               "The value of SOFFSET (%d) is equal to or exceeds the number of sequences (%d) that can actually be returned.",
               soffset, consumed));

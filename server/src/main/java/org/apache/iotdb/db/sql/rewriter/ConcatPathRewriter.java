@@ -20,25 +20,23 @@ package org.apache.iotdb.db.sql.rewriter;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sql.analyze.AnalysisContext;
+import org.apache.iotdb.db.sql.constant.FilterConstant.FilterType;
+import org.apache.iotdb.db.sql.statement.AggregationQueryStatement;
 import org.apache.iotdb.db.sql.statement.QueryStatement;
 import org.apache.iotdb.db.sql.statement.Statement;
-import org.apache.iotdb.db.sql.statement.component.FromComponent;
-import org.apache.iotdb.db.sql.statement.component.ResultColumn;
-import org.apache.iotdb.db.sql.statement.component.SelectComponent;
+import org.apache.iotdb.db.sql.statement.component.*;
+import org.apache.iotdb.db.sql.statement.filter.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -160,7 +158,7 @@ public class ConcatPathRewriter implements IStatementRewriter {
   }
 
   private void removeWildcardsInSelectPaths(QueryStatement queryStatement)
-      throws LogicalOptimizeException, PathNumOverLimitException {
+      throws PathNumOverLimitException, StatementAnalyzeException {
     if (queryStatement.getIndexType() != null) {
       return;
     }
@@ -188,23 +186,24 @@ public class ConcatPathRewriter implements IStatementRewriter {
     wildcardsRemover.checkIfSoffsetIsExceeded(resultColumns);
     queryStatement.getSelectComponent().setResultColumns(resultColumns);
     if (groupByLevelController != null) {
-      queryStatement.getSpecialClauseComponent().setGroupByLevelController(groupByLevelController);
+      ((AggregationQueryStatement) queryStatement)
+          .getGroupByLevelComponent()
+          .setGroupByLevelController(groupByLevelController);
     }
   }
 
-  private void removeWildcardsWithoutNullColumns(QueryOperator queryOperator)
-      throws LogicalOptimizeException {
-    if (queryOperator.getIndexType() != null) {
+  private void removeWildcardsWithoutNullColumns(QueryStatement queryStatement)
+      throws StatementAnalyzeException {
+    if (queryStatement.getIndexType() != null) {
       return;
     }
 
-    if (queryOperator.getSpecialClauseComponent() == null) {
+    if (queryStatement.getWithoutPolicy() == null) {
       return;
     }
 
-    List<Expression> expressions =
-        queryOperator.getSpecialClauseComponent().getWithoutNullColumns();
-    WildcardsRemover withoutNullWildcardsRemover = new WildcardsRemover(queryOperator);
+    List<Expression> expressions = queryStatement.getWithoutPolicy().getWithoutNullColumns();
+    WildcardsRemover withoutNullWildcardsRemover = new WildcardsRemover(queryStatement);
 
     // because timeSeries path may be with "*", so need to remove it for getting some actual
     // timeSeries paths
@@ -215,7 +214,10 @@ public class ConcatPathRewriter implements IStatementRewriter {
     // because expression.removeWildcards will ignore the TimeSeries path that exists in the meta
     // so we need to recognise the alias, just simply add to the resultExpressions
     for (Expression expression : expressions) {
-      if (queryOperator.getAliasSet().contains(expression.getExpressionString())) {
+      if (queryStatement
+          .getSelectComponent()
+          .getAliasSet()
+          .contains(expression.getExpressionString())) {
         resultExpressions.add(expression);
         continue;
       }
@@ -223,9 +225,12 @@ public class ConcatPathRewriter implements IStatementRewriter {
     }
 
     // group by level, use groupedPathMap
-    GroupByLevelController groupByLevelController =
-        queryOperator.getSpecialClauseComponent().getGroupByLevelController();
-    if (groupByLevelController != null) {
+
+    if (queryStatement.isGroupByLevel()) {
+      GroupByLevelController groupByLevelController =
+          ((AggregationQueryStatement) queryStatement)
+              .getGroupByLevelComponent()
+              .getGroupByLevelController();
       for (Expression expression : actualExpressions) {
         String groupedPath =
             groupByLevelController.getGroupedPath(expression.getExpressionString());
@@ -233,7 +238,7 @@ public class ConcatPathRewriter implements IStatementRewriter {
           try {
             resultExpressions.add(new TimeSeriesOperand(new PartialPath(groupedPath)));
           } catch (IllegalPathException e) {
-            throw new LogicalOptimizeException(e.getMessage());
+            throw new StatementAnalyzeException(e.getMessage());
           }
         } else {
           resultExpressions.add(expression);
@@ -242,48 +247,48 @@ public class ConcatPathRewriter implements IStatementRewriter {
     } else {
       resultExpressions.addAll(actualExpressions);
     }
-    queryOperator.getSpecialClauseComponent().setWithoutNullColumns(resultExpressions);
+    queryStatement.getWithoutPolicy().setWithoutNullColumns(resultExpressions);
   }
 
-  private void concatFilterAndRemoveWildcards(QueryOperator queryOperator)
-      throws LogicalOptimizeException {
-    WhereComponent whereComponent = queryOperator.getWhereComponent();
-    if (whereComponent == null) {
+  private void concatFilterAndRemoveWildcards(QueryStatement queryStatement)
+      throws StatementAnalyzeException {
+    WhereCondition whereCondition = queryStatement.getWhereCondition();
+    if (whereCondition == null) {
       return;
     }
 
     Set<PartialPath> filterPaths = new HashSet<>();
-    whereComponent.setFilterOperator(
+    whereCondition.setQueryFilter(
         concatFilterAndRemoveWildcards(
-            queryOperator.getFromComponent().getPrefixPaths(),
-            whereComponent.getFilterOperator(),
+            queryStatement.getFromComponent().getPrefixPaths(),
+            whereCondition.getQueryFilter(),
             filterPaths,
-            queryOperator.isPrefixMatchPath()));
-    whereComponent.getFilterOperator().setPathSet(filterPaths);
+            queryStatement.isPrefixMatchPath()));
+    whereCondition.getQueryFilter().setPathSet(filterPaths);
   }
 
-  private FilterOperator concatFilterAndRemoveWildcards(
+  private QueryFilter concatFilterAndRemoveWildcards(
       List<PartialPath> fromPaths,
-      FilterOperator operator,
+      QueryFilter filter,
       Set<PartialPath> filterPaths,
       boolean isPrefixMatch)
-      throws LogicalOptimizeException {
-    if (!operator.isLeaf()) {
-      List<FilterOperator> newFilterList = new ArrayList<>();
-      for (FilterOperator child : operator.getChildren()) {
+      throws StatementAnalyzeException {
+    if (!filter.isLeaf()) {
+      List<QueryFilter> newFilterList = new ArrayList<>();
+      for (QueryFilter child : filter.getChildren()) {
         newFilterList.add(
             concatFilterAndRemoveWildcards(fromPaths, child, filterPaths, isPrefixMatch));
       }
-      operator.setChildren(newFilterList);
-      return operator;
+      filter.setChildren(newFilterList);
+      return filter;
     }
-    FunctionOperator functionOperator = (FunctionOperator) operator;
+    FunctionFilter functionOperator = (FunctionFilter) filter;
     PartialPath filterPath = functionOperator.getSinglePath();
     List<PartialPath> concatPaths = new ArrayList<>();
     if (SQLConstant.isReservedPath(filterPath)) {
       // do nothing in the case of "where time > 5"
       filterPaths.add(filterPath);
-      return operator;
+      return filter;
     } else if (filterPath.getFirstNode().startsWith(SQLConstant.ROOT)) {
       // do nothing in the case of "where root.d1.s1 > 5"
       concatPaths.add(filterPath);
@@ -297,76 +302,72 @@ public class ConcatPathRewriter implements IStatementRewriter {
       // Transform "select s1 from root.car.* where s1 > 10" to
       // "select s1 from root.car.* where root.car.*.s1 > 10"
       functionOperator.setSinglePath(noStarPaths.get(0));
-      return operator;
+      return filter;
     } else {
       // Transform "select s1 from root.car.d1, root.car.d2 where s1 > 10" to
       // "select s1 from root.car.d1, root.car.d2 where root.car.d1.s1 > 10 and root.car.d2.s1 > 10"
       // Note that,
       // two fork tree has to be maintained while removing stars in paths for DnfFilterOptimizer
       // requirement.
-      return constructBinaryFilterTreeWithAnd(noStarPaths, operator);
+      return constructBinaryFilterTreeWithAnd(noStarPaths, filter);
     }
   }
 
-  private FilterOperator constructBinaryFilterTreeWithAnd(
-      List<PartialPath> noStarPaths, FilterOperator operator) throws LogicalOptimizeException {
-    FilterOperator filterBinaryTree = new FilterOperator(FilterType.KW_AND);
-    FilterOperator currentNode = filterBinaryTree;
+  private QueryFilter constructBinaryFilterTreeWithAnd(
+      List<PartialPath> noStarPaths, QueryFilter filter) throws StatementAnalyzeException {
+    QueryFilter filterBinaryTree = new QueryFilter(FilterType.KW_AND);
+    QueryFilter currentNode = filterBinaryTree;
     for (int i = 0; i < noStarPaths.size(); i++) {
       if (i > 0 && i < noStarPaths.size() - 1) {
-        FilterOperator newInnerNode = new FilterOperator(FilterType.KW_AND);
+        QueryFilter newInnerNode = new QueryFilter(FilterType.KW_AND);
         currentNode.addChildOperator(newInnerNode);
         currentNode = newInnerNode;
       }
       try {
-        if (operator instanceof InOperator) {
+        if (filter instanceof InFilter) {
           currentNode.addChildOperator(
-              new InOperator(
-                  operator.getFilterType(),
+              new InFilter(
+                  filter.getFilterType(),
                   noStarPaths.get(i),
-                  ((InOperator) operator).getNot(),
-                  ((InOperator) operator).getValues()));
-        } else if (operator instanceof LikeOperator) {
+                  ((InFilter) filter).getNot(),
+                  ((InFilter) filter).getValues()));
+        } else if (filter instanceof LikeFilter) {
           currentNode.addChildOperator(
-              new LikeOperator(
-                  operator.getFilterType(),
-                  noStarPaths.get(i),
-                  ((LikeOperator) operator).getValue()));
-        } else if (operator instanceof RegexpOperator) {
+              new LikeFilter(
+                  filter.getFilterType(), noStarPaths.get(i), ((LikeFilter) filter).getValue()));
+        } else if (filter instanceof RegexpFilter) {
           currentNode.addChildOperator(
-              new RegexpOperator(
-                  operator.getFilterType(),
-                  noStarPaths.get(i),
-                  ((RegexpOperator) operator).getValue()));
+              new RegexpFilter(
+                  filter.getFilterType(), noStarPaths.get(i), ((RegexpFilter) filter).getValue()));
         } else {
           currentNode.addChildOperator(
-              new BasicFunctionOperator(
-                  operator.getFilterType(),
+              new BasicFunctionFilter(
+                  filter.getFilterType(),
                   noStarPaths.get(i),
-                  ((BasicFunctionOperator) operator).getValue()));
+                  ((BasicFunctionFilter) filter).getValue()));
         }
       } catch (SQLParserException e) {
-        throw new LogicalOptimizeException(e.getMessage());
+        throw new StatementAnalyzeException(e.getMessage());
       }
     }
     return filterBinaryTree;
   }
 
   private List<PartialPath> removeWildcardsInConcatPaths(
-      List<PartialPath> originalPaths, boolean isPrefixMatch) throws LogicalOptimizeException {
+      List<PartialPath> originalPaths, boolean isPrefixMatch) throws StatementAnalyzeException {
     HashSet<PartialPath> actualPaths = new HashSet<>();
     try {
       for (PartialPath originalPath : originalPaths) {
         List<MeasurementPath> all =
-            IoTDB.metaManager.getMeasurementPathsWithAlias(originalPath, 0, 0, isPrefixMatch).left;
+            IoTDB.schemaEngine.getMeasurementPathsWithAlias(originalPath, 0, 0, isPrefixMatch).left;
         if (all.isEmpty()) {
-          throw new LogicalOptimizeException(
+          throw new StatementAnalyzeException(
               String.format("Unknown time series %s in `where clause`", originalPath));
         }
         actualPaths.addAll(all);
       }
     } catch (MetadataException e) {
-      throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
+      throw new StatementAnalyzeException("error when remove star: " + e.getMessage());
     }
     return new ArrayList<>(actualPaths);
   }
