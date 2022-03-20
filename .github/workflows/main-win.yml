@@ -9,6 +9,7 @@ on:
       - master
       - 'rel/*'
       - "new_*"
+      - win_wf_fix
     paths-ignore:
       - 'docs/**'
   pull_request:
@@ -58,9 +59,9 @@ jobs:
       - name: Cache Maven packages
         uses: actions/cache@v2
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2-
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-
       - name: Check Apache Rat
         run: mvn -B apache-rat:check
       - name: Download Hadoop Tools if Needed
