@@ -25,7 +25,6 @@ import org.apache.iotdb.db.sql.statement.QueryStatement;
 import org.apache.iotdb.db.sql.statement.component.ResultColumn;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.time.ZonedDateTime;
@@ -34,7 +33,6 @@ import java.util.*;
 public class StatementGeneratorTest {
 
   @Test
-  @Ignore
   public void testRawDataQuery() {
     List<String> selectExprList = Arrays.asList("s1", "s2");
     List<String> prefixPaths = Collections.singletonList("root.sg1.d1");
@@ -54,19 +52,19 @@ public class StatementGeneratorTest {
         (QueryStatement) StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
 
     // check SELECT clause
+    int cnt = 0;
     for (ResultColumn resultColumn : statement.getSelectComponent().getResultColumns()) {
       String selectExpr = resultColumn.getExpression().toString();
-      Assert.assertTrue(selectExprList.contains(selectExpr));
-      selectExprList.remove(selectExpr);
+      Assert.assertEquals(selectExprList.get(cnt++), selectExpr);
     }
-    Assert.assertTrue(selectExprList.isEmpty());
+    Assert.assertEquals(selectExprList.size(), cnt);
 
     // check FROM clause
+    cnt = 0;
     for (PartialPath path : statement.getFromComponent().getPrefixPaths()) {
-      Assert.assertTrue(prefixPaths.contains(path.toString()));
-      selectExprList.remove(path.toString());
+      Assert.assertEquals(prefixPaths.get(cnt++), path.toString());
     }
-    Assert.assertTrue(prefixPaths.isEmpty());
+    Assert.assertEquals(prefixPaths.size(), cnt);
 
     // check LIMIT & OFFSET clause
     Assert.assertEquals(rowLimit, statement.getRowLimit());

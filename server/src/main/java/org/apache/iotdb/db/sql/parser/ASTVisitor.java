@@ -83,6 +83,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     this.clientVersion = clientVersion;
   }
 
+  /** Top Level Description */
+  @Override
+  public Statement visitSingleStatement(IoTDBSqlParser.SingleStatementContext ctx) {
+    Statement statement = visit(ctx.statement());
+    if (ctx.DEBUG() != null) {
+      statement.setDebug(true);
+    }
+    return statement;
+  }
+
   /** Data Manipulation Language (DML) */
 
   // Select Statement ========================================================================

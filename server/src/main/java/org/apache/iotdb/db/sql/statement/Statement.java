@@ -32,6 +32,8 @@ public abstract class Statement {
 
   protected StatementType statementType = StatementType.NULL;
 
+  protected boolean isDebug;
+
   protected Statement() {}
 
   public void setType(StatementType statementType) {
@@ -40,6 +42,14 @@ public abstract class Statement {
 
   public StatementType getType() {
     return statementType;
+  }
+
+  public boolean isDebug() {
+    return isDebug;
+  }
+
+  public void setDebug(boolean debug) {
+    isDebug = debug;
   }
 
   public boolean isQuery() {
