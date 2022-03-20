@@ -21,8 +21,6 @@ package org.apache.iotdb.db.sql.analyze;
 
 import org.apache.iotdb.db.sql.statement.Statement;
 
-import org.apache.iotdb.db.sql.statement.Statement;
-
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
 public class Analysis {
 
