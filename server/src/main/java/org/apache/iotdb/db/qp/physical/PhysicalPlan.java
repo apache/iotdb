@@ -72,12 +72,12 @@ import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
-import org.apache.iotdb.db.qp.utils.EmptyOutputStream;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
@@ -165,28 +165,16 @@ public abstract class PhysicalPlan {
   }
 
   /**
-   * Calculate size after serialization.
-   *
-   * @return size
-   * @throws IOException
-   */
-  public int getSerializedSize() throws IOException {
-    try {
-      DataOutputStream dataOutputStream = new DataOutputStream(new EmptyOutputStream());
-      serialize(dataOutputStream);
-      return dataOutputStream.size();
-    } catch (UnsupportedOperationException e) {
-      throw e;
-    }
-  }
-
-  /**
    * Serialize the plan into the given buffer. All necessary fields will be serialized.
    *
    * @param stream
    * @throws IOException
    */
   public void serialize(DataOutputStream stream) throws IOException {
+    throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
+  }
+
+  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
@@ -220,13 +208,16 @@ public abstract class PhysicalPlan {
   }
 
   /**
-   * Deserialize the plan from the given buffer. This is provided for WAL, and must be used with
-   * serializeToWAL.
+   * Deserialize the plan from the given buffer.
    *
    * @param buffer
    */
   public void deserialize(ByteBuffer buffer) throws IllegalPathException, IOException {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
+  }
+
+  protected int getSerializedBytesNum(String value) {
+    return value == null ? Integer.BYTES : Integer.BYTES + value.getBytes().length;
   }
 
   protected void putString(ByteBuffer buffer, String value) {
@@ -300,6 +291,20 @@ public abstract class PhysicalPlan {
 
     public static PhysicalPlan create(ByteBuffer buffer) throws IOException, IllegalPathException {
       int typeNum = buffer.get();
+      PhysicalPlan plan = createByTypeNum(typeNum);
+      plan.deserialize(buffer);
+      return plan;
+    }
+
+    public static PhysicalPlan create(DataInputStream stream)
+        throws IOException, IllegalPathException {
+      int typeNum = stream.readByte();
+      PhysicalPlan plan = createByTypeNum(typeNum);
+      plan.deserialize(stream);
+      return plan;
+    }
+
+    private static PhysicalPlan createByTypeNum(int typeNum) throws IOException {
       if (typeNum >= PhysicalPlanType.values().length) {
         throw new IOException("unrecognized log type " + typeNum);
       }
@@ -490,7 +495,6 @@ public abstract class PhysicalPlan {
         default:
           throw new IOException("unrecognized log type " + type);
       }
-      plan.deserialize(buffer);
       return plan;
     }
   }

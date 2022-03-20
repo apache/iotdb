@@ -23,8 +23,12 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -143,6 +147,20 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   }
 
   @Override
+  public int serializedSize() {
+    int size = 0;
+    size += Byte.BYTES;
+    size += getSerializedBytesNum(devicePath.getFullPath());
+
+    size += Integer.BYTES;
+    for (InsertRowPlan plan : rowPlans) {
+      size += Long.BYTES + plan.serializeMeasurementsAndValuesSize();
+    }
+    size += Integer.BYTES * rowPlanIndexList.length;
+    return size;
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.BATCH_INSERT_ONE_DEVICE.ordinal();
     stream.writeByte((byte) type);
@@ -171,6 +189,38 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
     }
     for (Integer index : rowPlanIndexList) {
       buffer.putInt(index);
+    }
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    int type = PhysicalPlanType.BATCH_INSERT_ONE_DEVICE.ordinal();
+    buffer.put((byte) type);
+
+    WALWriteUtils.write(devicePath.getFullPath(), buffer);
+    buffer.putInt(rowPlans.length);
+    for (InsertRowPlan plan : rowPlans) {
+      buffer.putLong(plan.getTime());
+      plan.serializeMeasurementsAndValues(buffer);
+    }
+    for (Integer index : rowPlanIndexList) {
+      buffer.putInt(index);
+    }
+  }
+
+  @Override
+  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
+    this.devicePath = new PartialPath(ReadWriteIOUtils.readString(stream));
+    this.rowPlans = new InsertRowPlan[stream.readInt()];
+    for (int i = 0; i < rowPlans.length; i++) {
+      rowPlans[i] = new InsertRowPlan();
+      rowPlans[i].setDevicePath(devicePath);
+      rowPlans[i].setTime(stream.readLong());
+      rowPlans[i].deserializeMeasurementsAndValues(stream);
+    }
+    this.rowPlanIndexList = new int[rowPlans.length];
+    for (int i = 0; i < rowPlans.length; i++) {
+      rowPlanIndexList[i] = stream.readInt();
     }
   }
 

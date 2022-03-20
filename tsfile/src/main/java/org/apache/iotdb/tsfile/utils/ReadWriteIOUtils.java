@@ -172,7 +172,7 @@ public class ReadWriteIOUtils {
     } else {
       outputStream.write(0);
     }
-    return 1;
+    return BOOLEAN_LEN;
   }
 
   /** write a byte to byteBuffer according to flag. If flag is true, write 1, else write 0. */
@@ -185,7 +185,7 @@ public class ReadWriteIOUtils {
     }
 
     buffer.put(a);
-    return 1;
+    return BOOLEAN_LEN;
   }
 
   /**

@@ -23,12 +23,15 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBinary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBoolean;
@@ -37,6 +40,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -47,7 +51,6 @@ import java.util.Objects;
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class InsertTabletPlan extends InsertPlan {
-
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
   private long[] times; // times should be sorted. It is done in the session API.
@@ -153,13 +156,109 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   @Override
+  public int serializedSize() {
+    int size = Byte.BYTES;
+    return size + subSerializeSize();
+  }
+
+  int subSerializeSize() {
+    int size = 0;
+    size += getSerializedBytesNum(devicePath.getFullPath());
+    // measurements size
+    size += Integer.BYTES;
+    for (String m : measurements) {
+      if (m != null) {
+        size += getSerializedBytesNum(m);
+      }
+    }
+    // data types size
+    size += Integer.BYTES;
+    for (int i = 0; i < dataTypes.length; i++) {
+      if (columns[i] != null) {
+        size += Byte.BYTES;
+      }
+    }
+    // times size
+    size += Integer.BYTES;
+    if (timeBuffer == null) {
+      if (isExecuting) {
+        size += Long.BYTES * (end - start);
+      } else {
+        size += Long.BYTES * times.length;
+      }
+    } else {
+      size += timeBuffer.array().length;
+    }
+    // bitmaps size
+    size += Byte.BYTES;
+    if (bitMaps != null) {
+      for (BitMap bitMap : bitMaps) {
+        size += Byte.BYTES;
+        if (bitMap != null) {
+          if (isExecuting) {
+            int len = end - start;
+            BitMap partBitMap = new BitMap(len);
+            BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+            size += partBitMap.getByteArray().length;
+          } else {
+            size += bitMap.getByteArray().length;
+          }
+        }
+      }
+    }
+    // values size
+    if (valueBuffer == null) {
+      for (int i = 0; i < dataTypes.length; i++) {
+        if (columns[i] != null) {
+          size += getColumnSize(dataTypes[i], columns[i], start, end);
+        }
+      }
+    } else {
+      size += valueBuffer.array().length;
+    }
+    size += Long.BYTES;
+    size += Byte.BYTES;
+    return size;
+  }
+
+  private int getColumnSize(TSDataType dataType, Object column, int start, int end) {
+    int size = 0;
+    int curStart = isExecuting ? start : 0;
+    int curEnd = isExecuting ? end : rowCount;
+    switch (dataType) {
+      case INT32:
+        size += Integer.BYTES * (curEnd - curStart);
+        break;
+      case INT64:
+        size += Long.BYTES * (curEnd - curStart);
+        break;
+      case FLOAT:
+        size += Float.BYTES * (curEnd - curStart);
+        break;
+      case DOUBLE:
+        size += Double.BYTES * (curEnd - curStart);
+        break;
+      case BOOLEAN:
+        size += Byte.BYTES * (curEnd - curStart);
+        break;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) column;
+        for (int j = curStart; j < curEnd; j++) {
+          size += Integer.BYTES + binaryValues[j].getValues().length;
+        }
+        break;
+    }
+    return size;
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     stream.writeByte((byte) type);
     subSerialize(stream);
   }
 
-  public void subSerialize(DataOutputStream stream) throws IOException {
+  void subSerialize(DataOutputStream stream) throws IOException {
     putString(stream, devicePath.getFullPath());
     writeMeasurements(stream);
     writeDataTypes(stream);
@@ -246,6 +345,63 @@ public class InsertTabletPlan extends InsertPlan {
     stream.writeLong(index);
   }
 
+  private void serializeValues(DataOutputStream outputStream) throws IOException {
+    for (int i = 0; i < dataTypes.length; i++) {
+      if (columns[i] == null) {
+        continue;
+      }
+      serializeColumn(dataTypes[i], columns[i], outputStream, start, end);
+    }
+  }
+
+  private void serializeColumn(
+      TSDataType dataType, Object column, DataOutputStream outputStream, int start, int end)
+      throws IOException {
+    int curStart = isExecuting ? start : 0;
+    int curEnd = isExecuting ? end : rowCount;
+    switch (dataType) {
+      case INT32:
+        int[] intValues = (int[]) column;
+        for (int j = curStart; j < curEnd; j++) {
+          outputStream.writeInt(intValues[j]);
+        }
+        break;
+      case INT64:
+        long[] longValues = (long[]) column;
+        for (int j = curStart; j < curEnd; j++) {
+          outputStream.writeLong(longValues[j]);
+        }
+        break;
+      case FLOAT:
+        float[] floatValues = (float[]) column;
+        for (int j = curStart; j < curEnd; j++) {
+          outputStream.writeFloat(floatValues[j]);
+        }
+        break;
+      case DOUBLE:
+        double[] doubleValues = (double[]) column;
+        for (int j = curStart; j < curEnd; j++) {
+          outputStream.writeDouble(doubleValues[j]);
+        }
+        break;
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) column;
+        for (int j = curStart; j < curEnd; j++) {
+          outputStream.writeByte(BytesUtils.boolToByte(boolValues[j]));
+        }
+        break;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) column;
+        for (int j = curStart; j < curEnd; j++) {
+          outputStream.writeInt(binaryValues[j].getLength());
+          outputStream.write(binaryValues[j].getValues());
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
+    }
+  }
+
   @Override
   public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
@@ -253,7 +409,7 @@ public class InsertTabletPlan extends InsertPlan {
     subSerialize(buffer);
   }
 
-  public void subSerialize(ByteBuffer buffer) {
+  void subSerialize(ByteBuffer buffer) {
     putString(buffer, devicePath.getFullPath());
     writeMeasurements(buffer);
     writeDataTypes(buffer);
@@ -339,15 +495,6 @@ public class InsertTabletPlan extends InsertPlan {
     buffer.putLong(index);
   }
 
-  private void serializeValues(DataOutputStream outputStream) throws IOException {
-    for (int i = 0; i < dataTypes.length; i++) {
-      if (columns[i] == null) {
-        continue;
-      }
-      serializeColumn(dataTypes[i], columns[i], outputStream, start, end);
-    }
-  }
-
   private void serializeValues(ByteBuffer buffer) {
     for (int i = 0; i < dataTypes.length; i++) {
       if (columns[i] == null) {
@@ -404,47 +551,148 @@ public class InsertTabletPlan extends InsertPlan {
     }
   }
 
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    int type = PhysicalPlanType.BATCHINSERT.ordinal();
+    buffer.put((byte) type);
+    subSerialize(buffer);
+  }
+
+  void subSerialize(IWALByteBufferView buffer) {
+    WALWriteUtils.write(devicePath.getFullPath(), buffer);
+    writeMeasurements(buffer);
+    writeDataTypes(buffer);
+    writeTimes(buffer);
+    writeBitMaps(buffer);
+    writeValues(buffer);
+    buffer.put((byte) (isAligned ? 1 : 0));
+  }
+
+  private void writeMeasurements(IWALByteBufferView buffer) {
+    buffer.putInt(
+        measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
+    for (String m : measurements) {
+      if (m != null) {
+        WALWriteUtils.write(m, buffer);
+      }
+    }
+  }
+
+  private void writeDataTypes(IWALByteBufferView buffer) {
+    buffer.putInt(dataTypes.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
+    for (int i = 0, dataTypesLength = dataTypes.length; i < dataTypesLength; i++) {
+      TSDataType dataType = dataTypes[i];
+      if (columns[i] == null) {
+        continue;
+      }
+      WALWriteUtils.write(dataType, buffer);
+    }
+  }
+
+  private void writeTimes(IWALByteBufferView buffer) {
+    if (isExecuting) {
+      buffer.putInt(end - start);
+    } else {
+      buffer.putInt(rowCount);
+    }
+
+    if (timeBuffer == null) {
+      if (isExecuting) {
+        for (int i = start; i < end; i++) {
+          buffer.putLong(times[i]);
+        }
+      } else {
+        for (long time : times) {
+          buffer.putLong(time);
+        }
+      }
+    } else {
+      buffer.put(timeBuffer.array());
+      timeBuffer = null;
+    }
+  }
+
+  private void writeBitMaps(IWALByteBufferView buffer) {
+    buffer.put(BytesUtils.boolToByte(bitMaps != null));
+    if (bitMaps != null) {
+      for (BitMap bitMap : bitMaps) {
+        if (bitMap == null) {
+          buffer.put(BytesUtils.boolToByte(false));
+        } else {
+          buffer.put(BytesUtils.boolToByte(true));
+          if (isExecuting) {
+            int len = end - start;
+            BitMap partBitMap = new BitMap(len);
+            BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+            buffer.put(partBitMap.getByteArray());
+          } else {
+            buffer.put(bitMap.getByteArray());
+          }
+        }
+      }
+    }
+  }
+
+  private void writeValues(IWALByteBufferView buffer) {
+    if (valueBuffer == null) {
+      serializeValues(buffer);
+    } else {
+      buffer.put(valueBuffer.array());
+      valueBuffer = null;
+    }
+
+    buffer.putLong(index);
+  }
+
+  private void serializeValues(IWALByteBufferView buffer) {
+    for (int i = 0; i < dataTypes.length; i++) {
+      if (columns[i] == null) {
+        continue;
+      }
+      serializeColumn(dataTypes[i], columns[i], buffer, start, end);
+    }
+  }
+
   private void serializeColumn(
-      TSDataType dataType, Object column, DataOutputStream outputStream, int start, int end)
-      throws IOException {
+      TSDataType dataType, Object column, IWALByteBufferView buffer, int start, int end) {
     int curStart = isExecuting ? start : 0;
     int curEnd = isExecuting ? end : rowCount;
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) column;
         for (int j = curStart; j < curEnd; j++) {
-          outputStream.writeInt(intValues[j]);
+          buffer.putInt(intValues[j]);
         }
         break;
       case INT64:
         long[] longValues = (long[]) column;
         for (int j = curStart; j < curEnd; j++) {
-          outputStream.writeLong(longValues[j]);
+          buffer.putLong(longValues[j]);
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) column;
         for (int j = curStart; j < curEnd; j++) {
-          outputStream.writeFloat(floatValues[j]);
+          buffer.putFloat(floatValues[j]);
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) column;
         for (int j = curStart; j < curEnd; j++) {
-          outputStream.writeDouble(doubleValues[j]);
+          buffer.putDouble(doubleValues[j]);
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) column;
         for (int j = curStart; j < curEnd; j++) {
-          outputStream.writeByte(BytesUtils.boolToByte(boolValues[j]));
+          buffer.put(BytesUtils.boolToByte(boolValues[j]));
         }
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = curStart; j < curEnd; j++) {
-          outputStream.writeInt(binaryValues[j].getLength());
-          outputStream.write(binaryValues[j].getValues());
+          buffer.putInt(binaryValues[j].getLength());
+          buffer.put(binaryValues[j].getValues());
         }
         break;
       default:
@@ -460,6 +708,36 @@ public class InsertTabletPlan extends InsertPlan {
   public void setValueBuffer(ByteBuffer valueBuffer) {
     this.valueBuffer = valueBuffer;
     this.timeBuffer.position(0);
+  }
+
+  @Override
+  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
+    this.devicePath = new PartialPath(ReadWriteIOUtils.readString(stream));
+
+    int measurementSize = stream.readInt();
+    this.measurements = new String[measurementSize];
+    for (int i = 0; i < measurementSize; i++) {
+      measurements[i] = ReadWriteIOUtils.readString(stream);
+    }
+
+    int dataTypeSize = stream.readInt();
+    this.dataTypes = new TSDataType[dataTypeSize];
+    for (int i = 0; i < dataTypeSize; i++) {
+      dataTypes[i] = TSDataType.deserialize(stream.readByte());
+    }
+
+    int rows = stream.readInt();
+    rowCount = rows;
+    this.times = new long[rows];
+    times = QueryDataSetUtils.readTimesFromBuffer(stream, rows);
+
+    boolean hasBitMaps = BytesUtils.byteToBool(stream.readByte());
+    if (hasBitMaps) {
+      bitMaps = QueryDataSetUtils.readBitMapsFromBuffer(stream, dataTypeSize, rows);
+    }
+    columns = QueryDataSetUtils.readValuesFromBuffer(stream, dataTypes, dataTypeSize, rows);
+    this.index = stream.readLong();
+    this.isAligned = stream.readByte() == 1;
   }
 
   @Override

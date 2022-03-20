@@ -30,6 +30,8 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -42,6 +44,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -51,6 +54,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class InsertRowPlan extends InsertPlan {
+  private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + Long.BYTES;
 
   private static final Logger logger = LoggerFactory.getLogger(InsertRowPlan.class);
   private static final byte TYPE_RAW_STRING = -1;
@@ -329,6 +333,67 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   @Override
+  public int serializedSize() {
+    int size = 0;
+    size += Byte.BYTES;
+    return size + subSerializeSize();
+  }
+
+  int subSerializeSize() {
+    int size = 0;
+    size += Long.BYTES;
+    size += getSerializedBytesNum(devicePath.getFullPath());
+    return size + serializeMeasurementsAndValuesSize();
+  }
+
+  int serializeMeasurementsAndValuesSize() {
+    int size = 0;
+    size += Integer.BYTES;
+    for (String m : measurements) {
+      if (m != null) {
+        size += getSerializedBytesNum(m);
+      }
+    }
+    // putValues
+    size += Integer.BYTES;
+    for (int i = 0; i < values.length; i++) {
+      if (values[i] == null) {
+        size += Byte.BYTES;
+        continue;
+      }
+      if (dataTypes == null || dataTypes[i] == null) {
+        size += Byte.BYTES + getSerializedBytesNum(values[i].toString());
+      } else {
+        size += Byte.BYTES;
+        switch (dataTypes[i]) {
+          case BOOLEAN:
+            size += Byte.BYTES;
+            break;
+          case INT32:
+            size += Integer.BYTES;
+            break;
+          case INT64:
+            size += Long.BYTES;
+            break;
+          case FLOAT:
+            size += Float.BYTES;
+            break;
+          case DOUBLE:
+            size += Double.BYTES;
+            break;
+          case TEXT:
+            size += Integer.BYTES + ((Binary) values[i]).getValues().length;
+            break;
+        }
+      }
+    }
+    size += Byte.BYTES;
+    size += Long.BYTES;
+    size += Byte.BYTES;
+    return size;
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.INSERT.ordinal();
     stream.writeByte((byte) type);
@@ -404,41 +469,37 @@ public class InsertRowPlan extends InsertPlan {
     }
   }
 
-  private void putValues(ByteBuffer buffer) throws QueryProcessException {
-    for (int i = 0; i < values.length; i++) {
-      if (values[i] == null) {
-        ReadWriteIOUtils.write(TYPE_NULL, buffer);
-        continue;
-      }
+  public void fillValues(DataInputStream stream) throws IOException, QueryProcessException {
+    for (int i = 0; i < dataTypes.length; i++) {
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
-      if (dataTypes == null || dataTypes[i] == null) {
-        ReadWriteIOUtils.write(TYPE_RAW_STRING, buffer);
-        ReadWriteIOUtils.write(values[i].toString(), buffer);
-      } else {
-        ReadWriteIOUtils.write(dataTypes[i], buffer);
-        switch (dataTypes[i]) {
-          case BOOLEAN:
-            ReadWriteIOUtils.write((Boolean) values[i], buffer);
-            break;
-          case INT32:
-            ReadWriteIOUtils.write((Integer) values[i], buffer);
-            break;
-          case INT64:
-            ReadWriteIOUtils.write((Long) values[i], buffer);
-            break;
-          case FLOAT:
-            ReadWriteIOUtils.write((Float) values[i], buffer);
-            break;
-          case DOUBLE:
-            ReadWriteIOUtils.write((Double) values[i], buffer);
-            break;
-          case TEXT:
-            ReadWriteIOUtils.write((Binary) values[i], buffer);
-            break;
-          default:
-            throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
-        }
+      byte typeNum = stream.readByte();
+      if (typeNum == TYPE_RAW_STRING || typeNum == TYPE_NULL) {
+        values[i] = typeNum == TYPE_RAW_STRING ? ReadWriteIOUtils.readString(stream) : null;
+        continue;
+      }
+      dataTypes[i] = TSDataType.values()[typeNum];
+      switch (dataTypes[i]) {
+        case BOOLEAN:
+          values[i] = ReadWriteIOUtils.readBool(stream);
+          break;
+        case INT32:
+          values[i] = ReadWriteIOUtils.readInt(stream);
+          break;
+        case INT64:
+          values[i] = ReadWriteIOUtils.readLong(stream);
+          break;
+        case FLOAT:
+          values[i] = ReadWriteIOUtils.readFloat(stream);
+          break;
+        case DOUBLE:
+          values[i] = ReadWriteIOUtils.readDouble(stream);
+          break;
+        case TEXT:
+          values[i] = ReadWriteIOUtils.readBinary(stream);
+          break;
+        default:
+          throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
       }
     }
   }
@@ -486,7 +547,7 @@ public class InsertRowPlan extends InsertPlan {
     subSerialize(buffer);
   }
 
-  public void subSerialize(ByteBuffer buffer) {
+  void subSerialize(ByteBuffer buffer) {
     buffer.putLong(time);
     putString(buffer, devicePath.getFullPath());
     serializeMeasurementsAndValues(buffer);
@@ -513,6 +574,149 @@ public class InsertRowPlan extends InsertPlan {
     buffer.putLong(index);
 
     buffer.put((byte) (isAligned ? 1 : 0));
+  }
+
+  private void putValues(ByteBuffer buffer) throws QueryProcessException {
+    for (int i = 0; i < values.length; i++) {
+      if (values[i] == null) {
+        ReadWriteIOUtils.write(TYPE_NULL, buffer);
+        continue;
+      }
+      // types are not determined, the situation mainly occurs when the plan uses string values
+      // and is forwarded to other nodes
+      if (dataTypes == null || dataTypes[i] == null) {
+        ReadWriteIOUtils.write(TYPE_RAW_STRING, buffer);
+        ReadWriteIOUtils.write(values[i].toString(), buffer);
+      } else {
+        ReadWriteIOUtils.write(dataTypes[i], buffer);
+        switch (dataTypes[i]) {
+          case BOOLEAN:
+            ReadWriteIOUtils.write((Boolean) values[i], buffer);
+            break;
+          case INT32:
+            ReadWriteIOUtils.write((Integer) values[i], buffer);
+            break;
+          case INT64:
+            ReadWriteIOUtils.write((Long) values[i], buffer);
+            break;
+          case FLOAT:
+            ReadWriteIOUtils.write((Float) values[i], buffer);
+            break;
+          case DOUBLE:
+            ReadWriteIOUtils.write((Double) values[i], buffer);
+            break;
+          case TEXT:
+            ReadWriteIOUtils.write((Binary) values[i], buffer);
+            break;
+          default:
+            throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
+        }
+      }
+    }
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    int type = PhysicalPlanType.INSERT.ordinal();
+    buffer.put((byte) type);
+    subSerialize(buffer);
+  }
+
+  void subSerialize(IWALByteBufferView buffer) {
+    buffer.putLong(time);
+    WALWriteUtils.write(devicePath.getFullPath(), buffer);
+    serializeMeasurementsAndValues(buffer);
+  }
+
+  void serializeMeasurementsAndValues(IWALByteBufferView buffer) {
+    buffer.putInt(
+        measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
+
+    for (String measurement : measurements) {
+      if (measurement != null) {
+        WALWriteUtils.write(measurement, buffer);
+      }
+    }
+    try {
+      buffer.putInt(dataTypes.length);
+      putValues(buffer);
+    } catch (QueryProcessException e) {
+      logger.error("Failed to serialize values for {}", this, e);
+    }
+
+    // the types are not inferred before the plan is serialized
+    buffer.put((byte) (isNeedInferType ? 1 : 0));
+    buffer.putLong(index);
+
+    buffer.put((byte) (isAligned ? 1 : 0));
+  }
+
+  private void putValues(IWALByteBufferView buffer) throws QueryProcessException {
+    for (int i = 0; i < values.length; i++) {
+      if (values[i] == null) {
+        WALWriteUtils.write(TYPE_NULL, buffer);
+        continue;
+      }
+      // types are not determined, the situation mainly occurs when the plan uses string values
+      // and is forwarded to other nodes
+      if (dataTypes == null || dataTypes[i] == null) {
+        WALWriteUtils.write(TYPE_RAW_STRING, buffer);
+        WALWriteUtils.write(values[i].toString(), buffer);
+      } else {
+        WALWriteUtils.write(dataTypes[i], buffer);
+        switch (dataTypes[i]) {
+          case BOOLEAN:
+            WALWriteUtils.write((Boolean) values[i], buffer);
+            break;
+          case INT32:
+            WALWriteUtils.write((Integer) values[i], buffer);
+            break;
+          case INT64:
+            WALWriteUtils.write((Long) values[i], buffer);
+            break;
+          case FLOAT:
+            WALWriteUtils.write((Float) values[i], buffer);
+            break;
+          case DOUBLE:
+            WALWriteUtils.write((Double) values[i], buffer);
+            break;
+          case TEXT:
+            WALWriteUtils.write((Binary) values[i], buffer);
+            break;
+          default:
+            throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
+        }
+      }
+    }
+  }
+
+  @Override
+  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
+    this.time = stream.readLong();
+    this.devicePath = new PartialPath(ReadWriteIOUtils.readString(stream));
+    deserializeMeasurementsAndValues(stream);
+  }
+
+  void deserializeMeasurementsAndValues(DataInputStream stream) throws IOException {
+    int measurementSize = stream.readInt();
+
+    this.measurements = new String[measurementSize];
+    for (int i = 0; i < measurementSize; i++) {
+      measurements[i] = ReadWriteIOUtils.readString(stream);
+    }
+
+    int dataTypeSize = stream.readInt();
+    this.dataTypes = new TSDataType[dataTypeSize];
+    this.values = new Object[dataTypeSize];
+    try {
+      fillValues(stream);
+    } catch (QueryProcessException e) {
+      e.printStackTrace();
+    }
+
+    isNeedInferType = stream.readByte() == 1;
+    this.index = stream.readLong();
+    isAligned = stream.readByte() == 1;
   }
 
   @Override

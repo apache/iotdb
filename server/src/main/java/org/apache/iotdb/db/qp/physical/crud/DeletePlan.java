@@ -23,7 +23,12 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.buffer.WALEditValue;
+import org.apache.iotdb.db.wal.utils.WALWriteUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -31,7 +36,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class DeletePlan extends PhysicalPlan {
+public class DeletePlan extends PhysicalPlan implements WALEditValue {
+  private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + Integer.BYTES + Long.BYTES * 3;
 
   private long deleteStartTime;
   private long deleteEndTime;
@@ -137,6 +143,15 @@ public class DeletePlan extends PhysicalPlan {
   }
 
   @Override
+  public int serializedSize() {
+    int size = FIXED_SERIALIZED_SIZE;
+    for (PartialPath path : paths) {
+      size += getSerializedBytesNum(path.getFullPath());
+    }
+    return size;
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.DELETE.ordinal();
     stream.writeByte((byte) type);
@@ -162,6 +177,32 @@ public class DeletePlan extends PhysicalPlan {
     }
 
     buffer.putLong(index);
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    int type = PhysicalPlanType.DELETE.ordinal();
+    buffer.put((byte) type);
+    buffer.putLong(deleteStartTime);
+    buffer.putLong(deleteEndTime);
+    buffer.putInt(paths.size());
+    for (PartialPath path : paths) {
+      WALWriteUtils.write(path.getFullPath(), buffer);
+    }
+    buffer.putLong(index);
+  }
+
+  @Override
+  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
+    this.deleteStartTime = stream.readLong();
+    this.deleteEndTime = stream.readLong();
+    int pathSize = stream.readInt();
+    this.paths = new ArrayList<>();
+    for (int i = 0; i < pathSize; i++) {
+      paths.add(new PartialPath(ReadWriteIOUtils.readString(stream)));
+    }
+
+    this.index = stream.readLong();
   }
 
   @Override

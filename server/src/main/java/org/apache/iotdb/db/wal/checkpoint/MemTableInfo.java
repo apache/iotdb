@@ -1,0 +1,98 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iotdb.db.wal.checkpoint;
+
+import org.apache.iotdb.db.wal.buffer.WALEdit;
+import org.apache.iotdb.db.wal.utils.SerializedSize;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Objects;
+
+/**
+ * MemTableInfo records brief info of one memtable, including memTable id, tsFile path, and .wal
+ * file version id of its first {@link WALEdit}.
+ */
+public class MemTableInfo implements SerializedSize {
+  /** memTable id 4 bytes, tsFile path length 4 bytes, first version id 4 bytes */
+  private static final int FIXED_SERIALIZED_SIZE = Integer.BYTES * 2;
+
+  /** memTable id */
+  private int memTableId;
+  /** path of the tsFile which this memTable will be flushed to */
+  private String tsFilePath;
+  /** version id of the file where this memTable's first WALEdit is located */
+  private int firstFileVersionId;
+
+  MemTableInfo() {}
+
+  public MemTableInfo(int memTableId, String tsFilePath, int firstFileVersionId) {
+    this.memTableId = memTableId;
+    this.tsFilePath = tsFilePath;
+    this.firstFileVersionId = firstFileVersionId;
+  }
+
+  @Override
+  public int serializedSize() {
+    return FIXED_SERIALIZED_SIZE + (Integer.BYTES + tsFilePath.getBytes().length);
+  }
+
+  public void serialize(ByteBuffer buffer) {
+    buffer.putInt(memTableId);
+    ReadWriteIOUtils.write(tsFilePath, buffer);
+    buffer.putInt(firstFileVersionId);
+  }
+
+  public void deserialize(DataInputStream stream) throws IOException {
+    memTableId = stream.readInt();
+    tsFilePath = ReadWriteIOUtils.readString(stream);
+    firstFileVersionId = stream.readInt();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == this) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (!(obj instanceof MemTableInfo)) {
+      return false;
+    }
+    MemTableInfo other = (MemTableInfo) obj;
+    return this.memTableId == other.memTableId
+        && Objects.equals(this.tsFilePath, other.tsFilePath)
+        && this.firstFileVersionId == other.firstFileVersionId;
+  }
+
+  public int getMemTableId() {
+    return memTableId;
+  }
+
+  public String getTsFilePath() {
+    return tsFilePath;
+  }
+
+  public int getFirstFileVersionId() {
+    return firstFileVersionId;
+  }
+}

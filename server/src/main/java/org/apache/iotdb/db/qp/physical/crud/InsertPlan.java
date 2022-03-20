@@ -25,13 +25,14 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.wal.buffer.WALEditValue;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public abstract class InsertPlan extends PhysicalPlan {
+public abstract class InsertPlan extends PhysicalPlan implements WALEditValue {
 
   /**
    * if use id table, this filed is id form of device path <br>
