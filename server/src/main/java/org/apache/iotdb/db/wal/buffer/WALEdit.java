@@ -24,6 +24,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.wal.utils.SerializedSize;
+import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -44,6 +45,12 @@ public class WALEdit implements SerializedSize {
   /** value(physical plan or memTable snapshot) */
   private final WALEditValue value;
 
+  /**
+   * listen whether this WALEdit has been written to the filesystem, null iff this WALEdit is
+   * deserialized from .wal file
+   */
+  private final WALFlushListener walFlushListener;
+
   public WALEdit(int memTableId, WALEditValue value) {
     this.memTableId = memTableId;
     this.value = value;
@@ -56,12 +63,14 @@ public class WALEdit implements SerializedSize {
     } else {
       throw new RuntimeException("Unknown WALEdit type");
     }
+    walFlushListener = new WALFlushListener();
   }
 
   private WALEdit(WALEditType type, int memTableId, WALEditValue value) {
     this.type = type;
     this.memTableId = memTableId;
     this.value = value;
+    this.walFlushListener = null;
   }
 
   @Override
@@ -121,5 +130,9 @@ public class WALEdit implements SerializedSize {
 
   public WALEditValue getValue() {
     return value;
+  }
+
+  public WALFlushListener getWalFlushListener() {
+    return walFlushListener;
   }
 }

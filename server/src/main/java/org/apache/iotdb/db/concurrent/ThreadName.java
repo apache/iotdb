@@ -42,6 +42,8 @@ public enum ThreadName {
   WAL_FORCE_DAEMON("WAL-Force"),
   WAL_TRIM("WAL-Trim"),
   WAL_FLUSH("WAL-Flush"),
+  WAL_SERIALIZE("WAL-Serialize"),
+  WAL_SYNC("WAL-Sync"),
   INDEX_SERVICE("Index"),
   SYNC_CLIENT("Sync-Client"),
   SYNC_SERVER("Sync"),

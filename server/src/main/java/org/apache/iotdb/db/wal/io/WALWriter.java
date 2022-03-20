@@ -12,6 +12,10 @@ public class WALWriter extends LogWriter {
   public static final String FILE_SUFFIX = IoTDBConstant.WAL_FILE_SUFFIX;
   public static final Pattern WAL_FILE_NAME_PATTERN = Pattern.compile("_(?<versionId>\\d+)\\.wal");
 
+  public static boolean walFilenameFilter(File dir, String name) {
+    return WAL_FILE_NAME_PATTERN.matcher(name).find();
+  }
+
   public WALWriter(File logFile) throws FileNotFoundException {
     super(logFile);
   }

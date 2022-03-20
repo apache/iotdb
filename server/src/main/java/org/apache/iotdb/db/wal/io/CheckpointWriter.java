@@ -13,6 +13,10 @@ public class CheckpointWriter extends LogWriter {
   public static final Pattern CHECKPOINT_FILE_NAME_PATTERN =
       Pattern.compile("_(?<versionId>\\d+)\\.checkpoint");
 
+  public static boolean checkpointFilenameFilter(File dir, String name) {
+    return CHECKPOINT_FILE_NAME_PATTERN.matcher(name).find();
+  }
+
   public CheckpointWriter(File logFile) throws FileNotFoundException {
     super(logFile);
   }
