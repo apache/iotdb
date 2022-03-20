@@ -16,28 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator;
+package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.common.FragmentId;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.execution.FragmentInfo;
 
-/**
- * Contains information about {@link Operator} execution.
- *
- * <p>Not thread-safe.
- */
-public class OperatorContext {
+import io.airlift.units.Duration;
 
-  private final int operatorId;
-  private final PlanNodeId planNodeId;
-  private final String operatorType;
+public interface IScheduler {
 
-  public OperatorContext(int operatorId, PlanNodeId planNodeId, String operatorType) {
-    this.operatorId = operatorId;
-    this.planNodeId = planNodeId;
-    this.operatorType = operatorType;
-  }
+  void start();
 
-  public int getOperatorId() {
-    return operatorId;
-  }
+  void abort();
+
+  Duration getTotalCpuTime();
+
+  FragmentInfo getFragmentInfo();
+
+  void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
+
+  void cancelFragment(FragmentId fragmentId);
 }

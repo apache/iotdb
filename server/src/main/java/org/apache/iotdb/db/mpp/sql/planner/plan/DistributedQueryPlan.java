@@ -16,28 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator;
+package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.common.QueryContext;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 
-/**
- * Contains information about {@link Operator} execution.
- *
- * <p>Not thread-safe.
- */
-public class OperatorContext {
+import java.util.List;
 
-  private final int operatorId;
-  private final PlanNodeId planNodeId;
-  private final String operatorType;
+public class DistributedQueryPlan {
+  private QueryContext context;
+  private PlanNode rootNode;
+  private PlanFragment rootFragment;
 
-  public OperatorContext(int operatorId, PlanNodeId planNodeId, String operatorType) {
-    this.operatorId = operatorId;
-    this.planNodeId = planNodeId;
-    this.operatorType = operatorType;
-  }
-
-  public int getOperatorId() {
-    return operatorId;
-  }
+  // TODO: consider whether this field is necessary when do the implementation
+  private List<PlanFragment> fragments;
 }

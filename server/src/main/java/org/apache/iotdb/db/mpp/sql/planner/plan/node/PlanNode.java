@@ -16,28 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator;
+package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import java.util.List;
 
-/**
- * Contains information about {@link Operator} execution.
- *
- * <p>Not thread-safe.
- */
-public class OperatorContext {
+import static java.util.Objects.requireNonNull;
 
-  private final int operatorId;
-  private final PlanNodeId planNodeId;
-  private final String operatorType;
+/** The base class of query executable operators, which is used to compose logical query plan. */
+// TODO: consider how to restrict the children type for each type of ExecOperator
+public abstract class PlanNode {
 
-  public OperatorContext(int operatorId, PlanNodeId planNodeId, String operatorType) {
-    this.operatorId = operatorId;
-    this.planNodeId = planNodeId;
-    this.operatorType = operatorType;
+  private PlanNodeId id;
+
+  protected PlanNode(PlanNodeId id) {
+    requireNonNull(id, "id is null");
+    this.id = id;
   }
 
-  public int getOperatorId() {
-    return operatorId;
+  public PlanNodeId getId() {
+    return id;
+  }
+
+  public abstract List<PlanNode> getChildren();
+
+  public abstract List<String> getOutputColumnNames();
+
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitPlan(this, context);
   }
 }
