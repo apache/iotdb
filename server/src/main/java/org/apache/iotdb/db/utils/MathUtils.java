@@ -126,8 +126,6 @@ public class MathUtils {
    * @return pop std dev of list
    */
   public static double popStdDev(List<Double> data) {
-    double std_dev;
-    std_dev = Math.sqrt(popVariance(data));
-    return std_dev;
+    return Math.sqrt(popVariance(data));
   }
 }
