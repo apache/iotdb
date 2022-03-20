@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class DistributionPlannerTest {
 
@@ -64,15 +66,40 @@ public class DistributionPlannerTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(), root));
     PlanNode newRoot = planner.rewriteSource();
 
-    System.out.println("\nLogical-Plan:");
-    System.out.println("------------------");
-    PlanNodeUtil.printPlanNode(root);
-    System.out.println("\nDistributed-Plan:");
-    System.out.println("------------------");
-    PlanNodeUtil.printPlanNode(newRoot);
+//    PlanNodeUtil.printPlanNode(newRoot);
     assertEquals(newRoot.getChildren().get(0).getChildren().size(), 3);
     assertEquals(newRoot.getChildren().get(0).getChildren().get(0).getChildren().size(), 2);
     assertEquals(newRoot.getChildren().get(0).getChildren().get(1).getChildren().size(), 2);
+  }
+
+  @Test
+  public void TestAddExchangeNode() throws IllegalPathException {
+    TimeJoinNode timeJoinNode =
+            new TimeJoinNode(
+                    PlanNodeAllocator.generateId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+
+    timeJoinNode.addChild(
+            new SeriesScanNode(PlanNodeAllocator.generateId(), new PartialPath("root.sg.d1.s1")));
+    timeJoinNode.addChild(
+            new SeriesScanNode(PlanNodeAllocator.generateId(), new PartialPath("root.sg.d1.s2")));
+    timeJoinNode.addChild(
+            new SeriesScanNode(PlanNodeAllocator.generateId(), new PartialPath("root.sg.d2.s1")));
+
+    LimitNode root = new LimitNode(PlanNodeAllocator.generateId(), 10, timeJoinNode);
+
+    Analysis analysis = constructAnalysis();
+
+    DistributionPlanner planner =
+            new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(), root));
+    PlanNode rootAfterRewrite = planner.rewriteSource();
+    PlanNode rootWithExchange = planner.addExchangeNode(rootAfterRewrite);
+//    PlanNodeUtil.printPlanNode(rootWithExchange);
+    assertEquals(rootWithExchange.getChildren().get(0).getChildren().size(), 3);
+    assertEquals(rootWithExchange.getChildren().get(0).getChildren().get(0).getChildren().size(), 2);
+    assertTrue(rootWithExchange.getChildren().get(0).getChildren().get(1) instanceof ExchangeNode);
+    assertEquals(rootWithExchange.getChildren().get(0).getChildren().get(1).getChildren().size(), 1);
+    assertTrue(rootWithExchange.getChildren().get(0).getChildren().get(2) instanceof ExchangeNode);
+    assertEquals(rootWithExchange.getChildren().get(0).getChildren().get(2).getChildren().size(), 1);
   }
 
   private Analysis constructAnalysis() {

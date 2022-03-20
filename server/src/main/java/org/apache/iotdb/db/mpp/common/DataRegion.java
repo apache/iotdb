@@ -47,4 +47,12 @@ public class DataRegion {
   public String toString() {
     return String.format("%s/%d", this.endpoint, this.dataRegionId);
   }
+
+  public Integer getDataRegionId() {
+    return dataRegionId;
+  }
+
+  public String getEndpoint() {
+    return endpoint;
+  }
 }

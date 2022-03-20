@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import com.google.common.collect.ImmutableList;
 
+import javax.xml.crypto.Data;
 import java.util.List;
 
 /**
@@ -70,6 +71,11 @@ public class SeriesScanNode extends SourceNode {
     this.seriesPath = seriesPath;
   }
 
+  public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, DataRegion dataRegion) {
+    this(id, seriesPath);
+    this.dataRegion = dataRegion;
+  }
+
   public void setTimeFilter(Filter timeFilter) {
     this.timeFilter = timeFilter;
   }
@@ -103,7 +109,7 @@ public class SeriesScanNode extends SourceNode {
 
   @Override
   public PlanNode clone() {
-    return new SeriesScanNode(PlanNodeAllocator.generateId(), this.getSeriesPath());
+    return new SeriesScanNode(getId(), getSeriesPath(), this.dataRegion);
   }
 
   @Override

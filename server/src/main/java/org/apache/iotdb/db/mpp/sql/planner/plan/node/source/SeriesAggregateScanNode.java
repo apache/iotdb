@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
+import org.apache.iotdb.db.mpp.common.DataRegion;
 import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -59,6 +60,9 @@ public class SeriesAggregateScanNode extends SourceNode {
 
   private String columnName;
 
+  // The id of DataRegion where the node will run
+  private DataRegion dataRegion;
+
   public SeriesAggregateScanNode(PlanNodeId id) {
     super(id);
   }
@@ -99,6 +103,10 @@ public class SeriesAggregateScanNode extends SourceNode {
 
   @Override
   public void close() throws Exception {}
+
+  public DataRegion getDataRegion() {
+    return dataRegion;
+  }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
