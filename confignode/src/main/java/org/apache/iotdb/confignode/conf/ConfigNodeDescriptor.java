@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,10 +48,10 @@ public class ConfigNodeDescriptor {
    */
   public URL getPropsUrl() {
     // Check if a config-directory was specified first.
-    String urlString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
+    String urlString = System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, null);
     // If it wasn't, check if a home directory was provided (This usually contains a config)
     if (urlString == null) {
-      urlString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+      urlString = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
       if (urlString != null) {
         urlString =
             urlString

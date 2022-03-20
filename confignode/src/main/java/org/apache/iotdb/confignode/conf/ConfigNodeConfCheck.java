@@ -50,6 +50,12 @@ public class ConfigNodeConfCheck {
   }
 
   public void checkConfig() throws ConfigurationException, IOException, StartupException {
+    // if systemDir does not exist, create systemDir
+    File systemDir = new File(conf.getSystemDir());
+    if (systemDir.isDirectory() && !systemDir.exists()) {
+      systemDir.mkdirs();
+    }
+
     File specialPropertiesFile =
         new File(conf.getSystemDir() + File.separator + ConfigNodeConstant.SPECIAL_CONF_NAME);
     if (!specialPropertiesFile.exists()) {
