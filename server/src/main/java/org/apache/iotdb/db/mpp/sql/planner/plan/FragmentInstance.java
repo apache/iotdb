@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+
 public class FragmentInstance {
   private FragmentInstanceId id;
 

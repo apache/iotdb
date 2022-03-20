@@ -16,15 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan;
+package org.apache.iotdb.db.mpp.execution.scheduler;
 
-public class FragmentInstanceId {
-  private String id;
+import io.airlift.units.Duration;
+import org.apache.iotdb.db.mpp.common.FragmentId;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.execution.FragmentInfo;
 
-  public FragmentInstanceId(String id) {
-    this.id = id;
-  }
+public interface IScheduler {
 
-  // A SinkOperator is needed here. So that we can know where the result of this instance can be
-  // sent
+    void start();
+
+    void abort();
+
+    Duration getTotalCpuTime();
+
+    FragmentInfo getFragmentInfo();
+
+    void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
+
+    void cancelFragment(FragmentId fragmentId);
 }

@@ -16,26 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.common;
+package org.apache.iotdb.db.mpp.execution;
+
+import org.apache.iotdb.db.mpp.common.FragmentId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 
 import java.util.List;
 
-/**
- * @author A simple class to describe the tree style structure of query executable operators
- * @param <T>
- */
-public class TreeNode<T extends TreeNode<T>> {
-  protected List<T> children;
+public class FragmentInfo {
 
-  public T getChild(int i) {
-    return hasChild(i) ? children.get(i) : null;
-  }
+    private final FragmentId stageId;
+    private final FragmentState state;
+    private final PlanFragment plan;
 
-  public boolean hasChild(int i) {
-    return children.size() > i;
-  }
+    private final List<FragmentInfo> childrenFragments;
 
-  public void addChild(T n) {
-    children.add(n);
-  }
+    public FragmentInfo(FragmentId stageId, FragmentState state, PlanFragment plan, List<FragmentInfo> childrenFragments) {
+        this.stageId = stageId;
+        this.state = state;
+        this.plan = plan;
+        this.childrenFragments = childrenFragments;
+    }
 }

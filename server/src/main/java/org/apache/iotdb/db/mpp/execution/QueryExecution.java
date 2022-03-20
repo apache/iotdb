@@ -20,6 +20,8 @@ package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.db.mpp.common.Analysis;
 import org.apache.iotdb.db.mpp.common.QueryContext;
+import org.apache.iotdb.db.mpp.execution.scheduler.ClusterScheduler;
+import org.apache.iotdb.db.mpp.execution.scheduler.IScheduler;
 import org.apache.iotdb.db.mpp.sql.planner.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.sql.planner.plan.*;
 
@@ -34,7 +36,7 @@ import java.util.List;
  */
 public class QueryExecution {
   private QueryContext context;
-  private QueryScheduler scheduler;
+  private IScheduler scheduler;
   private QueryStateMachine stateMachine;
 
   private List<PlanOptimizer> planOptimizers;
@@ -57,7 +59,7 @@ public class QueryExecution {
   }
 
   public void schedule() {
-    this.scheduler = new QueryScheduler(this.stateMachine, this.fragmentInstances);
+    this.scheduler = new ClusterScheduler(this.stateMachine, this.fragmentInstances);
     this.scheduler.start();
   }
 

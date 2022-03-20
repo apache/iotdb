@@ -16,8 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution;
+package org.apache.iotdb.db.mpp.execution.scheduler;
 
+import io.airlift.units.Duration;
+import org.apache.iotdb.db.mpp.common.FragmentId;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.execution.FragmentInfo;
+import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
 import java.util.List;
@@ -29,19 +34,45 @@ import java.util.List;
  * <p>Later, we can add more control logic for a QueryExecution such as retry, kill and so on by
  * this scheduler.
  */
-public class QueryScheduler {
+public class ClusterScheduler implements IScheduler {
   // The stateMachine of the QueryExecution owned by this QueryScheduler
   private QueryStateMachine stateMachine;
 
   // The fragment instances which should be sent to corresponding Nodes.
   private List<FragmentInstance> instances;
 
-  public QueryScheduler(QueryStateMachine stateMachine, List<FragmentInstance> instances) {
+  public ClusterScheduler(QueryStateMachine stateMachine, List<FragmentInstance> instances) {
     this.stateMachine = stateMachine;
     this.instances = instances;
   }
 
+  @Override
   public void start() {}
+
+  @Override
+  public void abort() {
+
+  }
+
+  @Override
+  public Duration getTotalCpuTime() {
+    return null;
+  }
+
+  @Override
+  public FragmentInfo getFragmentInfo() {
+    return null;
+  }
+
+  @Override
+  public void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause) {
+
+  }
+
+  @Override
+  public void cancelFragment(FragmentId fragmentId) {
+
+  }
 
   // Send the instances to other nodes
   private void sendFragmentInstances() {}
