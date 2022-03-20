@@ -56,20 +56,20 @@ import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.server.service.MetaSyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.JMXService;
+import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ConfigurationException;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.JMXService;
-import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.TAsyncClientManager;
@@ -99,14 +99,6 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   // TODO: better to throw exception if the client can not be get. Then we can remove this field.
   private boolean printClientConnectionErrorStack = false;
-
-  // establish the cluster as a seed
-  private static final String MODE_START = "-s";
-  // join an established cluster
-  private static final String MODE_ADD = "-a";
-  // send a request to remove a node, more arguments: ip-of-removed-node
-  // metaport-of-removed-node
-  private static final String MODE_REMOVE = "-r";
 
   private MetaGroupMember metaGroupMember;
 

@@ -17,10 +17,10 @@
 
 package org.apache.iotdb.db.protocol.rest.impl;
 
+import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.db.protocol.rest.PingApiService;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.service.RPCService;
-import org.apache.iotdb.db.service.thrift.ThriftService;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import javax.ws.rs.core.Response;

@@ -49,6 +49,8 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
@@ -155,9 +157,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Override
   @Before
-  public void setUp()
-      throws org.apache.iotdb.db.exception.StartupException, QueryProcessException,
-          IllegalPathException {
+  public void setUp() throws StartupException, QueryProcessException, IllegalPathException {
     IoTDB.setSchemaEngine(CSchemaEngine.getInstance());
     testMetaGroupMember.setCoordinator(new Coordinator());
     MetaPuller.getInstance().init(testMetaGroupMember);
@@ -406,7 +406,7 @@ public class DataLogApplierTest extends IoTDBTest {
   }
 
   @Test
-  public void testApplyCloseFile() throws org.apache.iotdb.db.exception.IoTDBException {
+  public void testApplyCloseFile() throws IoTDBException {
     VirtualStorageGroupProcessor virtualStorageGroupProcessor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     TestCase.assertFalse(virtualStorageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
