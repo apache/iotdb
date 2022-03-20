@@ -19,7 +19,13 @@
 
 package org.apache.iotdb.db.sql.statement;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.sql.constant.FilterConstant;
 import org.apache.iotdb.db.sql.statement.component.FillComponent;
+import org.apache.iotdb.db.sql.statement.filter.QueryFilter;
+
+import java.util.Arrays;
 
 public class FillQueryStatement extends QueryStatement {
 
@@ -35,5 +41,33 @@ public class FillQueryStatement extends QueryStatement {
 
   public void setFillComponent(FillComponent fillComponent) {
     this.fillComponent = fillComponent;
+  }
+
+  @Override
+  public void selfCheck() {
+    super.selfCheck();
+
+    if (DisableAlign()) {
+      throw new SemanticException("FILL doesn't support disable align clause.");
+    }
+
+    if (hasTimeSeriesGeneratingFunction() || hasUserDefinedAggregationFunction()) {
+      throw new SemanticException("Fill functions are not supported in UDF queries.");
+    }
+
+    if (whereCondition == null || whereCondition.getQueryFilter() == null) {
+      throw new SemanticException("FILL must be used with a WHERE clause");
+    }
+
+    QueryFilter queryFilter = whereCondition.getQueryFilter();
+    if (!queryFilter.isLeaf()
+        || queryFilter.getFilterType() != FilterConstant.FilterType.EQUAL
+        || !Arrays.equals(
+            SQLConstant.getSingleTimeArray(),
+            whereCondition.getQueryFilter().getSinglePath().getNodes())) {
+      throw new SemanticException("The condition of WHERE clause must be like time=constant");
+    } else if (!queryFilter.isSingle()) {
+      throw new SemanticException("Slice query must select a single time point");
+    }
   }
 }

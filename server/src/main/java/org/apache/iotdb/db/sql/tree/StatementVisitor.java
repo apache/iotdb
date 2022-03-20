@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.utils;
+package org.apache.iotdb.db.sql.tree;
 
 import org.apache.iotdb.db.sql.statement.QueryStatement;
 import org.apache.iotdb.db.sql.statement.Statement;

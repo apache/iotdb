@@ -21,7 +21,7 @@ package org.apache.iotdb.db.sql.statement;
 
 import org.apache.iotdb.db.sql.constant.StatementType;
 import org.apache.iotdb.db.sql.parser.ASTVisitor;
-import org.apache.iotdb.db.sql.utils.StatementVisitor;
+import org.apache.iotdb.db.sql.tree.StatementVisitor;
 
 /**
  * This class is a superclass of all statements.

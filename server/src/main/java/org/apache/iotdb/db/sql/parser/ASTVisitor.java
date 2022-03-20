@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -176,7 +177,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitTopClause(IoTDBSqlParser.TopClauseContext ctx) {
     int top = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
     if (top <= 0 || top > 1000) {
-      throw new SQLParserException(
+      throw new SemanticException(
           String.format(
               "TOP <N>: N should be greater than 0 and less than 1000, current N is %d", top));
     }
@@ -187,7 +188,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private ResultColumn parseResultColumn(IoTDBSqlParser.ResultColumnContext resultColumnContext) {
     Expression expression = parseExpression(resultColumnContext.expression());
     if (expression.isConstantOperand()) {
-      throw new SQLParserException("Constant operand is not allowed: " + expression);
+      throw new SemanticException("Constant operand is not allowed: " + expression);
     }
     return new ResultColumn(
         expression,
@@ -254,7 +255,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         parseTimeIntervalOrSlidingStep(
             ctx.DURATION_LITERAL(0).getText(), true, groupByTimeComponent));
     if (groupByTimeComponent.getInterval() <= 0) {
-      throw new SQLParserException(
+      throw new SemanticException(
           "The second parameter time interval should be a positive integer.");
     }
 
@@ -292,7 +293,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     groupByClauseComponent.setStartTime(startTime);
     groupByClauseComponent.setEndTime(endTime);
     if (startTime >= endTime) {
-      throw new SQLParserException("Start time should be smaller than endTime in GroupBy");
+      throw new SemanticException("Start time should be smaller than endTime in GroupBy");
     }
   }
 
@@ -375,7 +376,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       for (IoTDBSqlParser.OldTypeClauseContext typeClause : list) {
         if (typeClause.ALL() != null) {
           if (typeClause.linearClause() != null) {
-            throw new SQLParserException("fill all doesn't support linear fill");
+            throw new SemanticException("fill all doesn't support linear fill");
           }
           parseAllTypeClause(typeClause, fillTypes);
           break;
@@ -463,7 +464,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         }
       }
       if (usePrevious + useLinear + useValue > 1) {
-        throw new SQLParserException("The old type logic could only use one type of fill");
+        throw new SemanticException("The old type logic could only use one type of fill");
       }
 
       fillComponent.setFillTypes(fillTypes);
@@ -496,7 +497,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if (ctx.specificValueClause().constant() != null) {
         return new ValueFill(ctx.specificValueClause().constant().getText());
       } else {
-        throw new SQLParserException("fill value cannot be null");
+        throw new SemanticException("fill value cannot be null");
       }
     } else if (ctx.previousUntilLastClause() != null) { // previous until last
       if (ctx.previousUntilLastClause().DURATION_LITERAL() != null) {
@@ -506,7 +507,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         return new PreviousFill(defaultFillInterval, true);
       }
     } else {
-      throw new SQLParserException("unknown single fill type");
+      throw new SemanticException("unknown single fill type");
     }
   }
 
@@ -531,7 +532,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         fill = new PreviousFill(defaultFillInterval);
       }
     } else if (ctx.specificValueClause() != null) {
-      throw new SQLParserException("fill all doesn't support value fill");
+      throw new SemanticException("fill all doesn't support value fill");
     } else { // previous until last
       if (ctx.previousUntilLastClause().DURATION_LITERAL() != null) {
         String preRangeStr = ctx.previousUntilLastClause().DURATION_LITERAL().getText();
@@ -554,12 +555,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       IoTDBSqlParser.OldTypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
     TSDataType dataType = parseType(ctx.dataType.getText());
     if (dataType == TSDataType.VECTOR) {
-      throw new SQLParserException(String.format("type %s cannot use fill function", dataType));
+      throw new SemanticException(String.format("type %s cannot use fill function", dataType));
     }
 
     if (ctx.linearClause() != null
         && (dataType == TSDataType.TEXT || dataType == TSDataType.BOOLEAN)) {
-      throw new SQLParserException(
+      throw new SemanticException(
           String.format(
               "type %s cannot use %s fill function",
               dataType, ctx.linearClause().LINEAR().getText()));
@@ -588,7 +589,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         fillTypes.put(
             dataType, new ValueFill(ctx.specificValueClause().constant().getText(), dataType));
       } else {
-        throw new SQLParserException("fill value cannot be null");
+        throw new SemanticException("fill value cannot be null");
       }
     } else { // previous until last
       if (ctx.previousUntilLastClause().DURATION_LITERAL() != null) {
@@ -617,7 +618,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       case "text":
         return TSDataType.TEXT;
       default:
-        throw new SQLParserException("not a valid fill type : " + type);
+        throw new SemanticException("not a valid fill type : " + type);
     }
   }
 
@@ -654,10 +655,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     try {
       limit = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
     } catch (NumberFormatException e) {
-      throw new SQLParserException("Out of range. LIMIT <N>: N should be Int32.");
+      throw new SemanticException("Out of range. LIMIT <N>: N should be Int32.");
     }
     if (limit <= 0) {
-      throw new SQLParserException("LIMIT <N>: N should be greater than 0.");
+      throw new SemanticException("LIMIT <N>: N should be greater than 0.");
     }
     if (statement instanceof ShowTimeSeriesStatement) {
       ((ShowTimeSeriesStatement) statement).setLimit(limit);
@@ -679,11 +680,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     try {
       offset = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
     } catch (NumberFormatException e) {
-      throw new SQLParserException(
+      throw new SemanticException(
           "Out of range. OFFSET <OFFSETValue>: OFFSETValue should be Int32.");
     }
     if (offset < 0) {
-      throw new SQLParserException("OFFSET <OFFSETValue>: OFFSETValue should >= 0.");
+      throw new SemanticException("OFFSET <OFFSETValue>: OFFSETValue should >= 0.");
     }
     if (statement instanceof ShowTimeSeriesStatement) {
       ((ShowTimeSeriesStatement) statement).setOffset(offset);
@@ -721,10 +722,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     try {
       slimit = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
     } catch (NumberFormatException e) {
-      throw new SQLParserException("Out of range. SLIMIT <SN>: SN should be Int32.");
+      throw new SemanticException("Out of range. SLIMIT <SN>: SN should be Int32.");
     }
     if (slimit <= 0) {
-      throw new SQLParserException("SLIMIT <SN>: SN should be greater than 0.");
+      throw new SemanticException("SLIMIT <SN>: SN should be greater than 0.");
     }
     queryStatement.setSeriesLimit(slimit);
 
@@ -740,11 +741,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     try {
       soffset = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
     } catch (NumberFormatException e) {
-      throw new SQLParserException(
+      throw new SemanticException(
           "Out of range. SOFFSET <SOFFSETValue>: SOFFSETValue should be Int32.");
     }
     if (soffset < 0) {
-      throw new SQLParserException("SOFFSET <SOFFSETValue>: SOFFSETValue should >= 0.");
+      throw new SemanticException("SOFFSET <SOFFSETValue>: SOFFSETValue should >= 0.");
     }
     queryStatement.setSeriesOffset(soffset);
   }
@@ -906,7 +907,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   public long parseDateFormat(String timestampStr) throws SQLParserException {
     if (timestampStr == null || "".equals(timestampStr.trim())) {
-      throw new SQLParserException("input timestamp cannot be empty");
+      throw new SemanticException("input timestamp cannot be empty");
     }
     if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
       return DatetimeUtils.currentTime();
@@ -925,7 +926,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   public long parseDateFormat(String timestampStr, long currentTime) throws SQLParserException {
     if (timestampStr == null || "".equals(timestampStr.trim())) {
-      throw new SQLParserException("input timestamp cannot be empty");
+      throw new SemanticException("input timestamp cannot be empty");
     }
     if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
       return currentTime;
@@ -1046,7 +1047,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           } else if (constantContext.realLiteral() != null) {
             return new ConstantOperand(TSDataType.DOUBLE, constantContext.realLiteral().getText());
           } else {
-            throw new SQLParserException(
+            throw new SemanticException(
                 "Unsupported constant operand: " + constantContext.getText());
           }
         } else if (clientVersion.equals(IoTDBConstant.ClientVersion.V_0_12)) {
@@ -1078,7 +1079,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // It is not allowed to have function expressions like F(1, 1.0). There should be at least one
     // non-pure-constant sub-expression, otherwise the timestamp of the row cannot be inferred.
     if (!hasNonPureConstantSubExpression) {
-      throw new SQLParserException(
+      throw new SemanticException(
           "Invalid function expression, all the arguments are constant operands: "
               + functionClause.getText());
     }
@@ -1230,7 +1231,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.LIKE() != null) {
       // whole matching case
       if (queryStatement.getSelectComponent().getResultColumns().size() != 1) {
-        throw new SQLParserException("Index query statement allows only one select path");
+        throw new SemanticException("Index query statement allows only one select path");
       }
       if (!path.equals(
           queryStatement
@@ -1239,7 +1240,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               .get(0)
               .getExpression()
               .toString())) {
-        throw new SQLParserException(
+        throw new SemanticException(
             "In the index query statement, "
                 + "the path in select element and the index predicate should be same");
       }
@@ -1346,7 +1347,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     if (queryFilter.getSinglePath() != null
         && !IoTDBConstant.TIME.equals(queryFilter.getSinglePath().getMeasurement())) {
-      throw new SQLParserException(DELETE_ONLY_SUPPORT_TIME_EXP_ERROR_MSG);
+      throw new SemanticException(DELETE_ONLY_SUPPORT_TIME_EXP_ERROR_MSG);
     }
 
     long time = Long.parseLong(((BasicFunctionFilter) queryFilter).getValue());
@@ -1362,7 +1363,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       case EQUAL:
         return new Pair<>(time, time);
       default:
-        throw new SQLParserException(DELETE_RANGE_ERROR_MSG);
+        throw new SemanticException(DELETE_RANGE_ERROR_MSG);
     }
   }
 }

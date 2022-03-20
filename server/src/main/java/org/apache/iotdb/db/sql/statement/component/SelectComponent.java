@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.sql.statement.component;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +41,9 @@ public class SelectComponent {
   protected List<ResultColumn> resultColumns = new ArrayList<>();
 
   Set<String> aliasSet;
+
+  private List<PartialPath> pathsCache;
+  private List<String> aggregationFunctionsCache;
 
   public SelectComponent(ZoneId zoneId) {
     this.zoneId = zoneId;
@@ -95,5 +103,37 @@ public class SelectComponent {
 
   public Set<String> getAliasSet() {
     return aliasSet;
+  }
+
+  public List<PartialPath> getPaths() {
+    if (pathsCache == null) {
+      pathsCache = new ArrayList<>();
+      for (ResultColumn resultColumn : resultColumns) {
+        Expression expression = resultColumn.getExpression();
+        if (expression instanceof TimeSeriesOperand) {
+          pathsCache.add(((TimeSeriesOperand) expression).getPath());
+        } else if (expression instanceof FunctionExpression
+            && expression.isPlainAggregationFunctionExpression()) {
+          pathsCache.add(((TimeSeriesOperand) expression.getExpressions().get(0)).getPath());
+        } else {
+          pathsCache.add(null);
+        }
+      }
+    }
+    return pathsCache;
+  }
+
+  public List<String> getAggregationFunctions() {
+    if (aggregationFunctionsCache == null) {
+      aggregationFunctionsCache = new ArrayList<>();
+      for (ResultColumn resultColumn : resultColumns) {
+        Expression expression = resultColumn.getExpression();
+        aggregationFunctionsCache.add(
+            expression instanceof FunctionExpression
+                ? ((FunctionExpression) resultColumn.getExpression()).getFunctionName()
+                : null);
+      }
+    }
+    return aggregationFunctionsCache;
   }
 }

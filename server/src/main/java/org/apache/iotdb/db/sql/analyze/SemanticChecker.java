@@ -20,15 +20,12 @@
 package org.apache.iotdb.db.sql.analyze;
 
 import org.apache.iotdb.db.sql.statement.QueryStatement;
-import org.apache.iotdb.db.sql.statement.Statement;
 
 public class SemanticChecker {
 
   private SemanticChecker() {}
 
-  public static void check(Statement statement) {
-    if (statement instanceof QueryStatement) {
-      ((QueryStatement) statement).check();
-    }
+  public static void check(QueryStatement statement) {
+    statement.selfCheck();
   }
 }

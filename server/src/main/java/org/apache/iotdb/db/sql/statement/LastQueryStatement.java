@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.sql.statement;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.sql.statement.component.ResultColumn;
+
 public class LastQueryStatement extends QueryStatement {
 
   public LastQueryStatement() {
@@ -27,5 +32,25 @@ public class LastQueryStatement extends QueryStatement {
 
   public LastQueryStatement(QueryStatement queryStatement) {
     super(queryStatement);
+  }
+
+  @Override
+  public void selfCheck() {
+    super.selfCheck();
+
+    if (isAlignByDevice()) {
+      throw new SemanticException("Last query doesn't support align by device.");
+    }
+
+    if (DisableAlign()) {
+      throw new SemanticException("Disable align cannot be applied to LAST query.");
+    }
+
+    for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+      Expression expression = resultColumn.getExpression();
+      if (!(expression instanceof TimeSeriesOperand)) {
+        throw new SemanticException("Last queries can only be applied on raw time series.");
+      }
+    }
   }
 }

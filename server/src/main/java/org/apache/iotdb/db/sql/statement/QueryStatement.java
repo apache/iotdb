@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.sql.statement;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.index.common.IndexType;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.sql.constant.StatementType;
 import org.apache.iotdb.db.sql.statement.component.FromComponent;
 import org.apache.iotdb.db.sql.statement.component.OrderBy;
@@ -27,7 +29,7 @@ import org.apache.iotdb.db.sql.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.sql.statement.component.SelectComponent;
 import org.apache.iotdb.db.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.sql.statement.component.WithoutPolicy;
-import org.apache.iotdb.db.sql.utils.StatementVisitor;
+import org.apache.iotdb.db.sql.tree.StatementVisitor;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -208,7 +210,37 @@ public class QueryStatement extends Statement {
     return false;
   };
 
-  public void check() {}
+  public boolean isAlignByDevice() {
+    return resultSetFormat == ResultSetFormat.ALIGN_BY_DEVICE;
+  }
+
+  public boolean DisableAlign() {
+    return resultSetFormat != ResultSetFormat.DISABLE_ALIGN;
+  }
+
+  public boolean hasTimeSeriesGeneratingFunction() {
+    return selectComponent.isHasTimeSeriesGeneratingFunction();
+  }
+
+  public boolean hasUserDefinedAggregationFunction() {
+    return selectComponent.isHasUserDefinedAggregationFunction();
+  }
+
+  /** semantic check */
+  public void selfCheck() {
+    if (isAlignByDevice()) {
+      if (hasTimeSeriesGeneratingFunction() || hasUserDefinedAggregationFunction()) {
+        throw new SemanticException("The ALIGN BY DEVICE clause is not supported in UDF queries.");
+      }
+
+      for (PartialPath path : selectComponent.getPaths()) {
+        if (path.getNodes().length > 1) {
+          throw new SemanticException(
+              "The paths of the SELECT clause can only be measurements or wildcard.");
+        }
+      }
+    }
+  }
 
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitQuery(this, context);

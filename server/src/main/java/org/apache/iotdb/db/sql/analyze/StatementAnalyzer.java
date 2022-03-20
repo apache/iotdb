@@ -30,7 +30,7 @@ import org.apache.iotdb.db.sql.statement.QueryStatement;
 import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.db.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.sql.statement.filter.QueryFilter;
-import org.apache.iotdb.db.sql.utils.StatementVisitor;
+import org.apache.iotdb.db.sql.tree.StatementVisitor;
 
 public class StatementAnalyzer {
 
@@ -46,26 +46,7 @@ public class StatementAnalyzer {
   }
 
   public Analysis analyze(Statement statement) {
-    return new Visitor().process(statement);
-  }
-
-  /**
-   * given an unoptimized query operator and return an optimized result.
-   *
-   * @param statement unoptimized query operator
-   * @throws StatementAnalyzeException exception in query optimizing
-   */
-  private void optimizeQueryFilter(QueryStatement statement) throws StatementAnalyzeException {
-    WhereCondition whereCondition = statement.getWhereCondition();
-    if (whereCondition == null) {
-      return;
-    }
-    QueryFilter filter = whereCondition.getQueryFilter();
-    filter = new RemoveNotOptimizer().optimize(filter);
-    filter = new DnfFilterOptimizer().optimize(filter);
-    filter = new MergeSingleFilterOptimizer().optimize(filter);
-    whereCondition.setQueryFilter(filter);
-    statement.setWhereCondition(whereCondition);
+    return new Visitor().process(statement, context);
   }
 
   private final class Visitor extends StatementVisitor<Analysis, AnalysisContext> {
@@ -78,11 +59,24 @@ public class StatementAnalyzer {
     @Override
     public Analysis visitQuery(QueryStatement queryStatement, AnalysisContext context) {
       try {
-        SemanticChecker.check(queryStatement);
+        // check for semantic errors in statement
+        queryStatement.selfCheck();
+
+        // concat path and remove wildcards
         QueryStatement rewrittenStatement =
-            (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement);
+            (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, context);
+
         // TODO: check access permissions here
-        optimizeQueryFilter(rewrittenStatement);
+
+        // optimize expressions in whereCondition
+        WhereCondition whereCondition = rewrittenStatement.getWhereCondition();
+        if (whereCondition != null) {
+          QueryFilter filter = whereCondition.getQueryFilter();
+          filter = new RemoveNotOptimizer().optimize(filter);
+          filter = new DnfFilterOptimizer().optimize(filter);
+          filter = new MergeSingleFilterOptimizer().optimize(filter);
+          whereCondition.setQueryFilter(filter);
+        }
         analysis.setStatement(rewrittenStatement);
       } catch (StatementAnalyzeException | PathNumOverLimitException e) {
         e.printStackTrace();

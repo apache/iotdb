@@ -19,7 +19,13 @@
 
 package org.apache.iotdb.db.sql.statement;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.sql.statement.component.GroupByLevelComponent;
+import org.apache.iotdb.db.sql.statement.component.ResultColumn;
+import org.apache.iotdb.db.sql.statement.component.SelectComponent;
 
 public class AggregationQueryStatement extends QueryStatement {
 
@@ -45,5 +51,40 @@ public class AggregationQueryStatement extends QueryStatement {
   @Override
   public boolean isGroupByLevel() {
     return groupByLevelComponent != null && groupByLevelComponent.getLevels().length > 0;
-  };
+  }
+
+  @Override
+  public void selfCheck() {
+    super.selfCheck();
+
+    if (!DisableAlign()) {
+      throw new SemanticException("AGGREGATION doesn't support disable align clause.");
+    }
+    checkSelectComponent(selectComponent);
+    if (isGroupByLevel() && isAlignByDevice()) {
+      throw new SemanticException("group by level does not support align by device now.");
+    }
+  }
+
+  protected void checkSelectComponent(SelectComponent selectComponent) throws SemanticException {
+    if (hasTimeSeriesGeneratingFunction()) {
+      throw new SemanticException(
+          "User-defined and built-in hybrid aggregation is not supported together.");
+    }
+
+    for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+      Expression expression = resultColumn.getExpression();
+      if (expression instanceof TimeSeriesOperand) {
+        throw new SemanticException(
+            "Common queries and aggregated queries are not allowed to appear at the same time.");
+      }
+      // Currently, the aggregation function expression can only contain a timeseries operand.
+      if (expression instanceof FunctionExpression
+          && (expression.getExpressions().size() != 1
+              || !(expression.getExpressions().get(0) instanceof TimeSeriesOperand))) {
+        throw new SemanticException(
+            "The argument of the aggregation function must be a time series.");
+      }
+    }
+  }
 }

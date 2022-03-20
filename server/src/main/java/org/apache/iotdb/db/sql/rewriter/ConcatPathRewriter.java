@@ -33,6 +33,7 @@ import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.sql.analyze.AnalysisContext;
 import org.apache.iotdb.db.sql.statement.QueryStatement;
 import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.db.sql.statement.component.FromComponent;
@@ -55,7 +56,7 @@ public class ConcatPathRewriter implements IStatementRewriter {
       "failed to concat series paths because the given query operator didn't have prefix paths";
 
   @Override
-  public Statement rewrite(Statement statement)
+  public Statement rewrite(Statement statement, AnalysisContext context)
       throws StatementAnalyzeException, PathNumOverLimitException {
     QueryStatement queryStatement = (QueryStatement) statement;
     if (!rewritable(queryStatement)) {
