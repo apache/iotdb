@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,18 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.common;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+package org.apache.iotdb.db.sql.statement.component;
 
-/** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
-  private Statement statement;
+import java.util.ArrayList;
+import java.util.List;
 
-  public Analysis() {}
+/** This class maintains information of {@code FROM} clause. */
+public class FromComponent {
 
-  public void setStatement(Statement rewrittenStatement) {
-    this.statement = rewrittenStatement;
+  private final List<PartialPath> prefixPaths = new ArrayList<>();
+
+  public FromComponent() {}
+
+  public void addPrefixPath(PartialPath prefixPath) {
+    prefixPaths.add(prefixPath);
+  }
+
+  public List<PartialPath> getPrefixPaths() {
+    return prefixPaths;
   }
 }

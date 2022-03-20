@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical.crud;
+package org.apache.iotdb.db.sql.statement.filter;
 
-import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
-import org.apache.iotdb.db.qp.constant.FilterConstant;
-import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
+import org.apache.iotdb.db.sql.constant.FilterConstant;
+import org.apache.iotdb.db.sql.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
@@ -33,7 +32,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 
 /** all basic operator in filter. */
-public enum BasicOperatorType {
+public enum BasicFilterType {
   EQ {
     @Override
     public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
@@ -156,13 +155,12 @@ public enum BasicOperatorType {
   };
 
   /**
-   * BasicOperatorType Constructor.
+   * BasicFilterType Constructor.
    *
    * @param filterType token in Int Type
    * @return basic operator type
-   * @throws LogicalOperatorException Logical Operator Exception
    */
-  public static BasicOperatorType getBasicOpBySymbol(FilterType filterType)
+  public static BasicFilterType getBasicOpBySymbol(FilterType filterType)
       throws SQLParserException {
     switch (filterType) {
       case EQUAL:

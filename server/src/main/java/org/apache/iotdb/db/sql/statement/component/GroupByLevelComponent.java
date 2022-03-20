@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,18 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.common;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+package org.apache.iotdb.db.sql.statement.component;
 
-/** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {
+import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 
-  private Statement statement;
+/** This class maintains information of {@code GROUP BY LEVEL} clause. */
+public class GroupByLevelComponent {
 
-  public Analysis() {}
+  protected GroupByLevelController groupByLevelController;
+  protected int[] levels;
 
-  public void setStatement(Statement rewrittenStatement) {
-    this.statement = rewrittenStatement;
+  public int[] getLevels() {
+    return levels;
+  }
+
+  public void setLevels(int[] levels) {
+    this.levels = levels;
+  }
+
+  public void setGroupByLevelController(GroupByLevelController groupByLevelController) {
+    this.groupByLevelController = groupByLevelController;
+  }
+
+  public GroupByLevelController getGroupByLevelController() {
+    return groupByLevelController;
   }
 }

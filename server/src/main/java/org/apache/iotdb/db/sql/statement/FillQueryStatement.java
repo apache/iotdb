@@ -16,20 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.runtime;
 
-public class SQLParserException extends RuntimeException {
-  private static final long serialVersionUID = 3249707655860110299L;
+package org.apache.iotdb.db.sql.statement;
 
-  public SQLParserException() {
-    super("Error format in SQL statement, please check whether SQL statement is correct.");
+import org.apache.iotdb.db.sql.statement.component.FillComponent;
+
+public class FillQueryStatement extends QueryStatement {
+
+  FillComponent fillComponent;
+
+  public FillQueryStatement() {
+    super();
   }
 
-  public SQLParserException(String message) {
-    super(message);
+  public FillComponent getFillComponent() {
+    return fillComponent;
   }
 
-  public SQLParserException(String type, String message) {
-    super(String.format("Unsupported type: [%s]. " + message, type));
+  public void setFillComponent(FillComponent fillComponent) {
+    this.fillComponent = fillComponent;
   }
 }
