@@ -16,28 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator;
+package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 
-/**
- * Contains information about {@link Operator} execution.
- *
- * <p>Not thread-safe.
- */
-public class OperatorContext {
+public class FragmentInstance {
+  private FragmentInstanceId id;
 
-  private final int operatorId;
-  private final PlanNodeId planNodeId;
-  private final String operatorType;
+  // The reference of PlanFragment which this instance is generated from
+  private PlanFragment fragment;
 
-  public OperatorContext(int operatorId, PlanNodeId planNodeId, String operatorType) {
-    this.operatorId = operatorId;
-    this.planNodeId = planNodeId;
-    this.operatorType = operatorType;
-  }
-
-  public int getOperatorId() {
-    return operatorId;
-  }
+  // We can add some more params for a specific FragmentInstance
+  // So that we can make different FragmentInstance owns different data range.
 }

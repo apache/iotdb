@@ -16,28 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator;
+package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 
-/**
- * Contains information about {@link Operator} execution.
- *
- * <p>Not thread-safe.
- */
-public class OperatorContext {
-
-  private final int operatorId;
-  private final PlanNodeId planNodeId;
-  private final String operatorType;
-
-  public OperatorContext(int operatorId, PlanNodeId planNodeId, String operatorType) {
-    this.operatorId = operatorId;
-    this.planNodeId = planNodeId;
-    this.operatorType = operatorType;
-  }
-
-  public int getOperatorId() {
-    return operatorId;
-  }
+// TODO: consider whether it is necessary to make PlanFragment as a TreeNode
+/** PlanFragment contains a sub-query of distributed query. */
+public class PlanFragment {
+  private PlanFragmentId id;
+  private PlanNode root;
 }

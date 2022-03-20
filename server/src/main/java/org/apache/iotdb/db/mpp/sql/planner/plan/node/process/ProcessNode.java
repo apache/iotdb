@@ -16,28 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator;
+package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
-/**
- * Contains information about {@link Operator} execution.
- *
- * <p>Not thread-safe.
- */
-public class OperatorContext {
+public abstract class ProcessNode extends PlanNode {
 
-  private final int operatorId;
-  private final PlanNodeId planNodeId;
-  private final String operatorType;
-
-  public OperatorContext(int operatorId, PlanNodeId planNodeId, String operatorType) {
-    this.operatorId = operatorId;
-    this.planNodeId = planNodeId;
-    this.operatorType = operatorType;
-  }
-
-  public int getOperatorId() {
-    return operatorId;
+  public ProcessNode(PlanNodeId id) {
+    super(id);
   }
 }
