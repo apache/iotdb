@@ -41,13 +41,13 @@ struct CreateDataPartitionReq{
 }
 
 struct MigrateSchemaRegionReq{
-    1: required int previousDataNodeID
-    2: required int currentDataNodeID
+    1: required int sourceDataNodeID
+    2: required int targetDataNodeID
     3: required int schemaRegionID
 }
 struct MigrateDataRegionReq{
-    1: required int previousDataNodeID
-    2: required int currentDataNodeID
+    1: required int sourceDataNodeID
+    2: required int targetDataNodeID
     3: required int dataRegionID
 }
 
