@@ -226,6 +226,9 @@ public class RatisConsensusTest {
     get.flip();
     ByteBufferConsensusRequest getReq = new ByteBufferConsensusRequest(get);
 
+    // Sleep Long enough to followers to catch up with the leader
+    Thread.sleep(1000);
+
     // Check we reached a consensus
     ConsensusReadResponse response = consensus.read(gid, getReq);
     TestDataSet result = (TestDataSet) response.getDataset();

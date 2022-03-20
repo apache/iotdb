@@ -37,7 +37,9 @@ import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.grpc.GrpcConfigKeys;
 import org.apache.ratis.grpc.GrpcFactory;
+import org.apache.ratis.proto.RaftProtos;
 import org.apache.ratis.protocol.*;
+import org.apache.ratis.rpc.CallId;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
@@ -48,6 +50,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -66,6 +69,8 @@ public class RatisConsensus implements IConsensus {
   private final Map<RaftGroupId, RaftClient> clientMap;
   private final Map<RaftGroupId, RaftGroup> raftGroupMap;
 
+  private ClientId localFakeId;
+  private AtomicLong localFakeCallId;
   /**
    * This function will use the previous client for groupId to query the latest group info it will
    * update the new group info into the groupMap and rebuild its client
@@ -144,24 +149,41 @@ public class RatisConsensus implements IConsensus {
     return ConsensusWriteResponse.newBuilder().setStatus(writeResult).build();
   }
 
+  /**
+   * Read directly from LOCAL COPY
+   * notice: May read stale data (not linearizable)
+   */
   @Override
   public synchronized ConsensusReadResponse read(
       ConsensusGroupId groupId, IConsensusRequest IConsensusRequest) {
-    RaftClient client = clientMap.get(Utils.toRatisGroupId(groupId));
+
     RaftClientReply reply = null;
     try {
+      assert IConsensusRequest instanceof  ByteBufferConsensusRequest;
       ByteBufferConsensusRequest request = (ByteBufferConsensusRequest) IConsensusRequest;
-      Message message = Message.valueOf(ByteString.copyFrom(request.getContent()));
-      // TODO Ratis sendReadOnly may return stale results, check it later
-      reply = client.io().sendReadOnly(message);
+
+      RaftClientRequest clientRequest = RaftClientRequest.newBuilder()
+              .setServerId(server.getId())
+              .setClientId(localFakeId)
+              .setGroupId(Utils.toRatisGroupId(groupId))
+              .setCallId(localFakeCallId.incrementAndGet())
+              .setMessage(Message.valueOf(ByteString.copyFrom(request.getContent())))
+              .setType(RaftClientRequest.staleReadRequestType(0))
+              .build();
+
+      reply = server.submitClientRequest(clientRequest);
     } catch (IOException e) {
       return ConsensusReadResponse.newBuilder()
           .setException(new RatisRequestFailedException())
           .build();
     }
+
+    Message ret = reply.getMessage();
+    assert ret instanceof ReadLocalMessage;
+    ReadLocalMessage readLocalMessage = (ReadLocalMessage) ret;
+
     return ConsensusReadResponse.newBuilder()
-        .setDataSet(
-            serializer.deserializeDataSet(reply.getMessage().getContent().asReadOnlyByteBuffer()))
+        .setDataSet(readLocalMessage.getDataSet())
         .build();
   }
 
@@ -398,6 +420,8 @@ public class RatisConsensus implements IConsensus {
     this.serializer = serializer;
     this.clientMap = new ConcurrentHashMap<>();
     this.raftGroupMap = new HashMap<>();
+    this.localFakeId = ClientId.randomId();
+    this.localFakeCallId = new AtomicLong(0);
 
     // create a RaftPeer as endpoint of comm
     String address = Utils.IP_PORT(endpoint);

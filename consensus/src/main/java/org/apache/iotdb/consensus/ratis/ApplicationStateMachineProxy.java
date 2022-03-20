@@ -76,6 +76,6 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         new ByteBufferConsensusRequest(request.getContent().asReadOnlyByteBuffer());
     DataSet result = applicationStateMachine.read(req);
     return CompletableFuture.completedFuture(
-        Message.valueOf(ByteString.copyFrom(serializer.serializeDataSet(result))));
+        new ReadLocalMessage(result));
   }
 }
