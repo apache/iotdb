@@ -21,19 +21,6 @@ include "rpc.thrift"
 namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
-struct EndPoint {
-  1: required string ip
-  2: required i32 port
-}
-
-// The return status code and message in each response.
-struct TSStatus {
-  1: required i32 code
-  2: optional string message
-  3: optional list<TSStatus> subStatus
-  4: optional EndPoint redirectNode
-}
-
 struct SetStorageGroupReq {
     1: required string storageGroup
 }
@@ -72,16 +59,16 @@ struct DeviceGroupHashInfo {
 }
 
 struct DataNodeRegisterReq {
-    1: required EndPoint endPoint
+    1: required rpc.EndPoint endPoint
 }
 
 struct DataNodeRegisterResp {
-    1: required TSStatus registerResult
+    1: required rpc.TSStatus registerResult
     2: optional i32 dataNodeID
 }
 
 struct DataNodesInfo {
-    1: required map<i32, list<EndPoint>> dataNodesMap
+    1: required map<i32, list<rpc.EndPoint>> dataNodesMap
 }
 
 
