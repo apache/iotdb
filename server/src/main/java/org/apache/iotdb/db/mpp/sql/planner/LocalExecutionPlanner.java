@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
-import org.apache.iotdb.db.mpp.execution.InstanceContext;
+import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -118,10 +118,10 @@ public class LocalExecutionPlanner {
   }
 
   private static class LocalExecutionPlanContext {
-    private final InstanceContext taskContext;
+    private final FragmentInstanceContext taskContext;
     private int nextOperatorId = 0;
 
-    public LocalExecutionPlanContext(InstanceContext taskContext) {
+    public LocalExecutionPlanContext(FragmentInstanceContext taskContext) {
       this.taskContext = taskContext;
     }
 

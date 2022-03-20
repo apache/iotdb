@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
-public class InstanceId {
+public class FragmentInstanceId {
 
   private final String fullId;
 
-  public InstanceId(String fullId) {
+  public FragmentInstanceId(String fullId) {
     this.fullId = fullId;
   }
 }

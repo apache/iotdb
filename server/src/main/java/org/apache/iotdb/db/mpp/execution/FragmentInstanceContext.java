@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import org.apache.iotdb.db.mpp.common.InstanceId;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
@@ -27,9 +27,9 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class InstanceContext {
+public class FragmentInstanceContext {
 
-  private InstanceId id;
+  private FragmentInstanceId id;
 
   // TODO if we split one fragment instance into multiple pipelines to run, we need to replace it
   // with CopyOnWriteArrayList or some other thread safe data structure
@@ -45,7 +45,7 @@ public class InstanceContext {
   //    private final AtomicLong endFullGcCount = new AtomicLong(-1);
   //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
 
-  public InstanceContext(InstanceId id) {
+  public FragmentInstanceContext(FragmentInstanceId id) {
     this.id = id;
   }
 

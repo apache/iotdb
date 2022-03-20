@@ -23,7 +23,7 @@ import java.util.stream.Stream;
 
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 
-public enum InstanceState {
+public enum FragmentInstanceState {
   /**
    * Instance is planned but has not been scheduled yet. An instance will be in the planned state
    * until, the dependencies of the instance have begun producing output.
@@ -46,12 +46,14 @@ public enum InstanceState {
   /** Instance execution failed. */
   FAILED(true);
 
-  public static final Set<InstanceState> TERMINAL_TASK_STATES =
-      Stream.of(InstanceState.values()).filter(InstanceState::isDone).collect(toImmutableSet());
+  public static final Set<FragmentInstanceState> TERMINAL_TASK_STATES =
+      Stream.of(FragmentInstanceState.values())
+          .filter(FragmentInstanceState::isDone)
+          .collect(toImmutableSet());
 
   private final boolean doneState;
 
-  InstanceState(boolean doneState) {
+  FragmentInstanceState(boolean doneState) {
     this.doneState = doneState;
   }
 
