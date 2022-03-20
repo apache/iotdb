@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.analyzer;
+package org.apache.iotdb.db.sql.analyze;
 
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.mpp.common.Analysis;
+import org.apache.iotdb.db.sql.metadata.IMetadataFetcher;
 import org.apache.iotdb.db.sql.rewriter.ConcatPathRewriter;
 import org.apache.iotdb.db.sql.rewriter.DnfFilterOptimizer;
 import org.apache.iotdb.db.sql.rewriter.MergeSingleFilterOptimizer;
@@ -30,19 +30,23 @@ import org.apache.iotdb.db.sql.statement.QueryStatement;
 import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.db.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.sql.statement.filter.QueryFilter;
+import org.apache.iotdb.db.sql.utils.StatementVisitor;
 
 public class StatementAnalyzer {
 
-  public Analysis analyze(Statement statement)
-      throws StatementAnalyzeException, PathNumOverLimitException {
-    Analysis analysis = new Analysis();
-    SemanticChecker.check(statement);
-    QueryStatement rewrittenStatement =
-        (QueryStatement) new ConcatPathRewriter().rewrite(statement);
-    // TODO: check access permissions here
-    optimizeQueryFilter(rewrittenStatement);
-    analysis.setStatement(rewrittenStatement);
-    return analysis;
+  private final IMetadataFetcher metadataFetcher;
+  private final Analysis analysis;
+  private final AnalysisContext context;
+
+  public StatementAnalyzer(
+      IMetadataFetcher metadataFetcher, Analysis analysis, AnalysisContext context) {
+    this.metadataFetcher = metadataFetcher;
+    this.analysis = analysis;
+    this.context = context;
+  }
+
+  public Analysis analyze(Statement statement) {
+    return new Visitor().process(statement);
   }
 
   /**
@@ -62,5 +66,28 @@ public class StatementAnalyzer {
     filter = new MergeSingleFilterOptimizer().optimize(filter);
     whereCondition.setQueryFilter(filter);
     statement.setWhereCondition(whereCondition);
+  }
+
+  private final class Visitor extends StatementVisitor<Analysis, AnalysisContext> {
+
+    @Override
+    public Analysis visitStatement(Statement statement, AnalysisContext context) {
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitQuery(QueryStatement queryStatement, AnalysisContext context) {
+      try {
+        SemanticChecker.check(queryStatement);
+        QueryStatement rewrittenStatement =
+            (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement);
+        // TODO: check access permissions here
+        optimizeQueryFilter(rewrittenStatement);
+        analysis.setStatement(rewrittenStatement);
+      } catch (StatementAnalyzeException | PathNumOverLimitException e) {
+        e.printStackTrace();
+      }
+      return analysis;
+    }
   }
 }

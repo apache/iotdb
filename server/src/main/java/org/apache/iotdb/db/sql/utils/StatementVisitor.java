@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,20 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.plan;
 
-import org.apache.iotdb.db.sql.analyze.Analysis;
+package org.apache.iotdb.db.sql.utils;
 
-public class DistributionPlanner {
-  private Analysis analysis;
-  private LogicalQueryPlan logicalPlan;
+import org.apache.iotdb.db.sql.statement.QueryStatement;
+import org.apache.iotdb.db.sql.statement.Statement;
 
-  public DistributionPlanner(Analysis analysis, LogicalQueryPlan logicalPlan) {
-    this.analysis = analysis;
-    this.logicalPlan = logicalPlan;
+public abstract class StatementVisitor<R, C> {
+
+  public R process(Statement statement) {
+    return process(statement, null);
   }
 
-  public DistributedQueryPlan planFragments() {
+  public R process(Statement statement, C context) {
+    return statement.accept(this, context);
+  }
+
+  public R visitStatement(Statement statement, C context) {
     return null;
+  }
+
+  public R visitQuery(QueryStatement queryStatement, C context) {
+    return visitStatement(queryStatement, context);
   }
 }

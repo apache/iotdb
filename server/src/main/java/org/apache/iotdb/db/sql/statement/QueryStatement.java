@@ -27,6 +27,7 @@ import org.apache.iotdb.db.sql.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.sql.statement.component.SelectComponent;
 import org.apache.iotdb.db.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.sql.statement.component.WithoutPolicy;
+import org.apache.iotdb.db.sql.utils.StatementVisitor;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -208,4 +209,8 @@ public class QueryStatement extends Statement {
   };
 
   public void check() {}
+
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitQuery(this, context);
+  }
 }

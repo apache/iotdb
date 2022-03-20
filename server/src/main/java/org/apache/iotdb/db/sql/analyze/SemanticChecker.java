@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,20 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.plan;
 
-import org.apache.iotdb.db.sql.analyze.Analysis;
+package org.apache.iotdb.db.sql.analyze;
 
-public class DistributionPlanner {
-  private Analysis analysis;
-  private LogicalQueryPlan logicalPlan;
+import org.apache.iotdb.db.sql.statement.QueryStatement;
+import org.apache.iotdb.db.sql.statement.Statement;
 
-  public DistributionPlanner(Analysis analysis, LogicalQueryPlan logicalPlan) {
-    this.analysis = analysis;
-    this.logicalPlan = logicalPlan;
-  }
+public class SemanticChecker {
 
-  public DistributedQueryPlan planFragments() {
-    return null;
+  private SemanticChecker() {}
+
+  public static void check(Statement statement) {
+    if (statement instanceof QueryStatement) {
+      ((QueryStatement) statement).check();
+    }
   }
 }
