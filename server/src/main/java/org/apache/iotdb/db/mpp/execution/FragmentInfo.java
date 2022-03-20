@@ -25,16 +25,20 @@ import java.util.List;
 
 public class FragmentInfo {
 
-    private final FragmentId stageId;
-    private final FragmentState state;
-    private final PlanFragment plan;
+  private final FragmentId stageId;
+  private final FragmentState state;
+  private final PlanFragment plan;
 
-    private final List<FragmentInfo> childrenFragments;
+  private final List<FragmentInfo> childrenFragments;
 
-    public FragmentInfo(FragmentId stageId, FragmentState state, PlanFragment plan, List<FragmentInfo> childrenFragments) {
-        this.stageId = stageId;
-        this.state = state;
-        this.plan = plan;
-        this.childrenFragments = childrenFragments;
-    }
+  public FragmentInfo(
+      FragmentId stageId,
+      FragmentState state,
+      PlanFragment plan,
+      List<FragmentInfo> childrenFragments) {
+    this.stageId = stageId;
+    this.state = state;
+    this.plan = plan;
+    this.childrenFragments = childrenFragments;
+  }
 }

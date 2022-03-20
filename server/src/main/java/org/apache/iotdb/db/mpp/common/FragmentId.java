@@ -25,37 +25,33 @@ import static java.util.Objects.requireNonNull;
 
 public class FragmentId {
 
-    private final QueryId queryId;
-    private final int id;
+  private final QueryId queryId;
+  private final int id;
 
-    public static FragmentId valueOf(String stageId) {
-        List<String> ids = QueryId.parseDottedId(stageId, 2, "stageId");
-        return valueOf(ids);
-    }
+  public static FragmentId valueOf(String stageId) {
+    List<String> ids = QueryId.parseDottedId(stageId, 2, "stageId");
+    return valueOf(ids);
+  }
 
-    public static FragmentId valueOf(List<String> ids) {
-        checkArgument(ids.size() == 2, "Expected two ids but got: %s", ids);
-        return new FragmentId(new QueryId(ids.get(0)), Integer.parseInt(ids.get(1)));
-    }
+  public static FragmentId valueOf(List<String> ids) {
+    checkArgument(ids.size() == 2, "Expected two ids but got: %s", ids);
+    return new FragmentId(new QueryId(ids.get(0)), Integer.parseInt(ids.get(1)));
+  }
 
-    public FragmentId(String queryId, int id)
-    {
-        this(new QueryId(queryId), id);
-    }
+  public FragmentId(String queryId, int id) {
+    this(new QueryId(queryId), id);
+  }
 
-    public FragmentId(QueryId queryId, int id)
-    {
-        this.queryId = requireNonNull(queryId, "queryId is null");
-        this.id = id;
-    }
+  public FragmentId(QueryId queryId, int id) {
+    this.queryId = requireNonNull(queryId, "queryId is null");
+    this.id = id;
+  }
 
-    public QueryId getQueryId()
-    {
-        return queryId;
-    }
+  public QueryId getQueryId() {
+    return queryId;
+  }
 
-    public int getId()
-    {
-        return id;
-    }
+  public int getId() {
+    return id;
+  }
 }

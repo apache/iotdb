@@ -18,22 +18,23 @@
  */
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import io.airlift.units.Duration;
 import org.apache.iotdb.db.mpp.common.FragmentId;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.FragmentInfo;
 
+import io.airlift.units.Duration;
+
 public interface IScheduler {
 
-    void start();
+  void start();
 
-    void abort();
+  void abort();
 
-    Duration getTotalCpuTime();
+  Duration getTotalCpuTime();
 
-    FragmentInfo getFragmentInfo();
+  FragmentInfo getFragmentInfo();
 
-    void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
+  void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
 
-    void cancelFragment(FragmentId fragmentId);
+  void cancelFragment(FragmentId fragmentId);
 }

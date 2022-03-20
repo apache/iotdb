@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import io.airlift.units.Duration;
 import org.apache.iotdb.db.mpp.common.FragmentId;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.FragmentInfo;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
+
+import io.airlift.units.Duration;
 
 import java.util.List;
 
@@ -50,9 +51,7 @@ public class ClusterScheduler implements IScheduler {
   public void start() {}
 
   @Override
-  public void abort() {
-
-  }
+  public void abort() {}
 
   @Override
   public Duration getTotalCpuTime() {
@@ -65,14 +64,10 @@ public class ClusterScheduler implements IScheduler {
   }
 
   @Override
-  public void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause) {
-
-  }
+  public void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause) {}
 
   @Override
-  public void cancelFragment(FragmentId fragmentId) {
-
-  }
+  public void cancelFragment(FragmentId fragmentId) {}
 
   // Send the instances to other nodes
   private void sendFragmentInstances() {}

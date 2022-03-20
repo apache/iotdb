@@ -18,46 +18,39 @@
  */
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import io.airlift.units.Duration;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentId;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.FragmentInfo;
 
+import io.airlift.units.Duration;
+
 public class StandaloneScheduler implements IScheduler {
 
-    private static final StorageEngine STORAGE_ENGINE = StorageEngine.getInstance();
+  private static final StorageEngine STORAGE_ENGINE = StorageEngine.getInstance();
 
-    private static final SchemaEngine SCHEMA_ENGINE = SchemaEngine.getInstance();
+  private static final SchemaEngine SCHEMA_ENGINE = SchemaEngine.getInstance();
 
-    @Override
-    public void start() {
+  @Override
+  public void start() {}
 
-    }
+  @Override
+  public void abort() {}
 
-    @Override
-    public void abort() {
+  @Override
+  public Duration getTotalCpuTime() {
+    return null;
+  }
 
-    }
+  @Override
+  public FragmentInfo getFragmentInfo() {
+    return null;
+  }
 
-    @Override
-    public Duration getTotalCpuTime() {
-        return null;
-    }
+  @Override
+  public void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause) {}
 
-    @Override
-    public FragmentInfo getFragmentInfo() {
-        return null;
-    }
-
-    @Override
-    public void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause) {
-
-    }
-
-    @Override
-    public void cancelFragment(FragmentId fragmentId) {
-
-    }
+  @Override
+  public void cancelFragment(FragmentId fragmentId) {}
 }

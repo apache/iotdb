@@ -38,20 +38,17 @@ public class QueryId {
     this.id = validateId(id);
   }
 
-  public String getId()
-  {
+  public String getId() {
     return id;
   }
 
   @Override
-  public String toString()
-  {
+  public String toString() {
     return id;
   }
 
   @Override
-  public int hashCode()
-  {
+  public int hashCode() {
     return Objects.hash(id);
   }
 
@@ -66,7 +63,6 @@ public class QueryId {
     QueryId other = (QueryId) obj;
     return Objects.equals(this.id, other.id);
   }
-
 
   public static List<String> parseDottedId(String id, int expectedParts, String name) {
     requireNonNull(id, "id is null");
