@@ -218,6 +218,14 @@ public class QueryStatement extends Statement {
     this.indexType = indexType;
   }
 
+  public boolean isPrefixMatchPath() {
+    return isPrefixMatchPath;
+  }
+
+  public void setPrefixMatchPath(boolean prefixMatchPath) {
+    isPrefixMatchPath = prefixMatchPath;
+  }
+
   public boolean isGroupByLevel() {
     return false;
   };
