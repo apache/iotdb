@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.common;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.*;
@@ -32,7 +33,7 @@ public class Analysis {
   // Map<PartialPath, List<FullPath>> Used to remove asterisk
 
   // Statement
-  private String statement;
+  private Statement statement;
 
   // DataPartitionInfo
   private Map<String, Map<DataRegionTimeSlice, List<DataRegion>>> dataPartitionInfo;
@@ -56,5 +57,13 @@ public class Analysis {
   public void setDataPartitionInfo(
       Map<String, Map<DataRegionTimeSlice, List<DataRegion>>> dataPartitionInfo) {
     this.dataPartitionInfo = dataPartitionInfo;
+  }
+
+  public Statement getStatement() {
+    return statement;
+  }
+
+  public void setStatement(Statement statement) {
+    this.statement = statement;
   }
 }
