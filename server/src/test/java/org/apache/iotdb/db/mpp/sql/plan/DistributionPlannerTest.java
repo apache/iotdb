@@ -25,7 +25,7 @@ import org.apache.iotdb.db.mpp.common.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.DistributionPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeAllocator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
@@ -48,16 +48,16 @@ public class DistributionPlannerTest {
   public void TestRewriteSourceNode() throws IllegalPathException {
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(
-            PlanNodeAllocator.generateId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+            PlanNodeIdAllocator.generateId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeAllocator.generateId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s1")));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeAllocator.generateId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s2")));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeAllocator.generateId(), new PartialPath("root.sg.d2.s1")));
+        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d2.s1")));
 
-    LimitNode root = new LimitNode(PlanNodeAllocator.generateId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(PlanNodeIdAllocator.generateId(), 10, timeJoinNode);
 
     Analysis analysis = constructAnalysis();
 
@@ -75,16 +75,16 @@ public class DistributionPlannerTest {
   public void TestAddExchangeNode() throws IllegalPathException {
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(
-            PlanNodeAllocator.generateId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+            PlanNodeIdAllocator.generateId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
 
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeAllocator.generateId(), new PartialPath("root.sg.d1.s1")));
+        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s1")));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeAllocator.generateId(), new PartialPath("root.sg.d1.s2")));
+        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s2")));
     timeJoinNode.addChild(
-        new SeriesScanNode(PlanNodeAllocator.generateId(), new PartialPath("root.sg.d2.s1")));
+        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d2.s1")));
 
-    LimitNode root = new LimitNode(PlanNodeAllocator.generateId(), 10, timeJoinNode);
+    LimitNode root = new LimitNode(PlanNodeIdAllocator.generateId(), 10, timeJoinNode);
 
     Analysis analysis = constructAnalysis();
 

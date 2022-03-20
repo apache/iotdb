@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanN
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
@@ -94,20 +95,12 @@ public class DistributionPlanner {
       }
 
       // Step 2: For the source nodes, group them by the DataRegion.
-      Map<DataRegion, List<SeriesScanNode>> sourceGroup = new HashMap<>();
-      sources.forEach(
-          source -> {
-            List<SeriesScanNode> group =
-                sourceGroup.containsKey(source.getDataRegion())
-                    ? sourceGroup.get(source.getDataRegion())
-                    : new ArrayList<>();
-            group.add(source);
-            sourceGroup.put(source.getDataRegion(), group);
-          });
-
+      Map<DataRegion, List<SeriesScanNode>> sourceGroup =
+          sources.stream().collect(Collectors.groupingBy(SeriesScanNode::getDataRegion));
       // Step 3: For the source nodes which belong to same data region, add a TimeJoinNode for them
       // and make the
       // new TimeJoinNode as the child of current TimeJoinNode
+      //TODO: (xingtanzjr) optimize the procedure here to remove duplicated TimeJoinNode
       sourceGroup.forEach(
           (dataRegion, seriesScanNodes) -> {
             if (seriesScanNodes.size() == 1) {
@@ -191,7 +184,7 @@ public class DistributionPlanner {
       visitedChildren.forEach(
           child -> {
             if (!dataRegion.equals(context.getNodeDistribution(child.getId()).dataRegion)) {
-              ExchangeNode exchangeNode = new ExchangeNode(PlanNodeAllocator.generateId());
+              ExchangeNode exchangeNode = new ExchangeNode(PlanNodeIdAllocator.generateId());
               exchangeNode.setSourceNode(child);
               newNode.addChild(exchangeNode);
             } else {
