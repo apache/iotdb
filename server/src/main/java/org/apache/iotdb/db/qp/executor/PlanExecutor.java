@@ -1218,7 +1218,8 @@ public class PlanExecutor implements IPlanExecutor {
         record.addField(Binary.valueOf(pipe.getName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getPipeSink().getName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
-        record.addField(Binary.valueOf(SenderService.getInstance().getPipeMsg(pipe)), TSDataType.TEXT);
+        record.addField(
+            Binary.valueOf(SenderService.getInstance().getPipeMsg(pipe)), TSDataType.TEXT);
         listDataSet.putRecord(record);
       }
     return listDataSet;

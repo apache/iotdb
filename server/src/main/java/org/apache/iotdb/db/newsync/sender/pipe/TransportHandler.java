@@ -27,6 +27,7 @@ import org.apache.iotdb.db.newsync.sender.service.SenderService;
 import org.apache.iotdb.db.newsync.transport.client.ITransportClient;
 import org.apache.iotdb.service.transport.thrift.RequestType;
 import org.apache.iotdb.service.transport.thrift.SyncRequest;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

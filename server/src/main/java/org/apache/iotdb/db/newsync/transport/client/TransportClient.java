@@ -41,6 +41,7 @@ import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.apache.iotdb.service.transport.thrift.TransportService;
 import org.apache.iotdb.service.transport.thrift.TransportStatus;
 import org.apache.iotdb.service.transport.thrift.Type;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -52,7 +53,6 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;

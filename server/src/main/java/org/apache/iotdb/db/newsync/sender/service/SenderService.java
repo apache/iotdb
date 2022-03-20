@@ -193,7 +193,8 @@ public class SenderService implements IService {
       ITransportClient transportClient =
           new TransportClient(
               pipe, ((IoTDBPipeSink) pipeSink).getIp(), ((IoTDBPipeSink) pipeSink).getPort());
-      pipe.setTransportHandler(new TransportHandler(transportClient, pipe.getName(), pipe.getCreateTime()));
+      pipe.setTransportHandler(
+          new TransportHandler(transportClient, pipe.getName(), pipe.getCreateTime()));
     } catch (IOException e) {
       throw new PipeException(
           String.format(
