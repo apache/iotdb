@@ -37,10 +37,8 @@ import java.util.concurrent.CompletableFuture;
 
 public class ApplicationStateMachineProxy extends BaseStateMachine {
   private final IStateMachine applicationStateMachine;
-  private final IRatisSerializer serializer;
 
-  public ApplicationStateMachineProxy(IStateMachine stateMachine, IRatisSerializer serializer) {
-    this.serializer = serializer;
+  public ApplicationStateMachineProxy(IStateMachine stateMachine) {
     applicationStateMachine = stateMachine;
     applicationStateMachine.start();
   }
@@ -63,9 +61,10 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
     Message ret = null;
     try {
-       ByteBuffer serializedStatus = Utils.serializeTSStatus(result);
-       ret = Message.valueOf(ByteString.copyFrom(serializedStatus));
-    } catch (TException ignored) {}
+      ByteBuffer serializedStatus = Utils.serializeTSStatus(result);
+      ret = Message.valueOf(ByteString.copyFrom(serializedStatus));
+    } catch (TException ignored) {
+    }
 
     return CompletableFuture.completedFuture(ret);
   }
@@ -75,7 +74,6 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     IConsensusRequest req =
         new ByteBufferConsensusRequest(request.getContent().asReadOnlyByteBuffer());
     DataSet result = applicationStateMachine.read(req);
-    return CompletableFuture.completedFuture(
-        new ReadLocalMessage(result));
+    return CompletableFuture.completedFuture(new ReadLocalMessage(result));
   }
 }

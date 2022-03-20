@@ -96,25 +96,6 @@ public class RatisConsensusTest {
     }
   }
 
-  private static class TestSerializer implements IRatisSerializer {
-
-    @Override
-    public ByteBuffer serializeDataSet(DataSet dataSet) {
-      TestDataSet testDataSet = (TestDataSet) dataSet;
-      ByteBuffer buffer = ByteBuffer.allocate(4);
-      buffer.putInt(testDataSet.getNumber());
-      buffer.flip();
-      return buffer;
-    }
-
-    @Override
-    public DataSet deserializeDataSet(ByteBuffer buffer) {
-      TestDataSet dataSet = new TestDataSet();
-      dataSet.setNumber(buffer.getInt());
-      return dataSet;
-    }
-  }
-
   @Test
   public void basicConsensus() throws Exception {
 
@@ -147,7 +128,6 @@ public class RatisConsensusTest {
               .setEndpoint(peers.get(i).getEndpoint())
               .setStateMachineRegistry(groupId -> new IntegerCounter())
               .setStorageDir(peersStorage.get(i))
-              .setSerializer(new TestSerializer())
               .build());
       servers.get(i).start();
       ;

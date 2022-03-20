@@ -19,28 +19,29 @@
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.consensus.common.DataSet;
+
 import org.apache.ratis.protocol.Message;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 
 public class ReadLocalMessage implements Message {
 
-    private final DataSet dataSet;
+  private final DataSet dataSet;
 
-    public ReadLocalMessage(DataSet dataSet) {
-        this.dataSet = dataSet;
-    }
+  public ReadLocalMessage(DataSet dataSet) {
+    this.dataSet = dataSet;
+  }
 
-    public DataSet getDataSet() {
-        return dataSet;
-    }
+  public DataSet getDataSet() {
+    return dataSet;
+  }
 
-    @Override
-    public ByteString getContent() {
-        return null;
-    }
+  @Override
+  public ByteString getContent() {
+    return null;
+  }
 
-    @Override
-    public int size() {
-        return Message.super.size();
-    }
+  @Override
+  public int size() {
+    return Message.super.size();
+  }
 }

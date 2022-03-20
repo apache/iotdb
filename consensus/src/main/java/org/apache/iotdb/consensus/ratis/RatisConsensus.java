@@ -37,9 +37,7 @@ import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.grpc.GrpcConfigKeys;
 import org.apache.ratis.grpc.GrpcFactory;
-import org.apache.ratis.proto.RaftProtos;
 import org.apache.ratis.protocol.*;
-import org.apache.ratis.rpc.CallId;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
@@ -63,7 +61,6 @@ public class RatisConsensus implements IConsensus {
   private final RaftPeer myself;
 
   private final RaftServer server;
-  private final IRatisSerializer serializer;
 
   // TODO when comm with myself, use method call instead of RPC
   private final Map<RaftGroupId, RaftClient> clientMap;
@@ -139,8 +136,7 @@ public class RatisConsensus implements IConsensus {
       ByteBufferConsensusRequest request = (ByteBufferConsensusRequest) IConsensusRequest;
       Message message = Message.valueOf(ByteString.copyFrom(request.getContent()));
       RaftClientReply reply = client.io().send(message);
-      writeResult = Utils.deserializeFrom(
-              reply.getMessage().getContent().asReadOnlyByteBuffer());
+      writeResult = Utils.deserializeFrom(reply.getMessage().getContent().asReadOnlyByteBuffer());
     } catch (IOException | TException e) {
       return ConsensusWriteResponse.newBuilder()
           .setException(new RatisRequestFailedException())
@@ -149,20 +145,18 @@ public class RatisConsensus implements IConsensus {
     return ConsensusWriteResponse.newBuilder().setStatus(writeResult).build();
   }
 
-  /**
-   * Read directly from LOCAL COPY
-   * notice: May read stale data (not linearizable)
-   */
+  /** Read directly from LOCAL COPY notice: May read stale data (not linearizable) */
   @Override
   public synchronized ConsensusReadResponse read(
       ConsensusGroupId groupId, IConsensusRequest IConsensusRequest) {
 
     RaftClientReply reply = null;
     try {
-      assert IConsensusRequest instanceof  ByteBufferConsensusRequest;
+      assert IConsensusRequest instanceof ByteBufferConsensusRequest;
       ByteBufferConsensusRequest request = (ByteBufferConsensusRequest) IConsensusRequest;
 
-      RaftClientRequest clientRequest = RaftClientRequest.newBuilder()
+      RaftClientRequest clientRequest =
+          RaftClientRequest.newBuilder()
               .setServerId(server.getId())
               .setClientId(localFakeId)
               .setGroupId(Utils.toRatisGroupId(groupId))
@@ -182,9 +176,7 @@ public class RatisConsensus implements IConsensus {
     assert ret instanceof ReadLocalMessage;
     ReadLocalMessage readLocalMessage = (ReadLocalMessage) ret;
 
-    return ConsensusReadResponse.newBuilder()
-        .setDataSet(readLocalMessage.getDataSet())
-        .build();
+    return ConsensusReadResponse.newBuilder().setDataSet(readLocalMessage.getDataSet()).build();
   }
 
   /**
@@ -410,14 +402,9 @@ public class RatisConsensus implements IConsensus {
     return client;
   }
 
-  private RatisConsensus(
-      Endpoint endpoint,
-      File ratisStorageDir,
-      IStateMachine.Registry registry,
-      IRatisSerializer serializer)
+  private RatisConsensus(Endpoint endpoint, File ratisStorageDir, IStateMachine.Registry registry)
       throws IOException {
 
-    this.serializer = serializer;
     this.clientMap = new ConcurrentHashMap<>();
     this.raftGroupMap = new HashMap<>();
     this.localFakeId = ClientId.randomId();
@@ -446,7 +433,7 @@ public class RatisConsensus implements IConsensus {
             .setStateMachineRegistry(
                 raftGroupId ->
                     new ApplicationStateMachineProxy(
-                        registry.apply(Utils.toConsensusGroupId(raftGroupId)), serializer))
+                        registry.apply(Utils.toConsensusGroupId(raftGroupId))))
             .build();
   }
 
@@ -458,7 +445,6 @@ public class RatisConsensus implements IConsensus {
     private Endpoint endpoint;
     private IStateMachine.Registry registry;
     private File storageDir;
-    private IRatisSerializer serializer;
 
     public Builder() {
       storageDir = null;
@@ -479,13 +465,8 @@ public class RatisConsensus implements IConsensus {
       return this;
     }
 
-    public Builder setSerializer(IRatisSerializer serializer) {
-      this.serializer = serializer;
-      return this;
-    }
-
     public RatisConsensus build() throws IOException {
-      return new RatisConsensus(endpoint, storageDir, registry, serializer);
+      return new RatisConsensus(endpoint, storageDir, registry);
     }
   }
 }
