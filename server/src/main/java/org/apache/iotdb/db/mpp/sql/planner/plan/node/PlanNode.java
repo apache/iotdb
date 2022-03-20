@@ -39,6 +39,10 @@ public abstract class PlanNode {
 
   public abstract List<PlanNode> getChildren();
 
+  public abstract PlanNode clone();
+
+  public abstract PlanNode cloneWithChildren(List<PlanNode> children);
+
   public abstract List<String> getOutputColumnNames();
 
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {

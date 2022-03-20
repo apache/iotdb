@@ -16,43 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+package org.apache.iotdb.db.mpp.common;
 
-import java.util.List;
+/**
+ * This class is used to represent the data partition info including the DataRegionId and physical node IP address
+ */
+//TODO: (xingtanzjr) This class should be substituted with the class defined in Consensus level
+public class DataRegion {
+    private Integer dataRegionId;
+    private String endpoint;
 
-/** not implemented in current IoTDB yet */
-public class ThriftSinkNode extends SinkNode {
+    public int hashCode() {
+        return dataRegionId.hashCode();
+    }
 
-  public ThriftSinkNode(PlanNodeId id) {
-    super(id);
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return null;
-  }
-
-  @Override
-  public PlanNode clone() {
-    return null;
-  }
-
-  @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  @Override
-  public void close() throws Exception {}
-
-  @Override
-  public void send() {}
+    public boolean equals(Object obj) {
+        if (obj instanceof DataRegion) {
+            return this.dataRegionId.equals(((DataRegion)obj).dataRegionId);
+        }
+        return false;
+    }
 }

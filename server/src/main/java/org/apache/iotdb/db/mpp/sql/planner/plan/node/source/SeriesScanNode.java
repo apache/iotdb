@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.DataRegion;
 import org.apache.iotdb.db.mpp.common.OrderBy;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -60,6 +61,9 @@ public class SeriesScanNode extends SourceNode {
 
   private String columnName;
 
+  // The id of DataRegion where the node will run
+  private DataRegion dataRegion;
+
   public SeriesScanNode(PlanNodeId id, PartialPath seriesPath) {
     super(id);
     this.seriesPath = seriesPath;
@@ -97,6 +101,16 @@ public class SeriesScanNode extends SourceNode {
   }
 
   @Override
+  public PlanNode clone() {
+    return null;
+  }
+
+  @Override
+  public PlanNode cloneWithChildren(List<PlanNode> children) {
+    return null;
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
     return ImmutableList.of(columnName);
   }
@@ -104,5 +118,21 @@ public class SeriesScanNode extends SourceNode {
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitSeriesScan(this, context);
+  }
+
+  public PartialPath getSeriesPath() {
+    return seriesPath;
+  }
+
+  public Filter getTimeFilter() {
+    return timeFilter;
+  }
+
+  public void setDataRegion(DataRegion dataRegion) {
+    this.dataRegion = dataRegion;
+  }
+
+  public DataRegion getDataRegion() {
+    return dataRegion;
   }
 }

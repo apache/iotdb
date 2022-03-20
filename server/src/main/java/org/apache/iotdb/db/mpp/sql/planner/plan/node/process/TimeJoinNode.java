@@ -63,6 +63,16 @@ public class TimeJoinNode extends ProcessNode {
   }
 
   @Override
+  public PlanNode clone() {
+    return null;
+  }
+
+  @Override
+  public PlanNode cloneWithChildren(List<PlanNode> children) {
+    return null;
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
     return children.stream()
         .flatMap(child -> child.getOutputColumnNames().stream())

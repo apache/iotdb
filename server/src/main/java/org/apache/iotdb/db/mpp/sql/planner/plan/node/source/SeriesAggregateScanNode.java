@@ -69,6 +69,16 @@ public class SeriesAggregateScanNode extends SourceNode {
   }
 
   @Override
+  public PlanNode clone() {
+    return null;
+  }
+
+  @Override
+  public PlanNode cloneWithChildren(List<PlanNode> children) {
+    return null;
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
     return ImmutableList.of(columnName);
   }
