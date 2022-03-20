@@ -25,29 +25,29 @@ typedef i32 int
 typedef i64 long
 
 struct CreateSchemaRegionReq {
-    1: required list<int> DataNodeID
+    1: required list<int> dataNodeID
     2: required int schemaRegionID
 }
 
 struct CreateDataRegionReq {
-    1: required list<int> DataNodeID
+    1: required list<int> dataNodeID
     2: required int dataRegionID
 }
 
 struct CreateDataPartitionReq{
-    1: required list<int> DataNodeID
+    1: required list<int> dataNodeID
     2: required int dataRegionID
     3: required long timeInterval
 }
 
 struct MigrateSchemaRegionReq{
-    1: required int previousNodeID
-    2: required int targetNodeID
+    1: required int previousDataNodeID
+    2: required int currentDataNodeID
     3: required int schemaRegionID
 }
 struct MigrateDataRegionReq{
-    1: required int previousNodeID
-    2: required int targetNodeID
+    1: required int previousDataNodeID
+    2: required int currentDataNodeID
     3: required int dataRegionID
 }
 
