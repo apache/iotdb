@@ -36,4 +36,8 @@ public class OperatorContext {
     this.planNodeId = planNodeId;
     this.operatorType = operatorType;
   }
+
+  public int getOperatorId() {
+    return operatorId;
+  }
 }

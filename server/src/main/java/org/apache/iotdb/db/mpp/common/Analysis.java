@@ -25,36 +25,36 @@ import java.util.*;
 
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
 public class Analysis {
-    // Description for each series. Such as dataType, existence
+  // Description for each series. Such as dataType, existence
 
-    // Data distribution info for each series. Series -> [VSG, VSG]
+  // Data distribution info for each series. Series -> [VSG, VSG]
 
-    // Map<PartialPath, List<FullPath>> Used to remove asterisk
+  // Map<PartialPath, List<FullPath>> Used to remove asterisk
 
-    // Statement
-    private String statement;
+  // Statement
+  private String statement;
 
-    // DataPartitionInfo
-    private Map<String, Map<DataRegionTimeSlice, List<DataRegion>>> dataPartitionInfo;
+  // DataPartitionInfo
+  private Map<String, Map<DataRegionTimeSlice, List<DataRegion>>> dataPartitionInfo;
 
-    // SchemaPartitionInfo
-    private Map<String, List<SchemaRegion>> schemaPartitionInfo;
+  // SchemaPartitionInfo
+  private Map<String, List<SchemaRegion>> schemaPartitionInfo;
 
-
-    public Set<DataRegion> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
-        if (timefilter == null) {
-            //TODO: (xingtanzjr) we need to have a method to get the deviceGroup by device
-            String deviceGroup = seriesPath.getDevice();
-            Set<DataRegion> result = new HashSet<>();
-            this.dataPartitionInfo.get(deviceGroup).values().forEach(result::addAll);
-            return result;
-        } else {
-            //TODO: (xingtanzjr) complete this branch
-            return null;
-        }
+  public Set<DataRegion> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
+    if (timefilter == null) {
+      // TODO: (xingtanzjr) we need to have a method to get the deviceGroup by device
+      String deviceGroup = seriesPath.getDevice();
+      Set<DataRegion> result = new HashSet<>();
+      this.dataPartitionInfo.get(deviceGroup).values().forEach(result::addAll);
+      return result;
+    } else {
+      // TODO: (xingtanzjr) complete this branch
+      return null;
     }
+  }
 
-    public void setDataPartitionInfo(Map<String, Map<DataRegionTimeSlice, List<DataRegion>>> dataPartitionInfo) {
-        this.dataPartitionInfo = dataPartitionInfo;
-    }
+  public void setDataPartitionInfo(
+      Map<String, Map<DataRegionTimeSlice, List<DataRegion>>> dataPartitionInfo) {
+    this.dataPartitionInfo = dataPartitionInfo;
+  }
 }

@@ -21,25 +21,24 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
 import java.util.List;
 
-import static com.google.common.base.Verify.verifyNotNull;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
-public class SimplePlanNodeRewriter<C> extends PlanVisitor<PlanNode, C>{
-    @Override
-    public PlanNode visitPlan(PlanNode node, C context) {
-        return defaultRewrite(node, context);
-    }
+public class SimplePlanNodeRewriter<C> extends PlanVisitor<PlanNode, C> {
+  @Override
+  public PlanNode visitPlan(PlanNode node, C context) {
+    return defaultRewrite(node, context);
+  }
 
-    public PlanNode defaultRewrite(PlanNode node, C context) {
-        List<PlanNode> children = node.getChildren().stream()
-                .map(child -> rewrite(child, context))
-                .collect(toImmutableList());
+  public PlanNode defaultRewrite(PlanNode node, C context) {
+    List<PlanNode> children =
+        node.getChildren().stream()
+            .map(child -> rewrite(child, context))
+            .collect(toImmutableList());
 
-        return node.cloneWithChildren(children);
-    }
+    return node.cloneWithChildren(children);
+  }
 
-    public PlanNode rewrite(PlanNode node, C userContext)
-    {
-        return node.accept(this, userContext);
-    }
+  public PlanNode rewrite(PlanNode node, C userContext) {
+    return node.accept(this, userContext);
+  }
 }

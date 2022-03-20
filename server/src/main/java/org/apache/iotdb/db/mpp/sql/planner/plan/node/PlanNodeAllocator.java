@@ -20,9 +20,10 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
 public class PlanNodeAllocator {
-    public static int initialId = 0;
-    public static synchronized PlanNodeId generateId() {
-        initialId++;
-        return new PlanNodeId(String.valueOf(initialId));
-    }
+  public static int initialId = 0;
+
+  public static synchronized PlanNodeId generateId() {
+    initialId++;
+    return new PlanNodeId(String.valueOf(initialId));
+  }
 }

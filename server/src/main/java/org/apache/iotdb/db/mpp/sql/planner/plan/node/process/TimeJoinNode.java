@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.db.mpp.common.FilterNullPolicy;
-import org.apache.iotdb.db.mpp.common.OrderBy;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.sql.statement.component.OrderBy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,10 +48,7 @@ public class TimeJoinNode extends ProcessNode {
 
   private List<PlanNode> children;
 
-  public TimeJoinNode(
-          PlanNodeId id,
-          OrderBy mergeOrder,
-          FilterNullPolicy filterNullPolicy) {
+  public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder, FilterNullPolicy filterNullPolicy) {
     super(id);
     this.mergeOrder = mergeOrder;
     this.filterNullPolicy = filterNullPolicy;
@@ -115,5 +112,4 @@ public class TimeJoinNode extends ProcessNode {
   public String toString() {
     return "TimeJoinNode-" + this.getId();
   }
-
 }

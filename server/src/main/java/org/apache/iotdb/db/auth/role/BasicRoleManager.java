@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.auth.role;
 
+import org.apache.iotdb.commons.concurrent.HashLock;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.Role;
-import org.apache.iotdb.db.concurrent.HashLock;
 import org.apache.iotdb.db.utils.AuthUtils;
 
 import java.io.IOException;

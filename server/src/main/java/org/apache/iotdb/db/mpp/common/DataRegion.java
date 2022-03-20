@@ -20,30 +20,31 @@
 package org.apache.iotdb.db.mpp.common;
 
 /**
- * This class is used to represent the data partition info including the DataRegionId and physical node IP address
+ * This class is used to represent the data partition info including the DataRegionId and physical
+ * node IP address
  */
-//TODO: (xingtanzjr) This class should be substituted with the class defined in Consensus level
+// TODO: (xingtanzjr) This class should be substituted with the class defined in Consensus level
 public class DataRegion {
-    private Integer dataRegionId;
-    private String endpoint;
+  private Integer dataRegionId;
+  private String endpoint;
 
-    public DataRegion(Integer dataRegionId, String endpoint) {
-        this.dataRegionId = dataRegionId;
-        this.endpoint = endpoint;
-    }
+  public DataRegion(Integer dataRegionId, String endpoint) {
+    this.dataRegionId = dataRegionId;
+    this.endpoint = endpoint;
+  }
 
-    public int hashCode() {
-        return dataRegionId.hashCode();
-    }
+  public int hashCode() {
+    return dataRegionId.hashCode();
+  }
 
-    public boolean equals(Object obj) {
-        if (obj instanceof DataRegion) {
-            return this.dataRegionId.equals(((DataRegion)obj).dataRegionId);
-        }
-        return false;
+  public boolean equals(Object obj) {
+    if (obj instanceof DataRegion) {
+      return this.dataRegionId.equals(((DataRegion) obj).dataRegionId);
     }
+    return false;
+  }
 
-    public String toString() {
-        return String.format("%s/%d",this.endpoint, this.dataRegionId);
-    }
+  public String toString() {
+    return String.format("%s/%d", this.endpoint, this.dataRegionId);
+  }
 }

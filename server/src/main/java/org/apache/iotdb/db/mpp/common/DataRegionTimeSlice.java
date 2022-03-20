@@ -16,10 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.mpp.common;
 
-//TODO: (xingtanzjr) This class should be substituted with the class defined in Consensus level
+// TODO: (xingtanzjr) This class should be substituted with the class defined in Consensus level
 public class DataRegionTimeSlice {
-    long startTimestamp;
+  long startTimestamp;
 }
