@@ -19,62 +19,61 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.db.mpp.common.FragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
-import java.util.Collections;
+import com.google.common.collect.ImmutableList;
+
 import java.util.List;
 
 public class ExchangeNode extends PlanNode {
-    private PlanNode sourceNode;
-    private FragmentId sourceFragmentId;
+  private PlanNode sourceNode;
+  private FragmentId sourceFragmentId;
 
-    public ExchangeNode(PlanNodeId id) {
-        super(id);
-    }
+  public ExchangeNode(PlanNodeId id) {
+    super(id);
+  }
 
-    @Override
-    public List<PlanNode> getChildren() {
-        return ImmutableList.of(sourceNode);
-    }
+  @Override
+  public List<PlanNode> getChildren() {
+    return ImmutableList.of(sourceNode);
+  }
 
-    @Override
-    public PlanNode clone() {
-        return new ExchangeNode(getId());
-    }
+  @Override
+  public PlanNode clone() {
+    return new ExchangeNode(getId());
+  }
 
-    @Override
-    public PlanNode cloneWithChildren(List<PlanNode> children) {
-        ExchangeNode node = new ExchangeNode(getId());
-        node.setSourceNode(children.get(0));
-        return node;
-    }
+  @Override
+  public PlanNode cloneWithChildren(List<PlanNode> children) {
+    ExchangeNode node = new ExchangeNode(getId());
+    node.setSourceNode(children.get(0));
+    return node;
+  }
 
-    @Override
-    public List<String> getOutputColumnNames() {
-        return null;
-    }
+  @Override
+  public List<String> getOutputColumnNames() {
+    return null;
+  }
 
-    public void setSourceFragmentId(FragmentId sourceFragmentId) {
-        this.sourceFragmentId = sourceFragmentId;
-    }
+  public void setSourceFragmentId(FragmentId sourceFragmentId) {
+    this.sourceFragmentId = sourceFragmentId;
+  }
 
-    public FragmentId getSourceFragmentId() {
-        return sourceFragmentId;
-    }
+  public FragmentId getSourceFragmentId() {
+    return sourceFragmentId;
+  }
 
-    public PlanNode getSourceNode() {
-        return sourceNode;
-    }
+  public PlanNode getSourceNode() {
+    return sourceNode;
+  }
 
-    public void setSourceNode(PlanNode sourceNode) {
-        this.sourceNode = sourceNode;
-    }
+  public void setSourceNode(PlanNode sourceNode) {
+    this.sourceNode = sourceNode;
+  }
 
-    public String toString() {
-        return String.format("ExchangeNode-%s", getId());
-    }
-
+  public String toString() {
+    return String.format("ExchangeNode-%s", getId());
+  }
 }

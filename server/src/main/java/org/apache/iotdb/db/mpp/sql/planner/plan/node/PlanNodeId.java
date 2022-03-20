@@ -40,7 +40,7 @@ public class PlanNodeId {
 
   public boolean equals(Object obj) {
     if (obj instanceof PlanNodeId) {
-      return this.id.equals(((PlanNodeId)obj).getId());
+      return this.id.equals(((PlanNodeId) obj).getId());
     }
     return false;
   }
