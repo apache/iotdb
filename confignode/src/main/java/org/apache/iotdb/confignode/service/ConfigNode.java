@@ -18,17 +18,20 @@
  */
 package org.apache.iotdb.confignode.service;
 
+import org.apache.iotdb.commons.exception.ShutdownException;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.JMXService;
+import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.service.StartupChecks;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
-import org.apache.iotdb.confignode.exception.startup.StartupException;
-import org.apache.iotdb.confignode.service.register.JMXService;
-import org.apache.iotdb.confignode.service.register.RegisterManager;
-import org.apache.iotdb.confignode.service.startup.StartupChecks;
+import org.apache.iotdb.confignode.service.thrift.server.ConfigNodeRPCServer;
+import org.apache.iotdb.confignode.service.thrift.server.ConfigNodeRPCServerProcessor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ConfigNode implements ConfigNodeMBean {
-
+public class ConfigNode {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
 
   private final String mbeanName =
@@ -38,7 +41,7 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private static final RegisterManager registerManager = new RegisterManager();
 
-  public ConfigNode() {
+  private ConfigNode() {
     // empty constructor
   }
 
@@ -51,9 +54,11 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Setting up {}...", ConfigNodeConstant.GLOBAL_NAME);
     registerManager.register(JMXService.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
-    LOGGER.info(
-        "Congratulation, {} is set up successfully. Now, enjoy yourself!",
-        ConfigNodeConstant.GLOBAL_NAME);
+
+    ConfigNodeRPCServerProcessor configNodeRPCServerProcessor = new ConfigNodeRPCServerProcessor();
+    ConfigNodeRPCServer.getInstance().initSyncedServiceImpl(configNodeRPCServerProcessor);
+    registerManager.register(ConfigNodeRPCServer.getInstance());
+    LOGGER.info("Init rpc server success");
   }
 
   public void active() {
@@ -70,9 +75,8 @@ public class ConfigNode implements ConfigNodeMBean {
     try {
       setUp();
     } catch (StartupException e) {
-      LOGGER.error("meet error while starting up.", e);
+      LOGGER.error("Meet error while starting up.", e);
       deactivate();
-      LOGGER.error("{} exit", ConfigNodeConstant.GLOBAL_NAME);
       return;
     }
 
@@ -86,7 +90,8 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("{} is deactivated.", ConfigNodeConstant.GLOBAL_NAME);
   }
 
-  public void shutdown() {
+  @TestOnly
+  public void shutdown() throws ShutdownException {
     LOGGER.info("Deactivating {}...", ConfigNodeConstant.GLOBAL_NAME);
     registerManager.shutdownAll();
     JMXService.deregisterMBean(mbeanName);

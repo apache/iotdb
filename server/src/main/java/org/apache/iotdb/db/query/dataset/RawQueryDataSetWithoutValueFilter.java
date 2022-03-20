@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;

@@ -4,8 +4,8 @@
 
 package org.apache.iotdb.cluster.utils;
 
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +19,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 public class PlanSerializer {
 
   private static final Logger logger = LoggerFactory.getLogger(PlanSerializer.class);
-  private static final int DEFAULT_BAOS_SIZE = CommonUtils.getCpuCores() * 4;
+  private static final int DEFAULT_BAOS_SIZE = JVMCommonUtils.getCpuCores() * 4;
   private BlockingDeque<ByteArrayOutputStream> baosBlockingDeque = new LinkedBlockingDeque<>();
 
   private static final PlanSerializer instance = new PlanSerializer();
