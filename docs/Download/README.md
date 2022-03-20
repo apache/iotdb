@@ -28,7 +28,6 @@
 	    <th colspan="3">IoTDB Sources</th>
 	    <th>release notes</th>  
 	</tr>
-	<tr>
       <tr>
             <td rowspan="4">0.13.0</td>
             <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.0/apache-iotdb-0.13.0-all-bin.zip">All-in-one</a></td>
@@ -49,6 +48,7 @@
             <td><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-grafana-connector-bin.zip.sha512">SHA512</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-grafana-connector-bin.zip.asc">ASC</a></td>
       </tr>
+      <tr>
             <td rowspan="4">0.12.5</td>
             <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.5/apache-iotdb-0.12.5-all-bin.zip">All-in-one</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.12.5/apache-iotdb-0.12.5-all-bin.zip.sha512">SHA512</a></td>
