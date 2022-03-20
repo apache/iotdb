@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.qp.sql;
+package org.apache.iotdb.db.sql;
 
 import org.apache.iotdb.db.sql.parser.ASTVisitor;
 
