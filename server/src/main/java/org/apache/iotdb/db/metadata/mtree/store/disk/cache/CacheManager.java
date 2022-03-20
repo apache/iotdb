@@ -136,7 +136,9 @@ public abstract class CacheManager implements ICacheManager {
     CacheEntry cacheEntry = getCacheEntry(node);
     if (!cacheEntry.isVolatile()) {
       cacheEntry.setVolatile(true);
-      getBelongedContainer(node).updateMNode(node.getName());
+      if (!node.isStorageGroup()) {
+        getBelongedContainer(node).updateMNode(node.getName());
+      }
       // MNode update operation like node replace may reset the mapping between cacheEntry and node,
       // thus it should be updated
       updateCacheStatusAfterUpdate(cacheEntry, node);
@@ -152,15 +154,21 @@ public abstract class CacheManager implements ICacheManager {
    * @param node
    */
   private void addNodeToBuffer(IMNode node) {
+    if (node.isStorageGroup()) {
+      // todo fix me: storageGroup node need to sync with disk
+      return;
+    }
     IMNode parent = node.getParent();
+    IMNode current = node;
     CacheEntry cacheEntry;
-    while (parent != null) {
+    while (!current.isStorageGroup()) {
       cacheEntry = getCacheEntry(parent);
       if (isInNodeCache(cacheEntry)) {
         if (isInNodeCache(cacheEntry)) {
           // the ancestors of volatile node should not stay in nodeCache in which the node will be
           // evicted
           removeFromNodeCache(cacheEntry);
+          current = parent;
           parent = parent.getParent();
         } else {
           break;
@@ -373,7 +381,7 @@ public abstract class CacheManager implements ICacheManager {
     // do pin MNode in memory
     if (!cacheEntry.isPinned()) {
       IMNode parent = node.getParent();
-      if (parent != null) {
+      if (!node.isStorageGroup()) {
         getCacheEntry(parent).pin();
       }
     }
@@ -399,7 +407,7 @@ public abstract class CacheManager implements ICacheManager {
     if (!cacheEntry.isPinned()) {
       memManager.releasePinnedMemResource(node);
       IMNode parent = node.getParent();
-      while (parent != null) {
+      while (!node.isStorageGroup()) {
         node = parent;
         parent = node.getParent();
         cacheEntry = getCacheEntry(node);

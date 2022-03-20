@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -31,8 +32,9 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.LRUCacheManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFileManager;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SFManager;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +60,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private ICacheManager cacheManager = new LRUCacheManager();
 
-  private ISchemaFileManager file;
+  private ISchemaFile file;
 
   private IMNode root;
 
@@ -70,10 +72,16 @@ public class CachedMTreeStore implements IMTreeStore {
   private Lock writeLock = readWriteLock.writeLock();
 
   @Override
-  public void init() throws MetadataException, IOException {
+  public void init(PartialPath rootPath, boolean isStorageGroup)
+      throws MetadataException, IOException {
+    if (!isStorageGroup) {
+      throw new MetadataException("CachedMTreeStore only support subTree below storage group");
+    }
     MNodeContainers.IS_DISK_MODE = true;
     memManager.init();
-    file = SFManager.getInstance();
+    file =
+        SchemaFile.initSchemaFile(
+            rootPath.getFullPath(), IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
     root = file.init();
     cacheManager.initRootStatus(root);
     flushTask = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("MTreeFlushThread");
@@ -156,6 +164,8 @@ public class CachedMTreeStore implements IMTreeStore {
     if (!getCachedMNodeContainer(parent).isVolatile()) {
       try {
         node = file.getChildNode(parent, name);
+      } catch (MetadataException e) {
+        // todo fix this exception handler
       } catch (IOException e) {
         throw new MetadataException(e);
       }
@@ -265,7 +275,7 @@ public class CachedMTreeStore implements IMTreeStore {
         // the container has been persisted and this child is not a new child, which means the child
         // has been persisted and should be deleted from disk
         try {
-          file.deleteMNode(deletedMNode);
+          file.delete(deletedMNode);
         } catch (IOException e) {
           throw new MetadataException(e);
         }

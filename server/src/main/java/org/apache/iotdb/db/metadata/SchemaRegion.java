@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -193,12 +194,12 @@ public class SchemaRegion {
 
   // Because the writer will be used later and should not be closed here.
   @SuppressWarnings("squid:S2093")
-  public synchronized void init(IStorageGroupMNode storageGroupMNode) throws MetadataException {
+  public synchronized IStorageGroupMNode init(PartialPath storageGroup) throws MetadataException {
     if (initialized) {
-      return;
+      return mtree.getStorageGroupMNode();
     }
 
-    storageGroupFullPath = storageGroupMNode.getFullPath();
+    storageGroupFullPath = storageGroup.getFullPath();
 
     sgSchemaDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
     File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath);
@@ -219,20 +220,25 @@ public class SchemaRegion {
       isRecovering = true;
 
       tagManager = new TagManager(sgSchemaDirPath);
-      mtree = new MTreeBelowSG(storageGroupMNode);
+      mtree = new MTreeBelowSG(storageGroup);
 
       int lineNumber = initFromLog(logFile);
 
       logWriter = new MLogWriter(sgSchemaDirPath, MetadataConstant.METADATA_LOG);
       logWriter.setLogNum(lineNumber);
       isRecovering = false;
-    } catch (MetadataException | IOException e) {
+    } catch (IOException e) {
       logger.error(
           "Cannot recover all MTree from {} file, we try to recover as possible as we can",
           storageGroupFullPath,
           e);
+      throw new MetadataException(e);
     }
     initialized = true;
+
+    IStorageGroupMNode storageGroupMNode = mtree.getStorageGroupMNode();
+    storageGroupMNode.setSchemaRegion(this);
+    return storageGroupMNode;
   }
 
   public void forceMlog() {
@@ -259,6 +265,7 @@ public class SchemaRegion {
             storageGroupFullPath);
         return idx;
       } catch (Exception e) {
+        e.printStackTrace();
         throw new IOException("Failed to parse " + storageGroupFullPath + " mlog.bin for err:" + e);
       }
     } else {
@@ -1861,4 +1868,9 @@ public class SchemaRegion {
     return mountedMNode;
   }
   // endregion
+
+  @TestOnly
+  public MTreeBelowSG getMtree() {
+    return mtree;
+  }
 }

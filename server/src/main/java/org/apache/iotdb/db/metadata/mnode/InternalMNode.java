@@ -150,8 +150,6 @@ public class InternalMNode extends MNode {
 
     oldChildNode.moveDataToNewMNode(newChildNode);
 
-    newChildNode.setCacheEntry(oldChildNode.getCacheEntry());
-
     children.replace(newChildNode.getName(), newChildNode);
   }
 

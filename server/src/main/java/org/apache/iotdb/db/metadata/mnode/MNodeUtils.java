@@ -42,6 +42,8 @@ public class MNodeUtils {
       }
       if (node.getParent() != null) {
         node.getParent().replaceChild(node.getName(), entityMNode);
+      } else {
+        node.moveDataToNewMNode(entityMNode);
       }
     }
     return entityMNode;

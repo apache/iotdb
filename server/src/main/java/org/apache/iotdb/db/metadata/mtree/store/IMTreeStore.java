@@ -23,6 +23,7 @@ import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.io.IOException;
 import java.util.List;
@@ -34,7 +35,7 @@ import java.util.List;
  */
 public interface IMTreeStore {
 
-  void init() throws MetadataException, IOException;
+  void init(PartialPath rootPath, boolean isStorageGroup) throws MetadataException, IOException;
 
   IMNode getRoot();
 

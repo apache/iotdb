@@ -19,17 +19,15 @@
 package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MemMNodeIterator;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -39,16 +37,21 @@ import java.util.Queue;
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
 public class MemMTreeStore implements IMTreeStore {
 
-  public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-  private static final Logger logger = LoggerFactory.getLogger(MemMTreeStore.class);
-
   private IMNode root;
 
-  public MemMTreeStore() {
-    this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
-  }
+  public MemMTreeStore() {}
 
-  public void init() throws IOException {}
+  public void init(PartialPath rootPath, boolean isStorageGroup) throws IOException {
+    if (isStorageGroup) {
+      this.root =
+          new StorageGroupMNode(
+              null,
+              rootPath.getTailNode(),
+              IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+    } else {
+      this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+    }
+  }
 
   @Override
   public IMNode getRoot() {

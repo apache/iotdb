@@ -38,7 +38,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -74,11 +73,7 @@ public abstract class MTreeBelowSGTest {
 
   private MTreeBelowSG getStorageGroup(PartialPath path) throws MetadataException {
     root.setStorageGroup(path);
-    try {
-      return new MTreeBelowSG(root.getStorageGroupNodeByStorageGroupPath(path));
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
+    return root.getStorageGroupNodeByStorageGroupPath(path).getSchemaRegion().getMtree();
   }
 
   @Test

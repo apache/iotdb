@@ -132,24 +132,20 @@ public class MTreeBelowSG implements Serializable {
   private int levelOfSG;
 
   // region MTree initialization, clear and serialization
-  public MTreeBelowSG(IStorageGroupMNode storageGroupMNode) throws MetadataException, IOException {
-    this.storageGroupMNode = storageGroupMNode;
-    levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
-    init();
-  }
-
-  public IStorageGroupMNode getStorageGroupMNode() {
-    return this.storageGroupMNode;
-  }
-
-  private void init() throws MetadataException, IOException {
+  public MTreeBelowSG(PartialPath storageGroup) throws MetadataException, IOException {
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePersistentSchema()) {
       store = new CachedMTreeStore();
     } else {
       store = new MemMTreeStore();
     }
 
-    store.init();
+    store.init(storageGroup, true);
+    storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
+    levelOfSG = storageGroup.getNodeLength() - 1;
+  }
+
+  public IStorageGroupMNode getStorageGroupMNode() {
+    return this.storageGroupMNode;
   }
 
   public void clear() {
@@ -396,7 +392,6 @@ public class MTreeBelowSG implements Serializable {
     MetaFormatUtils.checkTimeseries(devicePath);
     IMNode cur = storageGroupMNode;
     IMNode child;
-    boolean hasSetStorageGroup = false;
     Template upperTemplate = cur.getSchemaTemplate();
     // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
     for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
@@ -422,7 +417,9 @@ public class MTreeBelowSG implements Serializable {
         upperTemplate = cur.getSchemaTemplate();
       }
     }
-    unPinPath(cur.getParent());
+    if (!cur.isStorageGroup()) {
+      unPinPath(cur.getParent());
+    }
     return new Pair<>(cur, upperTemplate);
   }
 
@@ -533,7 +530,9 @@ public class MTreeBelowSG implements Serializable {
       // update upper template
       upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
     }
-    unPinPath(cur.getParent());
+    if (!cur.isStorageGroup()) {
+      unPinPath(cur.getParent());
+    }
     return cur;
   }
 
@@ -1043,7 +1042,9 @@ public class MTreeBelowSG implements Serializable {
       cur = next;
     }
     if (!isInTemplate) {
-      unPinPath(cur.getParent());
+      if (!cur.isStorageGroup()) {
+        unPinPath(cur.getParent());
+      }
     }
     return cur;
   }
@@ -1489,10 +1490,11 @@ public class MTreeBelowSG implements Serializable {
   }
 
   public void unPinPath(IMNode node) {
-    while (node.getParent() != null) {
+    while (!node.isStorageGroup()) {
       store.unPin(node);
       node = node.getParent();
     }
+    store.unPin(node);
   }
 
   public void unPinMNode(IMNode node) {

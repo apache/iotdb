@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.metadata.mtree;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -33,7 +32,6 @@ import org.apache.iotdb.db.metadata.SchemaRegion;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveSGCollector;
@@ -64,6 +62,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 
 public class MTreeAboveSG {
 
@@ -77,9 +76,9 @@ public class MTreeAboveSG {
     init();
   }
 
-  public void init() throws MetadataException, IOException {
+  private void init() throws MetadataException, IOException {
     store = new MemMTreeStore();
-    store.init();
+    store.init(new PartialPath(PATH_ROOT), false);
     this.root = store.getRoot();
   }
 
@@ -140,14 +139,10 @@ public class MTreeAboveSG {
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
-        IStorageGroupMNode storageGroupMNode =
-            new StorageGroupMNode(
-                cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
 
         // init SchemaRegion
         SchemaRegion schemaRegion = new SchemaRegion();
-        storageGroupMNode.setSchemaRegion(schemaRegion);
-        schemaRegion.init(storageGroupMNode);
+        IStorageGroupMNode storageGroupMNode = schemaRegion.init(path);
 
         IMNode result = cur.addChild(nodeNames[i], storageGroupMNode);
 
