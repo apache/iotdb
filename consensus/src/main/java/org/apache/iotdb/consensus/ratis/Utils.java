@@ -23,12 +23,19 @@ import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.consensus.common.GroupType;
 import org.apache.iotdb.consensus.common.Peer;
 
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.transport.TByteBuffer;
+import org.apache.thrift.transport.TTransportException;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
+import java.nio.ByteBuffer;
+import java.util.Collections;
 
 public class Utils {
   private static final String IOTDB_RATIS_KEY = "iotdb@_ratis_key";
@@ -81,5 +88,22 @@ public class Utils {
     String consensusGroupString = new String(AESDecrypted);
     String[] items = consensusGroupString.split("-");
     return new ConsensusGroupId(GroupType.valueOf(items[0]), Long.parseLong(items[1]));
+  }
+
+  public static ByteBuffer serializeTSStatus(TSStatus status) throws TException{
+    // TODO Pooling ByteBuffer
+    TByteBuffer byteBuffer = new TByteBuffer(ByteBuffer.allocate(1000));
+    TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
+    status.write(protocol);
+    byteBuffer.getByteBuffer().flip();
+    return byteBuffer.getByteBuffer();
+  }
+
+  public static TSStatus deserializeFrom(ByteBuffer buffer) throws TException {
+    TSStatus status = new TSStatus();
+    TByteBuffer byteBuffer = new TByteBuffer(buffer);
+    TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
+    status.read(protocol);
+    return status;
   }
 }

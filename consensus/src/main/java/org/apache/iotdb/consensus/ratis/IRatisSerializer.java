@@ -25,10 +25,6 @@ import java.nio.ByteBuffer;
 
 public interface IRatisSerializer {
 
-  ByteBuffer serializeTSStatus(TSStatus tsStatus);
-
-  TSStatus deserializeTSStatus(ByteBuffer buffer);
-
   ByteBuffer serializeDataSet(DataSet dataSet);
 
   DataSet deserializeDataSet(ByteBuffer buffer);

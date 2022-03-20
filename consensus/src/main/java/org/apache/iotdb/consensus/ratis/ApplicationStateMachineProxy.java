@@ -29,8 +29,10 @@ import org.apache.ratis.protocol.Message;
 import org.apache.ratis.statemachine.TransactionContext;
 import org.apache.ratis.statemachine.impl.BaseStateMachine;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
+import org.apache.thrift.TException;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 
 public class ApplicationStateMachineProxy extends BaseStateMachine {
@@ -59,7 +61,12 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
             log.getStateMachineLogEntry().getLogData().asReadOnlyByteBuffer());
     TSStatus result = applicationStateMachine.write(request);
 
-    Message ret = Message.valueOf(ByteString.copyFrom(serializer.serializeTSStatus(result)));
+    Message ret = null;
+    try {
+       ByteBuffer serializedStatus = Utils.serializeTSStatus(result);
+       ret = Message.valueOf(ByteString.copyFrom(serializedStatus));
+    } catch (TException ignored) {}
+
     return CompletableFuture.completedFuture(ret);
   }
 

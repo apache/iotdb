@@ -85,7 +85,7 @@ public class RatisConsensusTest {
       if (testRequest.isIncr()) {
         integer.incrementAndGet();
       }
-      return new TSStatus();
+      return new TSStatus(200);
     }
 
     @Override
@@ -97,16 +97,6 @@ public class RatisConsensusTest {
   }
 
   private static class TestSerializer implements IRatisSerializer {
-
-    @Override
-    public ByteBuffer serializeTSStatus(TSStatus tsStatus) {
-      return ByteBuffer.wrap(new byte[] {});
-    }
-
-    @Override
-    public TSStatus deserializeTSStatus(ByteBuffer buffer) {
-      return new TSStatus(0);
-    }
 
     @Override
     public ByteBuffer serializeDataSet(DataSet dataSet) {
@@ -225,6 +215,7 @@ public class RatisConsensusTest {
             if (response.getException() != null) {
               response.getException().printStackTrace(System.out);
             }
+            Assert.assertEquals(response.getStatus(), new TSStatus(200));
           });
     }
     executorService.shutdown();

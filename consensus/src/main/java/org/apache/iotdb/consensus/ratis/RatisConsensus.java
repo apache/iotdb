@@ -42,6 +42,7 @@ import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.apache.ratis.util.NetUtils;
+import org.apache.thrift.TException;
 
 import java.io.File;
 import java.io.IOException;
@@ -133,9 +134,9 @@ public class RatisConsensus implements IConsensus {
       ByteBufferConsensusRequest request = (ByteBufferConsensusRequest) IConsensusRequest;
       Message message = Message.valueOf(ByteString.copyFrom(request.getContent()));
       RaftClientReply reply = client.io().send(message);
-      writeResult =
-          serializer.deserializeTSStatus(reply.getMessage().getContent().asReadOnlyByteBuffer());
-    } catch (IOException e) {
+      writeResult = Utils.deserializeFrom(
+              reply.getMessage().getContent().asReadOnlyByteBuffer());
+    } catch (IOException | TException e) {
       return ConsensusWriteResponse.newBuilder()
           .setException(new RatisRequestFailedException())
           .build();
