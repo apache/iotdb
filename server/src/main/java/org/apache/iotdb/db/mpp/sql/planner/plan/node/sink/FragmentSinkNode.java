@@ -16,21 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 
-package org.apache.iotdb.db.sql.analyze;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+import java.util.List;
 
-import org.apache.iotdb.db.sql.statement.Statement;
-
-/** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {
-
-  private Statement statement;
-
-  public Analysis() {}
-
-  public void setStatement(Statement rewrittenStatement) {
-    this.statement = rewrittenStatement;
+public class FragmentSinkNode extends SinkNode {
+  public FragmentSinkNode(PlanNodeId id) {
+    super(id);
   }
+
+  @Override
+  public List<PlanNode> getChildren() {
+    return null;
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return null;
+  }
+
+  @Override
+  public void send() {}
+
+  @Override
+  public void close() throws Exception {}
 }

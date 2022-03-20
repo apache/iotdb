@@ -16,21 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-package org.apache.iotdb.db.sql.analyze;
+import org.apache.iotdb.db.mpp.common.QueryContext;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 
-import org.apache.iotdb.db.sql.statement.Statement;
-
-import org.apache.iotdb.db.sql.statement.Statement;
-
-/** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {
-
-  private Statement statement;
-
-  public Analysis() {}
-
-  public void setStatement(Statement rewrittenStatement) {
-    this.statement = rewrittenStatement;
-  }
+/**
+ * LogicalQueryPlan represents a logical query plan. It stores the root node of corresponding query
+ * plan node tree.
+ */
+public class LogicalQueryPlan {
+  private QueryContext context;
+  private PlanNode rootNode;
 }

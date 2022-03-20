@@ -16,21 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.operator.process;
 
-package org.apache.iotdb.db.sql.analyze;
+import org.apache.iotdb.db.mpp.common.TsBlock;
+import org.apache.iotdb.db.mpp.operator.OperatorContext;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+import com.google.common.util.concurrent.ListenableFuture;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+public class FillOperator implements ProcessOperator {
+  @Override
+  public OperatorContext getOperatorContext() {
+    return null;
+  }
 
-/** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {
+  @Override
+  public ListenableFuture<Void> isBlocked() {
+    return ProcessOperator.super.isBlocked();
+  }
 
-  private Statement statement;
+  @Override
+  public TsBlock next() {
+    return null;
+  }
 
-  public Analysis() {}
+  @Override
+  public boolean hasNext() {
+    return false;
+  }
 
-  public void setStatement(Statement rewrittenStatement) {
-    this.statement = rewrittenStatement;
+  @Override
+  public void close() throws Exception {
+    ProcessOperator.super.close();
   }
 }

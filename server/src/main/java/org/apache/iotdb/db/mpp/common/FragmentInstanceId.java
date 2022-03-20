@@ -16,21 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.common;
 
-package org.apache.iotdb.db.sql.analyze;
+public class FragmentInstanceId {
 
-import org.apache.iotdb.db.sql.statement.Statement;
+  private final String fullId;
 
-import org.apache.iotdb.db.sql.statement.Statement;
-
-/** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {
-
-  private Statement statement;
-
-  public Analysis() {}
-
-  public void setStatement(Statement rewrittenStatement) {
-    this.statement = rewrittenStatement;
+  public FragmentInstanceId(String fullId) {
+    this.fullId = fullId;
   }
 }

@@ -16,21 +16,43 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.operator.source;
 
-package org.apache.iotdb.db.sql.analyze;
+import org.apache.iotdb.db.mpp.common.TsBlock;
+import org.apache.iotdb.db.mpp.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+import com.google.common.util.concurrent.ListenableFuture;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+public class SeriesScanOperator implements SourceOperator {
 
-/** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {
+  @Override
+  public OperatorContext getOperatorContext() {
+    return null;
+  }
 
-  private Statement statement;
+  @Override
+  public ListenableFuture<Void> isBlocked() {
+    return SourceOperator.super.isBlocked();
+  }
 
-  public Analysis() {}
+  @Override
+  public TsBlock next() {
+    return null;
+  }
 
-  public void setStatement(Statement rewrittenStatement) {
-    this.statement = rewrittenStatement;
+  @Override
+  public boolean hasNext() {
+    return false;
+  }
+
+  @Override
+  public void close() throws Exception {
+    SourceOperator.super.close();
+  }
+
+  @Override
+  public PlanNodeId getSourceId() {
+    return null;
   }
 }

@@ -16,21 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-package org.apache.iotdb.db.sql.analyze;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+public class FragmentInstance {
+  private FragmentInstanceId id;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+  // The reference of PlanFragment which this instance is generated from
+  private PlanFragment fragment;
 
-/** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {
-
-  private Statement statement;
-
-  public Analysis() {}
-
-  public void setStatement(Statement rewrittenStatement) {
-    this.statement = rewrittenStatement;
-  }
+  // We can add some more params for a specific FragmentInstance
+  // So that we can make different FragmentInstance owns different data range.
 }

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,20 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.analyze;
+package org.apache.iotdb.db.qp.sql;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+import org.apache.iotdb.db.sql.parser.ASTVisitor;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+import org.junit.After;
+import org.junit.Before;
 
-/** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {
+import java.time.ZonedDateTime;
 
-  private Statement statement;
+public class ASTVisitorTest {
 
-  public Analysis() {}
+  ASTVisitor astVisitor;
 
-  public void setStatement(Statement rewrittenStatement) {
-    this.statement = rewrittenStatement;
+  @Before
+  public void setUp() {
+    astVisitor = new ASTVisitor();
+    astVisitor.setZoneId(ZonedDateTime.now().getOffset());
   }
+
+  @After
+  public void tearDown() {}
+
+  // TODO: add more tests
 }

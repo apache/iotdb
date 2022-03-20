@@ -16,21 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-package org.apache.iotdb.db.sql.analyze;
+import org.apache.iotdb.db.mpp.common.QueryContext;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+import java.util.List;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+public class DistributedQueryPlan {
+  private QueryContext context;
+  private PlanNode rootNode;
+  private PlanFragment rootFragment;
 
-/** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {
-
-  private Statement statement;
-
-  public Analysis() {}
-
-  public void setStatement(Statement rewrittenStatement) {
-    this.statement = rewrittenStatement;
-  }
+  // TODO: consider whether this field is necessary when do the implementation
+  private List<PlanFragment> fragments;
 }

@@ -16,21 +16,46 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.operator.sink;
 
-package org.apache.iotdb.db.sql.analyze;
+import org.apache.iotdb.db.mpp.common.TsBlock;
+import org.apache.iotdb.db.mpp.operator.OperatorContext;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+import com.google.common.util.concurrent.ListenableFuture;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+public class FragmentSinkOperator implements SinkOperator {
 
-/** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {
-
-  private Statement statement;
-
-  public Analysis() {}
-
-  public void setStatement(Statement rewrittenStatement) {
-    this.statement = rewrittenStatement;
+  @Override
+  public OperatorContext getOperatorContext() {
+    return null;
   }
+
+  @Override
+  public ListenableFuture<Void> isBlocked() {
+    return SinkOperator.super.isBlocked();
+  }
+
+  @Override
+  public TsBlock next() {
+    return null;
+  }
+
+  @Override
+  public boolean hasNext() {
+    return false;
+  }
+
+  @Override
+  public void close() throws Exception {
+    SinkOperator.super.close();
+  }
+
+  @Override
+  public void send(TsBlock tsBlock) {}
+
+  @Override
+  public void setNoMoreTsBlocks() {}
+
+  @Override
+  public void abort() {}
 }

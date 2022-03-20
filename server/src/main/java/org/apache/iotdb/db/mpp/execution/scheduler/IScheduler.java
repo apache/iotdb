@@ -16,21 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.execution.scheduler;
 
-package org.apache.iotdb.db.sql.analyze;
+import org.apache.iotdb.db.mpp.common.FragmentId;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.execution.FragmentInfo;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+import io.airlift.units.Duration;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+public interface IScheduler {
 
-/** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {
+  void start();
 
-  private Statement statement;
+  void abort();
 
-  public Analysis() {}
+  Duration getTotalCpuTime();
 
-  public void setStatement(Statement rewrittenStatement) {
-    this.statement = rewrittenStatement;
-  }
+  FragmentInfo getFragmentInfo();
+
+  void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
+
+  void cancelFragment(FragmentId fragmentId);
 }

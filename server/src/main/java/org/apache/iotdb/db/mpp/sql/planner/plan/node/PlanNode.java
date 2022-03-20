@@ -16,21 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
-package org.apache.iotdb.db.sql.analyze;
+import java.util.List;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+import static java.util.Objects.requireNonNull;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+/** The base class of query executable operators, which is used to compose logical query plan. */
+// TODO: consider how to restrict the children type for each type of ExecOperator
+public abstract class PlanNode {
 
-/** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {
+  private PlanNodeId id;
 
-  private Statement statement;
+  protected PlanNode(PlanNodeId id) {
+    requireNonNull(id, "id is null");
+    this.id = id;
+  }
 
-  public Analysis() {}
+  public PlanNodeId getId() {
+    return id;
+  }
 
-  public void setStatement(Statement rewrittenStatement) {
-    this.statement = rewrittenStatement;
+  public abstract List<PlanNode> getChildren();
+
+  public abstract List<String> getOutputColumnNames();
+
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitPlan(this, context);
   }
 }

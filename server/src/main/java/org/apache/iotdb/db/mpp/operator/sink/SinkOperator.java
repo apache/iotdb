@@ -16,21 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.operator.sink;
 
-package org.apache.iotdb.db.sql.analyze;
+import org.apache.iotdb.db.mpp.common.TsBlock;
+import org.apache.iotdb.db.mpp.operator.Operator;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+public interface SinkOperator extends Operator {
 
-import org.apache.iotdb.db.sql.statement.Statement;
+  /**
+   * Sends a tsBlock to an unpartitioned buffer. If no-more-tsBlocks has been set, the send tsBlock
+   * call is ignored. This can happen with limit queries.
+   */
+  void send(TsBlock tsBlock);
 
-/** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {
+  /**
+   * Notify SinkHandle that no more tsBlocks will be sent. Any future calls to send a tsBlock are
+   * ignored.
+   */
+  void setNoMoreTsBlocks();
 
-  private Statement statement;
-
-  public Analysis() {}
-
-  public void setStatement(Statement rewrittenStatement) {
-    this.statement = rewrittenStatement;
-  }
+  /**
+   * Abort the sink handle, discarding all tsBlocks which may still in memory buffer, but blocking
+   * readers. It is expected that readers will be unblocked when the failed query is cleaned up.
+   */
+  void abort();
 }

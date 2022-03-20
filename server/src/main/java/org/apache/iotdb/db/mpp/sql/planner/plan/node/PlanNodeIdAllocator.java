@@ -16,21 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
-package org.apache.iotdb.db.sql.analyze;
-
-import org.apache.iotdb.db.sql.statement.Statement;
-
-import org.apache.iotdb.db.sql.statement.Statement;
-
-/** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {
-
-  private Statement statement;
-
-  public Analysis() {}
-
-  public void setStatement(Statement rewrittenStatement) {
-    this.statement = rewrittenStatement;
-  }
-}
+/** A centralized PlanNodeId generator */
+public class PlanNodeIdAllocator {}
