@@ -16,9 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.protocol.influxdb.constant;
+package org.apache.iotdb.db.protocol.influxdb.function;
 
-public class InfluxDBConstant {
+public class InfluxFunctionValue {
 
-  public static final String PLACE_HOLDER = "PH";
+  private Object value;
+  private Long timestamp;
+
+  public InfluxFunctionValue(Object value, Long timestamp) {
+    this.value = value;
+    this.timestamp = timestamp;
+  }
+
+  public Object getValue() {
+    return value;
+  }
+
+  public void setValue(Object value) {
+    this.value = value;
+  }
+
+  public Long getTimestamp() {
+    return timestamp;
+  }
+
+  public void setTimestamp(Long timestamp) {
+    this.timestamp = timestamp;
+  }
 }
