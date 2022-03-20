@@ -46,11 +46,15 @@ public enum FragmentInstanceState {
   /** Instance execution failed. */
   FAILED(true);
 
-  public static final Set<FragmentInstanceState> TERMINAL_TASK_STATES =
+  public static final Set<FragmentInstanceState> TERMINAL_INSTANCE_STATES =
       Stream.of(FragmentInstanceState.values())
           .filter(FragmentInstanceState::isDone)
           .collect(toImmutableSet());
 
+  /**
+   * If doneState is true, indicating that it won't transfer to another state anymore, i.e. a
+   * terminal state.
+   */
   private final boolean doneState;
 
   FragmentInstanceState(boolean doneState) {
