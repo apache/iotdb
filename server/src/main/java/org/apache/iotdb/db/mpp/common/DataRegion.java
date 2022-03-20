@@ -27,6 +27,11 @@ public class DataRegion {
     private Integer dataRegionId;
     private String endpoint;
 
+    public DataRegion(Integer dataRegionId, String endpoint) {
+        this.dataRegionId = dataRegionId;
+        this.endpoint = endpoint;
+    }
+
     public int hashCode() {
         return dataRegionId.hashCode();
     }
@@ -36,5 +41,9 @@ public class DataRegion {
             return this.dataRegionId.equals(((DataRegion)obj).dataRegionId);
         }
         return false;
+    }
+
+    public String toString() {
+        return String.format("%s/%d",this.endpoint, this.dataRegionId);
     }
 }

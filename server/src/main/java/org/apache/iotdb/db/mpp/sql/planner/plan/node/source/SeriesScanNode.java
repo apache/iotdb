@@ -22,6 +22,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.DataRegion;
 import org.apache.iotdb.db.mpp.common.OrderBy;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -102,12 +103,12 @@ public class SeriesScanNode extends SourceNode {
 
   @Override
   public PlanNode clone() {
-    return null;
+    return new SeriesScanNode(PlanNodeAllocator.generateId(), this.getSeriesPath());
   }
 
   @Override
   public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+    return this.clone();
   }
 
   @Override
@@ -134,5 +135,10 @@ public class SeriesScanNode extends SourceNode {
 
   public DataRegion getDataRegion() {
     return dataRegion;
+  }
+
+  public String toString() {
+    return String.format("SeriesScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
+            this.getId(), this.getSeriesPath(), this.getDataRegion());
   }
 }

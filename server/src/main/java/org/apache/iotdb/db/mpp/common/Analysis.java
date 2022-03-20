@@ -53,4 +53,8 @@ public class Analysis {
             return null;
         }
     }
+
+    public void setDataPartitionInfo(Map<String, Map<DataRegionTimeSlice, List<DataRegion>>> dataPartitionInfo) {
+        this.dataPartitionInfo = dataPartitionInfo;
+    }
 }

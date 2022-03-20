@@ -23,5 +23,5 @@ import org.apache.iotdb.db.mpp.common.TsBlock;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 
 public interface PlanOptimizer {
-  PlanNode<TsBlock> optimize(PlanNode<TsBlock> plan, QueryContext context);
+  PlanNode optimize(PlanNode plan, QueryContext context);
 }

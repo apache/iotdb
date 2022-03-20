@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,29 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.db.mpp.common.QueryContext;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
-/**
- * LogicalQueryPlan represents a logical query plan. It stores the root node of corresponding query
- * plan node tree.
- */
-public class LogicalQueryPlan {
-  private QueryContext context;
-  private PlanNode rootNode;
+public class PlanNodeUtil {
+    public static void printPlanNode(PlanNode root) {
+        printPlanNodeWithLevel(root, 0);
+    }
 
-  public LogicalQueryPlan(QueryContext context, PlanNode rootNode) {
-    this.context = context;
-    this.rootNode = rootNode;
-  }
+    private static void printPlanNodeWithLevel(PlanNode root, int level) {
+        printTab(level);
+        System.out.println(root.toString());
+        for (PlanNode child : root.getChildren()) {
+            printPlanNodeWithLevel(child, level + 1);
+        }
+    }
 
-  public PlanNode getRootNode() {
-    return rootNode;
-  }
-
-  public QueryContext getContext() {
-    return context;
-  }
+    private static void printTab(int count) {
+        for(int i = 0 ; i < count; i ++) {
+            System.out.print("\t");
+        }
+    }
 }

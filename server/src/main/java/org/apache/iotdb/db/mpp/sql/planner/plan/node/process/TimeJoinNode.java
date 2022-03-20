@@ -21,9 +21,11 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 import org.apache.iotdb.db.mpp.common.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.common.OrderBy;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -47,13 +49,21 @@ public class TimeJoinNode extends ProcessNode {
   private List<PlanNode> children;
 
   public TimeJoinNode(
+          PlanNodeId id,
+          OrderBy mergeOrder,
+          FilterNullPolicy filterNullPolicy) {
+    super(id);
+    this.mergeOrder = mergeOrder;
+    this.filterNullPolicy = filterNullPolicy;
+    this.children = new ArrayList<>();
+  }
+
+  public TimeJoinNode(
       PlanNodeId id,
       OrderBy mergeOrder,
       FilterNullPolicy filterNullPolicy,
       List<PlanNode> children) {
-    super(id);
-    this.mergeOrder = mergeOrder;
-    this.filterNullPolicy = filterNullPolicy;
+    this(id, mergeOrder, filterNullPolicy);
     this.children = children;
   }
 
@@ -64,12 +74,14 @@ public class TimeJoinNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return null;
+    return new TimeJoinNode(PlanNodeAllocator.generateId(), this.mergeOrder, this.filterNullPolicy);
   }
 
   @Override
   public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+    TimeJoinNode node = (TimeJoinNode) this.clone();
+    node.setChildren(children);
+    return node;
   }
 
   @Override
@@ -99,4 +111,9 @@ public class TimeJoinNode extends ProcessNode {
   public void setWithoutPolicy(FilterNullPolicy filterNullPolicy) {
     this.filterNullPolicy = filterNullPolicy;
   }
+
+  public String toString() {
+    return "TimeJoinNode-" + this.getId();
+  }
+
 }

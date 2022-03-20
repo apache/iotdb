@@ -37,6 +37,11 @@ public class DistributionPlanner {
         this.logicalPlan = logicalPlan;
     }
 
+    public PlanNode rewriteSource() {
+        SourceRewriter rewriter = new SourceRewriter();
+        return rewriter.visit(logicalPlan.getRootNode(), new DistributionPlanContext());
+    }
+
     public DistributedQueryPlan planFragments() {
         return null;
     }
@@ -64,7 +69,7 @@ public class DistributionPlanner {
                 } else {
                     // In a general logical query plan, the children of TimeJoinNode should only be SeriesScanNode or SeriesAggregateScanNode
                     // So this branch should not be touched.
-                    root.addChild(generateDistributedPlan(child, context));
+                    root.addChild(visit(child, context));
                 }
             }
 
@@ -93,7 +98,7 @@ public class DistributionPlanner {
             return root;
         }
 
-        public PlanNode generateDistributedPlan(PlanNode node, DistributionPlanContext context) {
+        public PlanNode visit(PlanNode node, DistributionPlanContext context) {
             return node.accept(this, context);
         }
     }
