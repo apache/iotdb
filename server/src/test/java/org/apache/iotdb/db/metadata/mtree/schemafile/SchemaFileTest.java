@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
@@ -66,7 +67,7 @@ public class SchemaFileTest {
   @Test
   public void essentialTestSchemaFile() throws IOException, MetadataException {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1");
-    IMNode newSGNode = new StorageGroupEntityMNode(null, "newSG", 10000L);
+    IStorageGroupMNode newSGNode = new StorageGroupEntityMNode(null, "newSG", 10000L);
     sf.updateStorageGroupNode(newSGNode);
 
     IMNode root = virtualTriangleMTree(5, "root.test");
@@ -192,7 +193,7 @@ public class SchemaFileTest {
   @Test
   public void testVerticalTree() throws MetadataException, IOException {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.sgvt.vt");
-    IMNode sgNode = new StorageGroupEntityMNode(null, "sg", 11_111L);
+    IStorageGroupMNode sgNode = new StorageGroupEntityMNode(null, "sg", 11_111L);
     sf.updateStorageGroupNode(sgNode);
 
     IMNode root = getVerticalTree(100, "VT");

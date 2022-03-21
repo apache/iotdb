@@ -18,18 +18,21 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -38,24 +41,33 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer.getCachedMNodeContainer;
 
-public class MockSFManager implements ISchemaFileManager {
+public class MockSchemaFile implements ISchemaFile {
+
+  private PartialPath storageGroupPath;
+  private IStorageGroupMNode storageGroupMNode;
 
   private long fileTail = 0;
-
   private final Map<Long, Map<String, IMNode>> mockFile = new HashMap<>();
 
-  @Override
-  public IMNode init() {
-    IMNode root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
-    writeMNode(root);
-    return root;
+  public MockSchemaFile(PartialPath storageGroupPath) {
+    this.storageGroupPath = storageGroupPath;
   }
 
   @Override
-  public IMNode initWithLoad() {
-    IMNode root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
-    writeMNode(root);
-    return root;
+  public IMNode init() {
+    storageGroupMNode =
+        new StorageGroupMNode(
+            null,
+            storageGroupPath.getTailNode(),
+            IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+    writeMNode(storageGroupMNode);
+    return cloneMNode(storageGroupMNode);
+  }
+
+  @Override
+  public boolean updateStorageGroupNode(IStorageGroupMNode sgNode) throws IOException {
+    this.storageGroupMNode = cloneMNode(sgNode).getAsStorageGroupMNode();
+    return true;
   }
 
   @Override
@@ -113,7 +125,7 @@ public class MockSFManager implements ISchemaFileManager {
   }
 
   @Override
-  public void deleteMNode(IMNode targetNode) {
+  public void delete(IMNode targetNode) {
     IMNode removedNode = getSegment(targetNode.getParent()).remove(targetNode.getName());
     if (removedNode == null || removedNode.isMeasurement()) {
       return;

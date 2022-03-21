@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
@@ -171,8 +172,8 @@ public class SchemaFile implements ISchemaFile {
   }
 
   @Override
-  public boolean updateStorageGroupNode(IMNode sgNode) throws IOException {
-    this.dataTTL = sgNode.getAsStorageGroupMNode().getDataTTL();
+  public boolean updateStorageGroupNode(IStorageGroupMNode sgNode) throws IOException {
+    this.dataTTL = sgNode.getDataTTL();
     this.isEntity = sgNode.isEntity();
     this.templateHash =
         sgNode.getSchemaTemplate() == null ? 0 : sgNode.getSchemaTemplate().hashCode();
