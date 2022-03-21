@@ -1066,7 +1066,7 @@
             </activation>
             <properties>
                 <os.classifier>windows-x86_64</os.classifier>
-                <thrift.download-url>http://artfiles.org/apache.org/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
+                <thrift.download-url>http://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
                 <thrift.executable>thrift-${thrift.version}-win-x86_64.exe</thrift.executable>
                 <thrift.skip-making-executable>true</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>echo</thrift.exec-cmd.executable>
@@ -1181,9 +1181,6 @@
         <profile>
             <id>thrift-generation</id>
             <activation>
-                <os>
-                    <family>unix</family>
-                </os>
                 <file>
                     <exists>src/main/thrift</exists>
                 </file>
@@ -1272,104 +1269,6 @@
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>thrift-generation-for-win</id>
-            <activation>
-                <os>
-                    <family>windows</family>
-                </os>
-            </activation>
-            <properties>
-                <thrift.exec.absolute.path>${project.build.directory}\tools\${thrift.executable}</thrift.exec.absolute.path>
-            </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>com.googlecode.maven-download-plugin</groupId>
-                        <artifactId>download-maven-plugin</artifactId>
-                        <version>1.6.7</version>
-                        <executions>
-                            <execution>
-                                <id>get-thrift-executable</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>wget</goal>
-                                </goals>
-                                <configuration>
-                                    <url>${thrift.download-url}</url>
-                                    <outputDirectory>${project.build.directory}\tools</outputDirectory>
-                                    <outputFileName>${thrift.executable}</outputFileName>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>1.6.0</version>
-                        <executions>
-                            <execution>
-                                <id>make-thrift-executable-executable</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>exec</goal>
-                                </goals>
-                                <configuration>
-                                    <skip>${thrift.skip-making-executable}</skip>
-                                    <executable>${thrift.exec-cmd.executable}</executable>
-                                    <commandlineArgs>${thrift.exec-cmd.args}</commandlineArgs>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.thrift.tools</groupId>
-                        <artifactId>maven-thrift-plugin</artifactId>
-                        <version>0.1.11</version>
-                        <executions>
-                            <execution>
-                                <id>generate-thrift-sources-java</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>compile</goal>
-                                </goals>
-                                <configuration>
-                                    <generator>java</generator>
-                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                                    <thriftSourceRoot>${basedir}\src\main\thrift</thriftSourceRoot>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>generate-thrift-sources-python</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>compile</goal>
-                                </goals>
-                                <configuration>
-                                    <generator>py</generator>
-                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                                    <thriftSourceRoot>${basedir}\src\main\thrift</thriftSourceRoot>
-                                    <outputDirectory>${project.build.directory}\generated-sources-python\</outputDirectory>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>generate-thrift-sources-go</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>compile</goal>
-                                </goals>
-                                <configuration>
-                                    <generator>go</generator>
-                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                                    <thriftSourceRoot>${basedir}\src\main\thrift</thriftSourceRoot>
-                                    <outputDirectory>${project.build.directory}\generated-sources-go</outputDirectory>
                                 </configuration>
                             </execution>
                         </executions>
