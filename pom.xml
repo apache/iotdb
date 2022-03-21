@@ -1182,7 +1182,7 @@
             <id>thrift-generation</id>
             <activation>
                 <os>
-                    <family>mac</family>
+                    <family>unix</family>
                 </os>
                 <file>
                     <exists>src/main/thrift</exists>
