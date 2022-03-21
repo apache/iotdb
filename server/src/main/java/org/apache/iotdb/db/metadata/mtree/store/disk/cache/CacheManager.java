@@ -136,9 +136,7 @@ public abstract class CacheManager implements ICacheManager {
     CacheEntry cacheEntry = getCacheEntry(node);
     if (!cacheEntry.isVolatile()) {
       cacheEntry.setVolatile(true);
-      if (!node.isStorageGroup()) {
-        getBelongedContainer(node).updateMNode(node.getName());
-      }
+      getBelongedContainer(node).updateMNode(node.getName());
       // MNode update operation like node replace may reset the mapping between cacheEntry and node,
       // thus it should be updated
       updateCacheStatusAfterUpdate(cacheEntry, node);
@@ -154,10 +152,6 @@ public abstract class CacheManager implements ICacheManager {
    * @param node
    */
   private void addNodeToBuffer(IMNode node) {
-    if (node.isStorageGroup()) {
-      // todo fix me: storageGroup node need to sync with disk
-      return;
-    }
     IMNode parent = node.getParent();
     IMNode current = node;
     CacheEntry cacheEntry;
@@ -369,7 +363,7 @@ public abstract class CacheManager implements ICacheManager {
     // update memory status first
     if (cacheEntry == null) {
       memManager.requestPinnedMemResource(node);
-      cacheEntry = initCacheEntryForNode(node);
+      initCacheEntryForNode(node);
     } else if (!cacheEntry.isPinned()) {
       memManager.upgradeMemResource(node);
     }
@@ -430,10 +424,8 @@ public abstract class CacheManager implements ICacheManager {
     return node.getCacheEntry();
   }
 
-  protected CacheEntry initCacheEntryForNode(IMNode node) {
-    CacheEntry cacheEntry = new CacheEntry();
-    node.setCacheEntry(cacheEntry);
-    return cacheEntry;
+  protected void initCacheEntryForNode(IMNode node) {
+    node.setCacheEntry(new CacheEntry());
   }
 
   protected abstract void updateCacheStatusAfterAccess(CacheEntry cacheEntry);

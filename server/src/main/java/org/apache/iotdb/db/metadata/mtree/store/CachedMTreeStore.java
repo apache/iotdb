@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeContainers;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager;
@@ -214,12 +215,13 @@ public class CachedMTreeStore implements IMTreeStore {
 
   // must pin parent first
   @Override
-  public void addChild(IMNode parent, String childName, IMNode child) {
+  public IMNode addChild(IMNode parent, String childName, IMNode child) {
     readLock.lock();
     try {
       child.setParent(parent);
       cacheManager.updateCacheStatusAfterAppend(child);
       ensureMemoryStatus();
+      return parent.getChild(childName);
     } finally {
       readLock.unlock();
     }
@@ -293,6 +295,16 @@ public class CachedMTreeStore implements IMTreeStore {
   @Override
   public void deleteAliasChild(IEntityMNode parent, String alias) {
     parent.deleteAliasChild(alias);
+  }
+
+  @Override
+  public void updateStorageGroupMNode(IStorageGroupMNode node) {
+    writeLock.lock();
+    try {
+      // todo sync storage group node to file
+    } finally {
+      writeLock.unlock();
+    }
   }
 
   /**

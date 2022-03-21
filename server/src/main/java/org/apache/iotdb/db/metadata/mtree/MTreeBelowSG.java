@@ -182,7 +182,11 @@ public class MTreeBelowSG implements Serializable {
           IMNode child;
           while (iterator.hasNext()) {
             child = iterator.next();
-            jsonObject.add(child.getName(), mNodeToJSON(child, storageGroupName));
+            try {
+              jsonObject.add(child.getName(), mNodeToJSON(child, storageGroupName));
+            } finally {
+              store.unPin(child);
+            }
           }
         } finally {
           iterator.close();
@@ -270,11 +274,13 @@ public class MTreeBelowSG implements Serializable {
           entityMNode = device.getAsEntityMNode();
         } else {
           entityMNode = MNodeUtils.setToEntity(device);
-          store.updateMNode(entityMNode);
-          device = entityMNode;
           if (entityMNode.isStorageGroup()) {
             this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
+            store.updateStorageGroupMNode(storageGroupMNode);
+          } else {
+            store.updateMNode(entityMNode);
           }
+          device = entityMNode;
         }
 
         IMeasurementMNode measurementMNode =
@@ -358,11 +364,13 @@ public class MTreeBelowSG implements Serializable {
       } else {
         entityMNode = MNodeUtils.setToEntity(device);
         entityMNode.setAligned(true);
-        store.updateMNode(entityMNode);
-        device = entityMNode;
         if (entityMNode.isStorageGroup()) {
           this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
+          store.updateStorageGroupMNode(storageGroupMNode);
+        } else {
+          store.updateMNode(entityMNode);
         }
+        device = entityMNode;
       }
 
       for (int i = 0; i < measurements.size(); i++) {
@@ -404,7 +412,7 @@ public class MTreeBelowSG implements Serializable {
               devicePath.getFullPath(), upperTemplate.getName(), childName);
         }
         child = new InternalMNode(cur, childName);
-        store.addChild(cur, childName, child);
+        child = store.addChild(cur, childName, child);
       }
       cur = child;
 
@@ -467,9 +475,11 @@ public class MTreeBelowSG implements Serializable {
       if (!hasMeasurement) {
         synchronized (this) {
           curNode = MNodeUtils.setToInternal(parent);
-          store.updateMNode(curNode);
           if (curNode.isStorageGroup()) {
             this.storageGroupMNode = curNode.getAsStorageGroupMNode();
+            store.updateStorageGroupMNode(storageGroupMNode);
+          } else {
+            store.updateMNode(curNode);
           }
         }
       }
@@ -543,8 +553,10 @@ public class MTreeBelowSG implements Serializable {
       IEntityMNode entityMNode = MNodeUtils.setToEntity(node);
       if (entityMNode.isStorageGroup()) {
         this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
+        store.updateStorageGroupMNode(entityMNode.getAsStorageGroupMNode());
+      } else {
+        store.updateMNode(entityMNode);
       }
-      store.updateMNode(entityMNode);
       return entityMNode;
     }
   }
@@ -1489,20 +1501,23 @@ public class MTreeBelowSG implements Serializable {
     store.pin(node);
   }
 
-  public void unPinPath(IMNode node) {
-    while (!node.isStorageGroup()) {
-      store.unPin(node);
-      node = node.getParent();
-    }
-    store.unPin(node);
-  }
-
   public void unPinMNode(IMNode node) {
     store.unPin(node);
   }
 
+  private void unPinPath(IMNode node) {
+    while (!node.isStorageGroup()) {
+      store.unPin(node);
+      node = node.getParent();
+    }
+  }
+
   public void updateMNode(IMNode node) {
-    store.updateMNode(node);
+    if (node.isStorageGroup()) {
+      store.updateStorageGroupMNode(node.getAsStorageGroupMNode());
+    } else {
+      store.updateMNode(node);
+    }
   }
 
   public IMNode getChildFromPinnedMNode(IMNode parent, String measurement)

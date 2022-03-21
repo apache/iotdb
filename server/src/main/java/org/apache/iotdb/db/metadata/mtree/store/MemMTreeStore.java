@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MemMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -74,8 +75,8 @@ public class MemMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public void addChild(IMNode parent, String childName, IMNode child) {
-    parent.addChild(childName, child);
+  public IMNode addChild(IMNode parent, String childName, IMNode child) {
+    return parent.addChild(childName, child);
   }
 
   @Override
@@ -111,6 +112,9 @@ public class MemMTreeStore implements IMTreeStore {
   public void deleteAliasChild(IEntityMNode parent, String alias) {
     parent.deleteAliasChild(alias);
   }
+
+  @Override
+  public void updateStorageGroupMNode(IStorageGroupMNode node) {}
 
   @Override
   public void updateMNode(IMNode node) {}

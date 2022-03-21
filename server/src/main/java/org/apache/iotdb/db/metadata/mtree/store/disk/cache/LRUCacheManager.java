@@ -51,11 +51,10 @@ public class LRUCacheManager extends CacheManager {
   }
 
   @Override
-  protected CacheEntry initCacheEntryForNode(IMNode node) {
+  protected void initCacheEntryForNode(IMNode node) {
     LRUCacheEntry cacheEntry = new LRUCacheEntry();
     node.setCacheEntry(cacheEntry);
     cacheEntry.setNode(node);
-    return cacheEntry;
   }
 
   @Override
