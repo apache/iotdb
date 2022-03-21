@@ -26,6 +26,7 @@ import org.apache.iotdb.db.sql.rewriter.ConcatPathRewriter;
 import org.apache.iotdb.db.sql.rewriter.DnfFilterOptimizer;
 import org.apache.iotdb.db.sql.rewriter.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.sql.rewriter.RemoveNotOptimizer;
+import org.apache.iotdb.db.sql.statement.InsertStatement;
 import org.apache.iotdb.db.sql.statement.QueryStatement;
 import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.db.sql.statement.component.WhereCondition;
@@ -46,20 +47,21 @@ public class StatementAnalyzer {
   }
 
   public Analysis analyze(Statement statement) {
-    return new Visitor().process(statement, context);
+    return new AnalyzeVisitor().process(statement, context);
   }
 
-  private final class Visitor extends StatementVisitor<Analysis, AnalysisContext> {
+  private final class AnalyzeVisitor extends StatementVisitor<Analysis, AnalysisContext> {
 
     @Override
     public Analysis visitStatement(Statement statement, AnalysisContext context) {
+      analysis.setStatement(statement);
       return analysis;
     }
 
     @Override
     public Analysis visitQuery(QueryStatement queryStatement, AnalysisContext context) {
       try {
-        // check for semantic errors in statement
+        // check for semantic errors
         queryStatement.selfCheck();
 
         // concat path and remove wildcards
@@ -81,6 +83,13 @@ public class StatementAnalyzer {
       } catch (StatementAnalyzeException | PathNumOverLimitException e) {
         e.printStackTrace();
       }
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitInsert(InsertStatement insertStatement, AnalysisContext context) {
+      // TODO: do analyze for insert statement
+      analysis.setStatement(insertStatement);
       return analysis;
     }
   }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.sql.tree;
 
+import org.apache.iotdb.db.sql.statement.InsertStatement;
 import org.apache.iotdb.db.sql.statement.QueryStatement;
 import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.db.sql.statement.StatementNode;
@@ -33,6 +34,7 @@ public abstract class StatementVisitor<R, C> {
     return node.accept(this, context);
   }
 
+  /** Top Level Description */
   public R visitNode(StatementNode node, C context) {
     return null;
   }
@@ -41,7 +43,15 @@ public abstract class StatementVisitor<R, C> {
     return visitNode(statement, context);
   }
 
+  /** Data Manipulation Language (DML) */
+
+  // Select Statement
   public R visitQuery(QueryStatement queryStatement, C context) {
     return visitStatement(queryStatement, context);
+  }
+
+  // Insert Statement
+  public R visitInsert(InsertStatement insertStatement, C context) {
+    return visitStatement(insertStatement, context);
   }
 }

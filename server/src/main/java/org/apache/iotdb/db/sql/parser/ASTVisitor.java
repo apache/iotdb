@@ -844,6 +844,77 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
+  // Insert Statement ========================================================================
+
+  @Override
+  public Statement visitInsertStatement(IoTDBSqlParser.InsertStatementContext ctx) {
+    InsertStatement insertStatement = new InsertStatement();
+    insertStatement.setDevice(parsePrefixPath(ctx.prefixPath()));
+    boolean isTimeDefault = parseInsertColumnSpec(ctx.insertColumnsSpec(), insertStatement);
+    parseInsertValuesSpec(ctx.insertValuesSpec(), insertStatement, isTimeDefault);
+    insertStatement.setAligned(ctx.ALIGNED() != null);
+    return insertStatement;
+  }
+
+  private boolean parseInsertColumnSpec(
+      IoTDBSqlParser.InsertColumnsSpecContext ctx, InsertStatement insertStatement) {
+    List<String> measurementList = new ArrayList<>();
+    for (IoTDBSqlParser.NodeNameWithoutWildcardContext measurementName :
+        ctx.nodeNameWithoutWildcard()) {
+      measurementList.add(parseNodeName(measurementName.getText()));
+    }
+    insertStatement.setMeasurementList(measurementList.toArray(new String[0]));
+    return (ctx.TIME() == null && ctx.TIMESTAMP() == null);
+  }
+
+  private void parseInsertValuesSpec(
+      IoTDBSqlParser.InsertValuesSpecContext ctx,
+      InsertStatement insertStatement,
+      boolean isTimeDefault) {
+    List<IoTDBSqlParser.InsertMultiValueContext> insertMultiValues = ctx.insertMultiValue();
+    List<String[]> valuesList = new ArrayList<>();
+    long[] timeArray = new long[insertMultiValues.size()];
+    for (int i = 0; i < insertMultiValues.size(); i++) {
+      // parse timestamp
+      long timestamp;
+      if (insertMultiValues.get(i).timeValue() != null) {
+        if (isTimeDefault) {
+          throw new SemanticException(
+              "the measurementList's size is not consistent with the valueList's size");
+        }
+        timestamp =
+            parseTimeValue(insertMultiValues.get(i).timeValue(), DatetimeUtils.currentTime());
+      } else {
+        if (!isTimeDefault) {
+          throw new SemanticException(
+              "the measurementList's size is not consistent with the valueList's size");
+        }
+        if (insertMultiValues.size() != 1) {
+          throw new SemanticException("need timestamps when insert multi rows");
+        }
+        timestamp = parseDateFormat(SQLConstant.NOW_FUNC);
+      }
+      timeArray[i] = timestamp;
+
+      // parse values
+      List<String> valueList = new ArrayList<>();
+      List<IoTDBSqlParser.MeasurementValueContext> values =
+          insertMultiValues.get(i).measurementValue();
+      for (IoTDBSqlParser.MeasurementValueContext value : values) {
+        for (IoTDBSqlParser.ConstantContext constant : value.constant()) {
+          if (constant.STRING_LITERAL() != null) {
+            valueList.add(parseStringLiteralInInsertValue(constant.getText()));
+          } else {
+            valueList.add(constant.getText());
+          }
+        }
+      }
+      valuesList.add(valueList.toArray(new String[0]));
+    }
+    insertStatement.setTimes(timeArray);
+    insertStatement.setValuesList(valuesList);
+  }
+
   /** Common Parsers */
 
   // IoTDB Objects ========================================================================

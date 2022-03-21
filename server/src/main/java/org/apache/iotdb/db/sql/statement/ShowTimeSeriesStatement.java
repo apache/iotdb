@@ -21,7 +21,7 @@ package org.apache.iotdb.db.sql.statement;
 
 public class ShowTimeSeriesStatement extends Statement {
 
-  int limit = -1;
+  int limit = 0;
   int offset = 0;
 
   public void setLimit(int limit) {

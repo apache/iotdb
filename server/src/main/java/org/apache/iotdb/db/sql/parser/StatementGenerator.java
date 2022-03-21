@@ -27,6 +27,7 @@ import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.qp.strategy.SQLParseError;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.sql.constant.FilterConstant;
+import org.apache.iotdb.db.sql.statement.InsertStatement;
 import org.apache.iotdb.db.sql.statement.LastQueryStatement;
 import org.apache.iotdb.db.sql.statement.QueryStatement;
 import org.apache.iotdb.db.sql.statement.Statement;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.sql.statement.component.SelectComponent;
 import org.apache.iotdb.db.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.sql.statement.filter.BasicFunctionFilter;
 import org.apache.iotdb.db.sql.statement.filter.QueryFilter;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
@@ -107,7 +109,7 @@ public class StatementGenerator {
     return queryStatement;
   }
 
-  public static Statement createStatement(TSLastDataQueryReq req, ZoneId zoneId)
+  public static Statement createStatement(TSLastDataQueryReq lastDataQueryReq, ZoneId zoneId)
       throws IllegalPathException {
     // construct query statement
     LastQueryStatement lastQueryStatement = new LastQueryStatement();
@@ -116,7 +118,7 @@ public class StatementGenerator {
     WhereCondition whereCondition = new WhereCondition();
 
     // iterate the path list and add it to from operator
-    for (String pathStr : req.getPaths()) {
+    for (String pathStr : lastDataQueryReq.getPaths()) {
       PartialPath path = new PartialPath(pathStr);
       fromComponent.addPrefixPath(path);
     }
@@ -126,13 +128,29 @@ public class StatementGenerator {
     PartialPath timePath = new PartialPath(TIME);
     BasicFunctionFilter basicFunctionFilter =
         new BasicFunctionFilter(
-            FilterConstant.FilterType.GREATERTHANOREQUALTO, timePath, Long.toString(req.getTime()));
+            FilterConstant.FilterType.GREATERTHANOREQUALTO,
+            timePath,
+            Long.toString(lastDataQueryReq.getTime()));
     whereCondition.setQueryFilter(basicFunctionFilter);
 
     lastQueryStatement.setSelectComponent(selectComponent);
     lastQueryStatement.setFromComponent(fromComponent);
     lastQueryStatement.setWhereCondition(whereCondition);
     return lastQueryStatement;
+  }
+
+  public static Statement createStatement(TSInsertRecordReq insertRecordReq)
+      throws IllegalPathException {
+    // construct insert statement
+    InsertStatement insertStatement = new InsertStatement();
+    insertStatement.setDevice(new PartialPath(insertRecordReq.getPrefixPath()));
+    insertStatement.setTimes(new long[] {insertRecordReq.getTimestamp()});
+
+    // TODO: set values after unifying SQL and RPC requests
+    // insertStatement.setValuesList(insertRecordReq.getValues());
+    insertStatement.setMeasurementList(insertRecordReq.getMeasurements().toArray(new String[0]));
+    insertStatement.setAligned(insertStatement.isAligned());
+    return insertStatement;
   }
 
   private static Statement invokeParser(
