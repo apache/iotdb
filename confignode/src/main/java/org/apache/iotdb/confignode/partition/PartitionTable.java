@@ -18,42 +18,106 @@
  */
 package org.apache.iotdb.confignode.partition;
 
+import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
+import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
+
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- * PartitionTable stores schema partition table, data partition table, and real-time write load
- * allocation rules
+ * PartitionTable stores schema partition table, data partition table, DataNode information,
+ * StorageGroup schema and real-time write load allocation rules. The PartitionTable is thread-safe.
  */
 public class PartitionTable {
 
-  // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionID>>
-  private final Map<String, Map<Integer, Integer>> schemaPartitionTable;
-  // Map<SchemaRegionID, List<DataNodeID>>
-  private final Map<Integer, List<Integer>> schemaRegionDataNodesMap;
+  private final ReentrantReadWriteLock storageGroupLock;
+  private final Map<String, StorageGroupSchema> storageGroupsMap;
 
-  // Map<StorageGroup, Map<DeviceGroupID, Map<TimeInterval, List<DataRegionID>>>>
-  private final Map<String, Map<Integer, Map<Long, List<Integer>>>> dataPartitionTable;
-  // Map<DataRegionID, List<DataNodeID>>
-  private final Map<Integer, List<Integer>> dataRegionDataNodesMap;
+  private final ReentrantReadWriteLock dataNodeLock;
+  private final Map<Integer, DataNodeInfo> dataNodesMap; // Map<DataNodeID, DataNodeInfo>
 
-  // Map<StorageGroup, Map<DeviceGroupID, DataPartitionRule>>
-  private final Map<String, Map<Integer, DataPartitionRule>> dataPartitionRuleTable;
+  private final ReentrantReadWriteLock schemaLock;
+  private final SchemaPartitionInfo schemaPartition;
 
-  public PartitionTable() {
-    this.schemaPartitionTable = new HashMap<>();
-    this.schemaRegionDataNodesMap = new HashMap<>();
+  private final ReentrantReadWriteLock dataLock;
+  private final DataPartitionInfo dataPartition;
 
-    this.dataPartitionTable = new HashMap<>();
-    this.dataRegionDataNodesMap = new HashMap<>();
+  private PartitionTable() {
+    this.storageGroupLock = new ReentrantReadWriteLock();
+    this.storageGroupsMap = new HashMap<>();
 
-    this.dataPartitionRuleTable = new HashMap<>();
+    this.dataNodeLock = new ReentrantReadWriteLock();
+    this.dataNodesMap = new HashMap<>();
+
+    this.schemaLock = new ReentrantReadWriteLock();
+    this.schemaPartition = new SchemaPartitionInfo();
+
+    this.dataLock = new ReentrantReadWriteLock();
+    this.dataPartition = new DataPartitionInfo();
   }
 
-  // TODO: Interfaces for metadata operations
+  public boolean registerDataNode(RegisterDataNodePlan plan) {
+    dataNodeLock.writeLock().lock();
+    if (dataNodesMap.containsKey(plan.getInfo().getDataNodeID())) {
+      dataNodeLock.writeLock().unlock();
+      return false;
+    }
+    dataNodesMap.put(plan.getInfo().getDataNodeID(), plan.getInfo());
+    dataNodeLock.writeLock().unlock();
+    return true;
+  }
 
-  // TODO: Interfaces for data operations
+  public Map<Integer, DataNodeInfo> getDataNodeInfo(QueryDataNodeInfoPlan plan) {
+    Map<Integer, DataNodeInfo> result = new HashMap<>();
+    dataNodeLock.readLock().lock();
+    switch (plan.getDataNodeID()) {
+      case Integer.MIN_VALUE:
+        int minKey = Integer.MAX_VALUE;
+        for (Integer key : dataNodesMap.keySet()) {
+          minKey = Math.min(key, minKey);
+        }
+        if (minKey == Integer.MAX_VALUE) {
+          result.put(minKey, dataNodesMap.get(minKey));
+        } else {
+          result = null;
+        }
+        break;
+      case Integer.MAX_VALUE:
+        int maxKey = Integer.MIN_VALUE;
+        for (Integer key : dataNodesMap.keySet()) {
+          maxKey = Math.max(key, maxKey);
+        }
+        if (maxKey == Integer.MIN_VALUE) {
+          result.put(maxKey, dataNodesMap.get(maxKey));
+        } else {
+          result = null;
+        }
+        break;
+      case -1:
+        result.putAll(dataNodesMap);
+        break;
+      default:
+        if (dataNodesMap.containsKey(plan.getDataNodeID())) {
+          result.put(plan.getDataNodeID(), dataNodesMap.get(plan.getDataNodeID()));
+        } else {
+          result = null;
+        }
+    }
+    dataNodeLock.readLock().unlock();
+    return result;
+  }
 
-  // TODO: Interfaces for data partition rules
+  private static class PartitionTableHolder {
+
+    private static final PartitionTable INSTANCE = new PartitionTable();
+
+    private PartitionTableHolder() {
+      // empty constructor
+    }
+  }
+
+  public static PartitionTable getInstance() {
+    return PartitionTable.PartitionTableHolder.INSTANCE;
+  }
 }

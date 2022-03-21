@@ -67,10 +67,14 @@ struct DataNodeRegisterResp {
     2: optional i32 dataNodeID
 }
 
-struct DataNodesInfo {
-    1: required map<i32, list<rpc.EndPoint>> dataNodesMap
+struct DataNodeInfo{
+  1: required i32 dataNodeID
+  2: required rpc.EndPoint endPoint
 }
 
+struct DataNodesInfo {
+    1: required map<i32, list<DataNodeInfo>> dataNodesMap
+}
 
 service ConfigIService {
   rpc.TSStatus setStorageGroup(SetStorageGroupReq req)
@@ -85,5 +89,5 @@ service ConfigIService {
 
   rpc.TSStatus registerDataNode(DataNodeRegisterReq req)
 
-  DataNodesInfo getDataNodesInfo()
+  DataNodesInfo getDataNodesInfo(i32 dataNodeID)
 }

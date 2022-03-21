@@ -16,12 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.partition;
 
-package org.apache.iotdb.consensus.common;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-// TODO Use a mature IDL framework such as Protobuf to manage this structure
-public enum GroupType {
-  ConfigNode,
-  DataRegion,
-  SchemaRegion
+public class DataPartitionInfo {
+
+  // Map<StorageGroup, Map<DeviceGroupID, Map<TimeInterval, List<DataRegionID>>>>
+  private final Map<String, Map<Integer, Map<Long, List<Integer>>>> dataPartitionTable;
+  // Map<DataRegionID, List<DataNodeID>>
+  private final Map<Integer, List<Integer>> dataRegionDataNodesMap;
+
+  // Map<StorageGroup, Map<DeviceGroupID, DataPartitionRule>>
+  private final Map<String, Map<Integer, DataPartitionRule>> dataPartitionRuleTable;
+
+  public DataPartitionInfo() {
+    this.dataPartitionTable = new HashMap<>();
+    this.dataRegionDataNodesMap = new HashMap<>();
+
+    this.dataPartitionRuleTable = new HashMap<>();
+  }
 }

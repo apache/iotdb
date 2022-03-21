@@ -16,12 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.partition;
 
-package org.apache.iotdb.consensus.common;
+public class StorageGroupSchema {
 
-// TODO Use a mature IDL framework such as Protobuf to manage this structure
-public enum GroupType {
-  ConfigNode,
-  DataRegion,
-  SchemaRegion
+  private final String name;
+
+  public StorageGroupSchema(String name) {
+    this.name = name;
+  }
+
+  public String getName() {
+    return name;
+  }
 }

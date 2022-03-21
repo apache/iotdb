@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.physical;
 
-package org.apache.iotdb.consensus.common;
-
-// TODO Use a mature IDL framework such as Protobuf to manage this structure
-public enum GroupType {
-  ConfigNode,
-  DataRegion,
-  SchemaRegion
+public enum PhysicalPlanType {
+  RegisterDataNode,
+  QueryDataNodeInfo,
+  SetStorageGroup,
+  DeleteStorageGroup,
+  CreateRegion
 }

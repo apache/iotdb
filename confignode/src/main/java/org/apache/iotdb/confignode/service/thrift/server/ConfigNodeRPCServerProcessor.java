@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.confignode.service.thrift.server;
 
+import org.apache.iotdb.confignode.consensus.response.DataNodeInfoDataSet;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
+import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodesInfo;
@@ -29,6 +32,9 @@ import org.apache.iotdb.confignode.rpc.thrift.GetDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
+import org.apache.iotdb.consensus.common.Endpoint;
+import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
@@ -36,15 +42,16 @@ import org.apache.thrift.TException;
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
-  private ConfigManager configManager;
+  private static final ConfigManager configManager = ConfigManager.getInstance();
 
   public ConfigNodeRPCServerProcessor() {
-    this.configManager = new ConfigManager();
+    // empty constructor
   }
 
   @Override
   public TSStatus setStorageGroup(SetStorageGroupReq req) throws TException {
-    return null;
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
@@ -69,7 +76,23 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public TSStatus registerDataNode(DataNodeRegisterReq req) throws TException {
-    return null;
+    // TODO: handle exception in consensusLayer
+    QueryDataNodeInfoPlan readPlan = new QueryDataNodeInfoPlan(Integer.MAX_VALUE);
+    ConsensusReadResponse resp = configManager.read(readPlan);
+    DataNodeInfoDataSet dataSet = (DataNodeInfoDataSet) resp.getDataset();
+    RegisterDataNodePlan writePlan;
+    if (dataSet == null) {
+      writePlan =
+          new RegisterDataNodePlan(
+              0, new Endpoint(req.getEndPoint().getIp(), req.getEndPoint().getPort()));
+    } else {
+      writePlan =
+          new RegisterDataNodePlan(
+              dataSet.getInfo().getDataNodeID() + 1,
+              new Endpoint(req.getEndPoint().getIp(), req.getEndPoint().getPort()));
+    }
+    configManager.write(writePlan);
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

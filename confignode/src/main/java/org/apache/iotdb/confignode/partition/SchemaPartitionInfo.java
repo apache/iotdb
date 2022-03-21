@@ -16,9 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.service.basic;
+package org.apache.iotdb.confignode.partition;
 
-public class ConfigServiceProvider {
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-  public ConfigServiceProvider() {}
+public class SchemaPartitionInfo {
+
+  // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionID>>
+  private final Map<String, Map<Integer, Integer>> schemaPartitionTable;
+  // Map<SchemaRegionID, List<DataNodeID>>
+  private final Map<Integer, List<Integer>> schemaRegionDataNodesMap;
+
+  public SchemaPartitionInfo() {
+    this.schemaPartitionTable = new HashMap<>();
+    this.schemaRegionDataNodesMap = new HashMap<>();
+  }
 }

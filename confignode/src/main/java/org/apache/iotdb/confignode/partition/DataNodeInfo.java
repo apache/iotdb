@@ -16,12 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.partition;
 
-package org.apache.iotdb.consensus.common;
+import org.apache.iotdb.consensus.common.Endpoint;
 
-// TODO Use a mature IDL framework such as Protobuf to manage this structure
-public enum GroupType {
-  ConfigNode,
-  DataRegion,
-  SchemaRegion
+public class DataNodeInfo {
+
+  private final int dataNodeID;
+  private final Endpoint endPoint;
+
+  public DataNodeInfo(int dataNodeID, Endpoint endPoint) {
+    this.dataNodeID = dataNodeID;
+    this.endPoint = endPoint;
+  }
+
+  public int getDataNodeID() {
+    return dataNodeID;
+  }
+
+  public Endpoint getEndPoint() {
+    return endPoint;
+  }
 }

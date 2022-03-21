@@ -16,12 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.consensus.response;
 
-package org.apache.iotdb.consensus.common;
+import org.apache.iotdb.confignode.partition.DataNodeInfo;
+import org.apache.iotdb.consensus.common.DataSet;
 
-// TODO Use a mature IDL framework such as Protobuf to manage this structure
-public enum GroupType {
-  ConfigNode,
-  DataRegion,
-  SchemaRegion
+public class DataNodeInfoDataSet implements DataSet {
+
+  private final DataNodeInfo info;
+
+  public DataNodeInfoDataSet(DataNodeInfo info) {
+    this.info = info;
+  }
+
+  public DataNodeInfo getInfo() {
+    return info;
+  }
 }
