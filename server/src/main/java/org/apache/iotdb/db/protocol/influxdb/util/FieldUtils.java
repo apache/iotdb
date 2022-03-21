@@ -16,12 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.db.protocol.influxdb.util;
 
-import org.apache.iotdb.commons.exception.ShutdownException;
+import org.apache.iotdb.tsfile.read.common.Field;
 
-@FunctionalInterface
-public interface IoTDBMBean {
-
-  void stop() throws ShutdownException;
+public class FieldUtils {
+  /**
+   * convert the value of field in iotdb to object
+   *
+   * @param field filed to be converted
+   * @return value stored in field
+   */
+  public static Object iotdbFieldConvert(Field field) {
+    if (field.getDataType() == null) {
+      return null;
+    }
+    switch (field.getDataType()) {
+      case TEXT:
+        return field.getStringValue();
+      case INT64:
+        return field.getLongV();
+      case INT32:
+        return field.getIntV();
+      case DOUBLE:
+        return field.getDoubleV();
+      case FLOAT:
+        return field.getFloatV();
+      case BOOLEAN:
+        return field.getBoolV();
+      default:
+        return null;
+    }
+  }
 }

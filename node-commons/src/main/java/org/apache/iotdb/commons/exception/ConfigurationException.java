@@ -16,17 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.exception.conf;
 
-import org.apache.iotdb.confignode.exception.ConfigNodeException;
+package org.apache.iotdb.commons.exception;
 
-/** Throws when there exists some special parameters are repeatedly defined */
-public class RepeatConfigurationException extends ConfigNodeException {
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public RepeatConfigurationException(String parameter, String badValue, String correctValue) {
+public class ConfigurationException extends IoTDBException {
+  final String parameter;
+  final String correctValue;
+
+  public ConfigurationException(String parameter, String badValue, String correctValue) {
     super(
         String.format(
-            "Parameter %s can not be %s, because you're already set to: %s.",
-            parameter, badValue, correctValue));
+            "Parameter %s can not be %s, please set to: %s", parameter, badValue, correctValue),
+        TSStatusCode.CONFIG_ERROR.getStatusCode());
+    this.parameter = parameter;
+    this.correctValue = correctValue;
+  }
+
+  public String getParameter() {
+    return parameter;
+  }
+
+  public String getCorrectValue() {
+    return correctValue;
   }
 }

@@ -16,12 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.commons.exception.ShutdownException;
+package org.apache.iotdb.db.protocol.influxdb.function.aggregator;
 
-@FunctionalInterface
-public interface IoTDBMBean {
+import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunction;
+import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
+import org.apache.iotdb.db.query.expression.Expression;
 
-  void stop() throws ShutdownException;
+import java.util.List;
+
+public abstract class InfluxAggregator extends InfluxFunction {
+
+  public InfluxAggregator(List<Expression> expressionList) {
+    super(expressionList);
+  }
+
+  public abstract void updateValueBruteForce(InfluxFunctionValue functionValue);
 }

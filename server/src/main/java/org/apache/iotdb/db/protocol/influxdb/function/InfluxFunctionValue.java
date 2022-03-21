@@ -16,18 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.exception.startup;
+package org.apache.iotdb.db.protocol.influxdb.function;
 
-import org.apache.iotdb.confignode.exception.ConfigNodeException;
+public class InfluxFunctionValue {
 
-/** Throws when there exists errors when startup checks */
-public class StartupException extends ConfigNodeException {
+  private Object value;
+  private Long timestamp;
 
-  public StartupException(String name, String message) {
-    super(String.format("Failed to start [%s], because [%s]", name, message));
+  public InfluxFunctionValue(Object value, Long timestamp) {
+    this.value = value;
+    this.timestamp = timestamp;
   }
 
-  public StartupException(String message) {
-    super(message);
+  public Object getValue() {
+    return value;
+  }
+
+  public void setValue(Object value) {
+    this.value = value;
+  }
+
+  public Long getTimestamp() {
+    return timestamp;
+  }
+
+  public void setTimestamp(Long timestamp) {
+    this.timestamp = timestamp;
   }
 }

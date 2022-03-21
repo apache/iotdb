@@ -16,9 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.protocol.influxdb.constant;
 
-public class InfluxDBConstant {
+package org.apache.iotdb.confignode.service.thrift.server;
 
-  public static final String PLACE_HOLDER = "PH";
-}
+public interface ConfigNodeRPCServerMBean {}

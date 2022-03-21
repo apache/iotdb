@@ -16,12 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.db.protocol.influxdb.util;
 
-import org.apache.iotdb.commons.exception.ShutdownException;
-
-@FunctionalInterface
-public interface IoTDBMBean {
-
-  void stop() throws ShutdownException;
+public class CommonUtils {
+  /**
+   * judge whether two instances are equal, and allow null check
+   *
+   * @param o1 object1
+   * @param o2 object2
+   * @return are they equal
+   */
+  public static boolean checkEqualsContainNull(Object o1, Object o2) {
+    if (o1 == null && o2 == null) {
+      return true;
+    } else if (o1 == null) {
+      return false;
+    } else if (o2 == null) {
+      return false;
+    } else {
+      return o1.equals(o2);
+    }
+  }
 }
