@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.service.thrift.server;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
@@ -28,8 +29,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
-public class ConfigNodeRPCServer extends ThriftService {
-
+public class ConfigNodeRPCServer extends ThriftService implements ConfigNodeRPCServerMBean {
   private ConfigNodeConf config = ConfigNodeDescriptor.getInstance().getConf();
 
   private ConfigNodeRPCServerProcessor configNodeRPCServerProcessor;
@@ -49,15 +49,15 @@ public class ConfigNodeRPCServer extends ThriftService {
   @Override
   public void initSyncedServiceImpl(Object configNodeRPCServerProcessor) {
     this.configNodeRPCServerProcessor = (ConfigNodeRPCServerProcessor) configNodeRPCServerProcessor;
+
+    super.mbeanName =
+        String.format(
+            "%s:%s=%s", this.getClass().getPackage(), IoTDBConstant.JMX_TYPE, getID().getJmxName());
     super.initSyncedServiceImpl(this.configNodeRPCServerProcessor);
   }
 
   @Override
   public void initTProcessor() throws InstantiationException {
-    if (processor == null) {
-      throw new InstantiationException("ConfigNodeRPCServerProcessor is null");
-    }
-
     processor = new ConfigIService.Processor<>(configNodeRPCServerProcessor);
   }
 
@@ -69,7 +69,7 @@ public class ConfigNodeRPCServer extends ThriftService {
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.CLUSTER_RPC_CLIENT.getName(),
+              ThreadName.CONFIG_NODE_RPC_CLIENT.getName(),
               getBindIP(),
               getBindPort(),
               config.getRpcMaxConcurrentClientNum(),
@@ -79,7 +79,7 @@ public class ConfigNodeRPCServer extends ThriftService {
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.CLUSTER_RPC_SERVICE.getName());
+    thriftServiceThread.setName(ThreadName.CONFIG_NODE_RPC_SERVER.getName());
   }
 
   @Override

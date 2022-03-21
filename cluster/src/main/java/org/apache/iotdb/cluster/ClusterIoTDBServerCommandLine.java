@@ -19,7 +19,7 @@
 package org.apache.iotdb.cluster;
 
 import org.apache.iotdb.commons.ServerCommandLine;
-import org.apache.iotdb.db.exception.ConfigurationException;
+import org.apache.iotdb.commons.exception.ConfigurationException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
