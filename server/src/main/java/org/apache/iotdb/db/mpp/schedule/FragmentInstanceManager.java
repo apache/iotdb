@@ -126,6 +126,9 @@ public class FragmentInstanceManager implements IFragmentInstanceManager, IServi
     for (FragmentInstanceTask task : tasks) {
       task.lock();
       try {
+        if (task.getStatus() != FragmentInstanceTaskStatus.READY) {
+          continue;
+        }
         timeoutQueue.push(task);
         readyQueue.push(task);
       } finally {
