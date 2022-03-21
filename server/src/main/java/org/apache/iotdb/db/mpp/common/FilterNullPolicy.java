@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.common;
 
 public enum FilterNullPolicy {
+  NO_FILTER,
   CONTAINS_NULL,
   ALL_NULL
 }

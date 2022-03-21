@@ -22,6 +22,7 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -62,7 +63,7 @@ public class FileLoaderUtils {
     } else {
       tsFileResource.deserialize();
     }
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
   }
 
   public static void updateTsFileResource(

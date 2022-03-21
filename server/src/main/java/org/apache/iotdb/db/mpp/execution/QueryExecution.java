@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.db.mpp.common.Analysis;
-import org.apache.iotdb.db.mpp.common.QueryContext;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.execution.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.mpp.execution.scheduler.IScheduler;
 import org.apache.iotdb.db.mpp.sql.planner.optimization.PlanOptimizer;
@@ -35,7 +35,7 @@ import java.util.List;
  * corresponding physical nodes. 3. Collect and monitor the progress/states of this query.
  */
 public class QueryExecution {
-  private QueryContext context;
+  private MPPQueryContext context;
   private IScheduler scheduler;
   private QueryStateMachine stateMachine;
 
@@ -47,7 +47,7 @@ public class QueryExecution {
   private List<PlanFragment> fragments;
   private List<FragmentInstance> fragmentInstances;
 
-  public QueryExecution(QueryContext context) {
+  public QueryExecution(MPPQueryContext context) {
     this.context = context;
   }
 

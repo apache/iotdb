@@ -19,10 +19,11 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.OrderBy;
+import org.apache.iotdb.db.mpp.common.DataRegion;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import com.google.common.collect.ImmutableList;
@@ -60,9 +61,17 @@ public class SeriesScanNode extends SourceNode {
 
   private String columnName;
 
+  // The id of DataRegion where the node will run
+  private DataRegion dataRegion;
+
   public SeriesScanNode(PlanNodeId id, PartialPath seriesPath) {
     super(id);
     this.seriesPath = seriesPath;
+  }
+
+  public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, DataRegion dataRegion) {
+    this(id, seriesPath);
+    this.dataRegion = dataRegion;
   }
 
   public void setTimeFilter(Filter timeFilter) {
@@ -97,6 +106,16 @@ public class SeriesScanNode extends SourceNode {
   }
 
   @Override
+  public PlanNode clone() {
+    return new SeriesScanNode(getId(), getSeriesPath(), this.dataRegion);
+  }
+
+  @Override
+  public PlanNode cloneWithChildren(List<PlanNode> children) {
+    return this.clone();
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
     return ImmutableList.of(columnName);
   }
@@ -104,5 +123,27 @@ public class SeriesScanNode extends SourceNode {
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitSeriesScan(this, context);
+  }
+
+  public PartialPath getSeriesPath() {
+    return seriesPath;
+  }
+
+  public Filter getTimeFilter() {
+    return timeFilter;
+  }
+
+  public void setDataRegion(DataRegion dataRegion) {
+    this.dataRegion = dataRegion;
+  }
+
+  public DataRegion getDataRegion() {
+    return dataRegion;
+  }
+
+  public String toString() {
+    return String.format(
+        "SeriesScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
+        this.getId(), this.getSeriesPath(), this.getDataRegion());
   }
 }

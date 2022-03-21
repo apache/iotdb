@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
@@ -30,18 +31,34 @@ import java.util.List;
 public class LimitNode extends ProcessNode {
 
   // The limit count
-  private final int limit;
-  private final PlanNode child;
+  private int limit;
+  private PlanNode child;
 
-  public LimitNode(PlanNodeId id, int limit, PlanNode child) {
+  public LimitNode(PlanNodeId id, int limit) {
     super(id);
     this.limit = limit;
+  }
+
+  public LimitNode(PlanNodeId id, int limit, PlanNode child) {
+    this(id, limit);
     this.child = child;
   }
 
   @Override
   public List<PlanNode> getChildren() {
     return ImmutableList.of(child);
+  }
+
+  @Override
+  public PlanNode clone() {
+    return new LimitNode(PlanNodeIdAllocator.generateId(), this.limit);
+  }
+
+  @Override
+  public PlanNode cloneWithChildren(List<PlanNode> children) {
+    LimitNode root = (LimitNode) this.clone();
+    root.setChild(children.get(0));
+    return root;
   }
 
   @Override
@@ -60,5 +77,13 @@ public class LimitNode extends ProcessNode {
 
   public PlanNode getChild() {
     return child;
+  }
+
+  public void setChild(PlanNode child) {
+    this.child = child;
+  }
+
+  public String toString() {
+    return "LimitNode-" + this.getId();
   }
 }
