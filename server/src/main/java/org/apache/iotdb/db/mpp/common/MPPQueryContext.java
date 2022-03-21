@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
-/** The traversal order for operators by timestamp */
-public enum OrderBy {
-  TIMESTAMP_ASC,
-  TIMESTAMP_DESC,
-  DEVICE_NAME_ASC,
-  DEVICE_NAME_DESC,
+/**
+ * This class is used to record the context of a query including QueryId, query statement, session
+ * info and so on
+ */
+public class MPPQueryContext {
+  private String statement;
+  private QueryId queryId;
+  private QuerySession session;
 }

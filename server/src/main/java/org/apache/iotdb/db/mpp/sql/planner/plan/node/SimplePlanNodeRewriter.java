@@ -16,43 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
 import java.util.List;
 
-/** not implemented in current IoTDB yet */
-public class ThriftSinkNode extends SinkNode {
+import static com.google.common.collect.ImmutableList.toImmutableList;
 
-  public ThriftSinkNode(PlanNodeId id) {
-    super(id);
+public class SimplePlanNodeRewriter<C> extends PlanVisitor<PlanNode, C> {
+  @Override
+  public PlanNode visitPlan(PlanNode node, C context) {
+    return defaultRewrite(node, context);
   }
 
-  @Override
-  public List<PlanNode> getChildren() {
-    return null;
+  public PlanNode defaultRewrite(PlanNode node, C context) {
+    List<PlanNode> children =
+        node.getChildren().stream()
+            .map(child -> rewrite(child, context))
+            .collect(toImmutableList());
+
+    return node.cloneWithChildren(children);
   }
 
-  @Override
-  public PlanNode clone() {
-    return null;
+  public PlanNode rewrite(PlanNode node, C userContext) {
+    return node.accept(this, userContext);
   }
-
-  @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  @Override
-  public void close() throws Exception {}
-
-  @Override
-  public void send() {}
 }

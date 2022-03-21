@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,61 +16,64 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.db.mpp.common.FragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 
-/** The FilterNode is responsible to filter the RowRecord from TsBlock. */
-public class FilterNode extends ProcessNode {
+public class ExchangeNode extends PlanNode {
+  private PlanNode sourceNode;
+  private FragmentId sourceFragmentId;
 
-  private final PlanNode child;
-  // TODO we need to rename it to something like expression in order to distinguish from Operator
-  // class
-  private final FilterOperator predicate;
-
-  public FilterNode(PlanNodeId id, PlanNode child, FilterOperator predicate) {
+  public ExchangeNode(PlanNodeId id) {
     super(id);
-    this.child = child;
-    this.predicate = predicate;
   }
 
   @Override
   public List<PlanNode> getChildren() {
-    return ImmutableList.of(child);
+    return ImmutableList.of(sourceNode);
   }
 
   @Override
   public PlanNode clone() {
-    return null;
+    return new ExchangeNode(getId());
   }
 
   @Override
   public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return null;
+    ExchangeNode node = new ExchangeNode(getId());
+    node.setSourceNode(children.get(0));
+    return node;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return child.getOutputColumnNames();
+    return null;
   }
 
-  @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitFilter(this, context);
+  public void setSourceFragmentId(FragmentId sourceFragmentId) {
+    this.sourceFragmentId = sourceFragmentId;
   }
 
-  public FilterOperator getPredicate() {
-    return predicate;
+  public FragmentId getSourceFragmentId() {
+    return sourceFragmentId;
   }
 
-  public PlanNode getChild() {
-    return child;
+  public PlanNode getSourceNode() {
+    return sourceNode;
+  }
+
+  public void setSourceNode(PlanNode sourceNode) {
+    this.sourceNode = sourceNode;
+  }
+
+  public String toString() {
+    return String.format("ExchangeNode-%s", getId());
   }
 }
