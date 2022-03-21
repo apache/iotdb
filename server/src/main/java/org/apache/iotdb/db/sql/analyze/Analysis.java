@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.sql.analyze;
 
+import org.apache.iotdb.db.metadata.SchemaRegion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.DataRegion;
+import org.apache.iotdb.db.mpp.common.DataRegionTimeSlice;
 import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 

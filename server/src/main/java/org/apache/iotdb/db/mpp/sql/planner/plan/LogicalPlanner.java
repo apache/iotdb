@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.db.mpp.common.Analysis;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.sql.planner.optimization.PlanOptimizer;
+import org.apache.iotdb.db.sql.analyze.Analysis;
 
 import java.util.List;
 
