@@ -21,4 +21,8 @@ package org.apache.iotdb.db.protocol.influxdb.constant;
 public class InfluxConstant {
 
   public static final String PLACE_HOLDER = "PH";
+
+  public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
+
+  public static final int DEFAULT_FETCH_SIZE = 5000;
 }
