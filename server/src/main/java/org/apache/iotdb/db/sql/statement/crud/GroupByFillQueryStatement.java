@@ -17,18 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.statement;
+package org.apache.iotdb.db.sql.statement.crud;
 
-public class ShowDevicesStatement extends Statement {
+import org.apache.iotdb.db.sql.statement.component.FillComponent;
 
-  int limit = 0;
-  int offset = 0;
+public class GroupByFillQueryStatement extends GroupByQueryStatement {
 
-  public void setLimit(int limit) {
-    this.limit = limit;
+  FillComponent fillComponent;
+
+  public GroupByFillQueryStatement() {
+    super();
   }
 
-  public void setOffset(int offset) {
-    this.offset = offset;
+  public GroupByFillQueryStatement(QueryStatement queryStatement) {
+    super(queryStatement);
+  }
+
+  public FillComponent getFillComponent() {
+    return fillComponent;
+  }
+
+  public void setFillComponent(FillComponent fillComponent) {
+    this.fillComponent = fillComponent;
   }
 }

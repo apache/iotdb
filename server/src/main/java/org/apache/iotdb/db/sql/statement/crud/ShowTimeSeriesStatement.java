@@ -17,27 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.statement;
+package org.apache.iotdb.db.sql.statement.crud;
 
-import org.apache.iotdb.db.sql.statement.component.FillComponent;
+import org.apache.iotdb.db.sql.statement.Statement;
 
-public class GroupByFillQueryStatement extends GroupByQueryStatement {
+public class ShowTimeSeriesStatement extends Statement {
 
-  FillComponent fillComponent;
+  int limit = 0;
+  int offset = 0;
 
-  public GroupByFillQueryStatement() {
-    super();
+  public void setLimit(int limit) {
+    this.limit = limit;
   }
 
-  public GroupByFillQueryStatement(QueryStatement queryStatement) {
-    super(queryStatement);
-  }
-
-  public FillComponent getFillComponent() {
-    return fillComponent;
-  }
-
-  public void setFillComponent(FillComponent fillComponent) {
-    this.fillComponent = fillComponent;
+  public void setOffset(int offset) {
+    this.offset = offset;
   }
 }

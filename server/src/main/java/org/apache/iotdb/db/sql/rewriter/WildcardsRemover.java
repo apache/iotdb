@@ -27,7 +27,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.sql.statement.QueryStatement;
+import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.sql.statement.component.ResultColumn;
 import org.apache.iotdb.tsfile.utils.Pair;
 

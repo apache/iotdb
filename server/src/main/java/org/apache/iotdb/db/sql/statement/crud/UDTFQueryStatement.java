@@ -17,18 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.statement;
+package org.apache.iotdb.db.sql.statement.crud;
 
-public class ShowTimeSeriesStatement extends Statement {
+public class UDTFQueryStatement extends QueryStatement {
 
-  int limit = 0;
-  int offset = 0;
-
-  public void setLimit(int limit) {
-    this.limit = limit;
-  }
-
-  public void setOffset(int offset) {
-    this.offset = offset;
+  public UDTFQueryStatement(QueryStatement queryStatement) {
+    super(queryStatement);
   }
 }

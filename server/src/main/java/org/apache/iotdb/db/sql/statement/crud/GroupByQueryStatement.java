@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.statement;
+package org.apache.iotdb.db.sql.statement.crud;
 
 import org.apache.iotdb.db.sql.statement.component.GroupByTimeComponent;
 

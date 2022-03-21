@@ -17,10 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.statement;
+package org.apache.iotdb.db.sql.statement.crud;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.sql.constant.StatementType;
+import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.db.sql.tree.StatementVisitor;
 
 import java.util.List;

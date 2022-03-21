@@ -17,12 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.statement;
+package org.apache.iotdb.db.sql.statement.crud;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.sql.constant.StatementType;
+import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.db.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.sql.statement.component.FromComponent;
 import org.apache.iotdb.db.sql.statement.component.OrderBy;

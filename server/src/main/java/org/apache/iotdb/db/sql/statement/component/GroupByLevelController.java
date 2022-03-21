@@ -24,8 +24,8 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
-import org.apache.iotdb.db.sql.statement.AggregationQueryStatement;
-import org.apache.iotdb.db.sql.statement.QueryStatement;
+import org.apache.iotdb.db.sql.statement.crud.AggregationQueryStatement;
+import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import java.util.*;

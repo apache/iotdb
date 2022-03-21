@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.sql.tree;
 
-import org.apache.iotdb.db.sql.statement.InsertStatement;
-import org.apache.iotdb.db.sql.statement.QueryStatement;
+import org.apache.iotdb.db.sql.statement.crud.InsertStatement;
+import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.db.sql.statement.StatementNode;
 
