@@ -83,7 +83,7 @@ public class TransportServerManager extends ThriftService
             getID().getName(),
             ThreadName.SYNC_CLIENT.getName(),
             config.getRpcAddress(),
-            config.getSyncServerPort(),
+            config.getPipeServerPort(),
             Integer.MAX_VALUE,
             config.getThriftServerAwaitTimeForStopService(),
             new TransportServerThriftHandler(serviceImpl),
@@ -100,7 +100,7 @@ public class TransportServerManager extends ThriftService
   @Override
   public int getBindPort() {
     // TODO: Whether to change this config here
-    return IoTDBDescriptor.getInstance().getConfig().getSyncServerPort();
+    return IoTDBDescriptor.getInstance().getConfig().getPipeServerPort();
   }
 
   //  @Override

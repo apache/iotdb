@@ -476,12 +476,14 @@ public class IoTDBConfig {
   /** If this IoTDB instance is a receiver of sync, set the server port. */
   private int pipeServerPort = 5555;
 
+  private String ipWhiteList = "0.0.0.0/0";
+
+  private int maxNumberOfSyncFileRetry = 5;
+
   /**
    * Set the language version when loading file including error information, default value is "EN"
    */
   private String languageVersion = "EN";
-
-  private String ipWhiteList = "0.0.0.0/0";
 
   /** Examining period of cache file reader : 100 seconds. Unit: millisecond */
   private long cacheFileReaderClearPeriod = 100000;
@@ -1305,6 +1307,14 @@ public class IoTDBConfig {
 
   public void setPipeServerPort(int pipeServerPort) {
     this.pipeServerPort = pipeServerPort;
+  }
+
+  public int getMaxNumberOfSyncFileRetry() {
+    return maxNumberOfSyncFileRetry;
+  }
+
+  public void setMaxNumberOfSyncFileRetry(int maxNumberOfSyncFileRetry) {
+    this.maxNumberOfSyncFileRetry = maxNumberOfSyncFileRetry;
   }
 
   String getLanguageVersion() {

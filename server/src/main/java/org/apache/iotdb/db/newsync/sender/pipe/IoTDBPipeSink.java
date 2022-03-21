@@ -37,6 +37,14 @@ public class IoTDBPipeSink implements PipeSink {
     type = Type.IoTDB;
   }
 
+  public String getIp() {
+    return ip;
+  }
+
+  public int getPort() {
+    return port;
+  }
+
   @Override
   public void setAttribute(String attr, String value) throws PipeSinkException {
     if (attr.equals("ip")) {

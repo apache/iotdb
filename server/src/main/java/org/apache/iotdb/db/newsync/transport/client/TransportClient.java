@@ -25,10 +25,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.newsync.pipedata.PipeData;
 import org.apache.iotdb.db.newsync.pipedata.TsFilePipeData;
+import org.apache.iotdb.db.newsync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
 import org.apache.iotdb.db.newsync.transport.conf.TransportConstant;
-import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
-import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.service.transport.thrift.IdentityInfo;
@@ -67,10 +66,7 @@ public class TransportClient implements ITransportClient, Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(TransportClient.class);
 
-  // TODO: Need to change to transport config
-  private static SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
-
-  private static final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static final int TIMEOUT_MS = 2000_000;
 
@@ -104,7 +100,7 @@ public class TransportClient implements ITransportClient, Runnable {
 
   public TransportClient(Pipe pipe, String ipAddress, int port) throws IOException {
     Thread.currentThread().setName(ThreadName.SYNC_CLIENT.getName());
-    RpcTransportFactory.setThriftMaxFrameSize(ioTDBConfig.getThriftMaxFrameSize());
+    RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
 
     this.pipe = pipe;
     this.ipAddress = ipAddress;
@@ -117,10 +113,10 @@ public class TransportClient implements ITransportClient, Runnable {
     int handshakeCounter = 0;
     while (!handshakeWithVersion()) {
       handshakeCounter++;
-      if (handshakeCounter > config.getMaxNumOfSyncFileRetry()) {
+      if (handshakeCounter > config.getMaxNumberOfSyncFileRetry()) {
         logger.error(
             String.format(
-                "Handshake failed %s times! Check network.", config.getMaxNumOfSyncFileRetry()));
+                "Handshake failed %s times! Check network.", config.getMaxNumberOfSyncFileRetry()));
         return false;
       }
     }
@@ -136,9 +132,11 @@ public class TransportClient implements ITransportClient, Runnable {
     try (Socket socket = new Socket(this.ipAddress, this.port)) {
       transport =
           RpcTransportFactory.INSTANCE.getTransport(
-              config.getServerIp(), config.getServerPort(), TIMEOUT_MS);
+              ((IoTDBPipeSink) pipe.getPipeSink()).getIp(),
+              ((IoTDBPipeSink) pipe.getPipeSink()).getPort(),
+              TIMEOUT_MS);
       TProtocol protocol;
-      if (ioTDBConfig.isRpcThriftCompressionEnable()) {
+      if (config.isRpcThriftCompressionEnable()) {
         protocol = new TCompactProtocol(transport);
       } else {
         protocol = new TBinaryProtocol(transport);
@@ -155,7 +153,7 @@ public class TransportClient implements ITransportClient, Runnable {
               socket.getLocalAddress().getHostAddress(),
               pipe.getName(),
               pipe.getCreateTime(),
-              ioTDBConfig.getIoTDBMajorVersion());
+              config.getIoTDBMajorVersion());
       TransportStatus status = serviceClient.handshake(identityInfo);
       if (status.code != SUCCESS_CODE) {
         throw new SyncConnectionException(
@@ -179,7 +177,7 @@ public class TransportClient implements ITransportClient, Runnable {
 
     while (true) {
       retryCount++;
-      if (retryCount > config.getMaxNumOfSyncFileRetry()) {
+      if (retryCount > config.getMaxNumberOfSyncFileRetry()) {
         logger.error(
             String.format("After %s tries, stop the transport of current pipeData!", retryCount));
         return false;
@@ -233,11 +231,11 @@ public class TransportClient implements ITransportClient, Runnable {
 
         while (true) {
           retryCount++;
-          if (retryCount > config.getMaxNumOfSyncFileRetry()) {
+          if (retryCount > config.getMaxNumberOfSyncFileRetry()) {
             throw new SyncConnectionException(
                 String.format(
                     "Can not sync file %s after %s tries.",
-                    file.getAbsoluteFile(), config.getMaxNumOfSyncFileRetry()));
+                    file.getAbsoluteFile(), config.getMaxNumberOfSyncFileRetry()));
           }
           try {
             status =
@@ -295,11 +293,11 @@ public class TransportClient implements ITransportClient, Runnable {
           int retryCount = 0;
           while (true) {
             retryCount++;
-            if (retryCount > config.getMaxNumOfSyncFileRetry()) {
+            if (retryCount > config.getMaxNumberOfSyncFileRetry()) {
               throw new SyncConnectionException(
                   String.format(
                       "Can not sync file %s after %s tries.",
-                      file.getAbsoluteFile(), config.getMaxNumOfSyncFileRetry()));
+                      file.getAbsoluteFile(), config.getMaxNumberOfSyncFileRetry()));
             }
             try {
               status =
@@ -351,10 +349,10 @@ public class TransportClient implements ITransportClient, Runnable {
     while (true) {
 
       retryCount++;
-      if (retryCount > config.getMaxNumOfSyncFileRetry()) {
+      if (retryCount > config.getMaxNumberOfSyncFileRetry()) {
         throw new SyncConnectionException(
             String.format(
-                "Can not sync pipe data after %s tries.", config.getMaxNumOfSyncFileRetry()));
+                "Can not sync pipe data after %s tries.", config.getMaxNumberOfSyncFileRetry()));
       }
 
       try {
