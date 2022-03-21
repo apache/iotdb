@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.mnode.*;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -137,7 +139,7 @@ public class RecordUtils {
    * @param buffer content of the node
    * @return node constructed from buffer
    */
-  public static IMNode buffer2Node(String nodeName, ByteBuffer buffer) {
+  public static IMNode buffer2Node(String nodeName, ByteBuffer buffer) throws MetadataException {
     IMNode resNode;
 
     byte nodeType = ReadWriteIOUtils.readByte(buffer);
@@ -214,7 +216,7 @@ public class RecordUtils {
   }
 
   @TestOnly
-  public static String buffer2String(ByteBuffer buffer) {
+  public static String buffer2String(ByteBuffer buffer) throws MetadataException {
     StringBuilder builder = new StringBuilder("[");
     IMNode node = buffer2Node("unspecified", buffer);
     if (node.isMeasurement()) {
@@ -265,16 +267,13 @@ public class RecordUtils {
   }
 
   private static int convertTemplate2Int(Template temp) {
-    return temp == null ? 0 : temp.getName().hashCode();
+    return temp == null ? 0 : temp.hashCode();
   }
 
-  private static IMNode paddingTemplate(IMNode node, int templateHashCode) {
-    // TODO: persistent of template need better implementation
-    for (Template temp : TemplateManager.getInstance().getTemplateMap().values()) {
-      if (temp.getName().hashCode() == templateHashCode) {
-        node.setSchemaTemplate(temp);
-        return node;
-      }
+  private static IMNode paddingTemplate(IMNode node, int templateHashCode)
+      throws MetadataException {
+    if (templateHashCode != 0) {
+      node.setSchemaTemplate(TemplateManager.getInstance().getTemplateFromHash(templateHashCode));
     }
     return node;
   }

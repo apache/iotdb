@@ -29,17 +29,22 @@ public interface ISchemaFile {
   /**
    * Get the storage group node, with its segment address of 0.
    *
-   * @return node instance
-   * @throws MetadataException
+   * @return node instance, <b>template name as hash code</b>
    */
   IMNode init() throws MetadataException;
+
+  /**
+   * Modify header of schema file corresponding to the storage group node synchronously
+   *
+   * @param sgNode node to be updated
+   * @return true if success
+   */
+  boolean updateStorageGroupNode(IMNode sgNode) throws IOException;
 
   /**
    * Only storage group node along with its descendents could be flushed into schema file.
    *
    * @param node
-   * @throws MetadataException
-   * @throws IOException
    */
   void writeMNode(IMNode node) throws MetadataException, IOException;
 

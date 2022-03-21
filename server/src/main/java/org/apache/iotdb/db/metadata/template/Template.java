@@ -67,6 +67,10 @@ public class Template {
   // accelerate template query and check
   private Set<PartialPath> relatedStorageGroup;
 
+  // transient variable to be recorded in schema file
+  // since order of CreateTemplatePlan is fixed, this code shall be fixed as well
+  private int rehashCode;
+
   public Template() {}
 
   /**
@@ -81,6 +85,7 @@ public class Template {
     isDirectAligned = false;
     directNodes = new HashMap<>();
     relatedStorageGroup = new HashSet<>();
+    rehashCode = 0;
 
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       IMeasurementSchema curSchema;
@@ -696,6 +701,18 @@ public class Template {
 
   @Override
   public int hashCode() {
-    return new HashCodeBuilder(17, 37).append(name).append(schemaMap).toHashCode();
+    return rehashCode != 0
+        ? rehashCode
+        : new HashCodeBuilder(17, 37).append(name).append(schemaMap).toHashCode();
+  }
+
+  /**
+   * If the original hash code above clashes with existed template inside TemplateManager, needs to
+   * be rehashed
+   *
+   * @param code solve the hash collision by increment, and 0 to be exceptional value
+   */
+  public void setRehash(int code) {
+    rehashCode = code;
   }
 }

@@ -54,6 +54,9 @@ public class TemplateManager {
   // template name -> template
   private Map<String, Template> templateMap = new ConcurrentHashMap<>();
 
+  // hash the name of template to record it as fixed length in schema file
+  private Map<Integer, String> templateHashMap = new ConcurrentHashMap<>();
+
   private TemplateLogWriter logWriter;
 
   private boolean isRecover;
@@ -160,6 +163,8 @@ public class TemplateManager {
       throw new MetadataException("Duplicated template name: " + plan.getName());
     }
 
+    addToHashMap(template);
+
     try {
       if (!isRecover) {
         logWriter.createSchemaTemplate(plan);
@@ -169,7 +174,36 @@ public class TemplateManager {
     }
   }
 
+  /**
+   * Calculate and store the unique hash code of all existed template. <br>
+   * Collision will be solved by increment now. <br>
+   * 0 is the exceptional value for null template.
+   *
+   * @param template the template to be hashed and added
+   */
+  private void addToHashMap(Template template) {
+    if (templateHashMap.size() >= Integer.MAX_VALUE - 1) {
+      logger.error("Too many templates have been registered.");
+      return;
+    }
+
+    while (templateHashMap.containsKey(template.hashCode())) {
+      if (template.hashCode() == Integer.MAX_VALUE) {
+        template.setRehash(Integer.MIN_VALUE);
+      }
+
+      if (template.hashCode() == 0) {
+        template.setRehash(1);
+      }
+
+      template.setRehash(template.hashCode() + 1);
+    }
+
+    templateHashMap.put(template.hashCode(), template.getName());
+  }
+
   public void dropSchemaTemplate(DropTemplatePlan plan) throws MetadataException {
+    templateHashMap.remove(templateMap.get(plan.getName()).hashCode());
     templateMap.remove(plan.getName());
 
     try {
@@ -248,10 +282,18 @@ public class TemplateManager {
     return template;
   }
 
+  public Template getTemplateFromHash(int hashcode) throws MetadataException {
+    if (!templateHashMap.containsKey(hashcode)) {
+      throw new MetadataException("Invalid hash code for schema template: " + hashcode);
+    }
+    return getTemplate(templateHashMap.get(hashcode));
+  }
+
   public void setTemplateMap(Map<String, Template> templateMap) {
     this.templateMap.clear();
     for (Map.Entry<String, Template> templateEntry : templateMap.entrySet()) {
       this.templateMap.put(templateEntry.getKey(), templateEntry.getValue());
+      this.addToHashMap(templateEntry.getValue());
     }
   }
 
