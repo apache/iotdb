@@ -22,11 +22,12 @@ package org.apache.iotdb.db.query.expression.unary;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
-import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
@@ -181,6 +182,17 @@ public class FunctionExpression extends Expression {
 
   @Override
   public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
+      throws StatementAnalyzeException {
+    for (List<Expression> functionExpression : wildcardsRemover.removeWildcardsFrom(expressions)) {
+      resultExpressions.add(
+          new FunctionExpression(functionName, functionAttributes, functionExpression));
+    }
+  }
+
+  @Override
+  public void removeWildcards(
+      org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
+      List<Expression> resultExpressions)
       throws LogicalOptimizeException {
     for (List<Expression> functionExpression : wildcardsRemover.removeWildcardsFrom(expressions)) {
       resultExpressions.add(
