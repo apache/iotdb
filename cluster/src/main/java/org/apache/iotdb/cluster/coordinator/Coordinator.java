@@ -29,7 +29,7 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.CSchemaEngine;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -38,7 +38,8 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -57,7 +58,6 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
@@ -178,7 +178,7 @@ public class Coordinator {
         // them to full paths so the executor nodes will not need to query the metadata holders,
         // eliminating the risk that when they are querying the metadata holders, the timeseries
         // has already been deleted
-        ((CMManager) IoTDB.metaManager).convertToFullPaths(plan);
+        ((CSchemaEngine) IoTDB.schemaEngine).convertToFullPaths(plan);
       } else {
         // function convertToFullPaths has already sync leader
         metaGroupMember.syncLeaderWithConsistencyCheck(true);
@@ -209,12 +209,12 @@ public class Coordinator {
       throws MetadataException, CheckConsistencyException {
     if (plan instanceof SetTemplatePlan) {
       try {
-        IoTDB.metaManager.getBelongedStorageGroup(
+        IoTDB.schemaEngine.getBelongedStorageGroup(
             new PartialPath(((SetTemplatePlan) plan).getPrefixPath()));
       } catch (IllegalPathException e) {
         // the plan has been checked
       } catch (StorageGroupNotSetException e) {
-        ((CMManager) IoTDB.metaManager).createSchema(plan);
+        ((CSchemaEngine) IoTDB.schemaEngine).createSchema(plan);
       }
     }
   }
@@ -255,7 +255,7 @@ public class Coordinator {
 
         logger.debug("{}: No associated storage group found for {}, auto-creating", name, plan);
         try {
-          ((CMManager) IoTDB.metaManager).createSchema(plan);
+          ((CSchemaEngine) IoTDB.schemaEngine).createSchema(plan);
           return processPartitionedPlan(plan);
         } catch (MetadataException | CheckConsistencyException e) {
           logger.error(

@@ -451,10 +451,7 @@ public class SessionExample {
     Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList, 100);
 
     // Method 1 to add tablet data
-    tablet.bitMaps = new BitMap[schemaList.size()];
-    for (int s = 0; s < 3; s++) {
-      tablet.bitMaps[s] = new BitMap(tablet.getMaxRowNumber());
-    }
+    tablet.initBitMaps();
 
     long timestamp = System.currentTimeMillis();
     for (long row = 0; row < 100; row++) {

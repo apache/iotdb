@@ -74,6 +74,8 @@ nodeName
     | ID
     | QUTOED_ID
     | QUTOED_ID_IN_NODE_NAME
+    | LAST
+    | COUNT
     ;
 
 // Identifier

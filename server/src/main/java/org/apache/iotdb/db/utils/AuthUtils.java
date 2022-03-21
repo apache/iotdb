@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.security.encrypt.AsymmetricEncryptFactory;
 
@@ -134,6 +134,7 @@ public class AuthUtils {
       switch (type) {
         case READ_TIMESERIES:
         case SET_STORAGE_GROUP:
+        case DELETE_STORAGE_GROUP:
         case CREATE_TIMESERIES:
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:
@@ -150,6 +151,7 @@ public class AuthUtils {
       switch (type) {
         case READ_TIMESERIES:
         case SET_STORAGE_GROUP:
+        case DELETE_STORAGE_GROUP:
         case CREATE_TIMESERIES:
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:

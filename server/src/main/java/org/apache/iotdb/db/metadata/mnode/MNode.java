@@ -18,8 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.ArrayList;
@@ -69,13 +68,6 @@ public abstract class MNode implements IMNode {
    */
   @Override
   public PartialPath getPartialPath() {
-    if (fullPath != null) {
-      try {
-        return new PartialPath(fullPath);
-      } catch (IllegalPathException ignored) {
-
-      }
-    }
     List<String> detachedPath = new ArrayList<>();
     IMNode temp = this;
     detachedPath.add(temp.getName());
@@ -111,9 +103,13 @@ public abstract class MNode implements IMNode {
   }
 
   @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
+    newMNode.setParent(parent);
+  }
+
+  @Override
   public boolean isEmptyInternal() {
     return !IoTDBConstant.PATH_ROOT.equals(name)
-        && !isStorageGroup()
         && !isMeasurement()
         && getSchemaTemplate() == null
         && !isUseTemplate()

@@ -84,7 +84,7 @@ public class GroupByLevelDataSetTest {
   };
 
   static {
-    IoTDB.metaManager.init();
+    IoTDB.schemaEngine.init();
   }
 
   public GroupByLevelDataSetTest() throws QueryProcessException {}
