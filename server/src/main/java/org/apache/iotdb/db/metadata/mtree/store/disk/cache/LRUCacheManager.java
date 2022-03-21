@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-import java.util.Random;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -29,8 +28,6 @@ public class LRUCacheManager extends CacheManager {
   private static final int NUM_OF_LIST = 17;
 
   private LRUCacheList[] lruCacheLists = new LRUCacheList[NUM_OF_LIST];
-
-  private Random random = new Random();
 
   public LRUCacheManager() {
     for (int i = 0; i < NUM_OF_LIST; i++) {
@@ -74,7 +71,14 @@ public class LRUCacheManager extends CacheManager {
 
   @Override
   protected IMNode getPotentialNodeTobeEvicted() {
-    return lruCacheLists[random.nextInt(NUM_OF_LIST)].getPotentialNodeTobeEvicted();
+    IMNode result = null;
+    for (LRUCacheList cacheList : lruCacheLists) {
+      result = cacheList.getPotentialNodeTobeEvicted();
+      if (result != null) {
+        break;
+      }
+    }
+    return result;
   }
 
   @Override

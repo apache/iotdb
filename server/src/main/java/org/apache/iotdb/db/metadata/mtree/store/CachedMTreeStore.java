@@ -63,7 +63,8 @@ public class CachedMTreeStore implements IMTreeStore {
   private IMNode root;
 
   private ExecutorService flushTask;
-  private boolean hasFlushTask = false;
+  private int flushCount = 0;
+  private volatile boolean hasFlushTask = false;
 
   private ReadWriteLock readWriteLock = new ReentrantReadWriteLock(); // default writer preferential
   private Lock readLock = readWriteLock.readLock();
@@ -260,6 +261,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public void updateStorageGroupMNode(IStorageGroupMNode node) throws MetadataException {
+    this.root = node;
     writeLock.lock();
     try {
       file.updateStorageGroupNode(node);
@@ -407,6 +409,7 @@ public class CachedMTreeStore implements IMTreeStore {
       }
       ensureMemoryStatus();
       hasFlushTask = false;
+      flushCount++;
     } finally {
       writeLock.unlock();
     }
