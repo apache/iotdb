@@ -67,9 +67,10 @@ public class RInternalMNode extends RMNode {
    *
    * @param name child's name
    * @param child child's node
+   * @return
    */
   @Override
-  public void addChild(String name, IMNode child) {
+  public IMNode addChild(String name, IMNode child) {
     child.setParent(this);
     String childName = fullPath.concat(RockDBConstants.PATH_SEPARATOR).concat(name);
     int childNameMaxLevel = RocksDBUtils.getLevelByPartialPath(childName);
@@ -101,6 +102,7 @@ public class RInternalMNode extends RMNode {
     } catch (RocksDBException e) {
       logger.error(e.getMessage());
     }
+    return child;
   }
 
   /**

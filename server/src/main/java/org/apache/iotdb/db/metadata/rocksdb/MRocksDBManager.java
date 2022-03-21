@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.rocksdb;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AcquireLockTimeoutException;
@@ -33,7 +34,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.IMetaManager;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -74,7 +75,6 @@ import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -121,8 +121,8 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ALL_NODE_TYPE_ARRAY;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
 import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_NODE_VALUE;
@@ -189,7 +189,7 @@ public class MRocksDBManager implements IMetaManager {
   private final Map<String, ReentrantLock> locksPool =
       new MapMaker().weakValues().initialCapacity(10000).makeMap();
 
-  private volatile Map<String, Boolean> storageGroupDeletingFlagMap = new ConcurrentHashMap<>();
+  private final Map<String, Boolean> storageGroupDeletingFlagMap = new ConcurrentHashMap<>();
 
   public MRocksDBManager() throws MetadataException {
     try {
@@ -203,12 +203,6 @@ public class MRocksDBManager implements IMetaManager {
   // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
   @Override
   public void init() {}
-
-  @Override
-  public void createMTreeSnapshot() {
-    throw new UnsupportedOperationException(
-        "RocksDB based MetaData Manager doesn't support the operation");
-  }
 
   @TestOnly
   @Override
@@ -510,7 +504,7 @@ public class MRocksDBManager implements IMetaManager {
       throws MetadataException {
     createAlignedTimeSeries(
         new CreateAlignedTimeSeriesPlan(
-            prefixPath, measurements, dataTypes, encodings, compressors, null));
+            prefixPath, measurements, dataTypes, encodings, compressors, null, null, null));
   }
 
   /**
@@ -688,13 +682,6 @@ public class MRocksDBManager implements IMetaManager {
             } else {
               throw new AcquireLockTimeoutException("acquire lock timeout, " + path);
             }
-
-            //            if (nodes.length > 1) {
-            //              // Only try to delete directly parent if no other siblings
-            //              parentToCheck.add(
-            //                  String.join(PATH_SEPARATOR, Arrays.copyOf(nodes, nodes.length -
-            // 1)));
-            //            }
           } catch (IllegalPathException e) {
           } catch (Exception e) {
             logger.error("delete timeseries [{}] fail", path, e);
@@ -706,60 +693,6 @@ public class MRocksDBManager implements IMetaManager {
         new Character[] {NODE_TYPE_MEASUREMENT});
 
     // TODO: do we need to delete parent??
-    //    parentToCheck
-    //        .parallelStream()
-    //        .forEach(
-    //            x -> {
-    //              try {
-    //                String[] parentNodes = MetaUtils.splitPathToDetachedPath(x);
-    //                String levelPathPrefix =
-    //                    RocksDBUtils.getLevelPathPrefix(
-    //                        parentNodes, parentNodes.length - 1, parentNodes.length);
-    //                AtomicInteger childrenCnt = new AtomicInteger(0);
-    //
-    //                Arrays.stream(ALL_NODE_TYPE_ARRAY)
-    //                    .parallel()
-    //                    .forEach(
-    //                        type -> {
-    //                          byte[] prefixKey = RocksDBUtils.toRocksDBKey(levelPathPrefix, type);
-    //                          readWriteHandler.traverseByPrefix(
-    //                              prefixKey, (bytes, bytes2) -> childrenCnt.getAndIncrement());
-    //                        });
-    //
-    //                if (childrenCnt.get() <= 0) {
-    //                  String parentLevelPath =
-    //                      RocksDBUtils.getLevelPath(parentNodes, parentNodes.length - 1);
-    //                  Lock curLock = locksPool.get(parentLevelPath);
-    //                  if (curLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-    //                    try {
-    //                      CheckKeyResult result =
-    // readWriteHandler.keyExistByAllTypes(parentLevelPath);
-    //                      if (result.getResult(RocksDBMNodeType.ENTITY)) {
-    //                        System.out.println("delete entity node: {}" + parentLevelPath);
-    //                        byte[] key = RocksDBUtils.toEntityNodeKey(parentLevelPath);
-    //                        readWriteHandler.deleteByKey(key);
-    //                      } else if (result.getResult(RocksDBMNodeType.INTERNAL)) {
-    //                        System.out.println("delete internal node: {}" + parentLevelPath);
-    //                        byte[] key = RocksDBUtils.toInternalNodeKey(parentLevelPath);
-    //                        readWriteHandler.deleteByKey(key);
-    //                      } else {
-    //                        System.out.println(
-    //                            "delete type node: {}" + result.getExistType() + " " +
-    // parentLevelPath);
-    //                      }
-    //                    } finally {
-    //                      curLock.unlock();
-    //                    }
-    //                  } else {
-    //                    throw new AcquireLockTimeoutException(
-    //                        "acquire lock timeout, " + parentLevelPath);
-    //                  }
-    //                }
-    //              } catch (IllegalPathException e) {
-    //              } catch (Exception e) {
-    //                logger.error("delete parent of timeseries fail", e);
-    //              }
-    //            });
 
     return failedNames.isEmpty() ? null : String.join(",", failedNames);
   }
@@ -1263,7 +1196,7 @@ public class MRocksDBManager implements IMetaManager {
 
   @Override
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, MManager.StorageGroupFilter filter)
+      PartialPath pathPattern, int nodeLevel, SchemaEngine.StorageGroupFilter filter)
       throws MetadataException {
     return getNodesListInGivenLevel(pathPattern, nodeLevel);
   }
@@ -2546,9 +2479,5 @@ public class MRocksDBManager implements IMetaManager {
     throw new UnsupportedOperationException();
   }
 
-  @TestOnly
-  public void flushAllMlogForTest() {
-    throw new UnsupportedOperationException();
-  }
   // end region
 }

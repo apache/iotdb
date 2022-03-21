@@ -5,7 +5,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -30,7 +29,7 @@ import java.util.Set;
 import static org.apache.iotdb.db.metadata.rocksdb.RocksDBReadWriteHandler.ROCKSDB_PATH;
 
 public class RocksDBBenchmarkEngine {
-  private static final Logger logger = LoggerFactory.getLogger(MManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(RocksDBBenchmarkEngine.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static final int BIN_CAPACITY = 100 * 1000;

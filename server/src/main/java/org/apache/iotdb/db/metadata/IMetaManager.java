@@ -47,7 +47,6 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -103,8 +102,6 @@ public interface IMetaManager {
   // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
   void init();
 
-  void createMTreeSnapshot();
-
   void clear();
 
   void operation(PhysicalPlan plan) throws IOException, MetadataException;
@@ -156,9 +153,6 @@ public interface IMetaManager {
   void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException;
   // endregion
 
-  // region Interfaces for get and auto create device
-  // endregion
-
   // region Interfaces for metadata info Query
   boolean isPathExist(PartialPath path) throws MetadataException;
 
@@ -191,7 +185,7 @@ public interface IMetaManager {
       throws MetadataException;
 
   List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, MManager.StorageGroupFilter filter)
+      PartialPath pathPattern, int nodeLevel, SchemaEngine.StorageGroupFilter filter)
       throws MetadataException;
 
   Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException;
@@ -377,7 +371,5 @@ public interface IMetaManager {
 
   Template getTemplate(String templateName) throws MetadataException;
 
-  @TestOnly
-  public void flushAllMlogForTest() throws IOException;
   // endregion
 }

@@ -29,11 +29,9 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mtree.MTree;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
+import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
@@ -56,8 +54,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -95,7 +91,7 @@ public class MetaDataTransfer {
       MetaDataTransfer transfer = new MetaDataTransfer();
       transfer.doTransfer();
     } catch (MetadataException | IOException | ExecutionException | InterruptedException e) {
-      e.printStackTrace();
+      logger.error(e.getMessage());
     }
   }
 
@@ -194,6 +190,7 @@ public class MetaDataTransfer {
           try {
             rocksDBManager.operation(plan);
           } catch (IOException e) {
+            logger.warn("operate [" + plan.getOperatorType().toString() + "] failed, try again.");
             rocksDBManager.operation(plan);
           } catch (MetadataException e) {
             logger.error("Can not operate cmd {} for err:", plan.getOperatorType(), e);
@@ -228,10 +225,8 @@ public class MetaDataTransfer {
       for (PhysicalPlan retryPlan : retryPlans) {
         try {
           rocksDBManager.operation(retryPlan);
-        } catch (IOException e) {
-          persistFailedLog(retryPlan);
         } catch (MetadataException e) {
-          logger.error("Execute plan failed: {}", retryPlan.toString(), e);
+          logger.error("Execute plan failed: {}", retryPlan, e);
         } catch (Exception e) {
           persistFailedLog(retryPlan);
         }
@@ -341,7 +336,7 @@ public class MetaDataTransfer {
       throws IOException, MetadataException, ExecutionException, InterruptedException {
     logger.info("Start transfer data from snapshot");
     long start = System.currentTimeMillis();
-    MTree mTree = new MTree();
+    MTreeAboveSG mTree = new MTreeAboveSG();
     mTree.init();
     List<IStorageGroupMNode> storageGroupNodes = mTree.getAllStorageGroupNodes();
 
@@ -376,79 +371,79 @@ public class MetaDataTransfer {
 
     List<IMeasurementMNode> measurementMNodes = new ArrayList<>();
 
-    IMNode root = mTree.getNodeByPath(new PartialPath(new String[] {"root"}));
-    PartialPath matchAllPath = new PartialPath(new String[] {"root", "**"});
+    //    IMNode root = mTree.getNodeByPath(new PartialPath(new String[] {"root"}));
+    //    PartialPath matchAllPath = new PartialPath(new String[] {"root", "**"});
+    //
+    //    MeasurementCollector collector =
+    //        new MeasurementCollector(root, matchAllPath, -1, -1) {
+    //          @Override
+    //          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+    //            measurementMNodes.add(node);
+    //          }
+    //        };
+    //    collector.traverse();
+    //
+    //    Queue<IMeasurementMNode> failCreatedNodes = new ConcurrentLinkedQueue<>();
+    //    AtomicInteger createdNodeCnt = new AtomicInteger(0);
+    //    AtomicInteger lastValue = new AtomicInteger(-1);
+    //    new Thread(
+    //            () -> {
+    //              while (lastValue.get() < createdNodeCnt.get()) {
+    //                try {
+    //                  lastValue.set(createdNodeCnt.get());
+    //                  Thread.sleep(10 * 1000);
+    //                  logger.info("created count: {}", createdNodeCnt.get());
+    //                } catch (InterruptedException e) {
+    //                  logger.error("timer thread error", e);
+    //                }
+    //              }
+    //            })
+    //        .start();
 
-    MeasurementCollector collector =
-        new MeasurementCollector(root, matchAllPath, -1, -1) {
-          @Override
-          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
-            measurementMNodes.add(node);
-          }
-        };
-    collector.traverse();
-
-    Queue<IMeasurementMNode> failCreatedNodes = new ConcurrentLinkedQueue<>();
-    AtomicInteger createdNodeCnt = new AtomicInteger(0);
-    AtomicInteger lastValue = new AtomicInteger(-1);
-    new Thread(
-            () -> {
-              while (lastValue.get() < createdNodeCnt.get()) {
-                try {
-                  lastValue.set(createdNodeCnt.get());
-                  Thread.sleep(10 * 1000);
-                  logger.info("created count: {}", createdNodeCnt.get());
-                } catch (InterruptedException e) {
-                  logger.error("timer thread error", e);
-                }
-              }
-            })
-        .start();
-
-    forkJoinPool
-        .submit(
-            () ->
-                measurementMNodes
-                    .parallelStream()
-                    .forEach(
-                        mNode -> {
-                          try {
-                            rocksDBManager.createTimeSeries(
-                                mNode.getPartialPath(),
-                                mNode.getSchema(),
-                                mNode.getAlias(),
-                                null,
-                                null);
-                            createdNodeCnt.incrementAndGet();
-                          } catch (AcquireLockTimeoutException e) {
-                            failCreatedNodes.add(mNode);
-                          } catch (MetadataException e) {
-                            logger.error(
-                                "create timeseries {} failed",
-                                mNode.getPartialPath().getFullPath(),
-                                e);
-                            errorCount.incrementAndGet();
-                          }
-                        }))
-        .get();
-
-    if (!failCreatedNodes.isEmpty()) {
-      failCreatedNodes.stream()
-          .forEach(
-              mNode -> {
-                try {
-                  rocksDBManager.createTimeSeries(
-                      mNode.getPartialPath(), mNode.getSchema(), mNode.getAlias(), null, null);
-                  createdNodeCnt.incrementAndGet();
-                } catch (Exception e) {
-                  logger.error(
-                      "create timeseries {} failed in retry",
-                      mNode.getPartialPath().getFullPath(),
-                      e);
-                  errorCount.incrementAndGet();
-                }
-              });
-    }
+    //    forkJoinPool
+    //        .submit(
+    //            () ->
+    //                measurementMNodes.parallelStream()
+    //                    .forEach(
+    //                        mNode -> {
+    //                          try {
+    //                            rocksDBManager.createTimeSeries(
+    //                                mNode.getPartialPath(),
+    //                                mNode.getSchema(),
+    //                                mNode.getAlias(),
+    //                                null,
+    //                                null);
+    //                            createdNodeCnt.incrementAndGet();
+    //                          } catch (AcquireLockTimeoutException e) {
+    //                            failCreatedNodes.add(mNode);
+    //                          } catch (MetadataException e) {
+    //                            logger.error(
+    //                                "create timeseries {} failed",
+    //                                mNode.getPartialPath().getFullPath(),
+    //                                e);
+    //                            errorCount.incrementAndGet();
+    //                          }
+    //                        }))
+    //        .get();
+    //
+    //    if (!failCreatedNodes.isEmpty()) {
+    //      failCreatedNodes.stream()
+    //          .forEach(
+    //              mNode -> {
+    //                try {
+    //                  rocksDBManager.createTimeSeries(
+    //                      mNode.getPartialPath(), mNode.getSchema(), mNode.getAlias(), null,
+    // null);
+    //                  createdNodeCnt.incrementAndGet();
+    //                } catch (Exception e) {
+    //                  logger.error(
+    //                      "create timeseries {} failed in retry",
+    //                      mNode.getPartialPath().getFullPath(),
+    //                      e);
+    //                  errorCount.incrementAndGet();
+    //                }
+    //              });
+    //    }
 
     logger.info(
         "Transfer data from snapshot complete after {}ms with {} errors",

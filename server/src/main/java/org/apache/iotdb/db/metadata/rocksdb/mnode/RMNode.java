@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.rocksdb.mnode;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -219,6 +219,11 @@ public abstract class RMNode implements IMNode {
   @Override
   public String toString() {
     return this.getName();
+  }
+
+  @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
+    throw new UnsupportedOperationException("Temporarily unsupported");
   }
 
   // end
