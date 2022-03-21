@@ -50,6 +50,6 @@ public class FragmentInstanceTimeoutSentinel extends AbstractExecutor {
       // After this time, the task must be timeout.
       Thread.sleep(waitTime);
     }
-    getScheduler().toAborted(task);
+    scheduler.toAborted(task);
   }
 }

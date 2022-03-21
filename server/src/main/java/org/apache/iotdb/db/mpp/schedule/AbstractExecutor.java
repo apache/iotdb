@@ -33,7 +33,7 @@ public abstract class AbstractExecutor extends Thread implements Closeable {
 
   private static final Logger logger = LoggerFactory.getLogger(AbstractExecutor.class);
   private final IndexedBlockingQueue<FragmentInstanceTask> queue;
-  private final ITaskScheduler scheduler;
+  protected final ITaskScheduler scheduler;
   private volatile boolean closed;
 
   public AbstractExecutor(
@@ -59,10 +59,6 @@ public abstract class AbstractExecutor extends Thread implements Closeable {
         logger.error("Executor " + this.getName() + " processes failed", e);
       }
     }
-  }
-
-  protected ITaskScheduler getScheduler() {
-    return scheduler;
   }
 
   /** Processing a task. */

@@ -49,7 +49,7 @@ public class FragmentInstanceTaskExecutor extends AbstractExecutor {
   @Override
   public void execute(FragmentInstanceTask task) throws InterruptedException {
     // try to switch it to RUNNING
-    if (!getScheduler().readyToRunning(task)) {
+    if (!scheduler.readyToRunning(task)) {
       return;
     }
     ExecFragmentInstance instance = task.getFragmentInstance();
@@ -59,24 +59,24 @@ public class FragmentInstanceTaskExecutor extends AbstractExecutor {
     // long cost = System.nanoTime() - startTime;
     // If the future is cancelled, the task is in an error and should be thrown.
     if (future.isCancelled()) {
-      getScheduler().toAborted(task);
+      scheduler.toAborted(task);
       return;
     }
     ExecutionContext context = new ExecutionContext();
     context.setCpuDuration(duration);
     context.setTimeSlice(EXECUTION_TIME_SLICE);
     if (instance.isFinished()) {
-      getScheduler().runningToFinished(task, context);
+      scheduler.runningToFinished(task, context);
       return;
     }
 
     if (future.isDone()) {
-      getScheduler().runningToReady(task, context);
+      scheduler.runningToReady(task, context);
     } else {
-      getScheduler().runningToBlocked(task, context);
+      scheduler.runningToBlocked(task, context);
       future.addListener(
           () -> {
-            getScheduler().blockedToReady(task);
+            scheduler.blockedToReady(task);
           },
           listeningExecutor);
     }
