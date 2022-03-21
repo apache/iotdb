@@ -159,7 +159,7 @@ public class SchemaPage implements ISchemaPage {
 
   @Override
   public boolean hasRecordKeyInSegment(String key, short segId) throws SegmentNotFoundException {
-    return getSegment(segId).hasRecordKey(key);
+    return getSegment(segId).hasRecordKey(key) || getSegment(segId).hasRecordAlias(key);
   }
 
   @Override

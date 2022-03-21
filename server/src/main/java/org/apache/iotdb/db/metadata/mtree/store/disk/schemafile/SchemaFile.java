@@ -567,19 +567,17 @@ public class SchemaFile implements ISchemaFile {
   private long getTargetSegmentAddress(long curSegAddr, String recKey)
       throws IOException, MetadataException {
     // TODO: improve efficiency
-    ISchemaPage curPage = null;
     short curSegId = getSegIndex(curSegAddr);
 
-    curPage = getPageInstance(getPageIndex(curSegAddr));
+    ISchemaPage curPage = getPageInstance(getPageIndex(curSegAddr));
 
     if (curPage.hasRecordKeyInSegment(recKey, curSegId)) {
       return curSegAddr;
     }
 
-    ISchemaPage pivotPage = null;
     long nextSegAddr = curPage.getNextSegAddress(curSegId);
     while (nextSegAddr >= 0) {
-      pivotPage = getPageInstance(getPageIndex(nextSegAddr));
+      ISchemaPage pivotPage = getPageInstance(getPageIndex(nextSegAddr));
       short pSegId = getSegIndex(nextSegAddr);
       if (pivotPage.hasRecordKeyInSegment(recKey, pSegId)) {
         return nextSegAddr;
@@ -589,7 +587,7 @@ public class SchemaFile implements ISchemaFile {
 
     long prevSegAddr = curPage.getPrevSegAddress(curSegId);
     while (prevSegAddr >= 0) {
-      pivotPage = getPageInstance(getPageIndex(prevSegAddr));
+      ISchemaPage pivotPage = getPageInstance(getPageIndex(prevSegAddr));
       short pSegId = getSegIndex(prevSegAddr);
       if (pivotPage.hasRecordKeyInSegment(recKey, pSegId)) {
         return prevSegAddr;

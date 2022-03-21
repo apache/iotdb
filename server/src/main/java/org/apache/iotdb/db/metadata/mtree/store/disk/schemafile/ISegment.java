@@ -44,9 +44,16 @@ public interface ISegment {
 
   int removeRecord(String key);
 
+  /**
+   * get a MNode by its name or alias
+   * @param key name or alias of the target node
+   * @return node instance
+   */
   IMNode getRecordAsIMNode(String key) throws MetadataException;
 
   boolean hasRecordKey(String key);
+
+  boolean hasRecordAlias(String alias);
 
   Queue<IMNode> getAllRecords() throws MetadataException;
 
