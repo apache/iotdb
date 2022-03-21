@@ -37,7 +37,7 @@ import java.util.Map;
 
 /**
  * Generated entity implements IMeasurementMNode interface to unify insert logic through id table
- * and mmanager
+ * and schemaEngine
  */
 public class InsertMeasurementMNode implements IMeasurementMNode {
   SchemaEntry schemaEntry;

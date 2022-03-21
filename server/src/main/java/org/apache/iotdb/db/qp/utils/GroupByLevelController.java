@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.qp.utils;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;

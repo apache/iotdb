@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;

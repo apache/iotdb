@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.metadata.SchemaRegion;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.storagegroup.SGMManager;
 
 import java.io.IOException;
 
@@ -30,7 +30,7 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
    */
   private long dataTTL;
 
-  private SGMManager sgmManager;
+  private SchemaRegion schemaRegion;
 
   public StorageGroupEntityMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
@@ -48,14 +48,14 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
   }
 
   @Override
-  public SGMManager getSGMManager() {
-    return sgmManager;
+  public SchemaRegion getSchemaRegion() {
+    return schemaRegion;
   }
 
   @Override
-  public void setSGMManager(SGMManager sgmManager) {
-    if (this.sgmManager == null) {
-      this.sgmManager = sgmManager;
+  public void setSchemaRegion(SchemaRegion schemaRegion) {
+    if (this.schemaRegion == null) {
+      this.schemaRegion = schemaRegion;
     }
   }
 
@@ -63,7 +63,7 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
   public void moveDataToNewMNode(IMNode newMNode) {
     super.moveDataToNewMNode(newMNode);
     if (newMNode.isStorageGroup()) {
-      newMNode.getAsStorageGroupMNode().setSGMManager(this.sgmManager);
+      newMNode.getAsStorageGroupMNode().setSchemaRegion(this.schemaRegion);
     }
   }
 

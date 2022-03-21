@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.base.Throwables;
@@ -37,60 +36,12 @@ import io.airlift.airline.ParseOptionMissingException;
 import io.airlift.airline.ParseOptionMissingValueException;
 import org.apache.commons.lang3.StringUtils;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
-import java.util.stream.Stream;
 
 @SuppressWarnings("java:S106") // for console outputs
 public class CommonUtils {
 
-  private static final int CPUS = Runtime.getRuntime().availableProcessors();
-
-  /** Default executor pool maximum size. */
-  public static final int MAX_EXECUTOR_POOL_SIZE = Math.max(100, getCpuCores() * 5);
-
   private CommonUtils() {}
-
-  /**
-   * get JDK version.
-   *
-   * @return JDK version (int type)
-   */
-  public static int getJdkVersion() {
-    String[] javaVersionElements = System.getProperty("java.version").split("\\.");
-    if (Integer.parseInt(javaVersionElements[0]) == 1) {
-      return Integer.parseInt(javaVersionElements[1]);
-    } else {
-      return Integer.parseInt(javaVersionElements[0]);
-    }
-  }
-
-  /**
-   * NOTICE: This method is currently used only for data dir, thus using FSFactory to get file
-   *
-   * @param dir directory path
-   * @return
-   */
-  public static long getUsableSpace(String dir) {
-    File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
-    dirFile.mkdirs();
-    return dirFile.getFreeSpace();
-  }
-
-  public static boolean hasSpace(String dir) {
-    return getUsableSpace(dir) > 0;
-  }
-
-  public static long getOccupiedSpace(String folderPath) throws IOException {
-    Path folder = Paths.get(folderPath);
-    try (Stream<Path> s = Files.walk(folder)) {
-      return s.filter(p -> p.toFile().isFile()).mapToLong(p -> p.toFile().length()).sum();
-    }
-  }
 
   public static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
     try {
@@ -169,14 +120,6 @@ public class CommonUtils {
       return true;
     }
     throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
-  }
-
-  public static int getCpuCores() {
-    return CPUS;
-  }
-
-  public static int getMaxExecutorPoolSize() {
-    return MAX_EXECUTOR_POOL_SIZE;
   }
 
   public static int runCli(

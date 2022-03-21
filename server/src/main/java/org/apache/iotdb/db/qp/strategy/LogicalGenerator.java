@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
@@ -50,7 +50,7 @@ import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 
 /** LogicalGenerator. */
 public class LogicalGenerator {

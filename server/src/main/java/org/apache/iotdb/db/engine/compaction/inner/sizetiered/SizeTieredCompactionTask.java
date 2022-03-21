@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionExceptionHandler;

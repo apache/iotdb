@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
@@ -125,7 +125,7 @@ public class InnerSpaceCompactionUtils {
           measurementSchema =
               IDTableManager.getInstance().getSeriesSchema(device, p.getMeasurement());
         } else {
-          measurementSchema = IoTDB.metaManager.getSeriesSchema(p);
+          measurementSchema = IoTDB.schemaEngine.getSeriesSchema(p);
         }
       } catch (PathNotExistException e) {
         logger.info("A deleted path is skipped: {}", e.getMessage());
