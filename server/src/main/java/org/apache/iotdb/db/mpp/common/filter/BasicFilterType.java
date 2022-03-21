@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.mpp.common.filter;
 
 import org.apache.iotdb.db.exception.sql.SQLParserException;
-import org.apache.iotdb.db.sql.constant.FilterConstant;
-import org.apache.iotdb.db.sql.constant.FilterConstant.FilterType;
+import org.apache.iotdb.db.mpp.sql.constant.FilterConstant;
+import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;

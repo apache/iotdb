@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.sql;
 
-import org.apache.iotdb.db.sql.parser.ASTVisitor;
+import org.apache.iotdb.db.mpp.sql.parser.ASTVisitor;
 
 import org.junit.After;
 import org.junit.Before;

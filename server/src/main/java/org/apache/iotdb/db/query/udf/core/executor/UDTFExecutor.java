@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.query.udf.core.executor;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.common.expression.Expression;
-import org.apache.iotdb.db.mpp.common.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;

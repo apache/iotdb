@@ -20,14 +20,14 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.common.expression.Expression;
-import org.apache.iotdb.db.mpp.common.expression.unary.FunctionExpression;
-import org.apache.iotdb.db.mpp.common.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 import java.util.ArrayList;
 import java.util.HashMap;

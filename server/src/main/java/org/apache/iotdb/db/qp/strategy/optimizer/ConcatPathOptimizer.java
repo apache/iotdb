@@ -26,8 +26,6 @@ import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.mpp.common.expression.Expression;
-import org.apache.iotdb.db.mpp.common.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -43,7 +41,9 @@ import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.slf4j.Logger;

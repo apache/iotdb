@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.common.filter;
 
-import org.apache.iotdb.db.sql.constant.FilterConstant.FilterType;
+import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

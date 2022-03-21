@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.protocol.influxdb.function.selector;
 
-import org.apache.iotdb.db.mpp.common.expression.Expression;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
+import org.apache.iotdb.db.query.expression.Expression;
 
 import java.util.List;
 
