@@ -25,6 +25,13 @@ import org.apache.iotdb.db.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.sql.statement.metadata.CreateTimeSeriesStatement;
 
+/**
+ * This class provides a visitor of {@link StatementNode}, which can be extended to create a visitor
+ * which only needs to handle a subset of the available methods.
+ *
+ * @param <R> The return type of the visit operation.
+ * @param <C> The context information during visiting.
+ */
 public abstract class StatementVisitor<R, C> {
 
   public R process(StatementNode node) {

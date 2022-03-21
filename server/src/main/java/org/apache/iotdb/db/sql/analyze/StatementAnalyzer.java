@@ -23,7 +23,6 @@ import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
-import org.apache.iotdb.db.sql.metadata.IMetadataFetcher;
 import org.apache.iotdb.db.sql.rewriter.ConcatPathRewriter;
 import org.apache.iotdb.db.sql.rewriter.DnfFilterOptimizer;
 import org.apache.iotdb.db.sql.rewriter.MergeSingleFilterOptimizer;
@@ -35,15 +34,13 @@ import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.sql.tree.StatementVisitor;
 
+/** Analyze the statement and generate Analysis. */
 public class StatementAnalyzer {
 
-  private final IMetadataFetcher metadataFetcher;
   private final Analysis analysis;
   private final AnalysisContext context;
 
-  public StatementAnalyzer(
-      IMetadataFetcher metadataFetcher, Analysis analysis, AnalysisContext context) {
-    this.metadataFetcher = metadataFetcher;
+  public StatementAnalyzer(Analysis analysis, AnalysisContext context) {
     this.analysis = analysis;
     this.context = context;
   }
@@ -52,6 +49,7 @@ public class StatementAnalyzer {
     return new AnalyzeVisitor().process(statement, context);
   }
 
+  /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
   private final class AnalyzeVisitor extends StatementVisitor<Analysis, AnalysisContext> {
 
     @Override
