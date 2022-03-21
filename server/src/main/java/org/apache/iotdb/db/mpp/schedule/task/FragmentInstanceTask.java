@@ -151,7 +151,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
       if (o1.getDDL() > o2.getDDL()) {
         return 1;
       }
-      return o1.getId().compareTo(o2);
+      return o1.getId().compareTo(o2.getId());
     }
   }
 
@@ -169,7 +169,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
       if (o1.getSchedulePriority() < o2.getSchedulePriority()) {
         return 1;
       }
-      return o1.getId().compareTo(o2);
+      return o1.getId().compareTo(o2.getId());
     }
   }
 
