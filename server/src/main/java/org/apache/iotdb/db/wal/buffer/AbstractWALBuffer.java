@@ -32,8 +32,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractWALBuffer implements IWALBufferForTest {
   private static final Logger logger = LoggerFactory.getLogger(AbstractWALBuffer.class);
-  protected static final String WAL_FILE_SUFFIX = WALWriter.FILE_SUFFIX;
-  protected static final String WAL_FILE_PREFIX = WALWriter.FILE_PREFIX;
   /** use size limit to control WALEdit number in each file */
   protected static final long LOG_SIZE_LIMIT = 10 * 1024 * 1024;
 
@@ -56,7 +54,7 @@ public abstract class AbstractWALBuffer implements IWALBufferForTest {
     currentLogWriter =
         new WALWriter(
             SystemFileFactory.INSTANCE.getFile(
-                logDirectory, getLogFileName(currentLogVersion.get())));
+                logDirectory, WALWriter.getLogFileName(currentLogVersion.get())));
   }
 
   @Override
@@ -72,12 +70,8 @@ public abstract class AbstractWALBuffer implements IWALBufferForTest {
     currentLogWriter.close();
     File nextLogFile =
         SystemFileFactory.INSTANCE.getFile(
-            logDirectory, getLogFileName(currentLogVersion.incrementAndGet()));
+            logDirectory, WALWriter.getLogFileName(currentLogVersion.incrementAndGet()));
     currentLogWriter = new WALWriter(nextLogFile);
     return true;
-  }
-
-  protected String getLogFileName(long version) {
-    return WAL_FILE_PREFIX + version + WAL_FILE_SUFFIX;
   }
 }

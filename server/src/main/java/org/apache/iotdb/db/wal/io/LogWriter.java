@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
-import java.util.regex.Pattern;
 
 /**
  * LogWriter writes the binary logs into a file, including writing {@link WALEdit} into .wal file
@@ -39,7 +38,6 @@ import java.util.regex.Pattern;
  */
 public abstract class LogWriter implements ILogWriter {
   public static final String FILE_PREFIX = "_";
-  public static final Pattern FILE_NAME_PATTERN = Pattern.compile("_(?<versionId>\\d+)\\.");
   private static final Logger logger = LoggerFactory.getLogger(LogWriter.class);
 
   private final File logFile;

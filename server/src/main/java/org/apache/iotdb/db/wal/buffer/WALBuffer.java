@@ -50,11 +50,14 @@ import java.util.concurrent.locks.ReentrantLock;
  * writes and avoid waiting for buffer syncing to disk.
  */
 public class WALBuffer extends AbstractWALBuffer {
+  /** Maximum number of WALEdits in one serialize task */
+  public static final int BATCH_SIZE_LIMIT = 100;
+
   private static final Logger logger = LoggerFactory.getLogger(WALBuffer.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long SYNC_WAL_DELAY_IN_MS = config.getSyncWalDelayInMs();
   private static final int WAL_BUFFER_SIZE = config.getWalBufferSize();
-  private static final int BATCH_SIZE_LIMIT = 100;
+  /** notify serializeThread to stop */
   private static final WALEdit CLOSE_SIGNAL = new WALEdit(-1, new DeletePlan());
 
   /** whether close method is called */
