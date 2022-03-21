@@ -18,21 +18,22 @@
  */
 package org.apache.iotdb.db.engine.flush;
 
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.commons.concurrent.WrappedRunnable;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.JMXService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.rescon.AbstractPoolManager;
-import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.JMXService;
-import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +61,7 @@ public class FlushManager implements FlushManagerMBean, IService {
             .getMetricManager()
             .getOrCreateAutoGauge(
                 Metric.QUEUE.toString(),
+                MetricLevel.IMPORTANT,
                 flushPool,
                 AbstractPoolManager::getWaitingTasksNumber,
                 Tag.NAME.toString(),
@@ -70,6 +72,7 @@ public class FlushManager implements FlushManagerMBean, IService {
             .getMetricManager()
             .getOrCreateAutoGauge(
                 Metric.QUEUE.toString(),
+                MetricLevel.IMPORTANT,
                 flushPool,
                 AbstractPoolManager::getWorkingTasksNumber,
                 Tag.NAME.toString(),

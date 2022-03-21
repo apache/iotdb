@@ -43,7 +43,7 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.13.0-SNAPSHOT</version>
+      <version>0.14.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
@@ -279,6 +279,7 @@ public List<String> showMeasurementsInTemplate(String templateName, String patte
 ```
 
 * 将名为'templateName'的元数据模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的元数据模板
+* **请注意，我们强烈建议您将模板设置在存储组或存储组下层的节点中，以更好地适配未来版本更新及各模块的协作**
 
 ``` java
 void setSchemaTemplate(String templateName, String prefixPath)
@@ -497,7 +498,8 @@ void testInsertTablets(Map<String, Tablet> tablets)
 如果超过 60s 都没得到一个连接的话，那么会打印一条警告日志，但是程序仍将继续等待。
 
 当一个连接被用完后，他会自动返回池中等待下次被使用；
-当一个连接损坏后，他会从池中被删除，并重建一个连接重新执行用户的操作。
+当一个连接损坏后，他会从池中被删除，并重建一个连接重新执行用户的操作；
+你还可以像创建 Session 那样在创建 SessionPool 时指定多个可连接节点的 url，以保证分布式集群中客户端的高可用性。
 
 对于查询操作：
 
@@ -520,7 +522,7 @@ void testInsertTablets(Map<String, Tablet> tablets)
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-thrift-cluster</artifactId>
-      <version>0.13.0-SNAPSHOT</version>
+      <version>0.14.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```

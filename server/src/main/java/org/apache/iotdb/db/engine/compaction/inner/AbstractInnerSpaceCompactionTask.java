@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -52,6 +52,11 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
     collectSelectedFilesInfo();
+  }
+
+  @Override
+  public void setSourceFilesToCompactionCandidate() {
+    this.selectedTsFileResourceList.forEach(x -> x.setCompactionCandidate(true));
   }
 
   private void collectSelectedFilesInfo() {
@@ -110,6 +115,7 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
 
     for (TsFileResource resource : selectedTsFileResourceList) {
       resource.setCompacting(true);
+      resource.setCompactionCandidate(false);
     }
     return true;
   }

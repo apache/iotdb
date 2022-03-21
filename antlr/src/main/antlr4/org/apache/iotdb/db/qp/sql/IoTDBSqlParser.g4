@@ -19,7 +19,7 @@
 
 parser grammar IoTDBSqlParser;
 
-options { tokenVocab=IoTDBSqlLexer; }
+options { tokenVocab=SqlLexer; }
 
 
 /**
@@ -37,7 +37,7 @@ statement
 ddlStatement
     : setStorageGroup | createStorageGroup | createTimeseries
     | createSchemaTemplate | createTimeseriesOfSchemaTemplate
-    | createFunction | createTrigger | createContinuousQuery | createSnapshot
+    | createFunction | createTrigger | createContinuousQuery
     | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
@@ -141,11 +141,7 @@ cqGroupByTimeClause
     ;
 
 resampleClause
-    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)? (BOUNDARY dateExpression)?;
-
-// Create Snapshot for Schema
-createSnapshot
-    : CREATE SNAPSHOT FOR SCHEMA
+    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)? (BOUNDARY dateExpression)?
     ;
 
 // Alter Timeseries
@@ -379,13 +375,13 @@ orderByTimeClause
     ;
 
 groupByTimeClause
-    : GROUP BY LR_BRACKET timeInterval COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
-    | GROUP BY LR_BRACKET timeInterval COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
+    : GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
+    | GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
     COMMA LEVEL OPERATOR_EQ INTEGER_LITERAL (COMMA INTEGER_LITERAL)*
     ;
 
 groupByFillClause
-    : GROUP BY LR_BRACKET timeInterval COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
+    : GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
     fillClause
     ;
 
@@ -398,7 +394,7 @@ fillClause
     ;
 
 withoutNullClause
-    : WITHOUT NULL_LITERAL (ALL | ANY)
+    : WITHOUT NULL_LITERAL (ALL | ANY) (LR_BRACKET expression (COMMA expression)* RR_BRACKET)?
     ;
 
 oldTypeClause
@@ -424,7 +420,7 @@ previousUntilLastClause
     : PREVIOUSUNTILLAST (COMMA DURATION_LITERAL)?
     ;
 
-timeInterval
+timeRange
     : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RR_BRACKET
     | LR_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
     ;
@@ -704,14 +700,14 @@ nodeName
     : wildcard
     | wildcard? ID wildcard?
     | wildcard? INTEGER_LITERAL wildcard?
-    | QUTOED_ID_WITHOUT_DOT
+    | QUTOED_ID_IN_NODE_NAME
     | STRING_LITERAL
     ;
 
 nodeNameWithoutWildcard
     : ID
     | INTEGER_LITERAL
-    | QUTOED_ID_WITHOUT_DOT
+    | QUTOED_ID_IN_NODE_NAME
     | STRING_LITERAL
     ;
 
@@ -723,7 +719,7 @@ nodeNameCanInExpr
     : wildcard
     | wildcard? ID wildcard?
     | QUTOED_ID
-    | QUTOED_ID_WITHOUT_DOT
+    | QUTOED_ID_IN_NODE_NAME
     ;
 
 wildcard
@@ -737,7 +733,7 @@ wildcard
 identifier
     : ID
     | QUTOED_ID
-    | QUTOED_ID_WITHOUT_DOT
+    | QUTOED_ID_IN_NODE_NAME
     | INTEGER_LITERAL
     ;
 

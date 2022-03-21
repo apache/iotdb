@@ -156,7 +156,7 @@ public class IoTDBSessionVectorAggregationWithUnSeqIT {
       compressors.add(CompressionType.SNAPPY);
     }
     session.createAlignedTimeseries(
-        ROOT_SG1_D1_VECTOR1, measurements, dataTypes, encodings, compressors, null);
+        ROOT_SG1_D1_VECTOR1, measurements, dataTypes, encodings, compressors, null, null, null);
   }
 
   private static void prepareAlignedTimeseriesDataWithUnSeq()

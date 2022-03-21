@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -184,7 +185,7 @@ public class IoTDBConfig {
 
   /**
    * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan is
-   * larger than this parameter, then the MetaData operation plan will be rejected by MManager.
+   * larger than this parameter, then the MetaData operation plan will be rejected by SchemaRegion.
    * Unit: byte
    */
   private int mlogBufferSize = 1024 * 1024;
@@ -193,7 +194,7 @@ public class IoTDBConfig {
    * The cycle when metadata log is periodically forced to be written to disk(in milliseconds) If
    * set this parameter to 0 it means call channel.force(true) after every each operation
    */
-  private long syncMlogPeriodInMs = 0;
+  private long syncMlogPeriodInMs = 100;
 
   /**
    * The size of log buffer for every trigger management operation plan. If the size of a trigger
@@ -414,8 +415,11 @@ public class IoTDBConfig {
    */
   private long compactionAcquireWriteLockTimeout = 60_000L;
 
-  /** The max candidate file num in compaction */
-  private int maxCompactionCandidateFileNum = 30;
+  /** The max candidate file num in inner space compaction */
+  private int maxInnerCompactionCandidateFileNum = 30;
+
+  /** The max candidate file num in cross space compaction */
+  private int maxCrossCompactionCandidateFileNum = 1000;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
@@ -444,10 +448,10 @@ public class IoTDBConfig {
   /** Set true to enable writing monitor time series. */
   private boolean enableMonitorSeriesWrite = false;
 
-  /** Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}. */
-  private int mManagerCacheSize = 300000;
+  /** Cache size of {@code checkAndGetDataTypeCache} in {@link SchemaEngine}. */
+  private int schemaRegionCacheSize = 10000;
 
-  /** Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}. */
+  /** Cache size of {@code checkAndGetDataTypeCache} in {@link SchemaEngine}. */
   private int mRemoteSchemaCacheSize = 100000;
 
   /** Is external sort enable. */
@@ -573,7 +577,7 @@ public class IoTDBConfig {
   private long mergeIntervalSec = 0L;
 
   /** The limit of compaction merge can reach per second */
-  private int compactionWriteThroughputMbPerSec = 30;
+  private int compactionWriteThroughputMbPerSec = 16;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
@@ -598,6 +602,13 @@ public class IoTDBConfig {
    * The every interval of continuous query instances should not be lower than this limit.
    */
   private long continuousQueryMinimumEveryInterval = 1000;
+
+  /**
+   * The size of log buffer for every CQ management operation plan. If the size of a CQ management
+   * operation plan is larger than this parameter, the CQ management operation plan will be rejected
+   * by CQManager. Unit: byte
+   */
+  private int cqlogBufferSize = 1024 * 1024;
 
   /**
    * The maximum number of rows can be processed in insert-tablet-plan when executing select-into
@@ -676,18 +687,6 @@ public class IoTDBConfig {
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
   private boolean enablePartition = false;
 
-  /** whether enable MTree snapshot */
-  private boolean enableMTreeSnapshot = false;
-
-  /** Interval line number of mlog.txt when creating a checkpoint and saving snapshot of mtree */
-  private int mtreeSnapshotInterval = 100000;
-
-  /**
-   * Threshold interval time of MTree modification. If the last modification time is less than this
-   * threshold, MTree snapshot will not be created. Default: 1 hour(3600 seconds) Unit: second
-   */
-  private int mtreeSnapshotThresholdTime = 3600;
-
   /**
    * Time range for partitioning data inside each storage group, the unit is second. Default time is
    * a week.
@@ -751,7 +750,7 @@ public class IoTDBConfig {
   private long startUpNanosecond = System.nanoTime();
 
   /** Unit: byte */
-  private int thriftMaxFrameSize = 67108864;
+  private int thriftMaxFrameSize = 536870912;
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
@@ -879,30 +878,6 @@ public class IoTDBConfig {
 
   public void setEnablePartition(boolean enablePartition) {
     this.enablePartition = enablePartition;
-  }
-
-  public boolean isEnableMTreeSnapshot() {
-    return enableMTreeSnapshot;
-  }
-
-  public void setEnableMTreeSnapshot(boolean enableMTreeSnapshot) {
-    this.enableMTreeSnapshot = enableMTreeSnapshot;
-  }
-
-  public int getMtreeSnapshotInterval() {
-    return mtreeSnapshotInterval;
-  }
-
-  public void setMtreeSnapshotInterval(int mtreeSnapshotInterval) {
-    this.mtreeSnapshotInterval = mtreeSnapshotInterval;
-  }
-
-  public int getMtreeSnapshotThresholdTime() {
-    return mtreeSnapshotThresholdTime;
-  }
-
-  public void setMtreeSnapshotThresholdTime(int mtreeSnapshotThresholdTime) {
-    this.mtreeSnapshotThresholdTime = mtreeSnapshotThresholdTime;
   }
 
   public long getPartitionInterval() {
@@ -1257,12 +1232,12 @@ public class IoTDBConfig {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
   }
 
-  public int getmManagerCacheSize() {
-    return mManagerCacheSize;
+  public int getSchemaRegionCacheSize() {
+    return schemaRegionCacheSize;
   }
 
-  void setmManagerCacheSize(int mManagerCacheSize) {
-    this.mManagerCacheSize = mManagerCacheSize;
+  void setSchemaRegionCacheSize(int schemaRegionCacheSize) {
+    this.schemaRegionCacheSize = schemaRegionCacheSize;
   }
 
   public int getmRemoteSchemaCacheSize() {
@@ -1569,6 +1544,14 @@ public class IoTDBConfig {
 
   public void setContinuousQueryMinimumEveryInterval(long minimumEveryInterval) {
     this.continuousQueryMinimumEveryInterval = minimumEveryInterval;
+  }
+
+  public int getCqlogBufferSize() {
+    return cqlogBufferSize;
+  }
+
+  public void setCqlogBufferSize(int cqlogBufferSize) {
+    this.cqlogBufferSize = cqlogBufferSize;
   }
 
   public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
@@ -2470,12 +2453,20 @@ public class IoTDBConfig {
     this.compactionScheduleIntervalInMs = compactionScheduleIntervalInMs;
   }
 
-  public int getMaxCompactionCandidateFileNum() {
-    return maxCompactionCandidateFileNum;
+  public int getMaxInnerCompactionCandidateFileNum() {
+    return maxInnerCompactionCandidateFileNum;
   }
 
-  public void setMaxCompactionCandidateFileNum(int maxCompactionCandidateFileNum) {
-    this.maxCompactionCandidateFileNum = maxCompactionCandidateFileNum;
+  public void setMaxInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum) {
+    this.maxInnerCompactionCandidateFileNum = maxInnerCompactionCandidateFileNum;
+  }
+
+  public int getMaxCrossCompactionCandidateFileNum() {
+    return maxCrossCompactionCandidateFileNum;
+  }
+
+  public void setMaxCrossCompactionCandidateFileNum(int maxCrossCompactionCandidateFileNum) {
+    this.maxCrossCompactionCandidateFileNum = maxCrossCompactionCandidateFileNum;
   }
 
   public long getCompactionSubmissionIntervalInMs() {

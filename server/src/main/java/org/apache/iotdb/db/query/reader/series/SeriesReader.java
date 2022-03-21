@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.MergeReaderPriority;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -368,6 +368,7 @@ public class SeriesReader {
     if (valueFilter != null
         && firstChunkMetadata != null
         && !isChunkOverlapped()
+        && !firstChunkMetadata.isModified()
         && !valueFilter.satisfy(firstChunkMetadata.getStatistics())) {
       skipCurrentChunk();
     }
@@ -1067,6 +1068,7 @@ public class SeriesReader {
     if (valueFilter != null
         && firstTimeSeriesMetadata != null
         && !isFileOverlapped()
+        && !firstTimeSeriesMetadata.isModified()
         && !valueFilter.satisfy(firstTimeSeriesMetadata.getStatistics())) {
       firstTimeSeriesMetadata = null;
     }

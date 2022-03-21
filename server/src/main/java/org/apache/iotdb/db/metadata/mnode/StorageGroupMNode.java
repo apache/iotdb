@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.metadata.SchemaRegion;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
@@ -33,6 +34,8 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
    */
   private long dataTTL;
 
+  private SchemaRegion schemaRegion;
+
   public StorageGroupMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
@@ -46,6 +49,26 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
   @Override
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
+  }
+
+  @Override
+  public SchemaRegion getSchemaRegion() {
+    return schemaRegion;
+  }
+
+  @Override
+  public void setSchemaRegion(SchemaRegion schemaRegion) {
+    if (this.schemaRegion == null) {
+      this.schemaRegion = schemaRegion;
+    }
+  }
+
+  @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
+    super.moveDataToNewMNode(newMNode);
+    if (newMNode.isStorageGroup()) {
+      newMNode.getAsStorageGroupMNode().setSchemaRegion(this.schemaRegion);
+    }
   }
 
   @Override

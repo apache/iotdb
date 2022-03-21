@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.session;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -332,7 +332,7 @@ public class IoTDBSessionSimpleIT {
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.s1"));
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.s2"));
     IMeasurementMNode mNode =
-        MManager.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d1.s1"));
+        SchemaEngine.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d1.s1"));
     assertNull(mNode.getSchema().getProps());
 
     session.close();
@@ -395,7 +395,6 @@ public class IoTDBSessionSimpleIT {
     schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
 
     Tablet tablet = new Tablet("root.sg1.d1", schemaList);
-    tablet.setAligned(true);
     long timestamp = System.currentTimeMillis();
 
     for (long row = 0; row < 10; row++) {
@@ -1064,7 +1063,10 @@ public class IoTDBSessionSimpleIT {
           tsDataTypes,
           tsEncodings,
           compressionTypes,
-          Arrays.asList("alias1", "alias2", "alias3"));
+          Arrays.asList("alias1", "alias2", "alias3"),
+          null,
+          null);
+
       fail("Exception expected");
     } catch (StatementExecutionException e) {
       assertTrue(
@@ -1266,7 +1268,6 @@ public class IoTDBSessionSimpleIT {
     schemaList.add(new MeasurementSchema("x", TSDataType.FLOAT));
     schemaList.add(new MeasurementSchema("y", TSDataType.FLOAT));
     Tablet tablet = new Tablet("root.sg.loc1.sector", schemaList);
-    tablet.setAligned(true);
 
     long timestamp = System.currentTimeMillis();
 
@@ -1631,58 +1632,5 @@ public class IoTDBSessionSimpleIT {
     for (int i : index) {
       Assert.assertNull(record.getFields().get(i).getDataType());
     }
-  }
-
-  @Test
-  public void testInsertWithIllegalMeasurementId() throws Exception {
-    session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
-
-    String deviceId = "root.sg1.d1";
-    List<String> measurements = new ArrayList<>();
-    measurements.add("a.b");
-    measurements.add("a\".\"b");
-
-    List<String> values = new ArrayList<>();
-    values.add("1");
-    values.add("1.2");
-
-    try {
-      session.insertRecord(deviceId, 1L, measurements, values);
-      fail();
-    } catch (Exception ignored) {
-
-    }
-
-    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
-    Assert.assertFalse(dataSet.hasNext());
-
-    measurements.clear();
-    measurements.add("\"a.b\"");
-    measurements.add("\"a“（Φ）”b\"");
-    measurements.add("\"a>b\"");
-    measurements.add("'a.b'");
-    measurements.add("'a“（Φ）”b'");
-    measurements.add("'a>b'");
-    measurements.add("a“（Φ）”b");
-    measurements.add("a>b");
-
-    values.clear();
-    for (int i = 0; i < measurements.size(); i++) {
-      values.add("1");
-    }
-
-    session.insertRecord(deviceId, 1L, measurements, values);
-
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"a.b\""));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"a“（Φ）”b\""));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"a>b\""));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.'a.b'"));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.'a“（Φ）”b'"));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.'a>b'"));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`a“（Φ）”b`"));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`a>b`"));
-
-    session.close();
   }
 }

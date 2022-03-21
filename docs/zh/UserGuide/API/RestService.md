@@ -84,6 +84,12 @@ ping 接口可以用于线上服务检活。
 ```shell
 $ curl http://127.0.0.1:18080/ping
 ```
+
+返回的 HTTP 状态码：
+
+- `200`：当前服务工作正常，可以接收外部请求。
+- `503`：当前服务出现异常，不能接收外部请求。
+
 响应参数：
 
 |参数名称  |参数类型  |参数描述|
@@ -92,12 +98,24 @@ $ curl http://127.0.0.1:18080/ping
 | message  |  string | 信息提示 |
 
 响应示例：
-```json
-{
-  "code": 200,
-  "message": "SUCCESS_STATUS"
-}
-```
+
+- HTTP 状态码为 `200` 时：
+
+  ```json
+  {
+    "code": 200,
+    "message": "SUCCESS_STATUS"
+  }
+  ```
+
+- HTTP 状态码为 `503` 时：
+
+  ```json
+  {
+    "code": 500,
+    "message": "thrift service is unavailable"
+  }
+  ```
 
 > `/ping` 接口访问不需要鉴权。
 

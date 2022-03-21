@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -38,7 +39,6 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
@@ -77,10 +77,10 @@ import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.MmapUtil;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -121,8 +121,8 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.COMPACTION_LOG_NAME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -235,12 +235,6 @@ public class VirtualStorageGroupProcessor {
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
   /** storage group info for mem control */
   private StorageGroupInfo storageGroupInfo = new StorageGroupInfo(this);
-  /**
-   * Record the device number of the last TsFile in each storage group, which is applied to
-   * initialize the array size of DeviceTimeIndex. It is reasonable to assume that the adjacent
-   * files should have similar numbers of devices. Default value: INIT_ARRAY_SIZE = 64
-   */
-  private int deviceNumInLastClosedTsFile = DeviceTimeIndex.INIT_ARRAY_SIZE;
   /** whether it's ready from recovery */
   private boolean isReady = false;
   /** close file listeners */
@@ -269,6 +263,7 @@ public class VirtualStorageGroupProcessor {
   private String insertWriteLockHolder = "";
 
   private ScheduledExecutorService timedCompactionScheduleTask;
+  private ScheduledExecutorService walTrimScheduleTask;
 
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
@@ -416,6 +411,7 @@ public class VirtualStorageGroupProcessor {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.MEM.toString(),
+              MetricLevel.IMPORTANT,
               storageGroupInfo,
               StorageGroupInfo::getMemCost,
               Tag.NAME.toString(),
@@ -423,14 +419,14 @@ public class VirtualStorageGroupProcessor {
     }
 
     // start trim task at last
-    ScheduledExecutorService executorService =
+    walTrimScheduleTask =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.WAL_TRIM.getName()
                 + "-"
                 + logicalStorageGroupName
                 + "-"
                 + virtualStorageGroupId);
-    executorService.scheduleWithFixedDelay(
+    walTrimScheduleTask.scheduleWithFixedDelay(
         this::trimTask,
         config.getWalPoolTrimIntervalInMS(),
         config.getWalPoolTrimIntervalInMS(),
@@ -658,7 +654,7 @@ public class VirtualStorageGroupProcessor {
         FSFactoryProducer.getFSFactory()
             .getFile(
                 storageGroupSysDir.getAbsolutePath(),
-                logicalStorageGroupName + COMPACTION_LOG_NAME);
+                logicalStorageGroupName + INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD);
     if (logFile.exists()) {
       IoTDBDescriptor.getInstance()
           .getConfig()
@@ -1184,7 +1180,7 @@ public class VirtualStorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        IoTDB.metaManager.updateLastCache(
+        IoTDB.schemaEngine.updateLastCache(
             plan.getDevicePath().concatNode(plan.getMeasurements()[i]),
             plan.composeLastTimeValuePair(i),
             true,
@@ -1192,7 +1188,7 @@ public class VirtualStorageGroupProcessor {
       } else {
         // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
         // update last cache
-        IoTDB.metaManager.updateLastCache(
+        IoTDB.schemaEngine.updateLastCache(
             mNodes[i], plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     }
@@ -1234,7 +1230,7 @@ public class VirtualStorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        IoTDB.metaManager.updateLastCache(
+        IoTDB.schemaEngine.updateLastCache(
             plan.getDevicePath().concatNode(plan.getMeasurements()[i]),
             plan.composeTimeValuePair(i),
             true,
@@ -1242,7 +1238,7 @@ public class VirtualStorageGroupProcessor {
       } else {
         // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
         // update last cache
-        IoTDB.metaManager.updateLastCache(
+        IoTDB.schemaEngine.updateLastCache(
             mNodes[i], plan.composeTimeValuePair(i), true, latestFlushedTime);
       }
     }
@@ -1930,7 +1926,7 @@ public class VirtualStorageGroupProcessor {
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
-      Set<PartialPath> devicePaths = IoTDB.metaManager.getBelongedDevices(path);
+      Set<PartialPath> devicePaths = IoTDB.schemaEngine.getBelongedDevices(path);
       for (PartialPath device : devicePaths) {
         // delete Last cache record if necessary
         tryToDeleteLastCache(device, path, startTime, endTime);
@@ -2085,7 +2081,7 @@ public class VirtualStorageGroupProcessor {
       return;
     }
     try {
-      IoTDB.metaManager.deleteLastCacheByDevice(deviceId, originalPath, startTime, endTime);
+      IoTDB.schemaEngine.deleteLastCacheByDevice(deviceId, originalPath, startTime, endTime);
     } catch (MetadataException e) {
       throw new WriteProcessException(e);
     }
@@ -2369,7 +2365,7 @@ public class VirtualStorageGroupProcessor {
       return;
     }
     try {
-      IoTDB.metaManager.deleteLastCacheByDevice(deviceId);
+      IoTDB.schemaEngine.deleteLastCacheByDevice(deviceId);
     } catch (MetadataException e) {
       // the path doesn't cache in cluster mode now, ignore
     }
@@ -3272,6 +3268,10 @@ public class VirtualStorageGroupProcessor {
 
   public ScheduledExecutorService getTimedCompactionScheduleTask() {
     return timedCompactionScheduleTask;
+  }
+
+  public ScheduledExecutorService getWALTrimScheduleTask() {
+    return walTrimScheduleTask;
   }
 
   public IDTable getIdTable() {

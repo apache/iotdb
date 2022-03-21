@@ -68,14 +68,14 @@ public class InnerSpaceCompactionUtilsAlignedTest {
     if (!dataDirectory.exists()) {
       Assert.assertTrue(dataDirectory.mkdirs());
     }
-    IoTDB.metaManager.init();
+    IoTDB.schemaEngine.init();
   }
 
   @After
   public void tearDown() throws Exception {
     new CompactionConfigRestorer().restoreCompactionConfig();
     FileUtils.forceDelete(dataDirectory);
-    IoTDB.metaManager.clear();
+    IoTDB.schemaEngine.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     EnvironmentUtils.cleanEnv();

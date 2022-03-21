@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -491,11 +493,12 @@ public class StorageGroupManager {
     Arrays.fill(virtualStorageGroupProcessor, null);
   }
 
-  public void stopCompactionSchedulerPool() {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.getTimedCompactionScheduleTask().shutdown();
+  public void stopSchedulerPool() {
+    for (VirtualStorageGroupProcessor vsg : this.virtualStorageGroupProcessor) {
+      if (vsg != null) {
+        ThreadUtils.stopThreadPool(
+            vsg.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
+        ThreadUtils.stopThreadPool(vsg.getWALTrimScheduleTask(), ThreadName.WAL_TRIM);
       }
     }
   }

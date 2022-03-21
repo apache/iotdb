@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
@@ -138,7 +138,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
           selectedFileSize);
       // if the file size or file num reach threshold
       if (selectedFileSize >= targetCompactionFileSize
-          || selectedFileList.size() >= config.getMaxCompactionCandidateFileNum()) {
+          || selectedFileList.size() >= config.getMaxInnerCompactionCandidateFileNum()) {
         // submit the task
         if (selectedFileList.size() > 1) {
           taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
@@ -167,7 +167,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
 
   private boolean createAndSubmitTask(List<TsFileResource> selectedFileList)
       throws InterruptedException {
-    selectedFileList.forEach(x -> x.setCompactionCandidate(true));
     AbstractCompactionTask compactionTask =
         taskFactory.createTask(
             logicalStorageGroupName,

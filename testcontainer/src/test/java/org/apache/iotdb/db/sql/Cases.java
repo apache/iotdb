@@ -689,7 +689,7 @@ public abstract class Cases {
         tablet.addValue("s3", rowIndex, 3L);
       }
       session.insertTablet(tablet);
-      tablet.setPrefixPath(String.format("root.sg%s.d4", i));
+      tablet.setDeviceId(String.format("root.sg%s.d4", i));
       tabletMap.put(String.format("root.sg%s.d4", i), tablet);
     }
 
@@ -728,7 +728,7 @@ public abstract class Cases {
         tablet.addValue("s3", rowIndex, 3L);
       }
       session.insertTablet(tablet);
-      tablet.setPrefixPath(String.format("root.sg%s.d4", i));
+      tablet.setDeviceId(String.format("root.sg%s.d4", i));
       tabletMap.put(String.format("root.sg%s.d4", i), tablet);
     }
 
@@ -878,7 +878,6 @@ public abstract class Cases {
     schemaList.add(new MeasurementSchema("s3", TSDataType.FLOAT));
 
     Tablet tablet = new Tablet("root.sg6.d1.v1", schemaList);
-    tablet.setAligned(true);
 
     for (long row = 1; row <= 3; row++) {
       int rowIndex = tablet.rowSize++;
@@ -887,7 +886,7 @@ public abstract class Cases {
       tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, 2);
       tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, 3.0f);
     }
-    session.insertTablet(tablet, true);
+    session.insertAlignedTablet(tablet, true);
     tablet.reset();
 
     List<MeasurementSchema> schemaList1 = new ArrayList<>();
@@ -906,9 +905,6 @@ public abstract class Cases {
     Tablet tablet1 = new Tablet("root.sg7.d1.v1", schemaList1, 100);
     Tablet tablet2 = new Tablet("root.sg8.d1.v1", schemaList2, 100);
     Tablet tablet3 = new Tablet("root.sg9.d1.v1", schemaList3, 100);
-    tablet1.setAligned(true);
-    tablet2.setAligned(true);
-    tablet3.setAligned(true);
 
     Map<String, Tablet> tabletMap = new HashMap<>();
     tabletMap.put("root.sg7.d1.v1", tablet1);
@@ -928,7 +924,7 @@ public abstract class Cases {
         tablet3.addValue(schemaList3.get(i).getMeasurementId(), row3, values.get(i));
       }
     }
-    session.insertTablets(tabletMap, true);
+    session.insertAlignedTablets(tabletMap, true);
 
     tabletMap.clear();
 

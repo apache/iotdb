@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -103,26 +103,26 @@ public class PhysicalPlanTest {
   @Before
   public void before() throws MetadataException {
     EnvironmentUtils.envSetUp();
-    IoTDB.metaManager.setStorageGroup(new PartialPath("root.vehicle"));
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.setStorageGroup(new PartialPath("root.vehicle"));
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.d1.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.d2.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.d3.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.d4.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
@@ -1432,7 +1432,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testRegexpQuery() throws QueryProcessException, MetadataException {
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.d5.s1"),
         TSDataType.TEXT,
         TSEncoding.PLAIN,
