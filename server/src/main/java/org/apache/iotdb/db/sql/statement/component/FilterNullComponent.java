@@ -20,23 +20,24 @@
 package org.apache.iotdb.db.sql.statement.component;
 
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.sql.statement.StatementNode;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /** This class maintains information of {@code WITHOUT NULL} clause. */
-public class WithoutPolicy {
+public class FilterNullComponent extends StatementNode {
 
-  WithoutPolicyType withoutPolicyType = WithoutPolicyType.NULL;
+  FilterNullPolicy filterNullPolicy = FilterNullPolicy.NULL;
 
   List<Expression> withoutNullColumns = new ArrayList<>();
 
-  public WithoutPolicyType getWithoutPolicyType() {
-    return withoutPolicyType;
+  public FilterNullPolicy getWithoutPolicyType() {
+    return filterNullPolicy;
   }
 
-  public void setWithoutPolicyType(WithoutPolicyType withoutPolicyType) {
-    this.withoutPolicyType = withoutPolicyType;
+  public void setWithoutPolicyType(FilterNullPolicy filterNullPolicy) {
+    this.filterNullPolicy = filterNullPolicy;
   }
 
   public void addWithoutNullColumn(Expression e) {
@@ -51,9 +52,9 @@ public class WithoutPolicy {
     this.withoutNullColumns = withoutNullColumns;
   }
 
-  public enum WithoutPolicyType {
+  public enum FilterNullPolicy {
     NULL,
-    ANY,
-    ALL
+    CONTAINS_NULL,
+    ALL_NULL
   }
 }

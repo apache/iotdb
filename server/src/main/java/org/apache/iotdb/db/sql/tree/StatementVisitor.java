@@ -21,19 +21,24 @@ package org.apache.iotdb.db.sql.tree;
 
 import org.apache.iotdb.db.sql.statement.QueryStatement;
 import org.apache.iotdb.db.sql.statement.Statement;
+import org.apache.iotdb.db.sql.statement.StatementNode;
 
 public abstract class StatementVisitor<R, C> {
 
-  public R process(Statement statement) {
-    return process(statement, null);
+  public R process(StatementNode node) {
+    return process(node, null);
   }
 
-  public R process(Statement statement, C context) {
-    return statement.accept(this, context);
+  public R process(StatementNode node, C context) {
+    return node.accept(this, context);
+  }
+
+  public R visitNode(StatementNode node, C context) {
+    return null;
   }
 
   public R visitStatement(Statement statement, C context) {
-    return null;
+    return visitNode(statement, context);
   }
 
   public R visitQuery(QueryStatement queryStatement, C context) {

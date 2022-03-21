@@ -21,7 +21,6 @@ package org.apache.iotdb.db.sql.statement;
 
 import org.apache.iotdb.db.sql.constant.StatementType;
 import org.apache.iotdb.db.sql.parser.ASTVisitor;
-import org.apache.iotdb.db.sql.tree.StatementVisitor;
 
 /**
  * This class is a superclass of all statements.
@@ -29,7 +28,7 @@ import org.apache.iotdb.db.sql.tree.StatementVisitor;
  * <p>A Statement containing all semantic information of an SQL. It is obtained by traversing the
  * AST via {@link ASTVisitor}.
  */
-public abstract class Statement {
+public abstract class Statement extends StatementNode {
 
   protected StatementType statementType = StatementType.NULL;
 
@@ -55,13 +54,5 @@ public abstract class Statement {
 
   public boolean isQuery() {
     return statementType == StatementType.QUERY;
-  }
-
-  /**
-   * Accessible for {@link StatementVisitor}, use {@link StatementVisitor#process(Statement,
-   * Object)} instead.
-   */
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitStatement(this, context);
   }
 }

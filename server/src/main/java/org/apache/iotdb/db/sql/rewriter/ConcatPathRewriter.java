@@ -38,82 +38,72 @@ import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.db.sql.statement.component.*;
 import org.apache.iotdb.db.sql.statement.filter.*;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.*;
 
-/** This rewriter: 1. concat paths in select and from clause. 2. remove wildcards */
+/**
+ * This rewriter:
+ *
+ * <p>1. concat paths in SELECT, FROM, WHERE and WITHOUT NULL clause.
+ *
+ * <p>2. remove wildcards.
+ */
 public class ConcatPathRewriter implements IStatementRewriter {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConcatPathRewriter.class);
-
-  private static final String WARNING_NO_SUFFIX_PATHS =
-      "failed to concat series paths because the given query operator didn't have suffix paths";
-  private static final String WARNING_NO_PREFIX_PATHS =
-      "failed to concat series paths because the given query operator didn't have prefix paths";
 
   @Override
   public Statement rewrite(Statement statement, AnalysisContext context)
       throws StatementAnalyzeException, PathNumOverLimitException {
     QueryStatement queryStatement = (QueryStatement) statement;
-    if (!rewritable(queryStatement)) {
-      return queryStatement;
-    }
-
-    concatSelect(queryStatement);
-    concatWithoutNullColumns(queryStatement);
-    removeWildcardsInSelectPaths(queryStatement);
-    removeWildcardsWithoutNullColumns(queryStatement);
-    concatFilterAndRemoveWildcards(queryStatement);
+    concatSelectWithFrom(queryStatement);
+    concatWithoutNullColumnsWithFrom(queryStatement);
+    removeWildcardsInSelect(queryStatement);
+    removeWildcardsInWithoutNullColumns(queryStatement);
+    concatWhereWithFromAndRemoveWildcards(queryStatement);
     return queryStatement;
   }
 
-  private boolean rewritable(QueryStatement queryStatement) {
-    SelectComponent select = queryStatement.getSelectComponent();
-    if (select == null || select.getResultColumns().isEmpty()) {
-      LOGGER.warn(WARNING_NO_SUFFIX_PATHS);
-      return false;
-    }
-
-    FromComponent from = queryStatement.getFromComponent();
-    if (from == null || from.getPrefixPaths().isEmpty()) {
-      LOGGER.warn(WARNING_NO_PREFIX_PATHS);
-      return false;
-    }
-
-    return true;
-  }
-
-  private void concatSelect(QueryStatement queryStatement) throws StatementAnalyzeException {
+  /**
+   * Concat the prefix path in the SELECT clause and the suffix path in the FROM clause into a full
+   * path pattern.
+   */
+  private void concatSelectWithFrom(QueryStatement queryStatement)
+      throws StatementAnalyzeException {
+    // prefix paths in the FROM clause
     List<PartialPath> prefixPaths = queryStatement.getFromComponent().getPrefixPaths();
+
     List<ResultColumn> resultColumns = new ArrayList<>();
-    for (ResultColumn suffixColumn : queryStatement.getSelectComponent().getResultColumns()) {
-      boolean needAliasCheck = suffixColumn.hasAlias() && !queryStatement.isGroupByLevel();
-      suffixColumn.concat(prefixPaths, resultColumns, needAliasCheck);
+    for (ResultColumn suffixPath : queryStatement.getSelectComponent().getResultColumns()) {
+      boolean needAliasCheck = suffixPath.hasAlias() && !queryStatement.isGroupByLevel();
+      suffixPath.concat(prefixPaths, resultColumns, needAliasCheck);
     }
     queryStatement.getSelectComponent().setResultColumns(resultColumns);
   }
 
-  private void concatWithoutNullColumns(QueryStatement queryStatement)
+  /**
+   * Concat the prefix path in the WITHOUT NULL clause and the suffix path in the FROM clause into a
+   * full path pattern.
+   */
+  private void concatWithoutNullColumnsWithFrom(QueryStatement queryStatement)
       throws StatementAnalyzeException {
+    // prefix paths in the FROM clause
     List<PartialPath> prefixPaths = queryStatement.getFromComponent().getPrefixPaths();
+
     // has without null columns
-    if (queryStatement.getWithoutPolicy() != null
-        && !queryStatement.getWithoutPolicy().getWithoutNullColumns().isEmpty()) {
+    if (queryStatement.getFilterNullComponent() != null
+        && !queryStatement.getFilterNullComponent().getWithoutNullColumns().isEmpty()) {
       List<Expression> withoutNullColumns = new ArrayList<>();
-      for (Expression expression : queryStatement.getWithoutPolicy().getWithoutNullColumns()) {
-        concatWithoutNullColumns(
+      for (Expression expression :
+          queryStatement.getFilterNullComponent().getWithoutNullColumns()) {
+        concatWithoutNullColumnsWithFrom(
             prefixPaths,
             expression,
             withoutNullColumns,
             queryStatement.getSelectComponent().getAliasSet());
       }
-      queryStatement.getWithoutPolicy().setWithoutNullColumns(withoutNullColumns);
+      queryStatement.getFilterNullComponent().setWithoutNullColumns(withoutNullColumns);
     }
   }
 
-  private void concatWithoutNullColumns(
+  private void concatWithoutNullColumnsWithFrom(
       List<PartialPath> prefixPaths,
       Expression expression,
       List<Expression> withoutNullColumns,
@@ -157,7 +147,8 @@ public class ConcatPathRewriter implements IStatementRewriter {
     }
   }
 
-  private void removeWildcardsInSelectPaths(QueryStatement queryStatement)
+  /** Remove wildcards (* or **) in SELECT clause. */
+  private void removeWildcardsInSelect(QueryStatement queryStatement)
       throws PathNumOverLimitException, StatementAnalyzeException {
     if (queryStatement.getIndexType() != null) {
       return;
@@ -192,17 +183,18 @@ public class ConcatPathRewriter implements IStatementRewriter {
     }
   }
 
-  private void removeWildcardsWithoutNullColumns(QueryStatement queryStatement)
+  /** Remove wildcards (* or **) in WITHOUT NULL clause. */
+  private void removeWildcardsInWithoutNullColumns(QueryStatement queryStatement)
       throws StatementAnalyzeException {
     if (queryStatement.getIndexType() != null) {
       return;
     }
 
-    if (queryStatement.getWithoutPolicy() == null) {
+    if (queryStatement.getFilterNullComponent() == null) {
       return;
     }
 
-    List<Expression> expressions = queryStatement.getWithoutPolicy().getWithoutNullColumns();
+    List<Expression> expressions = queryStatement.getFilterNullComponent().getWithoutNullColumns();
     WildcardsRemover withoutNullWildcardsRemover = new WildcardsRemover(queryStatement);
 
     // because timeSeries path may be with "*", so need to remove it for getting some actual
@@ -247,10 +239,14 @@ public class ConcatPathRewriter implements IStatementRewriter {
     } else {
       resultExpressions.addAll(actualExpressions);
     }
-    queryStatement.getWithoutPolicy().setWithoutNullColumns(resultExpressions);
+    queryStatement.getFilterNullComponent().setWithoutNullColumns(resultExpressions);
   }
 
-  private void concatFilterAndRemoveWildcards(QueryStatement queryStatement)
+  /**
+   * Concat the prefix path in the WHERE clause and the suffix path in the FROM clause into a full
+   * path pattern. And remove wildcards.
+   */
+  private void concatWhereWithFromAndRemoveWildcards(QueryStatement queryStatement)
       throws StatementAnalyzeException {
     WhereCondition whereCondition = queryStatement.getWhereCondition();
     if (whereCondition == null) {
@@ -259,7 +255,7 @@ public class ConcatPathRewriter implements IStatementRewriter {
 
     Set<PartialPath> filterPaths = new HashSet<>();
     whereCondition.setQueryFilter(
-        concatFilterAndRemoveWildcards(
+        concatWhereWithFromAndRemoveWildcards(
             queryStatement.getFromComponent().getPrefixPaths(),
             whereCondition.getQueryFilter(),
             filterPaths,
@@ -267,7 +263,7 @@ public class ConcatPathRewriter implements IStatementRewriter {
     whereCondition.getQueryFilter().setPathSet(filterPaths);
   }
 
-  private QueryFilter concatFilterAndRemoveWildcards(
+  private QueryFilter concatWhereWithFromAndRemoveWildcards(
       List<PartialPath> fromPaths,
       QueryFilter filter,
       Set<PartialPath> filterPaths,
@@ -277,7 +273,7 @@ public class ConcatPathRewriter implements IStatementRewriter {
       List<QueryFilter> newFilterList = new ArrayList<>();
       for (QueryFilter child : filter.getChildren()) {
         newFilterList.add(
-            concatFilterAndRemoveWildcards(fromPaths, child, filterPaths, isPrefixMatch));
+            concatWhereWithFromAndRemoveWildcards(fromPaths, child, filterPaths, isPrefixMatch));
       }
       filter.setChildren(newFilterList);
       return filter;

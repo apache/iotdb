@@ -17,35 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.statement.component;
+package org.apache.iotdb.db.sql.statement;
 
-import org.apache.iotdb.db.query.executor.fill.IFill;
-import org.apache.iotdb.db.sql.statement.StatementNode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.sql.tree.StatementVisitor;
 
-import java.util.Map;
+/** This class is a superclass of all statements and clauses in statement. */
+public abstract class StatementNode {
 
-/** This class maintains information of {@code FILL} clause. */
-public class FillComponent extends StatementNode {
-
-  private Map<TSDataType, IFill> fillTypes;
-  private IFill singleFill;
-
-  public FillComponent() {}
-
-  public Map<TSDataType, IFill> getFillTypes() {
-    return fillTypes;
-  }
-
-  public IFill getSingleFill() {
-    return singleFill;
-  }
-
-  public void setFillTypes(Map<TSDataType, IFill> fillTypes) {
-    this.fillTypes = fillTypes;
-  }
-
-  public void setSingleFill(IFill singleFill) {
-    this.singleFill = singleFill;
+  /**
+   * Accessible for {@link StatementVisitor}, use {@link StatementVisitor#process(StatementNode,
+   * Object)} instead.
+   */
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitNode(this, context);
   }
 }

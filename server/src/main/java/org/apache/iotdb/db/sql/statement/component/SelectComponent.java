@@ -23,6 +23,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.sql.statement.StatementNode;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -30,7 +31,7 @@ import java.util.List;
 import java.util.Set;
 
 /** This class maintains information of {@code SELECT} clause. */
-public class SelectComponent {
+public class SelectComponent extends StatementNode {
 
   private final ZoneId zoneId;
 

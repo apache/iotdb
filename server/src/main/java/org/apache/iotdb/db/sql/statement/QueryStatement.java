@@ -23,12 +23,12 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.sql.constant.StatementType;
+import org.apache.iotdb.db.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.sql.statement.component.FromComponent;
 import org.apache.iotdb.db.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.sql.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.sql.statement.component.SelectComponent;
 import org.apache.iotdb.db.sql.statement.component.WhereCondition;
-import org.apache.iotdb.db.sql.statement.component.WithoutPolicy;
 import org.apache.iotdb.db.sql.tree.StatementVisitor;
 
 import java.util.HashMap;
@@ -71,7 +71,7 @@ public class QueryStatement extends Statement {
   // series offset for result set. The default value is 0
   protected int seriesOffset = 0;
 
-  protected WithoutPolicy withoutPolicy;
+  protected FilterNullComponent filterNullComponent;
 
   protected OrderBy resultOrder = OrderBy.TIMESTAMP_ASC;
 
@@ -102,7 +102,7 @@ public class QueryStatement extends Statement {
     this.rowOffset = another.getRowOffset();
     this.seriesLimit = another.getSeriesLimit();
     this.seriesOffset = another.getSeriesOffset();
-    this.withoutPolicy = another.getWithoutPolicy();
+    this.filterNullComponent = another.getFilterNullComponent();
     this.resultOrder = another.getResultOrder();
     this.resultSetFormat = another.getResultSetFormat();
     this.props = another.getProps();
@@ -171,12 +171,12 @@ public class QueryStatement extends Statement {
     this.seriesOffset = 0;
   }
 
-  public WithoutPolicy getWithoutPolicy() {
-    return withoutPolicy;
+  public FilterNullComponent getFilterNullComponent() {
+    return filterNullComponent;
   }
 
-  public void setWithoutPolicy(WithoutPolicy withoutPolicy) {
-    this.withoutPolicy = withoutPolicy;
+  public void setFilterNullComponent(FilterNullComponent filterNullComponent) {
+    this.filterNullComponent = filterNullComponent;
   }
 
   public OrderBy getResultOrder() {

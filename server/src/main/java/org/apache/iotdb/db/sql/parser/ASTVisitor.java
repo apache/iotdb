@@ -780,24 +780,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   // parse WITHOUT NULL
   private void parseWithoutNullClause(IoTDBSqlParser.WithoutNullClauseContext ctx) {
-    WithoutPolicy withoutPolicy = new WithoutPolicy();
+    FilterNullComponent filterNullComponent = new FilterNullComponent();
 
     // add without null columns
     List<IoTDBSqlParser.ExpressionContext> expressionContexts = ctx.expression();
     for (IoTDBSqlParser.ExpressionContext expressionContext : expressionContexts) {
-      withoutPolicy.addWithoutNullColumn(parseExpression(expressionContext));
+      filterNullComponent.addWithoutNullColumn(parseExpression(expressionContext));
     }
 
     // set without null policy
     if (ctx.ANY() != null) {
-      withoutPolicy.setWithoutPolicyType(WithoutPolicy.WithoutPolicyType.ANY);
+      filterNullComponent.setWithoutPolicyType(FilterNullComponent.FilterNullPolicy.CONTAINS_NULL);
     } else if (ctx.ALL() != null) {
-      withoutPolicy.setWithoutPolicyType(WithoutPolicy.WithoutPolicyType.ALL);
+      filterNullComponent.setWithoutPolicyType(FilterNullComponent.FilterNullPolicy.ALL_NULL);
     } else {
-      withoutPolicy.setWithoutPolicyType(WithoutPolicy.WithoutPolicyType.NULL);
+      filterNullComponent.setWithoutPolicyType(FilterNullComponent.FilterNullPolicy.NULL);
     }
 
-    queryStatement.setWithoutPolicy(withoutPolicy);
+    queryStatement.setFilterNullComponent(filterNullComponent);
   }
 
   // ORDER BY TIME Clause

@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.sql.statement.component;
 
+import org.apache.iotdb.db.sql.statement.StatementNode;
+
 /** This class maintains information of {@code GROUP BY} clause. */
-public class GroupByTimeComponent {
+public class GroupByTimeComponent extends StatementNode {
 
   // [startTime, endTime)
   private long startTime;

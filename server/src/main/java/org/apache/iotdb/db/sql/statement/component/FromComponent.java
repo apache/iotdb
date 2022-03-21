@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.sql.statement.component;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.sql.statement.StatementNode;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /** This class maintains information of {@code FROM} clause. */
-public class FromComponent {
+public class FromComponent extends StatementNode {
 
   private final List<PartialPath> prefixPaths = new ArrayList<>();
 
