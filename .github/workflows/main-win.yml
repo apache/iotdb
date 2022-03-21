@@ -9,7 +9,6 @@ on:
       - master
       - 'rel/*'
       - "new_*"
-      - win_wf_fix
     paths-ignore:
       - 'docs/**'
   pull_request:
