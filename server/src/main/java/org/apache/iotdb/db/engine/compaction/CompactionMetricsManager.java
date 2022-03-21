@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.util.concurrent.TimeUnit;
@@ -38,6 +39,9 @@ public class CompactionMetricsManager {
       ProcessChunkType processChunkType,
       boolean aligned,
       long byteNum) {
+    if (!MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      return;
+    }
     MetricsService.getInstance()
         .getMetricManager()
         .count(
@@ -65,6 +69,9 @@ public class CompactionMetricsManager {
   }
 
   public static void recordReadInfo(long byteNum) {
+    if (!MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      return;
+    }
     MetricsService.getInstance()
         .getMetricManager()
         .count(
@@ -75,7 +82,11 @@ public class CompactionMetricsManager {
             "compaction");
   }
 
-  public static void recordTaskInfo(AbstractCompactionTask task, CompactionTaskStatus status) {
+  public static void recordTaskInfo(
+      AbstractCompactionTask task, CompactionTaskStatus status, int size) {
+    if (!MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      return;
+    }
     String taskType = "unknown";
     boolean isInnerTask = false;
     if (task instanceof AbstractInnerSpaceCompactionTask) {
@@ -87,17 +98,6 @@ public class CompactionMetricsManager {
 
     switch (status) {
       case ADD_TO_QUEUE:
-        MetricsService.getInstance()
-            .getMetricManager()
-            .getOrCreateGauge(
-                Metric.QUEUE.toString(),
-                MetricLevel.IMPORTANT,
-                Tag.NAME.toString(),
-                "compaction_" + taskType,
-                Tag.STATUS.toString(),
-                "waiting")
-            .incr(1);
-        break;
       case POLL_FROM_QUEUE:
         MetricsService.getInstance()
             .getMetricManager()
@@ -108,7 +108,7 @@ public class CompactionMetricsManager {
                 "compaction_" + taskType,
                 Tag.STATUS.toString(),
                 "waiting")
-            .decr(1);
+            .set(size);
         break;
       case READY_TO_EXECUTE:
         MetricsService.getInstance()
@@ -120,7 +120,7 @@ public class CompactionMetricsManager {
                 "compaction_" + taskType,
                 Tag.STATUS.toString(),
                 "running")
-            .incr(1);
+            .set(size);
         break;
       case FINISHED:
         MetricsService.getInstance()
@@ -132,7 +132,7 @@ public class CompactionMetricsManager {
                 "compaction_" + taskType,
                 Tag.STATUS.toString(),
                 "running")
-            .decr(1);
+            .set(size);
         MetricsService.getInstance()
             .getMetricManager()
             .timer(

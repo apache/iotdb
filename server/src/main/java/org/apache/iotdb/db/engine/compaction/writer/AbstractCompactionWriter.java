@@ -139,15 +139,13 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter) throws IOException {
     if (measurementPointCount % 10 == 0 && checkChunkSize()) {
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
-      if (enableMetrics) {
-        CompactionMetricsManager.recordWriteInfo(
-            this instanceof CrossSpaceCompactionWriter
-                ? CompactionType.CROSS_COMPACTION
-                : CompactionType.INNER_UNSEQ_COMPACTION,
-            ProcessChunkType.DESERIALIZE_CHUNK,
-            this.isAlign,
-            chunkWriter.estimateMaxSeriesMemSize());
-      }
+      CompactionMetricsManager.recordWriteInfo(
+          this instanceof CrossSpaceCompactionWriter
+              ? CompactionType.CROSS_COMPACTION
+              : CompactionType.INNER_UNSEQ_COMPACTION,
+          ProcessChunkType.DESERIALIZE_CHUNK,
+          this.isAlign,
+          chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriter);
     }
   }

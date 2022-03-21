@@ -101,11 +101,8 @@ public class SingleSeriesCompactionExecutor {
       List<ChunkMetadata> chunkMetadataList = readerListPair.right;
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         Chunk currentChunk = reader.readMemChunk(chunkMetadata);
-        if (enableMetrics) {
-          CompactionMetricsManager.recordReadInfo(
-              currentChunk.getHeader().getSerializedSize()
-                  + currentChunk.getHeader().getDataSize());
-        }
+        CompactionMetricsManager.recordReadInfo(
+            currentChunk.getHeader().getSerializedSize() + currentChunk.getHeader().getDataSize());
 
         // if this chunk is modified, deserialize it into points
         if (chunkMetadata.getDeleteIntervalList() != null) {
@@ -276,13 +273,11 @@ public class SingleSeriesCompactionExecutor {
     if (chunkMetadata.getEndTime() > maxEndTimestamp) {
       maxEndTimestamp = chunkMetadata.getEndTime();
     }
-    if (enableMetrics) {
-      CompactionMetricsManager.recordWriteInfo(
-          CompactionType.INNER_SEQ_COMPACTION,
-          isCachedChunk ? ProcessChunkType.MERGE_CHUNK : ProcessChunkType.FLUSH_CHUNK,
-          false,
-          getChunkSize(chunk));
-    }
+    CompactionMetricsManager.recordWriteInfo(
+        CompactionType.INNER_SEQ_COMPACTION,
+        isCachedChunk ? ProcessChunkType.MERGE_CHUNK : ProcessChunkType.FLUSH_CHUNK,
+        false,
+        getChunkSize(chunk));
     fileWriter.writeChunk(chunk, chunkMetadata);
   }
 
@@ -291,13 +286,11 @@ public class SingleSeriesCompactionExecutor {
         || chunkWriter.estimateMaxSeriesMemSize() >= targetChunkSize) {
       CompactionTaskManager.mergeRateLimiterAcquire(
           compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-      if (enableMetrics) {
-        CompactionMetricsManager.recordWriteInfo(
-            CompactionType.INNER_SEQ_COMPACTION,
-            ProcessChunkType.DESERIALIZE_CHUNK,
-            false,
-            chunkWriter.estimateMaxSeriesMemSize());
-      }
+      CompactionMetricsManager.recordWriteInfo(
+          CompactionType.INNER_SEQ_COMPACTION,
+          ProcessChunkType.DESERIALIZE_CHUNK,
+          false,
+          chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriter);
       pointCountInChunkWriter = 0L;
     }
@@ -315,13 +308,11 @@ public class SingleSeriesCompactionExecutor {
   private void flushChunkWriter() throws IOException {
     CompactionTaskManager.mergeRateLimiterAcquire(
         compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-    if (enableMetrics) {
-      CompactionMetricsManager.recordWriteInfo(
-          CompactionType.INNER_SEQ_COMPACTION,
-          ProcessChunkType.DESERIALIZE_CHUNK,
-          false,
-          chunkWriter.estimateMaxSeriesMemSize());
-    }
+    CompactionMetricsManager.recordWriteInfo(
+        CompactionType.INNER_SEQ_COMPACTION,
+        ProcessChunkType.DESERIALIZE_CHUNK,
+        false,
+        chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(fileWriter);
     pointCountInChunkWriter = 0L;
   }

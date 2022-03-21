@@ -30,7 +30,6 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
@@ -100,7 +99,9 @@ public class CompactionTaskManager implements IService {
       candidateCompactionTaskQueue.regsitPollLastHook(
           AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
       candidateCompactionTaskQueue.regsitPollLastHook(
-          x -> CompactionMetricsManager.recordTaskInfo(x, CompactionTaskStatus.POLL_FROM_QUEUE));
+          x ->
+              CompactionMetricsManager.recordTaskInfo(
+                  x, CompactionTaskStatus.POLL_FROM_QUEUE, candidateCompactionTaskQueue.size()));
 
       // Periodically do the following: fetch the highest priority thread from the
       // candidateCompactionTaskQueue, check that all tsfiles in the compaction task are valid, and
@@ -218,9 +219,8 @@ public class CompactionTaskManager implements IService {
       candidateCompactionTaskQueue.put(compactionTask);
 
       // add metrics
-      if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-        CompactionMetricsManager.recordTaskInfo(compactionTask, CompactionTaskStatus.ADD_TO_QUEUE);
-      }
+      CompactionMetricsManager.recordTaskInfo(
+          compactionTask, CompactionTaskStatus.ADD_TO_QUEUE, candidateCompactionTaskQueue.size());
 
       return true;
     }
@@ -239,14 +239,14 @@ public class CompactionTaskManager implements IService {
         AbstractCompactionTask task = candidateCompactionTaskQueue.take();
 
         // add metrics
-        if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-          CompactionMetricsManager.recordTaskInfo(task, CompactionTaskStatus.POLL_FROM_QUEUE);
-        }
+        CompactionMetricsManager.recordTaskInfo(
+            task, CompactionTaskStatus.POLL_FROM_QUEUE, candidateCompactionTaskQueue.size());
 
         if (task != null && task.checkValidAndSetMerging()) {
           submitTask(task.getFullStorageGroupName(), task.getTimePartition(), task);
           runningCompactionTaskList.add(task);
-          CompactionMetricsManager.recordTaskInfo(task, CompactionTaskStatus.READY_TO_EXECUTE);
+          CompactionMetricsManager.recordTaskInfo(
+              task, CompactionTaskStatus.READY_TO_EXECUTE, runningCompactionTaskList.size());
         }
       }
     } catch (InterruptedException e) {
@@ -284,9 +284,8 @@ public class CompactionTaskManager implements IService {
   public synchronized void removeRunningTaskFromList(AbstractCompactionTask task) {
     runningCompactionTaskList.remove(task);
     // add metrics
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      CompactionMetricsManager.recordTaskInfo(task, CompactionTaskStatus.FINISHED);
-    }
+    CompactionMetricsManager.recordTaskInfo(
+        task, CompactionTaskStatus.FINISHED, runningCompactionTaskList.size());
   }
 
   /**
