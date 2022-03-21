@@ -20,6 +20,8 @@ package org.apache.iotdb.confignode.partition;
 
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -57,15 +59,15 @@ public class PartitionTable {
     this.dataPartition = new DataPartitionInfo();
   }
 
-  public boolean registerDataNode(RegisterDataNodePlan plan) {
+  public TSStatus registerDataNode(RegisterDataNodePlan plan) {
     dataNodeLock.writeLock().lock();
-    if (dataNodesMap.containsKey(plan.getInfo().getDataNodeID())) {
+    if (dataNodesMap.containsValue(plan.getInfo())) {
       dataNodeLock.writeLock().unlock();
-      return false;
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
     dataNodesMap.put(plan.getInfo().getDataNodeID(), plan.getInfo());
     dataNodeLock.writeLock().unlock();
-    return true;
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public Map<Integer, DataNodeInfo> getDataNodeInfo(QueryDataNodeInfoPlan plan) {
@@ -77,7 +79,7 @@ public class PartitionTable {
         for (Integer key : dataNodesMap.keySet()) {
           minKey = Math.min(key, minKey);
         }
-        if (minKey == Integer.MAX_VALUE) {
+        if (minKey < Integer.MAX_VALUE) {
           result.put(minKey, dataNodesMap.get(minKey));
         } else {
           result = null;
@@ -88,7 +90,7 @@ public class PartitionTable {
         for (Integer key : dataNodesMap.keySet()) {
           maxKey = Math.max(key, maxKey);
         }
-        if (maxKey == Integer.MIN_VALUE) {
+        if (maxKey > Integer.MIN_VALUE) {
           result.put(maxKey, dataNodesMap.get(maxKey));
         } else {
           result = null;

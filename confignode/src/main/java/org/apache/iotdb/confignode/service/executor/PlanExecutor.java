@@ -18,27 +18,50 @@
  */
 package org.apache.iotdb.confignode.service.executor;
 
+import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
+import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
+import org.apache.iotdb.confignode.partition.DataNodeInfo;
 import org.apache.iotdb.confignode.partition.PartitionTable;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
+import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
+import java.util.Map;
 
 public class PlanExecutor {
 
   private static final PartitionTable partitionTable = PartitionTable.getInstance();
 
-  public DataSet executorQueryPlan(PhysicalPlan plan) {
-    return null;
+  public DataSet executorQueryPlan(PhysicalPlan plan) throws UnknownPhysicalPlanTypeException {
+    switch (plan.getType()) {
+      case QueryDataNodeInfo:
+        return queryDataNodesInfo((QueryDataNodeInfoPlan) plan);
+      default:
+        throw new UnknownPhysicalPlanTypeException(plan.getType());
+    }
   }
 
-  public TSStatus executorNonQueryPlan(PhysicalPlan plan) {
+  public TSStatus executorNonQueryPlan(PhysicalPlan plan) throws UnknownPhysicalPlanTypeException {
     switch (plan.getType()) {
       case RegisterDataNode:
-
+        return partitionTable.registerDataNode((RegisterDataNodePlan) plan);
       default:
+        throw new UnknownPhysicalPlanTypeException(plan.getType());
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  private DataNodesInfoDataSet queryDataNodesInfo(QueryDataNodeInfoPlan plan) {
+    Map<Integer, DataNodeInfo> infoMap = partitionTable.getDataNodeInfo(plan);
+    DataNodesInfoDataSet result = null;
+    if (infoMap != null) {
+      result = new DataNodesInfoDataSet();
+      for (Map.Entry<Integer, DataNodeInfo> entry : infoMap.entrySet()) {
+        result.addDataNodeInfo(entry.getKey(), entry.getValue());
+      }
+    }
+    return result;
   }
 
   private PlanExecutor() {

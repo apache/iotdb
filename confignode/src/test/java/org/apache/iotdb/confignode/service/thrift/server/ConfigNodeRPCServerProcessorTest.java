@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.service.thrift.server;
 
+import org.apache.iotdb.confignode.rpc.thrift.DataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodesInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -27,6 +28,11 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 
 public class ConfigNodeRPCServerProcessorTest {
 
@@ -53,7 +59,25 @@ public class ConfigNodeRPCServerProcessorTest {
 
     // test query DataNodeInfo
     DataNodesInfo info = processor.getDataNodesInfo(-1);
+    Assert.assertEquals(info.getDataNodesMapSize(), 3);
+    List<Map.Entry<Integer, DataNodeInfo>> infoList =
+        new ArrayList<>(info.getDataNodesMap().entrySet());
+    infoList.sort(Comparator.comparingInt(Map.Entry::getKey));
+    for (int i = 0; i < 3; i++) {
+      Assert.assertEquals(i, infoList.get(i).getValue().getDataNodeID());
+      Assert.assertEquals("0.0.0.0", infoList.get(i).getValue().getEndPoint().getIp());
+      Assert.assertEquals(6667 + i, infoList.get(i).getValue().getEndPoint().getPort());
+    }
+
     info = processor.getDataNodesInfo(Integer.MAX_VALUE);
+    Assert.assertEquals(1, info.getDataNodesMapSize());
+    Assert.assertEquals(2, info.getDataNodesMap().get(2).getDataNodeID());
+    Assert.assertEquals("0.0.0.0", info.getDataNodesMap().get(2).getEndPoint().getIp());
+    Assert.assertEquals(6669, info.getDataNodesMap().get(2).getEndPoint().getPort());
     info = processor.getDataNodesInfo(Integer.MIN_VALUE);
+    Assert.assertEquals(1, info.getDataNodesMapSize());
+    Assert.assertEquals(0, info.getDataNodesMap().get(0).getDataNodeID());
+    Assert.assertEquals("0.0.0.0", info.getDataNodesMap().get(0).getEndPoint().getIp());
+    Assert.assertEquals(6667, info.getDataNodesMap().get(0).getEndPoint().getPort());
   }
 }

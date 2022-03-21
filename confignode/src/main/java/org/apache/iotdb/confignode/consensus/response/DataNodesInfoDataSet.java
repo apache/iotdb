@@ -21,15 +21,30 @@ package org.apache.iotdb.confignode.consensus.response;
 import org.apache.iotdb.confignode.partition.DataNodeInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 
-public class DataNodeInfoDataSet implements DataSet {
+import java.util.HashMap;
+import java.util.Map;
 
-  private final DataNodeInfo info;
+public class DataNodesInfoDataSet implements DataSet {
 
-  public DataNodeInfoDataSet(DataNodeInfo info) {
-    this.info = info;
+  private final Map<Integer, DataNodeInfo> infoMap;
+
+  public DataNodesInfoDataSet() {
+    this.infoMap = new HashMap<>();
   }
 
-  public DataNodeInfo getInfo() {
-    return info;
+  public void addDataNodeInfo(int dataNodeID, DataNodeInfo info) {
+    this.infoMap.put(dataNodeID, info);
+  }
+
+  public Map<Integer, DataNodeInfo> getInfoMap() {
+    return this.infoMap;
+  }
+
+  public DataNodeInfo getInfoWithMaximumID() {
+    int maxKey = Integer.MIN_VALUE;
+    for (int key : infoMap.keySet()) {
+      maxKey = Math.max(maxKey, key);
+    }
+    return infoMap.get(maxKey);
   }
 }

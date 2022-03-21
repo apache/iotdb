@@ -16,41 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.partition;
+package org.apache.iotdb.confignode.exception.physical;
 
-import org.apache.iotdb.consensus.common.Endpoint;
+import org.apache.iotdb.confignode.exception.ConfigNodeException;
+import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
-public class DataNodeInfo {
+public class UnknownPhysicalPlanTypeException extends ConfigNodeException {
 
-  private final int dataNodeID;
-  private final Endpoint endPoint;
-
-  public DataNodeInfo(int dataNodeID, Endpoint endPoint) {
-    this.dataNodeID = dataNodeID;
-    this.endPoint = endPoint;
-  }
-
-  public int getDataNodeID() {
-    return dataNodeID;
-  }
-
-  public Endpoint getEndPoint() {
-    return endPoint;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    return endPoint.equals(((DataNodeInfo) o).getEndPoint());
-  }
-
-  @Override
-  public int hashCode() {
-    return endPoint.hashCode();
+  public UnknownPhysicalPlanTypeException(PhysicalPlanType type) {
+    super(String.format("Unknown PhysicalPlanType: %d", type.ordinal()));
   }
 }

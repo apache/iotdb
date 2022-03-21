@@ -73,7 +73,7 @@ struct DataNodeInfo{
 }
 
 struct DataNodesInfo {
-    1: required map<i32, list<DataNodeInfo>> dataNodesMap
+    1: required map<i32, DataNodeInfo> dataNodesMap
 }
 
 service ConfigIService {

@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.confignode.service.thrift.server;
 
-import org.apache.iotdb.confignode.consensus.response.DataNodeInfoDataSet;
+import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
+import org.apache.iotdb.confignode.rpc.thrift.DataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodesInfo;
 import org.apache.iotdb.confignode.rpc.thrift.DataPartitionInfo;
@@ -35,9 +36,13 @@ import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
 import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
@@ -79,7 +84,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     // TODO: handle exception in consensusLayer
     QueryDataNodeInfoPlan readPlan = new QueryDataNodeInfoPlan(Integer.MAX_VALUE);
     ConsensusReadResponse resp = configManager.read(readPlan);
-    DataNodeInfoDataSet dataSet = (DataNodeInfoDataSet) resp.getDataset();
+    DataNodesInfoDataSet dataSet = (DataNodesInfoDataSet) resp.getDataset();
     RegisterDataNodePlan writePlan;
     if (dataSet == null) {
       writePlan =
@@ -88,16 +93,34 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     } else {
       writePlan =
           new RegisterDataNodePlan(
-              dataSet.getInfo().getDataNodeID() + 1,
+              dataSet.getInfoWithMaximumID().getDataNodeID() + 1,
               new Endpoint(req.getEndPoint().getIp(), req.getEndPoint().getPort()));
     }
-    configManager.write(writePlan);
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return configManager.write(writePlan).getStatus();
   }
 
   @Override
-  public DataNodesInfo getDataNodesInfo() throws TException {
-    return null;
+  public DataNodesInfo getDataNodesInfo(int dataNodeID) throws TException {
+    QueryDataNodeInfoPlan plan = new QueryDataNodeInfoPlan(dataNodeID);
+    ConsensusReadResponse resp = configManager.read(plan);
+    DataNodesInfoDataSet dataSet = (DataNodesInfoDataSet) resp.getDataset();
+
+    DataNodesInfo dataNodesInfo = null;
+    if (dataSet != null) {
+      Map<Integer, DataNodeInfo> infoMap = new HashMap<>();
+      dataNodesInfo = new DataNodesInfo();
+      for (int key : dataSet.getInfoMap().keySet()) {
+        infoMap.put(
+            key,
+            new DataNodeInfo(
+                key,
+                new EndPoint(
+                    dataSet.getInfoMap().get(key).getEndPoint().getIp(),
+                    dataSet.getInfoMap().get(key).getEndPoint().getPort())));
+      }
+      dataNodesInfo.setDataNodesMap(infoMap);
+    }
+    return dataNodesInfo;
   }
 
   public void handleClientExit() {}
