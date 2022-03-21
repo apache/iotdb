@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.utils.log;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 

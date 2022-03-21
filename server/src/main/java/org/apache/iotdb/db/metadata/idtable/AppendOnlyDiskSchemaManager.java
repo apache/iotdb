@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.metadata.idtable;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -36,8 +36,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -52,7 +50,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
 
   File dataFile;
 
-  OutputStream outputStream;
+  FileOutputStream outputStream;
 
   long loc;
 
@@ -109,38 +107,15 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
       return false;
     }
 
-    pos -= Integer.BYTES;
-    try (RandomAccessFile randomAccessFile = new RandomAccessFile(dataFile, "r");
-        BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(dataFile))) {
+    try (BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(dataFile))) {
       // check file version
-      inputStream.mark(Integer.BYTES + (FILE_VERSION.length() << 2));
       String version = ReadWriteIOUtils.readString(inputStream);
       if (!FILE_VERSION.equals(version)) {
         logger.error("File version isn't right, need: {}, actual: {} ", FILE_VERSION, version);
         return false;
       }
-      inputStream.reset();
-
-      // check last entry
-      randomAccessFile.seek(pos);
-      int lastEntrySize = randomAccessFile.readInt();
-      // last int is not right
-      if (pos - lastEntrySize < 0) {
-        logger.error("Last entry size isn't right");
-        return false;
-      }
-
-      long realSkip = inputStream.skip(pos - lastEntrySize);
-      // file length isn't right
-      if (realSkip != pos - lastEntrySize) {
-        logger.error("File length isn't right");
-        return false;
-      }
-
-      // try to deserialize last entry
-      DiskSchemaEntry.deserialize(inputStream);
     } catch (Exception e) {
-      logger.error("can't deserialize last entry, file corruption." + e);
+      logger.error("File check failed" + e);
       return false;
     }
 
@@ -180,7 +155,13 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
         loc += cur.entrySize;
       }
     } catch (IOException | MetadataException e) {
-      logger.error("ID table can't recover from log: {}", dataFile);
+      logger.info("Last entry is incomplete, we will recover as much as we can.");
+      try {
+        outputStream.getChannel().truncate(loc);
+      } catch (IOException ioException) {
+        logger.error("Failed at truncate file.", ioException);
+      }
+      this.loc = loc;
     }
   }
 

@@ -48,7 +48,7 @@ import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 
-public class GroupByFillDataSet extends GroupByEngineDataSet {
+public class GroupByFillDataSet extends GroupByTimeDataSet {
 
   private static final Logger logger = LoggerFactory.getLogger(GroupByFillDataSet.class);
 

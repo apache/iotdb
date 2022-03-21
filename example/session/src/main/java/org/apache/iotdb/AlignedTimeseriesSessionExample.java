@@ -271,7 +271,14 @@ public class AlignedTimeseriesSessionExample {
       compressors.add(CompressionType.SNAPPY);
     }
     session.createAlignedTimeseries(
-        ROOT_SG1_D1, multiMeasurementComponents, dataTypes, encodings, compressors, null);
+        ROOT_SG1_D1,
+        multiMeasurementComponents,
+        dataTypes,
+        encodings,
+        compressors,
+        null,
+        null,
+        null);
   }
 
   // be sure template is coordinate with tablet

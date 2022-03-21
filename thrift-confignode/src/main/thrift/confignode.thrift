@@ -21,7 +21,7 @@ include "rpc.thrift"
 namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
-struct SetStorageGroupoReq {
+struct SetStorageGroupReq {
     1: required string storageGroup
 }
 
@@ -53,12 +53,37 @@ struct DataPartitionInfo {
     2: required map<i32, list<i32>> dataRegionIDsMap
 }
 
+struct DeviceGroupHashInfo {
+    1: required i32 deviceGroupCount
+    2: required string hashClass
+}
+
+struct DataNodeRegisterReq {
+    1: required rpc.EndPoint endPoint
+}
+
+struct DataNodeRegisterResp {
+    1: required rpc.TSStatus registerResult
+    2: optional i32 dataNodeID
+}
+
+struct DataNodesInfo {
+    1: required map<i32, list<rpc.EndPoint>> dataNodesMap
+}
+
+
 service ConfigIService {
-  rpc.TSStatus setStorageGroup(SetStorageGroupoReq req)
+  rpc.TSStatus setStorageGroup(SetStorageGroupReq req)
 
   rpc.TSStatus deleteStorageGroup(DeleteStorageGroupReq req)
+
+  DeviceGroupHashInfo getDeviceGroupHashInfo()
 
   SchemaPartitionInfo getSchemaPartition(GetSchemaPartitionReq req)
 
   DataPartitionInfo getDataPartition(GetDataPartitionReq req)
+
+  rpc.TSStatus registerDataNode(DataNodeRegisterReq req)
+
+  DataNodesInfo getDataNodesInfo()
 }
