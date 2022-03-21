@@ -242,6 +242,10 @@ public class IoTDBConfig {
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
 
+  /** External lib directory for MQTT, stores user-uploaded JAR files */
+  private String mqttDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
+
   /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {"data" + File.separator + "data"};
 
@@ -912,6 +916,7 @@ public class IoTDBConfig {
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
     triggerDir = addHomeDir(triggerDir);
+    mqttDir = addHomeDir(mqttDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1134,6 +1139,14 @@ public class IoTDBConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
+  }
+
+  public String getMqttDir() {
+    return mqttDir;
+  }
+
+  public void setMqttDir(String mqttDir) {
+    this.mqttDir = mqttDir;
   }
 
   public String getMultiDirStrategyClassName() {
