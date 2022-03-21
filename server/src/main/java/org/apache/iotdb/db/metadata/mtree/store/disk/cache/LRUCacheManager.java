@@ -26,7 +26,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class LRUCacheManager extends CacheManager {
 
-  private static final int NUM_OF_LIST = 1013;
+  private static final int NUM_OF_LIST = 17;
 
   private LRUCacheList[] lruCacheLists = new LRUCacheList[NUM_OF_LIST];
 
@@ -94,6 +94,39 @@ public class LRUCacheManager extends CacheManager {
 
   private int getCacheListLoc(CacheEntry cacheEntry) {
     return cacheEntry.hashCode() % NUM_OF_LIST;
+  }
+
+  private static class LRUCacheEntry extends CacheEntry {
+
+    protected volatile IMNode node;
+
+    private volatile LRUCacheEntry pre = null;
+
+    private volatile LRUCacheEntry next = null;
+
+    public IMNode getNode() {
+      return node;
+    }
+
+    public void setNode(IMNode node) {
+      this.node = node;
+    }
+
+    LRUCacheEntry getPre() {
+      return pre;
+    }
+
+    void setPre(LRUCacheEntry pre) {
+      this.pre = pre;
+    }
+
+    LRUCacheEntry getNext() {
+      return next;
+    }
+
+    void setNext(LRUCacheEntry next) {
+      this.next = next;
+    }
   }
 
   private static class LRUCacheList {
