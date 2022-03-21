@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.write.chunk;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.NonAlignedTablet;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -34,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -89,22 +91,22 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
 
   @Override
   public int write(Tablet tablet) throws WriteProcessException {
-    int pointCount = 0;
+    HashSet<Integer> writeRowsSet = new HashSet<>();
     List<MeasurementSchema> timeseries = tablet.getSchemas();
-    for (int row = 0; row < tablet.rowSize; row++) {
-      long time = tablet.timestamps[row];
-      boolean hasOneColumnWritten = false;
-      for (int column = 0; column < timeseries.size(); column++) {
+    for (int column = 0; column < timeseries.size(); column++) {
+      String measurementId = timeseries.get(column).getMeasurementId();
+      TSDataType tsDataType = timeseries.get(column).getType();
+      for (int row = 0; row < tablet.rowSize; row++) {
         // check isNull in tablet
         if (tablet.bitMaps != null
             && tablet.bitMaps[column] != null
             && tablet.bitMaps[column].isMarked(row)) {
           continue;
         }
-        String measurementId = timeseries.get(column).getMeasurementId();
+        long time = tablet.timestamps[row];
         checkIsHistoryData(measurementId, time);
-        hasOneColumnWritten = true;
-        switch (timeseries.get(column).getType()) {
+        writeRowsSet.add(row);
+        switch (tsDataType) {
           case INT32:
             chunkWriters.get(measurementId).write(time, ((int[]) tablet.values[column])[row]);
             break;
@@ -125,15 +127,12 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", timeseries.get(column).getType()));
+                String.format("Data type %s is not supported.", tsDataType));
         }
         lastTimeMap.put(measurementId, time);
       }
-      if (hasOneColumnWritten) {
-        pointCount++;
-      }
     }
-    return pointCount;
+    return writeRowsSet.size();
   }
 
   public int write(NonAlignedTablet tablet) throws WriteProcessException {
