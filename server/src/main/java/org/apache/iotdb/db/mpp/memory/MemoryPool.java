@@ -51,6 +51,9 @@ public class MemoryPool {
     Validate.notNull(queryId);
     Validate.isTrue(bytes > 0L);
 
+    if (maxBytes - reservedBytes < bytes) {
+      return false;
+    }
     synchronized (this) {
       if (maxBytes - reservedBytes < bytes) {
         return false;
