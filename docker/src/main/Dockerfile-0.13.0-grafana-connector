@@ -21,21 +21,21 @@ FROM openjdk:11-jre-slim
 RUN apt update \
   # procps is for `free` command
   && apt install wget unzip lsof procps -y \
-  && wget https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-grafana-bin.zip \
+  && wget https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-grafana-connector-bin.zip \
   # if you are in China, use the following URL
-  #&& wget https://mirrors.tuna.tsinghua.edu.cn/apache/iotdb/0.13.0/apache-iotdb-0.13.0-grafana-bin.zip \
-  && unzip apache-iotdb-0.13.0-grafana-bin.zip \
-  && rm apache-iotdb-0.13.0-grafana-bin.zip \
-  && mv apache-iotdb-0.13.0-grafana-bin /iotdb-grafana \
+  #&& wget https://mirrors.tuna.tsinghua.edu.cn/apache/iotdb/0.13.0/apache-iotdb-0.13.0-grafana-connector-bin.zip \
+  && unzip apache-iotdb-0.13.0-grafana-connector-bin.zip \
+  && rm apache-iotdb-0.13.0-grafana-connector-bin.zip \
+  && mv apache-iotdb-0.13.0-grafana-connector-bin /iotdb-grafana-connector \
   && apt remove wget unzip -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
   && apt clean -y
 # rpc port
 EXPOSE 8888
-VOLUME /iotdb-grafana/config
-RUN echo "#!/bin/bash" > /iotdb-grafana/runboot.sh
-RUN echo "java -Djava.security.egd=file:/dev/./urandom -jar /iotdb-grafana/iotdb-grafana.war" >> /iotdb-grafana/runboot.sh
-RUN chmod a+x /iotdb-grafana/runboot.sh
-WORKDIR /iotdb-grafana
+VOLUME /iotdb-grafana-connector/config
+RUN echo "#!/bin/bash" > /iotdb-grafana-connector/runboot.sh
+RUN echo "java -Djava.security.egd=file:/dev/./urandom -jar /iotdb-grafana-connector/iotdb-grafana-connector.war" >> /iotdb-grafana-connector/runboot.sh
+RUN chmod a+x /iotdb-grafana-connector/runboot.sh
+WORKDIR /iotdb-grafana-connector
 ENTRYPOINT ["./runboot.sh"]
