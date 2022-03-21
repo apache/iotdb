@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.db.mpp.common.QueryContext;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 
 import java.util.List;
 
 public class DistributedQueryPlan {
-  private QueryContext context;
+  private MPPQueryContext context;
   private PlanNode rootNode;
   private PlanFragment rootFragment;
 

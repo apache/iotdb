@@ -33,23 +33,8 @@ public class FakedTsFileResource extends TsFileResource {
   public FakedTsFileResource(long tsFileSize, String name) {
     this.timeIndex = new FileTimeIndex();
     this.tsFileSize = tsFileSize;
-    super.closed = true;
-    super.isCompacting = false;
+    super.status = TsFileResourceStatus.CLOSED;
     fakeTsfileName = name;
-  }
-
-  public FakedTsFileResource(long tsFileSize, boolean isClosed, boolean isMerging, String name) {
-    this.tsFileSize = tsFileSize;
-    super.closed = isClosed;
-    super.isCompacting = isMerging;
-    fakeTsfileName = name;
-  }
-
-  public FakedTsFileResource(long tsFileSize, long startTime, long endTime) {
-    this.timeIndex = new FileTimeIndex();
-    timeIndex.putStartTime("", startTime);
-    timeIndex.putEndTime("", endTime);
-    this.tsFileSize = tsFileSize;
   }
 
   public void setTsFileSize(long tsFileSize) {
@@ -65,8 +50,7 @@ public class FakedTsFileResource extends TsFileResource {
   public String toString() {
     StringBuilder builder = new StringBuilder();
     builder.append(tsFileSize).append(",");
-    builder.append(closed).append(",");
-    builder.append(isCompacting);
+    builder.append(status);
     return builder.toString();
   }
 

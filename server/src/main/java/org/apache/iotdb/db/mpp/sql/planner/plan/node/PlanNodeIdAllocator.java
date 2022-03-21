@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,7 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
-/** A centralized PlanNodeId generator */
-public class PlanNodeIdAllocator {}
+public class PlanNodeIdAllocator {
+  public static int initialId = 0;
+
+  public static synchronized PlanNodeId generateId() {
+    initialId++;
+    return new PlanNodeId(String.valueOf(initialId));
+  }
+}
