@@ -162,7 +162,11 @@ public class CheckpointManager implements AutoCloseable {
   }
   // endregion
 
-  /** Get version id of first valid .wal file */
+  /**
+   * Get version id of first valid .wal file
+   *
+   * @return Return {@link Integer#MIN_VALUE} if no file is valid
+   */
   public int getFirstValidVersionId() {
     List<MemTableInfo> memTableInfos;
     synchronized (this) {

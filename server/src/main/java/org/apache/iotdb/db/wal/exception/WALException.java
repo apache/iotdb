@@ -16,25 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.wal.buffer;
+package org.apache.iotdb.db.wal.exception;
 
-import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-/** Currently, there are 2 buffer types */
-public interface IWALBuffer extends AutoCloseable {
-  /**
-   * Write WALEdit into wal buffer.
-   *
-   * @param edit info will be written into wal buffer
-   */
-  void write(WALEdit edit);
+public class WALException extends IoTDBException {
+  public WALException(Throwable cause) {
+    super(cause, TSStatusCode.WRITE_AHEAD_LOG_ERROR.getStatusCode());
+    this.initCause(cause);
+  }
 
-  /** Get current log version id */
-  int getCurrentLogVersion();
+  public WALException(String msg) {
+    super(msg, TSStatusCode.WRITE_AHEAD_LOG_ERROR.getStatusCode());
+  }
 
-  @Override
-  void close();
-
-  @TestOnly
-  boolean isAllWALEditConsumed();
+  public WALException(String message, Throwable cause) {
+    super(message + cause.getMessage(), TSStatusCode.WRITE_AHEAD_LOG_ERROR.getStatusCode());
+    this.initCause(cause);
+  }
 }

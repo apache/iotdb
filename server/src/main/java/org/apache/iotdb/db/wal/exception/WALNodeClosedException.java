@@ -16,25 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.wal.buffer;
+package org.apache.iotdb.db.wal.exception;
 
-import org.apache.iotdb.db.utils.TestOnly;
-
-/** Currently, there are 2 buffer types */
-public interface IWALBuffer extends AutoCloseable {
-  /**
-   * Write WALEdit into wal buffer.
-   *
-   * @param edit info will be written into wal buffer
-   */
-  void write(WALEdit edit);
-
-  /** Get current log version id */
-  int getCurrentLogVersion();
-
-  @Override
-  void close();
-
-  @TestOnly
-  boolean isAllWALEditConsumed();
+public class WALNodeClosedException extends WALException {
+  public WALNodeClosedException(String nodeIdentifier) {
+    super(String.format("wal node-%s has been closed", nodeIdentifier));
+  }
 }

@@ -30,7 +30,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class AbstractWALBuffer implements IWALBufferForTest {
+public abstract class AbstractWALBuffer implements IWALBuffer {
   private static final Logger logger = LoggerFactory.getLogger(AbstractWALBuffer.class);
   /** use size limit to control WALEdit number in each file */
   protected static final long LOG_SIZE_LIMIT = 10 * 1024 * 1024;

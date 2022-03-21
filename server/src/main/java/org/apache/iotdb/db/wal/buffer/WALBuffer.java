@@ -85,10 +85,10 @@ public class WALBuffer extends AbstractWALBuffer {
     allocateBuffers();
     serializeThread =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
-            ThreadName.WAL_SERIALIZE.getName() + "/" + identifier);
+            ThreadName.WAL_SERIALIZE.getName() + "(node-" + identifier + ")");
     syncBufferThread =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
-            ThreadName.WAL_SYNC.getName() + "/" + identifier);
+            ThreadName.WAL_SYNC.getName() + "(node-" + identifier + ")");
     // start receiving serialize tasks
     serializeThread.submit(new SerializeTask());
   }

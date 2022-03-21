@@ -27,10 +27,12 @@ public class WALBufferTest extends WALBufferCommonTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(logDirectory);
+    super.setUp();
   }
 
   @After
   public void tearDown() throws Exception {
+    super.tearDown();
     EnvironmentUtils.cleanDir(logDirectory);
   }
 }

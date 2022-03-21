@@ -27,6 +27,8 @@ import org.apache.iotdb.db.wal.io.WALReader;
 import org.apache.iotdb.db.wal.io.WALWriter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
@@ -47,11 +49,20 @@ public abstract class WALBufferCommonTest {
   protected static final String identifier = "1";
   protected static final String logDirectory = "wal-test";
   protected static final String devicePath = "root.test_sg.test_d";
-  protected IWALBufferForTest walBuffer;
+  protected IWALBuffer walBuffer;
+
+  @Before
+  public void setUp() throws Exception {
+    walBuffer = new WALBuffer(identifier, logDirectory);
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    walBuffer.close();
+  }
 
   @Test
   public void testConcurrentWrite() throws Exception {
-    walBuffer = new WALBuffer(identifier, logDirectory);
     // start write threads to write concurrently
     int threadsNum = 3;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
@@ -80,8 +91,6 @@ public abstract class WALBufferCommonTest {
       Thread.sleep(1_000);
     }
     Thread.sleep(1_000);
-    // close wal buffer
-    walBuffer.close();
     // check .wal files
     File[] walFiles = new File(logDirectory).listFiles(WALWriter::walFilenameFilter);
     Set<InsertRowPlan> actualInsertRowPlans = new HashSet<>();

@@ -78,15 +78,11 @@ public class WALFileTest {
     int size = 0;
     for (WALEdit walEdit : expectedWALEdits) {
       size += walEdit.serializedSize();
-      System.out.println(walEdit.serializedSize());
     }
     WALByteBuffer buffer = new WALByteBuffer(ByteBuffer.allocate(size));
     // test WALEdit.serialize
-    int last = buffer.buffer.remaining();
     for (WALEdit walEdit : expectedWALEdits) {
       walEdit.serialize(buffer);
-      System.out.println(last - buffer.buffer.remaining());
-      last = buffer.buffer.remaining();
     }
     assertEquals(0, buffer.buffer.remaining());
     // test WALEdit.write
