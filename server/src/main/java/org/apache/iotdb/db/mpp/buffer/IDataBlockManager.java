@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
+import org.apache.iotdb.db.mpp.common.TsBlock;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceID;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
-import org.apache.iotdb.mpp.common.ITSBlock;
 
 public interface IDataBlockManager {
 
@@ -59,7 +59,7 @@ public interface IDataBlockManager {
    * @param instanceID ID of fragment instance that generates the block.
    * @return If there are enough memory for the next block.
    */
-  boolean putDataBlock(FragmentInstanceID instanceID, ITSBlock block);
+  boolean putDataBlock(FragmentInstanceID instanceID, TsBlock block);
 
   /**
    * Check if there are data blocks from the specified upstream fragment instance.
@@ -76,5 +76,5 @@ public interface IDataBlockManager {
    * @param instanceID ID of the upstream fragment instance.
    * @return A data block.
    */
-  ITSBlock getDataBlock(FragmentInstanceID instanceID);
+  TsBlock getDataBlock(FragmentInstanceID instanceID);
 }

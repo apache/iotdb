@@ -18,12 +18,17 @@
  */
 package org.apache.iotdb.db.mpp.schedule.task;
 
+import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
 import org.apache.iotdb.db.mpp.schedule.ExecutionContext;
 import org.apache.iotdb.db.mpp.schedule.FragmentInstanceTaskExecutor;
 import org.apache.iotdb.db.mpp.schedule.queue.ID;
 import org.apache.iotdb.db.mpp.schedule.queue.IDIndexedAccessible;
 
+import com.google.common.util.concurrent.ListenableFuture;
+import io.airlift.units.Duration;
+
 import java.util.Comparator;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -35,23 +40,26 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
 
   private FragmentInstanceID id;
   private FragmentInstanceTaskStatus status;
-  private final ExecutionContext executionContext;
+  private final ExecFragmentInstance fragmentInstance;
 
   // the higher this field is, the higher probability it will be scheduled.
-  private long schedulePriority;
+  private double schedulePriority;
   private final long ddl;
   private final Lock lock;
 
+  // Running stats
+  private long cpuWallNano;
+
   /** Initialize a dummy instance for queryHolder */
   public FragmentInstanceTask() {
-    this(null, 0L, null);
+    this(new StubFragmentInstance(), 0L, null);
   }
 
   public FragmentInstanceTask(
-      FragmentInstanceID id, long timeoutMs, FragmentInstanceTaskStatus status) {
-    this.id = id;
+      ExecFragmentInstance instance, long timeoutMs, FragmentInstanceTaskStatus status) {
+    this.fragmentInstance = instance;
+    this.id = new FragmentInstanceID(instance.getInfo(), instance.getInfo(), instance.getInfo());
     this.setStatus(status);
-    this.executionContext = new ExecutionContext();
     this.schedulePriority = 0L;
     this.ddl = System.currentTimeMillis() + timeoutMs;
     this.lock = new ReentrantLock();
@@ -75,26 +83,32 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
         || status == FragmentInstanceTaskStatus.FINISHED;
   }
 
-  public void inputReady(FragmentInstanceID inputId) {
-    throw new UnsupportedOperationException("unsupported");
-  }
-
-  public void outputReady() {
-    throw new UnsupportedOperationException("unsupported");
+  public ExecFragmentInstance getFragmentInstance() {
+    return fragmentInstance;
   }
 
   public void setStatus(FragmentInstanceTaskStatus status) {
     this.status = status;
   }
 
-  public ExecutionContext getExecutionContext() {
-    return executionContext;
-  }
+  /**
+   * Update the schedule priority according to the execution context.
+   *
+   * @param context the last execution context.
+   */
+  public void updateSchedulePriority(ExecutionContext context) {
+    // TODO: need to implement more complex here
 
-  /** Update the schedule priority according to the execution context. */
-  public void updateSchedulePriority() {
-    // TODO: need to implement here
-    this.schedulePriority = System.currentTimeMillis() - ddl;
+    // 1. The penalty factor means that if a task executes less time in one schedule, it will have a
+    // high schedule priority
+    double penaltyFactor =
+        context.getCpuDuration().getWall().getValue(TimeUnit.NANOSECONDS)
+            / context.getTimeSlice().getValue(TimeUnit.NANOSECONDS);
+    // 2. If a task is nearly timeout, it should be scheduled as soon as possible.
+    long base = System.currentTimeMillis() - ddl;
+
+    // 3. Now the final schedulePriority is out, this may not be so reasonable.
+    this.schedulePriority = base * penaltyFactor;
   }
 
   public void lock() {
@@ -111,6 +125,16 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
 
   public long getDDL() {
     return ddl;
+  }
+
+  @Override
+  public int hashCode() {
+    return id.hashCode();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof FragmentInstanceTask && ((FragmentInstanceTask) o).getId().equals(id);
   }
 
   /** a comparator of ddl, the less the ddl is, the low order it has. */
@@ -147,5 +171,26 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
       }
       return o1.getId().compareTo(o2);
     }
+  }
+
+  private static class StubFragmentInstance implements ExecFragmentInstance {
+
+    @Override
+    public boolean isFinished() {
+      return false;
+    }
+
+    @Override
+    public ListenableFuture<Void> processFor(Duration duration) {
+      return null;
+    }
+
+    @Override
+    public String getInfo() {
+      return "stub";
+    }
+
+    @Override
+    public void close() {}
   }
 }

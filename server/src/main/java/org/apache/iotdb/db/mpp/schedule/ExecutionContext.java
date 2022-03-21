@@ -19,6 +19,28 @@
 package org.apache.iotdb.db.mpp.schedule;
 
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
+import org.apache.iotdb.db.utils.stats.CpuTimer;
+
+import io.airlift.units.Duration;
 
 /** The execution context of a {@link FragmentInstanceTask} */
-public class ExecutionContext {}
+public class ExecutionContext {
+  private CpuTimer.CpuDuration cpuDuration;
+  private Duration timeSlice;
+
+  public CpuTimer.CpuDuration getCpuDuration() {
+    return cpuDuration;
+  }
+
+  public void setCpuDuration(CpuTimer.CpuDuration cpuDuration) {
+    this.cpuDuration = cpuDuration;
+  }
+
+  public Duration getTimeSlice() {
+    return timeSlice;
+  }
+
+  public void setTimeSlice(Duration timeSlice) {
+    this.timeSlice = timeSlice;
+  }
+}

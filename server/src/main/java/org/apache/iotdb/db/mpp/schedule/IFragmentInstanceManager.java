@@ -18,28 +18,19 @@
  */
 package org.apache.iotdb.db.mpp.schedule;
 
-import org.apache.iotdb.db.mpp.buffer.IDataBlockManager;
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceID;
+import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
+
+import java.util.List;
 
 /** the interface of fragment instance scheduling */
 public interface IFragmentInstanceManager {
 
-  void submitFragmentInstance();
-
   /**
-   * the notifying interface for {@link IDataBlockManager} when upstream data comes.
+   * Submit one or more {@link ExecFragmentInstance} in one query for later scheduling.
    *
-   * @param instanceID the fragment instance to be notified.
-   * @param upstreamInstanceId the upstream instance id.
+   * @param instances the submitted instances.
    */
-  void inputBlockAvailable(FragmentInstanceID instanceID, FragmentInstanceID upstreamInstanceId);
-
-  /**
-   * the notifying interface for {@link IDataBlockManager} when downstream data has been consumed.
-   *
-   * @param instanceID the fragment instance to be notified.
-   */
-  void outputBlockAvailable(FragmentInstanceID instanceID);
+  void submitFragmentInstances(String queryId, List<ExecFragmentInstance> instances);
 
   /**
    * abort all the instances in this query
@@ -47,4 +38,7 @@ public interface IFragmentInstanceManager {
    * @param queryId the id of the query to be aborted.
    */
   void abortQuery(String queryId);
+
+  /** Fetch an {@link ExecFragmentInstance}. */
+  void fetchFragmentInstance(ExecFragmentInstance instance);
 }

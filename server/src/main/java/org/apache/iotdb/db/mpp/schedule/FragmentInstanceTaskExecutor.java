@@ -18,35 +18,67 @@
  */
 package org.apache.iotdb.db.mpp.schedule;
 
+import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
 import org.apache.iotdb.db.mpp.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
+import org.apache.iotdb.db.utils.stats.CpuTimer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.MoreExecutors;
+import io.airlift.units.Duration;
+
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 
 /** the worker thread of {@link FragmentInstanceTask} */
-public class FragmentInstanceTaskExecutor extends Thread {
+public class FragmentInstanceTaskExecutor extends AbstractExecutor {
 
-  private static final Logger logger = LoggerFactory.getLogger(FragmentInstanceTaskExecutor.class);
+  private static final Duration EXECUTION_TIME_SLICE = new Duration(100, TimeUnit.MILLISECONDS);
 
-  private final IndexedBlockingQueue<FragmentInstanceTask> queue;
+  // As the callback is lightweight enough, there's no need to use another one thread to execute.
+  private static final Executor listeningExecutor = MoreExecutors.directExecutor();
 
   public FragmentInstanceTaskExecutor(
-      String workerId, ThreadGroup tg, IndexedBlockingQueue<FragmentInstanceTask> queue) {
-    super(tg, workerId);
-    this.queue = queue;
+      String workerId,
+      ThreadGroup tg,
+      IndexedBlockingQueue<FragmentInstanceTask> queue,
+      ITaskScheduler scheduler) {
+    super(workerId, tg, queue, scheduler);
   }
 
   @Override
-  public void run() {
-    while (true) {
-      try {
-        FragmentInstanceTask next = queue.poll();
-        // do logic here
-      } catch (InterruptedException e) {
-        logger.info("{} is interrupted.", this.getName());
-        break;
-      }
+  public void execute(FragmentInstanceTask task) throws InterruptedException {
+    // try to switch it to RUNNING
+    if (!getScheduler().readyToRunning(task)) {
+      return;
+    }
+    ExecFragmentInstance instance = task.getFragmentInstance();
+    CpuTimer timer = new CpuTimer();
+    ListenableFuture<Void> future = instance.processFor(EXECUTION_TIME_SLICE);
+    CpuTimer.CpuDuration duration = timer.elapsedTime();
+    // long cost = System.nanoTime() - startTime;
+    // If the future is cancelled, the task is in an error and should be thrown.
+    if (future.isCancelled()) {
+      getScheduler().toAborted(task);
+      return;
+    }
+    ExecutionContext context = new ExecutionContext();
+    context.setCpuDuration(duration);
+    context.setTimeSlice(EXECUTION_TIME_SLICE);
+    if (instance.isFinished()) {
+      getScheduler().runningToFinished(task, context);
+      return;
+    }
+
+    if (future.isDone()) {
+      getScheduler().runningToReady(task, context);
+    } else {
+      getScheduler().runningToBlocked(task, context);
+      future.addListener(
+          () -> {
+            getScheduler().blockedToReady(task);
+          },
+          listeningExecutor);
     }
   }
 }
