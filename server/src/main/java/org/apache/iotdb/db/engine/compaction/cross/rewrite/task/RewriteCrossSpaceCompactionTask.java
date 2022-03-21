@@ -53,7 +53,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   protected List<TsFileResource> selectedUnSeqTsFileResourceList;
   protected TsFileResourceList seqTsFileResourceList;
   protected TsFileResourceList unseqTsFileResourceList;
-  protected TsFileManager tsFileManager;
   private File logFile;
 
   private List<TsFileResource> targetTsfileResourceList;
@@ -73,12 +72,12 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         timePartitionId,
         currentTaskNum,
         selectedSeqTsFileResourceList,
-        selectedUnSeqTsFileResourceList);
+        selectedUnSeqTsFileResourceList,
+        tsFileManager);
     this.selectedSeqTsFileResourceList = selectedSeqTsFileResourceList;
     this.selectedUnSeqTsFileResourceList = selectedUnSeqTsFileResourceList;
     this.seqTsFileResourceList = tsFileManager.getSequenceListByTimePartition(timePartition);
     this.unseqTsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
-    this.tsFileManager = tsFileManager;
   }
 
   @Override

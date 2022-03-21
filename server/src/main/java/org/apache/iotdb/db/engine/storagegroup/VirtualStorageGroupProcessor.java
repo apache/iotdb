@@ -31,7 +31,7 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
-import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.task.CompactionRecover;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -594,9 +594,9 @@ public class VirtualStorageGroupProcessor {
 
   /** recover crossSpaceCompaction */
   private void recoverCrossSpaceCompaction() throws Exception {
-    CompactionRecoverTask compactionRecoverTask =
-        new CompactionRecoverTask(tsFileManager, logicalStorageGroupName, virtualStorageGroupId);
-    compactionRecoverTask.recoverCrossSpaceCompaction();
+    CompactionRecover compactionRecover =
+        new CompactionRecover(tsFileManager, logicalStorageGroupName, virtualStorageGroupId);
+    compactionRecover.recoverCrossSpaceCompaction();
   }
 
   private void recoverInnerSpaceCompaction(boolean isSequence) throws Exception {

@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionT
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
@@ -45,6 +46,7 @@ public class CompactionTaskComparatorTest {
   private final AtomicInteger taskNum = new AtomicInteger(0);
   private FixedPriorityBlockingQueue<AbstractCompactionTask> compactionTaskQueue =
       new FixedPriorityBlockingQueue<>(1024, new CompactionTaskComparator());
+  private TsFileManager tsFileManager = new TsFileManager("fakeSg", "0", "/");
 
   @Before
   public void setUp() {
@@ -66,7 +68,8 @@ public class CompactionTaskComparatorTest {
         resources.add(
             new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i + j, i + j)), j));
       }
-      compactionTasks[i] = new FakedInnerSpaceCompactionTask("fakeSg", 0, taskNum, true, resources);
+      compactionTasks[i] =
+          new FakedInnerSpaceCompactionTask("fakeSg", 0, tsFileManager, taskNum, true, resources);
       compactionTaskQueue.put(compactionTasks[i]);
     }
 
@@ -87,7 +90,8 @@ public class CompactionTaskComparatorTest {
             new FakedTsFileResource(
                 new File(String.format("%d-%d-0-0.tsfile", i + j, i + j)), j - i + 101));
       }
-      compactionTasks[i] = new FakedInnerSpaceCompactionTask("fakeSg", 0, taskNum, true, resources);
+      compactionTasks[i] =
+          new FakedInnerSpaceCompactionTask("fakeSg", 0, tsFileManager, taskNum, true, resources);
       compactionTaskQueue.put(compactionTasks[i]);
     }
 
@@ -108,7 +112,8 @@ public class CompactionTaskComparatorTest {
             new FakedTsFileResource(
                 new File(String.format("%d-%d-%d-0.tsfile", i + j, i + j, j - i + 101)), 1));
       }
-      compactionTasks[i] = new FakedInnerSpaceCompactionTask("fakeSg", 0, taskNum, true, resources);
+      compactionTasks[i] =
+          new FakedInnerSpaceCompactionTask("fakeSg", 0, tsFileManager, taskNum, true, resources);
       compactionTaskQueue.put(compactionTasks[i]);
     }
 
@@ -130,7 +135,8 @@ public class CompactionTaskComparatorTest {
             new FakedTsFileResource(
                 new File(String.format("%d-%d-%d-0.tsfile", i + j, i + j, j - i + 101)), 1));
       }
-      compactionTasks[i] = new FakedInnerSpaceCompactionTask("fakeSg", 0, taskNum, true, resources);
+      compactionTasks[i] =
+          new FakedInnerSpaceCompactionTask("fakeSg", 0, tsFileManager, taskNum, true, resources);
       limitQueue.add(compactionTasks[i]);
     }
 
@@ -151,7 +157,8 @@ public class CompactionTaskComparatorTest {
             new FakedTsFileResource(
                 new File(String.format("%d-%d-0-0.tsfile", i + j, i + j, j - i + 101)), 1));
       }
-      compactionTasks[i] = new FakedInnerSpaceCompactionTask("fakeSg", 0, taskNum, true, resources);
+      compactionTasks[i] =
+          new FakedInnerSpaceCompactionTask("fakeSg", 0, tsFileManager, taskNum, true, resources);
       compactionTaskQueue.put(compactionTasks[i]);
     }
 
@@ -174,7 +181,7 @@ public class CompactionTaskComparatorTest {
             new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i + j, i + j)), j));
       }
       innerCompactionTasks[i] =
-          new FakedInnerSpaceCompactionTask("fakeSg", 0, taskNum, true, resources);
+          new FakedInnerSpaceCompactionTask("fakeSg", 0, tsFileManager, taskNum, true, resources);
     }
 
     for (int i = 0; i < 100; ++i) {
@@ -190,7 +197,7 @@ public class CompactionTaskComparatorTest {
       }
       crossCompactionTasks[i] =
           new FakeCrossSpaceCompactionTask(
-              "fakeSg", 0, taskNum, sequenceResources, unsequenceResources);
+              "fakeSg", 0, tsFileManager, taskNum, sequenceResources, unsequenceResources);
     }
 
     for (int i = 0; i < 100; i++) {
@@ -227,7 +234,7 @@ public class CompactionTaskComparatorTest {
       }
       crossCompactionTasks[i] =
           new FakeCrossSpaceCompactionTask(
-              "fakeSg", 0, taskNum, sequenceResources, unsequenceResources);
+              "fakeSg", 0, tsFileManager, taskNum, sequenceResources, unsequenceResources);
       compactionTaskQueue.put(crossCompactionTasks[i]);
     }
     for (int i = 100; i < 200; ++i) {
@@ -243,7 +250,7 @@ public class CompactionTaskComparatorTest {
       }
       crossCompactionTasks[i] =
           new FakeCrossSpaceCompactionTask(
-              "fakeSg", 0, taskNum, sequenceResources, unsequenceResources);
+              "fakeSg", 0, tsFileManager, taskNum, sequenceResources, unsequenceResources);
       compactionTaskQueue.put(crossCompactionTasks[i]);
     }
 
@@ -258,10 +265,17 @@ public class CompactionTaskComparatorTest {
     public FakedInnerSpaceCompactionTask(
         String storageGroupName,
         long timePartition,
+        TsFileManager tsFileManager,
         AtomicInteger currentTaskNum,
         boolean sequence,
         List<TsFileResource> selectedTsFileResourceList) {
-      super(storageGroupName, timePartition, currentTaskNum, sequence, selectedTsFileResourceList);
+      super(
+          storageGroupName,
+          timePartition,
+          currentTaskNum,
+          sequence,
+          selectedTsFileResourceList,
+          tsFileManager);
     }
 
     @Override
@@ -283,6 +297,7 @@ public class CompactionTaskComparatorTest {
     public FakeCrossSpaceCompactionTask(
         String fullStorageGroupName,
         long timePartition,
+        TsFileManager tsFileManager,
         AtomicInteger currentTaskNum,
         List<TsFileResource> selectedSequenceFiles,
         List<TsFileResource> selectedUnsequenceFiles) {
@@ -291,7 +306,8 @@ public class CompactionTaskComparatorTest {
           timePartition,
           currentTaskNum,
           selectedSequenceFiles,
-          selectedUnsequenceFiles);
+          selectedUnsequenceFiles,
+          tsFileManager);
     }
 
     @Override

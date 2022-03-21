@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
@@ -48,11 +49,16 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   protected String fullStorageGroupName;
   protected long timePartition;
   protected final AtomicInteger currentTaskNum;
+  protected final TsFileManager tsFileManager;
 
   public AbstractCompactionTask(
-      String fullStorageGroupName, long timePartition, AtomicInteger currentTaskNum) {
+      String fullStorageGroupName,
+      long timePartition,
+      TsFileManager tsFileManager,
+      AtomicInteger currentTaskNum) {
     this.fullStorageGroupName = fullStorageGroupName;
     this.timePartition = timePartition;
+    this.tsFileManager = tsFileManager;
     this.currentTaskNum = currentTaskNum;
   }
 

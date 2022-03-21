@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
@@ -221,7 +220,8 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
     for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
       File sourceFile = sourceFileIdentifier.getFileFromDataDirs();
       if (sourceFile != null) {
-        remainSourceTsFileResources.add(new TsFileResource(sourceFile));
+        new TsFileResource(sourceFile).remove();
+        // remainSourceTsFileResources.add(new TsFileResource(sourceFile));
       } else {
         // if source file does not exist, its resource file may still exist, so delete it.
         File resourceFile =
@@ -234,13 +234,21 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
               resourceFile);
           handleSuccess = false;
         }
+
+        File modFile =
+            getFileFromDataDirs(sourceFileIdentifier.getFilePath() + ModificationFile.FILE_SUFFIX);
+        if (modFile != null && !modFile.delete()) {
+          LOGGER.error(
+              "{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+              fullStorageGroupName,
+              modFile);
+          handleSuccess = false;
+        }
       }
       // delete .compaction.mods file and .mods file of all source files
       File compactionModFile =
           getFileFromDataDirs(
               sourceFileIdentifier.getFilePath() + ModificationFile.COMPACTION_FILE_SUFFIX);
-      File modFile =
-          getFileFromDataDirs(sourceFileIdentifier.getFilePath() + ModificationFile.FILE_SUFFIX);
       if (compactionModFile != null && !compactionModFile.delete()) {
         LOGGER.error(
             "{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
@@ -248,21 +256,15 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
             compactionModFile);
         handleSuccess = false;
       }
-      if (modFile != null && !modFile.delete()) {
-        LOGGER.error(
-            "{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
-            fullStorageGroupName,
-            modFile);
-        handleSuccess = false;
-      }
     }
     // delete remaining source files
-    if (!InnerSpaceCompactionUtils.deleteTsFilesInDisk(
-        remainSourceTsFileResources, fullStorageGroupName)) {
-      LOGGER.error(
-          "{} [Compaction][Recover] fail to delete remaining source files.", fullStorageGroupName);
-      handleSuccess = false;
-    }
+    //    if (!InnerSpaceCompactionUtils.deleteTsFilesInDisk(
+    //        remainSourceTsFileResources, fullStorageGroupName)) {
+    //      LOGGER.error(
+    //          "{} [Compaction][Recover] fail to delete remaining source files.",
+    // fullStorageGroupName);
+    //      handleSuccess = false;
+    //    }
     return handleSuccess;
   }
 

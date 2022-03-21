@@ -48,7 +48,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   protected TsFileResourceList tsFileResourceList;
-  protected TsFileManager tsFileManager;
   protected boolean[] isHoldingReadLock;
   protected boolean[] isHoldingWriteLock;
 
@@ -65,8 +64,8 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         timePartition,
         currentTaskNum,
         sequence,
-        selectedTsFileResourceList);
-    this.tsFileManager = tsFileManager;
+        selectedTsFileResourceList,
+        tsFileManager);
     isHoldingReadLock = new boolean[selectedTsFileResourceList.size()];
     isHoldingWriteLock = new boolean[selectedTsFileResourceList.size()];
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
