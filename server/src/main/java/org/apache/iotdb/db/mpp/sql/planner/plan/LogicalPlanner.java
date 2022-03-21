@@ -19,17 +19,18 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
 import org.apache.iotdb.db.mpp.common.Analysis;
-import org.apache.iotdb.db.mpp.common.QueryContext;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.sql.planner.optimization.PlanOptimizer;
 
 import java.util.List;
 
 public class LogicalPlanner {
   private Analysis analysis;
-  private QueryContext context;
+  private MPPQueryContext context;
   private List<PlanOptimizer> optimizers;
 
-  public LogicalPlanner(Analysis analysis, QueryContext context, List<PlanOptimizer> optimizers) {
+  public LogicalPlanner(
+      Analysis analysis, MPPQueryContext context, List<PlanOptimizer> optimizers) {
     this.analysis = analysis;
     this.context = context;
     this.optimizers = optimizers;

@@ -16,30 +16,42 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
-package org.apache.iotdb.db.exception;
+import org.apache.iotdb.db.mpp.common.Analysis;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.rpc.TSStatusCode;
+import java.util.List;
 
-public class ConfigurationException extends IoTDBException {
-  final String parameter;
-  final String correctValue;
+public class InsertMultiTabletNode extends InsertNode {
 
-  public ConfigurationException(String parameter, String badValue, String correctValue) {
-    super(
-        String.format(
-            "Parameter %s can not be %s, please set to: %s", parameter, badValue, correctValue),
-        TSStatusCode.CONFIG_ERROR.getStatusCode());
-    this.parameter = parameter;
-    this.correctValue = correctValue;
+  protected InsertMultiTabletNode(PlanNodeId id) {
+    super(id);
   }
 
-  public String getParameter() {
-    return parameter;
+  @Override
+  public List<InsertNode> splitByPartition(Analysis analysis) {
+    return null;
   }
 
-  public String getCorrectValue() {
-    return correctValue;
+  @Override
+  public List<PlanNode> getChildren() {
+    return null;
+  }
+
+  @Override
+  public PlanNode clone() {
+    return null;
+  }
+
+  @Override
+  public PlanNode cloneWithChildren(List<PlanNode> children) {
+    return null;
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return null;
   }
 }

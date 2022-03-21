@@ -16,17 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.exception.conf;
+package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
-import org.apache.iotdb.confignode.exception.ConfigNodeException;
+public class PlanNodeUtil {
+  public static void printPlanNode(PlanNode root) {
+    printPlanNodeWithLevel(root, 0);
+  }
 
-/** Throws when there exists some special parameters are repeatedly defined */
-public class RepeatConfigurationException extends ConfigNodeException {
+  private static void printPlanNodeWithLevel(PlanNode root, int level) {
+    printTab(level);
+    System.out.println(root.toString());
+    for (PlanNode child : root.getChildren()) {
+      printPlanNodeWithLevel(child, level + 1);
+    }
+  }
 
-  public RepeatConfigurationException(String parameter, String badValue, String correctValue) {
-    super(
-        String.format(
-            "Parameter %s can not be %s, because you're already set to: %s.",
-            parameter, badValue, correctValue));
+  private static void printTab(int count) {
+    for (int i = 0; i < count; i++) {
+      System.out.print("\t");
+    }
   }
 }

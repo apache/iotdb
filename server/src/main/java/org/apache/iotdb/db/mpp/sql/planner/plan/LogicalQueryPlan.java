@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.db.mpp.common.QueryContext;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 
 /**
@@ -26,6 +26,19 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
  * plan node tree.
  */
 public class LogicalQueryPlan {
-  private QueryContext context;
+  private MPPQueryContext context;
   private PlanNode rootNode;
+
+  public LogicalQueryPlan(MPPQueryContext context, PlanNode rootNode) {
+    this.context = context;
+    this.rootNode = rootNode;
+  }
+
+  public PlanNode getRootNode() {
+    return rootNode;
+  }
+
+  public MPPQueryContext getContext() {
+    return context;
+  }
 }
