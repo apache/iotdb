@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.protocol.influxdb.handler;
 
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxConstant;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionFactory;
@@ -279,10 +279,10 @@ public class QueryHandler {
               true,
               System.currentTimeMillis(),
               showTimeseriesSql,
-              IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+              InfluxConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
       QueryDataSet queryDataSet =
           serviceProvider.createQueryDataSet(
-              queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+              queryContext, physicalPlan, InfluxConstant.DEFAULT_FETCH_SIZE);
       int fieldNums = 0;
       Map<String, Integer> tagOrders =
           InfluxDBMetaManager.getDatabase2Measurement2TagOrders().get(database).get(measurement);
@@ -387,10 +387,10 @@ public class QueryHandler {
                     true,
                     System.currentTimeMillis(),
                     functionSql,
-                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+                    InfluxConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
             QueryDataSet queryDataSet =
                 serviceProvider.createQueryDataSet(
-                    queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+                    queryContext, queryPlan, InfluxConstant.DEFAULT_FETCH_SIZE);
             while (queryDataSet.hasNext()) {
               List<Field> fields = queryDataSet.next().getFields();
               for (Field field : fields) {
@@ -426,10 +426,10 @@ public class QueryHandler {
                     true,
                     System.currentTimeMillis(),
                     functionSqlCount,
-                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+                    InfluxConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
             QueryDataSet queryDataSet =
                 serviceProvider.createQueryDataSet(
-                    queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+                    queryContext, queryPlan, InfluxConstant.DEFAULT_FETCH_SIZE);
             while (queryDataSet.hasNext()) {
               List<Field> fields = queryDataSet.next().getFields();
               for (Field field : fields) {
@@ -460,10 +460,10 @@ public class QueryHandler {
                     true,
                     System.currentTimeMillis(),
                     functionSqlSum,
-                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+                    InfluxConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
             QueryDataSet queryDataSet =
                 serviceProvider.createQueryDataSet(
-                    queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+                    queryContext, queryPlan, InfluxConstant.DEFAULT_FETCH_SIZE);
             while (queryDataSet.hasNext()) {
               List<Field> fields = queryDataSet.next().getFields();
               for (Field field : fields) {
@@ -501,10 +501,10 @@ public class QueryHandler {
                     true,
                     System.currentTimeMillis(),
                     functionSqlMaxValue,
-                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+                    InfluxConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
             QueryDataSet queryDataSet =
                 serviceProvider.createQueryDataSet(
-                    queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+                    queryContext, queryPlan, InfluxConstant.DEFAULT_FETCH_SIZE);
             while (queryDataSet.hasNext()) {
               List<Path> paths = queryDataSet.getPaths();
               List<Field> fields = queryDataSet.next().getFields();
@@ -541,10 +541,10 @@ public class QueryHandler {
                     true,
                     System.currentTimeMillis(),
                     functionSqlMinValue,
-                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+                    InfluxConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
             QueryDataSet queryDataSet =
                 serviceProvider.createQueryDataSet(
-                    queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+                    queryContext, queryPlan, InfluxConstant.DEFAULT_FETCH_SIZE);
             while (queryDataSet.hasNext()) {
               List<Path> paths = queryDataSet.getPaths();
               List<Field> fields = queryDataSet.next().getFields();
@@ -584,10 +584,10 @@ public class QueryHandler {
                     true,
                     System.currentTimeMillis(),
                     functionSql,
-                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+                    InfluxConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
             QueryDataSet queryDataSet =
                 serviceProvider.createQueryDataSet(
-                    queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+                    queryContext, queryPlan, InfluxConstant.DEFAULT_FETCH_SIZE);
             while (queryDataSet.hasNext()) {
               List<Field> fields = queryDataSet.next().getFields();
               if (fields.get(1).getDataType() != null) {
@@ -631,10 +631,10 @@ public class QueryHandler {
                     true,
                     System.currentTimeMillis(),
                     functionSql,
-                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+                    InfluxConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
             QueryDataSet queryDataSet =
                 serviceProvider.createQueryDataSet(
-                    queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+                    queryContext, queryPlan, InfluxConstant.DEFAULT_FETCH_SIZE);
             while (queryDataSet.hasNext()) {
               List<Path> paths = queryDataSet.getPaths();
               List<Field> fields = queryDataSet.next().getFields();
@@ -658,10 +658,10 @@ public class QueryHandler {
                           true,
                           System.currentTimeMillis(),
                           specificSql,
-                          IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+                          InfluxConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
                   QueryDataSet queryDataSetNew =
                       serviceProvider.createQueryDataSet(
-                          queryContextNew, queryPlanNew, IoTDBConstant.DEFAULT_FETCH_SIZE);
+                          queryContextNew, queryPlanNew, InfluxConstant.DEFAULT_FETCH_SIZE);
                   while (queryDataSetNew.hasNext()) {
                     RowRecord recordNew = queryDataSetNew.next();
                     List<Field> newFields = recordNew.getFields();
@@ -708,10 +708,10 @@ public class QueryHandler {
                     true,
                     System.currentTimeMillis(),
                     functionSql,
-                    IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+                    InfluxConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
             QueryDataSet queryDataSet =
                 serviceProvider.createQueryDataSet(
-                    queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+                    queryContext, queryPlan, InfluxConstant.DEFAULT_FETCH_SIZE);
             while (queryDataSet.hasNext()) {
               List<Path> paths = queryDataSet.getPaths();
               List<Field> fields = queryDataSet.next().getFields();
@@ -888,10 +888,10 @@ public class QueryHandler {
               true,
               System.currentTimeMillis(),
               realQuerySql,
-              IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+              InfluxConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
       QueryDataSet queryDataSet =
           serviceProvider.createQueryDataSet(
-              queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+              queryContext, queryPlan, InfluxConstant.DEFAULT_FETCH_SIZE);
       return QueryResultUtils.iotdbResultConvertInfluxResult(
           queryDataSet, database, measurement, fieldOrders);
     } catch (QueryProcessException
