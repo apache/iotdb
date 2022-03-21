@@ -60,12 +60,14 @@ public class SchemaFileTest {
 
   @After
   public void tearDown() throws Exception {
-    // EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test
   public void essentialTestSchemaFile() throws IOException, MetadataException {
-    ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1", 10000L);
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1");
+    IMNode newSGNode = new StorageGroupEntityMNode(null, "newSG", 10000L);
+    sf.updateStorageGroupNode(newSGNode);
 
     IMNode root = virtualTriangleMTree(5, "root.test");
     IMNode int0 = root.getChild("int0");
@@ -147,7 +149,7 @@ public class SchemaFileTest {
 
   @Test
   public void testReadFromFlat() throws MetadataException, IOException {
-    ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1", 11111L);
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1");
 
     Iterator<IMNode> ite = getTreeBFT(getFlatTree(50000, "aa"));
     while (ite.hasNext()) {
@@ -189,7 +191,10 @@ public class SchemaFileTest {
 
   @Test
   public void testVerticalTree() throws MetadataException, IOException {
-    ISchemaFile sf = SchemaFile.initSchemaFile("root.sgvt.vt", 11_111L);
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.sgvt.vt");
+    IMNode sgNode = new StorageGroupEntityMNode(null, "sg", 11_111L);
+    sf.updateStorageGroupNode(sgNode);
+
     IMNode root = getVerticalTree(100, "VT");
     Iterator<IMNode> ite = getTreeBFT(root);
     while (ite.hasNext()) {

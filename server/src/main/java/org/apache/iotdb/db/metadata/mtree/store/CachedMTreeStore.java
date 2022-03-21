@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -78,9 +77,7 @@ public class CachedMTreeStore implements IMTreeStore {
     }
     MNodeContainers.IS_DISK_MODE = true;
     memManager.init();
-    file =
-        SchemaFile.initSchemaFile(
-            rootPath.getFullPath(), IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+    file = SchemaFile.initSchemaFile(rootPath.getFullPath());
     root = file.init();
     cacheManager.initRootStatus(root);
     flushTask = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("MTreeFlushThread");

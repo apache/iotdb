@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
-import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.*;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
@@ -47,7 +47,7 @@ public class SegmentTest {
   }
 
   @Test
-  public void flatTreeInsert() throws RecordDuplicatedException {
+  public void flatTreeInsert() throws MetadataException {
     Segment sf = new Segment(500);
     IMNode rNode = virtualFlatMTree(10);
     for (IMNode node : rNode.getChildren().values()) {

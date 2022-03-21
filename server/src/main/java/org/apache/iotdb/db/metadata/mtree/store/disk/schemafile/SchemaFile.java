@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -29,6 +28,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -62,9 +62,7 @@ public class SchemaFile implements ISchemaFile {
 
   // folder to store .pmt files
   public static String FILE_FOLDER =
-      IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-          + File.separator
-          + MetadataConstant.SCHEMA_FILE_DIR;
+      IoTDBDescriptor.getInstance().getConfig().getSchemaDir() + File.separator;
 
   public static int PAGE_LENGTH = 16 * 1024; // 16 kib for default
   public static short PAGE_HEADER_SIZE = 16;
@@ -92,6 +90,7 @@ public class SchemaFile implements ISchemaFile {
   String storageGroupName;
   long dataTTL;
   boolean isEntity;
+  int templateHash;
 
   ByteBuffer headerContent;
   int lastPageIndex; // last page index of the file, boundary to grow
@@ -111,8 +110,8 @@ public class SchemaFile implements ISchemaFile {
         SchemaFile.FILE_FOLDER
             + File.separator
             + sgName
-            + IoTDBConstant.PATH_SEPARATOR
-            + MetadataConstant.SCHEMA_FILE_SUFFIX;
+            + File.separator
+            + MetadataConstant.SCHEMA_FILE_NAME;
 
     pmtFile = new File(filePath);
     if (!pmtFile.exists() && !override) {
@@ -126,7 +125,7 @@ public class SchemaFile implements ISchemaFile {
     }
 
     if (!pmtFile.exists() || !pmtFile.isFile()) {
-      File folder = new File(SchemaFile.FILE_FOLDER);
+      File folder = new File(SchemaFile.FILE_FOLDER + sgName);
       folder.mkdirs();
       pmtFile.createNewFile();
     }
@@ -134,19 +133,16 @@ public class SchemaFile implements ISchemaFile {
     channel = new RandomAccessFile(pmtFile, "rw").getChannel();
     headerContent = ByteBuffer.allocate(SchemaFile.FILE_HEADER_SIZE);
     pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
-    dataTTL = ttl; // will be overwritten if to init
+    // will be overwritten if to init
+    this.dataTTL = ttl;
     this.isEntity = isEntity;
+    this.templateHash = 0;
     initFileHeader();
   }
 
-  public static ISchemaFile initSchemaFile(String sgName, long dataTTL)
-      throws IOException, MetadataException {
-    return new SchemaFile(sgName, true, dataTTL, false);
-  }
-
-  public static ISchemaFile initSchemaFile(String sgName, long dataTTL, boolean isEntity)
-      throws IOException, MetadataException {
-    return new SchemaFile(sgName, true, dataTTL, isEntity);
+  public static ISchemaFile initSchemaFile(String sgName) throws IOException, MetadataException {
+    return new SchemaFile(
+        sgName, true, IoTDBDescriptor.getInstance().getConfig().getDefaultTTL(), false);
   }
 
   public static ISchemaFile loadSchemaFile(String sgName) throws IOException, MetadataException {
@@ -157,14 +153,31 @@ public class SchemaFile implements ISchemaFile {
 
   @Override
   public IMNode init() throws MetadataException {
+    IMNode resNode;
     String[] sgPathNodes = MetaUtils.splitPathToDetachedPath(storageGroupName);
     if (isEntity) {
-      return setNodeAddress(
-          new StorageGroupEntityMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
+      resNode =
+          setNodeAddress(
+              new StorageGroupEntityMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
     } else {
-      return setNodeAddress(
-          new StorageGroupMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
+      resNode =
+          setNodeAddress(
+              new StorageGroupMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
     }
+    if (templateHash != 0) {
+      resNode.setSchemaTemplate(TemplateManager.getInstance().getTemplateFromHash(templateHash));
+    }
+    return resNode;
+  }
+
+  @Override
+  public boolean updateStorageGroupNode(IMNode sgNode) throws IOException {
+    this.dataTTL = sgNode.getAsStorageGroupMNode().getDataTTL();
+    this.isEntity = sgNode.isEntity();
+    this.templateHash =
+        sgNode.getSchemaTemplate() == null ? 0 : sgNode.getSchemaTemplate().hashCode();
+    updateHeader();
+    return true;
   }
 
   @Override
@@ -472,7 +485,6 @@ public class SchemaFile implements ISchemaFile {
 
   /**
    * This method initiate file header buffer, with an empty file if meant to init. <br>
-   * TODO: differ StroageGroupNode from StroageGroupEntityNode
    *
    * <p><b>File Header Structure:</b>
    *
@@ -483,7 +495,8 @@ public class SchemaFile implements ISchemaFile {
    *         <li><s>a. var length string (less than 200 bytes): path to root(SG) node</s>
    *         <li>a. 1 long (8 bytes): dataTTL
    *         <li>b. 1 bool (1 byte): isEntityStorageGroup
-   *         <li>c. fixed length buffer (13 bytes): internal or entity node buffer [not implemented
+   *         <li>c. 1 int (4 bytes): hash code of template name
+   *         <li>d. fixed length buffer (9 bytes): internal or entity node buffer [not implemented
    *             yet]
    *       </ul>
    * </ul>
@@ -497,6 +510,7 @@ public class SchemaFile implements ISchemaFile {
       ReadWriteIOUtils.write(lastPageIndex, headerContent);
       ReadWriteIOUtils.write(dataTTL, headerContent);
       ReadWriteIOUtils.write(isEntity, headerContent);
+      ReadWriteIOUtils.write(templateHash, headerContent);
       initRootPage();
     } else {
       channel.read(headerContent);
@@ -504,6 +518,7 @@ public class SchemaFile implements ISchemaFile {
       lastPageIndex = ReadWriteIOUtils.readInt(headerContent);
       dataTTL = ReadWriteIOUtils.readLong(headerContent);
       isEntity = ReadWriteIOUtils.readBool(headerContent);
+      templateHash = ReadWriteIOUtils.readInt(headerContent);
       rootPage = getPageInstance(0);
     }
   }
@@ -514,6 +529,7 @@ public class SchemaFile implements ISchemaFile {
     ReadWriteIOUtils.write(lastPageIndex, headerContent);
     ReadWriteIOUtils.write(dataTTL, headerContent);
     ReadWriteIOUtils.write(isEntity, headerContent);
+    ReadWriteIOUtils.write(templateHash, headerContent);
 
     headerContent.clear();
     channel.write(headerContent, 0);

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -43,11 +44,11 @@ public interface ISegment {
 
   int removeRecord(String key);
 
-  IMNode getRecordAsIMNode(String key);
+  IMNode getRecordAsIMNode(String key) throws MetadataException;
 
   boolean hasRecordKey(String key);
 
-  Queue<IMNode> getAllRecords();
+  Queue<IMNode> getAllRecords() throws MetadataException;
 
   /**
    * Records are always sync with buffer, but header and key-address list are not. This method sync

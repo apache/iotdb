@@ -149,7 +149,12 @@ public class SchemaPage implements ISchemaPage {
   @Override
   public IMNode read(short segIdx, String key) throws SegmentNotFoundException {
     ISegment seg = getSegment(segIdx);
-    return seg.getRecordAsIMNode(key);
+    try {
+      return seg.getRecordAsIMNode(key);
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      return null;
+    }
   }
 
   @Override
@@ -160,7 +165,12 @@ public class SchemaPage implements ISchemaPage {
   @Override
   public Queue<IMNode> getChildren(short segId) throws SegmentNotFoundException {
     ISegment seg = getSegment(segId);
-    return seg.getAllRecords();
+    try {
+      return seg.getAllRecords();
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      return null;
+    }
   }
 
   @Override
