@@ -24,7 +24,6 @@ import org.apache.iotdb.metrics.dropwizard.MetricName;
 import com.codahale.metrics.*;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -148,9 +147,20 @@ class DropwizardMetricsExporter {
 
   /** Get metric name and tags from name */
   private MetricName getMetricNameFromName(String dropwizardName) {
-    String[] labelsFlat = dropwizardName.split("\\.");
-    String sanitizeMetricName = sanitizeMetricName(labelsFlat[0]);
-    return new MetricName(sanitizeMetricName, Arrays.copyOfRange(labelsFlat, 1, labelsFlat.length));
+    int firstIndex = dropwizardName.indexOf("{");
+    int lastIndex = dropwizardName.indexOf("}");
+    if (firstIndex == -1 || lastIndex == -1) {
+      String sanitizeMetricName = sanitizeMetricName(dropwizardName);
+      return new MetricName(sanitizeMetricName);
+    } else {
+      String[] labelsFlat = dropwizardName.substring(firstIndex + 1, lastIndex).split("\\.");
+      String sanitizeMetricName = sanitizeMetricName(dropwizardName.substring(0, firstIndex));
+      if (labelsFlat.length == 0) {
+        return new MetricName(sanitizeMetricName);
+      } else {
+        return new MetricName(sanitizeMetricName, labelsFlat);
+      }
+    }
   }
 
   /** Export meter for multi type */

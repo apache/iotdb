@@ -21,21 +21,23 @@ package org.apache.iotdb.metrics.dropwizard;
 
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
-import com.codahale.metrics.MetricRegistry;
-
 import java.util.*;
+import java.util.stream.Collectors;
 
 /** the unique identifier of a metric, include a name and some tags. */
 public class MetricName {
   private String name;
   private MetricLevel metricLevel;
   private Map<String, String> tags;
+  private static final String TAG_SEPARATOR = ".";
 
   public MetricName(String name, String... tags) {
     this.name = name;
     this.tags = new HashMap<>();
-    for (int i = 0; i < tags.length; i += 2) {
-      this.tags.put(tags[i], tags[i + 1]);
+    if (tags.length % 2 == 0) {
+      for (int i = 0; i < tags.length; i += 2) {
+        this.tags.put(tags[i], tags[i + 1]);
+      }
     }
   }
   /**
@@ -52,18 +54,24 @@ public class MetricName {
   }
 
   /**
-   * convert the metric name to flat string, like name_tag_key1:tag_value1_tag_key2:tag_value2....
+   * convert the metric name to flat string
    *
    * @return the flat string
    */
   public String toFlatString() {
-    String[] labels = new String[2 * tags.size()];
-    int index = 0;
-    for (Map.Entry<String, String> tag : tags.entrySet()) {
-      labels[index++] = tag.getKey().replace(".", "");
-      labels[index++] = tag.getValue().replace(".", "");
-    }
-    return MetricRegistry.name(name.replace(".", ""), labels);
+    StringBuilder stringBuilder = new StringBuilder(name.replaceAll("\\{|\\}", ""));
+    stringBuilder.append("{");
+    stringBuilder.append(
+        tags.entrySet().stream()
+            .map(
+                t ->
+                    t.getKey().replace(TAG_SEPARATOR, "")
+                        + TAG_SEPARATOR
+                        + t.getValue().replace(TAG_SEPARATOR, ""))
+            .collect(Collectors.joining(TAG_SEPARATOR))
+            .replaceAll("\\{|\\}", ""));
+    stringBuilder.append("}");
+    return stringBuilder.toString();
   }
 
   /**
