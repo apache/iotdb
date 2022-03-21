@@ -19,25 +19,35 @@
 package org.apache.iotdb.confignode.service.executor;
 
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
+import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.partition.DataNodeInfo;
 import org.apache.iotdb.confignode.partition.PartitionTable;
+import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import java.util.List;
 import java.util.Map;
 
 public class PlanExecutor {
 
-  private static final PartitionTable partitionTable = PartitionTable.getInstance();
+  private final PartitionTable partitionTable = new PartitionTable();
+
+  public PlanExecutor() {
+    // empty constructor
+  }
 
   public DataSet executorQueryPlan(PhysicalPlan plan) throws UnknownPhysicalPlanTypeException {
     switch (plan.getType()) {
       case QueryDataNodeInfo:
         return queryDataNodesInfo((QueryDataNodeInfoPlan) plan);
+      case QueryStorageGroupSchema:
+        return queryStorageGroupSchema();
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }
@@ -47,6 +57,8 @@ public class PlanExecutor {
     switch (plan.getType()) {
       case RegisterDataNode:
         return partitionTable.registerDataNode((RegisterDataNodePlan) plan);
+      case SetStorageGroup:
+        return partitionTable.setStorageGroup((SetStorageGroupPlan) plan);
       default:
         throw new UnknownPhysicalPlanTypeException(plan.getType());
     }
@@ -64,20 +76,12 @@ public class PlanExecutor {
     return result;
   }
 
-  private PlanExecutor() {
-    // empty constructor
-  }
-
-  private static class PlanExecutorHolder {
-
-    private static final PlanExecutor INSTANCE = new PlanExecutor();
-
-    private PlanExecutorHolder() {
-      // empty constructor
+  private StorageGroupSchemaDataSet queryStorageGroupSchema() {
+    List<StorageGroupSchema> schemaList = partitionTable.getStorageGroupSchema();
+    StorageGroupSchemaDataSet result = null;
+    if (schemaList != null) {
+      result = new StorageGroupSchemaDataSet(schemaList);
     }
-  }
-
-  public static PlanExecutor getInstance() {
-    return PlanExecutor.PlanExecutorHolder.INSTANCE;
+    return result;
   }
 }

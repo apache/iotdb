@@ -18,9 +18,20 @@
  */
 package org.apache.iotdb.confignode.partition;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
 public class StorageGroupSchema {
 
-  private final String name;
+  private String name;
+
+  private List<Integer> schemaRegionGroupIDs;
+  private List<Integer> dataRegionGroupIDs;
+
+  public StorageGroupSchema() {
+    // empty constructor
+  }
 
   public StorageGroupSchema(String name) {
     this.name = name;
@@ -28,5 +39,39 @@ public class StorageGroupSchema {
 
   public String getName() {
     return name;
+  }
+
+  public List<Integer> getSchemaRegionGroupIDs() {
+    return schemaRegionGroupIDs;
+  }
+
+  public void addSchemaRegionGroup(int id) {
+    if (schemaRegionGroupIDs == null) {
+      schemaRegionGroupIDs = new ArrayList<>();
+    }
+    schemaRegionGroupIDs.add(id);
+  }
+
+  public List<Integer> getDataRegionGroupIDs() {
+    return dataRegionGroupIDs;
+  }
+
+  public void addDataRegionGroup(int id) {
+    if (dataRegionGroupIDs == null) {
+      dataRegionGroupIDs = new ArrayList<>();
+    }
+    dataRegionGroupIDs.add(id);
+  }
+
+  public void serialize(ByteBuffer buffer) {
+    buffer.putInt(name.length());
+    buffer.put(name.getBytes());
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    int length = buffer.getInt();
+    byte[] byteName = new byte[length];
+    buffer.get(byteName, 0, length);
+    name = new String(byteName, 0, length);
   }
 }

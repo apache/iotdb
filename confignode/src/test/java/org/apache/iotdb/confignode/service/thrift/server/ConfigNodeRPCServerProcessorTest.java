@@ -21,6 +21,8 @@ package org.apache.iotdb.confignode.service.thrift.server;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodesInfo;
+import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.StorageGroupSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -36,26 +38,27 @@ import java.util.Map;
 
 public class ConfigNodeRPCServerProcessorTest {
 
-  private final ConfigNodeRPCServerProcessor processor = new ConfigNodeRPCServerProcessor();
-
   @Test
   public void registerDataNodeTest() throws TException {
+    ConfigNodeRPCServerProcessor processor = new ConfigNodeRPCServerProcessor();
+
     TSStatus status;
     DataNodeRegisterReq registerReq0 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6667));
     DataNodeRegisterReq registerReq1 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6668));
     DataNodeRegisterReq registerReq2 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6669));
 
     // test success register
-    status = processor.registerDataNode(registerReq0);
+    status = processor.registerDataNode(registerReq0).getRegisterResult();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    status = processor.registerDataNode(registerReq1);
+    status = processor.registerDataNode(registerReq1).getRegisterResult();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    status = processor.registerDataNode(registerReq2);
+    status = processor.registerDataNode(registerReq2).getRegisterResult();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // test reject register
-    status = processor.registerDataNode(registerReq0);
+    status = processor.registerDataNode(registerReq0).getRegisterResult();
     Assert.assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals("DataNode 0.0.0.0:6667 is already registered.", status.getMessage());
 
     // test query DataNodeInfo
     DataNodesInfo info = processor.getDataNodesInfo(-1);
@@ -79,5 +82,43 @@ public class ConfigNodeRPCServerProcessorTest {
     Assert.assertEquals(0, info.getDataNodesMap().get(0).getDataNodeID());
     Assert.assertEquals("0.0.0.0", info.getDataNodesMap().get(0).getEndPoint().getIp());
     Assert.assertEquals(6667, info.getDataNodesMap().get(0).getEndPoint().getPort());
+
+    processor = null;
+  }
+
+  @Test
+  public void setStorageGroupTest() throws TException {
+    ConfigNodeRPCServerProcessor processor = new ConfigNodeRPCServerProcessor();
+
+    TSStatus status;
+
+    // failed because there are not enough DataNodes
+    SetStorageGroupReq setReq = new SetStorageGroupReq("root.sg0");
+    status = processor.setStorageGroup(setReq);
+    Assert.assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals("DataNode is not enough, please register more.", status.getMessage());
+
+    // register DataNodes
+    DataNodeRegisterReq registerReq0 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6667));
+    DataNodeRegisterReq registerReq1 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6668));
+    DataNodeRegisterReq registerReq2 = new DataNodeRegisterReq(new EndPoint("0.0.0.0", 6669));
+    status = processor.registerDataNode(registerReq0).getRegisterResult();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    status = processor.registerDataNode(registerReq1).getRegisterResult();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    status = processor.registerDataNode(registerReq2).getRegisterResult();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // set StorageGroup
+    status = processor.setStorageGroup(setReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // query StorageGroupSchema
+    StorageGroupSchema schema = processor.getStorageGroupSchemas().get(0);
+    Assert.assertEquals("root.sg0", schema.getStorageGroup());
+    Assert.assertEquals(0, (long) schema.getSchemaRegionGroupIDs().get(0));
+    Assert.assertEquals(0, (long) schema.getDataRegionGroupIDs().get(0));
+
+    processor = null;
   }
 }

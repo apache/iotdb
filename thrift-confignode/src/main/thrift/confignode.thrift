@@ -21,12 +21,36 @@ include "rpc.thrift"
 namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
+struct DataNodeRegisterReq {
+    1: required rpc.EndPoint endPoint
+}
+
+struct DataNodeRegisterResp {
+    1: required rpc.TSStatus registerResult
+    2: required i32 dataNodeID
+}
+
+struct DataNodeInfo{
+  1: required i32 dataNodeID
+  2: required rpc.EndPoint endPoint
+}
+
+struct DataNodesInfo {
+    1: required map<i32, DataNodeInfo> dataNodesMap
+}
+
 struct SetStorageGroupReq {
     1: required string storageGroup
 }
 
 struct DeleteStorageGroupReq {
     1: required string storageGroup
+}
+
+struct StorageGroupSchema {
+    1: required string storageGroup
+    2: required list<i32> schemaRegionGroupIDs
+    3: required list<i32> dataRegionGroupIDs
 }
 
 struct GetDeviceGroupIDReq {
@@ -58,36 +82,20 @@ struct DeviceGroupHashInfo {
     2: required string hashClass
 }
 
-struct DataNodeRegisterReq {
-    1: required rpc.EndPoint endPoint
-}
-
-struct DataNodeRegisterResp {
-    1: required rpc.TSStatus registerResult
-    2: optional i32 dataNodeID
-}
-
-struct DataNodeInfo{
-  1: required i32 dataNodeID
-  2: required rpc.EndPoint endPoint
-}
-
-struct DataNodesInfo {
-    1: required map<i32, DataNodeInfo> dataNodesMap
-}
-
 service ConfigIService {
+  DataNodeRegisterResp registerDataNode(DataNodeRegisterReq req)
+
+  DataNodesInfo getDataNodesInfo(i32 dataNodeID)
+
   rpc.TSStatus setStorageGroup(SetStorageGroupReq req)
 
   rpc.TSStatus deleteStorageGroup(DeleteStorageGroupReq req)
 
-  DeviceGroupHashInfo getDeviceGroupHashInfo()
+  list<StorageGroupSchema> getStorageGroupSchemas()
 
   SchemaPartitionInfo getSchemaPartition(GetSchemaPartitionReq req)
 
   DataPartitionInfo getDataPartition(GetDataPartitionReq req)
 
-  rpc.TSStatus registerDataNode(DataNodeRegisterReq req)
-
-  DataNodesInfo getDataNodesInfo(i32 dataNodeID)
+  DeviceGroupHashInfo getDeviceGroupHashInfo()
 }

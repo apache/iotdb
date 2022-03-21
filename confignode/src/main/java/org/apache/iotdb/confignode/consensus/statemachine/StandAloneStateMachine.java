@@ -15,7 +15,7 @@ public class StandAloneStateMachine extends BaseStateMachine {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StandAloneStateMachine.class);
 
-  private static final PlanExecutor executor = PlanExecutor.getInstance();
+  private final PlanExecutor executor = new PlanExecutor();
 
   @Override
   protected TSStatus write(PhysicalPlan plan) {

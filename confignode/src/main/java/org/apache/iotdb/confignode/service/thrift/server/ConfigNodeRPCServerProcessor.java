@@ -19,12 +19,17 @@
 package org.apache.iotdb.confignode.service.thrift.server;
 
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
+import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
+import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodesInfo;
 import org.apache.iotdb.confignode.rpc.thrift.DataPartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.DeleteStorageGroupReq;
@@ -35,19 +40,20 @@ import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
 import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
-  private static final ConfigManager configManager = ConfigManager.getInstance();
+  private final ConfigManager configManager = new ConfigManager();
 
   public ConfigNodeRPCServerProcessor() {
     // empty constructor
@@ -55,13 +61,34 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public TSStatus setStorageGroup(SetStorageGroupReq req) throws TException {
-
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    SetStorageGroupPlan plan =
+        new SetStorageGroupPlan(new StorageGroupSchema(req.getStorageGroup()));
+    return configManager.write(plan).getStatus();
   }
 
   @Override
   public TSStatus deleteStorageGroup(DeleteStorageGroupReq req) throws TException {
     return null;
+  }
+
+  @Override
+  public List<org.apache.iotdb.confignode.rpc.thrift.StorageGroupSchema> getStorageGroupSchemas()
+      throws TException {
+    ConsensusReadResponse resp = configManager.read(new QueryStorageGroupSchemaPlan());
+    if (resp.getDataset() == null) {
+      return null;
+    } else {
+      List<org.apache.iotdb.confignode.rpc.thrift.StorageGroupSchema> result = new ArrayList<>();
+      for (StorageGroupSchema schema :
+          ((StorageGroupSchemaDataSet) resp.getDataset()).getSchemaList()) {
+        result.add(
+            new org.apache.iotdb.confignode.rpc.thrift.StorageGroupSchema(
+                schema.getName(),
+                schema.getSchemaRegionGroupIDs(),
+                schema.getDataRegionGroupIDs()));
+      }
+      return result;
+    }
   }
 
   @Override
@@ -80,7 +107,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TSStatus registerDataNode(DataNodeRegisterReq req) throws TException {
+  public DataNodeRegisterResp registerDataNode(DataNodeRegisterReq req) throws TException {
     // TODO: handle exception in consensusLayer
     QueryDataNodeInfoPlan readPlan = new QueryDataNodeInfoPlan(Integer.MAX_VALUE);
     ConsensusReadResponse resp = configManager.read(readPlan);
@@ -96,7 +123,8 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
               dataSet.getInfoWithMaximumID().getDataNodeID() + 1,
               new Endpoint(req.getEndPoint().getIp(), req.getEndPoint().getPort()));
     }
-    return configManager.write(writePlan).getStatus();
+    return new DataNodeRegisterResp(
+        configManager.write(writePlan).getStatus(), writePlan.getInfo().getDataNodeID());
   }
 
   @Override

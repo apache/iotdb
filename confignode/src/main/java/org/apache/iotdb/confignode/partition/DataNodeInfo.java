@@ -20,10 +20,16 @@ package org.apache.iotdb.confignode.partition;
 
 import org.apache.iotdb.consensus.common.Endpoint;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class DataNodeInfo {
 
   private final int dataNodeID;
   private final Endpoint endPoint;
+
+  private List<Integer> schemaRegionGroupIDs;
+  private List<Integer> dataRegionGroupIDs;
 
   public DataNodeInfo(int dataNodeID, Endpoint endPoint) {
     this.dataNodeID = dataNodeID;
@@ -36,6 +42,28 @@ public class DataNodeInfo {
 
   public Endpoint getEndPoint() {
     return endPoint;
+  }
+
+  public void addSchemaRegionGroup(int id) {
+    if (schemaRegionGroupIDs == null) {
+      schemaRegionGroupIDs = new ArrayList<>();
+    }
+    schemaRegionGroupIDs.add(id);
+  }
+
+  public List<Integer> getSchemaRegionGroupIDs() {
+    return schemaRegionGroupIDs;
+  }
+
+  public void addDataRegionGroup(int id) {
+    if (dataRegionGroupIDs == null) {
+      dataRegionGroupIDs = new ArrayList<>();
+    }
+    dataRegionGroupIDs.add(id);
+  }
+
+  public List<Integer> getDataRegionGroupIDs() {
+    return dataRegionGroupIDs;
   }
 
   @Override

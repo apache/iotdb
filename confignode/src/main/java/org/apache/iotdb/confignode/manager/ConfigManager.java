@@ -59,7 +59,7 @@ public class ConfigManager {
     setHashExecutor(hashExecutorClass, deviceGroupCount);
   }
 
-  private ConfigManager() {
+  public ConfigManager() {
     ConfigNodeConf config = ConfigNodeDescriptor.getInstance().getConf();
 
     setHashExecutor(config.getDeviceGroupHashExecutorClass(), config.getDeviceGroupCount());
@@ -115,19 +115,6 @@ public class ConfigManager {
 
   public ConsensusReadResponse read(PhysicalPlan plan) {
     return this.consensusImpl.read(this.consensusGroupId, plan);
-  }
-
-  private static class ConfigManagerHolder {
-
-    private static final ConfigManager INSTANCE = new ConfigManager();
-
-    private ConfigManagerHolder() {
-      // empty constructor
-    }
-  }
-
-  public static ConfigManager getInstance() {
-    return ConfigManager.ConfigManagerHolder.INSTANCE;
   }
 
   // TODO: Interfaces for LoadBalancer control

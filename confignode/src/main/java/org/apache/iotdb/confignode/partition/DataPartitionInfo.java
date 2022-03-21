@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.confignode.partition;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class DataPartitionInfo {
 
+  // TODO: Serialize and Deserialize
   // Map<StorageGroup, Map<DeviceGroupID, Map<TimeInterval, List<DataRegionID>>>>
   private final Map<String, Map<Integer, Map<Long, List<Integer>>>> dataPartitionTable;
   // Map<DataRegionID, List<DataNodeID>>
@@ -38,4 +40,27 @@ public class DataPartitionInfo {
 
     this.dataPartitionRuleTable = new HashMap<>();
   }
+
+  public void createDataPartition(
+      String storageGroup, int deviceGroup, long timeInterval, int dataRegionGroup) {
+    if (!dataPartitionTable.containsKey(storageGroup)) {
+      dataPartitionTable.put(storageGroup, new HashMap<>());
+    }
+    if (!dataPartitionTable.get(storageGroup).containsKey(deviceGroup)) {
+      dataPartitionTable.get(storageGroup).put(deviceGroup, new HashMap<>());
+    }
+    if (!dataPartitionTable.get(storageGroup).get(deviceGroup).containsKey(timeInterval)) {
+      dataPartitionTable.get(storageGroup).get(deviceGroup).put(timeInterval, new ArrayList<>());
+    }
+    dataPartitionTable.get(storageGroup).get(deviceGroup).get(timeInterval).add(dataRegionGroup);
+  }
+
+  public void createDataRegion(int dataRegionGroup, List<Integer> dataNodeList) {
+    if (!dataRegionDataNodesMap.containsKey(dataRegionGroup)) {
+      dataRegionDataNodesMap.put(dataRegionGroup, dataNodeList);
+    }
+  }
+
+  public void updateDataPartitionRule(
+      String StorageGroup, int deviceGroup, DataPartitionRule rule) {}
 }

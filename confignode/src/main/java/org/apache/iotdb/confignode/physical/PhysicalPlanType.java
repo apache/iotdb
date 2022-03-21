@@ -23,5 +23,6 @@ public enum PhysicalPlanType {
   QueryDataNodeInfo,
   SetStorageGroup,
   DeleteStorageGroup,
+  QueryStorageGroupSchema,
   CreateRegion
 }

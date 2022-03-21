@@ -18,38 +18,24 @@
  */
 package org.apache.iotdb.confignode.physical.sys;
 
-import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
 import java.nio.ByteBuffer;
 
-public class SetStorageGroupPlan extends PhysicalPlan {
+public class QueryStorageGroupSchemaPlan extends PhysicalPlan {
 
-  private StorageGroupSchema schema;
-
-  public SetStorageGroupPlan() {
-    super(PhysicalPlanType.SetStorageGroup);
-    this.schema = new StorageGroupSchema();
-  }
-
-  public SetStorageGroupPlan(StorageGroupSchema schema) {
-    this();
-    this.schema = schema;
-  }
-
-  public StorageGroupSchema getSchema() {
-    return schema;
+  public QueryStorageGroupSchemaPlan() {
+    super(PhysicalPlanType.QueryStorageGroupSchema);
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(PhysicalPlanType.SetStorageGroup.ordinal());
-    schema.serialize(buffer);
+    // empty body
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    schema.deserialize(buffer);
+    // empty body
   }
 }

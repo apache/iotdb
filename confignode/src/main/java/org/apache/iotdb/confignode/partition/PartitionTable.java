@@ -18,12 +18,17 @@
  */
 package org.apache.iotdb.confignode.partition;
 
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -33,10 +38,19 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class PartitionTable {
 
+  private static final int regionReplicaCount =
+      ConfigNodeDescriptor.getInstance().getConf().getRegionReplicaCount();
+  private static final int schemaRegionCount =
+      ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionCount();
+  private static final int dataRegionCount =
+      ConfigNodeDescriptor.getInstance().getConf().getDataRegionCount();
+
   private final ReentrantReadWriteLock storageGroupLock;
   private final Map<String, StorageGroupSchema> storageGroupsMap;
 
   private final ReentrantReadWriteLock dataNodeLock;
+  private int nextSchemaRegionGroup = 0;
+  private int nextDataRegionGroup = 0;
   private final Map<Integer, DataNodeInfo> dataNodesMap; // Map<DataNodeID, DataNodeInfo>
 
   private final ReentrantReadWriteLock schemaLock;
@@ -45,7 +59,7 @@ public class PartitionTable {
   private final ReentrantReadWriteLock dataLock;
   private final DataPartitionInfo dataPartition;
 
-  private PartitionTable() {
+  public PartitionTable() {
     this.storageGroupLock = new ReentrantReadWriteLock();
     this.storageGroupsMap = new HashMap<>();
 
@@ -60,14 +74,20 @@ public class PartitionTable {
   }
 
   public TSStatus registerDataNode(RegisterDataNodePlan plan) {
+    TSStatus result;
     dataNodeLock.writeLock().lock();
     if (dataNodesMap.containsValue(plan.getInfo())) {
       dataNodeLock.writeLock().unlock();
-      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      result.setMessage(
+          String.format(
+              "DataNode %s is already registered.", plan.getInfo().getEndPoint().toString()));
+    } else {
+      dataNodesMap.put(plan.getInfo().getDataNodeID(), plan.getInfo());
+      dataNodeLock.writeLock().unlock();
+      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
-    dataNodesMap.put(plan.getInfo().getDataNodeID(), plan.getInfo());
-    dataNodeLock.writeLock().unlock();
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return result;
   }
 
   public Map<Integer, DataNodeInfo> getDataNodeInfo(QueryDataNodeInfoPlan plan) {
@@ -110,16 +130,56 @@ public class PartitionTable {
     return result;
   }
 
-  private static class PartitionTableHolder {
+  public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
+    TSStatus result;
+    storageGroupLock.writeLock().lock();
 
-    private static final PartitionTable INSTANCE = new PartitionTable();
-
-    private PartitionTableHolder() {
-      // empty constructor
+    if (dataNodesMap.size() < regionReplicaCount) {
+      result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      result.setMessage("DataNode is not enough, please register more.");
+    } else {
+      if (storageGroupsMap.containsKey(plan.getSchema().getName())) {
+        result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+        result.setMessage(
+            String.format("StorageGroup %s is already set.", plan.getSchema().getName()));
+      } else {
+        StorageGroupSchema schema = new StorageGroupSchema(plan.getSchema().getName());
+        regionAllocation(schema);
+        storageGroupsMap.put(schema.getName(), schema);
+        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      }
     }
+
+    storageGroupLock.writeLock().unlock();
+    return result;
   }
 
-  public static PartitionTable getInstance() {
-    return PartitionTable.PartitionTableHolder.INSTANCE;
+  private void regionAllocation(StorageGroupSchema schema) {
+    // TODO: 2PL may cause deadlock, remember to optimize
+    dataNodeLock.writeLock().lock();
+    // TODO: Use CopySet algorithm to optimize region allocation policy
+    for (int i = 0; i < schemaRegionCount; i++) {
+      List<Integer> dataNodeList = new ArrayList<>(dataNodesMap.keySet());
+      Collections.shuffle(dataNodeList);
+      for (int j = 0; j < regionReplicaCount; j++) {
+        dataNodesMap.get(dataNodeList.get(j)).addSchemaRegionGroup(nextSchemaRegionGroup);
+      }
+      schema.addSchemaRegionGroup(nextSchemaRegionGroup);
+      nextSchemaRegionGroup += 1;
+    }
+    for (int i = 0; i < dataRegionCount; i++) {
+      List<Integer> dataNodeList = new ArrayList<>(dataNodesMap.keySet());
+      Collections.shuffle(dataNodeList);
+      for (int j = 0; j < regionReplicaCount; j++) {
+        dataNodesMap.get(dataNodeList.get(j)).addDataRegionGroup(nextDataRegionGroup);
+      }
+      schema.addDataRegionGroup(nextDataRegionGroup);
+      nextDataRegionGroup += 1;
+    }
+    dataNodeLock.writeLock().lock();
+  }
+
+  public List<StorageGroupSchema> getStorageGroupSchema() {
+    return new ArrayList<>(storageGroupsMap.values());
   }
 }

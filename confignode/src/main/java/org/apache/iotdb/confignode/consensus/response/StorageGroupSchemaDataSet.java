@@ -16,40 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical.sys;
+package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.confignode.partition.StorageGroupSchema;
-import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+import org.apache.iotdb.consensus.common.DataSet;
 
-import java.nio.ByteBuffer;
+import java.util.List;
 
-public class SetStorageGroupPlan extends PhysicalPlan {
+public class StorageGroupSchemaDataSet implements DataSet {
 
-  private StorageGroupSchema schema;
+  private final List<StorageGroupSchema> schemaList;
 
-  public SetStorageGroupPlan() {
-    super(PhysicalPlanType.SetStorageGroup);
-    this.schema = new StorageGroupSchema();
+  public StorageGroupSchemaDataSet(List<StorageGroupSchema> schemaList) {
+    this.schemaList = schemaList;
   }
 
-  public SetStorageGroupPlan(StorageGroupSchema schema) {
-    this();
-    this.schema = schema;
-  }
-
-  public StorageGroupSchema getSchema() {
-    return schema;
-  }
-
-  @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(PhysicalPlanType.SetStorageGroup.ordinal());
-    schema.serialize(buffer);
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-    schema.deserialize(buffer);
+  public List<StorageGroupSchema> getSchemaList() {
+    return schemaList;
   }
 }

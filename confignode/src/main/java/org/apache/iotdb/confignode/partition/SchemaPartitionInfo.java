@@ -33,4 +33,17 @@ public class SchemaPartitionInfo {
     this.schemaPartitionTable = new HashMap<>();
     this.schemaRegionDataNodesMap = new HashMap<>();
   }
+
+  public void createSchemaPartition(String storageGroup, int deviceGroup, int schemaRegion) {
+    if (!schemaPartitionTable.containsKey(storageGroup)) {
+      schemaPartitionTable.put(storageGroup, new HashMap<>());
+    }
+    schemaPartitionTable.get(storageGroup).put(deviceGroup, schemaRegion);
+  }
+
+  public void createSchemaRegion(int schemaRegion, List<Integer> dataNode) {
+    if (!schemaRegionDataNodesMap.containsKey(schemaRegion)) {
+      schemaRegionDataNodesMap.put(schemaRegion, dataNode);
+    }
+  }
 }
