@@ -36,6 +36,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /** This class is used to manage checkpoints of one wal node */
 public class CheckpointManager implements AutoCloseable {
@@ -49,6 +51,11 @@ public class CheckpointManager implements AutoCloseable {
   protected final String identifier;
   /** directory to store .checkpoint file */
   protected final String logDirectory;
+  /**
+   * protect concurrent safety of memTableId2Info, cachedByteBuffer, currentLogVersion and
+   * currentLogWriter
+   */
+  private final Lock infoLock = new ReentrantLock();
   /** memTable id -> memTable info */
   private final Map<Integer, MemTableInfo> memTableId2Info = new HashMap<>();
   /** cache the biggest byte buffer to serialize checkpoint */
@@ -77,27 +84,44 @@ public class CheckpointManager implements AutoCloseable {
    * make checkpoint for global memTables' info, this checkpoint only exists in the beginning of
    * each checkpoint file
    */
-  private synchronized void makeGlobalInfoCP() {
-    Checkpoint checkpoint =
-        new Checkpoint(
-            CheckpointType.GLOBAL_MEMORY_TABLE_INFO, new ArrayList<>(memTableId2Info.values()));
-    logByCachedByteBuffer(checkpoint);
+  private void makeGlobalInfoCP() {
+    infoLock.lock();
+    try {
+      Checkpoint checkpoint =
+          new Checkpoint(
+              CheckpointType.GLOBAL_MEMORY_TABLE_INFO, new ArrayList<>(memTableId2Info.values()));
+      logByCachedByteBuffer(checkpoint);
+    } finally {
+      infoLock.unlock();
+    }
   }
 
   /** make checkpoint for create memTable info */
-  public synchronized void makeCreateMemTableCP(MemTableInfo memTableInfo) {
-    memTableId2Info.put(memTableInfo.getMemTableId(), memTableInfo);
-    Checkpoint checkpoint =
-        new Checkpoint(CheckpointType.CREATE_MEMORY_TABLE, Collections.singletonList(memTableInfo));
-    logByCachedByteBuffer(checkpoint);
+  public void makeCreateMemTableCP(MemTableInfo memTableInfo) {
+    infoLock.lock();
+    try {
+      memTableId2Info.put(memTableInfo.getMemTableId(), memTableInfo);
+      Checkpoint checkpoint =
+          new Checkpoint(
+              CheckpointType.CREATE_MEMORY_TABLE, Collections.singletonList(memTableInfo));
+      logByCachedByteBuffer(checkpoint);
+    } finally {
+      infoLock.unlock();
+    }
   }
 
   /** make checkpoint for flush memTable info */
-  public synchronized void makeFlushMemTableCP(int memTableId) {
-    MemTableInfo memTableInfo = memTableId2Info.remove(memTableId);
-    Checkpoint checkpoint =
-        new Checkpoint(CheckpointType.FLUSH_MEMORY_TABLE, Collections.singletonList(memTableInfo));
-    logByCachedByteBuffer(checkpoint);
+  public void makeFlushMemTableCP(int memTableId) {
+    infoLock.lock();
+    try {
+      MemTableInfo memTableInfo = memTableId2Info.remove(memTableId);
+      Checkpoint checkpoint =
+          new Checkpoint(
+              CheckpointType.FLUSH_MEMORY_TABLE, Collections.singletonList(memTableInfo));
+      logByCachedByteBuffer(checkpoint);
+    } finally {
+      infoLock.unlock();
+    }
   }
 
   private void logByCachedByteBuffer(Checkpoint checkpoint) {
@@ -118,33 +142,38 @@ public class CheckpointManager implements AutoCloseable {
 
   // region Task to fsync checkpoint file
   /** Fsync checkpoints to the disk */
-  public synchronized void fsyncCheckpointFile() {
+  public void fsyncCheckpointFile() {
+    infoLock.lock();
     try {
-      currentLogWriter.force();
-    } catch (IOException e) {
-      logger.error(
-          "Fail to fsync wal node-{}'s checkpoint writer, change system mode to read-only.",
-          identifier,
-          e);
-      config.setReadOnly(true);
-    }
-
-    try {
-      if (tryRollingLogWriter()) {
-        // first log global memTables' info, then delete old checkpoint file
-        makeGlobalInfoCP();
+      try {
         currentLogWriter.force();
-        File oldFile =
-            SystemFileFactory.INSTANCE.getFile(
-                logDirectory, CheckpointWriter.getLogFileName(currentLogVersion - 1));
-        oldFile.delete();
+      } catch (IOException e) {
+        logger.error(
+            "Fail to fsync wal node-{}'s checkpoint writer, change system mode to read-only.",
+            identifier,
+            e);
+        config.setReadOnly(true);
       }
-    } catch (IOException e) {
-      logger.error(
-          "Fail to roll wal node-{}'s checkpoint writer, change system mode to read-only.",
-          identifier,
-          e);
-      config.setReadOnly(true);
+
+      try {
+        if (tryRollingLogWriter()) {
+          // first log global memTables' info, then delete old checkpoint file
+          makeGlobalInfoCP();
+          currentLogWriter.force();
+          File oldFile =
+              SystemFileFactory.INSTANCE.getFile(
+                  logDirectory, CheckpointWriter.getLogFileName(currentLogVersion - 1));
+          oldFile.delete();
+        }
+      } catch (IOException e) {
+        logger.error(
+            "Fail to roll wal node-{}'s checkpoint writer, change system mode to read-only.",
+            identifier,
+            e);
+        config.setReadOnly(true);
+      }
+    } finally {
+      infoLock.unlock();
     }
   }
 
@@ -169,8 +198,11 @@ public class CheckpointManager implements AutoCloseable {
    */
   public int getFirstValidVersionId() {
     List<MemTableInfo> memTableInfos;
-    synchronized (this) {
+    infoLock.lock();
+    try {
       memTableInfos = new ArrayList<>(memTableId2Info.values());
+    } finally {
+      infoLock.unlock();
     }
     int firstValidVersionId = memTableInfos.isEmpty() ? Integer.MIN_VALUE : Integer.MAX_VALUE;
     for (MemTableInfo memTableInfo : memTableInfos) {
@@ -181,12 +213,17 @@ public class CheckpointManager implements AutoCloseable {
 
   @Override
   public void close() {
-    if (currentLogWriter != null) {
-      try {
-        currentLogWriter.close();
-      } catch (IOException e) {
-        logger.error("Fail to close wal node-{}'s checkpoint writer.", identifier, e);
+    infoLock.lock();
+    try {
+      if (currentLogWriter != null) {
+        try {
+          currentLogWriter.close();
+        } catch (IOException e) {
+          logger.error("Fail to close wal node-{}'s checkpoint writer.", identifier, e);
+        }
       }
+    } finally {
+      infoLock.unlock();
     }
   }
 }

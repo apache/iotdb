@@ -71,7 +71,7 @@ public class WALBuffer extends AbstractWALBuffer {
   private volatile ByteBuffer idleBuffer;
   // buffer in syncing status, serializeThread makes sure no more writes to syncingBuffer
   private volatile ByteBuffer syncingBuffer;
-  /** lock to provide synchronization for double buffers mechanism */
+  /** lock to provide synchronization for double buffers mechanism, protecting buffers status */
   private final Lock buffersLock = new ReentrantLock();
   /** condition to guarantee correctness of switching buffers */
   private final Condition idleBufferReadyCondition = buffersLock.newCondition();
