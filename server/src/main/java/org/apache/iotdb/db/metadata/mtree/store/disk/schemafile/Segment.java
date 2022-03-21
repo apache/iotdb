@@ -225,7 +225,7 @@ public class Segment implements ISegment {
 
   @Override
   public IMNode getRecordAsIMNode(String key) throws MetadataException {
-    int index = getRecordIndexByKey(key);
+    int index = getRecordIndexByKey(key) >= 0 ? getRecordIndexByKey(key) : getRecordIndexByAlias(key);
     if (index < 0) {
       return null;
     }
@@ -242,6 +242,11 @@ public class Segment implements ISegment {
   @Override
   public boolean hasRecordKey(String key) {
     return getRecordIndexByKey(key) > -1;
+  }
+
+  @Override
+  public boolean hasRecordAlias(String alias) {
+    return getRecordIndexByAlias(alias) > -1;
   }
 
   @Override
@@ -478,6 +483,18 @@ public class Segment implements ISegment {
       pivot = (head + tail) / 2;
     }
     return pivot;
+  }
+
+  private int getRecordIndexByAlias(String alias) {
+    this.buffer.clear();
+    for (int i = 0; i < keyAddressList.size(); i++) {
+      this.buffer.position(keyAddressList.get(i).right);
+      if (RecordUtils.getRecordType(this.buffer) >= 4
+          && RecordUtils.getRecordAlias(this.buffer).equals(alias)) {
+        return i;
+      }
+    }
+    return -1;
   }
 
   private short getOffsetByIndex(int index) {

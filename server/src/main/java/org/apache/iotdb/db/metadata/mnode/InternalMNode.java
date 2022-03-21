@@ -169,9 +169,7 @@ public class InternalMNode extends MNode {
   @Override
   public IMNodeContainer getChildren() {
     if (children == null) {
-      // FIXME: modified temporarily for schema file development
-      children = MNodeContainers.getNewMNodeContainer();
-      // return MNodeContainers.emptyMNodeContainer();
+      return MNodeContainers.emptyMNodeContainer();
     }
     return children;
   }

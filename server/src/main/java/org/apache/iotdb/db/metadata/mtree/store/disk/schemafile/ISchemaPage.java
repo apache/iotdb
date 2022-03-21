@@ -35,6 +35,11 @@ public interface ISchemaPage {
 
   void update(short segIdx, String key, ByteBuffer buffer) throws MetadataException;
 
+  /**
+   * Check if record exists with name or alias.
+   * @param key name or alias of target child
+   * @param segId target segment index
+   */
   boolean hasRecordKeyInSegment(String key, short segId) throws SegmentNotFoundException;
 
   Queue<IMNode> getChildren(short segId) throws SegmentNotFoundException;
