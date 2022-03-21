@@ -72,8 +72,8 @@ public class DoubleWriteConsumer implements Runnable {
         } else {
           try {
             TimeUnit.SECONDS.sleep(1);
-          } catch (InterruptedException ignore) {
-            // ignore and retry after one second
+          } catch (InterruptedException e) {
+            LOGGER.warn("DoubleWriteConsumer is interrupted", e);
           }
         }
       }

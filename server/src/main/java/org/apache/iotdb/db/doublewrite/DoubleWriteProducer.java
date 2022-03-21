@@ -52,8 +52,8 @@ public class DoubleWriteProducer {
     if (doubleWriteQueue.size() == doubleWriteCacheSize) {
       try {
         TimeUnit.SECONDS.sleep(1);
-      } catch (InterruptedException ignore) {
-        // ignore
+      } catch (InterruptedException e) {
+        LOGGER.warn("DoubleWriteProducer is interrupted", e);
       }
     }
 

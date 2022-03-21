@@ -104,8 +104,8 @@ public class DoubleWriteProtector implements Runnable {
         } else {
           try {
             TimeUnit.SECONDS.sleep(1);
-          } catch (InterruptedException ignore) {
-            // ignore
+          } catch (InterruptedException e) {
+            LOGGER.warn("DoubleWriteProtector is interrupted", e);
           }
         }
       }
@@ -115,10 +115,11 @@ public class DoubleWriteProtector implements Runnable {
     try {
       // sleep one second then delete DoubleWriteLog file
       TimeUnit.SECONDS.sleep(1);
-    } catch (InterruptedException ignore) {
-      // ignore
+    } catch (InterruptedException e) {
+      LOGGER.warn("DoubleWriteProtector is interrupted", e);
     }
-    while (true) {
+
+    for (int retryCnt = 0; retryCnt < 5; retryCnt++) {
       if (logFile.delete()) {
         LOGGER.info("DoubleWrite log file {} is deleted.", logFile.getName());
         break;
@@ -126,5 +127,6 @@ public class DoubleWriteProtector implements Runnable {
         LOGGER.warn("delete DoubleWrite log file {} failed. Retrying", logFile.getName());
       }
     }
+    LOGGER.error("Couldn't delete DoubleWrite log file {}", logFile.getName());
   }
 }
