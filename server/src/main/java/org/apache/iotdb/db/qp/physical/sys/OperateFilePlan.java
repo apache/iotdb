@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -35,7 +35,7 @@ public class OperateFilePlan extends PhysicalPlan {
   private boolean verifyMetadata;
 
   public OperateFilePlan(File file, OperatorType operatorType) {
-    super(false, operatorType);
+    super(operatorType);
     this.file = file;
   }
 
@@ -54,7 +54,7 @@ public class OperateFilePlan extends PhysicalPlan {
       boolean autoCreateSchema,
       int sgLevel,
       boolean verifyMetadata) {
-    super(false, operatorType);
+    super(operatorType);
     this.file = file;
     this.autoCreateSchema = autoCreateSchema;
     this.sgLevel = sgLevel;
@@ -62,7 +62,7 @@ public class OperateFilePlan extends PhysicalPlan {
   }
 
   public OperateFilePlan(File file, File targetDir, OperatorType operatorType) {
-    super(false, operatorType);
+    super(operatorType);
     this.file = file;
     this.targetDir = targetDir;
   }

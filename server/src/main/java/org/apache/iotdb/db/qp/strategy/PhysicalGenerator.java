@@ -20,19 +20,15 @@ package org.apache.iotdb.db.qp.strategy;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
-import java.util.Map;
 
 /** Used to convert logical operator to physical plan */
 public class PhysicalGenerator {
@@ -40,6 +36,7 @@ public class PhysicalGenerator {
   public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessException {
     PhysicalPlan physicalPlan = operator.generatePhysicalPlan(this);
     physicalPlan.setDebug(operator.isDebug());
+    physicalPlan.setPrefixMatch(operator.isPrefixMatchPath());
     return physicalPlan;
   }
 
@@ -56,12 +53,7 @@ public class PhysicalGenerator {
     }
   }
 
-  public List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
-    return SchemaUtils.getSeriesTypesByPaths(paths);
-  }
-
-  public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchema(List<PartialPath> paths)
-      throws MetadataException {
-    return IoTDB.metaManager.getSeriesSchemas(paths);
+  public List<PartialPath> groupVectorPaths(List<PartialPath> paths) throws MetadataException {
+    return MetaUtils.groupAlignedPaths(paths);
   }
 }

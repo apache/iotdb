@@ -27,7 +27,7 @@ import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -154,16 +154,16 @@ public class AsyncDataLogApplier implements LogApplier {
     PartialPath sgPath = null;
     if (plan instanceof InsertMultiTabletPlan) {
       PartialPath deviceId = ((InsertMultiTabletPlan) plan).getFirstDeviceId();
-      sgPath = IoTDB.metaManager.getStorageGroupPath(deviceId);
+      sgPath = IoTDB.schemaEngine.getBelongedStorageGroup(deviceId);
     } else if (plan instanceof InsertRowsPlan) {
       PartialPath path = ((InsertRowsPlan) plan).getFirstDeviceId();
-      sgPath = IoTDB.metaManager.getStorageGroupPath(path);
+      sgPath = IoTDB.schemaEngine.getBelongedStorageGroup(path);
     } else if (plan instanceof InsertPlan) {
-      PartialPath deviceId = ((InsertPlan) plan).getPrefixPath();
-      sgPath = IoTDB.metaManager.getStorageGroupPath(deviceId);
+      PartialPath deviceId = ((InsertPlan) plan).getDevicePath();
+      sgPath = IoTDB.schemaEngine.getBelongedStorageGroup(deviceId);
     } else if (plan instanceof CreateTimeSeriesPlan) {
       PartialPath path = ((CreateTimeSeriesPlan) plan).getPath();
-      sgPath = IoTDB.metaManager.getStorageGroupPath(path);
+      sgPath = IoTDB.schemaEngine.getBelongedStorageGroup(path);
     }
     return sgPath;
   }

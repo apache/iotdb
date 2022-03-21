@@ -31,8 +31,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -51,7 +50,6 @@ import java.util.Set;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertNull;
 
 public class MetaLogApplierTest extends IoTDBTest {
 
@@ -88,7 +86,7 @@ public class MetaLogApplierTest extends IoTDBTest {
     Node node = new Node("localhost", 1111, 0, 2222, Constants.RPC_PORT, "localhost");
     AddNodeLog log = new AddNodeLog();
     log.setNewNode(node);
-    log.setPartitionTable(TestUtils.seralizePartitionTable);
+    log.setPartitionTable(TestUtils.getSeralizePartitionTable());
     applier.apply(log);
 
     assertTrue(nodes.contains(node));
@@ -100,7 +98,7 @@ public class MetaLogApplierTest extends IoTDBTest {
 
     Node node = testMetaGroupMember.getThisNode();
     RemoveNodeLog log = new RemoveNodeLog();
-    log.setPartitionTable(TestUtils.seralizePartitionTable);
+    log.setPartitionTable(TestUtils.getSeralizePartitionTable());
     log.setRemovedNode(node);
     applier.apply(log);
 
@@ -115,7 +113,7 @@ public class MetaLogApplierTest extends IoTDBTest {
     physicalPlanLog.setPlan(setStorageGroupPlan);
 
     applier.apply(physicalPlanLog);
-    assertTrue(IoTDB.metaManager.isPathExist(new PartialPath("root.applyMeta")));
+    assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath("root.applyMeta")));
 
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(
@@ -129,17 +127,9 @@ public class MetaLogApplierTest extends IoTDBTest {
             null);
     physicalPlanLog.setPlan(createTimeSeriesPlan);
     applier.apply(physicalPlanLog);
-    assertTrue(IoTDB.metaManager.isPathExist(new PartialPath("root.applyMeta.s1")));
+    assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath("root.applyMeta.s1")));
     assertEquals(
         TSDataType.DOUBLE,
-        IoTDB.metaManager.getSeriesType(new PartialPath("root" + ".applyMeta.s1")));
-  }
-
-  @Test
-  public void testApplyCreateSnapshot() {
-    CreateSnapshotPlan createSnapshotPlan = new CreateSnapshotPlan();
-    PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog(createSnapshotPlan);
-    applier.apply(physicalPlanLog);
-    assertNull(physicalPlanLog.getException());
+        IoTDB.schemaEngine.getSeriesType(new PartialPath("root" + ".applyMeta.s1")));
   }
 }

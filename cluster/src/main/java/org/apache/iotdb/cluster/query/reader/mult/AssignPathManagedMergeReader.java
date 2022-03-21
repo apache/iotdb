@@ -22,12 +22,12 @@ import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
-public class AssignPathManagedMergeReader extends AssignPathPriorityMergeReader
-    implements ManagedSeriesReader {
+public class AssignPathManagedMergeReader implements ManagedSeriesReader, IPointReader {
 
   private static final int BATCH_SIZE = 4096;
   private volatile boolean managedByPool;
@@ -36,9 +36,18 @@ public class AssignPathManagedMergeReader extends AssignPathPriorityMergeReader
   private BatchData batchData;
   private TSDataType dataType;
 
-  public AssignPathManagedMergeReader(String fullPath, TSDataType dataType) {
-    super(fullPath);
+  private final IAssignPathPriorityMergeReader underlyingReader;
+
+  public AssignPathManagedMergeReader(String fullPath, TSDataType dataType, boolean isAscending) {
+    underlyingReader =
+        isAscending
+            ? new AssignPathAscPriorityMergeReader(fullPath)
+            : new AssignPathDescPriorityMergeReader(fullPath);
     this.dataType = dataType;
+  }
+
+  public void addReader(AbstractMultPointReader reader, long priority) throws IOException {
+    underlyingReader.addReader(reader, priority);
   }
 
   @Override
@@ -71,10 +80,10 @@ public class AssignPathManagedMergeReader extends AssignPathPriorityMergeReader
   }
 
   private void constructBatch() throws IOException {
-    if (hasNextTimeValuePair()) {
+    if (underlyingReader.hasNextTimeValuePair()) {
       batchData = new BatchData(dataType);
-      while (hasNextTimeValuePair() && batchData.length() < BATCH_SIZE) {
-        TimeValuePair next = nextTimeValuePair();
+      while (underlyingReader.hasNextTimeValuePair() && batchData.length() < BATCH_SIZE) {
+        TimeValuePair next = underlyingReader.nextTimeValuePair();
         batchData.putAnObject(next.getTimestamp(), next.getValue().getValue());
       }
     }
@@ -88,5 +97,25 @@ public class AssignPathManagedMergeReader extends AssignPathPriorityMergeReader
     BatchData ret = batchData;
     batchData = null;
     return ret;
+  }
+
+  @Override
+  public boolean hasNextTimeValuePair() throws IOException {
+    return underlyingReader.hasNextTimeValuePair();
+  }
+
+  @Override
+  public TimeValuePair nextTimeValuePair() throws IOException {
+    return underlyingReader.nextTimeValuePair();
+  }
+
+  @Override
+  public TimeValuePair currentTimeValuePair() throws IOException {
+    return underlyingReader.currentTimeValuePair();
+  }
+
+  @Override
+  public void close() throws IOException {
+    underlyingReader.close();
   }
 }

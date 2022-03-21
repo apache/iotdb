@@ -21,7 +21,7 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -37,6 +37,7 @@ public class SelectIntoOperator extends Operator {
   private QueryOperator queryOperator;
 
   private List<PartialPath> intoPaths;
+  private boolean isIntoPathsAligned;
 
   public SelectIntoOperator() {
     super(SQLConstant.TOK_SELECT_INTO);
@@ -52,7 +53,10 @@ public class SelectIntoOperator extends Operator {
           "select into: the number of source paths and the number of target paths should be the same.");
     }
     return new SelectIntoPlan(
-        queryPlan, queryOperator.getFromComponent().getPrefixPaths().get(0), intoPaths);
+        queryPlan,
+        queryOperator.getFromComponent().getPrefixPaths().get(0),
+        intoPaths,
+        isIntoPathsAligned);
   }
 
   public void check() throws LogicalOperatorException {
@@ -106,5 +110,9 @@ public class SelectIntoOperator extends Operator {
 
   public void setIntoPaths(List<PartialPath> intoPaths) {
     this.intoPaths = intoPaths;
+  }
+
+  public void setIntoPathsAligned(boolean isIntoPathsAligned) {
+    this.isIntoPathsAligned = isIntoPathsAligned;
   }
 }

@@ -18,24 +18,40 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import com.google.common.primitives.Bytes;
+import org.apache.thrift.TException;
+
+import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public abstract class QueryPlan extends PhysicalPlan {
 
+  public static final String WITHOUT_NULL_FILTER_ERROR_MESSAGE =
+      "The without null columns don't match the columns queried. If there is an alias, please use the alias.";
+
   protected List<ResultColumn> resultColumns = null;
-  protected List<PartialPath> paths = null;
-  protected List<TSDataType> dataTypes = null;
+  protected List<MeasurementPath> paths = null;
+
   private boolean alignByTime = true; // for disable align sql
 
   private int rowLimit = 0;
@@ -45,9 +61,11 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   private Map<String, Integer> pathToIndex = new HashMap<>();
 
-  private Map<String, Integer> vectorPathToIndex = new HashMap<>();
+  protected Set<Integer>
+      withoutNullColumnsIndex; // index set that withoutNullColumns for output data columns
 
   private boolean enableRedirect = false;
+  private boolean enableTracing = false;
 
   // if true, we don't need the row whose any column is null
   private boolean withoutAnyNull;
@@ -56,32 +74,85 @@ public abstract class QueryPlan extends PhysicalPlan {
   private boolean withoutAllNull;
 
   public QueryPlan() {
-    super(true);
-    setOperatorType(Operator.OperatorType.QUERY);
+    super(Operator.OperatorType.QUERY);
+    setQuery(true);
   }
 
-  public QueryPlan(boolean isQuery, Operator.OperatorType operatorType) {
-    super(isQuery, operatorType);
+  public Set<Integer> getWithoutNullColumnsIndex() {
+    return withoutNullColumnsIndex;
   }
 
   public abstract void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException;
 
+  public abstract void convertSpecialClauseValues(SpecialClauseComponent specialClauseComponent)
+      throws QueryProcessException;
+
+  /** Construct the header of result set. Return TSExecuteStatementResp. */
+  public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery)
+      throws TException, MetadataException {
+    List<String> respColumns = new ArrayList<>();
+    List<String> columnsTypes = new ArrayList<>();
+
+    TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+
+    List<String> respSgColumns = new ArrayList<>();
+    BitSet aliasMap = new BitSet();
+    List<TSDataType> seriesTypes =
+        getWideQueryHeaders(respColumns, respSgColumns, isJdbcQuery, aliasMap);
+    for (TSDataType seriesType : seriesTypes) {
+      columnsTypes.add(seriesType.toString());
+    }
+    resp.setColumnNameIndexMap(getPathToIndex());
+    resp.setSgColumns(respSgColumns);
+    List<Byte> byteList = new ArrayList<>();
+    byteList.addAll(Bytes.asList(aliasMap.toByteArray()));
+    resp.setAliasColumns(byteList);
+
+    resp.setColumns(respColumns);
+    resp.setDataTypeList(columnsTypes);
+    return resp;
+  }
+
+  public List<TSDataType> getWideQueryHeaders(
+      List<String> respColumns, List<String> respSgColumns, boolean isJdbcQuery, BitSet aliasList)
+      throws TException, MetadataException {
+    List<TSDataType> seriesTypes = new ArrayList<>();
+    for (int i = 0; i < resultColumns.size(); ++i) {
+      if (isJdbcQuery) {
+        // Separate sgName from the name of resultColumn to reduce the network IO
+        String sgName = IoTDB.schemaEngine.getBelongedStorageGroup(getPaths().get(i)).getFullPath();
+        respSgColumns.add(sgName);
+        if (resultColumns.get(i).getAlias() == null) {
+          respColumns.add(
+              resultColumns.get(i).getResultColumnName().substring(sgName.length() + 1));
+        } else {
+          aliasList.set(i);
+          respColumns.add(resultColumns.get(i).getResultColumnName());
+        }
+      } else {
+        respColumns.add(resultColumns.get(i).getResultColumnName());
+      }
+      seriesTypes.add(paths.get(i).getSeriesType());
+    }
+    return seriesTypes;
+  }
+
   @Override
-  public List<PartialPath> getPaths() {
+  public List<MeasurementPath> getPaths() {
     return paths;
   }
 
   @Override
   public void setPaths(List<PartialPath> paths) {
-    this.paths = paths;
+    List<MeasurementPath> measurementPaths = new ArrayList<>();
+    for (PartialPath path : paths) {
+      measurementPaths.add((MeasurementPath) path);
+    }
+    this.paths = measurementPaths;
   }
 
   public List<TSDataType> getDataTypes() {
-    return dataTypes;
-  }
-
-  public void setDataTypes(List<TSDataType> dataTypes) {
-    this.dataTypes = dataTypes;
+    return SchemaUtils.getSeriesTypesByPaths(paths);
   }
 
   public int getRowLimit() {
@@ -116,8 +187,8 @@ public abstract class QueryPlan extends PhysicalPlan {
     pathToIndex.put(columnName, index);
   }
 
-  public void setPathToIndex(Map<String, Integer> pathToIndex) {
-    this.pathToIndex = pathToIndex;
+  public boolean isGroupByLevel() {
+    return false;
   }
 
   public Map<String, Integer> getPathToIndex() {
@@ -137,8 +208,7 @@ public abstract class QueryPlan extends PhysicalPlan {
     return resultColumn.hasAlias() ? resultColumn.getAlias() : path.getFullPath();
   }
 
-  public String getColumnForDisplay(String columnForReader, int pathIndex)
-      throws IllegalPathException {
+  public String getColumnForDisplay(String columnForReader, int pathIndex) {
     return resultColumns.get(pathIndex).getResultColumnName();
   }
 
@@ -150,12 +220,12 @@ public abstract class QueryPlan extends PhysicalPlan {
     this.enableRedirect = enableRedirect;
   }
 
-  public Map<String, Integer> getVectorPathToIndex() {
-    return vectorPathToIndex;
+  public boolean isEnableTracing() {
+    return enableTracing;
   }
 
-  public void setVectorPathToIndex(Map<String, Integer> vectorPathToIndex) {
-    this.vectorPathToIndex = vectorPathToIndex;
+  public void setEnableTracing(boolean enableTracing) {
+    this.enableTracing = enableTracing;
   }
 
   public List<ResultColumn> getResultColumns() {

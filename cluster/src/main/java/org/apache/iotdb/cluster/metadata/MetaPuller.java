@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.cluster.metadata;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -30,11 +32,10 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -51,8 +52,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class MetaPuller {
@@ -146,7 +149,7 @@ public class MetaPuller {
       }
       int preSize = results.size();
       for (PartialPath prefixPath : prefixPaths) {
-        IoTDB.metaManager.collectSeries(prefixPath, results);
+        IoTDB.schemaEngine.collectMeasurementSchema(prefixPath, results);
       }
       if (logger.isDebugEnabled()) {
         logger.debug(
@@ -223,35 +226,37 @@ public class MetaPuller {
   }
 
   private List<IMeasurementSchema> pullMeasurementSchemas(Node node, PullSchemaRequest request)
-      throws TException, InterruptedException, IOException {
+      throws IOException, TException, InterruptedException {
     List<IMeasurementSchema> schemas;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
-          metaGroupMember
-              .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullMeasurementSchema(client, request);
     } else {
-      try (SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-        try {
-          // only need measurement name
-          PullSchemaResp pullSchemaResp = syncDataClient.pullMeasurementSchema(request);
-          ByteBuffer buffer = pullSchemaResp.schemaBytes;
-          int size = buffer.getInt();
-          schemas = new ArrayList<>(size);
-          for (int i = 0; i < size; i++) {
-            schemas.add(
-                buffer.get() == 0
-                    ? MeasurementSchema.partialDeserializeFrom(buffer)
-                    : VectorMeasurementSchema.partialDeserializeFrom(buffer));
-          }
-        } catch (TException e) {
-          // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
-          throw e;
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+        // only need measurement name
+        PullSchemaResp pullSchemaResp = syncDataClient.pullMeasurementSchema(request);
+        ByteBuffer buffer = pullSchemaResp.schemaBytes;
+        int size = buffer.getInt();
+        schemas = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+          schemas.add(
+              buffer.get() == 0
+                  ? MeasurementSchema.partialDeserializeFrom(buffer)
+                  : VectorMeasurementSchema.partialDeserializeFrom(buffer));
+        }
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
         }
       }
     }
@@ -261,7 +266,7 @@ public class MetaPuller {
 
   /**
    * Pull the all timeseries schemas of given prefixPaths from remote nodes. All prefixPaths must
-   * contain a storage group. The pulled schemas will be cache in CMManager.
+   * contain a storage group. The pulled schemas will be cache in CSchemaEngine.
    *
    * @param ignoredGroup do not pull schema from the group to avoid backward dependency. If a user
    *     send an insert request before registering schemas, then this method may pull schemas from
@@ -270,14 +275,17 @@ public class MetaPuller {
    */
   public void pullTimeSeriesSchemas(List<PartialPath> prefixPaths, RaftNode ignoredGroup)
       throws MetadataException {
+    // Remove duplicated prefix paths to optimize
+    Set<PartialPath> prefixPathSet = new HashSet<>(prefixPaths);
+    List<PartialPath> uniquePrefixPaths = new ArrayList<>(prefixPathSet);
     logger.debug(
         "{}: Pulling timeseries schemas of {}, ignored group {}",
         metaGroupMember.getName(),
-        prefixPaths,
+        uniquePrefixPaths,
         ignoredGroup);
     // split the paths by the data groups that should hold them
     Map<PartitionGroup, List<String>> partitionGroupPathMap = new HashMap<>();
-    for (PartialPath prefixPath : prefixPaths) {
+    for (PartialPath prefixPath : uniquePrefixPaths) {
       if (SQLConstant.RESERVED_TIME.equalsIgnoreCase(prefixPath.getFullPath())) {
         continue;
       }
@@ -295,8 +303,8 @@ public class MetaPuller {
       logger.debug(
           "{}: pulling schemas of {} and other {} paths from {} groups",
           metaGroupMember.getName(),
-          prefixPaths.get(0),
-          prefixPaths.size() - 1,
+          uniquePrefixPaths.get(0),
+          uniquePrefixPaths.size() - 1,
           partitionGroupPathMap.size());
     }
     for (Map.Entry<PartitionGroup, List<String>> partitionGroupListEntry :
@@ -311,7 +319,7 @@ public class MetaPuller {
    * Pull timeseries schemas of "prefixPaths" from "partitionGroup". If this node is a member of
    * "partitionGroup", synchronize with the group leader and collect local schemas. Otherwise pull
    * schemas from one node in the group. If "timeseriesSchemas" is null, the pulled schemas will be
-   * cached in CMManager.
+   * cached in CSchemaEngine.
    */
   public void pullTimeSeriesSchemas(
       PartitionGroup partitionGroup,
@@ -344,8 +352,8 @@ public class MetaPuller {
   }
 
   /**
-   * send the PullSchemaRequest to "node" and cache the results in CMManager or add the results to
-   * "timeseriesSchemas" if they are successfully returned.
+   * send the PullSchemaRequest to "node" and cache the results in CSchemaEngine or add the results
+   * to "timeseriesSchemas" if they are successfully returned.
    *
    * @return true if the pull succeeded, false otherwise
    */
@@ -410,26 +418,32 @@ public class MetaPuller {
    * null if there was a timeout.
    */
   private List<TimeseriesSchema> pullTimeSeriesSchemas(Node node, PullSchemaRequest request)
-      throws TException, InterruptedException, IOException {
+      throws IOException, TException, InterruptedException {
     List<TimeseriesSchema> schemas;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
-          metaGroupMember
-              .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullTimeseriesSchema(client, request);
     } else {
-      try (SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
         ByteBuffer buffer = pullSchemaResp.schemaBytes;
         int size = buffer.getInt();
         schemas = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
           schemas.add(TimeseriesSchema.deserializeFrom(buffer));
+        }
+      } catch (TException e) {
+        syncDataClient.close();
+        throw e;
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
         }
       }
     }

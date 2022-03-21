@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.qp.utils.GroupByLevelController;
+import org.apache.iotdb.db.query.expression.Expression;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class SpecialClauseComponent {
 
   protected int rowLimit = 0;
@@ -32,12 +38,27 @@ public class SpecialClauseComponent {
   // if true, we don't need the row whose all columns are null
   protected boolean withoutAllNull;
 
-  protected int level = -1;
+  protected List<Expression> withoutNullColumns = new ArrayList<>();
+
+  protected GroupByLevelController groupByLevelController;
+  protected int[] levels;
 
   protected boolean isAlignByDevice = false;
   protected boolean isAlignByTime = true;
 
   public SpecialClauseComponent() {}
+
+  public void addWithoutNullColumn(Expression e) {
+    withoutNullColumns.add(e);
+  }
+
+  public List<Expression> getWithoutNullColumns() {
+    return withoutNullColumns;
+  }
+
+  public void setWithoutNullColumns(List<Expression> withoutNullColumns) {
+    this.withoutNullColumns = withoutNullColumns;
+  }
 
   public int getRowLimit() {
     return rowLimit;
@@ -79,6 +100,10 @@ public class SpecialClauseComponent {
     return seriesLimit > 0;
   }
 
+  public boolean hasSoffset() {
+    return seriesOffset > 0;
+  }
+
   public boolean isAscending() {
     return ascending;
   }
@@ -103,12 +128,20 @@ public class SpecialClauseComponent {
     this.withoutAllNull = withoutAllNull;
   }
 
-  public int getLevel() {
-    return level;
+  public int[] getLevels() {
+    return levels;
   }
 
-  public void setLevel(int level) {
-    this.level = level;
+  public void setLevels(int[] levels) {
+    this.levels = levels;
+  }
+
+  public void setGroupByLevelController(GroupByLevelController groupByLevelController) {
+    this.groupByLevelController = groupByLevelController;
+  }
+
+  public GroupByLevelController getGroupByLevelController() {
+    return groupByLevelController;
   }
 
   public boolean isAlignByDevice() {

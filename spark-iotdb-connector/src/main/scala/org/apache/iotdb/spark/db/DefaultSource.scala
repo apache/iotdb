@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.spark.db
 
-import org.apache.spark.sql.SQLContext
-import org.apache.spark.sql.sources.{BaseRelation, DataSourceRegister, RelationProvider}
+import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
+import org.apache.spark.sql.sources.{BaseRelation, CreatableRelationProvider, DataSourceRegister, RelationProvider}
 import org.slf4j.LoggerFactory
 
-private[iotdb] class DefaultSource extends RelationProvider with DataSourceRegister {
+
+private[iotdb] class DefaultSource extends RelationProvider with DataSourceRegister with CreatableRelationProvider {
   private final val logger = LoggerFactory.getLogger(classOf[DefaultSource])
 
   override def shortName(): String = "tsfile"
@@ -34,10 +35,27 @@ private[iotdb] class DefaultSource extends RelationProvider with DataSourceRegis
 
     val iotdbOptions = new IoTDBOptions(parameters)
 
-    if (iotdbOptions.url == null || iotdbOptions.sql == null) {
-      sys.error("IoTDB url or sql not specified")
+    if ("".equals(iotdbOptions.sql)) {
+      sys.error("sql not specified")
     }
-    new IoTDBRelation(iotdbOptions)(sqlContext.sparkSession)
 
+    new IoTDBRelation(iotdbOptions)(sqlContext.sparkSession)
+  }
+
+  override def createRelation(sqlContext: SQLContext, mode: SaveMode, parameters: Map[String, String], data: DataFrame): BaseRelation = {
+    if (!data.columns.contains("Time")) {
+      sys.error("No `Time` column")
+    }
+    val iotdbOptions = new IoTDBOptions(parameters)
+
+    if (!data.columns.contains("Device")) {
+      data.columns.foreach(column => if (!column.startsWith("root.") && column != "Time") sys.error("Invalidate column: " + column))
+      val narrowDf = Transformer.toNarrowForm(sqlContext.sparkSession, data)
+      DataFrameTools.insertDataFrame(iotdbOptions, narrowDf)
+    } else {
+      DataFrameTools.insertDataFrame(iotdbOptions, data)
+    }
+
+    new IoTDBRelation(iotdbOptions)(sqlContext.sparkSession)
   }
 }

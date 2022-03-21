@@ -32,7 +32,6 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
@@ -536,7 +535,7 @@ public class SessionCacheLeaderUT {
     assertNull(session.endPointToSessionConnection);
 
     String deviceId = "root.sg2.d2";
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
@@ -618,7 +617,7 @@ public class SessionCacheLeaderUT {
             add("root.sg4.d1");
           }
         };
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
@@ -885,7 +884,7 @@ public class SessionCacheLeaderUT {
             add("root.sg4.d1");
           }
         };
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
@@ -1085,7 +1084,8 @@ public class SessionCacheLeaderUT {
           null,
           Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
           Config.DEFAULT_MAX_FRAME_SIZE,
-          enableCacheLeader);
+          enableCacheLeader,
+          Config.DEFAULT_VERSION);
     }
 
     @Override
@@ -1150,7 +1150,7 @@ public class SessionCacheLeaderUT {
       if (isConnectionBroken()) {
         throw ioTDBConnectionException;
       }
-      throw new RedirectException(getDeviceIdBelongedEndpoint(request.deviceId));
+      throw new RedirectException(getDeviceIdBelongedEndpoint(request.prefixPath));
     }
 
     @Override
@@ -1159,7 +1159,7 @@ public class SessionCacheLeaderUT {
       if (isConnectionBroken()) {
         throw ioTDBConnectionException;
       }
-      throw getRedirectException(request.getDeviceIds());
+      throw getRedirectException(request.getPrefixPaths());
     }
 
     @Override
@@ -1168,7 +1168,7 @@ public class SessionCacheLeaderUT {
       if (isConnectionBroken()) {
         throw ioTDBConnectionException;
       }
-      throw getRedirectException(request.getDeviceIds());
+      throw getRedirectException(request.getPrefixPaths());
     }
 
     @Override
@@ -1177,7 +1177,7 @@ public class SessionCacheLeaderUT {
       if (isConnectionBroken()) {
         throw ioTDBConnectionException;
       }
-      throw new RedirectException(getDeviceIdBelongedEndpoint(request.deviceId));
+      throw new RedirectException(getDeviceIdBelongedEndpoint(request.prefixPath));
     }
 
     @Override
@@ -1195,7 +1195,7 @@ public class SessionCacheLeaderUT {
       if (isConnectionBroken()) {
         throw ioTDBConnectionException;
       }
-      throw getRedirectException(request.getDeviceIds());
+      throw getRedirectException(request.getPrefixPaths());
     }
 
     private RedirectException getRedirectException(List<String> deviceIds) {

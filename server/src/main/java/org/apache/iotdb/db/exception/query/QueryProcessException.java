@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.exception.query;
 
-import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class QueryProcessException extends IoTDBException {
@@ -36,6 +36,10 @@ public class QueryProcessException extends IoTDBException {
 
   public QueryProcessException(String message, int errorCode) {
     super(message, errorCode);
+  }
+
+  public QueryProcessException(String message, Throwable cause) {
+    super(message, cause, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
   }
 
   public QueryProcessException(IoTDBException e) {

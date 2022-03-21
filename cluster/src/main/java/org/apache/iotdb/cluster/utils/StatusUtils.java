@@ -172,7 +172,7 @@ public class StatusUtils {
         status.setMessage("Meet error in close operation. ");
         break;
       case READ_ONLY_SYSTEM_ERROR:
-        status.setMessage("Operating system is read only. ");
+        status.setMessage("Database is read-only. ");
         break;
       case DISK_SPACE_INSUFFICIENT_ERROR:
         status.setMessage("Disk space is insufficient. ");

@@ -20,11 +20,21 @@
 package org.apache.iotdb.db.query.expression.binary;
 
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticAdditionTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
 
 public class AdditionExpression extends BinaryExpression {
 
   public AdditionExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);
+  }
+
+  @Override
+  protected ArithmeticBinaryTransformer constructTransformer(
+      LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader) {
+    return new ArithmeticAdditionTransformer(
+        leftParentLayerPointReader, rightParentLayerPointReader);
   }
 
   @Override

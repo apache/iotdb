@@ -19,11 +19,13 @@
 package org.apache.iotdb.tsfile.read.query.dataset;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 public abstract class QueryDataSet {
 
@@ -47,6 +49,11 @@ public abstract class QueryDataSet {
 
   /** Only if all columns are null, we don't need that row */
   protected boolean withoutAllNull;
+
+  /** index set that withoutNullColumns for output data columns */
+  protected Set<Integer> withoutNullColumnsIndex;
+
+  protected int columnNum;
 
   /** For redirect query. Need keep consistent with EndPoint in rpc.thrift. */
   public static class EndPoint {
@@ -97,6 +104,20 @@ public abstract class QueryDataSet {
     this.paths = paths;
     this.dataTypes = dataTypes;
     this.ascending = ascending;
+    this.columnNum = 0;
+    if (paths != null) {
+      for (Path p : paths) {
+        columnNum += p.getColumnNum();
+      }
+    }
+  }
+
+  public Set<Integer> getWithoutNullColumnsIndex() {
+    return withoutNullColumnsIndex;
+  }
+
+  public void setWithoutNullColumnsIndex(Set<Integer> withoutNullColumnsIndex) {
+    this.withoutNullColumnsIndex = withoutNullColumnsIndex;
   }
 
   public boolean hasNext() throws IOException {
@@ -105,8 +126,7 @@ public abstract class QueryDataSet {
       if (hasNextWithoutConstraint()) {
         RowRecord rowRecord = nextWithoutConstraint(); // DO NOT use next()
         // filter rows whose columns are null according to the rule
-        if ((withoutAllNull && rowRecord.isAllNull())
-            || (withoutAnyNull && rowRecord.hasNullField())) {
+        if (withoutNullFilter(rowRecord)) {
           continue;
         }
         rowOffset--;
@@ -121,6 +141,43 @@ public abstract class QueryDataSet {
     }
 
     return hasNextWithoutConstraint();
+  }
+
+  /**
+   * check rowRecord whether satisfy without null condition
+   *
+   * @param rowRecord rowRecord
+   * @return true satisfy false don't satisfy
+   */
+  public boolean withoutNullFilter(RowRecord rowRecord) {
+    boolean
+        anyNullFlag =
+            (withoutNullColumnsIndex == null)
+                ? rowRecord.hasNullField()
+                : (withoutNullColumnsIndex.isEmpty() && rowRecord.hasNullField()),
+        allNullFlag = (withoutNullColumnsIndex != null) || rowRecord.isAllNull();
+
+    if (withoutNullColumnsIndex != null) {
+      for (int index : withoutNullColumnsIndex) {
+        Field field = rowRecord.getFields().get(index);
+        if (field == null || field.getDataType() == null) {
+          anyNullFlag = true;
+          if (withoutAnyNull) {
+            break;
+          }
+        } else {
+          allNullFlag = false;
+          if (withoutAllNull) {
+            break;
+          }
+        }
+      }
+    }
+
+    if (withoutNullColumnsIndex != null && withoutNullColumnsIndex.isEmpty()) {
+      allNullFlag = rowRecord.isAllNull();
+    }
+    return (withoutAllNull && allNullFlag) || (withoutAnyNull && anyNullFlag);
   }
 
   public abstract boolean hasNextWithoutConstraint() throws IOException;
@@ -197,5 +254,9 @@ public abstract class QueryDataSet {
 
   public void decreaseAlreadyReturnedRowNum() {
     alreadyReturnedRowNum--;
+  }
+
+  public int getColumnNum() {
+    return columnNum;
   }
 }

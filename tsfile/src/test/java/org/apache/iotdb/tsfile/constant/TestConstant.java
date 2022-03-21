@@ -24,6 +24,10 @@ import java.util.Random;
 
 public class TestConstant {
   public static final String BASE_OUTPUT_PATH = "target".concat(File.separator);
+  public static final String PARTIAL_PATH_STRING =
+      "%s" + File.separator + "%d" + File.separator + "%d" + File.separator;
+  public static final String TEST_TSFILE_PATH =
+      BASE_OUTPUT_PATH + "testTsFile".concat(File.separator) + PARTIAL_PATH_STRING;
   public static final float float_min_delta = 0.00001f;
   public static final double double_min_delta = 0.00001d;
   public static final Random random = new Random(System.currentTimeMillis());

@@ -18,15 +18,12 @@
  */
 package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.metadata.upgrade.MetadataUpgrader;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 
@@ -40,14 +37,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
-import java.util.Set;
 
 public class IoTDBConfigCheck {
 
@@ -61,7 +54,6 @@ public class IoTDBConfigCheck {
   // If user delete folder "data", system.properties can reset.
   private static final String PROPERTIES_FILE_NAME = "system.properties";
   private static final String SCHEMA_DIR = config.getSchemaDir();
-  private static final String SYSTEM_DIR = config.getSystemDir();
   private static final String WAL_DIR = config.getWalDir();
 
   private File propertiesFile;
@@ -88,12 +80,22 @@ public class IoTDBConfigCheck {
   private static final String TAG_ATTRIBUTE_SIZE_STRING = "tag_attribute_total_size";
   private static String tagAttributeTotalSize = String.valueOf(config.getTagAttributeTotalSize());
 
+  private static final String TAG_ATTRIBUTE_FLUSH_INTERVAL = "tag_attribute_flush_interval";
+  private static String tagAttributeFlushInterval =
+      String.valueOf(config.getTagAttributeFlushInterval());
+
   private static final String MAX_DEGREE_OF_INDEX_STRING = "max_degree_of_index_node";
   private static String maxDegreeOfIndexNode =
       String.valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode());
 
   private static final String VIRTUAL_STORAGE_GROUP_NUM = "virtual_storage_group_num";
   private static String virtualStorageGroupNum = String.valueOf(config.getVirtualStorageGroupNum());
+
+  private static final String ENABLE_ID_TABLE = "enable_id_table";
+  private static String enableIDTable = String.valueOf(config.isEnableIDTable());
+
+  private static final String ENABLE_ID_TABLE_LOG_FILE = "enable_id_table_log_file";
+  private static String enableIdTableLogFile = String.valueOf(config.isEnableIDTableLogFile());
 
   private static final String TIME_ENCODER_KEY = "time_encoder";
   private static String timeEncoderValue =
@@ -125,9 +127,9 @@ public class IoTDBConfigCheck {
     }
 
     // check time stamp precision
-    if (!(timestampPrecision.equals("ms")
-        || timestampPrecision.equals("us")
-        || timestampPrecision.equals("ns"))) {
+    if (!("ms".equals(timestampPrecision)
+        || "us".equals(timestampPrecision)
+        || "ns".equals(timestampPrecision))) {
       logger.error(
           "Wrong {}, please set as: ms, us or ns ! Current is: {}",
           TIMESTAMP_PRECISION_STRING,
@@ -151,9 +153,12 @@ public class IoTDBConfigCheck {
     systemProperties.put(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
     systemProperties.put(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
     systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
+    systemProperties.put(TAG_ATTRIBUTE_FLUSH_INTERVAL, tagAttributeFlushInterval);
     systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
     systemProperties.put(VIRTUAL_STORAGE_GROUP_NUM, virtualStorageGroupNum);
     systemProperties.put(TIME_ENCODER_KEY, timeEncoderValue);
+    systemProperties.put(ENABLE_ID_TABLE, enableIDTable);
+    systemProperties.put(ENABLE_ID_TABLE_LOG_FILE, enableIdTableLogFile);
   }
 
   /**
@@ -164,7 +169,7 @@ public class IoTDBConfigCheck {
    * <p>When upgrading the system.properties: (1) create system.properties.tmp (2) delete
    * system.properties (3) rename system.properties.tmp to system.properties
    */
-  public void checkConfig() throws IOException {
+  public void checkConfig() throws ConfigurationException, IOException {
     propertiesFile =
         SystemFileFactory.INSTANCE.getFile(
             IoTDBConfigCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME);
@@ -207,31 +212,45 @@ public class IoTDBConfigCheck {
             new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET)) {
       properties.load(inputStreamReader);
     }
-    // check whether upgrading from <=v0.9 to v0.12
+    // check whether upgrading from <=v0.9
     if (!properties.containsKey(IOTDB_VERSION_STRING)) {
       logger.error(
           "DO NOT UPGRADE IoTDB from v0.9 or lower version to v0.12!"
               + " Please upgrade to v0.10 first");
       System.exit(-1);
     }
-    // check whether upgrading from v0.10 or v0.11 to v0.12
+    // check whether upgrading from [v0.10, v.12]
     String versionString = properties.getProperty(IOTDB_VERSION_STRING);
     if (versionString.startsWith("0.10") || versionString.startsWith("0.11")) {
-      logger.info(
-          "Upgrading IoTDB from {} to {}, checking files...", versionString, IoTDBConstant.VERSION);
-      checkUnClosedTsFileV2();
-      moveTsFileV2();
-      moveVersionFile();
-      logger.info("checking files successful");
-      logger.info("Start upgrading files...");
-      MLogWriter.upgradeMLog();
-      logger.info("Mlog upgraded!");
+      logger.error("IoTDB version is too old, please upgrade to 0.12 firstly.");
+      System.exit(-1);
+    } else if (versionString.startsWith("0.12") || versionString.startsWith("0.13")) {
+      checkWALNotExists();
       upgradePropertiesFile();
+      MetadataUpgrader.upgrade();
     }
     checkProperties();
   }
 
-  /** upgrade 0.10 or 0.11 properties to 0.12 properties */
+  private void checkWALNotExists() {
+    if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()) {
+      File[] sgWALs = SystemFileFactory.INSTANCE.getFile(WAL_DIR).listFiles();
+      if (sgWALs != null) {
+        for (File sgWAL : sgWALs) {
+          // make sure wal directory of each sg is empty
+          if (sgWAL.isDirectory() && sgWAL.list().length != 0) {
+            logger.error(
+                "WAL detected, please stop insertion and run 'SET SYSTEM TO READONLY', then run 'flush' on IoTDB {} before upgrading to {}.",
+                properties.getProperty(IOTDB_VERSION_STRING),
+                IoTDBConstant.VERSION);
+            System.exit(-1);
+          }
+        }
+      }
+    }
+  }
+
+  /** upgrade 0.12 properties to 0.13 properties */
   private void upgradePropertiesFile() throws IOException {
     // create an empty tmpPropertiesFile
     if (tmpPropertiesFile.createNewFile()) {
@@ -241,21 +260,13 @@ public class IoTDBConfigCheck {
       System.exit(-1);
     }
 
-    // virtual storage group num can only set to 1 when upgrading from old version
-    if (!virtualStorageGroupNum.equals("1")) {
-      logger.error(
-          "virtual storage group num cannot set to {} when upgrading from old version, "
-              + "please set to 1 and restart",
-          virtualStorageGroupNum);
-      System.exit(-1);
-    }
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
-      properties.setProperty(PARTITION_INTERVAL_STRING, String.valueOf(partitionInterval));
-      properties.setProperty(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
-      properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
-      properties.setProperty(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
-      properties.setProperty(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
-      properties.setProperty(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
+      systemProperties.forEach(
+          (k, v) -> {
+            if (!properties.containsKey(k)) {
+              properties.setProperty(k, v);
+            }
+          });
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
 
       // upgrade finished, delete old system.properties file
@@ -267,7 +278,7 @@ public class IoTDBConfigCheck {
     FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
   }
 
-  /** repair 0.10 properties */
+  /** repair broken properties */
   private void upgradePropertiesFileFromBrokenFile() throws IOException {
     // create an empty tmpPropertiesFile
     if (tmpPropertiesFile.createNewFile()) {
@@ -296,7 +307,7 @@ public class IoTDBConfigCheck {
   }
 
   /** Check all immutable properties */
-  private void checkProperties() throws IOException {
+  private void checkProperties() throws ConfigurationException, IOException {
     for (Entry<String, String> entry : systemProperties.entrySet()) {
       if (!properties.containsKey(entry.getKey())) {
         upgradePropertiesFileFromBrokenFile();
@@ -305,247 +316,56 @@ public class IoTDBConfigCheck {
     }
 
     if (!properties.getProperty(TIMESTAMP_PRECISION_STRING).equals(timestampPrecision)) {
-      printErrorLogAndExit(TIMESTAMP_PRECISION_STRING);
+      throwException(TIMESTAMP_PRECISION_STRING, timestampPrecision);
     }
 
     if (Boolean.parseBoolean(properties.getProperty(ENABLE_PARTITION_STRING)) != enablePartition) {
-      printErrorLogAndExit(ENABLE_PARTITION_STRING);
+      throwException(ENABLE_PARTITION_STRING, enablePartition);
     }
 
     if (Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING)) != partitionInterval) {
-      printErrorLogAndExit(PARTITION_INTERVAL_STRING);
+      throwException(PARTITION_INTERVAL_STRING, partitionInterval);
     }
 
     if (!(properties.getProperty(TSFILE_FILE_SYSTEM_STRING).equals(tsfileFileSystem))) {
-      printErrorLogAndExit(TSFILE_FILE_SYSTEM_STRING);
+      throwException(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
     }
 
     if (!(properties.getProperty(TAG_ATTRIBUTE_SIZE_STRING).equals(tagAttributeTotalSize))) {
-      printErrorLogAndExit(TAG_ATTRIBUTE_SIZE_STRING);
+      throwException(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
+    }
+
+    if (!(properties.getProperty(TAG_ATTRIBUTE_FLUSH_INTERVAL).equals(tagAttributeFlushInterval))) {
+      throwException(TAG_ATTRIBUTE_FLUSH_INTERVAL, tagAttributeFlushInterval);
     }
 
     if (!(properties.getProperty(MAX_DEGREE_OF_INDEX_STRING).equals(maxDegreeOfIndexNode))) {
-      printErrorLogAndExit(MAX_DEGREE_OF_INDEX_STRING);
+      throwException(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
     }
 
     if (!(properties.getProperty(VIRTUAL_STORAGE_GROUP_NUM).equals(virtualStorageGroupNum))) {
-      printErrorLogAndExit(VIRTUAL_STORAGE_GROUP_NUM);
+      throwException(VIRTUAL_STORAGE_GROUP_NUM, virtualStorageGroupNum);
     }
 
     if (!(properties.getProperty(TIME_ENCODER_KEY).equals(timeEncoderValue))) {
-      printErrorLogAndExit(TIME_ENCODER_KEY);
+      throwException(TIME_ENCODER_KEY, timeEncoderValue);
+    }
+
+    if (!(properties.getProperty(TIME_ENCODER_KEY).equals(timeEncoderValue))) {
+      throwException(TIME_ENCODER_KEY, timeEncoderValue);
+    }
+
+    if (!(properties.getProperty(ENABLE_ID_TABLE).equals(enableIDTable))) {
+      throwException(ENABLE_ID_TABLE, enableIDTable);
+    }
+
+    if (!(properties.getProperty(ENABLE_ID_TABLE_LOG_FILE).equals(enableIdTableLogFile))) {
+      throwException(ENABLE_ID_TABLE_LOG_FILE, enableIdTableLogFile);
     }
   }
 
-  private void printErrorLogAndExit(String property) {
-    logger.error("Wrong {}, please set as: {} !", property, properties.getProperty(property));
-    System.exit(-1);
-  }
-
-  /** ensure all TsFiles are closed when starting 0.12 */
-  private void checkUnClosedTsFileV2() {
-    if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()
-        && SystemFileFactory.INSTANCE.getFile(WAL_DIR).list().length != 0) {
-      logger.error(
-          "WAL detected, please stop insertion, then run 'flush' "
-              + "on IoTDB {} before upgrading to {}",
-          properties.getProperty(IOTDB_VERSION_STRING),
-          IoTDBConstant.VERSION);
-      System.exit(-1);
-    }
-    checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllSequenceFileFolders());
-    checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
-  }
-
-  private void checkUnClosedTsFileV2InFolders(List<String> folders) {
-    for (String baseDir : folders) {
-      File fileFolder = fsFactory.getFile(baseDir);
-      if (!fileFolder.isDirectory()) {
-        continue;
-      }
-      for (File storageGroup : fileFolder.listFiles()) {
-        if (!storageGroup.isDirectory()) {
-          continue;
-        }
-        for (File partitionDir : storageGroup.listFiles()) {
-          if (!partitionDir.isDirectory()) {
-            continue;
-          }
-          File[] tsfiles =
-              fsFactory.listFilesBySuffix(partitionDir.toString(), TsFileConstant.TSFILE_SUFFIX);
-          File[] resources =
-              fsFactory.listFilesBySuffix(partitionDir.toString(), TsFileResource.RESOURCE_SUFFIX);
-          if (tsfiles.length != resources.length) {
-            File[] zeroLevelTsFiles =
-                fsFactory.listFilesBySuffix(
-                    partitionDir.toString(), "0" + TsFileConstant.TSFILE_SUFFIX);
-            File[] zeroLevelResources =
-                fsFactory.listFilesBySuffix(
-                    partitionDir.toString(),
-                    "0" + TsFileConstant.TSFILE_SUFFIX + TsFileResource.RESOURCE_SUFFIX);
-            if (zeroLevelTsFiles.length != zeroLevelResources.length) {
-              logger.error(
-                  "Unclosed Version-2 TsFile detected, please stop insertion, then run 'flush' "
-                      + "on IoTDB {} before upgrading to {}",
-                  properties.getProperty(IOTDB_VERSION_STRING),
-                  IoTDBConstant.VERSION);
-              System.exit(-1);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * If upgrading from v0.11.2 to v0.12, there may be some unsealed merging files. We have to delete
-   * these files before upgrading.
-   */
-  private File[] deleteMergingTsFiles(File[] tsfiles, File[] resources) {
-    Set<String> resourcesSet = new HashSet<>();
-    for (File resource : resources) {
-      resourcesSet.add(resource.getName());
-    }
-    List<File> tsfileList = new ArrayList<>();
-    for (File tsfile : tsfiles) {
-      if (!resourcesSet.contains(tsfile.getName() + TsFileResource.RESOURCE_SUFFIX)) {
-        try {
-          logger.info("Delete merging TsFile {}", tsfile);
-          Files.delete(tsfile.toPath());
-        } catch (Exception e) {
-          logger.error("Failed to delete merging tsfile {} ", tsfile, e);
-          System.exit(-1);
-        }
-      } else {
-        tsfileList.add(tsfile);
-      }
-    }
-    return tsfileList.toArray(new File[tsfileList.size()]);
-  }
-
-  private void moveTsFileV2() {
-    moveFileToUpgradeFolder(DirectoryManager.getInstance().getAllSequenceFileFolders());
-    moveFileToUpgradeFolder(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
-    logger.info("Move version-2 TsFile successfully");
-  }
-
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void moveFileToUpgradeFolder(List<String> folders) {
-    for (String baseDir : folders) {
-      File fileFolder = fsFactory.getFile(baseDir);
-      if (!fileFolder.isDirectory()) {
-        continue;
-      }
-      for (File storageGroup : fileFolder.listFiles()) {
-        if (!storageGroup.isDirectory()) {
-          continue;
-        }
-        // create virtual storage group folder 0
-        File virtualStorageGroupDir = fsFactory.getFile(storageGroup, "0");
-        if (virtualStorageGroupDir.mkdirs()) {
-          logger.info(
-              "virtual storage directory {} doesn't exist, create it",
-              virtualStorageGroupDir.getPath());
-        } else if (!virtualStorageGroupDir.exists()) {
-          logger.error(
-              "Create virtual storage directory {} failed", virtualStorageGroupDir.getPath());
-        }
-        for (File partitionDir : storageGroup.listFiles()) {
-          if (!partitionDir.isDirectory()) {
-            continue;
-          }
-          File[] oldTsfileArray =
-              fsFactory.listFilesBySuffix(
-                  partitionDir.getAbsolutePath(), TsFileConstant.TSFILE_SUFFIX);
-          File[] oldResourceFileArray =
-              fsFactory.listFilesBySuffix(
-                  partitionDir.getAbsolutePath(), TsFileResource.RESOURCE_SUFFIX);
-          File[] oldModificationFileArray =
-              fsFactory.listFilesBySuffix(
-                  partitionDir.getAbsolutePath(), ModificationFile.FILE_SUFFIX);
-          oldTsfileArray = deleteMergingTsFiles(oldTsfileArray, oldResourceFileArray);
-          // move the old files to upgrade folder if exists
-          if (oldTsfileArray.length + oldResourceFileArray.length + oldModificationFileArray.length
-              != 0) {
-            // create upgrade directory if not exist
-            File upgradeFolder =
-                fsFactory.getFile(virtualStorageGroupDir, IoTDBConstant.UPGRADE_FOLDER_NAME);
-            if (upgradeFolder.mkdirs()) {
-              logger.info("Upgrade Directory {} doesn't exist, create it", upgradeFolder.getPath());
-            } else if (!upgradeFolder.exists()) {
-              logger.error("Create upgrade Directory {} failed", upgradeFolder.getPath());
-            }
-            // move .tsfile to upgrade folder
-            for (File file : oldTsfileArray) {
-              if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-                logger.error("Failed to move tsfile {} to upgrade folder", file);
-              }
-            }
-            // move .resource to upgrade folder
-            for (File file : oldResourceFileArray) {
-              if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-                logger.error("Failed to move resource {} to upgrade folder", file);
-              }
-            }
-            // move .mods to upgrade folder
-            for (File file : oldModificationFileArray) {
-              if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-                logger.error("Failed to move mod file {} to upgrade folder", file);
-              }
-            }
-          }
-          if (partitionDir.listFiles().length == 0) {
-            try {
-              Files.delete(partitionDir.toPath());
-            } catch (IOException e) {
-              logger.error("Delete {} failed", partitionDir);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void moveVersionFile() {
-    File sgDir =
-        SystemFileFactory.INSTANCE.getFile(
-            FilePathUtils.regularizePath(SYSTEM_DIR) + "storage_groups");
-    if (sgDir.isDirectory()) {
-      for (File sg : sgDir.listFiles()) {
-        if (!sg.isDirectory()) {
-          continue;
-        }
-        for (File partition : sg.listFiles()) {
-          if (!partition.isDirectory()) {
-            continue;
-          }
-          File virtualSg = SystemFileFactory.INSTANCE.getFile(sg, "0");
-          if (!virtualSg.exists()) {
-            virtualSg.mkdir();
-          }
-          File newPartition = SystemFileFactory.INSTANCE.getFile(virtualSg, partition.getName());
-          if (!newPartition.exists()) {
-            newPartition.mkdir();
-          }
-          for (File versionFile : partition.listFiles()) {
-            if (versionFile.isDirectory()) {
-              continue;
-            }
-            if (!versionFile.renameTo(
-                SystemFileFactory.INSTANCE.getFile(newPartition, versionFile.getName()))) {
-              logger.error("Rename {} failed", versionFile);
-            }
-          }
-          if (partition.listFiles().length == 0) {
-            try {
-              Files.delete(partition.toPath());
-            } catch (IOException e) {
-              logger.error("Delete {} failed", partition);
-            }
-          }
-        }
-      }
-    }
+  private void throwException(String parameter, Object badValue) throws ConfigurationException {
+    throw new ConfigurationException(
+        parameter, String.valueOf(badValue), properties.getProperty(parameter));
   }
 }

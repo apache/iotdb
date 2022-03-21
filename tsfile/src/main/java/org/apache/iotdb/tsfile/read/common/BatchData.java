@@ -22,7 +22,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBinary;
@@ -33,6 +33,8 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsVector;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -168,6 +170,10 @@ public class BatchData {
 
   public TSDataType getDataType() {
     return dataType;
+  }
+
+  public void setDataType(TSDataType dataType) {
+    this.dataType = dataType;
   }
 
   public BatchDataType getBatchDataType() {
@@ -566,34 +572,42 @@ public class BatchData {
     return this.count;
   }
 
+  /** Get the idx th timestamp by the time ascending order */
   public long getTimeByIndex(int idx) {
     return this.timeRet.get(idx / capacity)[idx % capacity];
   }
 
+  /** Get the idx th long value by the time ascending order */
   public long getLongByIndex(int idx) {
     return this.longRet.get(idx / capacity)[idx % capacity];
   }
 
+  /** Get the idx th double value by the time ascending order */
   public double getDoubleByIndex(int idx) {
     return this.doubleRet.get(idx / capacity)[idx % capacity];
   }
 
+  /** Get the idx th int value by the time ascending order */
   public int getIntByIndex(int idx) {
     return this.intRet.get(idx / capacity)[idx % capacity];
   }
 
+  /** Get the idx th float value by the time ascending order */
   public float getFloatByIndex(int idx) {
     return this.floatRet.get(idx / capacity)[idx % capacity];
   }
 
+  /** Get the idx th binary value by the time ascending order */
   public Binary getBinaryByIndex(int idx) {
     return binaryRet.get(idx / capacity)[idx % capacity];
   }
 
+  /** Get the idx th boolean value by the time ascending order */
   public boolean getBooleanByIndex(int idx) {
     return booleanRet.get(idx / capacity)[idx % capacity];
   }
 
+  /** Get the idx th vector value by the time ascending order */
   public TsPrimitiveType[] getVectorByIndex(int idx) {
     return vectorRet.get(idx / capacity)[idx % capacity];
   }
@@ -633,7 +647,96 @@ public class BatchData {
   }
 
   public BatchDataIterator getBatchDataIterator() {
-    return new BatchDataIterator(this);
+    return new BatchDataIterator();
+  }
+
+  /** Only used for the batch data of vector time series. */
+  public IBatchDataIterator getBatchDataIterator(int subIndex) {
+    return new VectorBatchDataIterator(subIndex);
+  }
+
+  /**
+   * For any implementation of BatchData, the data serializing sequence must equal the one of
+   * writing, otherwise after deserializing the sequence will be reversed
+   */
+  public void serializeData(DataOutputStream outputStream) throws IOException {
+    switch (dataType) {
+      case BOOLEAN:
+        for (int i = 0; i < length(); i++) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeBoolean(getBooleanByIndex(i));
+        }
+        break;
+      case DOUBLE:
+        for (int i = 0; i < length(); i++) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeDouble(getDoubleByIndex(i));
+        }
+        break;
+      case FLOAT:
+        for (int i = 0; i < length(); i++) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeFloat(getFloatByIndex(i));
+        }
+        break;
+      case TEXT:
+        for (int i = 0; i < length(); i++) {
+          outputStream.writeLong(getTimeByIndex(i));
+          Binary binary = getBinaryByIndex(i);
+          outputStream.writeInt(binary.getLength());
+          outputStream.write(binary.getValues());
+        }
+        break;
+      case INT64:
+        for (int i = 0; i < length(); i++) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeLong(getLongByIndex(i));
+        }
+        break;
+      case INT32:
+        for (int i = 0; i < length(); i++) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeInt(getIntByIndex(i));
+        }
+        break;
+      case VECTOR:
+        for (int i = 0; i < length(); i++) {
+          outputStream.writeLong(getTimeByIndex(i));
+          TsPrimitiveType[] values = getVectorByIndex(i);
+          outputStream.writeInt(values.length);
+          for (TsPrimitiveType value : values) {
+            if (value == null) {
+              outputStream.write(0);
+            } else {
+              outputStream.write(1);
+              outputStream.write(value.getDataType().serialize());
+              switch (value.getDataType()) {
+                case BOOLEAN:
+                  outputStream.writeBoolean(value.getBoolean());
+                  break;
+                case DOUBLE:
+                  outputStream.writeDouble(value.getDouble());
+                  break;
+                case FLOAT:
+                  outputStream.writeFloat(value.getFloat());
+                  break;
+                case TEXT:
+                  Binary binary = value.getBinary();
+                  outputStream.writeInt(binary.getLength());
+                  outputStream.write(binary.getValues());
+                  break;
+                case INT64:
+                  outputStream.writeLong(value.getLong());
+                  break;
+                case INT32:
+                  outputStream.writeInt(value.getInt());
+                  break;
+              }
+            }
+          }
+        }
+        break;
+    }
   }
 
   /**
@@ -690,6 +793,114 @@ public class BatchData {
         default:
           throw new IllegalArgumentException("Invalid input: " + type);
       }
+    }
+  }
+
+  private class BatchDataIterator implements IPointReader, IBatchDataIterator {
+
+    @Override
+    public boolean hasNext() {
+      return BatchData.this.hasCurrent();
+    }
+
+    @Override
+    public boolean hasNext(long minBound, long maxBound) {
+      return hasNext();
+    }
+
+    @Override
+    public void next() {
+      BatchData.this.next();
+    }
+
+    @Override
+    public long currentTime() {
+      return BatchData.this.currentTime();
+    }
+
+    @Override
+    public Object currentValue() {
+      return BatchData.this.currentValue();
+    }
+
+    @Override
+    public void reset() {
+      BatchData.this.resetBatchData();
+    }
+
+    @Override
+    public int totalLength() {
+      return BatchData.this.length();
+    }
+
+    @Override
+    public boolean hasNextTimeValuePair() {
+      return hasNext();
+    }
+
+    @Override
+    public TimeValuePair nextTimeValuePair() {
+      TimeValuePair timeValuePair = new TimeValuePair(currentTime(), currentTsPrimitiveType());
+      next();
+      return timeValuePair;
+    }
+
+    @Override
+    public TimeValuePair currentTimeValuePair() {
+      return new TimeValuePair(currentTime(), currentTsPrimitiveType());
+    }
+
+    @Override
+    public void close() {}
+  }
+
+  private class VectorBatchDataIterator extends BatchDataIterator {
+
+    private final int subIndex;
+
+    private VectorBatchDataIterator(int subIndex) {
+      this.subIndex = subIndex;
+    }
+
+    @Override
+    public boolean hasNext() {
+      while (BatchData.this.hasCurrent() && currentValue() == null) {
+        super.next();
+      }
+      return BatchData.this.hasCurrent();
+    }
+
+    @Override
+    public boolean hasNext(long minBound, long maxBound) {
+      while (BatchData.this.hasCurrent() && currentValue() == null) {
+        if (currentTime() < minBound || currentTime() >= maxBound) {
+          break;
+        }
+        super.next();
+      }
+      return BatchData.this.hasCurrent();
+    }
+
+    @Override
+    public Object currentValue() {
+      TsPrimitiveType v = getVector()[subIndex];
+      return v == null ? null : v.getValue();
+    }
+
+    @Override
+    public int totalLength() {
+      // aligned timeseries' BatchData length() may return the length of time column
+      // we need traverse to VectorBatchDataIterator calculate the actual value column's length
+      int cnt = 0;
+      int readCurArrayIndexSave = BatchData.this.readCurArrayIndex;
+      int readCurListIndexSave = BatchData.this.readCurListIndex;
+      while (hasNext()) {
+        cnt++;
+        next();
+      }
+      BatchData.this.readCurArrayIndex = readCurArrayIndexSave;
+      BatchData.this.readCurListIndex = readCurListIndexSave;
+      return cnt;
     }
   }
 }

@@ -28,29 +28,27 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,8 +71,8 @@ public class ClusterPlanRouter {
     this.partitionTable = partitionTable;
   }
 
-  private MManager getMManager() {
-    return IoTDB.metaManager;
+  private SchemaEngine SchemaEngine() {
+    return IoTDB.schemaEngine;
   }
 
   @TestOnly
@@ -100,7 +98,7 @@ public class ClusterPlanRouter {
   }
 
   private PartitionGroup routePlan(InsertRowPlan plan) throws MetadataException {
-    return partitionTable.partitionByPathTime(plan.getPrefixPath(), plan.getTime());
+    return partitionTable.partitionByPathTime(plan.getDevicePath(), plan.getTime());
   }
 
   private PartitionGroup routePlan(CreateTimeSeriesPlan plan) throws MetadataException {
@@ -110,7 +108,7 @@ public class ClusterPlanRouter {
   private PartitionGroup routePlan(ShowChildPathsPlan plan) {
     try {
       return partitionTable.route(
-          getMManager().getStorageGroupPath(plan.getPath()).getFullPath(), 0);
+          SchemaEngine().getBelongedStorageGroup(plan.getPath()).getFullPath(), 0);
     } catch (MetadataException e) {
       // the path is too short to have no a storage group name, e.g., "root"
       // so we can do it locally.
@@ -126,14 +124,14 @@ public class ClusterPlanRouter {
       return splitAndRoutePlan((InsertTabletPlan) plan);
     } else if (plan instanceof InsertMultiTabletPlan) {
       return splitAndRoutePlan((InsertMultiTabletPlan) plan);
-    } else if (plan instanceof CountPlan) {
-      return splitAndRoutePlan((CountPlan) plan);
     } else if (plan instanceof CreateTimeSeriesPlan) {
       return splitAndRoutePlan((CreateTimeSeriesPlan) plan);
     } else if (plan instanceof CreateAlignedTimeSeriesPlan) {
       return splitAndRoutePlan((CreateAlignedTimeSeriesPlan) plan);
     } else if (plan instanceof InsertRowPlan) {
       return splitAndRoutePlan((InsertRowPlan) plan);
+    } else if (plan instanceof InsertRowsOfOneDevicePlan) {
+      return splitAndRoutePlan((InsertRowsOfOneDevicePlan) plan);
     } else if (plan instanceof AlterTimeSeriesPlan) {
       return splitAndRoutePlan((AlterTimeSeriesPlan) plan);
     } else if (plan instanceof CreateMultiTimeSeriesPlan) {
@@ -177,7 +175,7 @@ public class ClusterPlanRouter {
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertRowPlan plan)
       throws MetadataException {
     PartitionGroup partitionGroup =
-        partitionTable.partitionByPathTime(plan.getPrefixPath(), plan.getTime());
+        partitionTable.partitionByPathTime(plan.getDevicePath(), plan.getTime());
     return Collections.singletonMap(plan, partitionGroup);
   }
 
@@ -220,7 +218,7 @@ public class ClusterPlanRouter {
         InsertTabletPlan tmpPlan = (InsertTabletPlan) entry.getKey();
         PartitionGroup tmpPg = entry.getValue();
         // 1.1 the sg that the plan(actually calculated based on device) belongs to
-        PartialPath tmpSgPath = IoTDB.metaManager.getStorageGroupPath(tmpPlan.getPrefixPath());
+        PartialPath tmpSgPath = IoTDB.schemaEngine.getBelongedStorageGroup(tmpPlan.getDevicePath());
         Map<PartialPath, InsertMultiTabletPlan> sgPathPlanMap = pgSgPathPlanMap.get(tmpPg);
         if (sgPathPlanMap == null) {
           // 2.1 construct the InsertMultiTabletPlan
@@ -281,7 +279,7 @@ public class ClusterPlanRouter {
     Map<PartitionGroup, InsertRowsPlan> groupPlanMap = new HashMap<>();
     for (int i = 0; i < insertRowsPlan.getInsertRowPlanList().size(); i++) {
       InsertRowPlan rowPlan = insertRowsPlan.getInsertRowPlanList().get(i);
-      PartialPath storageGroup = getMManager().getStorageGroupPath(rowPlan.getPrefixPath());
+      PartialPath storageGroup = SchemaEngine().getBelongedStorageGroup(rowPlan.getDevicePath());
       PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), rowPlan.getTime());
       if (groupPlanMap.containsKey(group)) {
         InsertRowsPlan tmpPlan = groupPlanMap.get(group);
@@ -302,7 +300,7 @@ public class ClusterPlanRouter {
   @SuppressWarnings("SuspiciousSystemArraycopy")
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertTabletPlan plan)
       throws MetadataException {
-    PartialPath storageGroup = getMManager().getStorageGroupPath(plan.getPrefixPath());
+    PartialPath storageGroup = SchemaEngine().getBelongedStorageGroup(plan.getDevicePath());
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
     long[] times = plan.getTimes();
     if (times.length == 0) {
@@ -350,16 +348,21 @@ public class ClusterPlanRouter {
       long[] subTimes = new long[count];
       int destLoc = 0;
       Object[] values = initTabletValues(plan.getDataTypes().length, count, plan.getDataTypes());
+      BitMap[] bitMaps =
+          plan.getBitMaps() == null ? null : initBitmaps(plan.getDataTypes().length, count);
       for (int i = 0; i < locs.size(); i += 2) {
         int start = locs.get(i);
         int end = locs.get(i + 1);
         System.arraycopy(plan.getTimes(), start, subTimes, destLoc, end - start);
         for (int k = 0; k < values.length; k++) {
           System.arraycopy(plan.getColumns()[k], start, values[k], destLoc, end - start);
+          if (bitMaps != null && plan.getBitMaps()[k] != null) {
+            BitMap.copyOfRange(plan.getBitMaps()[k], start, bitMaps[k], destLoc, end - start);
+          }
         }
         destLoc += end - start;
       }
-      InsertTabletPlan newBatch = PartitionUtils.copy(plan, subTimes, values);
+      InsertTabletPlan newBatch = PartitionUtils.copy(plan, subTimes, values, bitMaps);
       newBatch.setRange(locs);
       newBatch.setAligned(plan.isAligned());
       result.put(newBatch, entry.getKey());
@@ -394,49 +397,12 @@ public class ClusterPlanRouter {
     return values;
   }
 
-  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CountPlan plan)
-      throws StorageGroupNotSetException, IllegalPathException {
-    // CountPlan is quite special because it has the behavior of wildcard at the tail of the path
-    // even though there is no wildcard
-    Map<String, String> sgPathMap = getMManager().determineStorageGroup(plan.getPath());
-    if (sgPathMap.isEmpty()) {
-      throw new StorageGroupNotSetException(plan.getPath().getFullPath());
+  private BitMap[] initBitmaps(int columnSize, int rowSize) {
+    BitMap[] bitMaps = new BitMap[columnSize];
+    for (int i = 0; i < columnSize; i++) {
+      bitMaps[i] = new BitMap(rowSize);
     }
-    Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
-    if (plan.getShowContentType().equals(ShowContentType.COUNT_TIMESERIES)) {
-      // support wildcard
-      for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
-        CountPlan plan1 =
-            new CountPlan(
-                ShowContentType.COUNT_TIMESERIES,
-                new PartialPath(entry.getValue()),
-                plan.getLevel());
-        result.put(plan1, partitionTable.route(entry.getKey(), 0));
-      }
-    } else {
-      // do not support wildcard
-      if (sgPathMap.size() == 1) {
-        // the path of the original plan has only one SG, or there is only one SG in the system.
-        for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
-          // actually, there is only one entry
-          result.put(plan, partitionTable.route(entry.getKey(), 0));
-        }
-      } else {
-        // the path of the original plan contains more than one SG, and we added a wildcard at the
-        // tail.
-        // we have to remove it.
-        for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
-          CountPlan plan1 =
-              new CountPlan(
-                  ShowContentType.COUNT_TIMESERIES,
-                  new PartialPath(
-                      entry.getValue().substring(0, entry.getValue().lastIndexOf(".*"))),
-                  plan.getLevel());
-          result.put(plan1, partitionTable.route(entry.getKey(), 0));
-        }
-      }
-    }
-    return result;
+    return bitMaps;
   }
 
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CreateMultiTimeSeriesPlan plan)
@@ -503,5 +469,38 @@ public class ClusterPlanRouter {
     }
     subPlan.setIndexes(new ArrayList<>());
     return subPlan;
+  }
+
+  /**
+   * @param plan InsertRowsOfOneDevicePlan
+   * @return key is InsertRowsOfOneDevicePlan, value is the partition group the plan belongs to. All
+   *     InsertRowPlans in InsertRowsOfOneDevicePlan belong to one same storage group.
+   */
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertRowsOfOneDevicePlan plan)
+      throws MetadataException {
+    Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
+    Map<PartitionGroup, List<InsertRowPlan>> groupPlanMap = new HashMap<>();
+    Map<PartitionGroup, List<Integer>> groupPlanIndexMap = new HashMap<>();
+    PartialPath storageGroup = SchemaEngine().getBelongedStorageGroup(plan.getDevicePath());
+    for (int i = 0; i < plan.getRowPlans().length; i++) {
+      InsertRowPlan p = plan.getRowPlans()[i];
+      PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), p.getTime());
+      List<InsertRowPlan> groupedPlans =
+          groupPlanMap.computeIfAbsent(group, k -> new ArrayList<>());
+      List<Integer> groupedPlanIndex =
+          groupPlanIndexMap.computeIfAbsent(group, k -> new ArrayList<>());
+      groupedPlans.add(p);
+      groupedPlanIndex.add(plan.getRowPlanIndexList()[i]);
+    }
+
+    for (Entry<PartitionGroup, List<InsertRowPlan>> entry : groupPlanMap.entrySet()) {
+      PhysicalPlan reducedPlan =
+          new InsertRowsOfOneDevicePlan(
+              plan.getDevicePath(),
+              entry.getValue().toArray(new InsertRowPlan[0]),
+              groupPlanIndexMap.get(entry.getKey()).stream().mapToInt(i -> i).toArray());
+      result.put(reducedPlan, entry.getKey());
+    }
+    return result;
   }
 }

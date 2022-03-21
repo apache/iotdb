@@ -24,7 +24,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -59,6 +60,7 @@ import java.util.List;
 import java.util.Map;
 
 import static junit.framework.TestCase.assertEquals;
+import static org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan.getTimeExpression;
 import static org.junit.Assert.assertFalse;
 
 public class ClusterQueryRouterTest extends BaseQueryTest {
@@ -76,7 +78,6 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
   public void test() throws StorageEngineException, IOException, QueryProcessException {
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
 
@@ -93,20 +94,12 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
       throws StorageEngineException, IOException, QueryProcessException,
           QueryFilterOptimizationException, IllegalPathException {
     AggregationPlan plan = new AggregationPlan();
-    List<PartialPath> paths =
-        Arrays.asList(
-            new PartialPath(TestUtils.getTestSeries(0, 0)),
-            new PartialPath(TestUtils.getTestSeries(0, 1)),
-            new PartialPath(TestUtils.getTestSeries(0, 2)),
-            new PartialPath(TestUtils.getTestSeries(0, 3)),
-            new PartialPath(TestUtils.getTestSeries(0, 4)));
-    List<TSDataType> dataTypes =
-        Arrays.asList(
-            TSDataType.DOUBLE,
-            TSDataType.DOUBLE,
-            TSDataType.DOUBLE,
-            TSDataType.DOUBLE,
-            TSDataType.DOUBLE);
+    List<PartialPath> paths = new ArrayList<>();
+    paths.add(new MeasurementPath(TestUtils.getTestSeries(0, 0), TSDataType.DOUBLE));
+    paths.add(new MeasurementPath(TestUtils.getTestSeries(0, 1), TSDataType.DOUBLE));
+    paths.add(new MeasurementPath(TestUtils.getTestSeries(0, 2), TSDataType.DOUBLE));
+    paths.add(new MeasurementPath(TestUtils.getTestSeries(0, 3), TSDataType.DOUBLE));
+    paths.add(new MeasurementPath(TestUtils.getTestSeries(0, 4), TSDataType.DOUBLE));
     List<String> aggregations =
         Arrays.asList(
             SQLConstant.MIN_TIME,
@@ -116,8 +109,6 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
             SQLConstant.SUM);
     plan.setPaths(paths);
     plan.setDeduplicatedPathsAndUpdate(paths);
-    plan.setDataTypes(dataTypes);
-    plan.setDeduplicatedDataTypes(dataTypes);
     plan.setAggregations(aggregations);
     plan.setDeduplicatedAggregations(aggregations);
 
@@ -137,10 +128,9 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
       throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     FillQueryPlan plan = new FillQueryPlan();
     plan.setDeduplicatedPathsAndUpdate(
-        Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 10))));
-    plan.setDeduplicatedDataTypes(Collections.singletonList(TSDataType.DOUBLE));
+        Collections.singletonList(
+            new MeasurementPath(TestUtils.getTestSeries(0, 10), TSDataType.DOUBLE)));
     plan.setPaths(plan.getDeduplicatedPaths());
-    plan.setDataTypes(plan.getDeduplicatedDataTypes());
     long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
     Map<TSDataType, IFill> tsDataTypeIFillMap =
         Collections.singletonMap(
@@ -176,10 +166,9 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
       throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     FillQueryPlan plan = new FillQueryPlan();
     plan.setDeduplicatedPathsAndUpdate(
-        Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 10))));
-    plan.setDeduplicatedDataTypes(Collections.singletonList(TSDataType.DOUBLE));
+        Collections.singletonList(
+            new MeasurementPath(TestUtils.getTestSeries(0, 10), TSDataType.DOUBLE)));
     plan.setPaths(plan.getDeduplicatedPaths());
-    plan.setDataTypes(plan.getDeduplicatedDataTypes());
     long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
     Map<TSDataType, IFill> tsDataTypeIFillMap =
         Collections.singletonMap(
@@ -221,17 +210,13 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
     try {
       GroupByTimePlan groupByPlan = new GroupByTimePlan();
       List<PartialPath> pathList = new ArrayList<>();
-      List<TSDataType> dataTypes = new ArrayList<>();
       List<String> aggregations = new ArrayList<>();
       for (int i = 0; i < 10; i++) {
-        pathList.add(new PartialPath(TestUtils.getTestSeries(i, 0)));
-        dataTypes.add(TSDataType.DOUBLE);
+        pathList.add(new MeasurementPath(TestUtils.getTestSeries(i, 0), TSDataType.DOUBLE));
         aggregations.add(SQLConstant.COUNT);
       }
       groupByPlan.setPaths(pathList);
       groupByPlan.setDeduplicatedPathsAndUpdate(pathList);
-      groupByPlan.setDataTypes(dataTypes);
-      groupByPlan.setDeduplicatedDataTypes(dataTypes);
       groupByPlan.setAggregations(aggregations);
       groupByPlan.setDeduplicatedAggregations(aggregations);
 
@@ -243,9 +228,11 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
       IExpression expression =
           BinaryExpression.and(
               new SingleSeriesExpression(
-                  new PartialPath(TestUtils.getTestSeries(0, 0)), ValueFilter.gtEq(5.0)),
+                  new MeasurementPath(TestUtils.getTestSeries(0, 0), TSDataType.DOUBLE),
+                  ValueFilter.gtEq(5.0)),
               new SingleSeriesExpression(
-                  new PartialPath(TestUtils.getTestSeries(5, 0)), TimeFilter.ltEq(15)));
+                  new MeasurementPath(TestUtils.getTestSeries(5, 0), TSDataType.DOUBLE),
+                  TimeFilter.ltEq(15)));
       groupByPlan.setExpression(expression);
       QueryDataSet queryDataSet = clusterQueryRouter.groupBy(groupByPlan, queryContext);
 
@@ -274,17 +261,13 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
     try {
       GroupByTimePlan groupByPlan = new GroupByTimePlan();
       List<PartialPath> pathList = new ArrayList<>();
-      List<TSDataType> dataTypes = new ArrayList<>();
       List<String> aggregations = new ArrayList<>();
       for (int i = 0; i < 10; i++) {
-        pathList.add(new PartialPath(TestUtils.getTestSeries(i, 0)));
-        dataTypes.add(TSDataType.DOUBLE);
+        pathList.add(new MeasurementPath(TestUtils.getTestSeries(i, 0), TSDataType.DOUBLE));
         aggregations.add(SQLConstant.COUNT);
       }
       groupByPlan.setPaths(pathList);
       groupByPlan.setDeduplicatedPathsAndUpdate(pathList);
-      groupByPlan.setDataTypes(dataTypes);
-      groupByPlan.setDeduplicatedDataTypes(dataTypes);
       groupByPlan.setAggregations(aggregations);
       groupByPlan.setDeduplicatedAggregations(aggregations);
 
@@ -293,6 +276,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
       groupByPlan.setSlidingStep(5);
       groupByPlan.setInterval(5);
 
+      groupByPlan.setExpression(getTimeExpression(groupByPlan));
       QueryDataSet dataSet = clusterQueryRouter.groupBy(groupByPlan, queryContext);
 
       Object[][] answers =

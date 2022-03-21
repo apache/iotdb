@@ -43,14 +43,14 @@ import java.util.Map;
 public class TsFileSequenceReaderTest {
 
   private static final String FILE_PATH = FileGenerator.outputDataFile;
-  private ReadOnlyTsFile tsFile;
+  private TsFileReader tsFile;
 
   @Before
   public void before() throws IOException {
     int rowCount = 100;
     FileGenerator.generateFile(rowCount, 10000);
     TsFileSequenceReader fileReader = new TsFileSequenceReader(FILE_PATH);
-    tsFile = new ReadOnlyTsFile(fileReader);
+    tsFile = new TsFileReader(fileReader);
   }
 
   @After

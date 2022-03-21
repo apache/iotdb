@@ -26,11 +26,12 @@ import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.util.List;
 
 public interface IChunkMetadata {
 
-  Statistics getStatistics();
+  Statistics<? extends Serializable> getStatistics();
 
   boolean isModified();
 
@@ -73,8 +74,4 @@ public interface IChunkMetadata {
   int serializeTo(OutputStream outputStream, boolean serializeStatistic) throws IOException;
 
   byte getMask();
-
-  boolean isTimeColumn();
-
-  boolean isValueColumn();
 }

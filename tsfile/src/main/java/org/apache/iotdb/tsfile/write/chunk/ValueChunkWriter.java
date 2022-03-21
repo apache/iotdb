@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
@@ -36,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.Serializable;
 
 public class ValueChunkWriter {
 
@@ -57,8 +59,19 @@ public class ValueChunkWriter {
   /** write data into current page */
   private ValuePageWriter pageWriter;
 
+  /** page size threshold. */
+  private final long pageSizeThreshold;
+
+  private final int maxNumberOfPointsInPage;
+
+  /** value count in current page. */
+  private int valueCountInOnePageForNextCheck;
+
+  // initial value for valueCountInOnePageForNextCheck
+  private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 1500;
+
   /** statistic of this chunk. */
-  private Statistics<?> statistics;
+  private Statistics<? extends Serializable> statistics;
 
   /** first page info */
   private int sizeWithoutStatistic;
@@ -76,6 +89,10 @@ public class ValueChunkWriter {
     this.dataType = dataType;
     this.compressionType = compressionType;
     this.pageBuffer = new PublicBAOS();
+    this.pageSizeThreshold = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    this.maxNumberOfPointsInPage =
+        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    this.valueCountInOnePageForNextCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
 
     // init statistics for this chunk and page
     this.statistics = Statistics.getStatsByType(dataType);
@@ -132,17 +149,27 @@ public class ValueChunkWriter {
     pageWriter.write(timestamps, values, batchSize);
   }
 
+  public void writeEmptyPageToPageBuffer() {
+    pageWriter.writeEmptyPageIntoBuff(pageBuffer);
+    numOfPages++;
+  }
+
   public void writePageToPageBuffer() {
     try {
-      if (numOfPages == 0) { // record the firstPageStatistics
-        this.firstPageStatistics = pageWriter.getStatistics();
+      if (numOfPages == 0) {
+        if (pageWriter.getStatistics().getCount() != 0) {
+          // record the firstPageStatistics if it is not empty page
+          this.firstPageStatistics = pageWriter.getStatistics();
+        }
         this.sizeWithoutStatistic = pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer, true);
       } else if (numOfPages == 1) { // put the firstPageStatistics into pageBuffer
-        byte[] b = pageBuffer.toByteArray();
-        pageBuffer.reset();
-        pageBuffer.write(b, 0, this.sizeWithoutStatistic);
-        firstPageStatistics.serialize(pageBuffer);
-        pageBuffer.write(b, this.sizeWithoutStatistic, b.length - this.sizeWithoutStatistic);
+        if (firstPageStatistics != null) { // Consider previous page is an empty page
+          byte[] b = pageBuffer.toByteArray();
+          pageBuffer.reset();
+          pageBuffer.write(b, 0, this.sizeWithoutStatistic);
+          firstPageStatistics.serialize(pageBuffer);
+          pageBuffer.write(b, this.sizeWithoutStatistic, b.length - this.sizeWithoutStatistic);
+        }
         pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer, false);
         firstPageStatistics = null;
       } else {
@@ -179,12 +206,50 @@ public class ValueChunkWriter {
   }
 
   public long getCurrentChunkSize() {
+    /**
+     * It may happen if subsequent write operations are all out of order, then count of statistics
+     * in this chunk will be 0 and this chunk will not be flushed.
+     */
     if (pageBuffer.size() == 0) {
       return 0;
     }
+
+    // Empty chunk, it may happen if pageBuffer stores empty bits and only chunk header will be
+    // flushed.
+    if (statistics.getCount() == 0) {
+      return ChunkHeader.getSerializedSize(measurementId, pageBuffer.size());
+    }
+
     // return the serialized size of the chunk header + all pages
     return ChunkHeader.getSerializedSize(measurementId, pageBuffer.size())
         + (long) pageBuffer.size();
+  }
+
+  public boolean checkPageSizeAndMayOpenANewPage() {
+    if (pageWriter.getPointNumber() == maxNumberOfPointsInPage) {
+      logger.debug("current line count reaches the upper bound, write page {}", measurementId);
+      return true;
+    } else if (pageWriter.getPointNumber()
+        >= valueCountInOnePageForNextCheck) { // need to check memory size
+      // not checking the memory used for every value
+      long currentPageSize = pageWriter.estimateMaxMemSize();
+      if (currentPageSize > pageSizeThreshold) { // memory size exceeds threshold
+        // we will write the current page
+        logger.debug(
+            "enough size, write page {}, pageSizeThreshold:{}, currentPageSize:{}, valueCountInOnePage:{}",
+            measurementId,
+            pageSizeThreshold,
+            currentPageSize,
+            pageWriter.getPointNumber());
+        valueCountInOnePageForNextCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
+        return true;
+      } else {
+        // reset the valueCountInOnePageForNextCheck for the next page
+        valueCountInOnePageForNextCheck =
+            (int) (((float) pageSizeThreshold / currentPageSize) * pageWriter.getPointNumber());
+      }
+    }
+    return false;
   }
 
   public void sealCurrentPage() {
@@ -214,6 +279,23 @@ public class ValueChunkWriter {
    */
   public void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer) throws IOException {
     if (statistics.getCount() == 0) {
+      if (pageBuffer.size() == 0) {
+        return;
+      }
+      // In order to ensure that different chunkgroups in a tsfile have the same chunks or if all
+      // data of this timeseries has been deleted, it is possible to have an empty valueChunk in a
+      // chunkGroup during compaction. To save the disk space, we only serialize chunkHeader for the
+      // empty valueChunk, whose dataSize is 0.
+      writer.startFlushChunk(
+          measurementId,
+          compressionType,
+          dataType,
+          encodingType,
+          statistics,
+          0,
+          0,
+          TsFileConstant.VALUE_COLUMN_MASK);
+      writer.endCurrentChunk();
       return;
     }
 

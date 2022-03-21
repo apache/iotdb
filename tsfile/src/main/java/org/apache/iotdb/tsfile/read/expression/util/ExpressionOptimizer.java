@@ -70,21 +70,25 @@ public class ExpressionOptimizer {
             (GlobalTimeExpression) right, left, selectedSeries, relation);
       } else if (left.getType() != ExpressionType.GLOBAL_TIME
           && right.getType() != ExpressionType.GLOBAL_TIME) {
-        IExpression regularLeft = optimize(left, selectedSeries);
-        IExpression regularRight = optimize(right, selectedSeries);
-        IBinaryExpression midRet = null;
-        if (relation == ExpressionType.AND) {
-          midRet = BinaryExpression.and(regularLeft, regularRight);
-        } else if (relation == ExpressionType.OR) {
-          midRet = BinaryExpression.or(regularLeft, regularRight);
-        } else {
-          throw new UnsupportedOperationException("unsupported IExpression type: " + relation);
-        }
-        if (midRet.getLeft().getType() == ExpressionType.GLOBAL_TIME
-            || midRet.getRight().getType() == ExpressionType.GLOBAL_TIME) {
-          return optimize(midRet, selectedSeries);
-        } else {
-          return midRet;
+        try {
+          IExpression regularLeft = optimize(left, selectedSeries);
+          IExpression regularRight = optimize(right, selectedSeries);
+          IBinaryExpression midRet = null;
+          if (relation == ExpressionType.AND) {
+            midRet = BinaryExpression.and(regularLeft, regularRight);
+          } else if (relation == ExpressionType.OR) {
+            midRet = BinaryExpression.or(regularLeft, regularRight);
+          } else {
+            throw new UnsupportedOperationException("unsupported IExpression type: " + relation);
+          }
+          if (midRet.getLeft().getType() == ExpressionType.GLOBAL_TIME
+              || midRet.getRight().getType() == ExpressionType.GLOBAL_TIME) {
+            return optimize(midRet, selectedSeries);
+          } else {
+            return midRet;
+          }
+        } catch (StackOverflowError stackOverflowError) {
+          throw new QueryFilterOptimizationException("StackOverflowError is encountered.");
         }
       }
     }

@@ -19,16 +19,16 @@
 
 package org.apache.iotdb.cluster.query.groupby;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.cluster.server.RaftServer;
-import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
+import org.apache.iotdb.db.query.executor.groupby.GroupByExecutor;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -45,17 +45,14 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(RemoteGroupByExecutor.class);
 
-  private long executorId;
-  private MetaGroupMember metaGroupMember;
-  private Node source;
-  private RaftNode header;
+  private final long executorId;
+  private final Node source;
+  private final RaftNode header;
 
-  private List<AggregateResult> results = new ArrayList<>();
+  private final List<AggregateResult> results = new ArrayList<>();
 
-  public RemoteGroupByExecutor(
-      long executorId, MetaGroupMember metaGroupMember, Node source, RaftNode header) {
+  public RemoteGroupByExecutor(long executorId, Node source, RaftNode header) {
     this.executorId = executorId;
-    this.metaGroupMember = metaGroupMember;
     this.source = source;
     this.header = header;
   }
@@ -78,31 +75,33 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
     try {
       if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
         AsyncDataClient client =
-            metaGroupMember
-                .getClientProvider()
-                .getAsyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
+            ClusterIoTDB.getInstance()
+                .getAsyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS());
         aggrBuffers =
             SyncClientAdaptor.getGroupByResult(
                 client, header, executorId, curStartTime, curEndTime);
       } else {
-        try (SyncDataClient syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS())) {
-          try {
-            aggrBuffers =
-                syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
-          } catch (TException e) {
-            // the connection may be broken, close it to avoid it being reused
-            syncDataClient.getInputProtocol().getTransport().close();
-            throw e;
+        SyncDataClient syncDataClient = null;
+        try {
+          syncDataClient =
+              ClusterIoTDB.getInstance()
+                  .getSyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS());
+          aggrBuffers =
+              syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
+        } catch (TException e) {
+          // the connection may be broken, close it to avoid it being reused
+          syncDataClient.close();
+          throw e;
+        } finally {
+          if (syncDataClient != null) {
+            syncDataClient.returnSelf();
           }
         }
       }
-    } catch (TException e) {
-      throw new IOException(e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      throw new IOException(e);
+    } catch (Exception e) {
       throw new IOException(e);
     }
     resetAggregateResults();
@@ -128,24 +127,26 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
     try {
       if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
         AsyncDataClient client =
-            metaGroupMember
-                .getClientProvider()
-                .getAsyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
+            ClusterIoTDB.getInstance()
+                .getAsyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS());
         aggrBuffer =
             SyncClientAdaptor.peekNextNotNullValue(
                 client, header, executorId, nextStartTime, nextEndTime);
       } else {
-        try (SyncDataClient syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS())) {
-          try {
-            aggrBuffer =
-                syncDataClient.peekNextNotNullValue(header, executorId, nextStartTime, nextEndTime);
-          } catch (TException e) {
-            // the connection may be broken, close it to avoid it being reused
-            syncDataClient.getInputProtocol().getTransport().close();
-            throw e;
+        SyncDataClient syncDataClient = null;
+        try {
+          syncDataClient =
+              ClusterIoTDB.getInstance()
+                  .getSyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS());
+          aggrBuffer =
+              syncDataClient.peekNextNotNullValue(header, executorId, nextStartTime, nextEndTime);
+        } catch (TException e) {
+          // the connection may be broken, close it to avoid it being reused
+          syncDataClient.close();
+          throw e;
+        } finally {
+          if (syncDataClient != null) {
+            syncDataClient.returnSelf();
           }
         }
       }
@@ -160,7 +161,9 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
     if (aggrBuffer != null) {
       long time = aggrBuffer.getLong();
       Object o = SerializeUtils.deserializeObject(aggrBuffer);
-      result = new Pair<>(time, o);
+      if (o != null) {
+        result = new Pair<>(time, o);
+      }
     }
     logger.debug(
         "Fetched peekNextNotNullValue from {} of [{}, {}]: {}",

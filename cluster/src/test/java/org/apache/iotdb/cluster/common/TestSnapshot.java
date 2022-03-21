@@ -34,17 +34,17 @@ public class TestSnapshot extends Snapshot {
   private ByteBuffer data;
 
   public TestSnapshot() {
-    data = ByteBuffer.wrap(new byte[8192 * 2048]);
+    data = ByteBuffer.wrap(new byte[1024 * 2048]);
   }
 
   public TestSnapshot(int id) {
     this.id = id;
-    data = ByteBuffer.wrap(new byte[8192 * 2048]);
+    data = ByteBuffer.wrap(new byte[1024 * 2048]);
   }
 
   @Override
   public ByteBuffer serialize() {
-    ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.BYTES + 8192 * 2048);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.BYTES + 1024 * 2048);
     byteBuffer.putInt(id);
     byteBuffer.put(data);
     byteBuffer.flip();

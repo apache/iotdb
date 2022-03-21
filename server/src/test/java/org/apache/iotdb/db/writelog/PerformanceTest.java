@@ -22,7 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -149,28 +149,28 @@ public class PerformanceTest {
     tempProcessorStore.createNewFile();
 
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath("root.logTestDevice"));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath("root.logTestDevice"));
     } catch (MetadataException ignored) {
     }
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.logTestDevice.s1"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.logTestDevice.s2"),
         TSDataType.INT32,
         TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.logTestDevice.s3"),
         TSDataType.TEXT,
         TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.logTestDevice.s4"),
         TSDataType.BOOLEAN,
         TSEncoding.PLAIN,

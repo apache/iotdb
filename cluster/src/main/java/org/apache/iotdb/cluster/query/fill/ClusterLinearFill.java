@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.query.fill;
 import org.apache.iotdb.cluster.query.aggregate.ClusterAggregator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
@@ -42,17 +43,20 @@ public class ClusterLinearFill extends LinearFill {
       Arrays.asList(SQLConstant.MIN_TIME, SQLConstant.FIRST_VALUE);
 
   ClusterLinearFill(LinearFill fill, MetaGroupMember metaGroupMember) {
-    super(fill.getDataType(), fill.getQueryTime(), fill.getBeforeRange(), fill.getAfterRange());
+    super(
+        fill.getDataType(), fill.getQueryStartTime(), fill.getBeforeRange(), fill.getAfterRange());
     this.metaGroupMember = metaGroupMember;
     this.aggregator = new ClusterAggregator(metaGroupMember);
   }
 
   @Override
-  protected TimeValuePair calculatePrecedingPoint() {
+  protected TimeValuePair calculatePrecedingPoint()
+      throws QueryProcessException, StorageEngineException {
     // calculate the preceding point can be viewed as a previous fill
     ClusterPreviousFill clusterPreviousFill =
-        new ClusterPreviousFill(dataType, queryTime, beforeRange, metaGroupMember);
-    clusterPreviousFill.configureFill(seriesPath, dataType, queryTime, deviceMeasurements, context);
+        new ClusterPreviousFill(dataType, queryStartTime, beforeRange, metaGroupMember);
+    clusterPreviousFill.configureFill(
+        seriesPath, dataType, queryStartTime, deviceMeasurements, context);
     return clusterPreviousFill.getFillResult();
   }
 

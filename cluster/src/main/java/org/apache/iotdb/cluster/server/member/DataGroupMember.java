@@ -19,13 +19,8 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import org.apache.iotdb.cluster.client.async.AsyncClientPool;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient.SingleManagerFactory;
-import org.apache.iotdb.cluster.client.async.AsyncDataHeartbeatClient;
-import org.apache.iotdb.cluster.client.sync.SyncClientPool;
-import org.apache.iotdb.cluster.client.sync.SyncDataClient;
-import org.apache.iotdb.cluster.client.sync.SyncDataHeartbeatClient;
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.ClientManager;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
@@ -47,6 +42,7 @@ import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTaskDescriptor;
+import org.apache.iotdb.cluster.metadata.CSchemaEngine;
 import org.apache.iotdb.cluster.partition.NodeAdditionResult;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -55,6 +51,7 @@ import org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus;
 import org.apache.iotdb.cluster.partition.slot.SlotNodeAdditionResult;
 import org.apache.iotdb.cluster.partition.slot.SlotNodeRemovalResult;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotTimePartitionFilter;
 import org.apache.iotdb.cluster.query.LocalQueryExecutor;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -74,21 +71,28 @@ import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.service.JMXService;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -116,12 +120,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
 
-public class DataGroupMember extends RaftMember {
+public class DataGroupMember extends RaftMember implements DataGroupMemberMBean {
+
+  private final String mbeanName;
 
   private static final Logger logger = LoggerFactory.getLogger(DataGroupMember.class);
 
@@ -155,6 +160,7 @@ public class DataGroupMember extends RaftMember {
 
   private LocalQueryExecutor localQueryExecutor;
 
+  LogApplier dataLogApplier;
   /**
    * When a new partition table is installed, all data members will be checked if unchanged. If not,
    * such members will be removed.
@@ -166,42 +172,59 @@ public class DataGroupMember extends RaftMember {
   @TestOnly
   public DataGroupMember(PartitionGroup nodes) {
     // constructor for test
+    this.name =
+        "Data-"
+            + nodes.getHeader().getNode().getInternalIp()
+            + "-"
+            + nodes.getHeader().getNode().getDataPort()
+            + "-raftId-"
+            + nodes.getRaftId()
+            + "";
     allNodes = nodes;
+    mbeanName =
+        String.format(
+            "%s:%s=%s%d",
+            "org.apache.iotdb.cluster.service",
+            IoTDBConstant.JMX_TYPE,
+            "DataMember",
+            getRaftGroupId());
     setQueryManager(new ClusterQueryManager());
     localQueryExecutor = new LocalQueryExecutor(this);
     lastAppliedPartitionTableVersion = new LastAppliedPatitionTableVersion(getMemberDir());
   }
 
-  DataGroupMember(
-      TProtocolFactory factory,
-      PartitionGroup nodes,
-      Node thisNode,
-      MetaGroupMember metaGroupMember) {
+  DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, MetaGroupMember metaGroupMember) {
+    // The name is used in JMX, so we have to avoid to use "(" "," "=" ")"
     super(
-        "Data("
+        "Data-"
             + nodes.getHeader().getNode().getInternalIp()
-            + ":"
-            + nodes.getHeader().getNode().getMetaPort()
-            + ", raftId="
-            + nodes.getId()
-            + ")",
-        new AsyncClientPool(new AsyncDataClient.FactoryAsync(factory)),
-        new SyncClientPool(new SyncDataClient.FactorySync(factory)),
-        new AsyncClientPool(new AsyncDataHeartbeatClient.FactoryAsync(factory)),
-        new SyncClientPool(new SyncDataHeartbeatClient.FactorySync(factory)),
-        new AsyncClientPool(new SingleManagerFactory(factory)));
-    this.thisNode = thisNode;
+            + "-"
+            + nodes.getHeader().getNode().getDataPort()
+            + "-raftId-"
+            + nodes.getRaftId()
+            + "",
+        new ClientManager(
+            ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
+            ClientManager.Type.DataGroupClient));
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
+    mbeanName =
+        String.format(
+            "%s:%s=%s%d",
+            "org.apache.iotdb.cluster.service",
+            IoTDBConstant.JMX_TYPE,
+            "DataMember",
+            getRaftGroupId());
     setQueryManager(new ClusterQueryManager());
     slotManager = new SlotManager(ClusterConstant.SLOT_NUM, getMemberDir(), getName());
-    LogApplier applier = new DataLogApplier(metaGroupMember, this);
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier()) {
-      applier = new AsyncDataLogApplier(applier, name);
+    dataLogApplier = new DataLogApplier(metaGroupMember, this);
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier()
+        && ClusterDescriptor.getInstance().getConfig().getReplicationNum() != 1) {
+      dataLogApplier = new AsyncDataLogApplier(dataLogApplier, name);
     }
     logManager =
         new FilePartitionedSnapshotLogManager(
-            applier, metaGroupMember.getPartitionTable(), allNodes.get(0), thisNode, this);
+            dataLogApplier, metaGroupMember.getPartitionTable(), allNodes.get(0), thisNode, this);
     initPeerMap();
     term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();
@@ -218,9 +241,13 @@ public class DataGroupMember extends RaftMember {
     if (heartBeatService != null) {
       return;
     }
+    logger.info("Starting DataGroupMember {}... RaftGroupID: {}", name, getRaftGroupId());
+    JMXService.registerMBean(this, mbeanName);
     super.start();
     heartBeatService.submit(new DataHeartbeatThread(this));
-    pullSnapshotService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    pullSnapshotService =
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors(), "pullSnapshot");
     pullSnapshotHintService = new PullSnapshotHintService(this);
     pullSnapshotHintService.start();
     resumePullSnapshotTasks();
@@ -232,7 +259,8 @@ public class DataGroupMember extends RaftMember {
    */
   @Override
   public void stop() {
-    logger.info("{}: stopping...", name);
+    logger.info("Stopping DataGroupMember {}... RaftGroupID: {}", name, getRaftGroupId());
+    JMXService.deregisterMBean(mbeanName);
     super.stop();
     if (pullSnapshotService != null) {
       pullSnapshotService.shutdownNow();
@@ -293,13 +321,13 @@ public class DataGroupMember extends RaftMember {
     private TProtocolFactory protocolFactory;
     private MetaGroupMember metaGroupMember;
 
-    Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember) {
+    public Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember) {
       this.protocolFactory = protocolFactory;
       this.metaGroupMember = metaGroupMember;
     }
 
-    public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode) {
-      return new DataGroupMember(protocolFactory, partitionGroup, thisNode, metaGroupMember);
+    public DataGroupMember create(PartitionGroup partitionGroup) {
+      return new DataGroupMember(protocolFactory, partitionGroup, metaGroupMember);
     }
   }
 
@@ -689,25 +717,35 @@ public class DataGroupMember extends RaftMember {
           }
           handleChangeMembershipLogWithoutRaft(log);
         } else {
-          getLocalExecutor().processNonQuery(plan);
+          ((DataLogApplier) dataLogApplier).applyPhysicalPlan(plan);
         }
         return StatusUtils.OK;
       } catch (Exception e) {
         Throwable cause = IOUtils.getRootCause(e);
-        if (cause instanceof StorageGroupNotSetException
-            || cause instanceof UndefinedTemplateException) {
-          try {
-            metaGroupMember.syncLeaderWithConsistencyCheck(true);
-            if (plan instanceof InsertPlan && ((InsertPlan) plan).getFailedMeasurements() != null) {
-              ((InsertPlan) plan).recoverFromFailure();
+        boolean hasCreated = false;
+        try {
+          if (plan instanceof InsertPlan
+              && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
+            if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletPlan) {
+              if (e instanceof BatchProcessException) {
+                for (TSStatus status : ((BatchProcessException) e).getFailingStatus()) {
+                  if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
+                    hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
+                    ((BatchPlan) plan).getResults().clear();
+                    break;
+                  }
+                }
+              }
+            } else if (cause instanceof PathNotExistException) {
+              hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
             }
-            getLocalExecutor().processNonQuery(plan);
-            return StatusUtils.OK;
-          } catch (CheckConsistencyException ce) {
-            return StatusUtils.getStatus(StatusUtils.CONSISTENCY_FAILURE, ce.getMessage());
-          } catch (Exception ne) {
-            return handleLogExecutionException(plan, IOUtils.getRootCause(ne));
           }
+        } catch (MetadataException | CheckConsistencyException ex) {
+          logger.error("{}: Cannot auto-create timeseries for {}", name, plan, e);
+          return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, ex.getMessage());
+        }
+        if (hasCreated) {
+          return executeNonQueryPlan(plan);
         }
         return handleLogExecutionException(plan, cause);
       }
@@ -723,6 +761,16 @@ public class DataGroupMember extends RaftMember {
 
       return executeNonQueryPlanWithKnownLeader(plan);
     }
+  }
+
+  @Override
+  ClientCategory getClientCategory() {
+    return ClientCategory.DATA;
+  }
+
+  @Override
+  public String getMBeanName() {
+    return mbeanName;
   }
 
   private void handleChangeMembershipLogWithoutRaft(Log log) {
@@ -751,6 +799,34 @@ public class DataGroupMember extends RaftMember {
     if (character == NodeCharacter.LEADER) {
       long startTime = Statistic.DATA_GROUP_MEMBER_LOCAL_EXECUTION.getOperationStartTime();
       TSStatus status = processPlanLocally(plan);
+      boolean hasCreated = false;
+      try {
+        if (plan instanceof InsertPlan
+            && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
+          if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletPlan) {
+            if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+              for (TSStatus tmpStatus : status.getSubStatus()) {
+                if (tmpStatus.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
+                  hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
+                  ((BatchPlan) plan).getResults().clear();
+                  break;
+                }
+              }
+            }
+          } else {
+            if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
+              hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
+            }
+          }
+        }
+      } catch (MetadataException | CheckConsistencyException e) {
+        logger.error("{}: Cannot auto-create timeseries for {}", name, plan, e);
+        return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      }
+
+      if (hasCreated) {
+        status = processPlanLocally(plan);
+      }
       Statistic.DATA_GROUP_MEMBER_LOCAL_EXECUTION.calOperationCostTimeFromStart(startTime);
       if (status != null) {
         return status;
@@ -768,6 +844,41 @@ public class DataGroupMember extends RaftMember {
     return StatusUtils.NO_LEADER;
   }
 
+  private boolean createTimeseriesForFailedInsertion(InsertPlan plan)
+      throws CheckConsistencyException, IllegalPathException {
+    logger.debug("create time series for failed insertion {}", plan);
+    // apply measurements according to failed measurements
+    if (plan instanceof InsertMultiTabletPlan) {
+      for (InsertTabletPlan insertPlan : ((InsertMultiTabletPlan) plan).getInsertTabletPlanList()) {
+        if (insertPlan.getFailedMeasurements() != null) {
+          insertPlan.getPlanFromFailed();
+        }
+      }
+    }
+
+    if (plan instanceof InsertRowsPlan) {
+      for (InsertRowPlan insertPlan : ((InsertRowsPlan) plan).getInsertRowPlanList()) {
+        if (insertPlan.getFailedMeasurements() != null) {
+          insertPlan.getPlanFromFailed();
+        }
+      }
+    }
+
+    if (plan instanceof InsertRowsOfOneDevicePlan) {
+      for (InsertRowPlan insertPlan : ((InsertRowsOfOneDevicePlan) plan).getRowPlans()) {
+        if (insertPlan.getFailedMeasurements() != null) {
+          insertPlan.getPlanFromFailed();
+        }
+      }
+    }
+
+    if (plan.getFailedMeasurements() != null) {
+      plan.getPlanFromFailed();
+    }
+
+    return ((CSchemaEngine) IoTDB.schemaEngine).createTimeseries(plan);
+  }
+
   /**
    * When the node does not play a member in a group any more, the corresponding local data should
    * be removed.
@@ -778,7 +889,7 @@ public class DataGroupMember extends RaftMember {
     }
 
     Set<Integer> slotSet = new HashSet<>(slots);
-    List<PartialPath> allStorageGroupNames = IoTDB.metaManager.getAllStorageGroupPaths();
+    List<PartialPath> allStorageGroupNames = IoTDB.schemaEngine.getAllStorageGroupPaths();
     TimePartitionFilter filter =
         (storageGroupName, timePartitionId) -> {
           int slot =
@@ -816,7 +927,8 @@ public class DataGroupMember extends RaftMember {
     synchronized (allNodes) {
       if (allNodes.contains(removedNode) && allNodes.size() == config.getReplicationNum()) {
         // update the group if the deleted node was in it
-        PartitionGroup newGroup = metaGroupMember.getPartitionTable().getHeaderGroup(getHeader());
+        PartitionGroup newGroup =
+            metaGroupMember.getPartitionTable().getPartitionGroup(getHeader());
         if (newGroup == null) {
           return;
         }
@@ -825,6 +937,18 @@ public class DataGroupMember extends RaftMember {
         peerMap.putIfAbsent(newNodeToGroup, new Peer(logManager.getLastLogIndex()));
       }
     }
+  }
+
+  /**
+   * Return a TimePartitionFilter that tells whether a time partition is managed by this member.
+   *
+   * @return a TimePartitionFilter that tells whether a time partition is managed by this member.
+   */
+  public TimePartitionFilter getTimePartitionFilter() {
+    Set<Integer> slotSet =
+        new HashSet<>(
+            ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(getHeader()));
+    return new SlotTimePartitionFilter(slotSet);
   }
 
   /**

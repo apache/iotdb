@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -32,11 +32,11 @@ import java.util.List;
 public class MergePlan extends PhysicalPlan {
 
   public MergePlan(OperatorType operatorType) {
-    super(false, operatorType);
+    super(operatorType);
   }
 
   public MergePlan() {
-    super(false, OperatorType.MERGE);
+    super(OperatorType.MERGE);
   }
 
   @Override
@@ -50,7 +50,7 @@ public class MergePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.MERGE.ordinal());
   }
 

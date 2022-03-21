@@ -18,19 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.rescon.CachedStringPool;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 public abstract class MNode implements IMNode {
-
-  private static Map<String, String> cachedPathPool =
-      CachedStringPool.getInstance().getCachedPool();
 
   /** Name of the MNode */
   protected String name;
@@ -87,13 +82,7 @@ public abstract class MNode implements IMNode {
   @Override
   public String getFullPath() {
     if (fullPath == null) {
-      fullPath = concatFullPath();
-      String cachedFullPath = cachedPathPool.get(fullPath);
-      if (cachedFullPath == null) {
-        cachedPathPool.put(fullPath, fullPath);
-      } else {
-        fullPath = cachedFullPath;
-      }
+      fullPath = concatFullPath().intern();
     }
     return fullPath;
   }
@@ -111,6 +100,20 @@ public abstract class MNode implements IMNode {
   @Override
   public void setFullPath(String fullPath) {
     this.fullPath = fullPath;
+  }
+
+  @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
+    newMNode.setParent(parent);
+  }
+
+  @Override
+  public boolean isEmptyInternal() {
+    return !IoTDBConstant.PATH_ROOT.equals(name)
+        && !isMeasurement()
+        && getSchemaTemplate() == null
+        && !isUseTemplate()
+        && getChildren().size() == 0;
   }
 
   @Override
@@ -134,6 +137,33 @@ public abstract class MNode implements IMNode {
   }
 
   @Override
+  public IStorageGroupMNode getAsStorageGroupMNode() {
+    if (isStorageGroup()) {
+      return (IStorageGroupMNode) this;
+    } else {
+      throw new UnsupportedOperationException("Wrong MNode Type");
+    }
+  }
+
+  @Override
+  public IEntityMNode getAsEntityMNode() {
+    if (isEntity()) {
+      return (IEntityMNode) this;
+    } else {
+      throw new UnsupportedOperationException("Wrong MNode Type");
+    }
+  }
+
+  @Override
+  public IMeasurementMNode getAsMeasurementMNode() {
+    if (isMeasurement()) {
+      return (IMeasurementMNode) this;
+    } else {
+      throw new UnsupportedOperationException("Wrong MNode Type");
+    }
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
@@ -145,7 +175,7 @@ public abstract class MNode implements IMNode {
     if (fullPath == null) {
       return Objects.equals(getFullPath(), mNode.getFullPath());
     } else {
-      return Objects.equals(fullPath, mNode.fullPath);
+      return Objects.equals(fullPath, mNode.getFullPath());
     }
   }
 

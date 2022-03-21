@@ -204,6 +204,11 @@ public class MeasurementSchema
   }
 
   @Override
+  public byte getTypeInByte() {
+    return type;
+  }
+
+  @Override
   public TSEncoding getTimeTSEncoding() {
     return TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
   }
@@ -217,28 +222,27 @@ public class MeasurementSchema
   public Encoder getTimeEncoder() {
     TSEncoding timeEncoding =
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
-    TSDataType timeType =
-        TSDataType.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType());
+    TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
     return TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType);
   }
 
   @Override
-  public List<String> getValueMeasurementIdList() {
+  public List<String> getSubMeasurementsList() {
     throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
   }
 
   @Override
-  public List<TSDataType> getValueTSDataTypeList() {
+  public List<TSDataType> getSubMeasurementsTSDataTypeList() {
     throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
   }
 
   @Override
-  public List<TSEncoding> getValueTSEncodingList() {
+  public List<TSEncoding> getSubMeasurementsTSEncodingList() {
     throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
   }
 
   @Override
-  public List<Encoder> getValueEncoderList() {
+  public List<Encoder> getSubMeasurementsEncoderList() {
     throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
   }
 
@@ -393,17 +397,17 @@ public class MeasurementSchema
   }
 
   @Override
-  public int getMeasurementIdColumnIndex(String measurementId) {
+  public int getSubMeasurementIndex(String measurementId) {
     return this.measurementId.equals(measurementId) ? 0 : -1;
   }
 
   @Override
-  public int getMeasurementCount() {
+  public int getSubMeasurementsCount() {
     return 1;
   }
 
   @Override
-  public boolean isCompatible(String measurementId) {
+  public boolean containsSubMeasurement(String measurementId) {
     return this.measurementId.equals(measurementId);
   }
 }

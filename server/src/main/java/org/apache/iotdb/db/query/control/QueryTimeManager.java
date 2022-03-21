@@ -16,16 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.control;
 
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
-import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.query.context.QueryContext;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,59 +43,60 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class QueryTimeManager implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(QueryTimeManager.class);
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  /**
-   * the key of queryInfoMap is the query id and the value of queryInfoMap is the start time, the
-   * statement of this query.
-   */
-  private Map<Long, QueryInfo> queryInfoMap;
+  private Map<Long, QueryContext> queryContextMap;
 
   private ScheduledExecutorService executorService;
 
   private Map<Long, ScheduledFuture<?>> queryScheduledTaskMap;
 
   private QueryTimeManager() {
-    queryInfoMap = new ConcurrentHashMap<>();
+    queryContextMap = new ConcurrentHashMap<>();
     queryScheduledTaskMap = new ConcurrentHashMap<>();
     executorService = IoTDBThreadPoolFactory.newScheduledThreadPool(1, "query-time-manager");
   }
 
-  public void registerQuery(long queryId, long startTime, String sql, long timeout) {
-    final long finalTimeout = timeout == 0 ? config.getQueryTimeoutThreshold() : timeout;
-    queryInfoMap.put(queryId, new QueryInfo(startTime, sql));
-    // submit a scheduled task to judge whether query is still running after timeout
-    ScheduledFuture<?> scheduledFuture =
-        executorService.schedule(
-            () -> {
-              killQuery(queryId);
-              logger.warn(
-                  String.format("Query is time out (%dms) with queryId %d", finalTimeout, queryId));
-            },
-            finalTimeout,
-            TimeUnit.MILLISECONDS);
-    queryScheduledTaskMap.put(queryId, scheduledFuture);
-  }
-
-  public void registerQuery(
-      long queryId, long startTime, String sql, long timeout, PhysicalPlan plan) {
-    if (plan instanceof ShowQueryProcesslistPlan) {
-      return;
+  public void registerQuery(QueryContext context) {
+    queryContextMap.put(context.getQueryId(), context);
+    // Use the default configuration of server if a negative timeout
+    if (context.getTimeout() < 0) {
+      context.setTimeout(IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
     }
-    registerQuery(queryId, startTime, sql, timeout);
+    if (context.getTimeout() != 0) {
+      // submit a scheduled task to judge whether query is still running after timeout
+      ScheduledFuture<?> scheduledFuture =
+          executorService.schedule(
+              () -> {
+                killQuery(context.getQueryId());
+                logger.warn(
+                    String.format(
+                        "Query is time out (%dms) with queryId %d",
+                        context.getTimeout(), context.getQueryId()));
+              },
+              context.getTimeout(),
+              TimeUnit.MILLISECONDS);
+      queryScheduledTaskMap.put(context.getQueryId(), scheduledFuture);
+    }
   }
 
   public void killQuery(long queryId) {
-    if (queryInfoMap.get(queryId) == null) {
+    if (queryContextMap.get(queryId) == null) {
       return;
     }
-    queryInfoMap.get(queryId).setInterrupted(true);
+    queryContextMap.get(queryId).setInterrupted(true);
   }
 
-  public AtomicBoolean unRegisterQuery(long queryId) {
+  /**
+   * UnRegister query when query quits because of getting enough data or timeout. If getting enough
+   * data, we only remove the timeout task. If the query is full quit because of timeout or
+   * EndQuery(), we remove them all.
+   *
+   * @param fullQuit True if timeout or endQuery()
+   */
+  public AtomicBoolean unRegisterQuery(long queryId, boolean fullQuit) {
     // This is used to make sure the QueryTimeoutRuntimeException is thrown once
     AtomicBoolean successRemoved = new AtomicBoolean(false);
-    queryInfoMap.computeIfPresent(
+    queryContextMap.computeIfPresent(
         queryId,
         (k, v) -> {
           successRemoved.set(true);
@@ -106,27 +106,44 @@ public class QueryTimeManager implements IService {
           }
           SessionTimeoutManager.getInstance()
               .refresh(SessionManager.getInstance().getSessionIdByQueryId(queryId));
-          return null;
+          return fullQuit ? null : v;
         });
     return successRemoved;
   }
 
-  public AtomicBoolean unRegisterQuery(long queryId, PhysicalPlan plan) {
-    return plan instanceof ShowQueryProcesslistPlan ? null : unRegisterQuery(queryId);
-  }
-
-  public static void checkQueryAlive(long queryId) {
-    QueryInfo queryInfo = getInstance().queryInfoMap.get(queryId);
-    if (queryInfo != null && queryInfo.isInterrupted()) {
-      if (getInstance().unRegisterQuery(queryId).get()) {
-        throw new QueryTimeoutRuntimeException(
-            QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
+  /**
+   * Check given query is alive or not. We only throw the queryTimeoutRunTimeException once. If the
+   * runTimeException is thrown in main thread, it will quit directly while the return value will be
+   * used to ask sub query threads to quit. Else if it's thrown in one sub thread, other sub threads
+   * will quit by reading the return value, and main thread will catch and throw the same exception
+   * by reading the ExceptionBatchData.
+   *
+   * @return True if alive.
+   */
+  public static boolean checkQueryAlive(long queryId) {
+    QueryContext queryContext = getInstance().getQueryContext(queryId);
+    if (queryContext == null) {
+      return false;
+    } else if (queryContext.isInterrupted()) {
+      if (getInstance().unRegisterQuery(queryId, true).get()) {
+        throw new QueryTimeoutRuntimeException();
       }
+      return false;
     }
+    return true;
   }
 
-  public Map<Long, QueryInfo> getQueryInfoMap() {
-    return queryInfoMap;
+  public Map<Long, QueryContext> getQueryContextMap() {
+    return queryContextMap;
+  }
+
+  public void clear() {
+    queryContextMap.clear();
+    queryScheduledTaskMap.clear();
+  }
+
+  public QueryContext getQueryContext(long queryId) {
+    return queryContextMap.get(queryId);
   }
 
   public static QueryTimeManager getInstance() {
@@ -156,47 +173,5 @@ public class QueryTimeManager implements IService {
     private static final QueryTimeManager INSTANCE = new QueryTimeManager();
 
     private QueryTimeManagerHelper() {}
-  }
-
-  public class QueryInfo {
-
-    /**
-     * To reduce the cost of memory, we only keep the a certain size statement. For statement whose
-     * length is over this, we keep its head and tail.
-     */
-    private static final int MAX_STATEMENT_LENGTH = 64;
-
-    private final long startTime;
-    private final String statement;
-
-    private volatile boolean isInterrupted = false;
-
-    public QueryInfo(long startTime, String statement) {
-      this.startTime = startTime;
-      if (statement.length() <= 64) {
-        this.statement = statement;
-      } else {
-        this.statement =
-            statement.substring(0, MAX_STATEMENT_LENGTH / 2)
-                + "..."
-                + statement.substring(statement.length() - MAX_STATEMENT_LENGTH / 2);
-      }
-    }
-
-    public long getStartTime() {
-      return startTime;
-    }
-
-    public String getStatement() {
-      return statement;
-    }
-
-    public void setInterrupted(boolean interrupted) {
-      isInterrupted = interrupted;
-    }
-
-    public boolean isInterrupted() {
-      return isInterrupted;
-    }
   }
 }

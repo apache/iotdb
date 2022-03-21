@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
@@ -86,8 +87,14 @@ public interface IPlanExecutor {
    * @param startTime start time in delete command
    * @param endTime end time in delete command
    * @param planIndex index of the deletion plan
+   * @param partitionFilter specify involving time partitions, if null, all partitions are involved
    */
-  void delete(PartialPath path, long startTime, long endTime, long planIndex)
+  void delete(
+      PartialPath path,
+      long startTime,
+      long endTime,
+      long planIndex,
+      TimePartitionFilter partitionFilter)
       throws QueryProcessException;
 
   /**

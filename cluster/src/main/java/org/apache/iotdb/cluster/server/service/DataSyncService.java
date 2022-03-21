@@ -24,11 +24,12 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
-import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.CSchemaEngine;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
@@ -48,7 +49,10 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -283,17 +287,18 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CMManager) IoTDB.metaManager).getAllPaths(paths, withAlias);
+      return ((CSchemaEngine) IoTDB.schemaEngine).getAllPaths(paths, withAlias);
     } catch (MetadataException | CheckConsistencyException e) {
       throw new TException(e);
     }
   }
 
   @Override
-  public Set<String> getAllDevices(RaftNode header, List<String> path) throws TException {
+  public Set<String> getAllDevices(RaftNode header, List<String> path, boolean isPrefixMatch)
+      throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CMManager) IoTDB.metaManager).getAllDevices(path);
+      return ((CSchemaEngine) IoTDB.schemaEngine).getAllDevices(path, isPrefixMatch);
     } catch (MetadataException | CheckConsistencyException e) {
       throw new TException(e);
     }
@@ -312,7 +317,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public List<String> getNodeList(RaftNode header, String path, int nodeLevel) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CMManager) IoTDB.metaManager).getNodeList(path, nodeLevel);
+      return ((CSchemaEngine) IoTDB.schemaEngine).getNodeList(path, nodeLevel);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }
@@ -322,7 +327,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public Set<String> getChildNodeInNextLevel(RaftNode header, String path) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CMManager) IoTDB.metaManager).getChildNodeInNextLevel(path);
+      return ((CSchemaEngine) IoTDB.schemaEngine).getChildNodeInNextLevel(path);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }
@@ -332,17 +337,16 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public Set<String> getChildNodePathInNextLevel(RaftNode header, String path) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CMManager) IoTDB.metaManager).getChildNodePathInNextLevel(path);
+      return ((CSchemaEngine) IoTDB.schemaEngine).getChildNodePathInNextLevel(path);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }
   }
 
   @Override
-  public ByteBuffer getAllMeasurementSchema(RaftNode header, ByteBuffer planBinary)
-      throws TException {
+  public ByteBuffer getAllMeasurementSchema(MeasurementSchemaRequest request) throws TException {
     try {
-      return dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(planBinary);
+      return dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(request);
     } catch (CheckConsistencyException | IOException | MetadataException e) {
       throw new TException(e);
     }
@@ -352,8 +356,12 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public List<ByteBuffer> getAggrResult(GetAggrResultRequest request) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().getAggrResult(request);
-    } catch (StorageEngineException | QueryProcessException | IOException e) {
-      throw new TException(e);
+    } catch (StorageEngineException
+        | QueryProcessException
+        | IOException
+        | StatisticsClassException
+        | UnSupportedDataTypeException e) {
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -408,7 +416,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
         | QueryProcessException
         | IOException
         | StorageEngineException
-        | IllegalPathException e) {
+        | MetadataException e) {
       throw new TException(e);
     }
   }
@@ -417,6 +425,15 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public int getPathCount(RaftNode header, List<String> pathsToQuery, int level) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().getPathCount(pathsToQuery, level);
+    } catch (CheckConsistencyException | MetadataException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public int getDeviceCount(RaftNode header, List<String> pathsToQuery) throws TException {
+    try {
+      return dataGroupMember.getLocalQueryExecutor().getDeviceCount(pathsToQuery);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }

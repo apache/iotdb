@@ -19,10 +19,13 @@
 import struct
 
 from iotdb.utils.IoTDBConstants import TSDataType
+from iotdb.utils.BitMap import BitMap
 
 
 class Tablet(object):
-    def __init__(self, device_id, measurements, data_types, values, timestamps):
+    def __init__(
+        self, device_id, measurements, data_types, values, timestamps
+    ):
         """
         creating a tablet for insertion
           for example, considering device: root.sg1.d1
@@ -30,14 +33,13 @@ class Tablet(object):
                      1,  125.3,  True,  text1
                      2,  111.6, False,  text2
                      3,  688.6,  True,  text3
-        Notice: The tablet should not have empty cell
+        Notice: From 0.13.0, the tablet can contain empty cell
                 The tablet will be sorted at the initialization by timestamps
-
-        :param device_id: String, IoTDB time series path to device layer (without sensor).
-        :param measurements: List, sensors.
-        :param data_types: TSDataType List, specify value types for sensors.
-        :param values: 2-D List, the values of each row should be the outer list element.
-        :param timestamps: List.
+        :param device_id: String, IoTDB time series path to device layer (without sensor)
+        :param measurements: List, sensors
+        :param data_types: TSDataType List, specify value types for sensors
+        :param values: 2-D List, the values of each row should be the outer list element
+        :param timestamps: List,
         """
         if len(timestamps) != len(values):
             raise RuntimeError(
@@ -90,42 +92,106 @@ class Tablet(object):
     def get_binary_values(self):
         format_str_list = [">"]
         values_tobe_packed = []
+        bitmaps = []
+        has_none = False
         for i in range(self.__column_number):
+            bitmap = None
+            bitmaps.insert(i, bitmap)
             if self.__data_types[i] == TSDataType.BOOLEAN:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("?")
                 for j in range(self.__row_number):
-                    values_tobe_packed.append(self.__values[j][i])
+                    if self.__values[j][i] is not None:
+                        values_tobe_packed.append(self.__values[j][i])
+                    else:
+                        values_tobe_packed.append(False)
+                        self.__mark_none_value(bitmaps, bitmap, i, j)
+                        has_none = True
+
             elif self.__data_types[i] == TSDataType.INT32:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("i")
                 for j in range(self.__row_number):
-                    values_tobe_packed.append(self.__values[j][i])
+                    if self.__values[j][i] is not None:
+                        values_tobe_packed.append(self.__values[j][i])
+                    else:
+                        values_tobe_packed.append(0)
+                        self.__mark_none_value(bitmaps, bitmap, i, j)
+                        has_none = True
+
             elif self.__data_types[i] == TSDataType.INT64:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("q")
                 for j in range(self.__row_number):
-                    values_tobe_packed.append(self.__values[j][i])
+                    if self.__values[j][i] is not None:
+                        values_tobe_packed.append(self.__values[j][i])
+                    else:
+                        values_tobe_packed.append(0)
+                        self.__mark_none_value(bitmaps, bitmap, i, j)
+                        has_none = True
+
             elif self.__data_types[i] == TSDataType.FLOAT:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("f")
                 for j in range(self.__row_number):
-                    values_tobe_packed.append(self.__values[j][i])
+                    if self.__values[j][i] is not None:
+                        values_tobe_packed.append(self.__values[j][i])
+                    else:
+                        values_tobe_packed.append(0)
+                        self.__mark_none_value(bitmaps, bitmap, i, j)
+                        has_none = True
+
             elif self.__data_types[i] == TSDataType.DOUBLE:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("d")
                 for j in range(self.__row_number):
-                    values_tobe_packed.append(self.__values[j][i])
+                    if self.__values[j][i] is not None:
+                        values_tobe_packed.append(self.__values[j][i])
+                    else:
+                        values_tobe_packed.append(0)
+                        self.__mark_none_value(bitmaps, bitmap, i, j)
+                        has_none = True
+
             elif self.__data_types[i] == TSDataType.TEXT:
                 for j in range(self.__row_number):
-                    value_bytes = bytes(self.__values[j][i], "utf-8")
-                    format_str_list.append("i")
-                    format_str_list.append(str(len(value_bytes)))
-                    format_str_list.append("s")
-                    values_tobe_packed.append(len(value_bytes))
-                    values_tobe_packed.append(value_bytes)
-            else:
-                raise RuntimeError("Unsupported data type:" + str(self.__data_types[i]))
+                    if self.__values[j][i] is not None:
+                        value_bytes = bytes(self.__values[j][i], "utf-8")
+                        format_str_list.append("i")
+                        format_str_list.append(str(len(value_bytes)))
+                        format_str_list.append("s")
+                        values_tobe_packed.append(len(value_bytes))
+                        values_tobe_packed.append(value_bytes)
+                    else:
+                        value_bytes = bytes("", "utf-8")
+                        format_str_list.append("i")
+                        format_str_list.append(str(len(value_bytes)))
+                        format_str_list.append("s")
+                        values_tobe_packed.append(len(value_bytes))
+                        values_tobe_packed.append(value_bytes)
+                        self.__mark_none_value(bitmaps, bitmap, i, j)
+                        has_none = True
 
+            else:
+                raise RuntimeError(
+                    "Unsupported data type:" + str(self.__data_types[i])
+                )
+
+        if has_none:
+            for i in range(self.__column_number):
+                format_str_list.append("?")
+                if bitmaps[i] is None:
+                    values_tobe_packed.append(False)
+                else:
+                    values_tobe_packed.append(True)
+                    format_str_list.append(str(self.__row_number // 8 + 1))
+                    format_str_list.append("c")
+                    for j in range(self.__row_number // 8 + 1):
+                        values_tobe_packed.append(bytes([bitmaps[i].bits[j]]))
         format_str = "".join(format_str_list)
         return struct.pack(format_str, *values_tobe_packed)
+
+    def __mark_none_value(self, bitmaps, bitmap, column, row):
+        if bitmap is None:
+            bitmap = BitMap(self.__row_number)
+            bitmaps.insert(column, bitmap)
+        bitmap.mark(row)

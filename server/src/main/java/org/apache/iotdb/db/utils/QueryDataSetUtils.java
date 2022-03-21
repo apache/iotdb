@@ -47,8 +47,7 @@ public class QueryDataSetUtils {
   public static TSQueryDataSet convertQueryDataSetByFetchSize(
       QueryDataSet queryDataSet, int fetchSize, WatermarkEncoder watermarkEncoder)
       throws IOException {
-    List<TSDataType> dataTypes = queryDataSet.getDataTypes();
-    int columnNum = dataTypes.size();
+    int columnNum = queryDataSet.getColumnNum();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
     // one time column and each value column has a actual value buffer and a bitmap value to
     // indicate whether it is a null
@@ -68,13 +67,14 @@ public class QueryDataSetUtils {
       if (queryDataSet.hasNext()) {
         RowRecord rowRecord = queryDataSet.next();
         // filter rows whose columns are null according to the rule
-        if ((queryDataSet.isWithoutAllNull() && rowRecord.isAllNull())
-            || (queryDataSet.isWithoutAnyNull() && rowRecord.hasNullField())) {
-          // if the current RowRecord doesn't satisfy, we should also decrease AlreadyReturnedRowNum
+        if (queryDataSet.withoutNullFilter(rowRecord)) {
+          // if the current RowRecord doesn't satisfy, we should also decrease
+          // AlreadyReturnedRowNum
           queryDataSet.decreaseAlreadyReturnedRowNum();
           i--;
           continue;
         }
+
         if (watermarkEncoder != null) {
           rowRecord = watermarkEncoder.encodeRecord(rowRecord);
         }

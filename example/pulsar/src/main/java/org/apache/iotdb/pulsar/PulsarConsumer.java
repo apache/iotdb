@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.pulsar;
 
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.KeySharedPolicy;
 import org.apache.pulsar.client.api.PulsarClient;
@@ -26,10 +33,6 @@ import org.apache.pulsar.client.api.SubscriptionType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -40,18 +43,8 @@ public class PulsarConsumer {
   // Specify the number of consumers
   private static final int CONSUMER_NUM = 3;
   private List<Consumer<?>> consumerList;
-  private static final String CREATE_SG_TEMPLATE = "SET STORAGE GROUP TO %s";
-  private static final String CREATE_TIMESERIES_TEMPLATE =
-      "CREATE TIMESERIES %s WITH DATATYPE=TEXT, ENCODING=PLAIN";
+  private static SessionPool pool;
   private static final Logger logger = LoggerFactory.getLogger(PulsarConsumer.class);
-  protected static final String[] ALL_TIMESERIES = {
-    "root.vehicle.device1.sensor1",
-    "root.vehicle.device1.sensor2",
-    "root.vehicle.device2.sensor1",
-    "root.vehicle.device2.sensor2",
-    "root.vehicle.device3.sensor1",
-    "root.vehicle.device3.sensor2",
-  };
 
   public PulsarConsumer(List<Consumer<?>> consumerList) {
     this.consumerList = consumerList;
@@ -60,33 +53,37 @@ public class PulsarConsumer {
   public void consumeInParallel() throws ClassNotFoundException {
     ExecutorService executor = Executors.newFixedThreadPool(CONSUMER_NUM);
     for (int i = 0; i < consumerList.size(); i++) {
-      PulsarConsumerThread consumerExecutor = new PulsarConsumerThread(consumerList.get(i));
+      PulsarConsumerThread consumerExecutor = new PulsarConsumerThread(consumerList.get(i), pool);
       executor.submit(consumerExecutor);
     }
   }
 
   @SuppressWarnings("squid:S2068")
-  private static void prepareSchema() {
+  private static void initIoTDB() {
     try {
-      Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-      try (Connection connection =
-              DriverManager.getConnection(
-                  Constant.IOTDB_CONNECTION_URL,
-                  Constant.IOTDB_CONNECTION_USER,
-                  Constant.IOTDB_CONNECTION_PASSWORD);
-          Statement statement = connection.createStatement()) {
-
-        statement.execute(String.format(CREATE_SG_TEMPLATE, Constant.STORAGE_GROUP));
-
-        for (String timeseries : ALL_TIMESERIES) {
-          statement.addBatch(String.format(CREATE_TIMESERIES_TEMPLATE, timeseries));
-        }
-        statement.executeBatch();
-        statement.clearBatch();
+      for (String storageGroup : Constant.STORAGE_GROUP) {
+        addStorageGroup(storageGroup);
       }
-    } catch (ClassNotFoundException | SQLException e) {
+      for (String[] sql : Constant.CREATE_TIMESERIES) {
+        createTimeseries(sql);
+      }
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
       logger.error(e.getMessage());
     }
+  }
+
+  private static void addStorageGroup(String storageGroup)
+      throws IoTDBConnectionException, StatementExecutionException {
+    pool.setStorageGroup(storageGroup);
+  }
+
+  private static void createTimeseries(String[] sql)
+      throws StatementExecutionException, IoTDBConnectionException {
+    String timeseries = sql[0];
+    TSDataType dataType = TSDataType.valueOf(sql[1]);
+    TSEncoding encoding = TSEncoding.valueOf(sql[2]);
+    CompressionType compressionType = CompressionType.valueOf(sql[3]);
+    pool.createTimeseries(timeseries, dataType, encoding, compressionType);
   }
 
   public static void main(String[] args) throws PulsarClientException, ClassNotFoundException {
@@ -107,7 +104,7 @@ public class PulsarConsumer {
       consumerList.add(consumer);
     }
     PulsarConsumer pulsarConsumer = new PulsarConsumer(consumerList);
-    prepareSchema();
+    initIoTDB();
     pulsarConsumer.consumeInParallel();
   }
 }

@@ -24,8 +24,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.exception.sql.SQLParserException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -33,6 +33,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -50,13 +51,12 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowContinuousQueriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
-import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
@@ -66,14 +66,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
 
-import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -81,6 +81,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -102,26 +103,26 @@ public class PhysicalPlanTest {
   @Before
   public void before() throws MetadataException {
     EnvironmentUtils.envSetUp();
-    IoTDB.metaManager.setStorageGroup(new PartialPath("root.vehicle"));
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.setStorageGroup(new PartialPath("root.vehicle"));
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.d1.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.d2.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.d3.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.d4.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
@@ -185,7 +186,7 @@ public class PhysicalPlanTest {
   @Test
   public void testAuthor() throws QueryProcessException {
     String sql =
-        "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.d1.s1";
+        "grant role xm privileges SET_STORAGE_GROUP,DELETE_TIMESERIES on root.vehicle.d1.s1";
     Planner processor = new Planner();
     AuthorPlan plan = (AuthorPlan) processor.parseSQLToPhysicalPlan(sql);
     assertEquals(
@@ -274,12 +275,9 @@ public class PhysicalPlanTest {
     }
     FillQueryPlan mergePlan = (FillQueryPlan) plan;
     assertEquals(5000, mergePlan.getQueryTime());
-    assertEquals(
-        300000, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getBeforeRange());
-    assertEquals(
-        300000, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getAfterRange());
-    assertEquals(
-        300000, ((PreviousFill) mergePlan.getFillType().get(TSDataType.BOOLEAN)).getBeforeRange());
+    assertEquals(300000, mergePlan.getFillType().get(TSDataType.INT32).getBeforeRange());
+    assertEquals(300000, mergePlan.getFillType().get(TSDataType.INT32).getAfterRange());
+    assertEquals(300000, mergePlan.getFillType().get(TSDataType.BOOLEAN).getBeforeRange());
   }
 
   @Test
@@ -294,14 +292,11 @@ public class PhysicalPlanTest {
     FillQueryPlan mergePlan = (FillQueryPlan) plan;
     assertEquals(5000, mergePlan.getQueryTime());
     assertEquals(
-        defaultFillInterval,
-        ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getBeforeRange());
+        defaultFillInterval, mergePlan.getFillType().get(TSDataType.INT32).getBeforeRange());
     assertEquals(
-        defaultFillInterval,
-        ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getAfterRange());
+        defaultFillInterval, mergePlan.getFillType().get(TSDataType.INT32).getAfterRange());
     assertEquals(
-        defaultFillInterval,
-        ((PreviousFill) mergePlan.getFillType().get(TSDataType.BOOLEAN)).getBeforeRange());
+        defaultFillInterval, mergePlan.getFillType().get(TSDataType.BOOLEAN).getBeforeRange());
   }
 
   @Test
@@ -324,7 +319,7 @@ public class PhysicalPlanTest {
       processor.parseSQLToPhysicalPlan(sqlStr);
       fail();
     } catch (Exception e) {
-      assertEquals("Only \"=\" can be used in fill function", e.getMessage());
+      assertEquals("The condition of WHERE clause must be like time=constant", e.getMessage());
     }
   }
 
@@ -359,37 +354,40 @@ public class PhysicalPlanTest {
     }
   }
 
-  @Test
-  public void testGroupByFill2() {
-    String sqlStr =
-        "select last_value(s1) "
-            + " from root.vehicle.d1 "
-            + "group by([8,737), 3ms) fill(ALL[previousuntillast])";
-    try {
-      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-      if (!plan.isQuery()) {
-        fail();
-      }
-      if (!(plan instanceof GroupByTimeFillPlan)) {
-        fail();
-      }
-      GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) plan;
-      assertEquals(3L, groupByFillPlan.getInterval());
-      assertEquals(3L, groupByFillPlan.getSlidingStep());
-      assertEquals(8L, groupByFillPlan.getStartTime());
-      assertEquals(737L, groupByFillPlan.getEndTime());
-      assertEquals(TSDataType.values().length, groupByFillPlan.getFillType().size());
-      for (TSDataType tsDataType : TSDataType.values()) {
-        assertTrue(groupByFillPlan.getFillType().containsKey(tsDataType));
-        assertTrue(groupByFillPlan.getFillType().get(tsDataType) instanceof PreviousFill);
-        PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType().get(tsDataType);
-        assertTrue(previousFill.isUntilLast());
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail();
-    }
-  }
+  // TODO: @CRZbulabula
+  //  support VECTOR in group by fill
+  //  @Test
+  //  public void testGroupByFill2() {
+  //    String sqlStr =
+  //        "select last_value(s1) "
+  //            + " from root.vehicle.d1 "
+  //            + "group by([8,737), 3ms) fill(ALL[previousuntillast])";
+  //    try {
+  //      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+  //      if (!plan.isQuery()) {
+  //        fail();
+  //      }
+  //      if (!(plan instanceof GroupByTimeFillPlan)) {
+  //        fail();
+  //      }
+  //      GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) plan;
+  //      assertEquals(3L, groupByFillPlan.getInterval());
+  //      assertEquals(3L, groupByFillPlan.getSlidingStep());
+  //      assertEquals(8L, groupByFillPlan.getStartTime());
+  //      assertEquals(737L, groupByFillPlan.getEndTime());
+  //      assertEquals(TSDataType.values().length, groupByFillPlan.getFillType().size());
+  //      for (TSDataType tsDataType : TSDataType.values()) {
+  //        assertTrue(groupByFillPlan.getFillType().containsKey(tsDataType));
+  //        assertTrue(groupByFillPlan.getFillType().get(tsDataType) instanceof PreviousFill);
+  //        PreviousFill previousFill = (PreviousFill)
+  // groupByFillPlan.getFillType().get(tsDataType);
+  //        assertTrue(previousFill.isUntilLast());
+  //      }
+  //    } catch (Exception e) {
+  //      e.printStackTrace();
+  //      fail();
+  //    }
+  //  }
 
   @Test
   public void testGroupByFill3() {
@@ -434,12 +432,12 @@ public class PhysicalPlanTest {
     String sqlStr =
         "select last_value(d1.s1), last_value(d2.s1)"
             + " from root.vehicle "
-            + "group by([8,737), 3ms) fill(int32[linear])";
+            + "group by([8,737), 3ms) fill(boolean[linear])";
     try {
       processor.parseSQLToPhysicalPlan(sqlStr);
       fail();
     } catch (SQLParserException e) {
-      assertEquals("group by fill doesn't support linear fill", e.getMessage());
+      assertEquals("type BOOLEAN cannot use linear fill function", e.getMessage());
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -451,12 +449,12 @@ public class PhysicalPlanTest {
     String sqlStr =
         "select last_value(d1.s1), count(d2.s1)"
             + " from root.vehicle "
-            + "group by([8,737), 3ms) fill(int32[previous])";
+            + "group by([8,737), 3ms) fill(text[linear])";
     try {
       processor.parseSQLToPhysicalPlan(sqlStr);
       fail();
-    } catch (QueryProcessException e) {
-      assertEquals("Group By Fill only support last_value function", e.getMessage());
+    } catch (SQLParserException e) {
+      assertEquals("type TEXT cannot use linear fill function", e.getMessage());
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -465,23 +463,6 @@ public class PhysicalPlanTest {
 
   @Test
   public void testGroupByFill6() {
-    String sqlStr =
-        "select count(s1)"
-            + "from root.vehicle.d1 "
-            + "group by([8,737), 3ms, 5ms) fill(int32[previous])";
-    try {
-      processor.parseSQLToPhysicalPlan(sqlStr);
-      fail();
-    } catch (ParseCancellationException e) {
-      assertTrue(e.getMessage().contains("mismatched input 'fill'"));
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail();
-    }
-  }
-
-  @Test
-  public void testGroupByFill7() {
     String sqlStr =
         "select last_value(d1.s1), last_value(d2.s1)"
             + " from root.vehicle "
@@ -505,7 +486,7 @@ public class PhysicalPlanTest {
     try {
       PhysicalPlan plan =
           processor.parseSQLToPhysicalPlan(
-              "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+              "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
         fail();
       }
@@ -513,26 +494,6 @@ public class PhysicalPlanTest {
       assertEquals("udf", createFunctionPlan.getUdfName());
       assertEquals(
           "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
-      assertFalse(createFunctionPlan.isTemporary());
-    } catch (QueryProcessException e) {
-      fail(e.toString());
-    }
-  }
-
-  @Test
-  public void testCreateFunctionPlan2() { // create temporary function
-    try {
-      PhysicalPlan plan =
-          processor.parseSQLToPhysicalPlan(
-              "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
-        fail();
-      }
-      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) plan;
-      assertEquals("udf", createFunctionPlan.getUdfName());
-      assertEquals(
-          "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
-      assertTrue(createFunctionPlan.isTemporary());
     } catch (QueryProcessException e) {
       fail(e.toString());
     }
@@ -544,13 +505,9 @@ public class PhysicalPlanTest {
       CreateFunctionPlan createFunctionPlan =
           (CreateFunctionPlan)
               processor.parseSQLToPhysicalPlan(
-                  "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+                  "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       UDFRegistrationService.getInstance()
-          .register(
-              createFunctionPlan.getUdfName(),
-              createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(),
-              true);
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
 
       String sqlStr =
           "select udf(d2.s1, d1.s1), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d1.s1, d2.s1), udf(d2.s1, d1.s1), d1.s1, d2.s1 from root.vehicle";
@@ -590,16 +547,12 @@ public class PhysicalPlanTest {
       CreateFunctionPlan createFunctionPlan =
           (CreateFunctionPlan)
               processor.parseSQLToPhysicalPlan(
-                  "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+                  "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       UDFRegistrationService.getInstance()
-          .register(
-              createFunctionPlan.getUdfName(),
-              createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(),
-              true);
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
 
       String sqlStr =
-          "select udf(d2.s1, d1.s1, \"addend\"=\"100\"), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d2.s1, d1.s1) from root.vehicle";
+          "select udf(d2.s1, d1.s1, 'addend'='100'), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d2.s1, d1.s1) from root.vehicle";
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
 
       UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
@@ -639,15 +592,11 @@ public class PhysicalPlanTest {
       CreateFunctionPlan createFunctionPlan =
           (CreateFunctionPlan)
               processor.parseSQLToPhysicalPlan(
-                  "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+                  "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       UDFRegistrationService.getInstance()
-          .register(
-              createFunctionPlan.getUdfName(),
-              createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(),
-              true);
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
 
-      String sqlStr = "select *, udf(*, *), *, udf(*, *), * from root.vehicle";
+      String sqlStr = "select *, udf(*, *), *, udf(*, *), * from root.vehicle.**";
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
 
       UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
@@ -707,11 +656,10 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new GlobalTimeExpression(FilterFactory.and(TimeFilter.gt(50L), TimeFilter.ltEq(100L)));
-    expect =
-        BinaryExpression.or(
-            expect,
-            new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.lt(10.0)));
+        new SingleSeriesExpression(
+            new Path("root.vehicle.d1", "s1"),
+            new OrFilter(
+                new AndFilter(TimeFilter.gt(50), TimeFilter.ltEq(100)), ValueFilter.lt(10.0)));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -722,9 +670,10 @@ public class PhysicalPlanTest {
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
 
     IExpression expect =
-        BinaryExpression.and(
-            new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.lt(10.0)),
-            new GlobalTimeExpression(FilterFactory.and(TimeFilter.gt(50L), TimeFilter.ltEq(100L))));
+        new SingleSeriesExpression(
+            new Path("root.vehicle.d1", "s1"),
+            new AndFilter(
+                ValueFilter.lt(10.0), new AndFilter(TimeFilter.gt(50), TimeFilter.ltEq(100))));
 
     assertEquals(expect.toString(), queryFilter.toString());
 
@@ -995,7 +944,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testShowFlushInfo() throws QueryProcessException {
-    String metadata = "show flush task info";
+    String metadata = "SHOW FLUSH INFO";
     Planner processor = new Planner();
     ShowPlan plan = (ShowPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals("SHOW FLUSH_TASK_INFO", plan.toString());
@@ -1004,7 +953,7 @@ public class PhysicalPlanTest {
   @Test
   public void testLoadFiles() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
-    String metadata = String.format("load \"%s\"", filePath);
+    String metadata = String.format("load '%s'", filePath);
     Planner processor = new Planner();
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1014,7 +963,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" autoregister=true", filePath);
+    metadata = String.format("load '%s' autoregister=true", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1024,7 +973,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" autoregister=false", filePath);
+    metadata = String.format("load '%s' autoregister=false", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1034,7 +983,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" autoregister=true,sglevel=3", filePath);
+    metadata = String.format("load '%s' autoregister=true,sglevel=3", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1044,7 +993,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" autoregister=true,sglevel=3,verify=false", filePath);
+    metadata = String.format("load '%s' autoregister=true,sglevel=3,verify=false", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1054,7 +1003,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" autoregister=true,sglevel=3,verify=true", filePath);
+    metadata = String.format("load '%s' autoregister=true,sglevel=3,verify=true", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1068,7 +1017,7 @@ public class PhysicalPlanTest {
   @Test
   public void testRemoveFile() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
-    String metadata = String.format("remove \"%s\"", filePath);
+    String metadata = String.format("remove '%s'", filePath);
     Planner processor = new Planner();
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1079,15 +1028,15 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testMoveFile() throws QueryProcessException {
+  public void testUnloadFile() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
     String targetDir = "user" + File.separator + "backup";
-    String metadata = String.format("move \"%s\" \"%s\"", filePath, targetDir);
+    String metadata = String.format("unload '%s' '%s'", filePath, targetDir);
     Planner processor = new Planner();
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, verify=false, operatorType=MOVE_FILE}",
+            "OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, verify=false, operatorType=UNLOAD_FILE}",
             filePath, targetDir),
         plan.toString());
   }
@@ -1175,7 +1124,7 @@ public class PhysicalPlanTest {
   @Test
   public void testSpecialCharacters() throws QueryProcessException {
     String sqlStr1 =
-        "create timeseries root.3e-3.-1.1/2.SNAPPY.RLE.81+12.+2.s/io.in[jack].hel[jjj.s[1].desc with "
+        "create timeseries root.`3e-3`.`-1+1/2`.`SNAPPY`.`RLE`.`81+12+2s/io`.`in[jack]`.`hel[jjj[]s[1]`.`desc` with "
             + "datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)"
             + " attributes(attr1=v1, attr2=v2)";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
@@ -1236,7 +1185,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testStartTrigger() throws QueryProcessException {
-    String sql = "START TRIGGER my-trigger";
+    String sql = "START TRIGGER `my-trigger`";
 
     StartTriggerPlan plan = (StartTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertFalse(plan.isQuery());
@@ -1245,7 +1194,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testStopTrigger() throws QueryProcessException {
-    String sql = "STOP TRIGGER my-trigger";
+    String sql = "STOP TRIGGER `my-trigger`";
 
     StopTriggerPlan plan = (StopTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertFalse(plan.isQuery());
@@ -1258,7 +1207,7 @@ public class PhysicalPlanTest {
 
     ShowTriggersPlan plan = (ShowTriggersPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertTrue(plan.isQuery());
-    Assert.assertEquals(ShowContentType.TRIGGERS, plan.getShowContentType());
+    Assert.assertEquals(ShowPlan.ShowContentType.TRIGGERS, plan.getShowContentType());
   }
 
   @Test
@@ -1471,7 +1420,7 @@ public class PhysicalPlanTest {
 
     ShowFunctionsPlan plan = (ShowFunctionsPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertTrue(plan.isQuery());
-    Assert.assertEquals(ShowContentType.FUNCTIONS, plan.getShowContentType());
+    Assert.assertEquals(ShowPlan.ShowContentType.FUNCTIONS, plan.getShowContentType());
   }
 
   @Test
@@ -1479,5 +1428,48 @@ public class PhysicalPlanTest {
     String sqlStr = "CREATE STORAGE GROUP root.sg";
     SetStorageGroupPlan plan = (SetStorageGroupPlan) processor.parseSQLToPhysicalPlan(sqlStr);
     assertEquals("SetStorageGroup{root.sg}", plan.toString());
+  }
+
+  @Test
+  public void testRegexpQuery() throws QueryProcessException, MetadataException {
+    IoTDB.schemaEngine.createTimeseries(
+        new PartialPath("root.vehicle.d5.s1"),
+        TSDataType.TEXT,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+
+    String sqlStr = "SELECT * FROM root.vehicle.d5 WHERE s1 REGEXP 'string*'";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
+    IExpression expect =
+        new SingleSeriesExpression(new Path("root.vehicle.d5", "s1"), ValueFilter.like("string*"));
+    assertEquals(expect.toString(), queryFilter.toString());
+  }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void testSerializationError() {
+    ShowDevicesPlan plan = new ShowDevicesPlan();
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(10);
+    plan.serialize(byteBuffer);
+  }
+
+  @Test(expected = NullPointerException.class)
+  public void testSerializationRollback() {
+    InsertRowPlan plan = new InsertRowPlan();
+    // only serialize time
+    plan.setTime(0L);
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
+    byteBuffer.putInt(0);
+    long position = byteBuffer.position();
+
+    try {
+      plan.serialize(byteBuffer);
+    } catch (NullPointerException e) {
+      Assert.assertEquals(position, byteBuffer.position());
+      throw e;
+    }
   }
 }

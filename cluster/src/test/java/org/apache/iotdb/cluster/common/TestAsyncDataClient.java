@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.common;
 
+import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -26,6 +27,8 @@ import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
+import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
@@ -63,7 +66,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   public TestAsyncDataClient(Node node, Map<RaftNode, DataGroupMember> dataGroupMemberMap)
       throws IOException {
-    super(null, null, node, null);
+    super(null, null, node, ClientCategory.DATA);
     this.dataGroupMemberMap = dataGroupMemberMap;
     try {
       this.planExecutor = new PlanExecutor();
@@ -280,12 +283,22 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   @Override
   public void getAllMeasurementSchema(
-      RaftNode header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler) {
+      MeasurementSchemaRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
     new Thread(
             () -> {
-              new DataAsyncService(dataGroupMemberMap.get(header))
-                  .getAllMeasurementSchema(header, planBinary, resultHandler);
+              new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
+                  .getAllMeasurementSchema(request, resultHandler);
             })
+        .start();
+  }
+
+  @Override
+  public void last(LastQueryRequest request, AsyncMethodCallback<ByteBuffer> resultHandler)
+      throws TException {
+    new Thread(
+            () ->
+                new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
+                    .last(request, resultHandler))
         .start();
   }
 }

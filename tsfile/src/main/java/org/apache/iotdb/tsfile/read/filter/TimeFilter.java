@@ -122,4 +122,15 @@ public class TimeFilter {
       super(filter);
     }
   }
+
+  /**
+   * returns a default time filter by whether it's an ascending query.
+   *
+   * <p>If the data is read in descending order, we use the largest timestamp to set to the filter,
+   * so the filter should be TimeLtEq. If the data is read in ascending order, we use the smallest
+   * timestamp to set to the filter, so the filter should be TimeGtEq.
+   */
+  public static Filter defaultTimeFilter(boolean ascending) {
+    return ascending ? TimeFilter.gtEq(Long.MIN_VALUE) : TimeFilter.ltEq(Long.MAX_VALUE);
+  }
 }

@@ -22,8 +22,9 @@ package org.apache.iotdb.cluster.query;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -57,9 +58,7 @@ public class ClusterPlanExecutorTest extends BaseQueryTest {
           IOException, MetadataException, InterruptedException {
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setPaths(pathList);
-    queryPlan.setDataTypes(dataTypes);
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
 
@@ -73,7 +72,8 @@ public class ClusterPlanExecutorTest extends BaseQueryTest {
 
   @Test
   public void testMatchPaths() throws MetadataException {
-    List<PartialPath> allMatchedPaths = queryExecutor.getPathsName(new PartialPath("root.*.s0"));
+    List<MeasurementPath> allMatchedPaths =
+        queryExecutor.getPathsName(new PartialPath("root.*.s0"));
     allMatchedPaths.sort(null);
     for (int i = 0; i < allMatchedPaths.size(); i++) {
       assertEquals(pathList.get(i), allMatchedPaths.get(i));
@@ -85,7 +85,7 @@ public class ClusterPlanExecutorTest extends BaseQueryTest {
     List<IStorageGroupMNode> allStorageGroupNodes = queryExecutor.getAllStorageGroupNodes();
     for (int i = 0; i < allStorageGroupNodes.size(); i++) {
       assertEquals(
-          IoTDB.metaManager.getAllStorageGroupNodes().get(i).getFullPath(),
+          IoTDB.schemaEngine.getAllStorageGroupNodes().get(i).getFullPath(),
           allStorageGroupNodes.get(i).getFullPath());
     }
   }

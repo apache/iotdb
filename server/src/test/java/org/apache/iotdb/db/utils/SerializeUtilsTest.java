@@ -21,6 +21,8 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.DescReadBatchData;
+import org.apache.iotdb.tsfile.read.common.DescReadWriteBatchData;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -283,5 +285,746 @@ public class SerializeUtilsTest {
     long[] array = {1, 10, 100, 1000, 10000};
     ByteBuffer buffer = SerializeUtils.serializeLongs(array);
     Assert.assertArrayEquals(array, SerializeUtils.deserializeLongs(buffer));
+  }
+
+  @Test
+  public void descReadWriteBatchDataTest() {
+    descReadWriteBatchDataSerializableTest(0);
+    descReadWriteBatchDataSerializableTest(1);
+    descReadWriteBatchDataSerializableTest(10);
+    descReadWriteBatchDataSerializableTest(16);
+    descReadWriteBatchDataSerializableTest(100);
+    descReadWriteBatchDataSerializableTest(1000);
+    descReadWriteBatchDataSerializableTest(1500);
+  }
+
+  @Test
+  public void descReadBatchDataTest() {
+    descReadBatchDataSerializableTest(0);
+    descReadBatchDataSerializableTest(1);
+    descReadBatchDataSerializableTest(10);
+    descReadBatchDataSerializableTest(16);
+    descReadBatchDataSerializableTest(100);
+    descReadBatchDataSerializableTest(1000);
+    descReadBatchDataSerializableTest(1500);
+  }
+
+  @Test
+  public void batchDataTest() {
+    batchDataSerializableTest(0);
+    batchDataSerializableTest(1);
+    batchDataSerializableTest(10);
+    batchDataSerializableTest(16);
+    batchDataSerializableTest(100);
+    batchDataSerializableTest(1000);
+    batchDataSerializableTest(1500);
+  }
+  // In DescReadWriteBatchData, read has the same order with descending write
+  private void descReadWriteBatchDataSerializableTest(int dataSize) {
+    double E = 0.00001;
+    String debugMsg = "Data size: " + dataSize + ", Data type: ";
+    // test INT64
+    TSDataType dataType = TSDataType.INT64;
+    DescReadWriteBatchData data = new DescReadWriteBatchData(dataType);
+    String fullMsg = debugMsg + dataType;
+    for (int i = dataSize; i > 0; i--) {
+      data.putLong(i, i);
+    }
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataOutputStream outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
+    BatchData data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertTrue(fullMsg, data2 instanceof DescReadWriteBatchData);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(fullMsg, i + 1, data2.getLongByIndex(i));
+    }
+    for (int i = dataSize; i > 0; i--) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, i, data2.getLong());
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test INT32
+    dataType = TSDataType.INT32;
+    data = new DescReadWriteBatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = dataSize; i > 0; i--) {
+      data.putInt(i, i);
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertTrue(fullMsg, data2 instanceof DescReadWriteBatchData);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(fullMsg, i + 1, data2.getIntByIndex(i));
+    }
+    for (int i = dataSize; i > 0; i--) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, i, data2.getInt());
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test DOUBLE
+    dataType = TSDataType.DOUBLE;
+    data = new DescReadWriteBatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = dataSize; i > 0; i--) {
+      data.putDouble(i, i);
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertTrue(fullMsg, data2 instanceof DescReadWriteBatchData);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(fullMsg, i + 1, data2.getDoubleByIndex(i), E);
+    }
+    for (int i = dataSize; i > 0; i--) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, i, data2.getDouble(), E);
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test FLOAT
+    dataType = TSDataType.FLOAT;
+    data = new DescReadWriteBatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = dataSize; i > 0; i--) {
+      data.putFloat(i, i);
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertTrue(fullMsg, data2 instanceof DescReadWriteBatchData);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(fullMsg, i + 1, data2.getFloatByIndex(i), E);
+    }
+    for (int i = dataSize; i > 0; i--) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, i, data2.getFloat(), E);
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test BOOLEAN
+    dataType = TSDataType.BOOLEAN;
+    data = new DescReadWriteBatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = dataSize; i > 0; i--) {
+      data.putBoolean(i, i % 3 == 0);
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertTrue(fullMsg, data2 instanceof DescReadWriteBatchData);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(fullMsg, (i + 1) % 3 == 0, data2.getBooleanByIndex(i));
+    }
+    for (int i = dataSize; i > 0; i--) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, i % 3 == 0, data2.getBoolean());
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test BINARY
+    dataType = TSDataType.TEXT;
+    data = new DescReadWriteBatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = dataSize; i > 0; i--) {
+      data.putBinary(i, Binary.valueOf(String.valueOf(i)));
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertTrue(fullMsg, data2 instanceof DescReadWriteBatchData);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(
+          fullMsg, String.valueOf(i + 1), data2.getBinaryByIndex(i).getStringValue());
+    }
+    for (int i = dataSize; i > 0; i--) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, String.valueOf(i), data2.getBinary().getStringValue());
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+
+    // test VECTOR
+    dataType = TSDataType.VECTOR;
+    data = new DescReadWriteBatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = dataSize; i > 0; i--) {
+      data.putVector(
+          i,
+          new TsPrimitiveType[] {
+            new TsPrimitiveType.TsLong(i),
+            new TsPrimitiveType.TsInt(i),
+            new TsPrimitiveType.TsDouble(i),
+            new TsPrimitiveType.TsFloat(i),
+            new TsPrimitiveType.TsBoolean(i % 3 == 0),
+            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i))),
+          });
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertTrue(fullMsg, data2 instanceof DescReadWriteBatchData);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertArrayEquals(
+          fullMsg,
+          new TsPrimitiveType[] {
+            new TsPrimitiveType.TsLong(i + 1),
+            new TsPrimitiveType.TsInt(i + 1),
+            new TsPrimitiveType.TsDouble(i + 1),
+            new TsPrimitiveType.TsFloat(i + 1),
+            new TsPrimitiveType.TsBoolean((i + 1) % 3 == 0),
+            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i + 1))),
+          },
+          data2.getVectorByIndex(i));
+    }
+    for (int i = dataSize; i > 0; i--) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertArrayEquals(
+          fullMsg,
+          new TsPrimitiveType[] {
+            new TsPrimitiveType.TsLong(i),
+            new TsPrimitiveType.TsInt(i),
+            new TsPrimitiveType.TsDouble(i),
+            new TsPrimitiveType.TsFloat(i),
+            new TsPrimitiveType.TsBoolean(i % 3 == 0),
+            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i))),
+          },
+          data2.getVector());
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+  }
+  // In DescReadBatchData, read has a reverse order with ascending write
+  private void descReadBatchDataSerializableTest(int dataSize) {
+    double E = 0.00001;
+    String debugMsg = "Data size: " + dataSize + ", Data type: ";
+    // test INT64
+    TSDataType dataType = TSDataType.INT64;
+    DescReadBatchData data = new DescReadBatchData(dataType);
+    String fullMsg = debugMsg + dataType;
+    for (int i = 1; i <= dataSize; i++) {
+      data.putLong(i, i);
+    }
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataOutputStream outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
+    BatchData data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertTrue(fullMsg, data2 instanceof DescReadBatchData);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(fullMsg, i + 1, data2.getLongByIndex(i));
+    }
+    for (int i = dataSize; i > 0; i--) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, i, data2.getLong());
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test INT32
+    dataType = TSDataType.INT32;
+    data = new DescReadBatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = 1; i <= dataSize; i++) {
+      data.putInt(i, i);
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertTrue(fullMsg, data2 instanceof DescReadBatchData);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(fullMsg, i + 1, data2.getIntByIndex(i));
+    }
+    for (int i = dataSize; i > 0; i--) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, i, data2.getInt());
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test DOUBLE
+    dataType = TSDataType.DOUBLE;
+    data = new DescReadBatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = 1; i <= dataSize; i++) {
+      data.putDouble(i, i);
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertTrue(fullMsg, data2 instanceof DescReadBatchData);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(fullMsg, i + 1, data2.getDoubleByIndex(i), E);
+    }
+    for (int i = dataSize; i > 0; i--) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, i, data2.getDouble(), E);
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test FLOAT
+    dataType = TSDataType.FLOAT;
+    data = new DescReadBatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = 1; i <= dataSize; i++) {
+      data.putFloat(i, i);
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertTrue(fullMsg, data2 instanceof DescReadBatchData);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(fullMsg, i + 1, data2.getFloatByIndex(i), E);
+    }
+    for (int i = dataSize; i > 0; i--) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, i, data2.getFloat(), E);
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test BOOLEAN
+    dataType = TSDataType.BOOLEAN;
+    data = new DescReadBatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = 1; i <= dataSize; i++) {
+      data.putBoolean(i, i % 3 == 0);
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertTrue(fullMsg, data2 instanceof DescReadBatchData);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(fullMsg, (i + 1) % 3 == 0, data2.getBooleanByIndex(i));
+    }
+    for (int i = dataSize; i > 0; i--) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, i % 3 == 0, data2.getBoolean());
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test BINARY
+    dataType = TSDataType.TEXT;
+    data = new DescReadBatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = 1; i <= dataSize; i++) {
+      data.putBinary(i, Binary.valueOf(String.valueOf(i)));
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertTrue(fullMsg, data2 instanceof DescReadBatchData);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(
+          fullMsg, String.valueOf(i + 1), data2.getBinaryByIndex(i).getStringValue());
+    }
+    for (int i = dataSize; i > 0; i--) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, String.valueOf(i), data2.getBinary().getStringValue());
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test VECTOR
+    dataType = TSDataType.VECTOR;
+    data = new DescReadBatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = 1; i <= dataSize; i++) {
+      data.putVector(
+          i,
+          new TsPrimitiveType[] {
+            new TsPrimitiveType.TsLong(i),
+            new TsPrimitiveType.TsInt(i),
+            new TsPrimitiveType.TsDouble(i),
+            new TsPrimitiveType.TsFloat(i),
+            new TsPrimitiveType.TsBoolean(i % 3 == 0),
+            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i))),
+          });
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertTrue(fullMsg, data2 instanceof DescReadBatchData);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertArrayEquals(
+          fullMsg,
+          new TsPrimitiveType[] {
+            new TsPrimitiveType.TsLong(i + 1),
+            new TsPrimitiveType.TsInt(i + 1),
+            new TsPrimitiveType.TsDouble(i + 1),
+            new TsPrimitiveType.TsFloat(i + 1),
+            new TsPrimitiveType.TsBoolean((i + 1) % 3 == 0),
+            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i + 1))),
+          },
+          data2.getVectorByIndex(i));
+    }
+    for (int i = dataSize; i > 0; i--) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertArrayEquals(
+          fullMsg,
+          new TsPrimitiveType[] {
+            new TsPrimitiveType.TsLong(i),
+            new TsPrimitiveType.TsInt(i),
+            new TsPrimitiveType.TsDouble(i),
+            new TsPrimitiveType.TsFloat(i),
+            new TsPrimitiveType.TsBoolean(i % 3 == 0),
+            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i))),
+          },
+          data2.getVector());
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+  }
+  // In BatchData, read has a reverse order with ascending write
+  private void batchDataSerializableTest(int dataSize) {
+    double E = 0.00001;
+    String debugMsg = "Data size: " + dataSize + ", Data type: ";
+    // test INT64
+    TSDataType dataType = TSDataType.INT64;
+    BatchData data = new BatchData(dataType);
+    String fullMsg = debugMsg + dataType;
+    for (int i = 1; i <= dataSize; i++) {
+      data.putLong(i, i);
+    }
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataOutputStream outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
+    BatchData data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(fullMsg, i + 1, data2.getLongByIndex(i));
+    }
+    for (int i = 1; i <= dataSize; i++) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, i, data2.getLong());
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test INT32
+    dataType = TSDataType.INT32;
+    data = new BatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = 1; i <= dataSize; i++) {
+      data.putInt(i, i);
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(fullMsg, i + 1, data2.getIntByIndex(i));
+    }
+    for (int i = 1; i <= dataSize; i++) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, i, data2.getInt());
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test DOUBLE
+    dataType = TSDataType.DOUBLE;
+    data = new BatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = 1; i <= dataSize; i++) {
+      data.putDouble(i, i);
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(fullMsg, i + 1, data2.getDoubleByIndex(i), E);
+    }
+    for (int i = 1; i <= dataSize; i++) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, i, data2.getDouble(), E);
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test FLOAT
+    dataType = TSDataType.FLOAT;
+    data = new BatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = 1; i <= dataSize; i++) {
+      data.putFloat(i, i);
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(fullMsg, i + 1, data2.getFloatByIndex(i), E);
+    }
+    for (int i = 1; i <= dataSize; i++) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, i, data2.getFloat(), E);
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test BOOLEAN
+    dataType = TSDataType.BOOLEAN;
+    data = new BatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = 1; i <= dataSize; i++) {
+      data.putBoolean(i, i % 3 == 0);
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(fullMsg, (i + 1) % 3 == 0, data2.getBooleanByIndex(i));
+    }
+    for (int i = 1; i <= dataSize; i++) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, i % 3 == 0, data2.getBoolean());
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test BINARY
+    dataType = TSDataType.TEXT;
+    data = new BatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = 1; i <= dataSize; i++) {
+      data.putBinary(i, Binary.valueOf(String.valueOf(i)));
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertEquals(
+          fullMsg, String.valueOf(i + 1), data2.getBinaryByIndex(i).getStringValue());
+    }
+    for (int i = 1; i <= dataSize; i++) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertEquals(fullMsg, String.valueOf(i), data2.getBinary().getStringValue());
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
+    // test VECTOR
+    dataType = TSDataType.VECTOR;
+    data = new BatchData(dataType);
+    fullMsg = debugMsg + dataType;
+    for (int i = 1; i <= dataSize; i++) {
+      data.putVector(
+          i,
+          new TsPrimitiveType[] {
+            new TsPrimitiveType.TsLong(i),
+            new TsPrimitiveType.TsInt(i),
+            new TsPrimitiveType.TsDouble(i),
+            new TsPrimitiveType.TsFloat(i),
+            new TsPrimitiveType.TsBoolean(i % 3 == 0),
+            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i))),
+          });
+    }
+    baos = new ByteArrayOutputStream();
+    outputStream = new DataOutputStream(baos);
+    SerializeUtils.serializeBatchData(data, outputStream);
+    buffer = ByteBuffer.wrap(baos.toByteArray());
+    data2 = SerializeUtils.deserializeBatchData(buffer);
+    Assert.assertEquals(fullMsg, dataSize, data2.length());
+    if (dataSize > 0) {
+      Assert.assertEquals(fullMsg, 1L, data2.getMinTimestamp());
+      Assert.assertEquals(fullMsg, dataSize, data2.getMaxTimestamp());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
+      Assert.assertArrayEquals(
+          fullMsg,
+          new TsPrimitiveType[] {
+            new TsPrimitiveType.TsLong(i + 1),
+            new TsPrimitiveType.TsInt(i + 1),
+            new TsPrimitiveType.TsDouble(i + 1),
+            new TsPrimitiveType.TsFloat(i + 1),
+            new TsPrimitiveType.TsBoolean((i + 1) % 3 == 0),
+            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i + 1))),
+          },
+          data2.getVectorByIndex(i));
+    }
+    for (int i = 1; i <= dataSize; i++) {
+      Assert.assertTrue(fullMsg, data2.hasCurrent());
+      Assert.assertEquals(fullMsg, i, data2.currentTime());
+      Assert.assertArrayEquals(
+          fullMsg,
+          new TsPrimitiveType[] {
+            new TsPrimitiveType.TsLong(i),
+            new TsPrimitiveType.TsInt(i),
+            new TsPrimitiveType.TsDouble(i),
+            new TsPrimitiveType.TsFloat(i),
+            new TsPrimitiveType.TsBoolean(i % 3 == 0),
+            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i))),
+          },
+          data2.getVector());
+      data2.next();
+    }
+    Assert.assertFalse(fullMsg, data2.hasCurrent());
   }
 }

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -81,12 +82,48 @@ public class PartialPathTest {
 
   @Test
   public void testAlterPrefixPath() throws IllegalPathException {
-    PartialPath p1 = new PartialPath("root.sg1.d1.s1");
-    PartialPath p2 = p1.alterPrefixPath(new PartialPath("root.sg2"));
-    PartialPath p3 = p1.alterPrefixPath(new PartialPath("root.sg2.d1.d2.s3"));
+    // Plain path.
+    PartialPath p = new PartialPath("root.a.b.c");
+    List<PartialPath> results = p.alterPrefixPath(new PartialPath("root.a.b"));
+    Assert.assertEquals(results.toString(), 1, results.size());
+    Assert.assertEquals("root.a.b.c", results.get(0).getFullPath());
 
-    Assert.assertEquals("root.sg2.d1.s1", p2.getFullPath());
-    Assert.assertEquals("root.sg2.d1.d2.s3", p3.getFullPath());
+    // Path with single level wildcard.
+    p = new PartialPath("root.*.b.c");
+    results = p.alterPrefixPath(new PartialPath("root.a.b"));
+    Assert.assertEquals(results.toString(), 1, results.size());
+    Assert.assertEquals("root.a.b.c", results.get(0).getFullPath());
+
+    // Path with multi level wildcard.
+    p = new PartialPath("root.**.b.c");
+    results = p.alterPrefixPath(new PartialPath("root.a.b"));
+    Assert.assertEquals(results.toString(), 3, results.size());
+    Assert.assertTrue(results.toString(), results.contains(new PartialPath("root.a.b.c")));
+    Assert.assertTrue(results.toString(), results.contains(new PartialPath("root.a.b.b.c")));
+    Assert.assertTrue(results.toString(), results.contains(new PartialPath("root.a.b.**.b.c")));
+
+    p = new PartialPath("root.**");
+    results = p.alterPrefixPath(new PartialPath("root.a.b"));
+    Assert.assertEquals(results.toString(), 2, results.size());
+    Assert.assertTrue(results.toString(), results.contains(new PartialPath("root.a.b")));
+    Assert.assertTrue(results.toString(), results.contains(new PartialPath("root.a.b.**")));
+
+    p = new PartialPath("root.**.b.**");
+    results = p.alterPrefixPath(new PartialPath("root.a.b.c"));
+    Assert.assertEquals(results.toString(), 2, results.size());
+    Assert.assertTrue(results.toString(), results.contains(new PartialPath("root.a.b.c")));
+    Assert.assertTrue(results.toString(), results.contains(new PartialPath("root.a.b.c.**")));
+
+    p = new PartialPath("root.**.b.**.b");
+    results = p.alterPrefixPath(new PartialPath("root.b.b.b"));
+    Assert.assertEquals(results.toString(), 2, results.size());
+    Assert.assertTrue(results.toString(), results.contains(new PartialPath("root.b.b.b.b")));
+    Assert.assertTrue(results.toString(), results.contains(new PartialPath("root.b.b.b.**.b")));
+
+    // Path cannot be altered.
+    p = new PartialPath("root.b.c.**");
+    results = p.alterPrefixPath(new PartialPath("root.a.b.c"));
+    Assert.assertEquals(results.toString(), 0, results.size());
   }
 
   @Test
@@ -97,6 +134,14 @@ public class PartialPathTest {
     Assert.assertFalse(p1.matchFullPath(new PartialPath("root.sg1.d1")));
     Assert.assertFalse(p1.matchFullPath(new PartialPath("root.sg2.d1.*")));
     Assert.assertFalse(p1.matchFullPath(new PartialPath("")));
+
+    PartialPath path = new PartialPath("root.sg.d.s");
+    String[] patterns = {
+      "root.**", "root.**.s", "root.sg.*.s", "root.*.*.*", "root.sg.d.s", "root.s*.d.s"
+    };
+    for (String pattern : patterns) {
+      Assert.assertTrue(new PartialPath(pattern).matchFullPath(path));
+    }
   }
 
   @Test

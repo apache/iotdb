@@ -88,7 +88,7 @@ public class In<T extends Comparable<T>> implements Filter {
       outputStream.write(getSerializeId().ordinal());
       outputStream.write(filterType.ordinal());
       ReadWriteIOUtils.write(not, outputStream);
-      outputStream.write(values.size());
+      ReadWriteIOUtils.write(values.size(), outputStream);
       for (T value : values) {
         ReadWriteIOUtils.writeObject(value, outputStream);
       }
@@ -101,10 +101,19 @@ public class In<T extends Comparable<T>> implements Filter {
   public void deserialize(ByteBuffer buffer) {
     filterType = FilterType.values()[buffer.get()];
     not = ReadWriteIOUtils.readBool(buffer);
-    values = new HashSet<>();
-    for (int i = 0; i < buffer.get(); i++) {
+    int size = ReadWriteIOUtils.readInt(buffer);
+    values = new HashSet<>(size);
+    for (int i = 0; i < size; i++) {
       values.add((T) ReadWriteIOUtils.readObject(buffer));
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof In
+        && ((In<?>) o).filterType == filterType
+        && ((In<?>) o).values.equals(values)
+        && ((In<?>) o).not == not;
   }
 
   @Override

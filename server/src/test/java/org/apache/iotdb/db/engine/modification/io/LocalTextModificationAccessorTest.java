@@ -22,11 +22,13 @@ package org.apache.iotdb.db.engine.modification.io;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import org.junit.Test;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -77,5 +79,52 @@ public class LocalTextModificationAccessorTest {
     new File(tempFileName).delete();
     Collection<Modification> modifications = accessor.read();
     assertEquals(new ArrayList<>(), modifications);
+  }
+
+  @Test
+  public void readAndTruncate() {
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.temp");
+    File file = new File(tempFileName);
+    if (file.exists()) {
+      file.delete();
+    }
+    Modification[] modifications =
+        new Modification[] {
+          new Deletion(new PartialPath(new String[] {"d1", "s1"}), 1, 1),
+          new Deletion(new PartialPath(new String[] {"d1", "s2"}), 2, 2),
+          new Deletion(new PartialPath(new String[] {"d1", "s3"}), 3, 3),
+          new Deletion(new PartialPath(new String[] {"d1", "s4"}), 4, 4),
+        };
+    try (LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(tempFileName);
+        BufferedWriter writer = new BufferedWriter(new FileWriter(tempFileName, true))) {
+      // write normal message
+      for (int i = 0; i < 2; i++) {
+        accessor.write(modifications[i]);
+      }
+      List<Modification> modificationList = (List<Modification>) accessor.read();
+      for (int i = 0; i < 2; i++) {
+        assertEquals(modifications[i], modificationList.get(i));
+      }
+      // write error message
+      long length = file.length();
+      writer.write("error");
+      writer.newLine();
+      writer.flush();
+      // write normal message & read
+      for (int i = 2; i < 4; i++) {
+        accessor.write(modifications[i]);
+      }
+      modificationList = (List<Modification>) accessor.read();
+      for (int i = 0; i < 2; i++) {
+        System.out.println(modificationList);
+        assertEquals(modifications[i], modificationList.get(i));
+      }
+      // check truncated file
+      assertEquals(length, file.length());
+    } catch (IOException e) {
+      fail(e.getMessage());
+    } finally {
+      file.delete();
+    }
   }
 }

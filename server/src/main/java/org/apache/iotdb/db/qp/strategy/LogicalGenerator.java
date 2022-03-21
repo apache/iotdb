@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
@@ -29,9 +31,9 @@ import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlVisitor;
-import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
-import org.apache.iotdb.db.qp.sql.SqlBaseParser;
+import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
@@ -48,38 +50,54 @@ import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 
 /** LogicalGenerator. */
 public class LogicalGenerator {
 
-  public static Operator generate(String sql, ZoneId zoneId) throws ParseCancellationException {
+  public static Operator generate(
+      String sql, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion)
+      throws ParseCancellationException {
     IoTDBSqlVisitor ioTDBSqlVisitor = new IoTDBSqlVisitor();
     ioTDBSqlVisitor.setZoneId(zoneId);
+    ioTDBSqlVisitor.setClientVersion(clientVersion);
+
     CharStream charStream1 = CharStreams.fromString(sql);
-    SqlBaseLexer lexer1 = new SqlBaseLexer(charStream1);
+
+    SqlLexer lexer1 = new SqlLexer(charStream1);
     lexer1.removeErrorListeners();
     lexer1.addErrorListener(SQLParseError.INSTANCE);
+
     CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
-    SqlBaseParser parser1 = new SqlBaseParser(tokens1);
+
+    IoTDBSqlParser parser1 = new IoTDBSqlParser(tokens1);
     parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
     parser1.removeErrorListeners();
     parser1.addErrorListener(SQLParseError.INSTANCE);
+
     ParseTree tree;
     try {
-      tree = parser1.singleStatement(); // STAGE 1
+      // STAGE 1: try with simpler/faster SLL(*)
+      tree = parser1.singleStatement();
+      // if we get here, there was no syntax error and SLL(*) was enough;
+      // there is no need to try full LL(*)
     } catch (Exception ex) {
       CharStream charStream2 = CharStreams.fromString(sql);
-      SqlBaseLexer lexer2 = new SqlBaseLexer(charStream2);
+
+      SqlLexer lexer2 = new SqlLexer(charStream2);
       lexer2.removeErrorListeners();
       lexer2.addErrorListener(SQLParseError.INSTANCE);
+
       CommonTokenStream tokens2 = new CommonTokenStream(lexer2);
-      SqlBaseParser parser2 = new SqlBaseParser(tokens2);
+
+      IoTDBSqlParser parser2 = new IoTDBSqlParser(tokens2);
       parser2.getInterpreter().setPredictionMode(PredictionMode.LL);
       parser2.removeErrorListeners();
       parser2.addErrorListener(SQLParseError.INSTANCE);
-      tree = parser2.singleStatement(); // STAGE 2
-      // if we parse ok, it's LL not SLL
+
+      // STAGE 2: parser with full LL(*)
+      tree = parser2.singleStatement();
+      // if we get here, it's LL not SLL
     }
     return ioTDBSqlVisitor.visit(tree);
   }
@@ -151,6 +169,11 @@ public class LogicalGenerator {
     queryOp.setWhereComponent(new WhereComponent(basicFunctionOperator));
 
     return queryOp;
+  }
+
+  @TestOnly
+  public static Operator generate(String sql, ZoneId zoneId) throws ParseCancellationException {
+    return generate(sql, zoneId, IoTDBConstant.ClientVersion.V_0_13);
   }
 
   private LogicalGenerator() {}

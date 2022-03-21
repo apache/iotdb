@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.Constants;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -63,7 +64,7 @@ public class HeartbeatHandlerTest {
   }
 
   @After
-  public void tearDown() throws IOException {
+  public void tearDown() throws IOException, StorageEngineException {
     metaGroupMember.closeLogManager();
     metaGroupMember.stop();
     EnvironmentUtils.cleanAllDir();
@@ -77,11 +78,28 @@ public class HeartbeatHandlerTest {
     response.setLastLogTerm(-2);
     response.setFollower(
         new Node("192.168.0.6", 9003, 6, 40010, Constants.RPC_PORT, "192.168.0.6"));
+    response.setInstallingSnapshot(false);
     catchUpFlag = false;
     for (int i = 0; i < looseInconsistentNum; i++) {
       handler.onComplete(response);
     }
     assertTrue(catchUpFlag);
+  }
+
+  @Test
+  public void testSnapshotRequestOmitted() {
+    HeartbeatHandler handler = new HeartbeatHandler(metaGroupMember, TestUtils.getNode(1));
+    HeartBeatResponse response = new HeartBeatResponse();
+    response.setTerm(Response.RESPONSE_AGREE);
+    response.setLastLogTerm(-2);
+    response.setFollower(
+        new Node("192.168.0.6", 9003, 6, 40010, Constants.RPC_PORT, "192.168.0.6"));
+    response.setInstallingSnapshot(true);
+    catchUpFlag = false;
+    for (int i = 0; i < looseInconsistentNum; i++) {
+      handler.onComplete(response);
+    }
+    assertFalse(catchUpFlag);
   }
 
   @Test

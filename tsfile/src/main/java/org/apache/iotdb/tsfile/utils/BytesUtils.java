@@ -28,9 +28,9 @@ import java.io.InputStream;
 import java.util.List;
 
 /**
- * BytesUtils is a utility class. It provide conversion among byte array and other type including
+ * BytesUtils is a utility class. It provides conversion among byte array and other type including
  * integer, long, float, boolean, double and string. <br>
- * It also provide other usable function as follow:<br>
+ * It also provide other usable function as follows:<br>
  * reading function which receives InputStream. <br>
  * concat function to join a list of byte array to one.<br>
  * get and set one bit in a byte array.
@@ -79,26 +79,38 @@ public class BytesUtils {
    * convert an integer to a byte array which length is width, then copy this array to the parameter
    * result from pos.
    *
-   * @param srcNum input integer variable
+   * @param srcNum input integer variable. All but the lowest {@code width} bits are 0.
    * @param result byte array to convert
    * @param pos start position
    * @param width bit-width
    */
   public static void intToBytes(int srcNum, byte[] result, int pos, int width) {
-    int temp = 0;
-    for (int i = 0; i < width; i++) {
-      temp = (pos + width - 1 - i) / 8;
-      try {
-        result[temp] = setByteN(result[temp], pos + width - 1 - i, getIntN(srcNum, i));
-      } catch (Exception e) {
-        LOG.error(
-            "tsfile-common BytesUtils: cannot convert an integer {} to a byte array, "
-                + "pos {}, width {}",
-            srcNum,
-            pos,
-            width,
-            e);
+    int cnt = pos & 0x07;
+    int index = pos >> 3;
+    try {
+      while (width > 0) {
+        int m = width + cnt >= 8 ? 8 - cnt : width;
+        width -= m;
+        int mask = 1 << (8 - cnt);
+        cnt += m;
+        byte y = (byte) (srcNum >> width);
+        y = (byte) (y << (8 - cnt));
+        mask = ~(mask - (1 << (8 - cnt)));
+        result[index] = (byte) (result[index] & mask | y);
+        srcNum = srcNum & ~(-1 << width);
+        if (cnt == 8) {
+          index++;
+          cnt = 0;
+        }
       }
+    } catch (Exception e) {
+      LOG.error(
+          "tsfile-common BytesUtils: cannot convert an integer {} to a byte array, "
+              + "pos {}, width {}",
+          srcNum,
+          pos,
+          width,
+          e);
     }
   }
 
@@ -187,15 +199,23 @@ public class BytesUtils {
    * @return integer variable
    */
   public static int bytesToInt(byte[] result, int pos, int width) {
-
-    int value = 0;
-    int temp = 0;
-
-    for (int i = 0; i < width; i++) {
-      temp = (pos + width - 1 - i) / 8;
-      value = setIntN(value, i, getByteN(result[temp], pos + width - 1 - i));
+    int ret = 0;
+    int cnt = pos & 0x07;
+    int index = pos >> 3;
+    while (width > 0) {
+      int m = width + cnt >= 8 ? 8 - cnt : width;
+      width -= m;
+      ret = ret << m;
+      byte y = (byte) (result[index] & (0xff >> cnt));
+      y = (byte) ((y & 0xff) >>> (8 - cnt - m));
+      ret = ret | (y & 0xff);
+      cnt += m;
+      if (cnt == 8) {
+        cnt = 0;
+        index++;
+      }
     }
-    return value;
+    return ret;
   }
 
   /**
@@ -486,28 +506,41 @@ public class BytesUtils {
   }
 
   /**
-   * convert an long to a byte array which length is width, then copy this array to the parameter
+   * convert a long to a byte array which length is width, then copy this array to the parameter
    * result from pos.
    *
-   * @param srcNum input long variable
+   * @param srcNum input long variable. All but the lowest {@code width} bits are 0.
    * @param result byte array to convert
    * @param pos start position
    * @param width bit-width
    */
   public static void longToBytes(long srcNum, byte[] result, int pos, int width) {
-    int temp = 0;
-    for (int i = 0; i < width; i++) {
-      temp = (pos + width - 1 - i) / 8;
-      try {
-        result[temp] = setByteN(result[temp], pos + width - 1 - i, getLongN(srcNum, i));
-      } catch (Exception e) {
-        LOG.error(
-            "tsfile-common BytesUtils: cannot convert a long {} to a byte array, pos {}, width {}",
-            srcNum,
-            pos,
-            width,
-            e);
+    int cnt = pos & 0x07;
+    int index = pos >> 3;
+    try {
+      while (width > 0) {
+        int m = width + cnt >= 8 ? 8 - cnt : width;
+        width -= m;
+        int mask = 1 << (8 - cnt);
+        cnt += m;
+        byte y = (byte) (srcNum >> width);
+        y = (byte) (y << (8 - cnt));
+        mask = ~(mask - (1 << (8 - cnt)));
+        result[index] = (byte) (result[index] & mask | y);
+        srcNum = srcNum & ~(-1L << width);
+        if (cnt == 8) {
+          index++;
+          cnt = 0;
+        }
       }
+    } catch (Exception e) {
+      LOG.error(
+          "tsfile-common BytesUtils: cannot convert a long {} to a byte array, "
+              + "pos {}, width {}",
+          srcNum,
+          pos,
+          width,
+          e);
     }
   }
 
@@ -550,13 +583,23 @@ public class BytesUtils {
    * @return long variable
    */
   public static long bytesToLong(byte[] result, int pos, int width) {
-    long value = 0;
-    int temp = 0;
-    for (int i = 0; i < width; i++) {
-      temp = (pos + width - 1 - i) / 8;
-      value = setLongN(value, i, getByteN(result[temp], pos + width - 1 - i));
+    long ret = 0;
+    int cnt = pos & 0x07;
+    int index = pos >> 3;
+    while (width > 0) {
+      int m = width + cnt >= 8 ? 8 - cnt : width;
+      width -= m;
+      ret = ret << m;
+      byte y = (byte) (result[index] & (0xff >> cnt));
+      y = (byte) ((y & 0xff) >>> (8 - cnt - m));
+      ret = ret | (y & 0xff);
+      cnt += m;
+      if (cnt == 8) {
+        cnt = 0;
+        index++;
+      }
     }
-    return value;
+    return ret;
   }
 
   /**

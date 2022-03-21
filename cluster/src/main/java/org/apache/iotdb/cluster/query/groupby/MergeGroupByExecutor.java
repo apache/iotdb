@@ -23,10 +23,10 @@ import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
+import org.apache.iotdb.db.query.executor.groupby.GroupByExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -58,14 +58,13 @@ public class MergeGroupByExecutor implements GroupByExecutor {
   MergeGroupByExecutor(
       PartialPath path,
       Set<String> deviceMeasurements,
-      TSDataType dataType,
       QueryContext context,
       Filter timeFilter,
       MetaGroupMember metaGroupMember,
       boolean ascending) {
     this.path = path;
     this.deviceMeasurements = deviceMeasurements;
-    this.dataType = dataType;
+    this.dataType = path.getSeriesType();
     this.context = context;
     this.timeFilter = timeFilter;
     this.readerFactory = new ClusterReaderFactory(metaGroupMember);

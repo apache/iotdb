@@ -37,6 +37,7 @@ public abstract class Transformer implements LayerPointReader {
   protected double cachedDouble;
   protected boolean cachedBoolean;
   protected Binary cachedBinary;
+  protected boolean currentNull;
 
   protected Transformer() {
     hasCachedValue = false;
@@ -50,11 +51,13 @@ public abstract class Transformer implements LayerPointReader {
     return hasCachedValue;
   }
 
+  /** if this method returns true, at least one of the cached field should be set */
   protected abstract boolean cacheValue() throws QueryProcessException, IOException;
 
   @Override
-  public final void readyForNext() {
+  public void readyForNext() {
     hasCachedValue = false;
+    currentNull = false;
   }
 
   @Override
@@ -90,5 +93,10 @@ public abstract class Transformer implements LayerPointReader {
   @Override
   public final Binary currentBinary() {
     return cachedBinary;
+  }
+
+  @Override
+  public final boolean isCurrentNull() {
+    return currentNull;
   }
 }

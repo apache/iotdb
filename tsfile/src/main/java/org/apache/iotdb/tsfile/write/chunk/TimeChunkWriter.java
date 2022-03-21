@@ -253,4 +253,8 @@ public class TimeChunkWriter {
   public PublicBAOS getPageBuffer() {
     return pageBuffer;
   }
+
+  public TimePageWriter getPageWriter() {
+    return pageWriter;
+  }
 }

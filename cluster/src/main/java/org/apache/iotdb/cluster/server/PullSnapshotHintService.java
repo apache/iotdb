@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -36,7 +37,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -56,7 +56,7 @@ public class PullSnapshotHintService {
   }
 
   public void start() {
-    this.service = Executors.newScheduledThreadPool(1);
+    this.service = IoTDBThreadPoolFactory.newScheduledThreadPool(1, "PullSnapshotHint");
     this.service.scheduleAtFixedRate(this::sendHints, 0, 10, TimeUnit.MILLISECONDS);
   }
 
@@ -135,15 +135,27 @@ public class PullSnapshotHintService {
   private boolean sendHintsAsync(Node receiver, PullSnapshotHint hint)
       throws TException, InterruptedException {
     AsyncDataClient asyncDataClient = (AsyncDataClient) member.getAsyncClient(receiver);
+    if (asyncDataClient == null) {
+      return false;
+    }
     return SyncClientAdaptor.onSnapshotApplied(asyncDataClient, hint.getHeader(), hint.slots);
   }
 
   private boolean sendHintSync(Node receiver, PullSnapshotHint hint) throws TException {
-    try (SyncDataClient syncDataClient = (SyncDataClient) member.getSyncClient(receiver)) {
+    SyncDataClient syncDataClient = null;
+    try {
+      syncDataClient = (SyncDataClient) member.getSyncClient(receiver);
       if (syncDataClient == null) {
         return false;
       }
       return syncDataClient.onSnapshotApplied(hint.getHeader(), hint.slots);
+    } catch (TException e) {
+      syncDataClient.close();
+      throw e;
+    } finally {
+      if (syncDataClient != null) {
+        syncDataClient.returnSelf();
+      }
     }
   }
 
@@ -161,7 +173,7 @@ public class PullSnapshotHintService {
     }
 
     public int getRaftId() {
-      return receivers.getId();
+      return receivers.getRaftId();
     }
   }
 }

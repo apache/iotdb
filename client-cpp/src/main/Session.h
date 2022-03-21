@@ -16,15 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+#ifndef IOTDB_SESSION_H
+#define IOTDB_SESSION_H
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include <exception>
 #include <iostream>
 #include <algorithm>
 #include <map>
-#include <utility>
-#include <memory>
+#include <unordered_map>
+#include <unordered_set>
+#include <stack>
 #include <new>
 #include <thread>
 #include <mutex>
@@ -50,11 +55,11 @@ class IoTDBConnectionException : public std::exception {
 public:
     IoTDBConnectionException() : message() {}
 
-    IoTDBConnectionException(const char *m) : message(m) {}
+    explicit IoTDBConnectionException(const char *m) : message(m) {}
 
-    IoTDBConnectionException(std::string m) : message(m) {}
+    explicit IoTDBConnectionException(std::string m) : message(std::move(m)) {}
 
-    virtual const char *what() const throw() {
+    const char *what() const noexcept override {
         return message.c_str();
     }
 
@@ -66,19 +71,20 @@ class BatchExecutionException : public std::exception {
 public:
     BatchExecutionException() : message() {}
 
-    BatchExecutionException(const char *m) : message(m) {}
+    explicit BatchExecutionException(const char *m) : message(m) {}
 
-    BatchExecutionException(std::string m) : message(m) {}
+    BatchExecutionException(std::string m) : message(std::move(m)) {}
 
-    BatchExecutionException(std::vector <TSStatus> statusList) : message(), statusList(statusList) {}
+    BatchExecutionException(std::vector<TSStatus> statusList) : statusList(std::move(statusList)) {}
 
-    BatchExecutionException(std::vector <TSStatus> statusList, std::string m) : message(m), statusList(statusList) {}
+    BatchExecutionException(std::vector<TSStatus> statusList, std::string m) : statusList(std::move(statusList)),
+                                                                               message(std::move(m)) {}
 
-    virtual const char *what() const throw() {
+    const char *what() const noexcept override {
         return message.c_str();
     }
 
-    std::vector <TSStatus> statusList;
+    std::vector<TSStatus> statusList;
 private:
     std::string message;
 
@@ -92,33 +98,57 @@ public:
 
     UnSupportedDataTypeException(const char *m) : message(m) {}
 
-    UnSupportedDataTypeException(std::string m) : message("UnSupported dataType: " + m) {}
+    explicit UnSupportedDataTypeException(const std::string &m) : message("UnSupported dataType: " + m) {}
 };
 
-namespace CompressionType {
-
-    enum CompressionType {
-        UNCOMPRESSED, SNAPPY, GZIP, LZO, SDT, PAA, PLA, LZ4
+namespace Version {
+    enum Version {
+        V_0_12, V_0_13
     };
 }
+
+namespace CompressionType {
+    enum CompressionType {
+        UNCOMPRESSED = (char) 0,
+        SNAPPY = (char) 1,
+        GZIP = (char) 2,
+        LZO = (char) 3,
+        SDT = (char) 4,
+        PAA = (char) 5,
+        PLA = (char) 6,
+        LZ4 = (char) 7
+    };
+}
+
 namespace TSDataType {
     enum TSDataType {
-        BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, NULLTYPE
+        BOOLEAN = (char) 0,
+        INT32 = (char) 1,
+        INT64 = (char) 2,
+        FLOAT = (char) 3,
+        DOUBLE = (char) 4,
+        TEXT = (char) 5,
+        VECTOR = (char) 6,
+        NULLTYPE = (char) 7
     };
 }
+
 namespace TSEncoding {
     enum TSEncoding {
-        PLAIN = 0,
-        DICTIONARY = 1,
-        RLE = 2,
-        DIFF = 3,
-        TS_2DIFF = 4,
-        BITMAP = 5,
-        GORILLA_V1 = 6,
-        REGULAR = 7,
-        GORILLA = 8,
+        PLAIN = (char) 0,
+        DICTIONARY = (char) 1,
+        RLE = (char) 2,
+        DIFF = (char) 3,
+        TS_2DIFF = (char) 4,
+        BITMAP = (char) 5,
+        GORILLA_V1 = (char) 6,
+        REGULAR = (char) 7,
+        GORILLA = (char) 8,
+        ZIGZAG = (char) 9,
+        FREQ = (char) 10
     };
 }
+
 namespace TSStatusCode {
     enum TSStatusCode {
         SUCCESS_STATUS = 200,
@@ -181,100 +211,69 @@ namespace TSStatusCode {
 
 class RpcUtils {
 public:
-    std::shared_ptr <TSStatus> SUCCESS_STATUS;
+    std::shared_ptr<TSStatus> SUCCESS_STATUS;
 
     RpcUtils() {
         SUCCESS_STATUS = std::make_shared<TSStatus>();
         SUCCESS_STATUS->__set_code(TSStatusCode::SUCCESS_STATUS);
     }
 
-    static void verifySuccess(TSStatus &status);
+    static void verifySuccess(const TSStatus &status);
 
-    static void verifySuccess(std::vector <TSStatus> &statuses);
+    static void verifySuccess(const std::vector<TSStatus> &statuses);
 
     static TSStatus getStatus(TSStatusCode::TSStatusCode tsStatusCode);
 
-    static TSStatus getStatus(int code, std::string message);
+    static TSStatus getStatus(int code, const std::string &message);
 
-    static std::shared_ptr <TSExecuteStatementResp> getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode);
+    static std::shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode);
 
-    static std::shared_ptr <TSExecuteStatementResp>
-    getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode, std::string message);
+    static std::shared_ptr<TSExecuteStatementResp>
+    getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode, const std::string &message);
 
-    static std::shared_ptr <TSExecuteStatementResp> getTSExecuteStatementResp(TSStatus &status);
+    static std::shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(const TSStatus &status);
 
-    static std::shared_ptr <TSFetchResultsResp> getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode);
+    static std::shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode);
 
-    static std::shared_ptr <TSFetchResultsResp>
-    getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode, std::string appendMessage);
+    static std::shared_ptr<TSFetchResultsResp>
+    getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode, const std::string &appendMessage);
 
-    static std::shared_ptr <TSFetchResultsResp> getTSFetchResultsResp(TSStatus &status);
+    static std::shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(const TSStatus &status);
 };
 
 // Simulate the ByteBuffer class in Java
 class MyStringBuffer {
-private:
-    char *getchar(int len) {
-        char *ret = new char[len];
-        for (int i = pos; i < pos + len; i++)
-            ret[pos + len - 1 - i] = str[i];
-        pos += len;
-        return ret;
-    }
-
-    void putchar(int len, char *ins) {
-        for (int i = len - 1; i > -1; i--)
-            str += ins[i];
-    }
-
 public:
-    std::string str;
-    int pos;
+    MyStringBuffer() : pos(0) {
+        checkBigEndian();
+    }
+
+    explicit MyStringBuffer(std::string str) : str(std::move(str)), pos(0) {
+        checkBigEndian();
+    }
 
     bool hasRemaining() {
         return pos < str.size();
     }
 
-    MyStringBuffer() {}
-
-    MyStringBuffer(std::string str) {
-        this->str = str;
-        this->pos = 0;
-    }
-
     int getInt() {
-        char *data = getchar(4);
-        int ret = *(int *) data;
-        delete[]data;
-        return ret;
+        return *(int *) getOrderedByte(4);
     }
 
     int64_t getLong() {
-        char *data = getchar(8);
-        int64_t ret = *(int64_t *) data;
-        delete[]data;
-        return ret;
+        return *(int64_t *) getOrderedByte(8);
     }
 
     float getFloat() {
-        char *data = getchar(4);
-        float ret = *(float *) data;
-        delete[]data;
-        return ret;
+        return *(float *) getOrderedByte(4);
     }
 
     double getDouble() {
-        char *data = getchar(8);
-        double ret = *(double *) data;
-        delete[]data;
-        return ret;
+        return *(double *) getOrderedByte(8);
     }
 
     char getChar() {
-        char *data = getchar(1);
-        char ret = *(char *) data;
-        delete[]data;
-        return ret;
+        return str[pos++];
     }
 
     bool getBool() {
@@ -282,48 +281,177 @@ public:
     }
 
     std::string getString() {
-        int len = getInt();
-        std::string ret;
-        for (int i = 0; i < len; i++) ret.append(1, getChar());
-        return ret;
+        size_t len = getInt();
+        size_t tmpPos = pos;
+        pos += len;
+        return str.substr(tmpPos, len);
     }
 
     void putInt(int ins) {
-        char *data = (char *) &ins;
-        putchar(4, data);
+        putOrderedByte((char *) &ins, 4);
     }
 
     void putLong(int64_t ins) {
-        char *data = (char *) &ins;
-        putchar(8, data);
+        putOrderedByte((char *) &ins, 8);
     }
 
     void putFloat(float ins) {
-        char *data = (char *) &ins;
-        putchar(4, data);
+        putOrderedByte((char *) &ins, 4);
     }
 
     void putDouble(double ins) {
-        char *data = (char *) &ins;
-        putchar(8, data);
+        putOrderedByte((char *) &ins, 8);
     }
 
     void putChar(char ins) {
-        char *data = (char *) &ins;
-        putchar(1, data);
+        str += ins;
     }
 
     void putBool(bool ins) {
-        char tmp = 0;
-        if (ins) tmp = 1;
-        putChar(tmp);
+        char tmp = ins ? 1 : 0;
+        str += tmp;
     }
 
-    void putString(std::string ins) {
-        int len = ins.size();
-        putInt(len);
-        for (int i = 0; i < len; i++) putChar(ins[i]);
+    void putString(const std::string &ins) {
+        putInt(ins.size());
+        str += ins;
     }
+
+    void concat(const std::string &ins) {
+        str.append(ins);
+    }
+
+public:
+    std::string str;
+    size_t pos;
+
+private:
+    void checkBigEndian() {
+        static int chk = 0x0201;  //used to distinguish CPU's type (BigEndian or LittleEndian)
+        isBigEndian = (0x01 != *(char *) (&chk));
+    }
+
+    const char *getOrderedByte(size_t len) {
+        const char *p = nullptr;
+        if (isBigEndian) {
+            p = str.c_str() + pos;
+        } else {
+            const char *tmp = str.c_str();
+            for (size_t i = pos; i < pos + len; i++) {
+                numericBuf[pos + len - 1 - i] = tmp[i];
+            }
+            p = numericBuf;
+        }
+        pos += len;
+        return p;
+    }
+
+    void putOrderedByte(char *buf, int len) {
+        if (isBigEndian) {
+            str.assign(buf, len);
+        } else {
+            for (int i = len - 1; i > -1; i--) {
+                str += buf[i];
+            }
+        }
+    }
+
+private:
+    bool isBigEndian{};
+    char numericBuf[8]{};  //only be used by int, long, float, double etc.
+};
+
+class BitMap {
+public:
+    /** Initialize a BitMap with given size. */
+    explicit BitMap(size_t size) {
+        this->size = size;
+        this->bits.resize((size >> 3) + 1); // equal to "size/8 + 1"
+        std::fill(bits.begin(), bits.end(), (char) 0);
+    }
+
+    /** mark as 1 at the given bit position. */
+    void mark(int position) {
+        bits[position >> 3] |= BIT_UTIL[position % 8];
+    }
+
+    /** mark as 0 at the given bit position. */
+    void unmark(int position) {
+        bits[position >> 3] &= UNMARK_BIT_UTIL[position % 8];
+    }
+
+    /** mark as 1 at all positions. */
+    void markAll() {
+        std::fill(bits.begin(), bits.end(), (char) 0XFF);
+    }
+
+    /** mark as 0 at all positions. */
+    void reset() {
+        std::fill(bits.begin(), bits.end(), (char) 0);
+    }
+
+    /** returns the value of the bit with the specified index. */
+    bool isMarked(int position) {
+        return (bits[position >> 3] & BIT_UTIL[position % 8]) != 0;
+    }
+
+    /** whether all bits are zero, i.e., no Null value */
+    bool isAllUnmarked() {
+        int j;
+        for (j = 0; j < size >> 3; j++) {
+            if (bits[j] != (char) 0) {
+                return false;
+            }
+        }
+        for (j = 0; j < size % 8; j++) {
+            if ((bits[size >> 3] & BIT_UTIL[j]) != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** whether all bits are one, i.e., all are Null */
+    bool isAllMarked() {
+        int j;
+        for (j = 0; j < size >> 3; j++) {
+            if (bits[j] != (char) 0XFF) {
+                return false;
+            }
+        }
+        for (j = 0; j < size % 8; j++) {
+            if ((bits[size >> 3] & BIT_UTIL[j]) == 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    std::vector<char> getByteArray() {
+        return this->bits;
+    }
+
+    size_t getSize() {
+        return this->size;
+    }
+
+private:
+    std::vector<char> BIT_UTIL = {
+            (char) 1, (char) 2, (char) 4, (char) 8, (char) 16, (char) 32, (char) 64, (char) -128
+    };
+    std::vector<char> UNMARK_BIT_UTIL = {
+            (char) 0XFE, // 11111110
+            (char) 0XFD, // 11111101
+            (char) 0XFB, // 11111011
+            (char) 0XF7, // 11110111
+            (char) 0XEF, // 11101111
+            (char) 0XDF, // 11011111
+            (char) 0XBF, // 10111111
+            (char) 0X7F // 01111111
+    };
+
+    std::vector<char> bits;
+    size_t size;
 };
 
 class Field {
@@ -336,11 +464,11 @@ public:
     double doubleV;
     std::string stringV;
 
-    Field(TSDataType::TSDataType a) {
+    explicit Field(TSDataType::TSDataType a) {
         dataType = a;
     }
 
-    Field() {}
+    Field() = default;
 };
 
 /*
@@ -362,13 +490,15 @@ private:
     static const int DEFAULT_SIZE = 1024;
 public:
     std::string deviceId; // deviceId of this tablet
-    std::vector <std::pair<std::string, TSDataType::TSDataType>> schemas; // the list of measurement schemas for creating the tablet
-    std::vector <int64_t> timestamps;   //timestamps in this tablet
-    std::vector <std::vector<std::string>> values;
+    std::vector<std::pair<std::string, TSDataType::TSDataType>> schemas; // the list of measurement schemas for creating the tablet
+    std::vector<int64_t> timestamps;   // timestamps in this tablet
+    std::vector<std::vector<std::string>> values; // each object is a primitive type array, which represents values of one measurement
+    std::vector<std::unique_ptr<BitMap>> bitMaps; // each bitmap represents the existence of each value in the current column
     int rowSize;    //the number of rows to include in this tablet
     int maxRowNumber;   // the maximum number of rows for this tablet
+    bool isAligned;   // whether this tablet store data of aligned timeseries or not
 
-    Tablet() {}
+    Tablet() = default;
 
     /**
    * Return a tablet with default specified row number. This is the standard
@@ -377,7 +507,8 @@ public:
    * @param deviceId   the name of the device specified to be written in
    * @param timeseries the list of measurement schemas for creating the tablet
    */
-    Tablet(std::string deviceId, std::vector <std::pair<std::string, TSDataType::TSDataType>> &timeseries) {
+    Tablet(const std::string &deviceId,
+           const std::vector<std::pair<std::string, TSDataType::TSDataType>> &timeseries) {
         Tablet(deviceId, timeseries, DEFAULT_SIZE);
     }
 
@@ -391,64 +522,74 @@ public:
      *                     batch
      * @param maxRowNumber the maximum number of rows for this tablet
      */
-    Tablet(std::string deviceId, std::vector <std::pair<std::string, TSDataType::TSDataType>> &schemas,
-           int maxRowNumber) {
-        this->deviceId = deviceId;
-        this->schemas = schemas;
-        this->maxRowNumber = maxRowNumber;
-
+    Tablet(const std::string &deviceId, const std::vector<std::pair<std::string, TSDataType::TSDataType>> &schemas,
+           int maxRowNumber, bool _isAligned = false) : deviceId(deviceId), schemas(schemas),
+                                                        maxRowNumber(maxRowNumber), isAligned(_isAligned) {
         // create timestamp column
         timestamps.resize(maxRowNumber);
-        // create value columns
+        // create value columns and bitMaps
         values.resize(schemas.size());
-        for (int i = 0; i < schemas.size(); i++) {
+        bitMaps.resize(schemas.size());
+        for (size_t i = 0; i < schemas.size(); i++) {
             values[i].resize(maxRowNumber);
+            bitMaps[i] = std::unique_ptr<BitMap>(new BitMap(maxRowNumber));
         }
-
         this->rowSize = 0;
     }
 
     void reset(); // Reset Tablet to the default state - set the rowSize to 0
+
     void createColumns();
 
     int getTimeBytesSize();
 
     int getValueByteSize(); // total byte size that values occupies
+
+    void setAligned(bool isAligned);
 };
 
 class SessionUtils {
 public:
-    static std::string getTime(Tablet &tablet);
+    static std::string getTime(const Tablet &tablet);
 
-    static std::string getValue(Tablet &tablet);
+    static std::string getValue(const Tablet &tablet);
 };
 
 class RowRecord {
 public:
     int64_t timestamp;
-    std::vector <Field> fields;
+    std::vector<Field> fields;
 
     RowRecord(int64_t timestamp) {
         this->timestamp = timestamp;
     }
 
-    RowRecord(int64_t timestamp, std::vector <Field> &fields) {
-        this->timestamp = timestamp;
-        this->fields = fields;
+    RowRecord(int64_t timestamp, const std::vector<Field> &fields)
+            : timestamp(timestamp), fields(fields) {
+    }
+
+    explicit RowRecord(const std::vector<Field> &fields)
+            : timestamp(-1), fields(fields) {
     }
 
     RowRecord() {
         this->timestamp = -1;
     }
 
-    void addField(Field &f) {
+    void addField(const Field &f) {
         this->fields.push_back(f);
     }
 
     std::string toString() {
-        std::string ret = std::to_string(timestamp);
-        for (int i = 0; i < fields.size(); i++) {
+        std::string ret;
+        if (this->timestamp != -1) {
+            ret.append(std::to_string(timestamp));
             ret.append("\t");
+        }
+        for (size_t i = 0; i < fields.size(); i++) {
+            if (i != 0) {
+                ret.append("\t");
+            }
             TSDataType::TSDataType dataType = fields[i].dataType;
             switch (dataType) {
                 case TSDataType::BOOLEAN: {
@@ -493,33 +634,38 @@ private:
     int64_t queryId;
     int64_t statementId;
     int64_t sessionId;
-    std::shared_ptr <TSIServiceIf> client;
+    std::shared_ptr<TSIServiceIf> client;
     int batchSize = 1024;
-    std::vector <std::string> columnNameList;
-    std::vector <std::string> columnTypeDeduplicatedList;
+    std::vector<std::string> columnNameList;
+    std::vector<std::string> columnTypeDeduplicatedList;
     // duplicated column index -> origin index
-    std::map<int, int> duplicateLocation;
+    std::unordered_map<int, int> duplicateLocation;
     // column name -> column location
-    std::map<std::string, int> columnMap;
+    std::unordered_map<std::string, int> columnMap;
     // column size
     int columnSize = 0;
+    bool isIgnoreTimeStamp = false;
 
     int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
-    std::shared_ptr <TSQueryDataSet> tsQueryDataSet;
+    std::shared_ptr<TSQueryDataSet> tsQueryDataSet;
     MyStringBuffer tsQueryDataSetTimeBuffer;
-    std::vector <std::unique_ptr<MyStringBuffer>> valueBuffers;
-    std::vector <std::unique_ptr<MyStringBuffer>> bitmapBuffers;
+    std::vector<std::unique_ptr<MyStringBuffer>> valueBuffers;
+    std::vector<std::unique_ptr<MyStringBuffer>> bitmapBuffers;
     RowRecord rowRecord;
-    char *currentBitmap = NULL; // used to cache the current bitmap for every column
+    char *currentBitmap = nullptr; // used to cache the current bitmap for every column
     static const int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
 
 public:
     SessionDataSet() {}
 
-    SessionDataSet(std::string sql, std::vector <std::string> &columnNameList,
-                   std::vector <std::string> &columnTypeList, int64_t queryId, int64_t statementId,
-                   std::shared_ptr <TSIServiceIf> client, int64_t sessionId,
-                   std::shared_ptr <TSQueryDataSet> queryDataSet) : tsQueryDataSetTimeBuffer(queryDataSet->time) {
+    SessionDataSet(const std::string &sql,
+                   const std::vector<std::string> &columnNameList,
+                   const std::vector<std::string> &columnTypeList,
+                   std::map<std::string, int> &columnNameIndexMap,
+                   bool isIgnoreTimeStamp,
+                   int64_t queryId, int64_t statementId,
+                   std::shared_ptr<TSIServiceIf> client, int64_t sessionId,
+                   const std::shared_ptr<TSQueryDataSet> &queryDataSet) : tsQueryDataSetTimeBuffer(queryDataSet->time) {
         this->sessionId = sessionId;
         this->sql = sql;
         this->queryId = queryId;
@@ -528,9 +674,10 @@ public:
         this->columnNameList = columnNameList;
         this->currentBitmap = new char[columnNameList.size()];
         this->columnSize = columnNameList.size();
+        this->isIgnoreTimeStamp = isIgnoreTimeStamp;
 
         // column name -> column location
-        for (int i = 0; i < columnNameList.size(); i++) {
+        for (size_t i = 0; i < columnNameList.size(); i++) {
             std::string name = columnNameList[i];
             if (this->columnMap.find(name) != this->columnMap.end()) {
                 duplicateLocation[i] = columnMap[name];
@@ -538,18 +685,27 @@ public:
                 this->columnMap[name] = i;
                 this->columnTypeDeduplicatedList.push_back(columnTypeList[i]);
             }
-            this->valueBuffers.push_back(
-                    std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[i])));
-            this->bitmapBuffers.push_back(
-                    std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[i])));
+            if (!columnNameIndexMap.empty()) {
+                this->valueBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(
+                                new MyStringBuffer(queryDataSet->valueList[columnNameIndexMap[name]])));
+                this->bitmapBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(
+                                new MyStringBuffer(queryDataSet->bitmapList[columnNameIndexMap[name]])));
+            } else {
+                this->valueBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[columnMap[name]])));
+                this->bitmapBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[columnMap[name]])));
+            }
         }
         this->tsQueryDataSet = queryDataSet;
     }
 
     ~SessionDataSet() {
-        if (currentBitmap != NULL) {
+        if (currentBitmap != nullptr) {
             delete[] currentBitmap;
-            currentBitmap = NULL;
+            currentBitmap = nullptr;
         }
     }
 
@@ -557,7 +713,7 @@ public:
 
     void setBatchSize(int batchSize);
 
-    std::vector <std::string> getColumnNames();
+    std::vector<std::string> getColumnNames();
 
     bool hasNext();
 
@@ -571,13 +727,164 @@ public:
 };
 
 template<typename T>
-std::vector <T> sortList(std::vector <T> &valueList, int *index, int indexLength) {
-    std::vector <T> sortedValues(valueList.size());
+std::vector<T> sortList(const std::vector<T> &valueList, const int *index, int indexLength) {
+    std::vector<T> sortedValues(valueList.size());
     for (int i = 0; i < indexLength; i++) {
         sortedValues[i] = valueList[index[i]];
     }
     return sortedValues;
 }
+
+class TemplateNode {
+public:
+
+    TemplateNode() = default;
+
+    explicit TemplateNode(std::string name_) {
+        this->name_ = std::move(name_);
+    }
+
+    const std::string &getName() const {
+        return name_;
+    }
+
+    virtual const std::unordered_map<std::string, std::shared_ptr<TemplateNode>> &getChildren() const {
+        throw BatchExecutionException("Should call exact sub class!");
+    }
+
+    virtual bool isMeasurement() = 0;
+
+    virtual bool isAligned() {
+        throw BatchExecutionException("Should call exact sub class!");
+    }
+
+    virtual std::string serialize() const {
+        throw BatchExecutionException("Should call exact sub class!");
+    }
+
+private:
+    std::string name_;
+};
+
+class MeasurementNode : public TemplateNode {
+public:
+
+    MeasurementNode(std::string name_, TSDataType::TSDataType data_type_, TSEncoding::TSEncoding encoding_,
+                    CompressionType::CompressionType compression_type_) : TemplateNode(std::move(name_)) {
+        this->data_type_ = data_type_;
+        this->encoding_ = encoding_;
+        this->compression_type_ = compression_type_;
+    }
+
+    TSDataType::TSDataType getDataType() const {
+        return data_type_;
+    }
+
+    TSEncoding::TSEncoding getEncoding() const {
+        return encoding_;
+    }
+
+    CompressionType::CompressionType getCompressionType() const {
+        return compression_type_;
+    }
+
+    bool isMeasurement() override {
+        return true;
+    }
+
+    std::string serialize() const override;
+
+private:
+    TSDataType::TSDataType data_type_;
+    TSEncoding::TSEncoding encoding_;
+    CompressionType::CompressionType compression_type_;
+};
+
+class InternalNode : public TemplateNode {
+public:
+
+    InternalNode(std::string name_, bool is_aligned_) : TemplateNode(std::move(name_)) {
+        this->is_aligned_ = is_aligned_;
+    }
+
+    void addChild(const InternalNode &node) {
+        if (this->children_.count(node.getName())) {
+            throw BatchExecutionException("Duplicated child of node in template.");
+        }
+        this->children_[node.getName()] = std::make_shared<InternalNode>(node);
+    }
+
+    void addChild(const MeasurementNode &node) {
+        if (this->children_.count(node.getName())) {
+            throw BatchExecutionException("Duplicated child of node in template.");
+        }
+        this->children_[node.getName()] = std::make_shared<MeasurementNode>(node);
+    }
+
+    void deleteChild(const TemplateNode &node) {
+        this->children_.erase(node.getName());
+    }
+
+    const std::unordered_map<std::string, std::shared_ptr<TemplateNode>> &getChildren() const override {
+        return children_;
+    }
+
+    bool isMeasurement() override {
+        return false;
+    }
+
+    bool isAligned() override {
+        return is_aligned_;
+    }
+
+private:
+    std::unordered_map<std::string, std::shared_ptr<TemplateNode>> children_;
+    bool is_aligned_;
+};
+
+namespace TemplateQueryType {
+    enum TemplateQueryType {
+        COUNT_MEASUREMENTS, IS_MEASUREMENT, PATH_EXIST, SHOW_MEASUREMENTS
+    };
+}
+
+class Template {
+public:
+
+    Template(std::string name_, bool is_aligned_) {
+        this->name_ = std::move(name_);
+        this->is_aligned_ = is_aligned_;
+    }
+
+    const std::string &getName() const {
+        return name_;
+    }
+
+    bool isAligned() const {
+        return is_aligned_;
+    }
+
+    void addToTemplate(const InternalNode &child) {
+        if (this->children_.count(child.getName())) {
+            throw BatchExecutionException("Duplicated child of node in template.");
+        }
+        this->children_[child.getName()] = std::make_shared<InternalNode>(child);
+    }
+
+    void addToTemplate(const MeasurementNode &child) {
+        if (this->children_.count(child.getName())) {
+            throw BatchExecutionException("Duplicated child of node in template.");
+        }
+        this->children_[child.getName()] = std::make_shared<MeasurementNode>(child);
+    }
+
+    std::string serialize() const;
+
+private:
+    std::string name_;
+    std::unordered_map<std::string, std::shared_ptr<TemplateNode>> children_;
+    bool is_aligned_;
+};
 
 class Session {
 private:
@@ -585,9 +892,9 @@ private:
     int rpcPort;
     std::string username;
     std::string password;
-    TSProtocolVersion::type protocolVersion = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V3;
-    std::shared_ptr <TSIServiceIf> client;
-    std::shared_ptr <apache::thrift::transport::TSocket> transport;
+    const TSProtocolVersion::type protocolVersion = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V3;
+    std::shared_ptr<TSIServiceIf> client;
+    std::shared_ptr<TTransport> transport;
     bool isClosed = true;
     int64_t sessionId;
     int64_t statementId;
@@ -595,59 +902,77 @@ private:
     int fetchSize;
     const static int DEFAULT_FETCH_SIZE = 10000;
     const static int DEFAULT_TIMEOUT_MS = 0;
+    Version::Version version;
 
-    bool checkSorted(Tablet &tablet);
+    bool checkSorted(const Tablet &tablet);
 
-    bool checkSorted(std::vector <int64_t> &times);
+    bool checkSorted(const std::vector<int64_t> &times);
 
     void sortTablet(Tablet &tablet);
 
-    void sortIndexByTimestamp(int *index, std::vector <int64_t> &timestamps, int length);
+    void sortIndexByTimestamp(int *index, std::vector<int64_t> &timestamps, int length);
 
     std::string getTimeZone();
 
-    void setTimeZone(std::string zoneId);
+    void setTimeZone(const std::string &zoneId);
 
-    void appendValues(std::string &buffer, char *value, int size);
+    void appendValues(std::string &buffer, const char *value, int size);
 
     void
-    putValuesIntoBuffer(std::vector <TSDataType::TSDataType> &types, std::vector<char *> &values, std::string &buf);
+    putValuesIntoBuffer(const std::vector<TSDataType::TSDataType> &types, const std::vector<char *> &values,
+                        std::string &buf);
 
     int8_t getDataTypeNumber(TSDataType::TSDataType type);
 
+    struct TsCompare {
+        std::vector<int64_t> &timestamps;
+
+        explicit TsCompare(std::vector<int64_t> &inTimestamps) : timestamps(inTimestamps) {};
+
+        bool operator()(int i, int j) { return (timestamps[i] < timestamps[j]); };
+    };
+
+    std::string getVersionString(Version::Version version);
+
 public:
-    Session(std::string host, int rpcPort) : username("user"), password("password") {
+    Session(const std::string &host, int rpcPort) : username("user"), password("password"), version(Version::V_0_13) {
         this->host = host;
         this->rpcPort = rpcPort;
     }
 
-    Session(std::string host, int rpcPort, std::string username, std::string password)
+    Session(const std::string &host, int rpcPort, const std::string &username, const std::string &password)
             : fetchSize(10000) {
         this->host = host;
         this->rpcPort = rpcPort;
         this->username = username;
         this->password = password;
         this->zoneId = "UTC+08:00";
+        this->version = Version::V_0_13;
     }
 
-    Session(std::string host, int rpcPort, std::string username, std::string password, int fetchSize) {
+    Session(const std::string &host, int rpcPort, const std::string &username, const std::string &password,
+            int fetchSize) {
         this->host = host;
         this->rpcPort = rpcPort;
         this->username = username;
         this->password = password;
         this->fetchSize = fetchSize;
         this->zoneId = "UTC+08:00";
+        this->version = Version::V_0_13;
     }
 
-    Session(std::string host, std::string rpcPort, std::string username = "user",
-            std::string password = "password", int fetchSize = 10000) {
+    Session(const std::string &host, const std::string &rpcPort, const std::string &username = "user",
+            const std::string &password = "password", int fetchSize = 10000) {
         this->host = host;
         this->rpcPort = stoi(rpcPort);
         this->username = username;
         this->password = password;
         this->fetchSize = fetchSize;
         this->zoneId = "UTC+08:00";
+        this->version = Version::V_0_13;
     }
+
+    ~Session();
 
     void open();
 
@@ -657,81 +982,178 @@ public:
 
     void close();
 
-    void insertRecord(std::string deviceId, int64_t time, std::vector <std::string> &measurements,
-                      std::vector <std::string> &values);
+    void insertRecord(const std::string &deviceId, int64_t time, const std::vector<std::string> &measurements,
+                      const std::vector<std::string> &values);
 
-    void insertRecord(std::string deviceId, int64_t time, std::vector <std::string> &measurements,
-                      std::vector <TSDataType::TSDataType> &types, std::vector<char *> &values);
+    void insertRecord(const std::string &deviceId, int64_t time, const std::vector<std::string> &measurements,
+                      const std::vector<TSDataType::TSDataType> &types, const std::vector<char *> &values);
 
-    void insertRecords(std::vector <std::string> &deviceIds, std::vector <int64_t> &times,
-                       std::vector <std::vector<std::string>> &measurementsList,
-                       std::vector <std::vector<std::string>> &valuesList);
+    void insertAlignedRecord(const std::string &deviceId, int64_t time, const std::vector<std::string> &measurements,
+                             const std::vector<std::string> &values);
 
-    void insertRecords(std::vector <std::string> &deviceIds, std::vector <int64_t> &times,
-                       std::vector <std::vector<std::string>> &measurementsList,
-                       std::vector <std::vector<TSDataType::TSDataType>> typesList,
-                       std::vector <std::vector<char *>> &valuesList);
+    void insertAlignedRecord(const std::string &deviceId, int64_t time, const std::vector<std::string> &measurements,
+                             const std::vector<TSDataType::TSDataType> &types, const std::vector<char *> &values);
 
-    void insertRecordsOfOneDevice(std::string deviceId, std::vector <int64_t> &times,
-                                  std::vector <std::vector<std::string>> measurementsList,
-                                  std::vector <std::vector<TSDataType::TSDataType>> typesList,
-                                  std::vector <std::vector<char *>> &valuesList);
+    void insertRecords(const std::vector<std::string> &deviceIds,
+                       const std::vector<int64_t> &times,
+                       const std::vector<std::vector<std::string>> &measurementsList,
+                       const std::vector<std::vector<std::string>> &valuesList);
 
-    void insertRecordsOfOneDevice(std::string deviceId, std::vector <int64_t> &times,
-                                  std::vector <std::vector<std::string>> measurementsList,
-                                  std::vector <std::vector<TSDataType::TSDataType>> typesList,
-                                  std::vector <std::vector<char *>> &valuesList, bool sorted);
+    void insertRecords(const std::vector<std::string> &deviceIds,
+                       const std::vector<int64_t> &times,
+                       const std::vector<std::vector<std::string>> &measurementsList,
+                       const std::vector<std::vector<TSDataType::TSDataType>> &typesList,
+                       const std::vector<std::vector<char *>> &valuesList);
+
+    void insertAlignedRecords(const std::vector<std::string> &deviceIds,
+                              const std::vector<int64_t> &times,
+                              const std::vector<std::vector<std::string>> &measurementsList,
+                              const std::vector<std::vector<std::string>> &valuesList);
+
+    void insertAlignedRecords(const std::vector<std::string> &deviceIds,
+                              const std::vector<int64_t> &times,
+                              const std::vector<std::vector<std::string>> &measurementsList,
+                              const std::vector<std::vector<TSDataType::TSDataType>> &typesList,
+                              const std::vector<std::vector<char *>> &valuesList);
+
+    void insertRecordsOfOneDevice(const std::string &deviceId,
+                                  std::vector<int64_t> &times,
+                                  std::vector<std::vector<std::string>> &measurementsList,
+                                  std::vector<std::vector<TSDataType::TSDataType>> &typesList,
+                                  std::vector<std::vector<char *>> &valuesList);
+
+    void insertRecordsOfOneDevice(const std::string &deviceId,
+                                  std::vector<int64_t> &times,
+                                  std::vector<std::vector<std::string>> &measurementsList,
+                                  std::vector<std::vector<TSDataType::TSDataType>> &typesList,
+                                  std::vector<std::vector<char *>> &valuesList,
+                                  bool sorted);
+
+    void insertAlignedRecordsOfOneDevice(const std::string &deviceId,
+                                         std::vector<int64_t> &times,
+                                         std::vector<std::vector<std::string>> &measurementsList,
+                                         std::vector<std::vector<TSDataType::TSDataType>> &typesList,
+                                         std::vector<std::vector<char *>> &valuesList);
+
+    void insertAlignedRecordsOfOneDevice(const std::string &deviceId,
+                                         std::vector<int64_t> &times,
+                                         std::vector<std::vector<std::string>> &measurementsList,
+                                         std::vector<std::vector<TSDataType::TSDataType>> &typesList,
+                                         std::vector<std::vector<char *>> &valuesList,
+                                         bool sorted);
 
     void insertTablet(Tablet &tablet);
 
     void insertTablet(Tablet &tablet, bool sorted);
 
-    void insertTablets(std::map<std::string, Tablet *> &tablets);
+    void insertAlignedTablet(Tablet &tablet);
 
-    void insertTablets(std::map<std::string, Tablet *> &tablets, bool sorted);
+    void insertAlignedTablet(Tablet &tablet, bool sorted);
 
-    void testInsertRecord(std::string deviceId, int64_t time, std::vector <std::string> &measurements,
-                          std::vector <std::string> &values);
+    void insertTablets(std::unordered_map<std::string, Tablet *> &tablets);
 
-    void testInsertTablet(Tablet &tablet);
+    void insertTablets(std::unordered_map<std::string, Tablet *> &tablets, bool sorted);
 
-    void testInsertRecords(std::vector <std::string> &deviceIds, std::vector <int64_t> &times,
-                           std::vector <std::vector<std::string>> &measurementsList,
-                           std::vector <std::vector<std::string>> &valuesList);
+    void insertAlignedTablets(std::unordered_map<std::string, Tablet *> &tablets);
 
-    void deleteTimeseries(std::string path);
+    void insertAlignedTablets(std::unordered_map<std::string, Tablet *> &tablets, bool sorted);
 
-    void deleteTimeseries(std::vector <std::string> &paths);
+    void testInsertRecord(const std::string &deviceId, int64_t time,
+                          const std::vector<std::string> &measurements,
+                          const std::vector<std::string> &values);
 
-    void deleteData(std::string path, int64_t time);
+    void testInsertTablet(const Tablet &tablet);
 
-    void deleteData(std::vector <std::string> &deviceId, int64_t time);
+    void testInsertRecords(const std::vector<std::string> &deviceIds,
+                           const std::vector<int64_t> &times,
+                           const std::vector<std::vector<std::string>> &measurementsList,
+                           const std::vector<std::vector<std::string>> &valuesList);
 
-    void setStorageGroup(std::string storageGroupId);
+    void deleteTimeseries(const std::string &path);
 
-    void deleteStorageGroup(std::string storageGroup);
+    void deleteTimeseries(const std::vector<std::string> &paths);
 
-    void deleteStorageGroups(std::vector <std::string> &storageGroups);
+    void deleteData(const std::string &path, int64_t time);
 
-    void createTimeseries(std::string path, TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding,
+    void deleteData(const std::vector<std::string> &deviceId, int64_t time);
+
+    void setStorageGroup(const std::string &storageGroupId);
+
+    void deleteStorageGroup(const std::string &storageGroup);
+
+    void deleteStorageGroups(const std::vector<std::string> &storageGroups);
+
+    void createTimeseries(const std::string &path, TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding,
                           CompressionType::CompressionType compressor);
 
-    void createTimeseries(std::string path, TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding,
+    void createTimeseries(const std::string &path, TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding,
                           CompressionType::CompressionType compressor,
-                          std::map <std::string, std::string> *props, std::map <std::string, std::string> *tags,
-                          std::map <std::string, std::string> *attributes, std::string measurementAlias);
+                          std::map<std::string, std::string> *props, std::map<std::string, std::string> *tags,
+                          std::map<std::string, std::string> *attributes,
+                          const std::string &measurementAlias);
 
-    void createMultiTimeseries(std::vector <std::string> paths, std::vector <TSDataType::TSDataType> dataTypes,
-                               std::vector <TSEncoding::TSEncoding> encodings,
-                               std::vector <CompressionType::CompressionType> compressors,
-                               std::vector <std::map<std::string, std::string>> *propsList,
-                               std::vector <std::map<std::string, std::string>> *tagsList,
-                               std::vector <std::map<std::string, std::string>> *attributesList,
-                               std::vector <std::string> *measurementAliasList);
+    void createMultiTimeseries(const std::vector<std::string> &paths,
+                               const std::vector<TSDataType::TSDataType> &dataTypes,
+                               const std::vector<TSEncoding::TSEncoding> &encodings,
+                               const std::vector<CompressionType::CompressionType> &compressors,
+                               std::vector<std::map<std::string, std::string>> *propsList,
+                               std::vector<std::map<std::string, std::string>> *tagsList,
+                               std::vector<std::map<std::string, std::string>> *attributesList,
+                               std::vector<std::string> *measurementAliasList);
 
-    bool checkTimeseriesExists(std::string path);
+    void createAlignedTimeseries(const std::string &deviceId,
+                                 const std::vector<std::string> &measurements,
+                                 const std::vector<TSDataType::TSDataType> &dataTypes,
+                                 const std::vector<TSEncoding::TSEncoding> &encodings,
+                                 const std::vector<CompressionType::CompressionType> &compressors);
 
-    std::unique_ptr <SessionDataSet> executeQueryStatement(std::string sql);
+    bool checkTimeseriesExists(const std::string &path);
 
-    void executeNonQueryStatement(std::string sql);
+    std::unique_ptr<SessionDataSet> executeQueryStatement(const std::string &sql);
+
+    void executeNonQueryStatement(const std::string &sql);
+
+    void createSchemaTemplate(const Template &templ);
+
+    void setSchemaTemplate(const std::string &template_name, const std::string &prefix_path);
+
+    void unsetSchemaTemplate(const std::string &prefix_path, const std::string &template_name);
+
+    void addAlignedMeasurementsInTemplate(const std::string &template_name,
+                                          const std::vector<std::string> &measurements,
+                                          const std::vector<TSDataType::TSDataType> &dataTypes,
+                                          const std::vector<TSEncoding::TSEncoding> &encodings,
+                                          const std::vector<CompressionType::CompressionType> &compressors);
+
+    void addAlignedMeasurementsInTemplate(const std::string &template_name,
+                                          const std::string &measurement,
+                                          TSDataType::TSDataType dataType,
+                                          TSEncoding::TSEncoding encoding,
+                                          CompressionType::CompressionType compressor);
+
+    void addUnalignedMeasurementsInTemplate(const std::string &template_name,
+                                            const std::vector<std::string> &measurements,
+                                            const std::vector<TSDataType::TSDataType> &dataTypes,
+                                            const std::vector<TSEncoding::TSEncoding> &encodings,
+                                            const std::vector<CompressionType::CompressionType> &compressors);
+
+    void addUnalignedMeasurementsInTemplate(const std::string &template_name,
+                                            const std::string &measurement,
+                                            TSDataType::TSDataType dataType,
+                                            TSEncoding::TSEncoding encoding,
+                                            CompressionType::CompressionType compressor);
+
+    void deleteNodeInTemplate(const std::string &template_name, const std::string &path);
+
+    int countMeasurementsInTemplate(const std::string &template_name);
+
+    bool isMeasurementInTemplate(const std::string &template_name, const std::string &path);
+
+    bool isPathExistInTemplate(const std::string &template_name, const std::string &path);
+
+    std::vector<std::string> showMeasurementsInTemplate(const std::string &template_name);
+
+    std::vector<std::string> showMeasurementsInTemplate(const std::string &template_name, const std::string &pattern);
 };
+
+#endif // IOTDB_SESSION_H

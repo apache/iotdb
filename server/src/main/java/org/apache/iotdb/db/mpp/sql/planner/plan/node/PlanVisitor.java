@@ -1,0 +1,76 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iotdb.db.mpp.sql.planner.plan.node;
+
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
+
+public abstract class PlanVisitor<R, C> {
+
+  public abstract R visitPlan(PlanNode node, C context);
+
+  public R visitSeriesScan(SeriesScanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitSeriesAggregate(SeriesAggregateScanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitDeviceMerge(DeviceMergeNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitFill(FillNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitFilter(FilterNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitFilterNull(FilterNullNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitGroupByLevel(GroupByLevelNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitLimit(LimitNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitOffset(OffsetNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitRowBasedSeriesAggregate(AggregateNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitSort(SortNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitTimeJoin(TimeJoinNode node, C context) {
+    return visitPlan(node, context);
+  }
+}

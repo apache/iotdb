@@ -63,6 +63,7 @@ By default, the ports that IoTDB uses are:
 
 * 6667: RPC port
 * 31999: JMX port
+* 8086: InfluxDB Protocol port
 * 8181: Monitor port
 * 5555: Data sync port
 * 9003: internal metadata rpc port (for cluster)
@@ -105,5 +106,49 @@ Or,
 ```shell
 docker exec -it c82321c70137 start-cli.sh
 ```
+
+# How to run IoTDB-grafana-connector
+
+1. First way: use config file:
+
+```
+docker run -it -v /your_application.properties_folder:/iotdb-grafana-connector/config -p 8888:8888 apache/iotdb:<version>-grafana
+```
+
+2. Second way: use environment(take `SPRING_DATASOURCE_URL` for example)
+
+```
+docker run -it -p 8888:8888 apache/iotdb:<version>-grafana -e SPRING_DATASOURCE_URL=jdbc:iotdb://iotdb:6667/
+```
+
+3. All related environment are as follows(more details in `grafana/src/main/resources/application.properties`)
+
+| name                                | default value                     |
+| ----------------------------------- | --------------------------------- |
+| SPRING_DATASOURCE_URL               | jdbc:iotdb://127.0.0.1:6667/      |
+| SPRING_DATASOURCE_USERNAME          | root                              |
+| SPRING_DATASOURCE_PASSWORD          | root                              |
+| SPRING_DATASOURCE_DRIVER_CLASS_NAME | org.apache.iotdb.jdbc.IoTDBDriver |
+| SERVER_PORT                         | 8888                              |
+| TIMESTAMP_PRECISION                 | ms                                |
+| ISDOWNSAMPLING                      | true                              |
+| INTERVAL                            | 1m                                |
+| CONTINUOUS_DATA_FUNCTION            | AVG                               |
+| DISCRETE_DATA_FUNCTION              | LAST_VALUE                        |
+
+# How to run IoTDB-grafana-connector by docker compose
+> Using docker compose, it contains three services: iotdb, grafana and grafana-connector
+
+1. The location of docker compose file: `/docker/src/main/DockerCompose/docker-compose-grafana.yml`
+2. Use `docker-compose up` can start all three services
+   1. you can use `docker-compose up -d` to start in the background
+   2. you can modify `docker-compose-grafana.yml` to implement your requirements.
+      1. you can modify environment of grafana-connector
+      2. If you want to **SAVE ALL DATA**, please use `volumes` keyword to mount the data volume or file of the host into the container.
+3. After all services are start, you can visit `{ip}:3000` to visit grafana
+   1. In `Configuration`, search `SimpleJson`
+   2. Fill in url: `grafana-connector:8888`, then click `save and test`. if `Data source is working` is shown, the configuration is finished.
+   3. Then you can create dashboards.
+4. if you want to stop services, just run `docker-compose down`
 
 Enjoy it!

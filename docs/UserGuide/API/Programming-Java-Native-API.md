@@ -19,21 +19,19 @@
 
 -->
 
-## Java Native API
+# Java Native API
+
+## Installation
 
 ### Dependencies
 
 * JDK >= 1.8
 * Maven >= 3.6
 
-
-
-### Installation
+### How to install
 
 In root directory:
 > mvn clean install -pl session -am -DskipTests
-
-
 
 ### Using IoTDB Java Native API with Maven
 
@@ -42,59 +40,84 @@ In root directory:
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.13.0-SNAPSHOT</version>
+      <version>0.14.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
 
+## Syntax Description
 
+- **IoTDB-SQL interface:** The input SQL parameter needs to conform to the [syntax conventions](../Reference/Syntax-Conventions.md) and be escaped for JAVA strings. For example, you need to add a backslash before the double-quotes. (That is: after JAVA escaping, it is consistent with the SQL statement executed on the command line.)
+- **Other interfaces:**
+  - The node names in path or path prefix as parameter:
+    - The node names which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
+    - The node names enclosed in single or double quotes still need to be enclosed in single or double quotes and must be escaped for JAVA strings.
+    - For the `checkTimeseriesExists` interface, since the IoTDB-SQL interface is called internally, the time-series pathname must be consistent with the SQL syntax conventions and be escaped for JAVA strings.
+  - Identifiers (such as template names) as parameters: The identifiers which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
 
-### Native APIs
+## Native APIs
 
 Here we show the commonly used interfaces and their parameters in the Native API:
+
+### Initialization
 
 * Initialize a Session
 
 ```java
-    // use default configuration 
-    session = new Session.Builder.build();
+// use default configuration 
+session = new Session.Builder.build();
 
-    // initialize with a single node
-    session = 
-        new Session.Builder()
-            .host(String host)
-            .port(int port)
-            .build();
+// initialize with a single node
+session = 
+    new Session.Builder()
+        .host(String host)
+        .port(int port)
+        .build();
 
-    // initialize with multiple nodes
-    session = 
-        new Session.Builder()
-            .nodeUrls(List<String> nodeUrls)
-            .build();
+// initialize with multiple nodes
+session = 
+    new Session.Builder()
+        .nodeUrls(List<String> nodeUrls)
+        .build();
 
-    // other configurations
-    session = 
-        new Session.Builder()
-            .fetchSize(int fetchSize)
-            .username(String username)
-            .password(String password)
-            .thriftDefaultBufferSize(int thriftDefaultBufferSize)
-            .thriftMaxFrameSize(int thriftMaxFrameSize)
-            .enableCacheLeader(boolean enableCacheLeader)
-            .build();
+// other configurations
+session = 
+    new Session.Builder()
+        .fetchSize(int fetchSize)
+        .username(String username)
+        .password(String password)
+        .thriftDefaultBufferSize(int thriftDefaultBufferSize)
+        .thriftMaxFrameSize(int thriftMaxFrameSize)
+        .enableCacheLeader(boolean enableCacheLeader)
+        .version(Version version)
+        .build();
 ```
+
+Version represents the SQL semantic version used by the client, which is used to be compatible with the SQL semantics of 0.12 when upgrading 0.13. The possible values are: `V_0_12`, `V_0_13`.
 
 * Open a Session
 
 ```java
-Session.open()
+void open()
 ```
+
+* Open a session, with a parameter to specify whether to enable RPC compression
+  
+```java
+void open(boolean enableRPCCompression)
+```
+
+Notice: this RPC compression status of client must comply with that of IoTDB server
 
 * Close a Session
 
 ```java
-Session.close()
+void close()
 ```
+
+### Data Definition Interface (DDL Interface)
+
+#### Storage Group Management
 
 * Set storage group
 
@@ -108,6 +131,8 @@ void setStorageGroup(String storageGroupId)
 void deleteStorageGroup(String storageGroup)
 void deleteStorageGroups(List<String> storageGroups)
 ```
+
+#### Timeseries Management
 
 * Create one or multiple timeseries
 
@@ -138,23 +163,199 @@ void deleteTimeseries(String path)
 void deleteTimeseries(List<String> paths)
 ```
 
-* Delete data before or equal to a timestamp of one or several timeseries
+* Check whether the specific timeseries exists.
 
 ```java
-void deleteData(String path, long time)
-void deleteData(List<String> paths, long time)
+boolean checkTimeseriesExists(String path)
 ```
 
-* Insert a Record，which contains multiple measurement value of a device at a timestamp. Without type info the server has to do type inference, which may cost some time
+#### Schema Template
+
+
+Create a schema template for massive identical devices will help to improve memory performance. You can use Template, InternalNode and MeasurementNode to depict the structure of the template, and use belowed interface to create it inside session.
 
 ```java
-void insertRecord(String prefixPath, long time, List<String> measurements, List<String> values)
+public void createSchemaTemplate(Template template);
+
+Class Template {
+    private String name;
+    private boolean directShareTime;
+    Map<String, Node> children;
+    public Template(String name, boolean isShareTime);
+    
+    public void addToTemplate(Node node);
+    public void deleteFromTemplate(String name);
+    public void setShareTime(boolean shareTime);
+}
+
+Abstract Class Node {
+    private String name;
+    public void addChild(Node node);
+    public void deleteChild(Node node);
+}
+
+Class MeasurementNode extends Node {
+    TSDataType dataType;
+    TSEncoding encoding;
+    CompressionType compressor;
+    public MeasurementNode(String name, 
+                           TSDataType dataType, 
+                           TSEncoding encoding,
+                          CompressionType compressor);
+}
 ```
+
+We strongly suggest you implement templates only with flat-measurement (like object 'flatTemplate' in belowed snippet), since tree-structured template may not be a long-term supported feature in further version of IoTDB.
+
+A snippet of using above Method and Class：
+
+```java
+MeasurementNode nodeX = new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+MeasurementNode nodeY = new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+MeasurementNode nodeSpeed = new MeasurementNode("speed", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
+
+// This is the template we suggest to implement
+Template flatTemplate = new Template("flatTemplate");
+template.addToTemplate(nodeX);
+template.addToTemplate(nodeY);
+template.addToTemplate(nodeSpeed);
+
+createSchemaTemplate(flatTemplate);
+```
+
+After measurement template created, you can edit the template with belowed APIs.
+
+**Attention: **
+
+**1. templates had been set could not be pruned**
+
+**2. templates will be activated until data points insert into correspoding measurements**
+
+**3. templates will not be shown by showtimeseries before activating**
+
+```java
+// Add aligned measurements to a template
+public void addAlignedMeasurementsInTemplate(String templateName,
+    						  String[] measurementsPath,
+                              TSDataType[] dataTypes,
+                              TSEncoding[] encodings,
+                              CompressionType[] compressors);
+
+// Add one aligned measurement to a template
+public void addAlignedMeasurementInTemplate(String templateName,
+                                String measurementPath,
+                                TSDataType dataType,
+                                TSEncoding encoding,
+                                CompressionType compressor);
+
+
+// Add unaligned measurements to a template
+public void addUnalignedMeasurementInTemplate(String templateName,
+                                String measurementPath,
+                                TSDataType dataType,
+                                TSEncoding encoding,
+                                CompressionType compressor);
+                                
+// Add one unaligned measurement to a template
+public void addUnalignedMeasurementsIntemplate(String templateName,
+                                String[] measurementPaths,
+                                TSDataType[] dataTypes,
+                                TSEncoding[] encodings,
+                                CompressionType[] compressors);
+
+// Delete a node in template
+public void deleteNodeInTemplate(String templateName, String path);
+```
+
+You can query measurement inside templates with these APIS:
+
+```java
+// Return the amount of measurements inside a template
+public int countMeasurementsInTemplate(String templateName);
+
+// Return true if path points to a measurement, otherwise returne false
+public boolean isMeasurementInTemplate(String templateName, String path);
+
+// Return true if path exists in template, otherwise return false
+public boolean isPathExistInTemplate(String templateName, String path);
+
+// Return all measurements paths inside template
+public List<String> showMeasurementsInTemplate(String templateName);
+
+// Return all measurements paths under the designated patter inside template
+public List<String> showMeasurementsInTemplate(String templateName, String pattern);
+```
+
+To implement schema template, you can set the measurement template named 'templateName' at path 'prefixPath'.
+
+**Please notice that, we strongly recommend not setting templates on the nodes above the storage group to accommodate future updates and collaboration between modules.**
+
+``` java
+void setSchemaTemplate(String templateName, String prefixPath)
+```
+
+Before setting template, you should firstly create the template using
+
+```java
+void createSchemaTemplate(Template template)
+```
+
+After setting template to a certain path, you can query for info about template using belowed interface in session:
+
+```java
+/** @return All template names. */
+public List<String> showAllTemplates();
+
+/** @return All paths have been set to designated template. */
+public List<String> showPathsTemplateSetOn(String templateName);
+
+/** @return All paths are using designated template. */
+public List<String> showPathsTemplateUsingOn(String templateName)
+```
+
+If you are ready to get rid of schema template, you can drop it with belowed interface. Make sure the template to drop has been unset from MTree.
+
+```java
+void unsetSchemaTemplate(String prefixPath, String templateName);
+public void dropSchemaTemplate(String templateName);
+```
+
+Unset the measurement template named 'templateName' from path 'prefixPath'. When you issue this interface, you should assure that there is a template named 'templateName' set at the path 'prefixPath'.
+
+Attention: Unsetting the template named 'templateName' from node at path 'prefixPath' or descendant nodes which have already inserted records using template is **not supported**.
+
+
+### Data Manipulation Interface (DML Interface)
+
+##### Insert
+
+It is recommended to use insertTablet to help improve write efficiency.
 
 * Insert a Tablet，which is multiple rows of a device, each row has the same measurements
+  * **Better Write Performance**
+  * **Support null values**: fill the null value with any value, and then mark the null value via BitMap
 
 ```java
 void insertTablet(Tablet tablet)
+
+public class Tablet {
+  /** deviceId of this tablet */
+  public String prefixPath;
+  /** the list of measurement schemas for creating the tablet */
+  private List<MeasurementSchema> schemas;
+  /** timestamps in this tablet */
+  public long[] timestamps;
+  /** each object is a primitive type array, which represents values of one measurement */
+  public Object[] values;
+  /** each bitmap represents the existence of each value in the current column. */
+  public BitMap[] bitMaps;
+  /** the number of rows to include in this tablet */
+  public int rowSize;
+  /** the maximum number of rows for this tablet */
+  private int maxRowNumber;
+  /** whether this tablet store data of aligned timeseries or not */
+  private boolean isAligned;
+}
 ```
 
 * Insert multiple Tablets
@@ -163,21 +364,14 @@ void insertTablet(Tablet tablet)
 void insertTablets(Map<String, Tablet> tablet)
 ```
 
-* Insert multiple Records. Without type info the server has to do type inference, which may cost some time
-
-```java
-void insertRecords(List<String> deviceIds, List<Long> times, 
-                   List<List<String>> measurementsList, List<List<String>> valuesList)
-```
-
-* Insert a Record, which contains multiple measurement value of a device at a timestamp. With type info the server has no need to do type inference, which leads a better performance
+* Insert a Record, which contains multiple measurement value of a device at a timestamp. This method is equivalent to providing a common interface for multiple data types of values. Later, the value can be cast to the original type through TSDataType.
 
 ```java
 void insertRecord(String deviceId, long time, List<String> measurements,
    List<TSDataType> types, List<Object> values)
 ```
 
-* Insert multiple Records. With type info the server has no need to do type inference, which leads a better performance
+* Insert multiple Records
 
 ```java
 void insertRecords(List<String> deviceIds, List<Long> times,
@@ -193,11 +387,65 @@ void insertRecordsOfOneDevice(String deviceId, List<Long> times,
     List<List<Object>> valuesList)
 ```
 
+#### Insert with type inference
+
+When the data is of String type, we can use the following interface to perform type inference based on the value of the value itself. For example, if value is "true" , it can be automatically inferred to be a boolean type. If value is "3.2" , it can be automatically inferred as a flout type. Without type information, server has to do type inference, which may cost some time.
+
+* Insert a Record, which contains multiple measurement value of a device at a timestamp
+
+```java
+void insertRecord(String prefixPath, long time, List<String> measurements, List<String> values)
+```
+
+* Insert multiple Records
+
+```java
+void insertRecords(List<String> deviceIds, List<Long> times, 
+   List<List<String>> measurementsList, List<List<String>> valuesList)
+```
+
+* Insert multiple Records that belong to the same device.
+
+```java
+void insertStringRecordsOfOneDevice(String deviceId, List<Long> times,
+        List<List<String>> measurementsList, List<List<String>> valuesList)
+```
+
+#### Insert of Aligned Timeseries
+
+The Insert of aligned timeseries uses interfaces like insertAlignedXXX, and others are similar to the above interfaces:
+
+* insertAlignedRecord
+* insertAlignedRecords
+* insertAlignedRecordsOfOneDevice
+* insertAlignedStringRecordsOfOneDevice
+* insertAlignedTablet
+* insertAlignedTablets
+
+#### Delete
+
+* Delete data before or equal to a timestamp of one or several timeseries
+
+```java
+void deleteData(String path, long time)
+void deleteData(List<String> paths, long time)
+```
+
+#### Query
+
 * Raw data query. Time interval include startTime and exclude endTime
 
 ```java
 SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
 ```
+
+* Query the last data, whose timestamp is greater than or equal LastTime
+
+```java
+SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
+```
+
+### IoTDB-SQL Interface
 
 * Execute query statement
 
@@ -211,51 +459,41 @@ SessionDataSet executeQueryStatement(String sql)
 void executeNonQueryStatement(String sql)
 ```
 
+### Write Test Interface (to profile network cost)
 
+These methods **don't** insert data into database and server just return after accept the request.
 
-### Native APIs for profiling network cost
-
-* Test the network and client cost of insertRecords. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
-
-```java
-void testInsertRecords(List<String> deviceIds, List<Long> times,
-              List<List<String>> measurementsList, List<List<String>> valuesList)
-```
-  or
-```java
-void testInsertRecords(List<String> deviceIds, List<Long> times,
-    List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-    List<List<Object>> valuesList)
-```
-
-* Test the network and client cost of insertRecordsOfOneDevice. 
-This method NOT insert data into database and server just return after accept the request, 
-this method should be used to test other time cost in client
-
-```java
-void testInsertRecordsOfOneDevice(String deviceId, List<Long> times,
-    List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-    List<List<Object>> valuesList)
-```
-
-* Test the network and client cost of insertRecord. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
+* Test the network and client cost of insertRecord
 
 ```java
 void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
-```
-  or
-```java
+
 void testInsertRecord(String deviceId, long time, List<String> measurements,
-    List<TSDataType> types, List<Object> values)
+        List<TSDataType> types, List<Object> values)
 ```
 
-* Test the network and client cost of insertTablet. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
+* Test the network and client cost of insertRecords
+
+```java
+void testInsertRecords(List<String> deviceIds, List<Long> times,
+        List<List<String>> measurementsList, List<List<String>> valuesList)
+        
+void testInsertRecords(List<String> deviceIds, List<Long> times,
+        List<List<String>> measurementsList, List<List<TSDataType>> typesList
+        List<List<Object>> valuesList)
+```
+
+* Test the network and client cost of insertTablet
 
 ```java
 void testInsertTablet(Tablet tablet)
 ```
 
+* Test the network and client cost of insertTablets
 
+```java
+void testInsertTablets(Map<String, Tablet> tablets)
+```
 
 ### Coding Examples
 
@@ -263,10 +501,10 @@ To get more information of the following interfaces, please view session/src/mai
 
 The sample code of using these interfaces is in example/session/src/main/java/org/apache/iotdb/SessionExample.java，which provides an example of how to open an IoTDB session, execute a batch insertion.
 
+For examples of aligned timeseries and measurement template, you can refer to `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`
 
 
-
-### Session Pool for Native API
+## Session Pool for Native API
 
 We provide a connection pool (`SessionPool) for Native API.
 Using the interface, you need to define the pool size.
@@ -276,6 +514,7 @@ If you can not get a session connection in 60 seconds, there is a warning log bu
 If a session has finished an operation, it will be put back to the pool automatically.
 If a session connection is broken, the session will be removed automatically and the pool will try 
 to create a new session and redo the operation.
+You can also specify an url list of multiple reachable nodes when creating a SessionPool, just as you would when creating a Session. To ensure high availability of clients in distributed cluster.
 
 For query operations:
 
@@ -290,145 +529,8 @@ Examples: ```session/src/test/java/org/apache/iotdb/session/pool/SessionPoolTest
 
 Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
-For examples of aligned timeseries and device template, you can refer to `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`
 
-
-
-
-### New Interfaces
-
-```java
-void open(boolean enableRPCCompression)
-```
-
-Open a session, with a parameter to specify whether to enable RPC compression. 
-Please pay attention that this RPC compression status of client must comply with the status of IoTDB server
-
-```java
-void insertRecord(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types, List<Object> values)
-```
-
-Insert one record, in a way that user has to provide the type information of each measurement, which is different from the original insertRecord() interface.
-The values should be provided in their primitive types. This interface is more proficient than the one without type parameters.
-
-```java
-void insertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
-                   List<List<TSDataType>> typesList, List<List<Object>> valuesList)
-```
-
-Insert multiple records with type parameters. This interface is more proficient than the one without type parameters.
-
-```java
-void insertTablet(Tablet tablet, boolean sorted)
-```
-
-An additional insertTablet() interface that providing a "sorted" parameter indicating if the tablet is in order. A sorted tablet may accelerate the insertion process.
-
-```java
-void insertTablets(Map<String, Tablet> tablets)
-```
-
-A new insertTablets() for inserting multiple tablets. 
-
-```java
-void insertTablets(Map<String, Tablet> tablets, boolean sorted)
-```
-
-insertTablets() with an additional "sorted" parameter. 
-
-```java
-void testInsertRecord(String deviceId, long time, List<String> measurements, List<TSDataType> types, 
-                      List<Object> values)
-void testInsertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
-                      List<List<TSDataType>> typesList, List<List<Object>> valuesList)
-void testInsertTablet(Tablet tablet, boolean sorted)
-void testInsertTablets(Map<String, Tablet> tablets)
-void testInsertTablets(Map<String, Tablet> tablets, boolean sorted)
-```
-
-The above interfaces are newly added to test responsiveness of new insert interfaces.
-
-```java
-void createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor, 	
-                      Map<String, String> props, Map<String, String> tags, Map<String, String> attributes, 
-                      String measurementAlias)
-```
-
-Create a timeseries with path, datatype, encoding and compression. Additionally, users can provide props, tags, attributes and measurementAlias。
-
-```java
-void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes, List<TSEncoding> encodings, 
-                           List<CompressionType> compressors, List<Map<String, String>> propsList, 
-                           List<Map<String, String>> tagsList, List<Map<String, String>> attributesList, 
-                           List<String> measurementAliasList)
-```
-
-Create multiple timeseries with a single method. Users can provide props, tags, attributes and measurementAlias as well for detailed timeseries information.
-
-```java
-void createAlignedTimeseries(String devicePath, List<String> measurements,
-      List<TSDataType> dataTypes, List<TSEncoding> encodings,
-      CompressionType compressor, List<String> measurementAliasList);
-```
-
-Create aligned timeseries with device path, measurements, data types, encodings, compression.
-
-Attention: Alias of measurements are **not supported** currently.
-
-```java
-
-boolean checkTimeseriesExists(String path)
-```
-
-Add a method to check whether the specific timeseries exists.
-
-```java
-public Session(String host, int rpcPort, String username, String password,
-      boolean isEnableCacheLeader)
-```
-
-Open a session and specifies whether the Leader cache is enabled. Note that this interface improves performance for distributed IoTDB, but adds less cost to the client for stand-alone IoTDB.
-
-```
-
-* name: template name
-* measurements: List of measurements, if it is a single measurement, just put it's name
-*     into a list and add to measurements if it is a vector measurement, put all measurements of
-*     the vector into a list and add to measurements
-* dataTypes: List of datatypes, if it is a single measurement, just put it's type into a
-*     list and add to dataTypes if it is a vector measurement, put all types of the vector
-*     into a list and add to dataTypes
-* encodings: List of encodings, if it is a single measurement, just put it's encoding into
-*     a list and add to encodings if it is a vector measurement, put all encodings of the
-*     vector into a list and add to encodings
-* compressors: List of compressors                            
-void createSchemaTemplate(
-      String templateName,
-      List<String> schemaName,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<CompressionType> compressors)
-```
-
-Create a device template, the param description at above
-
-``` 
-
-void setSchemaTemplate(String templateName, String prefixPath)
-
-```
-
-Set the device template named 'templateName' at path 'prefixPath'. You should firstly create the template using
-
-```
-
-void createSchemaTemplate
-
-```
-
-### Cluster information related APIs (only works in the cluster mode)
+## Cluster information related APIs (only works in the cluster mode)
 
 Cluster information related APIs allow users get the cluster info like where a storage group will be 
 partitioned to, the status of each node in the cluster.
@@ -440,7 +542,7 @@ To use the APIs, add dependency in your pom file:
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-thrift-cluster</artifactId>
-      <version>0.13.0-SNAPSHOT</version>
+      <version>0.14.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
@@ -454,29 +556,29 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 
-    public class CluserInfoClient {
-      TTransport transport;
-      ClusterInfoService.Client client;
-      public void connect() {
-          transport =
-              RpcTransportFactory.INSTANCE.getTransport(
-                  new TSocket(
-                      // the RPC address
-                      IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-                      // the RPC port
-                      ClusterDescriptor.getInstance().getConfig().getClusterRpcPort()));
-          try {
-            transport.open();
-          } catch (TTransportException e) {
-            Assert.fail(e.getMessage());
-          }
-          //get the client
-          client = new ClusterInfoService.Client(new TBinaryProtocol(transport));
-       }
-      public void close() {
-        transport.close();
-      }  
+public class CluserInfoClient {
+  TTransport transport;
+  ClusterInfoService.Client client;
+  public void connect() {
+    transport =
+            RpcTransportFactory.INSTANCE.getTransport(
+                    new TSocket(
+                            // the RPC address
+                            IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+                            // the RPC port
+                            ClusterDescriptor.getInstance().getConfig().getClusterRpcPort()));
+    try {
+      transport.open();
+    } catch (TTransportException e) {
+      Assert.fail(e.getMessage());
     }
+    //get the client
+    client = new ClusterInfoService.Client(new TBinaryProtocol(transport));
+  }
+  public void close() {
+    transport.close();
+  }
+}
 ```
 
 APIs in `ClusterInfoService.Client`:
@@ -491,38 +593,37 @@ list<Node> getRing();
 * Get data partition information of input path and time range:
 
 ```java 
-    /**
-     * @param path input path (should contains a Storage group name as its prefix)
-     * @return the data partition info. If the time range only covers one data partition, the the size
-     * of the list is one.
-     */
-    list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:long endTime);
+/**
+ * @param path input path (should contains a Storage group name as its prefix)
+ * @return the data partition info. If the time range only covers one data partition, the the size
+ * of the list is one.
+ */
+list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:long endTime);
 ```
 
 * Get metadata partition information of input path:
 ```java  
-    /**
-     * @param path input path (should contains a Storage group name as its prefix)
-     * @return metadata partition information
-     */
-    list<Node> getMetaPartition(1:string path);
+/**
+ * @param path input path (should contains a Storage group name as its prefix)
+ * @return metadata partition information
+ */
+list<Node> getMetaPartition(1:string path);
 ```
 
 * Get the status (alive or not) of all nodes:
 ```java
-    /**
-     * @return key: node, value: live or not
-     */
-    map<Node, bool> getAllNodeStatus();
+/**
+ * @return key: node, value: live or not
+ */
+map<Node, bool> getAllNodeStatus();
 ```
 
 * get the raft group info (voteFor, term, etc..) of the connected node
   (Notice that this API is rarely used by users):
 ```java  
-    /**
-     * @return A multi-line string with each line representing the total time consumption, invocation
-     *     number, and average time consumption.
-     */
-    string getInstrumentingInfo();
+/**
+ * @return A multi-line string with each line representing the total time consumption, invocation
+ *     number, and average time consumption.
+ */
+string getInstrumentingInfo();
 ```
-

@@ -27,7 +27,7 @@ import org.apache.iotdb.db.engine.trigger.sink.local.LocalIoTDBHandler;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTConfiguration;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTEvent;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTHandler;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.windowing.configuration.SlidingSizeWindowConfiguration;
 import org.apache.iotdb.db.utils.windowing.handler.SlidingSizeWindowEvaluationHandler;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -45,6 +45,14 @@ public class TriggerExample implements Trigger {
   private final LocalIoTDBHandler localIoTDBHandler = new LocalIoTDBHandler();
   private final MQTTHandler mqttHandler = new MQTTHandler();
 
+  // This field is required when the target MQTT server is current IoTDB.
+  // When IoTDB restarts, the registered triggers will be restored before starting the MQTT service.
+  // For this trigger, if openSinkHandlers() is called in onCreate(), IoTDB server will be stuck
+  // in openSinkHandlers when recovering, because it can't connect to the MQTT server (not started
+  // yet).
+  // See IOTDB-2274 for more detail.
+  private volatile boolean isSinksOpenedAfterCreation = false;
+
   private SlidingSizeWindowEvaluationHandler windowEvaluationHandler;
 
   @Override
@@ -53,8 +61,6 @@ public class TriggerExample implements Trigger {
 
     double lo = attributes.getDouble("lo");
     double hi = attributes.getDouble("hi");
-
-    openSinkHandlers();
 
     windowEvaluationHandler =
         new SlidingSizeWindowEvaluationHandler(
@@ -93,17 +99,31 @@ public class TriggerExample implements Trigger {
   }
 
   @Override
-  public Double fire(long timestamp, Double value) {
+  public Double fire(long timestamp, Double value) throws Exception {
+    tryOpenSinksFirstOnFire();
     windowEvaluationHandler.collect(timestamp, value);
     return value;
   }
 
   @Override
-  public double[] fire(long[] timestamps, double[] values) {
+  public double[] fire(long[] timestamps, double[] values) throws Exception {
+    tryOpenSinksFirstOnFire();
     for (int i = 0; i < timestamps.length; ++i) {
       windowEvaluationHandler.collect(timestamps[i], values[i]);
     }
     return values;
+  }
+
+  // See IOTDB-2274 for more detail.
+  private void tryOpenSinksFirstOnFire() throws Exception {
+    if (!isSinksOpenedAfterCreation) {
+      synchronized (this) {
+        if (!isSinksOpenedAfterCreation) {
+          openSinkHandlers();
+          isSinksOpenedAfterCreation = true;
+        }
+      }
+    }
   }
 
   private void openSinkHandlers() throws Exception {

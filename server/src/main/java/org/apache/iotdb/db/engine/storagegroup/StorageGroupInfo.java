@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.MmapUtil;
-import org.apache.iotdb.db.utils.TestOnly;
 
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
@@ -34,7 +34,7 @@ import java.util.function.Supplier;
 /** The storageGroupInfo records the total memory cost of the Storage Group. */
 public class StorageGroupInfo {
 
-  private StorageGroupProcessor storageGroupProcessor;
+  private VirtualStorageGroupProcessor virtualStorageGroupProcessor;
 
   /**
    * The total Storage group memory cost, including unsealed TsFileResource, ChunkMetadata, WAL,
@@ -51,13 +51,13 @@ public class StorageGroupInfo {
   /** A set of all unclosed TsFileProcessors in this SG */
   private List<TsFileProcessor> reportedTsps = new CopyOnWriteArrayList<>();
 
-  public StorageGroupInfo(StorageGroupProcessor storageGroupProcessor) {
-    this.storageGroupProcessor = storageGroupProcessor;
+  public StorageGroupInfo(VirtualStorageGroupProcessor virtualStorageGroupProcessor) {
+    this.virtualStorageGroupProcessor = virtualStorageGroupProcessor;
     memoryCost = new AtomicLong();
   }
 
-  public StorageGroupProcessor getStorageGroupProcessor() {
-    return storageGroupProcessor;
+  public VirtualStorageGroupProcessor getVirtualStorageGroupProcessor() {
+    return virtualStorageGroupProcessor;
   }
 
   /** When create a new TsFileProcessor, call this method */
@@ -101,8 +101,8 @@ public class StorageGroupInfo {
   }
 
   public Supplier<ByteBuffer[]> getWalSupplier() {
-    if (storageGroupProcessor != null) {
-      return storageGroupProcessor::getWalDirectByteBuffer;
+    if (virtualStorageGroupProcessor != null) {
+      return virtualStorageGroupProcessor::getWalDirectByteBuffer;
     } else { // only happens in test
       return this::walSupplier;
     }
@@ -119,8 +119,8 @@ public class StorageGroupInfo {
   }
 
   public Consumer<ByteBuffer[]> getWalConsumer() {
-    if (storageGroupProcessor != null) {
-      return storageGroupProcessor::releaseWalBuffer;
+    if (virtualStorageGroupProcessor != null) {
+      return virtualStorageGroupProcessor::releaseWalBuffer;
     } else { // only happens in test
       return this::walConsumer;
     }

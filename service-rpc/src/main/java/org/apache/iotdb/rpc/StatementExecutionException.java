@@ -29,6 +29,12 @@ public class StatementExecutionException extends Exception {
     this.statusCode = status.code;
   }
 
+  public StatementExecutionException(
+      org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus status) {
+    super(String.format("%d: %s", status.code, status.message));
+    this.statusCode = status.code;
+  }
+
   public StatementExecutionException(String reason) {
     super(reason);
   }

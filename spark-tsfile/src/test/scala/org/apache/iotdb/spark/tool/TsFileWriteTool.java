@@ -22,8 +22,8 @@ import java.io.File;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.BooleanDataPoint;
@@ -34,9 +34,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
-/**
- * An example of writing data to TsFile
- */
+/** An example of writing data to TsFile */
 public class TsFileWriteTool {
 
   public static int largeNum = 1024 * 1024;
@@ -49,9 +47,14 @@ public class TsFileWriteTool {
     }
 
     Schema schema = new Schema();
-    schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
-    schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
-    schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
+    schema.extendTemplate(
+        DEFAULT_TEMPLATE, new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
+    schema.extendTemplate(
+        DEFAULT_TEMPLATE,
+        new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+    schema.extendTemplate(
+        DEFAULT_TEMPLATE,
+        new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
     TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
 
@@ -146,8 +149,9 @@ public class TsFileWriteTool {
     TsFileWriter tsFileWriter = new TsFileWriter(f);
 
     // add measurements into file schema
-    tsFileWriter.registerTimeseries(new Path("device_1","sensor_1"),
-            new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
+    tsFileWriter.registerTimeseries(
+        new Path("device_1"),
+        new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
     for (long i = 0; i < largeNum; i++) {
       // construct TSRecord
       TSRecord tsRecord = new TSRecord(i, "device_1");
@@ -170,12 +174,12 @@ public class TsFileWriteTool {
     // add measurements into file schema
     // NOTE the measurments here are different from those defined in create1 and
     // create2 function, despite their names are the same.
-    tsFileWriter
-        .registerTimeseries(new Path("device_1","sensor_1"),
-            new MeasurementSchema("sensor_1", TSDataType.BOOLEAN, TSEncoding.RLE));
-    tsFileWriter
-        .registerTimeseries(new Path("device_1","sensor_2"),
-            new MeasurementSchema("sensor_2", TSDataType.TEXT, TSEncoding.PLAIN));
+    tsFileWriter.registerTimeseries(
+        new Path("device_1"),
+        new MeasurementSchema("sensor_1", TSDataType.BOOLEAN, TSEncoding.RLE));
+    tsFileWriter.registerTimeseries(
+        new Path("device_1"),
+        new MeasurementSchema("sensor_2", TSDataType.TEXT, TSEncoding.PLAIN));
 
     // construct TSRecord
     TSRecord tsRecord = new TSRecord(1, "device_1");
@@ -218,22 +222,19 @@ public class TsFileWriteTool {
   }
 
   /**
-   * Create a tsfile that contains data from device_1 and device_2;
-   * device_1's chunkgroups and device_2's chunkgroups are interleaved.
+   * Create a tsfile that contains data from device_1 and device_2; device_1's chunkgroups and
+   * device_2's chunkgroups are interleaved.
    *
-   * Below is the created tsfile's statistics in one case. Note that the absolute values may change
-   * under different tsfile versions or hardware environments.
+   * <p>Below is the created tsfile's statistics in one case. Note that the absolute values may
+   * change under different tsfile versions or hardware environments.
    *
-   * |  space pos         | device.chunkgroup     | time range of this chunkgroup |
-   * |  [12,290545]       | device_1.chunkgroup_1 | [0,131044]                    |
-   * |  [290545,1042103]  | device_2.chunkgroup_1 | [0,262088]                    |
-   * |  [1042103,1345041] | device_1.chunkgroup_2 | [131045,254915]               |
-   * |  [1345041,2110092] | device_2.chunkgroup_2 | [262090,509830]               |
-   * |  [2110092,2421676] | device_1.chunkgroup_3 | [254916,376146]               |
-   * |  [2421676,3194704] | device_2.chunkgroup_3 | [509832,752292]               |
-   * |  [3194704,3256098] | device_1.chunkgroup_4 | [376147,399999]               |
-   * |  [3256098,3410323] | device_2.chunkgroup_4 | [752294,799998]               |
-   *
+   * <p>| space pos | device.chunkgroup | time range of this chunkgroup | | [12,290545] |
+   * device_1.chunkgroup_1 | [0,131044] | | [290545,1042103] | device_2.chunkgroup_1 | [0,262088] |
+   * | [1042103,1345041] | device_1.chunkgroup_2 | [131045,254915] | | [1345041,2110092] |
+   * device_2.chunkgroup_2 | [262090,509830] | | [2110092,2421676] | device_1.chunkgroup_3 |
+   * [254916,376146] | | [2421676,3194704] | device_2.chunkgroup_3 | [509832,752292] | |
+   * [3194704,3256098] | device_1.chunkgroup_4 | [376147,399999] | | [3256098,3410323] |
+   * device_2.chunkgroup_4 | [752294,799998] |
    */
   public void create4(String tsfilePath) throws Exception {
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(1024 * 1024);
@@ -243,18 +244,18 @@ public class TsFileWriteTool {
     }
     TsFileWriter tsFileWriter = new TsFileWriter(f);
 
-    tsFileWriter
-        .registerTimeseries(new Path("device_1","sensor_1"),
-            new MeasurementSchema("sensor_1", TSDataType.INT32, TSEncoding.RLE));
-    tsFileWriter
-        .registerTimeseries(new Path("device_2","sensor_1"),
-            new MeasurementSchema("sensor_1", TSDataType.INT32, TSEncoding.RLE));
-    tsFileWriter
-        .registerTimeseries(new Path("device_2","sensor_2"),
-            new MeasurementSchema("sensor_2", TSDataType.FLOAT, TSEncoding.RLE));
-    tsFileWriter
-        .registerTimeseries(new Path("device_2","sensor_3"),
-            new MeasurementSchema("sensor_3", TSDataType.BOOLEAN, TSEncoding.RLE));
+    tsFileWriter.registerTimeseries(
+        new Path("device_1"),
+        new MeasurementSchema("sensor_1", TSDataType.INT32, TSEncoding.RLE));
+    tsFileWriter.registerTimeseries(
+        new Path("device_2"),
+        new MeasurementSchema("sensor_1", TSDataType.INT32, TSEncoding.RLE));
+    tsFileWriter.registerTimeseries(
+        new Path("device_2"),
+        new MeasurementSchema("sensor_2", TSDataType.FLOAT, TSEncoding.RLE));
+    tsFileWriter.registerTimeseries(
+        new Path("device_2"),
+        new MeasurementSchema("sensor_3", TSDataType.BOOLEAN, TSEncoding.RLE));
 
     int j = 0;
     for (int i = 0; i < 400000; i++) {

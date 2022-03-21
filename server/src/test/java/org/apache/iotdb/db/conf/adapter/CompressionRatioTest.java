@@ -21,7 +21,7 @@ package org.apache.iotdb.db.conf.adapter;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -46,7 +46,6 @@ public class CompressionRatioTest {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     FileUtils.forceMkdir(new File(directory));
     compressionRatio.reset();

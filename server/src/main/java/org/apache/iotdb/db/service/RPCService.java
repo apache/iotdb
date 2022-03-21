@@ -18,12 +18,17 @@
  */
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
+import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.service.ThriftService;
+import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.runtime.RPCServiceException;
-import org.apache.iotdb.db.service.thrift.ThriftService;
-import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
+import org.apache.iotdb.db.service.thrift.ProcessorWithMetrics;
+import org.apache.iotdb.db.service.thrift.handler.RPCServiceThriftHandler;
+import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 
 /** A service to handle jdbc request from client. */
@@ -31,16 +36,8 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
 
   private TSServiceImpl impl;
 
-  private RPCService() {}
-
   public static RPCService getInstance() {
     return RPCServiceHolder.INSTANCE;
-  }
-
-  @Override
-  public int getRPCPort() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return config.getRpcPort();
   }
 
   @Override
@@ -55,7 +52,12 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
         (TSServiceImpl)
             Class.forName(IoTDBDescriptor.getInstance().getConfig().getRpcImplClassName())
                 .newInstance();
-    processor = new Processor<>(impl);
+    initSyncedServiceImpl(null);
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      processor = new ProcessorWithMetrics(impl);
+    } else {
+      processor = new Processor<>(impl);
+    }
   }
 
   @Override
@@ -92,6 +94,11 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
   @Override
   public ServiceType getID() {
     return ServiceType.RPC_SERVICE;
+  }
+
+  @Override
+  public int getRPCPort() {
+    return getBindPort();
   }
 
   private static class RPCServiceHolder {

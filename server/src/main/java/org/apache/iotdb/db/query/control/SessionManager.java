@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.control;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.dataset.UDTFDataSet;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -54,7 +55,11 @@ public class SessionManager {
   // (queryId -> QueryDataSet)
   private final Map<Long, QueryDataSet> queryIdToDataSet = new ConcurrentHashMap<>();
 
-  private SessionManager() {
+  // (sessionId -> client version number)
+  private final Map<Long, IoTDBConstant.ClientVersion> sessionIdToClientVersion =
+      new ConcurrentHashMap<>();
+
+  protected SessionManager() {
     // singleton
   }
 
@@ -75,18 +80,21 @@ public class SessionManager {
     }
   }
 
-  public long requestSessionId(String username, String zoneId) {
+  public long requestSessionId(
+      String username, String zoneId, IoTDBConstant.ClientVersion clientVersion) {
     long sessionId = sessionIdGenerator.incrementAndGet();
 
     currSessionId.set(sessionId);
     sessionIdToUsername.put(sessionId, username);
     sessionIdToZoneId.put(sessionId, ZoneId.of(zoneId));
+    sessionIdToClientVersion.put(sessionId, clientVersion);
 
     return sessionId;
   }
 
   public boolean releaseSessionResource(long sessionId) {
     sessionIdToZoneId.remove(sessionId);
+    sessionIdToClientVersion.remove(sessionId);
 
     Set<Long> statementIdSet = sessionIdToStatementId.remove(sessionId);
     if (statementIdSet != null) {
@@ -201,6 +209,10 @@ public class SessionManager {
     if (statementIdToQueryId.containsKey(statementId)) {
       statementIdToQueryId.get(statementId).remove(queryId);
     }
+  }
+
+  public IoTDBConstant.ClientVersion getClientVersion(Long sessionId) {
+    return sessionIdToClientVersion.get(sessionId);
   }
 
   public static SessionManager getInstance() {

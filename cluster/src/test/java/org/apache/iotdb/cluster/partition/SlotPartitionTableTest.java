@@ -33,8 +33,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -42,7 +42,6 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -64,7 +63,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.mockito.internal.util.reflection.Whitebox;
+import org.powermock.reflect.Whitebox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,7 +96,7 @@ public class SlotPartitionTableTest {
   Node localNode;
   int replica_size = 5;
   int raftId = 0;
-  MManager[] mManager;
+  SchemaEngine[] schemaEngines;
 
   SlotPartitionTable[] tables; // The PartitionTable on each node.
   List<Node> nodes;
@@ -112,7 +111,7 @@ public class SlotPartitionTableTest {
     prevPartitionInterval = StorageEngine.getTimePartitionInterval();
     StorageEngine.setEnablePartition(true);
 
-    IoTDB.metaManager.init();
+    IoTDB.schemaEngine.init();
     StorageEngine.setTimePartitionInterval(7 * 24 * 3600 * 1000L);
     nodes = new ArrayList<>();
     IntStream.range(0, 20).forEach(i -> nodes.add(getNode(i)));
@@ -120,7 +119,7 @@ public class SlotPartitionTableTest {
     prevReplicaNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(replica_size);
     tables = new SlotPartitionTable[20];
-    mManager = new MManager[20];
+    schemaEngines = new SchemaEngine[20];
 
     // suppose there are 40 storage groups and each node maintains two of them.
     String[] storageNames = new String[40];
@@ -142,23 +141,23 @@ public class SlotPartitionTableTest {
       nodeSGs[node.getNode().getMetaPort() - 30000].add(storageNames[i + 20]);
     }
     for (int i = 0; i < 20; i++) {
-      mManager[i] = MManagerWhiteBox.newMManager("target/schemas/mlog_" + i);
-      initMockMManager(i, mManager[i], storageNames, nodeSGs[i]);
-      Whitebox.setInternalState(tables[i], "mManager", mManager[i]);
+      schemaEngines[i] = SchemaEngineWhiteBox.newSchemaEngine("target/schemas/mlog_" + i);
+      initMockSchemaEngine(i, schemaEngines[i], storageNames, nodeSGs[i]);
+      Whitebox.setInternalState(tables[i], "schemaEngine", schemaEngines[i]);
     }
   }
 
-  private void initMockMManager(
-      int id, MManager mmanager, String[] storageGroups, List<String> ownedSGs)
+  private void initMockSchemaEngine(
+      int id, SchemaEngine schemaEngine, String[] storageGroups, List<String> ownedSGs)
       throws MetadataException {
     for (String sg : storageGroups) {
-      mmanager.setStorageGroup(new PartialPath(sg));
+      schemaEngine.setStorageGroup(new PartialPath(sg));
     }
     for (String sg : ownedSGs) {
       // register 4 series;
       for (int i = 0; i < 4; i++) {
         try {
-          mmanager.createTimeseries(
+          schemaEngine.createTimeseries(
               new PartialPath(String.format(sg + ".ld.l1.d%d.s%d", i / 2, i % 2)),
               TSDataType.INT32,
               TSEncoding.RLE,
@@ -174,9 +173,9 @@ public class SlotPartitionTableTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicaNum);
-    if (mManager != null) {
-      for (MManager manager : mManager) {
-        manager.clear();
+    if (schemaEngines != null) {
+      for (SchemaEngine schemaEngine : schemaEngines) {
+        schemaEngine.clear();
       }
     }
     EnvironmentUtils.cleanEnv();
@@ -206,7 +205,7 @@ public class SlotPartitionTableTest {
 
   private void assertGetHeaderGroup(int start, int last) {
     PartitionGroup group =
-        localTable.getHeaderGroup(
+        localTable.getPartitionGroup(
             new RaftNode(
                 new Node(
                     "localhost",
@@ -486,42 +485,6 @@ public class SlotPartitionTableTest {
                 subtimes[0] / StorageEngine.getTimePartitionInterval(),
                 subtimes[2] / StorageEngine.getTimePartitionInterval());
           });
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  // @Test
-  public void testCountPlan() throws IllegalPathException {
-    PhysicalPlan countPlan1 =
-        new CountPlan(
-            ShowContentType.COUNT_TIMESERIES, new PartialPath("root.sg.*.l3" + ".l4.28.*"));
-    PhysicalPlan countPlan2 =
-        new CountPlan(ShowContentType.COUNT_TIMESERIES, new PartialPath("root.sg.*.l3" + ".*"));
-    PhysicalPlan countPlan3 =
-        new CountPlan(
-            ShowContentType.COUNT_NODE_TIMESERIES, new PartialPath("root.sg" + ".l2.l3.l4.28"));
-    PhysicalPlan countPlan4 =
-        new CountPlan(
-            ShowContentType.COUNT_NODE_TIMESERIES, new PartialPath("root.sg" + ".l2.l3"), 6);
-    PhysicalPlan countPlan5 =
-        new CountPlan(ShowContentType.COUNT_NODES, new PartialPath("root.sg.l2.l3"), 5);
-    try {
-      ClusterPlanRouter router = new ClusterPlanRouter(localTable);
-      assertTrue(countPlan1.canBeSplit());
-      Map<PhysicalPlan, PartitionGroup> result1 = router.splitAndRoutePlan(countPlan1);
-      assertEquals(1, result1.size());
-      Map<PhysicalPlan, PartitionGroup> result2 = router.splitAndRoutePlan(countPlan2);
-      assertEquals(40, result2.size());
-      Map<PhysicalPlan, PartitionGroup> result3 = router.splitAndRoutePlan(countPlan3);
-      assertEquals(1, result3.size());
-      Map<PhysicalPlan, PartitionGroup> result4 = router.splitAndRoutePlan(countPlan4);
-      // TODO this case can be optimized
-      assertEquals(40, result4.size());
-      Map<PhysicalPlan, PartitionGroup> result5 = router.splitAndRoutePlan(countPlan5);
-      // TODO this case can be optimized
-      assertEquals(40, result5.size());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

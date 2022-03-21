@@ -41,7 +41,9 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Scanner;
 
 @Ignore
@@ -49,12 +51,13 @@ public class TsFileGeneratorForTest {
 
   public static final long START_TIMESTAMP = 1480562618000L;
   private static String inputDataFile;
-  public static String outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("testTsFile.tsfile");
+  public static String outputDataFile = getTestTsFilePath("root.sg1", 0, 0, 0);
+  public static String alignedOutputDataFile = getTestTsFilePath("root.sg2", 0, 0, 0);
   private static String errorOutputDataFile;
   private static int rowCount;
   private static int chunkGroupSize;
   private static int pageSize;
-  private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   public static void generateFile(int rowCount, int chunkGroupSize, int pageSize)
       throws IOException {
@@ -71,8 +74,20 @@ public class TsFileGeneratorForTest {
   }
 
   public static void prepare(int minrowCount, int maxRowCount) throws IOException {
-    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestInputData");
-    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestErrorOutputData.tsfile");
+    File file = fsFactory.getFile(outputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+    inputDataFile = getTestTsFilePath("root.sg1", 0, 0, 1);
+    file = fsFactory.getFile(inputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+    errorOutputDataFile = getTestTsFilePath("root.sg1", 0, 0, 2);
+    file = fsFactory.getFile(errorOutputDataFile);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
     generateSampleInputDataFile(minrowCount, maxRowCount);
   }
 
@@ -98,10 +113,9 @@ public class TsFileGeneratorForTest {
       Assert.assertTrue(file.delete());
     }
     file.getParentFile().mkdirs();
-    FileWriter fw = new FileWriter(file);
 
-    long startTime = START_TIMESTAMP;
-    try {
+    try (FileWriter fw = new FileWriter(file)) {
+      long startTime = START_TIMESTAMP;
       for (int i = 0; i < maxRowCount; i++) {
         // write d1
         String d1 = "d1," + (startTime + i) + ",s1," + (i * 10 + 1) + ",s2," + (i * 10 + 2);
@@ -132,7 +146,7 @@ public class TsFileGeneratorForTest {
           d2 += ",s1," + (i * 10 + 1);
         }
         if (i % 8 == 0) {
-          d2 += ",s4," + "dog" + i % 4;
+          d2 += ",s4," + "dog" + 0;
         }
         fw.write(d2 + "\r\n");
       }
@@ -147,8 +161,6 @@ public class TsFileGeneratorForTest {
       fw.write(d + "\r\n");
       d = "d2," + (startTime + rowCount + 1) + ",2,s-1," + (rowCount * 10 + 2);
       fw.write(d + "\r\n");
-    } finally {
-      fw.close();
     }
   }
 
@@ -184,13 +196,13 @@ public class TsFileGeneratorForTest {
   private static Schema generateTestSchema() {
     Schema schema = new Schema();
     schema.registerTimeseries(
-        new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
+        new Path("d1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
     schema.registerTimeseries(
-        new Path("d1", "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+        new Path("d1"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
     schema.registerTimeseries(
-        new Path("d1", "s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+        new Path("d1"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
     schema.registerTimeseries(
-        new Path("d1", "s4"),
+        new Path("d1"),
         new MeasurementSchema(
             "s4",
             TSDataType.TEXT,
@@ -198,9 +210,9 @@ public class TsFileGeneratorForTest {
             CompressionType.UNCOMPRESSED,
             Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20")));
     schema.registerTimeseries(
-        new Path("d1", "s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.RLE));
+        new Path("d1"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.RLE));
     schema.registerTimeseries(
-        new Path("d1", "s6"),
+        new Path("d1"),
         new MeasurementSchema(
             "s6",
             TSDataType.FLOAT,
@@ -208,17 +220,16 @@ public class TsFileGeneratorForTest {
             CompressionType.SNAPPY,
             Collections.singletonMap(Encoder.MAX_POINT_NUMBER, "5")));
     schema.registerTimeseries(
-        new Path("d1", "s7"),
-        new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA_V1));
+        new Path("d1"), new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA_V1));
 
     schema.registerTimeseries(
-        new Path("d2", "s1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
+        new Path("d2"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
     schema.registerTimeseries(
-        new Path("d2", "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+        new Path("d2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
     schema.registerTimeseries(
-        new Path("d2", "s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+        new Path("d2"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
     schema.registerTimeseries(
-        new Path("d2", "s4"),
+        new Path("d2"),
         new MeasurementSchema(
             "s4",
             TSDataType.TEXT,
@@ -246,5 +257,65 @@ public class TsFileGeneratorForTest {
     buffer.get(data, 0, 3);
     writer.getIOWriter().getIOWriterOut().write(data);
     writer.getIOWriter().close();
+  }
+
+  public static String getTestTsFilePath(
+      String logicalStorageGroupName,
+      long VirtualStorageGroupId,
+      long TimePartitionId,
+      long tsFileVersion) {
+    String filePath =
+        String.format(
+            TestConstant.TEST_TSFILE_PATH,
+            logicalStorageGroupName,
+            VirtualStorageGroupId,
+            TimePartitionId);
+    return TsFileGeneratorUtils.getTsFilePath(filePath, tsFileVersion);
+  }
+
+  // generate aligned timeseries "d1.s1","d1.s2","d1.s3","d1.s4" and nonAligned timeseries
+  // "d2.s1","d2.s2","d2.s3"
+  public static void generateAlignedTsFile(int rowCount, int chunkGroupSize, int pageSize) {
+    File file = fsFactory.getFile(alignedOutputDataFile);
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+    file.getParentFile().mkdirs();
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
+    try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
+      // register align timeseries
+      List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
+      alignedMeasurementSchemas.add(
+          new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+      alignedMeasurementSchemas.add(
+          new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+      alignedMeasurementSchemas.add(
+          new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
+      alignedMeasurementSchemas.add(new MeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
+      tsFileWriter.registerAlignedTimeseries(new Path("d1"), alignedMeasurementSchemas);
+
+      // register nonAlign timeseries
+      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      measurementSchemas.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
+      tsFileWriter.registerTimeseries(new Path("d2"), measurementSchemas);
+
+      TsFileGeneratorUtils.writeWithTsRecord(
+          tsFileWriter, "d1", alignedMeasurementSchemas, rowCount, 0, 0, true);
+      TsFileGeneratorUtils.writeWithTsRecord(
+          tsFileWriter, "d2", measurementSchemas, rowCount, 0, 0, false);
+
+    } catch (IOException | WriteProcessException e) {
+      e.printStackTrace();
+    }
+  }
+
+  public static void closeAlignedTsFile() {
+    File file = fsFactory.getFile(alignedOutputDataFile);
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
   }
 }

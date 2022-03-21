@@ -28,14 +28,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /** Statistics for string type. */
 public class BinaryStatistics extends Statistics<Binary> {
 
   private Binary firstValue = new Binary("");
   private Binary lastValue = new Binary("");
-  private static final String BINARY_STATS_UNSUPPORTED_MSG =
-      "Binary statistics does not support: %s";
   static final int BINARY_STATISTICS_FIXED_RAM_SIZE = 32;
 
   @Override
@@ -43,6 +42,10 @@ public class BinaryStatistics extends Statistics<Binary> {
     return TSDataType.TEXT;
   }
 
+  /**
+   * The output of this method should be identical to the method "serializeStats(OutputStream
+   * outputStream)"
+   */
   @Override
   public int getStatsSize() {
     return 4 + firstValue.getValues().length + 4 + lastValue.getValues().length;
@@ -76,16 +79,15 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {}
-
-  @Override
   public Binary getMinValue() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "min"));
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.TEXT, "min"));
   }
 
   @Override
   public Binary getMaxValue() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "max"));
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.TEXT, "max"));
   }
 
   @Override
@@ -100,16 +102,18 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public double getSumDoubleValue() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "double sum"));
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.TEXT, "double sum"));
   }
 
   @Override
   public long getSumLongValue() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "long sum"));
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.TEXT, "long sum"));
   }
 
   @Override
-  protected void mergeStatisticsValue(Statistics stats) {
+  protected void mergeStatisticsValue(Statistics<Binary> stats) {
     BinaryStatistics stringStats = (BinaryStatistics) stats;
     if (isEmpty) {
       initializeStats(stringStats.getFirstValue(), stringStats.getLastValue());
@@ -146,56 +150,6 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public byte[] getMinValueBytes() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "min"));
-  }
-
-  @Override
-  public byte[] getMaxValueBytes() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "max"));
-  }
-
-  @Override
-  public byte[] getFirstValueBytes() {
-    return firstValue.getValues();
-  }
-
-  @Override
-  public byte[] getLastValueBytes() {
-    return lastValue.getValues();
-  }
-
-  @Override
-  public byte[] getSumValueBytes() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "sum"));
-  }
-
-  @Override
-  public ByteBuffer getMinValueBuffer() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "min"));
-  }
-
-  @Override
-  public ByteBuffer getMaxValueBuffer() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "max"));
-  }
-
-  @Override
-  public ByteBuffer getFirstValueBuffer() {
-    return ByteBuffer.wrap(firstValue.getValues());
-  }
-
-  @Override
-  public ByteBuffer getLastValueBuffer() {
-    return ByteBuffer.wrap(lastValue.getValues());
-  }
-
-  @Override
-  public ByteBuffer getSumValueBuffer() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "sum"));
-  }
-
-  @Override
   public int serializeStats(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(firstValue, outputStream);
@@ -213,6 +167,20 @@ public class BinaryStatistics extends Statistics<Binary> {
   public void deserialize(ByteBuffer byteBuffer) {
     this.firstValue = ReadWriteIOUtils.readBinary(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readBinary(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    BinaryStatistics that = (BinaryStatistics) o;
+    return Objects.equals(firstValue, that.firstValue) && Objects.equals(lastValue, that.lastValue);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), firstValue, lastValue);
   }
 
   @Override

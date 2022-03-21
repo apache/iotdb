@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -43,7 +44,7 @@ import java.util.Objects;
  * For the statistics in the Unseq file TimeSeriesMetadata, only firstValue, lastValue, startTime
  * and endTime can be used.</br>
  */
-public abstract class Statistics<T> {
+public abstract class Statistics<T extends Serializable> {
 
   private static final Logger LOG = LoggerFactory.getLogger(Statistics.class);
   /**
@@ -57,13 +58,15 @@ public abstract class Statistics<T> {
   private long startTime = Long.MAX_VALUE;
   private long endTime = Long.MIN_VALUE;
 
+  static final String STATS_UNSUPPORTED_MSG = "%s statistics does not support: %s";
+
   /**
    * static method providing statistic instance for respective data type.
    *
    * @param type - data type
    * @return Statistics
    */
-  public static Statistics getStatsByType(TSDataType type) {
+  public static Statistics<? extends Serializable> getStatsByType(TSDataType type) {
     switch (type) {
       case INT32:
         return new IntegerStatistics();
@@ -132,8 +135,6 @@ public abstract class Statistics<T> {
 
   public abstract void deserialize(ByteBuffer byteBuffer);
 
-  public abstract void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
-
   public abstract T getMinValue();
 
   public abstract T getMaxValue();
@@ -146,32 +147,13 @@ public abstract class Statistics<T> {
 
   public abstract long getSumLongValue();
 
-  public abstract byte[] getMinValueBytes();
-
-  public abstract byte[] getMaxValueBytes();
-
-  public abstract byte[] getFirstValueBytes();
-
-  public abstract byte[] getLastValueBytes();
-
-  public abstract byte[] getSumValueBytes();
-
-  public abstract ByteBuffer getMinValueBuffer();
-
-  public abstract ByteBuffer getMaxValueBuffer();
-
-  public abstract ByteBuffer getFirstValueBuffer();
-
-  public abstract ByteBuffer getLastValueBuffer();
-
-  public abstract ByteBuffer getSumValueBuffer();
-
   /**
    * merge parameter to this statistic
    *
    * @throws StatisticsClassException cannot merge statistics
    */
-  public void mergeStatistics(Statistics stats) {
+  @SuppressWarnings("unchecked")
+  public void mergeStatistics(Statistics<? extends Serializable> stats) {
     if (this.getClass() == stats.getClass()) {
       if (stats.startTime < this.startTime) {
         this.startTime = stats.startTime;
@@ -181,14 +163,14 @@ public abstract class Statistics<T> {
       }
       // must be sure no overlap between two statistics
       this.count += stats.count;
-      mergeStatisticsValue(stats);
+      mergeStatisticsValue((Statistics<T>) stats);
       isEmpty = false;
     } else {
-      String thisClass = this.getClass().toString();
-      String statsClass = stats.getClass().toString();
+      Class<?> thisClass = this.getClass();
+      Class<?> statsClass = stats.getClass();
       LOG.warn("Statistics classes mismatched,no merge: {} v.s. {}", thisClass, statsClass);
 
-      throw new StatisticsClassException(this.getClass(), stats.getClass());
+      throw new StatisticsClassException(thisClass, statsClass);
     }
   }
 
@@ -272,7 +254,7 @@ public abstract class Statistics<T> {
     count += batchSize;
   }
 
-  protected abstract void mergeStatisticsValue(Statistics stats);
+  protected abstract void mergeStatisticsValue(Statistics<T> stats);
 
   public boolean isEmpty() {
     return isEmpty;
@@ -341,9 +323,9 @@ public abstract class Statistics<T> {
     throw new UnsupportedOperationException();
   }
 
-  public static Statistics deserialize(InputStream inputStream, TSDataType dataType)
-      throws IOException {
-    Statistics statistics = getStatsByType(dataType);
+  public static Statistics<? extends Serializable> deserialize(
+      InputStream inputStream, TSDataType dataType) throws IOException {
+    Statistics<? extends Serializable> statistics = getStatsByType(dataType);
     statistics.setCount(ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream));
     statistics.setStartTime(ReadWriteIOUtils.readLong(inputStream));
     statistics.setEndTime(ReadWriteIOUtils.readLong(inputStream));
@@ -352,8 +334,9 @@ public abstract class Statistics<T> {
     return statistics;
   }
 
-  public static Statistics deserialize(ByteBuffer buffer, TSDataType dataType) {
-    Statistics statistics = getStatsByType(dataType);
+  public static Statistics<? extends Serializable> deserialize(
+      ByteBuffer buffer, TSDataType dataType) {
+    Statistics<? extends Serializable> statistics = getStatsByType(dataType);
     statistics.setCount(ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
     statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));
     statistics.setEndTime(ReadWriteIOUtils.readLong(buffer));

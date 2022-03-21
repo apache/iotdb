@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
@@ -45,12 +46,12 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkWriterImpl.class);
 
-  private IMeasurementSchema measurementSchema;
+  private final IMeasurementSchema measurementSchema;
 
-  private ICompressor compressor;
+  private final ICompressor compressor;
 
   /** all pages of this chunk. */
-  private PublicBAOS pageBuffer;
+  private final PublicBAOS pageBuffer;
 
   private int numOfPages;
 
@@ -69,7 +70,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 1500;
 
   /** statistic of this chunk. */
-  private Statistics<?> statistics;
+  private Statistics<? extends Serializable> statistics;
 
   /** SDT parameters */
   private boolean isSdtEncoding;
@@ -144,8 +145,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     }
   }
 
-  @Override
-  public void write(long time, long value, boolean isNull) {
+  public void write(long time, long value) {
     // store last point for sdtEncoding, it still needs to go through encoding process
     // in case it exceeds compdev and needs to store second last point
     if (!isSdtEncoding || sdtEncoder.encodeLong(time, value)) {
@@ -159,8 +159,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
-  public void write(long time, int value, boolean isNull) {
+  public void write(long time, int value) {
     if (!isSdtEncoding || sdtEncoder.encodeInt(time, value)) {
       pageWriter.write(
           isSdtEncoding ? sdtEncoder.getTime() : time,
@@ -172,14 +171,12 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
-  public void write(long time, boolean value, boolean isNull) {
+  public void write(long time, boolean value) {
     pageWriter.write(time, value);
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
-  public void write(long time, float value, boolean isNull) {
+  public void write(long time, float value) {
     if (!isSdtEncoding || sdtEncoder.encodeFloat(time, value)) {
       pageWriter.write(
           isSdtEncoding ? sdtEncoder.getTime() : time,
@@ -192,8 +189,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
-  public void write(long time, double value, boolean isNull) {
+  public void write(long time, double value) {
     if (!isSdtEncoding || sdtEncoder.encodeDouble(time, value)) {
       pageWriter.write(
           isSdtEncoding ? sdtEncoder.getTime() : time,
@@ -205,18 +201,11 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
-  public void write(long time, Binary value, boolean isNull) {
+  public void write(long time, Binary value) {
     pageWriter.write(time, value);
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
-  public void write(long time) {
-    throw new IllegalStateException("write time method is not implemented in common chunk writer");
-  }
-
-  @Override
   public void write(long[] timestamps, int[] values, int batchSize) {
     if (isSdtEncoding) {
       batchSize = sdtEncoder.encode(timestamps, values, batchSize);
@@ -225,7 +214,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
   public void write(long[] timestamps, long[] values, int batchSize) {
     if (isSdtEncoding) {
       batchSize = sdtEncoder.encode(timestamps, values, batchSize);
@@ -234,13 +222,11 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
   public void write(long[] timestamps, boolean[] values, int batchSize) {
     pageWriter.write(timestamps, values, batchSize);
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
   public void write(long[] timestamps, float[] values, int batchSize) {
     if (isSdtEncoding) {
       batchSize = sdtEncoder.encode(timestamps, values, batchSize);
@@ -249,7 +235,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
   public void write(long[] timestamps, double[] values, int batchSize) {
     if (isSdtEncoding) {
       batchSize = sdtEncoder.encode(timestamps, values, batchSize);
@@ -258,7 +243,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
   public void write(long[] timestamps, Binary[] values, int batchSize) {
     pageWriter.write(timestamps, values, batchSize);
     checkPageSizeAndMayOpenANewPage();
@@ -343,7 +327,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public long getCurrentChunkSize() {
+  public long getSerializedChunkSize() {
     if (pageBuffer.size() == 0) {
       return 0;
     }
@@ -364,12 +348,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     pageWriter = null;
   }
 
-  @Override
-  public int getNumOfPages() {
-    return numOfPages;
-  }
-
-  @Override
   public TSDataType getDataType() {
     return measurementSchema.getType();
   }
@@ -433,8 +411,8 @@ public class ChunkWriterImpl implements IChunkWriter {
    * @param statistics the chunk statistics
    * @throws IOException exception in IO
    */
-  private void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer, Statistics<?> statistics)
-      throws IOException {
+  private void writeAllPagesOfChunkToTsFile(
+      TsFileIOWriter writer, Statistics<? extends Serializable> statistics) throws IOException {
     if (statistics.getCount() == 0) {
       return;
     }

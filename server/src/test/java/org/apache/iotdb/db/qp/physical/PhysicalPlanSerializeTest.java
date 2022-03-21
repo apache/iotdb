@@ -22,7 +22,7 @@ package org.apache.iotdb.db.qp.physical;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
@@ -198,7 +198,9 @@ public class PhysicalPlanSerializeTest {
             Arrays.asList("s1", "s2"),
             Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32),
             Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
-            CompressionType.SNAPPY,
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY),
+            null,
+            null,
             null);
 
     PhysicalPlan result = testTwoSerializeMethodAndDeserialize(createAlignedTimeSeriesPlan);
