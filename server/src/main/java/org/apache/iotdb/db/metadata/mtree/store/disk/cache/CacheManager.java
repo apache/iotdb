@@ -154,22 +154,16 @@ public abstract class CacheManager implements ICacheManager {
   private void addNodeToBuffer(IMNode node) {
     IMNode parent = node.getParent();
     IMNode current = node;
-    CacheEntry cacheEntry;
-    while (!current.isStorageGroup()) {
+    CacheEntry cacheEntry = getCacheEntry(parent);
+    while (!current.isStorageGroup() && isInNodeCache(cacheEntry)) {
+      /*
+      The ancestors of volatile node should not stay in nodeCache in which the node will be
+      evicted. When invoking this method, all the ancestors have been pinned.
+      */
+      removeFromNodeCache(cacheEntry);
+      current = parent;
+      parent = parent.getParent();
       cacheEntry = getCacheEntry(parent);
-      if (isInNodeCache(cacheEntry)) {
-        if (isInNodeCache(cacheEntry)) {
-          // the ancestors of volatile node should not stay in nodeCache in which the node will be
-          // evicted
-          removeFromNodeCache(cacheEntry);
-          current = parent;
-          parent = parent.getParent();
-        } else {
-          break;
-        }
-      } else {
-        break;
-      }
     }
     parent = node.getParent();
     cacheEntry = getCacheEntry(parent);
@@ -177,7 +171,7 @@ public abstract class CacheManager implements ICacheManager {
       nodeBuffer.remove(getCacheEntry(node));
     } else if (!cacheEntry.isVolatile()) {
       // make sure that the nodeBuffer contains all the root node of volatile subTree
-      // give that root.sg.d.s, if root, sg and d have been persisted and s are volatile, then d
+      // give that root.sg.d.s, if sg and d have been persisted and s are volatile, then d
       // will be added to nodeBuffer
       nodeBuffer.put(cacheEntry, parent);
       nodeBuffer.remove(getCacheEntry(node));

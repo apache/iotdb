@@ -37,6 +37,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.rescon.MetadataResourceManager;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
@@ -201,7 +202,7 @@ public class SchemaEngine {
     }
 
     try {
-      timeseriesStatistics.init();
+      MetadataResourceManager.initMetadataResource();
       templateManager.init();
       storageGroupSchemaManager.init();
 
@@ -263,12 +264,13 @@ public class SchemaEngine {
     try {
       storageGroupSchemaManager.clear();
       templateManager.clear();
-      timeseriesStatistics.clear();
 
       if (timedForceMLogThread != null) {
         timedForceMLogThread.shutdownNow();
         timedForceMLogThread = null;
       }
+
+      MetadataResourceManager.clearMetadataResource();
 
       initialized = false;
     } catch (IOException e) {

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store;
 
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -28,6 +27,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeContainers;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeFlushTaskManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.LRUCacheManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
@@ -43,7 +43,6 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -62,7 +61,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private IMNode root;
 
-  private ExecutorService flushTask;
+  private MTreeFlushTaskManager flushTaskManager = MTreeFlushTaskManager.getInstance();
   private int flushCount = 0;
   private volatile boolean hasFlushTask = false;
 
@@ -81,9 +80,6 @@ public class CachedMTreeStore implements IMTreeStore {
     file = SchemaFile.initSchemaFile(rootPath.getFullPath());
     root = file.init();
     cacheManager.initRootStatus(root);
-    flushTask =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            String.format("MTree-%s-FlushThread", rootPath.getFullPath()));
   }
 
   @Override
@@ -126,26 +122,12 @@ public class CachedMTreeStore implements IMTreeStore {
       IMNode node = parent.getChild(name);
       if (node == null) {
         node = loadChildFromDisk(parent, name);
-        if (node == null) {
-          //          logger.error("The pin lock on parent is {}",
-          // parent.getCacheEntry().getPinNumber());
-          //          logger.error(
-          //              "There's no child in memory or disk. The child is {}",
-          //              parent.getFullPath() + "." + name);
-        }
       } else {
         try {
           cacheManager.updateCacheStatusAfterMemoryRead(node);
           ensureMemoryStatus();
         } catch (MNodeNotCachedException e) {
           node = loadChildFromDisk(parent, name);
-          //          logger.error("The pin lock on parent is {}",
-          // parent.getCacheEntry().getPinNumber());
-          //          logger.error(
-          //              "The child has been concurrently evicted, thus try load from disk. The
-          // child is {}. {}",
-          //              parent.getFullPath() + "." + name,
-          //              node == null);
         }
       }
       if (node != null && node.isMeasurement()) {
@@ -330,10 +312,6 @@ public class CachedMTreeStore implements IMTreeStore {
   /** clear all the data of MTreeStore in memory and disk. */
   @Override
   public void clear() {
-    if (flushTask != null) {
-      flushTask.shutdown();
-      flushTask = null;
-    }
     root = null;
     cacheManager.clear();
     memManager.clear();
@@ -373,11 +351,6 @@ public class CachedMTreeStore implements IMTreeStore {
    * no node could be evicted. Update the memory status after evicting each node.
    */
   private void executeMemoryRelease() {
-    //    logger.error(
-    //        "Execute memory release, which should not happen. The memory usage is Pinned Node {},
-    // Cached Node {}",
-    //        memManager.getPinnedSize(),
-    //        memManager.getCachedSize());
     while (memManager.isExceedThreshold()) {
       if (!cacheManager.evict()) {
         break;
@@ -390,7 +363,7 @@ public class CachedMTreeStore implements IMTreeStore {
       return;
     }
     hasFlushTask = true;
-    flushTask.submit(this::flushVolatileNodes);
+    flushTaskManager.submit(this::flushVolatileNodes);
   }
 
   /** Sync all volatile nodes to schemaFile and execute memory release after flush. */
@@ -402,7 +375,10 @@ public class CachedMTreeStore implements IMTreeStore {
         try {
           file.writeMNode(volatileNode);
         } catch (MetadataException | IOException e) {
-          logger.error(String.format("Error occurred during MTree flush, %s", e.getMessage()));
+          logger.error(
+              "Error occurred during MTree flush, current node is {}",
+              volatileNode.getFullPath(),
+              e);
           return;
         }
         cacheManager.updateCacheStatusAfterPersist(volatileNode);
