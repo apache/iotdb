@@ -116,13 +116,15 @@ public class FragmentInstanceManager implements IFragmentInstanceManager, IServi
 
   @Override
   public void submitFragmentInstances(QueryId queryId, List<ExecFragmentInstance> instances) {
-    Set<FragmentInstanceTask> tasks =
+    List<FragmentInstanceTask> tasks =
         instances.stream()
             .map(
                 v ->
                     new FragmentInstanceTask(v, QUERY_TIMEOUT_MS, FragmentInstanceTaskStatus.READY))
-            .collect(Collectors.toSet());
-    queryMap.put(queryId, Collections.synchronizedSet(tasks));
+            .collect(Collectors.toList());
+    queryMap
+        .computeIfAbsent(queryId, v -> Collections.synchronizedSet(new HashSet<>()))
+        .addAll(tasks);
     for (FragmentInstanceTask task : tasks) {
       task.lock();
       try {
