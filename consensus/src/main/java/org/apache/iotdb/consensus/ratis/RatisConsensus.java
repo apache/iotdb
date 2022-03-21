@@ -144,16 +144,15 @@ public class RatisConsensus implements IConsensus {
     return ConsensusWriteResponse.newBuilder().setStatus(writeResult).build();
   }
 
-  /** Read directly from LOCAL COPY
-   * notice: May read stale data (not linearizable) */
+  /** Read directly from LOCAL COPY notice: May read stale data (not linearizable) */
   @Override
-  public ConsensusReadResponse read(
-      ConsensusGroupId groupId, IConsensusRequest IConsensusRequest) {
+  public ConsensusReadResponse read(ConsensusGroupId groupId, IConsensusRequest IConsensusRequest) {
 
     RaftGroup group = raftGroupMap.get(Utils.toRatisGroupId(groupId));
     if (group == null || !group.getPeers().contains(myself)) {
-      return ConsensusReadResponse.newBuilder().setException(
-              new ConsensusGroupNotExistException(groupId)).build();
+      return ConsensusReadResponse.newBuilder()
+          .setException(new ConsensusGroupNotExistException(groupId))
+          .build();
     }
 
     RaftClientReply reply = null;
