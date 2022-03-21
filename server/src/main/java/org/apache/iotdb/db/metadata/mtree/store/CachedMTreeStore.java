@@ -76,7 +76,6 @@ public class CachedMTreeStore implements IMTreeStore {
       throw new MetadataException("CachedMTreeStore only support subTree below storage group");
     }
     MNodeContainers.IS_DISK_MODE = true;
-    memManager.init();
     file = SchemaFile.initSchemaFile(rootPath.getFullPath());
     root = file.init();
     cacheManager.initRootStatus(root);
@@ -314,7 +313,6 @@ public class CachedMTreeStore implements IMTreeStore {
   public void clear() {
     root = null;
     cacheManager.clear();
-    memManager.clear();
     if (file != null) {
       try {
         file.clear();

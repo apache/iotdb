@@ -734,6 +734,7 @@ public class SchemaRegion {
         return node;
       } catch (MetadataException e) {
         // the node in mNodeCache has been evicted, thus get it via the following progress
+        return mtree.getNodeByPath(path);
       }
     } catch (Exception e) {
       if (e.getCause() instanceof MetadataException) {
@@ -758,7 +759,8 @@ public class SchemaRegion {
   }
 
   public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
-    mtree.getDeviceNodeWithAutoCreating(plan.getPath());
+    IMNode node = mtree.getDeviceNodeWithAutoCreating(plan.getPath());
+    mtree.unPinMNode(node);
     if (!isRecovering) {
       try {
         logWriter.autoCreateDeviceMNode(plan);
@@ -1507,7 +1509,7 @@ public class SchemaRegion {
         IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
         try {
           if (!mountedNode.isUseTemplate()) {
-            setUsingSchemaTemplate(mountedNode);
+            mountedNode = setUsingSchemaTemplate(mountedNode);
           }
           mountedNodeFound = true;
           if (index < devicePath.getNodeLength() - 1) {

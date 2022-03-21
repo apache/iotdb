@@ -411,8 +411,7 @@ public class MTreeBelowSG implements Serializable {
             throw new TemplateImcompatibeException(
                 devicePath.getFullPath(), upperTemplate.getName(), childName);
           }
-          child = new InternalMNode(cur, childName);
-          child = store.addChild(cur, childName, child);
+          child = store.addChild(cur, childName, new InternalMNode(cur, childName));
         }
         cur = child;
 
