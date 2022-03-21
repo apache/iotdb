@@ -21,8 +21,10 @@ package org.apache.iotdb.db.engine.compaction.task;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +32,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.List;
 import java.util.regex.Pattern;
+
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD;
 
 /**
  * CompactionRecoverTask execute the recover process for all compaction task sequentially, including
@@ -47,6 +51,78 @@ public class CompactionRecover {
     this.tsFileManager = tsFileManager;
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.virtualStorageGroupId = virtualStorageGroupId;
+  }
+
+  public void recoverInnerSpaceCompaction(boolean isSequence) throws Exception {
+    // search compaction log for SizeTieredCompaction
+    List<String> dirs;
+    if (isSequence) {
+      dirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
+    } else {
+      dirs = DirectoryManager.getInstance().getAllUnSequenceFileFolders();
+    }
+    for (String dir : dirs) {
+      File storageGroupDir =
+          new File(
+              dir
+                  + File.separator
+                  + logicalStorageGroupName
+                  + File.separator
+                  + virtualStorageGroupId);
+      if (!storageGroupDir.exists()) {
+        return;
+      }
+      File[] timePartitionDirs = storageGroupDir.listFiles();
+      if (timePartitionDirs == null) {
+        return;
+      }
+      for (File timePartitionDir : timePartitionDirs) {
+        if (!timePartitionDir.isDirectory()
+            || !Pattern.compile("[0-9]*").matcher(timePartitionDir.getName()).matches()) {
+          continue;
+        }
+        File[] compactionLogs =
+            InnerSpaceCompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir.getPath());
+        for (File compactionLog : compactionLogs) {
+          IoTDBDescriptor.getInstance()
+              .getConfig()
+              .getInnerCompactionStrategy()
+              .getCompactionRecoverTask(
+                  tsFileManager.getStorageGroupName(),
+                  tsFileManager.getVirtualStorageGroup(),
+                  Long.parseLong(
+                      timePartitionDir
+                          .getPath()
+                          .substring(timePartitionDir.getPath().lastIndexOf(File.separator) + 1)),
+                  compactionLog,
+                  timePartitionDir.getPath(),
+                  isSequence,
+                  tsFileManager)
+              .call();
+        }
+      }
+    }
+
+    // search compaction log for old LevelCompaction
+    File logFile =
+        FSFactoryProducer.getFSFactory()
+            .getFile(
+                tsFileManager.getStorageGroupDir(),
+                logicalStorageGroupName + INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD);
+    if (logFile.exists()) {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .getInnerCompactionStrategy()
+          .getCompactionRecoverTask(
+              tsFileManager.getStorageGroupName(),
+              tsFileManager.getVirtualStorageGroup(),
+              -1,
+              logFile,
+              logFile.getParent(),
+              isSequence,
+              tsFileManager)
+          .call();
+    }
   }
 
   public void recoverCrossSpaceCompaction() throws Exception {

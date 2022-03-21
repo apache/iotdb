@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.engine.compaction.recover;
 
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -44,7 +45,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -103,16 +103,14 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", targetResource.getTsFile().getParent());
     tsFileManager.addAll(seqResources, true);
-    SizeTieredCompactionRecoverTask recoverTask =
-        new SizeTieredCompactionRecoverTask(
-            "root.compactionTest",
-            "0",
+    CompactionRecoverTask recoverTask =
+        new CompactionRecoverTask(
+            COMPACTION_TEST_SG + "-" + "0",
             0,
+            tsFileManager,
+            CompactionTaskManager.currentTaskNum,
             logFile,
-            targetResource.getTsFile().getParent(),
-            true,
-            new AtomicInteger(0),
-            tsFileManager);
+            true);
     recoverTask.call();
 
     for (TsFileResource resource : seqResources) {
@@ -168,16 +166,14 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", targetResource.getTsFile().getParent());
     tsFileManager.addAll(seqResources, true);
-    SizeTieredCompactionRecoverTask recoverTask =
-        new SizeTieredCompactionRecoverTask(
-            "root.compactionTest",
-            "0",
+    CompactionRecoverTask recoverTask =
+        new CompactionRecoverTask(
+            COMPACTION_TEST_SG + "-" + "0",
             0,
+            tsFileManager,
+            CompactionTaskManager.currentTaskNum,
             logFile,
-            targetResource.getTsFile().getParent(),
-            true,
-            new AtomicInteger(0),
-            tsFileManager);
+            true);
     recoverTask.call();
 
     for (TsFileResource resource : seqResources) {
@@ -216,16 +212,14 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", targetResource.getTsFile().getParent());
     tsFileManager.addAll(seqResources, true);
-    SizeTieredCompactionRecoverTask recoverTask =
-        new SizeTieredCompactionRecoverTask(
-            "root.compactionTest",
-            "0",
+    CompactionRecoverTask recoverTask =
+        new CompactionRecoverTask(
+            COMPACTION_TEST_SG + "-" + "0",
             0,
+            tsFileManager,
+            CompactionTaskManager.currentTaskNum,
             logFile,
-            targetResource.getTsFile().getParent(),
-            true,
-            new AtomicInteger(0),
-            tsFileManager);
+            true);
     recoverTask.call();
 
     for (TsFileResource resource : seqResources) {
@@ -269,16 +263,14 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", targetResource.getTsFile().getParent());
     tsFileManager.addAll(unseqResources, false);
-    SizeTieredCompactionRecoverTask recoverTask =
-        new SizeTieredCompactionRecoverTask(
-            "root.compactionTest",
-            "0",
+    CompactionRecoverTask recoverTask =
+        new CompactionRecoverTask(
+            COMPACTION_TEST_SG + "-" + "0",
             0,
+            tsFileManager,
+            CompactionTaskManager.currentTaskNum,
             logFile,
-            targetResource.getTsFile().getParent(),
-            true,
-            new AtomicInteger(0),
-            tsFileManager);
+            true);
     recoverTask.call();
 
     for (TsFileResource resource : unseqResources) {

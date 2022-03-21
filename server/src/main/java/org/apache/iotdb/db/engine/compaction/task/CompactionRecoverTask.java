@@ -45,7 +45,7 @@ public class CompactionRecoverTask extends AbstractCompactionTask {
   }
 
   @Override
-  protected void doCompaction() {
+  public void doCompaction() {
     boolean handleSuccess = true;
     LOGGER.info(
         "{} [Compaction][Recover] compaction log is {}", fullStorageGroupName, compactionLogFile);
@@ -57,9 +57,11 @@ public class CompactionRecoverTask extends AbstractCompactionTask {
             compactionLogFile);
         CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(compactionLogFile);
         CompactionRecoverFromOld compactionRecoverFromOld = new CompactionRecoverFromOld();
-        if ((isInnerSpace && compactionRecoverFromOld.isOldInnerCompactionLog())
-            || (!isInnerSpace && compactionRecoverFromOld.isOldCrossCompactionLog())) {
-          // log from previous version (<0.13)
+        if (isInnerSpace && compactionRecoverFromOld.isOldInnerCompactionLog()) {
+          // inner compaction log from previous version (<0.13)
+          logAnalyzer.analyzeOldInnerCompactionLog();
+        } else if (!isInnerSpace && compactionRecoverFromOld.isOldCrossCompactionLog()) {
+          // cross compaction log from previous version (<0.13)
           logAnalyzer.analyzeOldCrossCompactionLog();
         } else {
           logAnalyzer.analyze();
