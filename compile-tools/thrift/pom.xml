@@ -65,7 +65,7 @@
                                     <goal>wget</goal>
                                 </goals>
                                 <configuration>
-                                    <url>https://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.tar.gz</url>
+                                    <url>http://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.tar.gz</url>
                                     <unpack>true</unpack>
                                     <outputDirectory>${project.build.directory}</outputDirectory>
                                 </configuration>
