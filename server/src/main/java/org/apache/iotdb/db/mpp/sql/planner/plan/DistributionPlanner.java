@@ -100,7 +100,7 @@ public class DistributionPlanner {
       // Step 3: For the source nodes which belong to same data region, add a TimeJoinNode for them
       // and make the
       // new TimeJoinNode as the child of current TimeJoinNode
-      //TODO: (xingtanzjr) optimize the procedure here to remove duplicated TimeJoinNode
+      // TODO: (xingtanzjr) optimize the procedure here to remove duplicated TimeJoinNode
       sourceGroup.forEach(
           (dataRegion, seriesScanNodes) -> {
             if (seriesScanNodes.size() == 1) {
