@@ -144,10 +144,9 @@ public class IoTDBMeterRegistry extends StepMeterRegistry {
       String deviceId = MetricsUtils.generatePath(name, labels);
       List<String> sensors = Collections.singletonList("value");
       List<TSDataType> dataTypes = Collections.singletonList(TSDataType.DOUBLE);
-      List<Double> values = Collections.singletonList(value);
 
       try {
-        session.insertRecord(deviceId, time, sensors, dataTypes, values);
+        session.insertRecord(deviceId, time, sensors, dataTypes, value);
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         logger.warn("Failed to insert record");
       }

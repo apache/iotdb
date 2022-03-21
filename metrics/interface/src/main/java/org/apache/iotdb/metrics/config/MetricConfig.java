@@ -30,17 +30,17 @@ import java.util.List;
 
 public class MetricConfig {
   /** enable publishing data. */
-  private Boolean enableMetric = false;
+  private Boolean enableMetric = true;
 
   /** The period of data pushed by the reporter to the remote monitoring system. */
-  private Integer pushPeriodInSecond = 5;
+  private Integer pushPeriodInSecond = 1;
 
   /** The of monitor frame */
-  private MonitorType monitorType = MonitorType.MICROMETER;
+  private MonitorType monitorType = MonitorType.DROPWIZARD;
 
   /** provide or push metric data to remote system, could be jmx, prometheus, iotdb, etc. */
   private List<ReporterType> metricReporterList =
-      Arrays.asList(ReporterType.JMX, ReporterType.PROMETHEUS);
+      Arrays.asList(ReporterType.JMX, ReporterType.IOTDB);
 
   private MetricLevel metricLevel = MetricLevel.IMPORTANT;
 

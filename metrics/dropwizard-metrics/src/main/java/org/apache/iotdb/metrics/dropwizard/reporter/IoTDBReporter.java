@@ -189,10 +189,7 @@ public class IoTDBReporter extends ScheduledReporter {
       value = ((Number) obj).doubleValue();
       updateValue(prefixed(name), MetricsUtils.emptyMap(), value);
     } else if (obj instanceof Boolean) {
-      value = ((Boolean) obj) ? 1 : 0;
-      updateValue(prefixed(name), MetricsUtils.emptyMap(), value);
-    } else {
-      logger.warn("Invalid type for Gauge {}: {}", name, obj.getClass().getName());
+      updateValue(prefixed(name), MetricsUtils.emptyMap(), obj);
     }
   }
 
@@ -220,11 +217,23 @@ public class IoTDBReporter extends ScheduledReporter {
     if (value != null) {
       String deviceId = MetricsUtils.generatePath(name, labels);
       List<String> sensors = Collections.singletonList("value");
-      List<TSDataType> dataTypes = Collections.singletonList(TSDataType.DOUBLE);
-      List<Object> values = Collections.singletonList(value);
+
+      List<TSDataType> dataTypes = new ArrayList<>();
+      if (value instanceof Boolean) {
+        dataTypes.add(TSDataType.BOOLEAN);
+      } else if (value instanceof Integer) {
+        dataTypes.add(TSDataType.INT32);
+      } else if (value instanceof Long) {
+        dataTypes.add(TSDataType.INT64);
+      } else if (value instanceof Double) {
+        dataTypes.add(TSDataType.DOUBLE);
+      } else {
+        dataTypes.add(TSDataType.TEXT);
+        value = value.toString();
+      }
 
       try {
-        session.insertRecord(deviceId, System.currentTimeMillis(), sensors, dataTypes, values);
+        session.insertRecord(deviceId, System.currentTimeMillis(), sensors, dataTypes, value);
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         logger.warn("Failed to insert record");
       }
