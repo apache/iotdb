@@ -37,6 +37,7 @@ public interface ISchemaPage {
 
   /**
    * Check if record exists with name or alias.
+   *
    * @param key name or alias of target child
    * @param segId target segment index
    */

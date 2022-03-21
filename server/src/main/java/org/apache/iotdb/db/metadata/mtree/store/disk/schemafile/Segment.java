@@ -225,7 +225,8 @@ public class Segment implements ISegment {
 
   @Override
   public IMNode getRecordAsIMNode(String key) throws MetadataException {
-    int index = getRecordIndexByKey(key) >= 0 ? getRecordIndexByKey(key) : getRecordIndexByAlias(key);
+    int index =
+        getRecordIndexByKey(key) >= 0 ? getRecordIndexByKey(key) : getRecordIndexByAlias(key);
     if (index < 0) {
       return null;
     }
@@ -236,7 +237,7 @@ public class Segment implements ISegment {
     short len = RecordUtils.getRecordLength(this.buffer);
     this.buffer.limit(offset + len);
 
-    return RecordUtils.buffer2Node(key, this.buffer);
+    return RecordUtils.buffer2Node(keyAddressList.get(index).left, this.buffer);
   }
 
   @Override

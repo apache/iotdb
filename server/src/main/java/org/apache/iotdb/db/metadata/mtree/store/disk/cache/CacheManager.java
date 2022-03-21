@@ -194,10 +194,9 @@ public abstract class CacheManager implements ICacheManager {
   @Override
   public void updateCacheStatusAfterPersist(IMNode node) {
     IMNode tmp = node;
-    addToNodeCache(getCacheEntry(tmp), tmp);
     while (!tmp.isStorageGroup() && !isInNodeCache(getCacheEntry(tmp))) {
-      tmp = tmp.getParent();
       addToNodeCache(getCacheEntry(tmp), tmp);
+      tmp = tmp.getParent();
     }
     ICachedMNodeContainer container = getCachedMNodeContainer(node);
     Map<String, IMNode> persistedChildren = container.getNewChildBuffer();

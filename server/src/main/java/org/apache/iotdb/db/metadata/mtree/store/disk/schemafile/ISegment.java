@@ -46,6 +46,7 @@ public interface ISegment {
 
   /**
    * get a MNode by its name or alias
+   *
    * @param key name or alias of the target node
    * @return node instance
    */
