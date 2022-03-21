@@ -37,9 +37,14 @@ import org.apache.iotdb.db.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.sql.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -151,6 +156,20 @@ public class StatementGenerator {
     insertStatement.setMeasurementList(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setAligned(insertStatement.isAligned());
     return insertStatement;
+  }
+
+  public static Statement createStatement(TSCreateTimeseriesReq req) throws IllegalPathException {
+    // construct create timseries statement
+    CreateTimeSeriesStatement statement = new CreateTimeSeriesStatement();
+    statement.setPath(new PartialPath(req.path));
+    statement.setDataType(TSDataType.values()[req.dataType]);
+    statement.setEncoding(TSEncoding.values()[req.encoding]);
+    statement.setCompressor(CompressionType.values()[req.compressor]);
+    statement.setProps(req.props);
+    statement.setTags(req.tags);
+    statement.setAttributes(req.attributes);
+    statement.setAlias(req.measurementAlias);
+    return statement;
   }
 
   private static Statement invokeParser(

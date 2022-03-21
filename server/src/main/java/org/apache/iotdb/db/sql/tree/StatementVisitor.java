@@ -23,6 +23,7 @@ import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.db.sql.statement.StatementNode;
 import org.apache.iotdb.db.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.sql.statement.metadata.CreateTimeSeriesStatement;
 
 public abstract class StatementVisitor<R, C> {
 
@@ -41,6 +42,14 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitStatement(Statement statement, C context) {
     return visitNode(statement, context);
+  }
+
+  /** Data Definition Language (DDL) */
+
+  // Create Timeseries
+
+  public R visitCreateTimeseries(CreateTimeSeriesStatement createTimeSeriesStatement, C context) {
+    return visitStatement(createTimeSeriesStatement, context);
   }
 
   /** Data Manipulation Language (DML) */

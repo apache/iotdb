@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.common.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.common.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.common.filter.*;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.logical.sys.*;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
@@ -46,7 +47,14 @@ import org.apache.iotdb.db.sql.constant.FilterConstant;
 import org.apache.iotdb.db.sql.statement.*;
 import org.apache.iotdb.db.sql.statement.component.*;
 import org.apache.iotdb.db.sql.statement.crud.*;
+import org.apache.iotdb.db.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.sql.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.sql.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang.StringEscapeUtils;
@@ -93,6 +101,216 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       statement.setDebug(true);
     }
     return statement;
+  }
+
+  /** Data Definition Language (DDL) */
+
+  // Create Timeseries ========================================================================
+
+  @Override
+  public Statement visitCreateNonAlignedTimeseries(
+      IoTDBSqlParser.CreateNonAlignedTimeseriesContext ctx) {
+    CreateTimeSeriesStatement createTimeSeriesStatement = new CreateTimeSeriesStatement();
+    createTimeSeriesStatement.setPath(parseFullPath(ctx.fullPath()));
+    if (ctx.attributeClauses() != null) {
+      parseAttributeClauses(ctx.attributeClauses(), createTimeSeriesStatement);
+    }
+    return createTimeSeriesStatement;
+  }
+
+  @Override
+  public Statement visitCreateAlignedTimeseries(IoTDBSqlParser.CreateAlignedTimeseriesContext ctx) {
+    CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement =
+        new CreateAlignedTimeSeriesStatement();
+    createAlignedTimeSeriesStatement.setDeviceId(parseFullPath(ctx.fullPath()));
+    parseAlignedMeasurements(ctx.alignedMeasurements(), createAlignedTimeSeriesStatement);
+    return createAlignedTimeSeriesStatement;
+  }
+
+  public void parseAlignedMeasurements(
+      IoTDBSqlParser.AlignedMeasurementsContext ctx,
+      CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement) {
+    for (int i = 0; i < ctx.nodeNameWithoutWildcard().size(); i++) {
+      createAlignedTimeSeriesStatement.addMeasurement(
+          parseNodeName(ctx.nodeNameWithoutWildcard(i).getText()));
+      parseAttributeClauses(ctx.attributeClauses(i), createAlignedTimeSeriesStatement);
+    }
+  }
+
+  public void parseAttributeClauses(
+      IoTDBSqlParser.AttributeClausesContext ctx,
+      CreateTimeSeriesStatement createTimeSeriesStatement) {
+    if (ctx.alias() != null) {
+      createTimeSeriesStatement.setAlias(parseNodeName(ctx.alias().nodeNameCanInExpr().getText()));
+    }
+    final String dataType = ctx.dataType.getText().toUpperCase();
+    final TSDataType tsDataType = TSDataType.valueOf(dataType);
+    createTimeSeriesStatement.setDataType(tsDataType);
+
+    final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
+    TSEncoding encoding = ioTDBDescriptor.getDefaultEncodingByType(tsDataType);
+    if (Objects.nonNull(ctx.encoding)) {
+      String encodingString = ctx.encoding.getText().toUpperCase();
+      encoding = TSEncoding.valueOf(encodingString);
+    }
+    createTimeSeriesStatement.setEncoding(encoding);
+
+    CompressionType compressor;
+    List<IoTDBSqlParser.PropertyClauseContext> properties = ctx.propertyClause();
+    if (ctx.compressor != null) {
+      compressor = CompressionType.valueOf(ctx.compressor.getText().toUpperCase());
+    } else {
+      compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    }
+    Map<String, String> props = null;
+    if (ctx.propertyClause(0) != null) {
+      props = new HashMap<>(properties.size());
+      for (IoTDBSqlParser.PropertyClauseContext property : properties) {
+        props.put(
+            parseIdentifier(property.identifier().getText()).toLowerCase(),
+            parseStringLiteral(property.propertyValue().getText().toLowerCase()));
+      }
+    }
+    createTimeSeriesStatement.setCompressor(compressor);
+    createTimeSeriesStatement.setProps(props);
+    if (ctx.tagClause() != null) {
+      parseTagClause(ctx.tagClause(), createTimeSeriesStatement);
+    }
+    if (ctx.attributeClause() != null) {
+      parseAttributeClause(ctx.attributeClause(), createTimeSeriesStatement);
+    }
+  }
+
+  public void parseAttributeClauses(
+      IoTDBSqlParser.AttributeClausesContext ctx,
+      CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement) {
+    if (ctx.alias() != null) {
+      createAlignedTimeSeriesStatement.addAliasList(
+          parseNodeName(ctx.alias().nodeNameCanInExpr().getText()));
+    } else {
+      createAlignedTimeSeriesStatement.addAliasList(null);
+    }
+
+    String dataTypeString = ctx.dataType.getText().toUpperCase();
+    TSDataType dataType = TSDataType.valueOf(dataTypeString);
+    createAlignedTimeSeriesStatement.addDataType(dataType);
+
+    TSEncoding encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
+    if (Objects.nonNull(ctx.encoding)) {
+      String encodingString = ctx.encoding.getText().toUpperCase();
+      encoding = TSEncoding.valueOf(encodingString);
+    }
+    createAlignedTimeSeriesStatement.addEncoding(encoding);
+
+    CompressionType compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    if (ctx.compressor != null) {
+      String compressorString = ctx.compressor.getText().toUpperCase();
+      compressor = CompressionType.valueOf(compressorString);
+    }
+    createAlignedTimeSeriesStatement.addCompressor(compressor);
+
+    if (ctx.propertyClause(0) != null) {
+      throw new SQLParserException("create aligned timeseries: property is not supported yet.");
+    }
+
+    if (ctx.tagClause() != null) {
+      parseTagClause(ctx.tagClause(), createAlignedTimeSeriesStatement);
+    } else {
+      createAlignedTimeSeriesStatement.addTagsList(null);
+    }
+
+    if (ctx.attributeClause() != null) {
+      parseAttributeClause(ctx.attributeClause(), createAlignedTimeSeriesStatement);
+    } else {
+      createAlignedTimeSeriesStatement.addAttributesList(null);
+    }
+  }
+
+  // Tag & Property & Attribute
+
+  public void parseTagClause(IoTDBSqlParser.TagClauseContext ctx, Statement statement) {
+    Map<String, String> tags = extractMap(ctx.propertyClause(), ctx.propertyClause(0));
+    if (statement instanceof CreateTimeSeriesStatement) {
+      ((CreateTimeSeriesStatement) statement).setTags(tags);
+    } else if (statement instanceof CreateAlignedTimeSeriesStatement) {
+      ((CreateAlignedTimeSeriesStatement) statement).addTagsList(tags);
+    }
+    // TODO: remove comments
+    //    else if (statement instanceof AlterTimeSeriesStatement) {
+    //      ((AlterTimeSeriesStatement) statement).setTagsMap(tags);
+    //    }
+  }
+
+  public void parseAttributeClause(IoTDBSqlParser.AttributeClauseContext ctx, Statement statement) {
+    Map<String, String> attributes = extractMap(ctx.propertyClause(), ctx.propertyClause(0));
+    if (statement instanceof CreateTimeSeriesStatement) {
+      ((CreateTimeSeriesStatement) statement).setAttributes(attributes);
+    } else if (statement instanceof CreateAlignedTimeSeriesStatement) {
+      ((CreateAlignedTimeSeriesStatement) statement).addAttributesList(attributes);
+    }
+    // TODO: remove comments
+    //    else if (operator instanceof AlterTimeSeriesOperator) {
+    //      ((AlterTimeSeriesOperator) operator).setAttributesMap(attributes);
+    //    }
+  }
+
+  // Show Timeseries ========================================================================
+
+  @Override
+  public Statement visitShowTimeseries(IoTDBSqlParser.ShowTimeseriesContext ctx) {
+    boolean orderByHeat = ctx.LATEST() != null;
+    ShowTimeSeriesStatement showTimeSeriesStatement;
+    if (ctx.prefixPath() != null) {
+      showTimeSeriesStatement =
+          new ShowTimeSeriesStatement(parsePrefixPath(ctx.prefixPath()), orderByHeat);
+    } else {
+      showTimeSeriesStatement =
+          new ShowTimeSeriesStatement(
+              new PartialPath(SQLConstant.getSingleRootArray()), orderByHeat);
+    }
+    if (ctx.showWhereClause() != null) {
+      parseShowWhereClause(ctx.showWhereClause(), showTimeSeriesStatement);
+    }
+    if (ctx.limitClause() != null) {
+      parseLimitClause(ctx.limitClause(), showTimeSeriesStatement);
+    }
+    return showTimeSeriesStatement;
+  }
+
+  private void parseShowWhereClause(
+      IoTDBSqlParser.ShowWhereClauseContext ctx, ShowTimeSeriesStatement statement) {
+    IoTDBSqlParser.PropertyValueContext propertyValueContext;
+    if (ctx.containsExpression() != null) {
+      statement.setContains(true);
+      propertyValueContext = ctx.containsExpression().propertyValue();
+      statement.setKey(parseIdentifier(ctx.containsExpression().identifier().getText()));
+    } else {
+      statement.setContains(false);
+      propertyValueContext = ctx.propertyClause().propertyValue();
+      statement.setKey(parseIdentifier(ctx.propertyClause().identifier().getText()));
+    }
+    statement.setValue(parseStringLiteral(propertyValueContext.getText()));
+  }
+
+  // Show Devices ========================================================================
+
+  @Override
+  public Statement visitShowDevices(IoTDBSqlParser.ShowDevicesContext ctx) {
+    ShowDevicesStatement showDevicesStatement;
+    if (ctx.prefixPath() != null) {
+      showDevicesStatement = new ShowDevicesStatement(parsePrefixPath(ctx.prefixPath()));
+    } else {
+      showDevicesStatement =
+          new ShowDevicesStatement(new PartialPath(SQLConstant.getSingleRootArray()));
+    }
+    if (ctx.limitClause() != null) {
+      parseLimitClause(ctx.limitClause(), showDevicesStatement);
+    }
+    // show devices wtih storage group
+    if (ctx.WITH() != null) {
+      showDevicesStatement.setSgCol(true);
+    }
+    return showDevicesStatement;
   }
 
   /** Data Manipulation Language (DML) */

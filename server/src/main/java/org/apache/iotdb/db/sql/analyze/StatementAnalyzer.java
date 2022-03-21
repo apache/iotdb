@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.sql.analyze;
 
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.sql.metadata.IMetadataFetcher;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.db.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.sql.tree.StatementVisitor;
 
 public class StatementAnalyzer {
@@ -90,6 +92,25 @@ public class StatementAnalyzer {
     public Analysis visitInsert(InsertStatement insertStatement, AnalysisContext context) {
       // TODO: do analyze for insert statement
       analysis.setStatement(insertStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCreateTimeseries(
+        CreateTimeSeriesStatement createTimeSeriesStatement, AnalysisContext context) {
+      if (createTimeSeriesStatement.getTags() != null
+          && !createTimeSeriesStatement.getTags().isEmpty()
+          && createTimeSeriesStatement.getAttributes() != null
+          && !createTimeSeriesStatement.getAttributes().isEmpty()) {
+        for (String tagKey : createTimeSeriesStatement.getTags().keySet()) {
+          if (createTimeSeriesStatement.getAttributes().containsKey(tagKey)) {
+            throw new SemanticException(
+                String.format(
+                    "Tag and attribute shouldn't have the same property key [%s]", tagKey));
+          }
+        }
+      }
+      analysis.setStatement(createTimeSeriesStatement);
       return analysis;
     }
   }

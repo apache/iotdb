@@ -17,17 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.statement.crud;
+package org.apache.iotdb.db.sql.statement.metadata;
 
+import org.apache.iotdb.db.sql.constant.StatementType;
 import org.apache.iotdb.db.sql.statement.Statement;
 
-public class ShowDevicesStatement extends Statement {
+public class ShowStatement extends Statement {
 
   int limit = 0;
   int offset = 0;
 
+  public ShowStatement() {
+    super();
+    statementType = StatementType.SHOW;
+  }
+
+  public int getLimit() {
+    return limit;
+  }
+
   public void setLimit(int limit) {
     this.limit = limit;
+  }
+
+  public int getOffset() {
+    return offset;
   }
 
   public void setOffset(int offset) {

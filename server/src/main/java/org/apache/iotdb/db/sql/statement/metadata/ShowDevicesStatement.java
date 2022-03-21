@@ -17,20 +17,36 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sql.statement.crud;
+package org.apache.iotdb.db.sql.statement.metadata;
 
-import org.apache.iotdb.db.sql.statement.Statement;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
-public class ShowTimeSeriesStatement extends Statement {
+/**
+ * SHOW DEVICES statement.
+ *
+ * <p>Here is the syntax definition:
+ *
+ * <p>SHOW DEVICES [pathPattern] [WITH STORAGE GROUP] [LIMIT limit] [OFFSET offset]
+ */
+public class ShowDevicesStatement extends ShowStatement {
 
-  int limit = 0;
-  int offset = 0;
+  private final PartialPath pathPattern;
+  private boolean hasSgCol;
 
-  public void setLimit(int limit) {
-    this.limit = limit;
+  public ShowDevicesStatement(PartialPath pathPattern) {
+    super();
+    this.pathPattern = pathPattern;
   }
 
-  public void setOffset(int offset) {
-    this.offset = offset;
+  public PartialPath getPathPattern() {
+    return pathPattern;
+  }
+
+  public void setSgCol(boolean hasSgCol) {
+    this.hasSgCol = hasSgCol;
+  }
+
+  public boolean hasSgCol() {
+    return hasSgCol;
   }
 }
