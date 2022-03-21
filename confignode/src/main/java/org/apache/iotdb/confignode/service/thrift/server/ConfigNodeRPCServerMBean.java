@@ -16,17 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.exception.conf;
 
-import org.apache.iotdb.confignode.exception.ConfigNodeException;
+package org.apache.iotdb.confignode.service.thrift.server;
 
-/** Throws when there exists some special parameters are repeatedly defined */
-public class RepeatConfigurationException extends ConfigNodeException {
-
-  public RepeatConfigurationException(String parameter, String badValue, String correctValue) {
-    super(
-        String.format(
-            "Parameter %s can not be %s, because you're already set to: %s.",
-            parameter, badValue, correctValue));
-  }
-}
+public interface ConfigNodeRPCServerMBean {}

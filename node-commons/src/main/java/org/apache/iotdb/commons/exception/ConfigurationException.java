@@ -16,18 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.exception.startup;
 
-import org.apache.iotdb.confignode.exception.ConfigNodeException;
+package org.apache.iotdb.commons.exception;
 
-/** Throws when there exists errors when startup checks */
-public class StartupException extends ConfigNodeException {
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public StartupException(String name, String message) {
-    super(String.format("Failed to start [%s], because [%s]", name, message));
+public class ConfigurationException extends IoTDBException {
+  final String parameter;
+  final String correctValue;
+
+  public ConfigurationException(String parameter, String badValue, String correctValue) {
+    super(
+        String.format(
+            "Parameter %s can not be %s, please set to: %s", parameter, badValue, correctValue),
+        TSStatusCode.CONFIG_ERROR.getStatusCode());
+    this.parameter = parameter;
+    this.correctValue = correctValue;
   }
 
-  public StartupException(String message) {
-    super(message);
+  public String getParameter() {
+    return parameter;
+  }
+
+  public String getCorrectValue() {
+    return correctValue;
   }
 }

@@ -35,7 +35,7 @@ public abstract class ThriftService implements IService {
   public static final String STATUS_UP = "UP";
   public static final String STATUS_DOWN = "DOWN";
 
-  protected final String mbeanName =
+  protected String mbeanName =
       String.format(
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
   protected AbstractThriftServiceThread thriftServiceThread;
