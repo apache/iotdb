@@ -37,6 +37,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
 
 public class Utils {
+  private static final int tempBufferSize = 1024;
   private static final String IOTDB_RATIS_KEY = "iotdb@_ratis_key";
   private static final SecretKeySpec key = new SecretKeySpec(IOTDB_RATIS_KEY.getBytes(), "AES");
 
@@ -91,7 +92,7 @@ public class Utils {
 
   public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {
     // TODO Pooling ByteBuffer
-    TByteBuffer byteBuffer = new TByteBuffer(ByteBuffer.allocate(1000));
+    TByteBuffer byteBuffer = new TByteBuffer(ByteBuffer.allocate(tempBufferSize));
     TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
     status.write(protocol);
     byteBuffer.getByteBuffer().flip();

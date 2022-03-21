@@ -30,6 +30,8 @@ import org.apache.ratis.statemachine.TransactionContext;
 import org.apache.ratis.statemachine.impl.BaseStateMachine;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -37,6 +39,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class ApplicationStateMachineProxy extends BaseStateMachine {
   private final IStateMachine applicationStateMachine;
+  private final Logger logger = LoggerFactory.getLogger(ApplicationStateMachineProxy.class);
 
   public ApplicationStateMachineProxy(IStateMachine stateMachine) {
     applicationStateMachine = stateMachine;
@@ -61,9 +64,11 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
     Message ret = null;
     try {
+      // TODO use method call instead of RPC & serialization when server&IConsensus in same process
       ByteBuffer serializedStatus = Utils.serializeTSStatus(result);
       ret = Message.valueOf(ByteString.copyFrom(serializedStatus));
-    } catch (TException ignored) {
+    } catch (TException exception) {
+      logger.warn("serialize TSStatus failed", exception);
     }
 
     return CompletableFuture.completedFuture(ret);
