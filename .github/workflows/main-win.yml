@@ -100,7 +100,7 @@ jobs:
       - name: Test Server Module with Maven
         shell: bash
         if: ${{ matrix.it_task == 'server'}}
-        run: source ~/.bash_profile && mvn -B -X clean integration-test -Dtest.port.closed=true -pl server -am -DskipTests=true -Diotdb.test.only=true
+        run: source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -pl server -am -DskipTests=true -Diotdb.test.only=true
       - name: Test Cluster Module with Maven
         shell: bash
         if: ${{ matrix.it_task == 'cluster'}}
