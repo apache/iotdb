@@ -42,10 +42,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -227,11 +225,6 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
-  @Override
-  public void addAlias(IEntityMNode parent, String alias, IMeasurementMNode child) {
-    parent.addAlias(alias, child);
-  }
-
   /**
    * This method will delete a node from MTree, which means the corresponding subTree will be
    * deleted. Before deletion, the measurementMNode in this subtree should be collected for updating
@@ -245,33 +238,10 @@ public class CachedMTreeStore implements IMTreeStore {
    * @throws MetadataException
    */
   @Override
-  public List<IMeasurementMNode> deleteChild(IMNode parent, String childName)
-      throws MetadataException {
+  public void deleteChild(IMNode parent, String childName) throws MetadataException {
     readLock.lock();
     try {
       IMNode deletedMNode = getChild(parent, childName);
-      // collect all the LeafMNode in this storage group
-      List<IMeasurementMNode> leafMNodes = new LinkedList<>();
-      Queue<IMNode> queue = new LinkedList<>();
-      queue.add(deletedMNode);
-      while (!queue.isEmpty()) {
-        IMNode node = queue.poll();
-        IMNodeIterator iterator = getChildrenIterator(node);
-        try {
-          IMNode child;
-          while (iterator.hasNext()) {
-            child = iterator.next();
-            if (child.isMeasurement()) {
-              leafMNodes.add(child.getAsMeasurementMNode());
-            } else {
-              queue.add(child);
-            }
-          }
-        } finally {
-          iterator.close();
-        }
-      }
-
       ICachedMNodeContainer container = getCachedMNodeContainer(parent);
       if (!container.isVolatile() && !container.hasChildInNewChildBuffer(childName)) {
         // the container has been persisted and this child is not a new child, which means the child
@@ -285,16 +255,9 @@ public class CachedMTreeStore implements IMTreeStore {
 
       parent.deleteChild(childName);
       cacheManager.remove(deletedMNode);
-
-      return leafMNodes;
     } finally {
       readLock.unlock();
     }
-  }
-
-  @Override
-  public void deleteAliasChild(IEntityMNode parent, String alias) {
-    parent.deleteAliasChild(alias);
   }
 
   @Override

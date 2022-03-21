@@ -20,10 +20,8 @@ package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNodeIterator;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MemMNodeIterator;
@@ -31,9 +29,6 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
 
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
 public class MemMTreeStore implements IMTreeStore {
@@ -80,37 +75,8 @@ public class MemMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public void addAlias(IEntityMNode parent, String alias, IMeasurementMNode child) {
-    parent.addAlias(alias, child);
-  }
-
-  @Override
-  public List<IMeasurementMNode> deleteChild(IMNode parent, String childName) {
-    IMNode cur = parent.getChild(childName);
+  public void deleteChild(IMNode parent, String childName) {
     parent.deleteChild(childName);
-    // collect all the LeafMNode in this storage group
-    List<IMeasurementMNode> leafMNodes = new LinkedList<>();
-    Queue<IMNode> queue = new LinkedList<>();
-    queue.add(cur);
-    while (!queue.isEmpty()) {
-      IMNode node = queue.poll();
-      IMNodeIterator iterator = getChildrenIterator(node);
-      IMNode child;
-      while (iterator.hasNext()) {
-        child = iterator.next();
-        if (child.isMeasurement()) {
-          leafMNodes.add(child.getAsMeasurementMNode());
-        } else {
-          queue.add(child);
-        }
-      }
-    }
-    return leafMNodes;
-  }
-
-  @Override
-  public void deleteAliasChild(IEntityMNode parent, String alias) {
-    parent.deleteAliasChild(alias);
   }
 
   @Override

@@ -185,7 +185,7 @@ public class MTreeBelowSG implements Serializable {
             try {
               jsonObject.add(child.getName(), mNodeToJSON(child, storageGroupName));
             } finally {
-              store.unPin(child);
+              unPinMNode(child);
             }
           }
         } finally {
@@ -292,7 +292,7 @@ public class MTreeBelowSG implements Serializable {
         store.addChild(entityMNode, leafName, measurementMNode);
         // link alias to LeafMNode
         if (alias != null) {
-          store.addAlias(entityMNode, alias, measurementMNode);
+          entityMNode.addAlias(alias, measurementMNode);
         }
         return measurementMNode;
       }
@@ -386,7 +386,6 @@ public class MTreeBelowSG implements Serializable {
           entityMNode.addAlias(aliasList.get(i), measurementMNode);
         }
         measurementMNodeList.add(measurementMNode);
-        unPinMNode(measurementMNode);
       }
       return measurementMNodeList;
     } finally {
@@ -400,35 +399,36 @@ public class MTreeBelowSG implements Serializable {
     MetaFormatUtils.checkTimeseries(devicePath);
     IMNode cur = storageGroupMNode;
     IMNode child;
+    String childName;
     Template upperTemplate = cur.getSchemaTemplate();
-    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
-    for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
-      String childName = nodeNames[i];
-      child = store.getChild(cur, childName);
-      if (child == null) {
-        if (upperTemplate != null && upperTemplate.getDirectNode(childName) != null) {
-          unPinPath(cur);
-          throw new TemplateImcompatibeException(
-              devicePath.getFullPath(), upperTemplate.getName(), childName);
+    try {
+      // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
+      for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
+        childName = nodeNames[i];
+        child = store.getChild(cur, childName);
+        if (child == null) {
+          if (upperTemplate != null && upperTemplate.getDirectNode(childName) != null) {
+            throw new TemplateImcompatibeException(
+                devicePath.getFullPath(), upperTemplate.getName(), childName);
+          }
+          child = new InternalMNode(cur, childName);
+          child = store.addChild(cur, childName, child);
         }
-        child = new InternalMNode(cur, childName);
-        child = store.addChild(cur, childName, child);
-      }
-      cur = child;
+        cur = child;
 
-      if (cur.isMeasurement()) {
-        unPinPath(cur);
-        throw new PathAlreadyExistException(cur.getFullPath());
-      }
+        if (cur.isMeasurement()) {
+          throw new PathAlreadyExistException(cur.getFullPath());
+        }
 
-      if (cur.getSchemaTemplate() != null) {
-        upperTemplate = cur.getSchemaTemplate();
+        if (cur.getSchemaTemplate() != null) {
+          upperTemplate = cur.getSchemaTemplate();
+        }
       }
+      pinMNode(cur);
+      return new Pair<>(cur, upperTemplate);
+    } finally {
+      unPinPath(cur);
     }
-    if (!cur.isStorageGroup()) {
-      unPinPath(cur.getParent());
-    }
-    return new Pair<>(cur, upperTemplate);
   }
 
   /**
@@ -452,7 +452,7 @@ public class MTreeBelowSG implements Serializable {
     // delete the last node of path
     store.deleteChild(parent, path.getMeasurement());
     if (deletedNode.getAlias() != null) {
-      store.deleteAliasChild(parent, deletedNode.getAlias());
+      parent.addAlias(deletedNode.getAlias(), deletedNode);
     }
     IMNode curNode = parent;
     if (!parent.isUseTemplate()) {
@@ -502,7 +502,6 @@ public class MTreeBelowSG implements Serializable {
     IMNodeIterator iterator = store.getChildrenIterator(node);
     try {
       return !IoTDBConstant.PATH_ROOT.equals(node.getName())
-          && !node.isStorageGroup()
           && !node.isMeasurement()
           && node.getSchemaTemplate() == null
           && !node.isUseTemplate()
@@ -525,25 +524,25 @@ public class MTreeBelowSG implements Serializable {
     IMNode cur = storageGroupMNode;
     IMNode child;
     Template upperTemplate = cur.getSchemaTemplate();
-    for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
-      child = store.getChild(cur, nodeNames[i]);
-      if (child == null) {
-        if (cur.isUseTemplate() && upperTemplate.getDirectNode(nodeNames[i]) != null) {
-          unPinPath(cur);
-          throw new PathAlreadyExistException(
-              cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
+    try {
+      for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
+        child = store.getChild(cur, nodeNames[i]);
+        if (child == null) {
+          if (cur.isUseTemplate() && upperTemplate.getDirectNode(nodeNames[i]) != null) {
+            throw new PathAlreadyExistException(
+                cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
+          }
+          child = store.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]));
         }
-        child = new InternalMNode(cur, nodeNames[i]);
-        store.addChild(cur, nodeNames[i], child);
+        cur = child;
+        // update upper template
+        upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
       }
-      cur = child;
-      // update upper template
-      upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
+      pinMNode(cur);
+      return cur;
+    } finally {
+      unPinPath(cur);
     }
-    if (!cur.isStorageGroup()) {
-      unPinPath(cur.getParent());
-    }
-    return cur;
   }
 
   public IEntityMNode setToEntity(IMNode node) {
@@ -574,43 +573,47 @@ public class MTreeBelowSG implements Serializable {
     IMNode child;
     Template upperTemplate = cur.getSchemaTemplate();
     boolean isInTemplate = false;
-    for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
-      if (isInTemplate) {
-        child = cur.getChild(nodeNames[i]);
-        if (child == null) {
-          return false;
-        }
-        if (child.isMeasurement()) {
-          return i == nodeNames.length - 1;
-        }
-      } else {
-        upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
-        child = store.getChild(cur, nodeNames[i]);
-        if (child == null) {
-          unPinPath(cur);
-          if (upperTemplate == null
-              || !cur.isUseTemplate()
-              || upperTemplate.getDirectNode(nodeNames[i]) == null) {
+    try {
+      for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
+        if (isInTemplate) {
+          child = cur.getChild(nodeNames[i]);
+          if (child == null) {
             return false;
           }
-          child = upperTemplate.getDirectNode(nodeNames[i]);
-          isInTemplate = true;
           if (child.isMeasurement()) {
             return i == nodeNames.length - 1;
           }
         } else {
-          if (child.isMeasurement()) {
-            unPinPath(child);
-            return i == nodeNames.length - 1;
+          upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
+          child = store.getChild(cur, nodeNames[i]);
+          if (child == null) {
+
+            if (upperTemplate == null
+                || !cur.isUseTemplate()
+                || upperTemplate.getDirectNode(nodeNames[i]) == null) {
+              return false;
+            }
+            child = upperTemplate.getDirectNode(nodeNames[i]);
+            isInTemplate = true;
+            unPinPath(cur);
+            if (child.isMeasurement()) {
+              return i == nodeNames.length - 1;
+            }
+          } else {
+            if (child.isMeasurement()) {
+              cur = child;
+              return i == nodeNames.length - 1;
+            }
           }
         }
+        cur = child;
       }
-      cur = child;
+      return true;
+    } finally {
+      if (!isInTemplate) {
+        unPinPath(cur);
+      }
     }
-    if (!isInTemplate) {
-      unPinPath(cur);
-    }
-    return true;
   }
 
   // region Interfaces for Device info Query
@@ -626,7 +629,7 @@ public class MTreeBelowSG implements Serializable {
     EntityCollector<Set<PartialPath>> collector =
         new EntityCollector<Set<PartialPath>>(storageGroupMNode, pathPattern, store) {
           @Override
-          protected void collectEntity(IEntityMNode node) throws MetadataException {
+          protected void collectEntity(IEntityMNode node) {
             result.add(getCurrentPartialPath(node));
           }
         };
@@ -670,7 +673,7 @@ public class MTreeBelowSG implements Serializable {
     MeasurementCollector<Set<PartialPath>> collector =
         new MeasurementCollector<Set<PartialPath>>(storageGroupMNode, timeseries, store) {
           @Override
-          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+          protected void collectMeasurement(IMeasurementMNode node) {
             result.add(getCurrentPartialPath(node).getDevicePath());
           }
         };
@@ -721,7 +724,7 @@ public class MTreeBelowSG implements Serializable {
         new MeasurementCollector<List<PartialPath>>(
             storageGroupMNode, pathPattern, store, limit, offset) {
           @Override
-          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+          protected void collectMeasurement(IMeasurementMNode node) {
             MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
             if (nodes[nodes.length - 1].equals(node.getAlias())) {
               // only when user query with alias, the alias in path will be set
@@ -1016,49 +1019,52 @@ public class MTreeBelowSG implements Serializable {
     IMNode next;
     Template upperTemplate = cur.getSchemaTemplate();
     boolean isInTemplate = false;
-    for (int i = levelOfSG + 1; i < nodes.length; i++) {
-      if (isInTemplate) {
-        next = cur.getChild(nodes[i]);
-        if (next == null) {
-          throw new PathNotExistException(path.getFullPath(), true);
-        } else if (next.isMeasurement()) {
-          if (i == nodes.length - 1) {
-            return next;
-          } else {
+    try {
+      for (int i = levelOfSG + 1; i < nodes.length; i++) {
+        if (isInTemplate) {
+          next = cur.getChild(nodes[i]);
+          if (next == null) {
             throw new PathNotExistException(path.getFullPath(), true);
+          } else if (next.isMeasurement()) {
+            if (i == nodes.length - 1) {
+              return next;
+            } else {
+              throw new PathNotExistException(path.getFullPath(), true);
+            }
+          }
+        } else {
+          if (cur.getSchemaTemplate() != null) {
+            upperTemplate = cur.getSchemaTemplate();
+          }
+          next = store.getChild(cur, nodes[i]);
+          if (next == null) {
+            if (upperTemplate == null
+                || !cur.isUseTemplate()
+                || upperTemplate.getDirectNode(nodes[i]) == null) {
+              throw new PathNotExistException(path.getFullPath(), true);
+            }
+            next = upperTemplate.getDirectNode(nodes[i]);
+            isInTemplate = true;
+            unPinPath(cur);
+          } else if (next.isMeasurement()) {
+            if (i == nodes.length - 1) {
+              return next;
+            } else {
+              throw new PathNotExistException(path.getFullPath(), true);
+            }
           }
         }
-      } else {
-        if (cur.getSchemaTemplate() != null) {
-          upperTemplate = cur.getSchemaTemplate();
-        }
-        next = store.getChild(cur, nodes[i]);
-        if (next == null) {
-          unPinPath(cur);
-          if (upperTemplate == null
-              || !cur.isUseTemplate()
-              || upperTemplate.getDirectNode(nodes[i]) == null) {
-            throw new PathNotExistException(path.getFullPath(), true);
-          }
-          next = upperTemplate.getDirectNode(nodes[i]);
-          isInTemplate = true;
-        } else if (next.isMeasurement()) {
-          unPinPath(cur);
-          if (i == nodes.length - 1) {
-            return next;
-          } else {
-            throw new PathNotExistException(path.getFullPath(), true);
-          }
-        }
+        cur = next;
       }
-      cur = next;
-    }
-    if (!isInTemplate) {
-      if (!cur.isStorageGroup()) {
-        unPinPath(cur.getParent());
+      if (!isInTemplate) {
+        pinMNode(cur);
+      }
+      return cur;
+    } finally {
+      if (!isInTemplate) {
+        unPinPath(cur);
       }
     }
-    return cur;
   }
 
   public IMeasurementMNode getMeasurementMNode(PartialPath path) throws MetadataException {
@@ -1072,23 +1078,42 @@ public class MTreeBelowSG implements Serializable {
     }
   }
 
-  public List<IMeasurementMNode> getAllMeasurementMNode() {
+  public List<IMeasurementMNode> getAllMeasurementMNode() throws MetadataException {
     IMNode cur = storageGroupMNode;
     // collect all the LeafMNode in this storage group
     List<IMeasurementMNode> leafMNodes = new LinkedList<>();
     Queue<IMNode> queue = new LinkedList<>();
-    queue.add(cur);
-    while (!queue.isEmpty()) {
-      IMNode node = queue.poll();
-      for (IMNode child : node.getChildren().values()) {
-        if (child.isMeasurement()) {
-          leafMNodes.add(child.getAsMeasurementMNode());
-        } else {
-          queue.add(child);
+    try {
+      pinMNode(cur);
+      queue.add(cur);
+      while (!queue.isEmpty()) {
+        IMNode node = queue.poll();
+        try {
+          IMNodeIterator iterator = store.getChildrenIterator(node);
+          try {
+            IMNode child;
+            while (iterator.hasNext()) {
+              child = iterator.next();
+              if (child.isMeasurement()) {
+                leafMNodes.add(child.getAsMeasurementMNode());
+                unPinMNode(child);
+              } else {
+                queue.add(child);
+              }
+            }
+          } finally {
+            iterator.close();
+          }
+        } finally {
+          unPinMNode(node);
         }
       }
+      return leafMNodes;
+    } finally {
+      while (!queue.isEmpty()) {
+        unPinMNode(queue.poll());
+      }
     }
-    return leafMNodes;
   }
 
   // endregion
@@ -1106,24 +1131,22 @@ public class MTreeBelowSG implements Serializable {
     if (cur.getSchemaTemplate() != null) {
       throw new MetadataException("Template already exists on " + cur.getFullPath());
     }
-    for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
-      child = store.getChild(cur, nodeNames[i]);
-      if (child == null) {
-        unPinPath(cur);
-        return;
-      }
-      cur = child;
-      if (cur.getSchemaTemplate() != null) {
-        unPinPath(cur);
-        throw new MetadataException("Template already exists on " + cur.getFullPath());
-      }
-      if (cur.isMeasurement()) {
-        unPinPath(cur);
-        return;
-      }
-    }
 
     try {
+      for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
+        child = store.getChild(cur, nodeNames[i]);
+        if (child == null) {
+          return;
+        }
+        cur = child;
+        if (cur.getSchemaTemplate() != null) {
+          throw new MetadataException("Template already exists on " + cur.getFullPath());
+        }
+        if (cur.isMeasurement()) {
+          return;
+        }
+      }
+
       checkTemplateOnSubtree(cur);
     } finally {
       unPinPath(cur);
@@ -1155,33 +1178,35 @@ public class MTreeBelowSG implements Serializable {
         hasDirectMeasurement = true;
       }
     }
-    if (hasDirectMeasurement) {
-      if (!mountedNode.isEntity()) {
-        return setToEntity(mountedNode);
-      } else {
-        IMNode child;
-        IMNodeIterator iterator = store.getChildrenIterator(mountedNode);
-        try {
-          while (iterator.hasNext()) {
-            child = iterator.next();
-            unPinMNode(child);
-            if (child.isMeasurement()) {
-              if (template.isDirectAligned() != mountedNode.getAsEntityMNode().isAligned()) {
-                throw new MetadataException(
-                    "Template and mounted node has different alignment: "
-                        + template.getName()
-                        + mountedNode.getFullPath());
-              } else {
-                return mountedNode;
-              }
+    if (!hasDirectMeasurement) {
+      return mountedNode;
+    }
+    if (!mountedNode.isEntity()) {
+      return setToEntity(mountedNode);
+    } else {
+      IMNode child;
+      IMNodeIterator iterator = store.getChildrenIterator(mountedNode);
+      try {
+        while (iterator.hasNext()) {
+          child = iterator.next();
+          unPinMNode(child);
+          if (child.isMeasurement()) {
+            if (template.isDirectAligned() != mountedNode.getAsEntityMNode().isAligned()) {
+              throw new MetadataException(
+                  "Template and mounted node has different alignment: "
+                      + template.getName()
+                      + mountedNode.getFullPath());
+            } else {
+              return mountedNode;
             }
           }
-        } finally {
-          iterator.close();
         }
-
-        mountedNode.getAsEntityMNode().setAligned(template.isDirectAligned());
+      } finally {
+        iterator.close();
       }
+
+      mountedNode.getAsEntityMNode().setAligned(template.isDirectAligned());
+      updateMNode(mountedNode);
     }
     return mountedNode;
   }
@@ -1264,31 +1289,48 @@ public class MTreeBelowSG implements Serializable {
       return true;
     }
     Deque<IMNode> setNodes = new ArrayDeque<>();
-    for (String path : setPaths) {
-      setNodes.add(getNodeByPath(new PartialPath(path)));
-    }
+    try {
+      for (String path : setPaths) {
+        setNodes.add(getNodeByPath(new PartialPath(path)));
+      }
+      // since overlap of template and MTree is not allowed, it is sufficient to check on the first
+      // node
+      Set<String> overlapSet = new HashSet<>();
+      for (String path : appendMeasurements) {
+        overlapSet.add(MetaUtils.splitPathToDetachedPath(path)[0]);
+      }
 
-    // since overlap of template and MTree is not allowed, it is sufficient to check on the first
-    // node
-    Set<String> overlapSet = new HashSet<>();
-    for (String path : appendMeasurements) {
-      overlapSet.add(MetaUtils.splitPathToDetachedPath(path)[0]);
-    }
-
-    while (setNodes.size() != 0) {
-      IMNode cur = setNodes.pop();
-      if (cur.getChildren().size() != 0) {
-        for (IMNode child : cur.getChildren().values()) {
-          if (overlapSet.contains(child.getName())) {
-            return false;
+      while (setNodes.size() != 0) {
+        IMNode cur = setNodes.pop();
+        try {
+          IMNodeIterator iterator = store.getChildrenIterator(cur);
+          try {
+            IMNode child;
+            while (iterator.hasNext()) {
+              child = iterator.next();
+              if (overlapSet.contains(child.getName())) {
+                unPinMNode(child);
+                return false;
+              }
+              if (!child.isMeasurement()) {
+                setNodes.push(child);
+              } else {
+                unPinMNode(child);
+              }
+            }
+          } finally {
+            iterator.close();
           }
-          if (!child.isMeasurement()) {
-            setNodes.push(child);
-          }
+        } finally {
+          unPinMNode(cur);
         }
       }
+      return true;
+    } finally {
+      while (!setNodes.isEmpty()) {
+        unPinMNode(setNodes.pop());
+      }
     }
-    return true;
   }
 
   /**
@@ -1301,30 +1343,31 @@ public class MTreeBelowSG implements Serializable {
     IMNode cur = storageGroupMNode;
     IMNode child;
     Template upperTemplate = cur.getUpperTemplate();
-    for (int i = levelOfSG + 1; i < pathNodes.length; i++) {
-      child = store.getChild(cur, pathNodes[i]);
-      if (child != null) {
-        cur = child;
-        if (cur.isMeasurement()) {
-          unPinPath(cur);
-          return false;
-        }
-        upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
-      } else {
-        unPinPath(cur);
-        if (upperTemplate != null) {
-          String suffixPath =
-              new PartialPath(Arrays.copyOfRange(pathNodes, i, pathNodes.length)).toString();
-          // has template, whether match
-          return upperTemplate.hasSchema(suffixPath);
+    try {
+      for (int i = levelOfSG + 1; i < pathNodes.length; i++) {
+        child = store.getChild(cur, pathNodes[i]);
+        if (child != null) {
+          cur = child;
+          if (cur.isMeasurement()) {
+            return false;
+          }
+          upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
         } else {
-          // no child and no template
-          return false;
+          if (upperTemplate != null) {
+            String suffixPath =
+                new PartialPath(Arrays.copyOfRange(pathNodes, i, pathNodes.length)).toString();
+            // has template, whether match
+            return upperTemplate.hasSchema(suffixPath);
+          } else {
+            // no child and no template
+            return false;
+          }
         }
       }
+      return false;
+    } finally {
+      unPinPath(cur);
     }
-    unPinPath(cur);
-    return false;
   }
 
   /**
@@ -1341,43 +1384,46 @@ public class MTreeBelowSG implements Serializable {
     IMNode cur = storageGroupMNode;
     IMNode child;
     Template upperTemplate = cur.getSchemaTemplate();
-    for (int index = levelOfSG + 1; index < fullPathNodes.length; index++) {
-      upperTemplate = cur.getSchemaTemplate() != null ? cur.getSchemaTemplate() : upperTemplate;
-      child = store.getChild(cur, fullPathNodes[index]);
-      if (child == null) {
-        unPinPath(cur);
-        if (upperTemplate != null) {
-          // for this fullPath, cur is the last node on MTree
-          // since upperTemplate exists, need to find the matched suffix path of fullPath and
-          // template
-          String suffixPath =
-              new PartialPath(Arrays.copyOfRange(fullPathNodes, index, fullPathNodes.length))
-                  .toString();
+    try {
+      for (int index = levelOfSG + 1; index < fullPathNodes.length; index++) {
+        upperTemplate = cur.getSchemaTemplate() != null ? cur.getSchemaTemplate() : upperTemplate;
+        child = store.getChild(cur, fullPathNodes[index]);
+        if (child == null) {
+          if (upperTemplate != null) {
+            // for this fullPath, cur is the last node on MTree
+            // since upperTemplate exists, need to find the matched suffix path of fullPath and
+            // template
+            String suffixPath =
+                new PartialPath(Arrays.copyOfRange(fullPathNodes, index, fullPathNodes.length))
+                    .toString();
 
-          // if suffix matches template, then fullPathNodes[index-1] should be the node to use
-          // template on MTree
-          if (upperTemplate.hasSchema(suffixPath)) {
-            return index - 1;
-          }
+            // if suffix matches template, then fullPathNodes[index-1] should be the node to use
+            // template on MTree
+            if (upperTemplate.hasSchema(suffixPath)) {
+              return index - 1;
+            }
 
-          // if suffix doesn't match, but first node name matched, it's an overlap with template
-          // cast exception for now
-          if (upperTemplate.getDirectNode(fullPathNodes[index]) != null) {
-            throw new TemplateImcompatibeException(
-                measurementPath.getFullPath(), upperTemplate.getName(), fullPathNodes[index]);
+            // if suffix doesn't match, but first node name matched, it's an overlap with template
+            // cast exception for now
+            if (upperTemplate.getDirectNode(fullPathNodes[index]) != null) {
+              throw new TemplateImcompatibeException(
+                  measurementPath.getFullPath(), upperTemplate.getName(), fullPathNodes[index]);
+            }
+          } else {
+            // no matched child, no template, need to create device node as logical device path
+            return fullPathNodes.length - 1;
           }
         } else {
-          // no matched child, no template, need to create device node as logical device path
-          return fullPathNodes.length - 1;
+          // has child on MTree
+          cur = child;
         }
-      } else {
-        // has child on MTree
-        cur = child;
       }
+
+      // all nodes on path exist in MTree, device node should be the penultimate one
+      return fullPathNodes.length - 1;
+    } finally {
+      unPinPath(cur);
     }
-    unPinPath(cur);
-    // all nodes on path exist in MTree, device node should be the penultimate one
-    return fullPathNodes.length - 1;
   }
 
   public List<String> getPathsSetOnTemplate(String templateName) throws MetadataException {
@@ -1386,8 +1432,7 @@ public class MTreeBelowSG implements Serializable {
         new CollectorTraverser<Set<String>>(
             storageGroupMNode, new PartialPath(ALL_RESULT_NODES), store) {
           @Override
-          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
-              throws MetadataException {
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
             // will never get here, implement for placeholder
             return false;
           }
@@ -1424,15 +1469,13 @@ public class MTreeBelowSG implements Serializable {
         new CollectorTraverser<Set<String>>(
             storageGroupMNode, new PartialPath(ALL_RESULT_NODES), store) {
           @Override
-          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
-              throws MetadataException {
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
             // will never get here, implement for placeholder
             return false;
           }
 
           @Override
-          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
-              throws MetadataException {
+          protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
             // shall not traverse nodes inside template
             if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
               return true;
@@ -1466,26 +1509,33 @@ public class MTreeBelowSG implements Serializable {
   public String getTemplateOnPath(PartialPath path) throws MetadataException {
     String[] pathNodes = path.getNodes();
     IMNode cur = storageGroupMNode;
+    IMNode child;
 
     if (cur.getSchemaTemplate() != null) {
       return cur.getSchemaTemplate().getName();
     }
 
-    IMNode child;
-    for (int i = levelOfSG + 1; i < pathNodes.length; i++) {
-      child = store.getChild(cur, pathNodes[i]);
-      if (cur.isMeasurement() || child == null) {
-        unPinPath(cur);
-        return null;
+    try {
+      for (int i = levelOfSG + 1; i < pathNodes.length; i++) {
+        child = store.getChild(cur, pathNodes[i]);
+        if (child == null) {
+          return null;
+        }
+        cur = child;
+
+        if (cur.isMeasurement()) {
+          return null;
+        }
+
+        if (cur.getSchemaTemplate() != null) {
+          return cur.getSchemaTemplate().getName();
+        }
       }
-      cur = child;
-      if (cur.getSchemaTemplate() != null) {
-        unPinPath(cur);
-        return cur.getSchemaTemplate().getName();
-      }
+
+      return null;
+    } finally {
+      unPinPath(cur);
     }
-    unPinPath(cur);
-    return null;
   }
 
   // endregion

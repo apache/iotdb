@@ -565,54 +565,59 @@ public class SchemaRegion {
               plan.getCompressors(),
               plan.getAliasList());
 
-      // the cached mNode may be replaced by new entityMNode in mtree
-      mNodeCache.invalidate(prefixPath);
+      try {
+        // the cached mNode may be replaced by new entityMNode in mtree
+        mNodeCache.invalidate(prefixPath);
 
-      // update statistics and schemaDataTypeNumMap
-      timeseriesStatistics.addTimeseries(plan.getMeasurements().size());
+        // update statistics and schemaDataTypeNumMap
+        timeseriesStatistics.addTimeseries(plan.getMeasurements().size());
 
-      List<Long> tagOffsets = plan.getTagOffsets();
-      for (int i = 0; i < measurements.size(); i++) {
-        if (tagOffsets != null && !plan.getTagOffsets().isEmpty() && isRecovering) {
-          if (tagOffsets.get(i) != -1) {
-            tagManager.recoverIndex(plan.getTagOffsets().get(i), measurementMNodeList.get(i));
-          }
-        } else if (tagsList != null && !tagsList.isEmpty()) {
-          if (tagsList.get(i) != null) {
-            // tag key, tag value
-            tagManager.addIndex(tagsList.get(i), measurementMNodeList.get(i));
-          }
-        }
-      }
-
-      // write log
-      tagOffsets = new ArrayList<>();
-      if (!isRecovering) {
-        if ((tagsList != null && !tagsList.isEmpty())
-            || (attributesList != null && !attributesList.isEmpty())) {
-          Map<String, String> tags;
-          Map<String, String> attributes;
-          for (int i = 0; i < measurements.size(); i++) {
-            tags = tagsList == null ? null : tagsList.get(i);
-            attributes = attributesList == null ? null : attributesList.get(i);
-            if (tags == null && attributes == null) {
-              tagOffsets.add(-1L);
-            } else {
-              tagOffsets.add(tagManager.writeTagFile(tags, attributes));
+        List<Long> tagOffsets = plan.getTagOffsets();
+        for (int i = 0; i < measurements.size(); i++) {
+          if (tagOffsets != null && !plan.getTagOffsets().isEmpty() && isRecovering) {
+            if (tagOffsets.get(i) != -1) {
+              tagManager.recoverIndex(plan.getTagOffsets().get(i), measurementMNodeList.get(i));
+            }
+          } else if (tagsList != null && !tagsList.isEmpty()) {
+            if (tagsList.get(i) != null) {
+              // tag key, tag value
+              tagManager.addIndex(tagsList.get(i), measurementMNodeList.get(i));
             }
           }
-        } else {
-          for (int i = 0; i < measurements.size(); i++) {
-            tagOffsets.add(-1L);
-          }
         }
-        plan.setTagOffsets(tagOffsets);
-        logWriter.createAlignedTimeseries(plan);
-      }
-      for (int i = 0; i < measurements.size(); i++) {
-        measurementMNodeList.get(i).setOffset(plan.getTagOffsets().get(i));
-      }
 
+        // write log
+        tagOffsets = new ArrayList<>();
+        if (!isRecovering) {
+          if ((tagsList != null && !tagsList.isEmpty())
+              || (attributesList != null && !attributesList.isEmpty())) {
+            Map<String, String> tags;
+            Map<String, String> attributes;
+            for (int i = 0; i < measurements.size(); i++) {
+              tags = tagsList == null ? null : tagsList.get(i);
+              attributes = attributesList == null ? null : attributesList.get(i);
+              if (tags == null && attributes == null) {
+                tagOffsets.add(-1L);
+              } else {
+                tagOffsets.add(tagManager.writeTagFile(tags, attributes));
+              }
+            }
+          } else {
+            for (int i = 0; i < measurements.size(); i++) {
+              tagOffsets.add(-1L);
+            }
+          }
+          plan.setTagOffsets(tagOffsets);
+          logWriter.createAlignedTimeseries(plan);
+        }
+        for (int i = 0; i < measurements.size(); i++) {
+          measurementMNodeList.get(i).setOffset(plan.getTagOffsets().get(i));
+        }
+      } finally {
+        for (IMeasurementMNode measurementMNode : measurementMNodeList) {
+          mtree.unPinMNode(measurementMNode);
+        }
+      }
     } catch (IOException e) {
       throw new MetadataException(e);
     }
