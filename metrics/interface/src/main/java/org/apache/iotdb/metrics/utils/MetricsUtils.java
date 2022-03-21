@@ -16,22 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metrics;
+
+package org.apache.iotdb.metrics.utils;
+
+import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public class metricsUtils {
+public class MetricsUtils {
+  private static final MetricConfig metricConfig =
+      MetricConfigDescriptor.getInstance().getMetricConfig();
 
-  public static String generatePath(
-      String address, int rpcPort, String name, Map<String, String> labels) {
+  public static String generatePath(String name, Map<String, String> labels) {
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder
-        .append("root._metric.\"")
-        .append(address)
+        .append("root.")
+        .append(metricConfig.getIoTDBDataBase())
+        .append(".\"")
+        .append(metricConfig.getInstanceHost())
         .append(":")
-        .append(rpcPort)
+        .append(metricConfig.getInstancePort())
         .append("\"")
         .append(".")
         .append("\"")

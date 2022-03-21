@@ -17,21 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metrics.dropwizard.reporter;
+package org.apache.iotdb.metrics.dropwizard.reporter;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metrics.metricsUtils;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.db.utils.DataTypeUtils;
+import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricsUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import com.codahale.metrics.Counter;
@@ -46,22 +39,18 @@ import com.codahale.metrics.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.SortedMap;
+import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class IoTDBReporter extends ScheduledReporter {
-
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBReporter.class);
+  private static final MetricConfig metricConfig =
+      MetricConfigDescriptor.getInstance().getMetricConfig();
   private static final TimeUnit DURATION_UNIT = TimeUnit.MILLISECONDS;
   private static final TimeUnit RATE_UNIT = TimeUnit.SECONDS;
   private final String prefix;
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBReporter.class);
-  private final ServiceProvider serviceProvider;
-  private final int rpcPort;
-  private final String address;
+  private final Session session;
 
   protected IoTDBReporter(
       MetricRegistry registry,
@@ -78,10 +67,35 @@ public class IoTDBReporter extends ScheduledReporter {
         executor,
         shutdownExecutorOnStop);
     this.prefix = prefix;
-    IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
-    rpcPort = ioTDBConfig.getRpcPort();
-    address = ioTDBConfig.getRpcAddress();
-    serviceProvider = IoTDB.serviceProvider;
+    this.session =
+        new Session(
+            metricConfig.getIoTDBHost(),
+            metricConfig.getIoTDBPort(),
+            metricConfig.getIoTDBUsername(),
+            metricConfig.getIoTDBPassword(),
+            true);
+  }
+
+  @Override
+  public void start(long period, TimeUnit unit) {
+    super.start(period, unit);
+    try {
+      session.open();
+    } catch (IoTDBConnectionException e) {
+      logger.error("Failed to add session", e);
+    }
+  }
+
+  @Override
+  public void stop() {
+    super.stop();
+    try {
+      if (session != null) {
+        session.close();
+      }
+    } catch (IoTDBConnectionException e) {
+      logger.error("Failed to close session.");
+    }
   }
 
   public static class Builder {
@@ -156,7 +170,7 @@ public class IoTDBReporter extends ScheduledReporter {
 
   private void sendMeter(String name, Meter meter) {
     double value = meter.getCount();
-    updateValue(prefixed(name), metricsUtils.emptyMap(), value);
+    updateValue(prefixed(name), MetricsUtils.emptyMap(), value);
   }
 
   private void sendHistogram(String name, Histogram histogram) {
@@ -165,7 +179,7 @@ public class IoTDBReporter extends ScheduledReporter {
 
   private void sendCounter(String name, Counter counter) {
     double value = counter.getCount();
-    updateValue(prefixed(name), metricsUtils.emptyMap(), value);
+    updateValue(prefixed(name), MetricsUtils.emptyMap(), value);
   }
 
   private void sendGauge(String name, Gauge gauge) {
@@ -173,53 +187,47 @@ public class IoTDBReporter extends ScheduledReporter {
     double value;
     if (obj instanceof Number) {
       value = ((Number) obj).doubleValue();
-      updateValue(prefixed(name), metricsUtils.emptyMap(), value);
+      updateValue(prefixed(name), MetricsUtils.emptyMap(), value);
     } else if (obj instanceof Boolean) {
       value = ((Boolean) obj) ? 1 : 0;
-      updateValue(prefixed(name), metricsUtils.emptyMap(), value);
+      updateValue(prefixed(name), MetricsUtils.emptyMap(), value);
     } else {
-      LOGGER.warn("Invalid type for Gauge {}: {}", name, obj.getClass().getName());
+      logger.warn("Invalid type for Gauge {}: {}", name, obj.getClass().getName());
     }
   }
 
   private void writeSnapshotAndCount(String name, Snapshot snapshot, long count, double factor) {
-    updateValue(name, metricsUtils.mapOf("quantile", "0.5"), snapshot.getMedian() * factor);
+    updateValue(name, MetricsUtils.mapOf("quantile", "0.5"), snapshot.getMedian() * factor);
     updateValue(
-        name, metricsUtils.mapOf("quantile", "0.75"), snapshot.get75thPercentile() * factor);
+        name, MetricsUtils.mapOf("quantile", "0.75"), snapshot.get75thPercentile() * factor);
     updateValue(
-        name, metricsUtils.mapOf("quantile", "0.95"), snapshot.get95thPercentile() * factor);
+        name, MetricsUtils.mapOf("quantile", "0.95"), snapshot.get95thPercentile() * factor);
     updateValue(
-        name, metricsUtils.mapOf("quantile", "0.98"), snapshot.get98thPercentile() * factor);
+        name, MetricsUtils.mapOf("quantile", "0.98"), snapshot.get98thPercentile() * factor);
     updateValue(
-        name, metricsUtils.mapOf("quantile", "0.99"), snapshot.get99thPercentile() * factor);
+        name, MetricsUtils.mapOf("quantile", "0.99"), snapshot.get99thPercentile() * factor);
     updateValue(
-        name, metricsUtils.mapOf("quantile", "0.999"), snapshot.get999thPercentile() * factor);
-    updateValue(name + "_min", metricsUtils.emptyMap(), snapshot.getMin());
-    updateValue(name + "_max", metricsUtils.emptyMap(), snapshot.getMax());
-    updateValue(name + "_median", metricsUtils.emptyMap(), snapshot.getMedian());
-    updateValue(name + "_mean", metricsUtils.emptyMap(), snapshot.getMean());
-    updateValue(name + "_stddev", metricsUtils.emptyMap(), snapshot.getStdDev());
-    updateValue(name + "_count", metricsUtils.emptyMap(), count);
+        name, MetricsUtils.mapOf("quantile", "0.999"), snapshot.get999thPercentile() * factor);
+    updateValue(name + "_min", MetricsUtils.emptyMap(), snapshot.getMin());
+    updateValue(name + "_max", MetricsUtils.emptyMap(), snapshot.getMax());
+    updateValue(name + "_median", MetricsUtils.emptyMap(), snapshot.getMedian());
+    updateValue(name + "_mean", MetricsUtils.emptyMap(), snapshot.getMean());
+    updateValue(name + "_stddev", MetricsUtils.emptyMap(), snapshot.getStdDev());
+    updateValue(name + "_count", MetricsUtils.emptyMap(), count);
   }
 
-  private void updateValue(String name, Map<String, String> labels, double value) {
-    try {
-      InsertRowPlan insertRowPlan =
-          new InsertRowPlan(
-              new PartialPath(metricsUtils.generatePath(address, rpcPort, name, labels)),
-              System.currentTimeMillis(),
-              new String[] {"value"},
-              DataTypeUtils.getValueBuffer(
-                  new ArrayList<>(Arrays.asList(TSDataType.DOUBLE)),
-                  new ArrayList<>(Arrays.asList(value))),
-              false);
-      serviceProvider.executeNonQuery(insertRowPlan);
-    } catch (IllegalPathException
-        | IoTDBConnectionException
-        | QueryProcessException
-        | StorageGroupNotSetException
-        | StorageEngineException e) {
-      LOGGER.error("illegal insertRowPlan,reason:" + e.getMessage());
+  private void updateValue(String name, Map<String, String> labels, Object value) {
+    if (value != null) {
+      String deviceId = MetricsUtils.generatePath(name, labels);
+      List<String> sensors = Collections.singletonList("value");
+      List<TSDataType> dataTypes = Collections.singletonList(TSDataType.DOUBLE);
+      List<Object> values = Collections.singletonList(value);
+
+      try {
+        session.insertRecord(deviceId, System.currentTimeMillis(), sensors, dataTypes, values);
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
+        logger.warn("Failed to insert record");
+      }
     }
   }
 

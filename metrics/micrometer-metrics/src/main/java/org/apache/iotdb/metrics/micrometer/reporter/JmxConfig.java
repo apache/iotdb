@@ -17,15 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metrics.micrometer.registry;
+package org.apache.iotdb.metrics.micrometer.reporter;
 
-import io.micrometer.core.instrument.step.StepRegistryConfig;
-
-public interface IoTDBRegistryConfig extends StepRegistryConfig {
-  IoTDBRegistryConfig DEFAULT = k -> null;
+public interface JmxConfig extends io.micrometer.jmx.JmxConfig {
+  JmxConfig DEFAULT = k -> null;
 
   @Override
-  default String prefix() {
-    return "iotdb";
+  default String domain() {
+    return "org.apache.iotdb.metrics";
   }
 }

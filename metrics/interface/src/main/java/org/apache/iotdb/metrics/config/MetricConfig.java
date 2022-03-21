@@ -50,6 +50,66 @@ public class MetricConfig {
   /** the http server's port for prometheus exporter to get metric data. */
   private String prometheusExporterPort = "9091";
 
+  private IoTDBConfig ioTDBConfig = new IoTDBConfig();
+
+  private class IoTDBConfig {
+    /** The host of iotdb */
+    private String host = "127.0.0.1";
+    /** The port of iotdb */
+    private Integer port = 6667;
+    /** The username of iotdb */
+    private String username = "root";
+    /** The password of iotdb */
+    private String password = "root";
+    /** The monitor database of iotdb */
+    private String database = "_metric";
+
+    public String getHost() {
+      return host;
+    }
+
+    public void setHost(String host) {
+      this.host = host;
+    }
+
+    public Integer getPort() {
+      return port;
+    }
+
+    public void setPort(Integer port) {
+      this.port = port;
+    }
+
+    public String getUsername() {
+      return username;
+    }
+
+    public void setUsername(String username) {
+      this.username = username;
+    }
+
+    public String getPassword() {
+      return password;
+    }
+
+    public void setPassword(String password) {
+      this.password = password;
+    }
+
+    public String getDatabase() {
+      return database;
+    }
+
+    public void setDatabase(String database) {
+      this.database = database;
+    }
+  }
+
+  /** the host of Instance */
+  private String InstanceHost = "127.0.0.1";
+  /** the port of Instance */
+  private Integer InstancePort = 8086;
+
   public void copy(MetricConfig newMetricConfig) {
     enableMetric = newMetricConfig.getEnableMetric();
     monitorType = newMetricConfig.getMonitorType();
@@ -57,6 +117,7 @@ public class MetricConfig {
     metricLevel = newMetricConfig.getMetricLevel();
     predefinedMetrics = newMetricConfig.getPredefinedMetrics();
     prometheusExporterPort = newMetricConfig.getPrometheusExporterPort();
+    // TODO hot load
   }
 
   public Boolean getEnableMetric() {
@@ -113,6 +174,42 @@ public class MetricConfig {
 
   public void setPrometheusExporterPort(String prometheusExporterPort) {
     this.prometheusExporterPort = prometheusExporterPort;
+  }
+
+  public String getIoTDBHost() {
+    return ioTDBConfig.getHost();
+  }
+
+  public Integer getIoTDBPort() {
+    return ioTDBConfig.getPort();
+  }
+
+  public String getIoTDBUsername() {
+    return ioTDBConfig.getUsername();
+  }
+
+  public String getIoTDBPassword() {
+    return ioTDBConfig.getPassword();
+  }
+
+  public String getIoTDBDataBase() {
+    return ioTDBConfig.getDatabase();
+  }
+
+  public String getInstanceHost() {
+    return InstanceHost;
+  }
+
+  public void setInstanceHost(String instanceHost) {
+    InstanceHost = instanceHost;
+  }
+
+  public Integer getInstancePort() {
+    return InstancePort;
+  }
+
+  public void setInstancePort(Integer instancePort) {
+    InstancePort = instancePort;
   }
 
   @Override
