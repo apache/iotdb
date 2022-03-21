@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.schedule;
 
+import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
 
 import java.util.List;
@@ -28,16 +29,17 @@ public interface IFragmentInstanceManager {
   /**
    * Submit one or more {@link ExecFragmentInstance} in one query for later scheduling.
    *
+   * @param queryId the queryId these instances belong to.
    * @param instances the submitted instances.
    */
-  void submitFragmentInstances(String queryId, List<ExecFragmentInstance> instances);
+  void submitFragmentInstances(QueryId queryId, List<ExecFragmentInstance> instances);
 
   /**
    * abort all the instances in this query
    *
    * @param queryId the id of the query to be aborted.
    */
-  void abortQuery(String queryId);
+  void abortQuery(QueryId queryId);
 
   /** Fetch an {@link ExecFragmentInstance}. */
   void fetchFragmentInstance(ExecFragmentInstance instance);

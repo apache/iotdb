@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.schedule.task;
 
+import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.schedule.queue.ID;
 
 import org.jetbrains.annotations.NotNull;
@@ -27,9 +28,9 @@ public class FragmentInstanceID implements ID, Comparable<FragmentInstanceID> {
 
   private final String instanceId;
   private final String fragmentId;
-  private final String queryId;
+  private final QueryId queryId;
 
-  public FragmentInstanceID(String queryId, String fragmentId, String instanceId) {
+  public FragmentInstanceID(QueryId queryId, String fragmentId, String instanceId) {
     this.queryId = queryId;
     this.fragmentId = fragmentId;
     this.instanceId = instanceId;
@@ -55,7 +56,7 @@ public class FragmentInstanceID implements ID, Comparable<FragmentInstanceID> {
     return fragmentId;
   }
 
-  public String getQueryId() {
+  public QueryId getQueryId() {
     return queryId;
   }
 

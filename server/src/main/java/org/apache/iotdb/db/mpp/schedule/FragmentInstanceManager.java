@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.schedule;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
 import org.apache.iotdb.db.mpp.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.schedule.queue.L1PriorityQueue;
@@ -53,7 +54,7 @@ public class FragmentInstanceManager implements IFragmentInstanceManager, IServi
   private final IndexedBlockingQueue<FragmentInstanceTask> readyQueue;
   private final IndexedBlockingQueue<FragmentInstanceTask> timeoutQueue;
   private final Set<FragmentInstanceTask> blockedTasks;
-  private final Map<String, Set<FragmentInstanceTask>> queryMap;
+  private final Map<QueryId, Set<FragmentInstanceTask>> queryMap;
   private final ITaskScheduler scheduler;
 
   private static final int MAX_CAPACITY = 1000; // TODO: load from config files
@@ -114,7 +115,7 @@ public class FragmentInstanceManager implements IFragmentInstanceManager, IServi
   }
 
   @Override
-  public void submitFragmentInstances(String queryId, List<ExecFragmentInstance> instances) {
+  public void submitFragmentInstances(QueryId queryId, List<ExecFragmentInstance> instances) {
     Set<FragmentInstanceTask> tasks =
         instances.stream()
             .map(
@@ -134,7 +135,7 @@ public class FragmentInstanceManager implements IFragmentInstanceManager, IServi
   }
 
   @Override
-  public void abortQuery(String queryId) {
+  public void abortQuery(QueryId queryId) {
     Set<FragmentInstanceTask> queryRelatedTasks = queryMap.remove(queryId);
     if (queryRelatedTasks != null) {
       for (FragmentInstanceTask task : queryRelatedTasks) {

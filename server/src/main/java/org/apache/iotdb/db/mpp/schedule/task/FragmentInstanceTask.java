@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.schedule.task;
 
+import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.ExecFragmentInstance;
 import org.apache.iotdb.db.mpp.schedule.ExecutionContext;
 import org.apache.iotdb.db.mpp.schedule.FragmentInstanceTaskExecutor;
@@ -58,7 +59,9 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
   public FragmentInstanceTask(
       ExecFragmentInstance instance, long timeoutMs, FragmentInstanceTaskStatus status) {
     this.fragmentInstance = instance;
-    this.id = new FragmentInstanceID(instance.getInfo(), instance.getInfo(), instance.getInfo());
+    this.id =
+        new FragmentInstanceID(
+            QueryId.valueOf(instance.getInfo()), instance.getInfo(), instance.getInfo());
     this.setStatus(status);
     this.schedulePriority = 0L;
     this.ddl = System.currentTimeMillis() + timeoutMs;
