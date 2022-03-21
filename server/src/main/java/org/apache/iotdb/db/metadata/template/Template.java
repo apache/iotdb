@@ -425,12 +425,12 @@ public class Template {
     return relatedStorageGroup;
   }
 
-  public boolean markStorageGroup(IMNode setNode) {
-    return relatedStorageGroup.addAll(getSGPaths(setNode));
+  public boolean markStorageGroup(PartialPath storageGroupPath) {
+    return relatedStorageGroup.add(storageGroupPath);
   }
 
-  public boolean unmarkStorageGroup(IMNode unsetNode) {
-    return relatedStorageGroup.removeAll(getSGPaths(unsetNode));
+  public boolean unmarkStorageGroup(PartialPath storageGroupPath) {
+    return relatedStorageGroup.remove(storageGroupPath);
   }
 
   // endregion
@@ -493,29 +493,6 @@ public class Template {
       builder.append(pathNodes[i]);
     }
     return builder.toString();
-  }
-
-  private static Collection<PartialPath> getSGPaths(IMNode cur) {
-    // get all sg paths above or below to the cur
-    IMNode oriNode = cur;
-    while (cur != null && !cur.isStorageGroup()) {
-      cur = cur.getParent();
-    }
-    if (cur == null) {
-      Deque<IMNode> nodeQueue = new ArrayDeque<>();
-      Set<PartialPath> childSGPath = new HashSet<>();
-      nodeQueue.add(oriNode);
-      while (nodeQueue.size() != 0) {
-        IMNode node = nodeQueue.pop();
-        if (node.isStorageGroup()) {
-          childSGPath.add(node.getPartialPath());
-        } else {
-          nodeQueue.addAll(node.getChildren().values());
-        }
-      }
-      return childSGPath;
-    }
-    return Collections.singleton(cur.getPartialPath());
   }
   // endregion
 

@@ -47,7 +47,7 @@ public interface IMTreeStore {
 
   void deleteChild(IMNode parent, String childName) throws MetadataException;
 
-  void updateStorageGroupMNode(IStorageGroupMNode node);
+  void updateStorageGroupMNode(IStorageGroupMNode node) throws MetadataException;
 
   void updateMNode(IMNode node);
 

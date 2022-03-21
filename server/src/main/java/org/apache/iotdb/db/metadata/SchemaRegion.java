@@ -1774,7 +1774,7 @@ public class SchemaRegion {
         mtree.unPinMNode(node);
       }
 
-      template.markStorageGroup(node);
+      template.markStorageGroup(new PartialPath(storageGroupFullPath));
 
       // write wal
       if (!isRecovering) {
@@ -1799,7 +1799,9 @@ public class SchemaRegion {
       }
       mtree.checkTemplateInUseOnLowerNode(node);
       node.setSchemaTemplate(null);
-      TemplateManager.getInstance().getTemplate(plan.getTemplateName()).unmarkStorageGroup(node);
+      TemplateManager.getInstance()
+          .getTemplate(plan.getTemplateName())
+          .unmarkStorageGroup(new PartialPath(storageGroupFullPath));
       // write wal
       if (!isRecovering) {
         logWriter.unsetSchemaTemplate(plan);

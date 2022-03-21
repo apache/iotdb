@@ -545,7 +545,7 @@ public class MTreeBelowSG implements Serializable {
     }
   }
 
-  public IEntityMNode setToEntity(IMNode node) {
+  public IEntityMNode setToEntity(IMNode node) throws MetadataException {
     // synchronize check and replace, we need replaceChild become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
@@ -1562,7 +1562,7 @@ public class MTreeBelowSG implements Serializable {
     }
   }
 
-  public void updateMNode(IMNode node) {
+  public void updateMNode(IMNode node) throws MetadataException {
     if (node.isStorageGroup()) {
       store.updateStorageGroupMNode(node.getAsStorageGroupMNode());
     } else {

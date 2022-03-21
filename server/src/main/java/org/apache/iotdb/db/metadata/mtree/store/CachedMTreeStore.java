@@ -80,7 +80,9 @@ public class CachedMTreeStore implements IMTreeStore {
     file = SchemaFile.initSchemaFile(rootPath.getFullPath());
     root = file.init();
     cacheManager.initRootStatus(root);
-    flushTask = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("MTreeFlushThread");
+    flushTask =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            String.format("MTree-%s-FlushThread", rootPath.getFullPath()));
   }
 
   @Override
@@ -231,12 +233,11 @@ public class CachedMTreeStore implements IMTreeStore {
    *
    * @param parent the parent node of the target node
    * @param childName the name of the target node
-   * @return the collected MeasurementMNode in the deleted subtree
    * @throws MetadataException
    */
   @Override
   public void deleteChild(IMNode parent, String childName) throws MetadataException {
-    readLock.lock();
+    writeLock.lock();
     try {
       IMNode deletedMNode = getChild(parent, childName);
       ICachedMNodeContainer container = getCachedMNodeContainer(parent);
@@ -253,15 +254,18 @@ public class CachedMTreeStore implements IMTreeStore {
       parent.deleteChild(childName);
       cacheManager.remove(deletedMNode);
     } finally {
-      readLock.unlock();
+      writeLock.unlock();
     }
   }
 
   @Override
-  public void updateStorageGroupMNode(IStorageGroupMNode node) {
+  public void updateStorageGroupMNode(IStorageGroupMNode node) throws MetadataException {
     writeLock.lock();
     try {
-      // todo sync storage group node to file
+      file.updateStorageGroupNode(node);
+    } catch (IOException e) {
+      logger.error("IOException occurred during updating StorageGroupMNode {}", node.getFullPath());
+      throw new MetadataException(e);
     } finally {
       writeLock.unlock();
     }
