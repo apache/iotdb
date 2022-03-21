@@ -19,10 +19,26 @@
 
 package org.apache.iotdb.db.metrics.micrometer.registry;
 
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+
 import io.micrometer.core.instrument.step.StepRegistryConfig;
 
+import java.time.Duration;
+
 public interface IoTDBRegistryConfig extends StepRegistryConfig {
-  IoTDBRegistryConfig DEFAULT = k -> null;
+  IoTDBRegistryConfig DEFAULT =
+      new IoTDBRegistryConfig() {
+        @Override
+        public String get(String key) {
+          return null;
+        }
+
+        @Override
+        public Duration step() {
+          return Duration.ofSeconds(
+              MetricConfigDescriptor.getInstance().getMetricConfig().getPushPeriodInSecond());
+        }
+      };
 
   @Override
   default String prefix() {
