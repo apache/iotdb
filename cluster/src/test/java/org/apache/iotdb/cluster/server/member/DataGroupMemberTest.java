@@ -605,7 +605,7 @@ public class DataGroupMemberTest extends BaseMember {
             Collections.emptyMap(),
             null);
     assertEquals(200, dataGroupMember.executeNonQueryPlan(createTimeSeriesPlan).code);
-    assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+    assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
   }
 
   @Test
@@ -634,7 +634,7 @@ public class DataGroupMemberTest extends BaseMember {
             partitionTable.getPartitionGroup(new RaftNode(TestUtils.getNode(0), 0)),
             dataGroupMember));
     assertEquals(200, dataGroupMember.executeNonQueryPlan(createTimeSeriesPlan).code);
-    assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+    assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     testThreadPool.shutdownNow();
   }
 

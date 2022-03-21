@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.db.engine.trigger.service;
 
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -39,9 +41,7 @@ import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
-import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -60,14 +60,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_ATTRIBUTES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_CLASS;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_EVENT;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_NAME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_PATH;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_STATUS;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_STATUS_STARTED;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_STATUS_STOPPED;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TRIGGER_ATTRIBUTES;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TRIGGER_CLASS;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TRIGGER_EVENT;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TRIGGER_NAME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TRIGGER_PATH;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TRIGGER_STATUS;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TRIGGER_STATUS_STARTED;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TRIGGER_STATUS_STOPPED;
 
 public class TriggerRegistrationService implements IService {
 
@@ -136,7 +136,7 @@ public class TriggerRegistrationService implements IService {
   private IMeasurementMNode tryGetMeasurementMNode(CreateTriggerPlan plan)
       throws TriggerManagementException {
     try {
-      return IoTDB.metaManager.getMeasurementMNode(plan.getFullPath());
+      return IoTDB.schemaEngine.getMeasurementMNode(plan.getFullPath());
     } catch (MetadataException e) {
       throw new TriggerManagementException(e.getMessage(), e);
     }

@@ -510,11 +510,11 @@ public class QueryOperator extends Operator {
   }
 
   protected Set<PartialPath> getMatchedDevices(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getMatchedDevices(path, isPrefixMatchPath);
+    return IoTDB.schemaEngine.getMatchedDevices(path, isPrefixMatchPath);
   }
 
   protected List<MeasurementPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getMeasurementPaths(path, isPrefixMatchPath);
+    return IoTDB.schemaEngine.getMeasurementPaths(path, isPrefixMatchPath);
   }
 
   public boolean isEnableTracing() {

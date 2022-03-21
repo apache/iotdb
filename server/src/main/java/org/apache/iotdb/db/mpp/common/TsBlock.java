@@ -20,6 +20,8 @@ package org.apache.iotdb.db.mpp.common;
 
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
+import static java.lang.String.format;
+
 /**
  * Intermediate result for most of ExecOperators. The Tablet contains data from one or more columns
  * and constructs them as a row based view The columns can be series, aggregation result for one
@@ -33,6 +35,8 @@ public class TsBlock {
   // Describe the column info
   private TsBlockMetadata metadata;
 
+  private int count;
+
   public boolean hasNext() {
     return false;
   }
@@ -44,5 +48,26 @@ public class TsBlock {
 
   public TsBlockMetadata getMetadata() {
     return metadata;
+  }
+
+  public int getCount() {
+    return count;
+  }
+
+  /**
+   * TODO has not been implemented yet
+   *
+   * @param positionOffset start offset
+   * @param length slice length
+   * @return view of current TsBlock start from positionOffset to positionOffset + length
+   */
+  public TsBlock getRegion(int positionOffset, int length) {
+    if (positionOffset < 0 || length < 0 || positionOffset + length > count) {
+      throw new IndexOutOfBoundsException(
+          format(
+              "Invalid position %s and length %s in page with %s positions",
+              positionOffset, length, count));
+    }
+    return this;
   }
 }

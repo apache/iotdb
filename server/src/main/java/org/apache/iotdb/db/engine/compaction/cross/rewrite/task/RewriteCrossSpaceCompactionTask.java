@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionExceptionHandler;
@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -186,7 +187,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         releaseAllLock();
         return false;
       }
-      tsFileResource.setCompacting(true);
+      tsFileResource.setStatus(TsFileResourceStatus.COMPACTING);
     }
     return true;
   }
@@ -207,15 +208,15 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   }
 
   private void releaseAllLock() {
-    selectedSeqTsFileResourceList.forEach(x -> x.setCompactionCandidate(false));
-    selectedUnSeqTsFileResourceList.forEach(x -> x.setCompactionCandidate(false));
+    selectedSeqTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
+    selectedUnSeqTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
     for (TsFileResource tsFileResource : holdReadLockList) {
       tsFileResource.readUnlock();
-      tsFileResource.setCompacting(false);
+      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     }
     for (TsFileResource tsFileResource : holdWriteLockList) {
       tsFileResource.writeUnlock();
-      tsFileResource.setCompacting(false);
+      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     }
     holdReadLockList.clear();
     holdWriteLockList.clear();
@@ -224,7 +225,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   private void deleteOldFiles(List<TsFileResource> tsFileResourceList) throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
-      tsFileResource.setDeleted(true);
+      tsFileResource.setStatus(TsFileResourceStatus.DELETED);
       tsFileResource.remove();
       logger.info(
           "[CrossSpaceCompaction] Delete TsFile :{}.",
