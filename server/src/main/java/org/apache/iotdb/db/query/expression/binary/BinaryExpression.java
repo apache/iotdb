@@ -21,9 +21,10 @@ package org.apache.iotdb.db.query.expression.binary;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
@@ -99,6 +100,20 @@ public abstract class BinaryExpression extends Expression {
   @Override
   public final void removeWildcards(
       WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
+      throws StatementAnalyzeException {
+    List<Expression> leftExpressions = new ArrayList<>();
+    leftExpression.removeWildcards(wildcardsRemover, leftExpressions);
+
+    List<Expression> rightExpressions = new ArrayList<>();
+    rightExpression.removeWildcards(wildcardsRemover, rightExpressions);
+
+    reconstruct(leftExpressions, rightExpressions, resultExpressions);
+  }
+
+  @Override
+  public final void removeWildcards(
+      org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
+      List<Expression> resultExpressions)
       throws LogicalOptimizeException {
     List<Expression> leftExpressions = new ArrayList<>();
     leftExpression.removeWildcards(wildcardsRemover, leftExpressions);
