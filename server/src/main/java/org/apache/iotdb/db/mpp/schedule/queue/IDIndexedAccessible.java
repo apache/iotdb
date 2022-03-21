@@ -18,7 +18,28 @@
  */
 package org.apache.iotdb.db.mpp.schedule.queue;
 
-/** A simple interface for id getter and setter */
+/**
+ * A simple interface for id getter and setter.
+ *
+ * <p>Anyone who implements this should implement the code of {@link Object#hashCode()} and {@link
+ * Object#equals(Object)} as follows:
+ *
+ * <pre>
+ *   public class T implements IDIndexedAccessible {
+ *     private ID id;
+ *     ...
+ *     public int hashCode() {
+ *       return id.hashCode();
+ *     }
+ *
+ *     public boolean equals(Object o) {
+ *       return o instanceof T && ((T)o).id.equals(this.id);
+ *     }
+ *   }
+ * </pre>
+ *
+ * If not, there will be unexpected behaviors using {@link IndexedBlockingQueue}.
+ */
 public interface IDIndexedAccessible {
 
   ID getId();
