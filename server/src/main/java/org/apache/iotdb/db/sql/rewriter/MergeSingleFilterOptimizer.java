@@ -20,8 +20,8 @@ package org.apache.iotdb.db.sql.rewriter;
 
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.sql.statement.filter.BasicFunctionFilter;
-import org.apache.iotdb.db.sql.statement.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
+import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 
 import java.util.ArrayList;
 import java.util.Comparator;

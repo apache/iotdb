@@ -21,7 +21,7 @@ package org.apache.iotdb.db.sql.statement.component;
 
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.mpp.common.expression.Expression;
 import org.apache.iotdb.db.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 

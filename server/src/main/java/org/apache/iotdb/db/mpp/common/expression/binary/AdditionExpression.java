@@ -17,28 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.expression.binary;
+package org.apache.iotdb.db.mpp.common.expression.binary;
 
-import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.mpp.common.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticAdditionTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticMultiplicationTransformer;
 
-public class MultiplicationExpression extends BinaryExpression {
+public class AdditionExpression extends BinaryExpression {
 
-  public MultiplicationExpression(Expression leftExpression, Expression rightExpression) {
+  public AdditionExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);
   }
 
   @Override
   protected ArithmeticBinaryTransformer constructTransformer(
       LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader) {
-    return new ArithmeticMultiplicationTransformer(
+    return new ArithmeticAdditionTransformer(
         leftParentLayerPointReader, rightParentLayerPointReader);
   }
 
   @Override
   protected String operator() {
-    return "*";
+    return "+";
   }
 }

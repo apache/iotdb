@@ -21,8 +21,8 @@ package org.apache.iotdb.db.sql;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.sql.parser.StatementGenerator;
-import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.sql.statement.component.ResultColumn;
+import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
 
 import org.junit.Assert;
 import org.junit.Test;

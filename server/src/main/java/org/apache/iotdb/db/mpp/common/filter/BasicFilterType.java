@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sql.statement.filter;
+package org.apache.iotdb.db.mpp.common.filter;
 
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.sql.constant.FilterConstant;

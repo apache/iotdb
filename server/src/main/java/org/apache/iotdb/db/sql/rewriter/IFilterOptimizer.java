@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.sql.rewriter;
 
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.sql.statement.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 
 /** provide a query filter, optimize it. */
 @FunctionalInterface

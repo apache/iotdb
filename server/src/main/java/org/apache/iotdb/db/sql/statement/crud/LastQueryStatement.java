@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.sql.statement.crud;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.common.expression.Expression;
+import org.apache.iotdb.db.mpp.common.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.sql.statement.component.ResultColumn;
 
 public class LastQueryStatement extends QueryStatement {

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.sql.statement.component;
 
+import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.sql.statement.StatementNode;
-import org.apache.iotdb.db.sql.statement.filter.QueryFilter;
 
 /** This class maintains information of {@code WHERE} clause. */
 public class WhereCondition extends StatementNode {

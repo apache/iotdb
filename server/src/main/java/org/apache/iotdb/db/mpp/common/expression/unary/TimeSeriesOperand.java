@@ -17,82 +17,68 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.expression.unary;
+package org.apache.iotdb.db.mpp.common.expression.unary;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.expression.Expression;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticNegationTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.io.IOException;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class NegationExpression extends Expression {
+public class TimeSeriesOperand extends Expression {
 
-  protected Expression expression;
+  protected PartialPath path;
 
-  public NegationExpression(Expression expression) {
-    this.expression = expression;
+  public TimeSeriesOperand(PartialPath path) {
+    this.path = path;
   }
 
-  public Expression getExpression() {
-    return expression;
+  public PartialPath getPath() {
+    return path;
+  }
+
+  public void setPath(PartialPath path) {
+    this.path = path;
   }
 
   @Override
   public boolean isConstantOperandInternal() {
-    return expression.isConstantOperand();
+    return false;
   }
 
   @Override
   public List<Expression> getExpressions() {
-    return Collections.singletonList(expression);
-  }
-
-  @Override
-  public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return !isUserDefinedAggregationFunctionExpression();
-  }
-
-  @Override
-  public boolean isUserDefinedAggregationFunctionExpression() {
-    return expression.isUserDefinedAggregationFunctionExpression()
-        || expression.isPlainAggregationFunctionExpression();
+    return Collections.emptyList();
   }
 
   @Override
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
-    List<Expression> resultExpressionsForRecursion = new ArrayList<>();
-    expression.concat(prefixPaths, resultExpressionsForRecursion);
-    for (Expression resultExpression : resultExpressionsForRecursion) {
-      resultExpressions.add(new NegationExpression(resultExpression));
+    for (PartialPath prefixPath : prefixPaths) {
+      resultExpressions.add(new TimeSeriesOperand(prefixPath.concatPath(path)));
     }
   }
 
   @Override
   public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
       throws StatementAnalyzeException {
-    List<Expression> resultExpressionsForRecursion = new ArrayList<>();
-    expression.removeWildcards(wildcardsRemover, resultExpressionsForRecursion);
-    for (Expression resultExpression : resultExpressionsForRecursion) {
-      resultExpressions.add(new NegationExpression(resultExpression));
+    for (PartialPath actualPath : wildcardsRemover.removeWildcardFrom(path)) {
+      resultExpressions.add(new TimeSeriesOperand(actualPath));
     }
   }
 
@@ -101,27 +87,24 @@ public class NegationExpression extends Expression {
       org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
       List<Expression> resultExpressions)
       throws LogicalOptimizeException {
-    List<Expression> resultExpressionsForRecursion = new ArrayList<>();
-    expression.removeWildcards(wildcardsRemover, resultExpressionsForRecursion);
-    for (Expression resultExpression : resultExpressionsForRecursion) {
-      resultExpressions.add(new NegationExpression(resultExpression));
+    for (PartialPath actualPath : wildcardsRemover.removeWildcardFrom(path)) {
+      resultExpressions.add(new TimeSeriesOperand(actualPath));
     }
   }
 
   @Override
   public void collectPaths(Set<PartialPath> pathSet) {
-    expression.collectPaths(pathSet);
+    pathSet.add(path);
   }
 
   @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
-    expression.constructUdfExecutors(expressionName2Executor, zoneId);
+    // nothing to do
   }
 
   @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
-    expression.updateStatisticsForMemoryAssigner(memoryAssigner);
     memoryAssigner.increaseExpressionReference(this);
   }
 
@@ -133,39 +116,27 @@ public class NegationExpression extends Expression {
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
       LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException {
+      throws QueryProcessException {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
       float memoryBudgetInMB = memoryAssigner.assign();
 
-      IntermediateLayer parentLayerPointReader =
-          expression.constructIntermediateLayer(
-              queryId,
-              udtfPlan,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              expressionDataTypeMap,
-              memoryAssigner);
-      Transformer transformer =
-          new ArithmeticNegationTransformer(parentLayerPointReader.constructPointReader());
-      expressionDataTypeMap.put(this, transformer.getDataType());
+      LayerPointReader parentLayerPointReader =
+          rawTimeSeriesInputLayer.constructPointReader(udtfPlan.getReaderIndex(path.getFullPath()));
+      expressionDataTypeMap.put(this, parentLayerPointReader.getDataType());
 
-      // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
-      // yet. And since a ConstantLayerPointReader won't produce too much IO,
-      // SingleInputColumnSingleReferenceIntermediateLayer could be a better choice.
       expressionIntermediateLayerMap.put(
           this,
-          memoryAssigner.getReference(this) == 1 || isConstantOperand()
+          memoryAssigner.getReference(this) == 1
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer)
+                  this, queryId, memoryBudgetInMB, parentLayerPointReader)
               : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer));
+                  this, queryId, memoryBudgetInMB, parentLayerPointReader));
     }
 
     return expressionIntermediateLayerMap.get(this);
   }
 
-  @Override
   public String getExpressionStringInternal() {
-    return "-" + expression.toString();
+    return path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.getFullPath();
   }
 }

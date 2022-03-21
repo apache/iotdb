@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.sql.statement.component;
 
-import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.mpp.common.expression.Expression;
 import org.apache.iotdb.db.sql.statement.StatementNode;
 
 import java.util.ArrayList;

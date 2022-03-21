@@ -25,10 +25,10 @@ import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.mpp.common.expression.Expression;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.sql.statement.component.ResultColumn;
+import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;

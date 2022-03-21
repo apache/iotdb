@@ -19,6 +19,15 @@
 package org.apache.iotdb.db.protocol.influxdb.sql;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.expression.Expression;
+import org.apache.iotdb.db.mpp.common.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.mpp.common.expression.binary.DivisionExpression;
+import org.apache.iotdb.db.mpp.common.expression.binary.ModuloExpression;
+import org.apache.iotdb.db.mpp.common.expression.binary.MultiplicationExpression;
+import org.apache.iotdb.db.mpp.common.expression.binary.SubtractionExpression;
+import org.apache.iotdb.db.mpp.common.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.mpp.common.expression.unary.NegationExpression;
+import org.apache.iotdb.db.mpp.common.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.protocol.influxdb.operator.*;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -30,16 +39,7 @@ import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.sql.InfluxDBSqlParser;
 import org.apache.iotdb.db.qp.sql.InfluxDBSqlParserBaseVisitor;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
-import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
-import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
-import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
-import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
-import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
-import org.apache.iotdb.db.query.expression.unary.NegationExpression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<Operator> {
 

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.mpp.common.expression.Expression;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
-import org.apache.iotdb.db.query.expression.Expression;
 
 import java.util.ArrayList;
 import java.util.List;

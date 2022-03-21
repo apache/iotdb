@@ -21,16 +21,16 @@ package org.apache.iotdb.db.sql.analyze;
 
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.sql.metadata.IMetadataFetcher;
 import org.apache.iotdb.db.sql.rewriter.ConcatPathRewriter;
 import org.apache.iotdb.db.sql.rewriter.DnfFilterOptimizer;
 import org.apache.iotdb.db.sql.rewriter.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.sql.rewriter.RemoveNotOptimizer;
-import org.apache.iotdb.db.sql.statement.crud.InsertStatement;
-import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.db.sql.statement.component.WhereCondition;
-import org.apache.iotdb.db.sql.statement.filter.QueryFilter;
+import org.apache.iotdb.db.sql.statement.crud.InsertStatement;
+import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.sql.tree.StatementVisitor;
 
 public class StatementAnalyzer {

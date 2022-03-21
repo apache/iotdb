@@ -26,17 +26,17 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
+import org.apache.iotdb.db.mpp.common.expression.Expression;
+import org.apache.iotdb.db.mpp.common.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.common.filter.*;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sql.analyze.AnalysisContext;
 import org.apache.iotdb.db.sql.constant.FilterConstant.FilterType;
-import org.apache.iotdb.db.sql.statement.crud.AggregationQueryStatement;
-import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.db.sql.statement.component.*;
-import org.apache.iotdb.db.sql.statement.filter.*;
+import org.apache.iotdb.db.sql.statement.crud.AggregationQueryStatement;
+import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
 
 import java.util.*;
 

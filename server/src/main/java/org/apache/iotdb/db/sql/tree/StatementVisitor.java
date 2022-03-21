@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.sql.tree;
 
-import org.apache.iotdb.db.sql.statement.crud.InsertStatement;
-import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.sql.statement.Statement;
 import org.apache.iotdb.db.sql.statement.StatementNode;
+import org.apache.iotdb.db.sql.statement.crud.InsertStatement;
+import org.apache.iotdb.db.sql.statement.crud.QueryStatement;
 
 public abstract class StatementVisitor<R, C> {
 

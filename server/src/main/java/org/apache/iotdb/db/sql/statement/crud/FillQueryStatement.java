@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.sql.statement.crud;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.sql.constant.FilterConstant;
 import org.apache.iotdb.db.sql.statement.component.FillComponent;
-import org.apache.iotdb.db.sql.statement.filter.QueryFilter;
 
 import java.util.Arrays;
 
