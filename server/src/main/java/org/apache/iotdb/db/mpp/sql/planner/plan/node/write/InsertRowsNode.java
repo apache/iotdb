@@ -16,18 +16,42 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.exception.startup;
+package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
-import org.apache.iotdb.confignode.exception.ConfigNodeException;
+import org.apache.iotdb.db.mpp.common.Analysis;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
-/** Throws when there exists errors when startup checks */
-public class StartupException extends ConfigNodeException {
+import java.util.List;
 
-  public StartupException(String name, String message) {
-    super(String.format("Failed to start [%s], because [%s]", name, message));
+public class InsertRowsNode extends InsertNode {
+
+  protected InsertRowsNode(PlanNodeId id) {
+    super(id);
   }
 
-  public StartupException(String message) {
-    super(message);
+  @Override
+  public List<PlanNode> getChildren() {
+    return null;
+  }
+
+  @Override
+  public PlanNode clone() {
+    return null;
+  }
+
+  @Override
+  public PlanNode cloneWithChildren(List<PlanNode> children) {
+    return null;
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return null;
+  }
+
+  @Override
+  public List<InsertNode> splitByPartition(Analysis analysis) {
+    return null;
   }
 }

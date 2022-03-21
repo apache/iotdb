@@ -63,6 +63,16 @@ public class AggregateNode extends ProcessNode {
   }
 
   @Override
+  public PlanNode clone() {
+    return null;
+  }
+
+  @Override
+  public PlanNode cloneWithChildren(List<PlanNode> children) {
+    return null;
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
     return columnNames;
   }

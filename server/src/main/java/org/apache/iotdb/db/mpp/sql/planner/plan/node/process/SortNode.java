@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import org.apache.iotdb.db.mpp.common.OrderBy;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.sql.statement.component.OrderBy;
 
 import com.google.common.collect.ImmutableList;
 
@@ -49,6 +49,16 @@ public class SortNode extends ProcessNode {
   @Override
   public List<PlanNode> getChildren() {
     return ImmutableList.of(child);
+  }
+
+  @Override
+  public PlanNode clone() {
+    return null;
+  }
+
+  @Override
+  public PlanNode cloneWithChildren(List<PlanNode> children) {
+    return null;
   }
 
   @Override

@@ -16,9 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.protocol.influxdb.constant;
 
-public class InfluxDBConstant {
+package org.apache.iotdb.commons.exception;
 
-  public static final String PLACE_HOLDER = "PH";
+import org.apache.iotdb.rpc.TSStatusCode;
+
+public class ConfigurationException extends IoTDBException {
+  final String parameter;
+  final String correctValue;
+
+  public ConfigurationException(String parameter, String badValue, String correctValue) {
+    super(
+        String.format(
+            "Parameter %s can not be %s, please set to: %s", parameter, badValue, correctValue),
+        TSStatusCode.CONFIG_ERROR.getStatusCode());
+    this.parameter = parameter;
+    this.correctValue = correctValue;
+  }
+
+  public String getParameter() {
+    return parameter;
+  }
+
+  public String getCorrectValue() {
+    return correctValue;
+  }
 }

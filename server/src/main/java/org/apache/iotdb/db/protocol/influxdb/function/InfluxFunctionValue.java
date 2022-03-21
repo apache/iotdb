@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,14 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.common;
+package org.apache.iotdb.db.protocol.influxdb.function;
 
-/**
- * This class is used to record the context of a query including QueryId, query statement, session
- * info and so on
- */
-public class QueryContext {
-  private String statement;
-  private QueryId queryId;
-  private QuerySession session;
+public class InfluxFunctionValue {
+
+  private Object value;
+  private Long timestamp;
+
+  public InfluxFunctionValue(Object value, Long timestamp) {
+    this.value = value;
+    this.timestamp = timestamp;
+  }
+
+  public Object getValue() {
+    return value;
+  }
+
+  public void setValue(Object value) {
+    this.value = value;
+  }
+
+  public Long getTimestamp() {
+    return timestamp;
+  }
+
+  public void setTimestamp(Long timestamp) {
+    this.timestamp = timestamp;
+  }
 }

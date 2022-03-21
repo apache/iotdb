@@ -33,4 +33,15 @@ public class PlanNodeId {
   public String toString() {
     return this.id;
   }
+
+  public int hashCode() {
+    return this.id.hashCode();
+  }
+
+  public boolean equals(Object obj) {
+    if (obj instanceof PlanNodeId) {
+      return this.id.equals(((PlanNodeId) obj).getId());
+    }
+    return false;
+  }
 }
