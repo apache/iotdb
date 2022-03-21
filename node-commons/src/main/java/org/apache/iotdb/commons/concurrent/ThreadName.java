@@ -69,8 +69,9 @@ public enum ThreadName {
   CLUSTER_DATA_RPC_CLIENT("ClusterDataRPC-Client"),
   CLUSTER_DATA_HEARTBEAT_RPC_SERVICE("ClusterDataHeartbeatRPC"),
   CLUSTER_DATA_HEARTBEAT_RPC_CLIENT("ClusterDataHeartbeatRPC-Client"),
-  Cluster_Monitor("ClusterMonitor"),
-  ;
+  CLUSTER_MONITOR("ClusterMonitor"),
+  CONFIG_NODE_RPC_SERVER("ConfigNodeRpcServer"),
+  CONFIG_NODE_RPC_CLIENT("ConfigNodeRPC-Client");
 
   private final String name;
 

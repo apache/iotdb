@@ -92,7 +92,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   private void startCollectClusterStatus() {
     // monitor all nodes' live status
     LOGGER.info("start metric node status and leader distribution");
-    IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.Cluster_Monitor.getName())
+    IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.CLUSTER_MONITOR.getName())
         .scheduleAtFixedRate(
             () -> {
               MetaGroupMember metaGroupMember = ClusterIoTDB.getInstance().getMetaGroupMember();
