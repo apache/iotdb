@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
+import org.apache.iotdb.db.metadata.MetadataManagerType;
 import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;

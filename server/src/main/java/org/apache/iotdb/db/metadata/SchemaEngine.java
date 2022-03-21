@@ -137,7 +137,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
-public class SchemaEngine {
+public class SchemaEngine implements IMetaManager {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
 

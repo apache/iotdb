@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.rocksdb.mnode;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.SchemaRegion;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.rocksdb.RMNodeValueType;
@@ -77,5 +78,15 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
   @Override
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
+  }
+
+  @Override
+  public SchemaRegion getSchemaRegion() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setSchemaRegion(SchemaRegion schemaRegion) {
+    throw new UnsupportedOperationException();
   }
 }

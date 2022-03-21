@@ -61,8 +61,9 @@ public class IoTDB implements IoTDBMBean {
   private final String mbeanName =
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
   private static final RegisterManager registerManager = new RegisterManager();
-  public static SchemaEngine schemaEngine = SchemaEngine.getInstance();
+  public static IMetaManager metaManager;
   public static ServiceProvider serviceProvider;
+  public static SchemaEngine schemaEngine;
   private static boolean clusterMode = false;
 
   public static IoTDB getInstance() {
@@ -77,6 +78,7 @@ public class IoTDB implements IoTDBMBean {
       logger.error("meet error when doing start checking", e);
       System.exit(1);
     }
+        metaManager = schemaEngine;
     IoTDB daemon = IoTDB.getInstance();
     daemon.active();
   }
