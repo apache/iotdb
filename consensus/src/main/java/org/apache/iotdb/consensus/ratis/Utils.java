@@ -58,6 +58,12 @@ public class Utils {
     return toRaftPeer(peer.getEndpoint());
   }
 
+  public static Endpoint getEndPoint(RaftPeer raftPeer) {
+    String address = raftPeer.getAddress(); // ip:port
+    String[] split = address.split(":");
+    return new Endpoint(split[0], Integer.parseInt(split[1]));
+  }
+
   /**
    * Given ConsensusGroupId, generate a deterministic RaftGroupId current scheme:
    * AES/ECB/PKCS5Padding of (GroupType-Id), key = iotdb@_ratis_key
