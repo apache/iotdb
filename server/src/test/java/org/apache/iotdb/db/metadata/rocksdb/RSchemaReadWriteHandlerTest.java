@@ -3,6 +3,7 @@ package org.apache.iotdb.db.metadata.rocksdb;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.rocksdb.mnode.RMNodeType;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -13,11 +14,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.metadata.rocksdb.RocksDBReadWriteHandler.ROCKSDB_PATH;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaReadWriteHandler.ROCKSDB_PATH;
 
-public class RocksDBReadWriteHandlerTest {
+public class RSchemaReadWriteHandlerTest {
 
-  private RocksDBReadWriteHandler readWriteHandler;
+  private RSchemaReadWriteHandler readWriteHandler;
 
   @Before
   public void setUp() throws MetadataException, RocksDBException {
@@ -25,7 +26,7 @@ public class RocksDBReadWriteHandlerTest {
     if (!file.exists()) {
       file.mkdirs();
     }
-    readWriteHandler = new RocksDBReadWriteHandler();
+    readWriteHandler = new RSchemaReadWriteHandler();
   }
 
   @Test
@@ -41,13 +42,12 @@ public class RocksDBReadWriteHandlerTest {
     timeseries.add(new PartialPath("root.sg1.d2.m2"));
 
     for (PartialPath path : timeseries) {
-      String levelPath = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
-      readWriteHandler.createNode(
-          levelPath, RocksDBMNodeType.MEASUREMENT, path.getFullPath().getBytes());
+      String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+      readWriteHandler.createNode(levelPath, RMNodeType.MEASUREMENT, path.getFullPath().getBytes());
     }
 
     for (PartialPath path : timeseries) {
-      String levelPath = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+      String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
       CheckKeyResult result = readWriteHandler.keyExistByAllTypes(levelPath);
       Assert.assertTrue(result.existAnyKey());
       Assert.assertNotNull(result.getValue());

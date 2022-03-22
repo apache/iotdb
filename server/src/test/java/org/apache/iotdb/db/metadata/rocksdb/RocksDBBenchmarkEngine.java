@@ -26,7 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.metadata.rocksdb.RocksDBReadWriteHandler.ROCKSDB_PATH;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaReadWriteHandler.ROCKSDB_PATH;
 
 public class RocksDBBenchmarkEngine {
   private static final Logger logger = LoggerFactory.getLogger(RocksDBBenchmarkEngine.class);
@@ -60,7 +60,7 @@ public class RocksDBBenchmarkEngine {
       RocksDBTestUtils.printBenchmarkBaseline(
           storageGroups, timeSeriesSet, measurementPathSet, innerPathSet);
       /** rocksdb benchmark * */
-      MRocksDBManager rocksDBManager = new MRocksDBManager();
+      RSchemaEngine rocksDBManager = new RSchemaEngine();
       MRocksDBBenchmark mRocksDBBenchmark = new MRocksDBBenchmark(rocksDBManager);
       mRocksDBBenchmark.testStorageGroupCreation(storageGroups);
       mRocksDBBenchmark.testTimeSeriesCreation(timeSeriesSet);

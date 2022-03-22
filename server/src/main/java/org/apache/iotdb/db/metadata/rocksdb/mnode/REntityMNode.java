@@ -22,7 +22,7 @@ import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.rocksdb.RockDBConstants;
+import org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -84,7 +84,7 @@ public class REntityMNode extends RInternalMNode implements IEntityMNode {
     ByteBuffer byteBuffer = ByteBuffer.wrap(value);
     // skip the version flag and node type flag
     byte flag = ReadWriteIOUtils.readBytes(byteBuffer, 2)[1];
-    isAligned = (RockDBConstants.FLAG_IS_ALIGNED & flag) > 0;
+    isAligned = (RSchemaConstants.FLAG_IS_ALIGNED & flag) > 0;
   }
 
   @Override

@@ -25,8 +25,8 @@ import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.rocksdb.RockDBConstants;
-import org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils;
+import org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants;
+import org.apache.iotdb.db.metadata.rocksdb.RSchemaUtils;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -143,16 +143,16 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
     while (byteBuffer.hasRemaining()) {
       byte blockType = ReadWriteIOUtils.readByte(byteBuffer);
       switch (blockType) {
-        case RockDBConstants.DATA_BLOCK_TYPE_ALIAS:
+        case RSchemaConstants.DATA_BLOCK_TYPE_ALIAS:
           alias = ReadWriteIOUtils.readString(byteBuffer);
           break;
-        case RockDBConstants.DATA_BLOCK_TYPE_SCHEMA:
+        case RSchemaConstants.DATA_BLOCK_TYPE_SCHEMA:
           schema = MeasurementSchema.deserializeFrom(byteBuffer);
           break;
-        case RockDBConstants.DATA_BLOCK_TYPE_TAGS:
+        case RSchemaConstants.DATA_BLOCK_TYPE_TAGS:
           tags = ReadWriteIOUtils.readMap(byteBuffer);
           break;
-        case RockDBConstants.DATA_BLOCK_TYPE_ATTRIBUTES:
+        case RSchemaConstants.DATA_BLOCK_TYPE_ATTRIBUTES:
           attributes = ReadWriteIOUtils.readMap(byteBuffer);
           break;
         default:
@@ -241,6 +241,6 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   }
 
   public byte[] getRocksDBValue() throws IOException {
-    return RocksDBUtils.buildMeasurementNodeValue(schema, alias, tags, attributes);
+    return RSchemaUtils.buildMeasurementNodeValue(schema, alias, tags, attributes);
   }
 }

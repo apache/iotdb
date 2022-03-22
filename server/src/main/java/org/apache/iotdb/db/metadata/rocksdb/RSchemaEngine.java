@@ -41,6 +41,8 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rocksdb.mnode.REntityMNode;
+import org.apache.iotdb.db.metadata.rocksdb.mnode.RMNodeType;
+import org.apache.iotdb.db.metadata.rocksdb.mnode.RMNodeValueType;
 import org.apache.iotdb.db.metadata.rocksdb.mnode.RMeasurementMNode;
 import org.apache.iotdb.db.metadata.rocksdb.mnode.RStorageGroupMNode;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -122,7 +124,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.*;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -161,9 +163,9 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *   <li>TestOnly Interfaces
  * </ol>
  */
-public class MRocksDBManager implements IMetaManager {
+public class RSchemaEngine implements IMetaManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(MRocksDBManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(RSchemaEngine.class);
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -172,16 +174,16 @@ public class MRocksDBManager implements IMetaManager {
 
   private static final long MAX_LOCK_WAIT_TIME = 50;
 
-  private RocksDBReadWriteHandler readWriteHandler;
+  private RSchemaReadWriteHandler readWriteHandler;
 
   private final Map<String, ReentrantLock> locksPool =
       new MapMaker().weakValues().initialCapacity(10000).makeMap();
 
   private final Map<String, Boolean> storageGroupDeletingFlagMap = new ConcurrentHashMap<>();
 
-  public MRocksDBManager() throws MetadataException {
+  public RSchemaEngine() throws MetadataException {
     try {
-      readWriteHandler = RocksDBReadWriteHandler.getInstance();
+      readWriteHandler = RSchemaReadWriteHandler.getInstance();
     } catch (RocksDBException e) {
       logger.error("create RocksDBReadWriteHandler fail", e);
       throw new MetadataException(e);
@@ -318,11 +320,11 @@ public class MRocksDBManager implements IMetaManager {
       Map<String, String> attributes)
       throws MetadataException {
     // regular check
-    if (path.getNodes().length > MRocksDBManager.MAX_PATH_DEPTH) {
+    if (path.getNodes().length > RSchemaEngine.MAX_PATH_DEPTH) {
       throw new IllegalPathException(
           String.format(
               "path is too long, provide: %d, max: %d",
-              path.getNodeLength(), MRocksDBManager.MAX_PATH_DEPTH));
+              path.getNodeLength(), RSchemaEngine.MAX_PATH_DEPTH));
     }
     MetaFormatUtils.checkTimeseries(path);
     MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), schema.getProps());
@@ -355,7 +357,7 @@ public class MRocksDBManager implements IMetaManager {
       // nodes "root" must exist and don't need to check
       return;
     }
-    String levelPath = RocksDBUtils.getLevelPath(nodes, start - 1);
+    String levelPath = RSchemaUtils.getLevelPath(nodes, start - 1);
     Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
     if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
       lockedLocks.push(lock);
@@ -367,25 +369,25 @@ public class MRocksDBManager implements IMetaManager {
           if (start == nodes.length) {
             createTimeSeriesNode(nodes, levelPath, schema, alias, tags, attributes);
           } else if (start == nodes.length - 1) {
-            readWriteHandler.createNode(levelPath, RocksDBMNodeType.ENTITY, DEFAULT_NODE_VALUE);
+            readWriteHandler.createNode(levelPath, RMNodeType.ENTITY, DEFAULT_NODE_VALUE);
           } else {
-            readWriteHandler.createNode(levelPath, RocksDBMNodeType.INTERNAL, DEFAULT_NODE_VALUE);
+            readWriteHandler.createNode(levelPath, RMNodeType.INTERNAL, DEFAULT_NODE_VALUE);
           }
         } else {
           if (start == nodes.length) {
             throw new PathAlreadyExistException(levelPath);
           }
 
-          if (checkResult.getResult(RocksDBMNodeType.MEASUREMENT)
-              || checkResult.getResult(RocksDBMNodeType.ALISA)) {
+          if (checkResult.getResult(RMNodeType.MEASUREMENT)
+              || checkResult.getResult(RMNodeType.ALISA)) {
             throw new PathAlreadyExistException(levelPath);
           }
 
           if (start == nodes.length - 1) {
-            if (checkResult.getResult(RocksDBMNodeType.INTERNAL)) {
+            if (checkResult.getResult(RMNodeType.INTERNAL)) {
               // convert the parent node to entity if it is internal node
               readWriteHandler.convertToEntityNode(levelPath, DEFAULT_NODE_VALUE);
-            } else if (checkResult.getResult(RocksDBMNodeType.ENTITY)) {
+            } else if (checkResult.getResult(RMNodeType.ENTITY)) {
               if ((checkResult.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
                 throw new AlignedTimeseriesException(
                     "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
@@ -425,8 +427,8 @@ public class MRocksDBManager implements IMetaManager {
       throws IOException, RocksDBException, MetadataException, InterruptedException {
     // create time-series node
     WriteBatch batch = new WriteBatch();
-    byte[] value = RocksDBUtils.buildMeasurementNodeValue(schema, alias, tags, attributes);
-    byte[] measurementKey = RocksDBUtils.toMeasurementNodeKey(levelPath);
+    byte[] value = RSchemaUtils.buildMeasurementNodeValue(schema, alias, tags, attributes);
+    byte[] measurementKey = RSchemaUtils.toMeasurementNodeKey(levelPath);
     batch.put(measurementKey, value);
 
     // measurement with tags will save in a separate table at the same time
@@ -437,13 +439,13 @@ public class MRocksDBManager implements IMetaManager {
     if (StringUtils.isNotEmpty(alias)) {
       String[] aliasNodes = Arrays.copyOf(nodes, nodes.length);
       aliasNodes[nodes.length - 1] = alias;
-      String aliasLevelPath = RocksDBUtils.getLevelPath(aliasNodes, aliasNodes.length - 1);
-      byte[] aliasNodeKey = RocksDBUtils.toAliasNodeKey(aliasLevelPath);
+      String aliasLevelPath = RSchemaUtils.getLevelPath(aliasNodes, aliasNodes.length - 1);
+      byte[] aliasNodeKey = RSchemaUtils.toAliasNodeKey(aliasLevelPath);
       Lock lock = locksPool.computeIfAbsent(aliasLevelPath, x -> new ReentrantLock());
       if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
         try {
           if (!readWriteHandler.keyExistByAllTypes(aliasLevelPath).existAnyKey()) {
-            batch.put(aliasNodeKey, RocksDBUtils.buildAliasNodeValue(measurementKey));
+            batch.put(aliasNodeKey, RSchemaUtils.buildAliasNodeValue(measurementKey));
             readWriteHandler.executeBatch(batch);
           } else {
             throw new AliasAlreadyExistException(levelPath, alias);
@@ -494,7 +496,7 @@ public class MRocksDBManager implements IMetaManager {
     if (prefixPath.getNodeLength() > MAX_PATH_DEPTH - 1) {
       String.format(
           "Prefix path is too long, provide: %d, max: %d",
-          prefixPath.getNodeLength(), MRocksDBManager.MAX_PATH_DEPTH - 1);
+          prefixPath.getNodeLength(), RSchemaEngine.MAX_PATH_DEPTH - 1);
     }
 
     for (int i = 0; i < measurements.size(); i++) {
@@ -511,12 +513,12 @@ public class MRocksDBManager implements IMetaManager {
       String[] locks = new String[measurements.size()];
       for (int i = 0; i < measurements.size(); i++) {
         String measurement = measurements.get(i);
-        String levelPath = RocksDBUtils.getMeasurementLevelPath(prefixPath.getNodes(), measurement);
+        String levelPath = RSchemaUtils.getMeasurementLevelPath(prefixPath.getNodes(), measurement);
         locks[i] = levelPath;
         MeasurementSchema schema =
             new MeasurementSchema(measurement, dataTypes.get(i), encodings.get(i));
-        byte[] key = RocksDBUtils.toMeasurementNodeKey(levelPath);
-        byte[] value = RocksDBUtils.buildMeasurementNodeValue(schema, null, null, null);
+        byte[] key = RSchemaUtils.toMeasurementNodeKey(levelPath);
+        byte[] value = RSchemaUtils.buildMeasurementNodeValue(schema, null, null, null);
         batch.put(key, value);
       }
 
@@ -561,7 +563,7 @@ public class MRocksDBManager implements IMetaManager {
       // nodes before "end" must exist
       return;
     }
-    String levelPath = RocksDBUtils.getLevelPath(nodes, start - 1);
+    String levelPath = RSchemaUtils.getLevelPath(nodes, start - 1);
     Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
     if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
       try {
@@ -569,30 +571,30 @@ public class MRocksDBManager implements IMetaManager {
         if (!checkResult.existAnyKey()) {
           createEntityRecursively(nodes, start - 1, end, aligned, lockedLocks);
           if (start == nodes.length) {
-            byte[] nodeKey = RocksDBUtils.toEntityNodeKey(levelPath);
+            byte[] nodeKey = RSchemaUtils.toEntityNodeKey(levelPath);
             byte[] value = aligned ? DEFAULT_ALIGNED_ENTITY_VALUE : DEFAULT_NODE_VALUE;
             readWriteHandler.createNode(nodeKey, value);
           } else {
-            readWriteHandler.createNode(levelPath, RocksDBMNodeType.INTERNAL, DEFAULT_NODE_VALUE);
+            readWriteHandler.createNode(levelPath, RMNodeType.INTERNAL, DEFAULT_NODE_VALUE);
           }
         } else {
           if (start == nodes.length) {
 
             // make sure sg node and entity node are different
             // eg.,'root.a' is a storage group path, 'root.a.b' can not be a timeseries
-            if (checkResult.getResult(RocksDBMNodeType.STORAGE_GROUP)) {
+            if (checkResult.getResult(RMNodeType.STORAGE_GROUP)) {
               throw new MetadataException("Storage Group Node and Entity Node could not be same!");
             }
 
-            if (!checkResult.getResult(RocksDBMNodeType.ENTITY)) {
+            if (!checkResult.getResult(RMNodeType.ENTITY)) {
               throw new MetadataException("Node already exists but not entity");
             }
 
             if ((checkResult.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
               throw new MetadataException("Entity node exists but not aligned");
             }
-          } else if (checkResult.getResult(RocksDBMNodeType.MEASUREMENT)
-              || checkResult.getResult(RocksDBMNodeType.ALISA)) {
+          } else if (checkResult.getResult(RMNodeType.MEASUREMENT)
+              || checkResult.getResult(RMNodeType.ALISA)) {
             throw new MetadataException("Path contains measurement node");
           }
         }
@@ -626,9 +628,9 @@ public class MRocksDBManager implements IMetaManager {
           String path = null;
           RMeasurementMNode deletedNode = null;
           try {
-            path = RocksDBUtils.getPathByInnerName(new String(key));
+            path = RSchemaUtils.getPathByInnerName(new String(key));
             String[] nodes = MetaUtils.splitPathToDetachedPath(path);
-            String levelPath = RocksDBUtils.getLevelPath(nodes, nodes.length - 1);
+            String levelPath = RSchemaUtils.getLevelPath(nodes, nodes.length - 1);
             // Delete measurement node
             Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
             if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
@@ -641,8 +643,8 @@ public class MRocksDBManager implements IMetaManager {
                   String[] aliasNodes = Arrays.copyOf(nodes, nodes.length);
                   aliasNodes[nodes.length - 1] = deletedNode.getAlias();
                   String aliasLevelPath =
-                      RocksDBUtils.getLevelPath(aliasNodes, aliasNodes.length - 1);
-                  batch.delete(RocksDBUtils.toAliasNodeKey(aliasLevelPath));
+                      RSchemaUtils.getLevelPath(aliasNodes, aliasNodes.length - 1);
+                  batch.delete(RSchemaUtils.toAliasNodeKey(aliasLevelPath));
                 }
                 if (deletedNode.getTags() != null && !deletedNode.getTags().isEmpty()) {
                   batch.delete(readWriteHandler.getCFHByName(TABLE_NAME_TAGS), key);
@@ -707,8 +709,8 @@ public class MRocksDBManager implements IMetaManager {
     int result = -1;
     // ignore the first element: "root"
     for (int i = 1; i < nodes.length; i++) {
-      String levelPath = RocksDBUtils.getLevelPath(nodes, i);
-      if (readWriteHandler.keyExistByType(levelPath, RocksDBMNodeType.STORAGE_GROUP)) {
+      String levelPath = RSchemaUtils.getLevelPath(nodes, i);
+      if (readWriteHandler.keyExistByType(levelPath, RMNodeType.STORAGE_GROUP)) {
         result = i;
         break;
       }
@@ -723,41 +725,39 @@ public class MRocksDBManager implements IMetaManager {
    */
   @Override
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
-    if (storageGroup.getNodes().length > MRocksDBManager.MAX_PATH_DEPTH) {
+    if (storageGroup.getNodes().length > RSchemaEngine.MAX_PATH_DEPTH) {
       throw new IllegalPathException(
           String.format(
               "Storage group path is too long, provide: %d, max: %d",
-              storageGroup.getNodeLength(), MRocksDBManager.MAX_PATH_DEPTH - 2));
+              storageGroup.getNodeLength(), RSchemaEngine.MAX_PATH_DEPTH - 2));
     }
     MetaFormatUtils.checkStorageGroup(storageGroup.getFullPath());
     String[] nodes = storageGroup.getNodes();
     try {
       int len = nodes.length;
       for (int i = 1; i < nodes.length; i++) {
-        String levelKey = RocksDBUtils.getLevelPath(nodes, i);
+        String levelKey = RSchemaUtils.getLevelPath(nodes, i);
         Lock lock = locksPool.computeIfAbsent(levelKey, x -> new ReentrantLock());
         if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
           try {
             CheckKeyResult keyCheckResult = readWriteHandler.keyExistByAllTypes(levelKey);
             if (!keyCheckResult.existAnyKey()) {
               if (i < len - 1) {
-                readWriteHandler.createNode(
-                    levelKey, RocksDBMNodeType.INTERNAL, DEFAULT_NODE_VALUE);
+                readWriteHandler.createNode(levelKey, RMNodeType.INTERNAL, DEFAULT_NODE_VALUE);
               } else {
-                readWriteHandler.createNode(
-                    levelKey, RocksDBMNodeType.STORAGE_GROUP, DEFAULT_NODE_VALUE);
+                readWriteHandler.createNode(levelKey, RMNodeType.STORAGE_GROUP, DEFAULT_NODE_VALUE);
               }
             } else {
               if (i >= len - 1) {
-                if (keyCheckResult.getExistType() == RocksDBMNodeType.STORAGE_GROUP) {
+                if (keyCheckResult.getExistType() == RMNodeType.STORAGE_GROUP) {
                   throw new StorageGroupAlreadySetException(storageGroup.getFullPath());
                 } else {
                   throw new PathAlreadyExistException(storageGroup.getFullPath());
                 }
               } else {
-                if (keyCheckResult.getExistType() != RocksDBMNodeType.INTERNAL) {
+                if (keyCheckResult.getExistType() != RMNodeType.INTERNAL) {
                   throw new StorageGroupAlreadySetException(
-                      RocksDBUtils.concatNodesName(nodes, 0, i), true);
+                      RSchemaUtils.concatNodesName(nodes, 0, i), true);
                 }
               }
             }
@@ -795,8 +795,8 @@ public class MRocksDBManager implements IMetaManager {
                           try {
                             for (int i = nodes.length; i <= MAX_PATH_DEPTH; i++) {
                               String startPath =
-                                  RocksDBUtils.getLevelPathPrefix(nodes, nodes.length - 1, i);
-                              byte[] startKey = RocksDBUtils.toRocksDBKey(startPath, type);
+                                  RSchemaUtils.getLevelPathPrefix(nodes, nodes.length - 1, i);
+                              byte[] startKey = RSchemaUtils.toRocksDBKey(startPath, type);
                               byte[] endKey = new byte[startKey.length];
                               System.arraycopy(startKey, 0, endKey, 0, startKey.length - 1);
                               endKey[endKey.length - 1] = Byte.MAX_VALUE;
@@ -813,7 +813,7 @@ public class MRocksDBManager implements IMetaManager {
                           }
                         });
                 if (getAllTimeseriesCount(path.concatNode(MULTI_LEVEL_PATH_WILDCARD)) <= 0) {
-                  readWriteHandler.deleteNode(path.getNodes(), RocksDBMNodeType.STORAGE_GROUP);
+                  readWriteHandler.deleteNode(path.getNodes(), RMNodeType.STORAGE_GROUP);
                 } else {
                   throw new MetadataException(
                       String.format(
@@ -831,15 +831,15 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
     String levelPath =
-        RocksDBUtils.getLevelPath(storageGroup.getNodes(), storageGroup.getNodeLength() - 1);
-    byte[] pathKey = RocksDBUtils.toStorageNodeKey(levelPath);
+        RSchemaUtils.getLevelPath(storageGroup.getNodes(), storageGroup.getNodeLength() - 1);
+    byte[] pathKey = RSchemaUtils.toStorageNodeKey(levelPath);
     Holder<byte[]> holder = new Holder<>();
     try {
       Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
       if (lock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
         try {
           if (readWriteHandler.keyExist(pathKey, holder)) {
-            byte[] value = RocksDBUtils.updateTTL(holder.getValue(), dataTTL);
+            byte[] value = RSchemaUtils.updateTTL(holder.getValue(), dataTTL);
             readWriteHandler.updateNode(pathKey, value);
           } else {
             throw new PathNotExistException(
@@ -869,10 +869,10 @@ public class MRocksDBManager implements IMetaManager {
    */
   @Override
   public boolean isPathExist(PartialPath path) throws MetadataException {
-    String innerPathName = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+    String innerPathName = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
     try {
       CheckKeyResult checkKeyResult =
-          readWriteHandler.keyExistByTypes(innerPathName, RocksDBMNodeType.values());
+          readWriteHandler.keyExistByTypes(innerPathName, RMNodeType.values());
       if (checkKeyResult.existAnyKey()) {
         return true;
       }
@@ -891,7 +891,7 @@ public class MRocksDBManager implements IMetaManager {
   // todo mem count
   @Override
   public long getTotalSeriesNumber() {
-    return readWriteHandler.countNodesNumByType(null, RockDBConstants.NODE_TYPE_MEASUREMENT);
+    return readWriteHandler.countNodesNumByType(null, RSchemaConstants.NODE_TYPE_MEASUREMENT);
   }
 
   /**
@@ -911,7 +911,7 @@ public class MRocksDBManager implements IMetaManager {
       BiFunction<byte[], byte[], Boolean> function,
       Character[] nodeTypeArray)
       throws IllegalPathException {
-    List<String[]> allNodesArray = RocksDBUtils.replaceMultiWildcardToSingle(nodes, maxLevel);
+    List<String[]> allNodesArray = RSchemaUtils.replaceMultiWildcardToSingle(nodes, maxLevel);
     allNodesArray.parallelStream().forEach(x -> traverseByPatternPath(x, function, nodeTypeArray));
   }
 
@@ -929,7 +929,7 @@ public class MRocksDBManager implements IMetaManager {
           .forEach(
               x -> {
                 String levelPrefix =
-                    RocksDBUtils.convertPartialPathToInnerByNodes(nodes, nodes.length - 1, x);
+                    RSchemaUtils.convertPartialPathToInnerByNodes(nodes, nodes.length - 1, x);
                 try {
                   Holder<byte[]> holder = new Holder<>();
                   readWriteHandler.keyExist(levelPrefix.getBytes(), holder);
@@ -963,7 +963,7 @@ public class MRocksDBManager implements IMetaManager {
 
       Queue<String[]> tempNodes = new ConcurrentLinkedQueue<>();
       byte[] suffixToMatch =
-          RocksDBUtils.getSuffixOfLevelPath(
+          RSchemaUtils.getSuffixOfLevelPath(
               ArrayUtils.subarray(nodes, firstNonWildcardIndex, nextFirstWildcardIndex), level);
 
       scanKeys
@@ -971,23 +971,23 @@ public class MRocksDBManager implements IMetaManager {
           .forEach(
               prefixNodes -> {
                 String levelPrefix =
-                    RocksDBUtils.getLevelPathPrefix(prefixNodes, prefixNodes.length - 1, level);
+                    RSchemaUtils.getLevelPathPrefix(prefixNodes, prefixNodes.length - 1, level);
                 Arrays.stream(nodeType)
                     .parallel()
                     .forEach(
                         x -> {
-                          byte[] startKey = RocksDBUtils.toRocksDBKey(levelPrefix, x);
+                          byte[] startKey = RSchemaUtils.toRocksDBKey(levelPrefix, x);
                           RocksIterator iterator = readWriteHandler.iterator(null);
                           iterator.seek(startKey);
                           while (iterator.isValid()) {
-                            if (!RocksDBUtils.prefixMatch(iterator.key(), startKey)) {
+                            if (!RSchemaUtils.prefixMatch(iterator.key(), startKey)) {
                               break;
                             }
-                            if (RocksDBUtils.suffixMatch(iterator.key(), suffixToMatch)) {
+                            if (RSchemaUtils.suffixMatch(iterator.key(), suffixToMatch)) {
                               if (lastIteration) {
                                 function.apply(iterator.key(), iterator.value());
                               } else {
-                                tempNodes.add(RocksDBUtils.toMetaNodes(iterator.key()));
+                                tempNodes.add(RSchemaUtils.toMetaNodes(iterator.key()));
                               }
                             }
                             iterator.next();
@@ -1083,7 +1083,7 @@ public class MRocksDBManager implements IMetaManager {
           "Wildcards are not currently supported for this operation [COUNT NODES pathPattern].");
     }
     String innerNameByLevel =
-        RocksDBUtils.getLevelPath(pathPattern.getNodes(), pathPattern.getNodeLength() - 1, level);
+        RSchemaUtils.getLevelPath(pathPattern.getNodes(), pathPattern.getNodeLength() - 1, level);
     AtomicInteger atomicInteger = new AtomicInteger(0);
     Function<String, Boolean> function =
         s -> {
@@ -1095,7 +1095,7 @@ public class MRocksDBManager implements IMetaManager {
         .forEach(
             x -> {
               String getKeyByInnerNameLevel =
-                  x + innerNameByLevel + RockDBConstants.PATH_SEPARATOR + level;
+                  x + innerNameByLevel + RSchemaConstants.PATH_SEPARATOR + level;
               readWriteHandler.getKeyByPrefix(getKeyByInnerNameLevel, function);
             });
 
@@ -1139,7 +1139,7 @@ public class MRocksDBManager implements IMetaManager {
     // TODO: ignore pathPattern with *, all nodeLevel are start from "root.*"
     List<PartialPath> results = new ArrayList<>();
     if (nodeLevel == 0) {
-      results.add(new PartialPath(RockDBConstants.ROOT));
+      results.add(new PartialPath(RSchemaConstants.ROOT));
       return results;
     }
     // TODO: level one usually only contains small numbers, query in serialize
@@ -1148,23 +1148,27 @@ public class MRocksDBManager implements IMetaManager {
     if (nodeLevel <= 5) {
       char level = (char) (ZERO + nodeLevel);
       String prefix =
-          builder.append(RockDBConstants.ROOT).append(PATH_SEPARATOR).append(level).toString();
+          builder.append(RSchemaConstants.ROOT).append(PATH_SEPARATOR).append(level).toString();
       paths = readWriteHandler.getAllByPrefix(prefix);
     } else {
       paths = ConcurrentHashMap.newKeySet();
       char upperLevel = (char) (ZERO + nodeLevel - 1);
       String prefix =
-          builder.append(RockDBConstants.ROOT).append(PATH_SEPARATOR).append(upperLevel).toString();
+          builder
+              .append(RSchemaConstants.ROOT)
+              .append(PATH_SEPARATOR)
+              .append(upperLevel)
+              .toString();
       Set<String> parentPaths = readWriteHandler.getAllByPrefix(prefix);
       parentPaths
           .parallelStream()
           .forEach(
               x -> {
-                String targetPrefix = RocksDBUtils.getNextLevelOfPath(x, upperLevel);
+                String targetPrefix = RSchemaUtils.getNextLevelOfPath(x, upperLevel);
                 paths.addAll(readWriteHandler.getAllByPrefix(targetPrefix));
               });
     }
-    return RocksDBUtils.convertToPartialPath(paths, nodeLevel);
+    return RSchemaUtils.convertToPartialPath(paths, nodeLevel);
   }
 
   @Override
@@ -1194,15 +1198,15 @@ public class MRocksDBManager implements IMetaManager {
     }
     Set<String> result = Collections.synchronizedSet(new HashSet<>());
     String innerNameByLevel =
-        RocksDBUtils.getLevelPath(
+        RSchemaUtils.getLevelPath(
                 pathPattern.getNodes(),
                 pathPattern.getNodeLength() - 1,
                 pathPattern.getNodeLength())
-            + RockDBConstants.PATH_SEPARATOR
+            + RSchemaConstants.PATH_SEPARATOR
             + pathPattern.getNodeLength();
     Function<String, Boolean> function =
         s -> {
-          result.add(RocksDBUtils.getPathByInnerName(s));
+          result.add(RSchemaUtils.getPathByInnerName(s));
           return true;
         };
 
@@ -1230,7 +1234,7 @@ public class MRocksDBManager implements IMetaManager {
     Set<String> childPath = getChildNodePathInNextLevel(pathPattern);
     Set<String> childName = new HashSet<>();
     for (String str : childPath) {
-      childName.add(str.substring(str.lastIndexOf(RockDBConstants.PATH_SEPARATOR) + 1));
+      childName.add(str.substring(str.lastIndexOf(RSchemaConstants.PATH_SEPARATOR) + 1));
     }
     return childName;
   }
@@ -1239,10 +1243,10 @@ public class MRocksDBManager implements IMetaManager {
   // region Interfaces for StorageGroup and TTL info Query
   @Override
   public boolean isStorageGroup(PartialPath path) throws MetadataException {
-    int level = RocksDBUtils.getLevelByPartialPath(path.getFullPath());
+    int level = RSchemaUtils.getLevelByPartialPath(path.getFullPath());
     String innerPathName =
-        RocksDBUtils.convertPartialPathToInner(
-            path.getFullPath(), level, RockDBConstants.NODE_TYPE_SG);
+        RSchemaUtils.convertPartialPathToInner(
+            path.getFullPath(), level, RSchemaConstants.NODE_TYPE_SG);
     try {
       return readWriteHandler.keyExist(innerPathName.getBytes());
     } catch (RocksDBException e) {
@@ -1277,12 +1281,12 @@ public class MRocksDBManager implements IMetaManager {
       throws StorageGroupNotSetException, IllegalPathException {
     String innerPathName =
         readWriteHandler.findBelongToSpecifiedNodeType(
-            path.getNodes(), RockDBConstants.NODE_TYPE_SG);
+            path.getNodes(), RSchemaConstants.NODE_TYPE_SG);
     if (innerPathName == null) {
       throw new StorageGroupNotSetException(
           String.format("Cannot find [%s] belong to which storage group.", path.getFullPath()));
     }
-    return new PartialPath(RocksDBUtils.getPathByInnerName(innerPathName));
+    return new PartialPath(RSchemaUtils.getPathByInnerName(innerPathName));
   }
 
   /**
@@ -1329,7 +1333,7 @@ public class MRocksDBManager implements IMetaManager {
     List<String> allResult = Collections.synchronizedList(new ArrayList<>());
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
-          allResult.add(RocksDBUtils.getPathByInnerName(new String(a)));
+          allResult.add(RSchemaUtils.getPathByInnerName(new String(a)));
           return true;
         };
     traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, function, nodetype);
@@ -1346,7 +1350,7 @@ public class MRocksDBManager implements IMetaManager {
     Function<String, Boolean> function =
         s -> {
           try {
-            allStorageGroupPath.add(new PartialPath(RocksDBUtils.getPathByInnerName(s)));
+            allStorageGroupPath.add(new PartialPath(RSchemaUtils.getPathByInnerName(s)));
           } catch (IllegalPathException e) {
             logger.error(e.getMessage());
             return false;
@@ -1419,12 +1423,12 @@ public class MRocksDBManager implements IMetaManager {
     List<ShowDevicesResult> res = Collections.synchronizedList(new ArrayList<>());
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
-          String fullPath = RocksDBUtils.getPathByInnerName(new String(a));
+          String fullPath = RSchemaUtils.getPathByInnerName(new String(a));
           try {
             res.add(
                 new ShowDevicesResult(
                     fullPath,
-                    RocksDBUtils.isAligned(b),
+                    RSchemaUtils.isAligned(b),
                     getBelongedToSG(plan.getPath().getNodes())));
           } catch (MetadataException e) {
             logger.error(e.getMessage());
@@ -1442,7 +1446,7 @@ public class MRocksDBManager implements IMetaManager {
     for (int idx = 1; idx < nodes.length; idx++) {
       contextNodeName.add(nodes[idx]);
       String innerName =
-          RocksDBUtils.convertPartialPathToInnerByNodes(
+          RSchemaUtils.convertPartialPathToInnerByNodes(
               contextNodeName.toArray(new String[0]), contextNodeName.size(), NODE_TYPE_SG);
       byte[] queryResult;
       try {
@@ -1451,7 +1455,7 @@ public class MRocksDBManager implements IMetaManager {
         throw new MetadataException(e);
       }
       if (queryResult != null) {
-        return RocksDBUtils.concatNodesName(nodes, 0, idx);
+        return RSchemaUtils.concatNodesName(nodes, 0, idx);
       }
     }
     return StringUtil.EMPTY_STRING;
@@ -1509,7 +1513,7 @@ public class MRocksDBManager implements IMetaManager {
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
           allResult.add(
-              new RMeasurementMNode(RocksDBUtils.getPathByInnerName(new String(a)), b)
+              new RMeasurementMNode(RSchemaUtils.getPathByInnerName(new String(a)), b)
                   .getMeasurementPath());
           return true;
         };
@@ -1525,13 +1529,13 @@ public class MRocksDBManager implements IMetaManager {
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
           MeasurementPath measurementPath =
-              new RMeasurementMNode(RocksDBUtils.getPathByInnerName(new String(a)), b)
+              new RMeasurementMNode(RSchemaUtils.getPathByInnerName(new String(a)), b)
                   .getMeasurementPath();
-          Object tag = RocksDBUtils.parseNodeValue(b, RMNodeValueType.TAGS);
+          Object tag = RSchemaUtils.parseNodeValue(b, RMNodeValueType.TAGS);
           if (!(tag instanceof Map)) {
             tag = Collections.emptyMap();
           }
-          Object attributes = RocksDBUtils.parseNodeValue(b, RMNodeValueType.ATTRIBUTES);
+          Object attributes = RSchemaUtils.parseNodeValue(b, RMNodeValueType.ATTRIBUTES);
           if (!(attributes instanceof Map)) {
             attributes = Collections.emptyMap();
           }
@@ -1603,12 +1607,12 @@ public class MRocksDBManager implements IMetaManager {
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     try {
       String levelKey =
-          RocksDBUtils.getLevelPath(fullPath.getNodes(), fullPath.getNodeLength() - 1);
+          RSchemaUtils.getLevelPath(fullPath.getNodes(), fullPath.getNodeLength() - 1);
       Holder<byte[]> holder = new Holder<>();
-      if (readWriteHandler.keyExistByType(levelKey, RocksDBMNodeType.MEASUREMENT, holder)) {
+      if (readWriteHandler.keyExistByType(levelKey, RMNodeType.MEASUREMENT, holder)) {
         MeasurementSchema measurementSchema =
             (MeasurementSchema)
-                RocksDBUtils.parseNodeValue(holder.getValue(), RMNodeValueType.SCHEMA);
+                RSchemaUtils.parseNodeValue(holder.getValue(), RMNodeValueType.SCHEMA);
         return measurementSchema;
       } else {
         throw new PathNotExistException(fullPath.getFullPath());
@@ -1623,7 +1627,7 @@ public class MRocksDBManager implements IMetaManager {
       throws PathNotExistException {
     List<MeasurementPath> result = new ArrayList<>();
     String nextLevelPathName =
-        RocksDBUtils.convertPartialPathToInner(
+        RSchemaUtils.convertPartialPathToInner(
             devicePath.getFullPath(), devicePath.getNodeLength() + 1, NODE_TYPE_MEASUREMENT);
     Map<byte[], byte[]> allMeasurementPath =
         readWriteHandler.getKeyValueByPrefix(nextLevelPathName);
@@ -1635,7 +1639,7 @@ public class MRocksDBManager implements IMetaManager {
         throw new PathNotExistException(e.getMessage());
       }
       MeasurementSchema measurementSchema =
-          (MeasurementSchema) RocksDBUtils.parseNodeValue(entry.getValue(), RMNodeValueType.SCHEMA);
+          (MeasurementSchema) RSchemaUtils.parseNodeValue(entry.getValue(), RMNodeValueType.SCHEMA);
       result.add(new MeasurementPath(pathName, measurementSchema));
     }
     return result;
@@ -1660,9 +1664,9 @@ public class MRocksDBManager implements IMetaManager {
     try {
       String[] nodes = path.getNodes();
       for (int i = 1; i < nodes.length; i++) {
-        String levelPath = RocksDBUtils.getLevelPath(nodes, i);
+        String levelPath = RSchemaUtils.getLevelPath(nodes, i);
         Holder<byte[]> holder = new Holder<>();
-        if (readWriteHandler.keyExistByType(levelPath, RocksDBMNodeType.STORAGE_GROUP, holder)) {
+        if (readWriteHandler.keyExistByType(levelPath, RMNodeType.STORAGE_GROUP, holder)) {
           node =
               new RStorageGroupMNode(
                   MetaUtils.getStorageGroupPathByLevel(path, i).getFullPath(), holder.getValue());
@@ -1692,7 +1696,7 @@ public class MRocksDBManager implements IMetaManager {
       }
       result.add(
           new RStorageGroupMNode(
-              RocksDBUtils.getPathByInnerName(new String(iterator.key())), iterator.value()));
+              RSchemaUtils.getPathByInnerName(new String(iterator.key())), iterator.value()));
     }
     return result;
   }
@@ -1700,10 +1704,10 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
-    String levelPath = RocksDBUtils.getLevelPath(nodes, nodes.length - 1);
+    String levelPath = RSchemaUtils.getLevelPath(nodes, nodes.length - 1);
     Holder<byte[]> holder = new Holder<>();
     try {
-      if (readWriteHandler.keyExistByType(levelPath, RocksDBMNodeType.ENTITY, holder)) {
+      if (readWriteHandler.keyExistByType(levelPath, RMNodeType.ENTITY, holder)) {
         return new REntityMNode(path.getFullPath(), holder.getValue());
       } else {
         throw new PathNotExistException(path.getFullPath());
@@ -1738,18 +1742,18 @@ public class MRocksDBManager implements IMetaManager {
   @Override
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     String[] nodes = fullPath.getNodes();
-    String key = RocksDBUtils.getLevelPath(nodes, nodes.length - 1);
+    String key = RSchemaUtils.getLevelPath(nodes, nodes.length - 1);
     IMeasurementMNode node = null;
     try {
       Holder<byte[]> holder = new Holder<>();
-      if (readWriteHandler.keyExistByType(key, RocksDBMNodeType.MEASUREMENT, holder)) {
+      if (readWriteHandler.keyExistByType(key, RMNodeType.MEASUREMENT, holder)) {
         node = new RMeasurementMNode(fullPath.getFullPath(), holder.getValue());
-      } else if (readWriteHandler.keyExistByType(key, RocksDBMNodeType.ALISA, holder)) {
+      } else if (readWriteHandler.keyExistByType(key, RMNodeType.ALISA, holder)) {
         byte[] aliasValue = holder.getValue();
         if (aliasValue != null) {
           ByteBuffer byteBuffer = ByteBuffer.wrap(aliasValue);
           ReadWriteIOUtils.readBytes(byteBuffer, 3);
-          byte[] oriKey = RocksDBUtils.readOriginKey(byteBuffer);
+          byte[] oriKey = RSchemaUtils.readOriginKey(byteBuffer);
           node = new RMeasurementMNode(fullPath.getFullPath(), readWriteHandler.get(null, oriKey));
         }
       }
@@ -1773,8 +1777,8 @@ public class MRocksDBManager implements IMetaManager {
       Map<String, String> attributesMap,
       PartialPath path)
       throws MetadataException, IOException {
-    String levelPath = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
-    byte[] originKey = RocksDBUtils.toMeasurementNodeKey(levelPath);
+    String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+    byte[] originKey = RSchemaUtils.toMeasurementNodeKey(levelPath);
     try {
       Lock rawKeyLock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
       if (rawKeyLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
@@ -1791,8 +1795,8 @@ public class MRocksDBManager implements IMetaManager {
             WriteBatch batch = new WriteBatch();
             String[] newAlias = Arrays.copyOf(nodes, nodes.length);
             newAlias[nodes.length - 1] = alias;
-            String newAliasLevel = RocksDBUtils.getLevelPath(newAlias, newAlias.length - 1);
-            byte[] newAliasKey = RocksDBUtils.toAliasNodeKey(newAliasLevel);
+            String newAliasLevel = RSchemaUtils.getLevelPath(newAlias, newAlias.length - 1);
+            byte[] newAliasKey = RSchemaUtils.toAliasNodeKey(newAliasLevel);
 
             Lock newAliasLock = locksPool.computeIfAbsent(newAliasLevel, x -> new ReentrantLock());
             Lock oldAliasLock = null;
@@ -1804,13 +1808,13 @@ public class MRocksDBManager implements IMetaManager {
                 if (readWriteHandler.keyExistByAllTypes(newAliasLevel).existAnyKey()) {
                   throw new PathAlreadyExistException("Alias node has exist: " + newAliasLevel);
                 }
-                batch.put(newAliasKey, RocksDBUtils.buildAliasNodeValue(originKey));
+                batch.put(newAliasKey, RSchemaUtils.buildAliasNodeValue(originKey));
                 if (StringUtils.isNotEmpty(oldAliasStr)) {
                   String[] oldAliasNodes = Arrays.copyOf(nodes, nodes.length);
                   oldAliasNodes[nodes.length - 1] = oldAliasStr;
                   String oldAliasLevel =
-                      RocksDBUtils.getLevelPath(oldAliasNodes, oldAliasNodes.length - 1);
-                  byte[] oldAliasKey = RocksDBUtils.toAliasNodeKey(oldAliasLevel);
+                      RSchemaUtils.getLevelPath(oldAliasNodes, oldAliasNodes.length - 1);
+                  byte[] oldAliasKey = RSchemaUtils.toAliasNodeKey(oldAliasLevel);
                   oldAliasLock = locksPool.computeIfAbsent(oldAliasLevel, x -> new ReentrantLock());
                   if (oldAliasLock.tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
                     lockedOldAlias = true;
@@ -1880,8 +1884,8 @@ public class MRocksDBManager implements IMetaManager {
     if (attributesMap == null || attributesMap.isEmpty()) {
       return;
     }
-    String levelPath = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
-    byte[] key = RocksDBUtils.toMeasurementNodeKey(levelPath);
+    String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+    byte[] key = RSchemaUtils.toMeasurementNodeKey(levelPath);
     Holder<byte[]> holder = new Holder<>();
     try {
       Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
@@ -1922,8 +1926,8 @@ public class MRocksDBManager implements IMetaManager {
       return;
     }
 
-    String levelPath = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
-    byte[] key = RocksDBUtils.toMeasurementNodeKey(levelPath);
+    String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+    byte[] key = RSchemaUtils.toMeasurementNodeKey(levelPath);
     Holder<byte[]> holder = new Holder<>();
     try {
       Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
@@ -1970,8 +1974,8 @@ public class MRocksDBManager implements IMetaManager {
     if (keySet == null || keySet.isEmpty()) {
       return;
     }
-    String levelPath = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
-    byte[] key = RocksDBUtils.toMeasurementNodeKey(levelPath);
+    String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+    byte[] key = RSchemaUtils.toMeasurementNodeKey(levelPath);
     Holder<byte[]> holder = new Holder<>();
     try {
       Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
@@ -2026,8 +2030,8 @@ public class MRocksDBManager implements IMetaManager {
       return;
     }
 
-    String levelPath = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
-    byte[] key = RocksDBUtils.toMeasurementNodeKey(levelPath);
+    String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+    byte[] key = RSchemaUtils.toMeasurementNodeKey(levelPath);
     Holder<byte[]> holder = new Holder<>();
     try {
       Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());
@@ -2077,8 +2081,8 @@ public class MRocksDBManager implements IMetaManager {
       return;
     }
 
-    String levelPath = RocksDBUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
-    byte[] nodeKey = RocksDBUtils.toMeasurementNodeKey(levelPath);
+    String levelPath = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
+    byte[] nodeKey = RSchemaUtils.toMeasurementNodeKey(levelPath);
     Holder<byte[]> holder = new Holder<>();
     try {
       Lock lock = locksPool.computeIfAbsent(levelPath, x -> new ReentrantLock());

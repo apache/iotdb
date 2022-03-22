@@ -23,15 +23,15 @@ import org.rocksdb.InfoLogLevel;
 import org.rocksdb.Logger;
 import org.rocksdb.Options;
 
-public class RockDBLogger extends Logger {
+public class RSchemaLogger extends Logger {
   private final org.slf4j.Logger logger;
 
-  public RockDBLogger(Options options, org.slf4j.Logger logger) {
+  public RSchemaLogger(Options options, org.slf4j.Logger logger) {
     super(options);
     this.logger = logger;
   }
 
-  public RockDBLogger(DBOptions options, org.slf4j.Logger logger) {
+  public RSchemaLogger(DBOptions options, org.slf4j.Logger logger) {
     super(options);
     this.logger = logger;
   }

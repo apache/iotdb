@@ -22,8 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.SchemaRegion;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.rocksdb.RMNodeValueType;
-import org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils;
+import org.apache.iotdb.db.metadata.rocksdb.RSchemaUtils;
 
 import java.io.IOException;
 
@@ -43,7 +42,7 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
 
   public RStorageGroupMNode(String fullPath, byte[] value) {
     super(fullPath);
-    Object ttl = RocksDBUtils.parseNodeValue(value, RMNodeValueType.TTL);
+    Object ttl = RSchemaUtils.parseNodeValue(value, RMNodeValueType.TTL);
     if (ttl == null) {
       ttl = IoTDBDescriptor.getInstance().getConfig().getDefaultTTL();
     }

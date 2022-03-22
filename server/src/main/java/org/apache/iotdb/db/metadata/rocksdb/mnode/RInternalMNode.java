@@ -21,9 +21,8 @@ package org.apache.iotdb.db.metadata.rocksdb.mnode;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.rocksdb.RockDBConstants;
-import org.apache.iotdb.db.metadata.rocksdb.RocksDBMNodeType;
-import org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils;
+import org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants;
+import org.apache.iotdb.db.metadata.rocksdb.RSchemaUtils;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import org.rocksdb.RocksDBException;
@@ -50,7 +49,7 @@ public class RInternalMNode extends RMNode {
   /** check whether the MNode has a child with the name */
   @Override
   public boolean hasChild(String name) {
-    String childPathName = fullPath.concat(RockDBConstants.PATH_SEPARATOR).concat(name);
+    String childPathName = fullPath.concat(RSchemaConstants.PATH_SEPARATOR).concat(name);
     IMNode node = getNodeBySpecifiedPath(childPathName);
     return node != null;
   }
@@ -58,7 +57,7 @@ public class RInternalMNode extends RMNode {
   /** get the child with the name */
   @Override
   public IMNode getChild(String name) {
-    String childPathName = fullPath.concat(RockDBConstants.PATH_SEPARATOR).concat(name);
+    String childPathName = fullPath.concat(RSchemaConstants.PATH_SEPARATOR).concat(name);
     return getNodeBySpecifiedPath(childPathName);
   }
 
@@ -72,30 +71,30 @@ public class RInternalMNode extends RMNode {
   @Override
   public IMNode addChild(String name, IMNode child) {
     child.setParent(this);
-    String childName = fullPath.concat(RockDBConstants.PATH_SEPARATOR).concat(name);
-    int childNameMaxLevel = RocksDBUtils.getLevelByPartialPath(childName);
+    String childName = fullPath.concat(RSchemaConstants.PATH_SEPARATOR).concat(name);
+    int childNameMaxLevel = RSchemaUtils.getLevelByPartialPath(childName);
     try {
       if (child instanceof RStorageGroupMNode) {
         String innerName =
-            RocksDBUtils.convertPartialPathToInner(
-                childName, childNameMaxLevel, RocksDBMNodeType.STORAGE_GROUP.getValue());
+            RSchemaUtils.convertPartialPathToInner(
+                childName, childNameMaxLevel, RMNodeType.STORAGE_GROUP.getValue());
         long ttl = ((RStorageGroupMNode) child).getDataTTL();
         readWriteHandler.updateNode(
-            innerName.getBytes(), RocksDBUtils.updateTTL(RockDBConstants.DEFAULT_NODE_VALUE, ttl));
+            innerName.getBytes(), RSchemaUtils.updateTTL(RSchemaConstants.DEFAULT_NODE_VALUE, ttl));
       } else if (child instanceof REntityMNode) {
         String innerName =
-            RocksDBUtils.convertPartialPathToInner(
-                childName, childNameMaxLevel, RocksDBMNodeType.ENTITY.getValue());
+            RSchemaUtils.convertPartialPathToInner(
+                childName, childNameMaxLevel, RMNodeType.ENTITY.getValue());
         readWriteHandler.updateNode(innerName.getBytes(), new byte[] {});
       } else if (child instanceof RInternalMNode) {
         String innerName =
-            RocksDBUtils.convertPartialPathToInner(
-                childName, childNameMaxLevel, RocksDBMNodeType.INTERNAL.getValue());
+            RSchemaUtils.convertPartialPathToInner(
+                childName, childNameMaxLevel, RMNodeType.INTERNAL.getValue());
         readWriteHandler.updateNode(innerName.getBytes(), new byte[] {});
       } else if (child instanceof RMeasurementMNode) {
         String innerName =
-            RocksDBUtils.convertPartialPathToInner(
-                childName, childNameMaxLevel, RocksDBMNodeType.MEASUREMENT.getValue());
+            RSchemaUtils.convertPartialPathToInner(
+                childName, childNameMaxLevel, RMNodeType.MEASUREMENT.getValue());
         // todo all existing attributes of the measurementNode need to be written
         readWriteHandler.updateNode(innerName.getBytes(), new byte[] {});
       }
@@ -125,11 +124,11 @@ public class RInternalMNode extends RMNode {
   /** delete a child */
   @Override
   public void deleteChild(String name) {
-    String childPathName = fullPath.concat(RockDBConstants.PATH_SEPARATOR).concat(name);
-    int nodeNameMaxLevel = RocksDBUtils.getLevelByPartialPath(childPathName);
-    for (RocksDBMNodeType type : RocksDBMNodeType.values()) {
+    String childPathName = fullPath.concat(RSchemaConstants.PATH_SEPARATOR).concat(name);
+    int nodeNameMaxLevel = RSchemaUtils.getLevelByPartialPath(childPathName);
+    for (RMNodeType type : RMNodeType.values()) {
       byte[] childInnerName =
-          RocksDBUtils.convertPartialPathToInner(childPathName, nodeNameMaxLevel, type.getValue())
+          RSchemaUtils.convertPartialPathToInner(childPathName, nodeNameMaxLevel, type.getValue())
               .getBytes();
       try {
         if (readWriteHandler.keyExist(childInnerName)) {
