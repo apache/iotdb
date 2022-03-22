@@ -24,8 +24,10 @@ import java.util.Map;
 
 public class SchemaPartitionInfo {
 
+  // TODO: Serialize and Deserialize
   // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionID>>
   private final Map<String, Map<Integer, Integer>> schemaPartitionTable;
+  // TODO: Serialize and Deserialize
   // Map<SchemaRegionID, List<DataNodeID>>
   private final Map<Integer, List<Integer>> schemaRegionDataNodesMap;
 
@@ -41,9 +43,20 @@ public class SchemaPartitionInfo {
     schemaPartitionTable.get(storageGroup).put(deviceGroup, schemaRegion);
   }
 
+  public Integer getSchemaPartition(String storageGroup, int deviceGroup) {
+    if (schemaPartitionTable.containsKey(storageGroup)) {
+      return schemaPartitionTable.get(storageGroup).get(deviceGroup);
+    }
+    return null;
+  }
+
   public void createSchemaRegion(int schemaRegion, List<Integer> dataNode) {
     if (!schemaRegionDataNodesMap.containsKey(schemaRegion)) {
       schemaRegionDataNodesMap.put(schemaRegion, dataNode);
     }
+  }
+
+  public List<Integer> getSchemaRegionLocation(int schemaRegionGroup) {
+    return schemaRegionDataNodesMap.get(schemaRegionGroup);
   }
 }

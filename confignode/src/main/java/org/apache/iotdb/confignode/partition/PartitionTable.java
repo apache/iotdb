@@ -46,17 +46,23 @@ public class PartitionTable {
       ConfigNodeDescriptor.getInstance().getConf().getDataRegionCount();
 
   private final ReentrantReadWriteLock storageGroupLock;
+  // TODO: Serialize and Deserialize
   private final Map<String, StorageGroupSchema> storageGroupsMap;
 
   private final ReentrantReadWriteLock dataNodeLock;
+  // TODO: Serialize and Deserialize
   private int nextSchemaRegionGroup = 0;
+  // TODO: Serialize and Deserialize
   private int nextDataRegionGroup = 0;
+  // TODO: Serialize and Deserialize
   private final Map<Integer, DataNodeInfo> dataNodesMap; // Map<DataNodeID, DataNodeInfo>
 
   private final ReentrantReadWriteLock schemaLock;
+  // TODO: Serialize and Deserialize
   private final SchemaPartitionInfo schemaPartition;
 
   private final ReentrantReadWriteLock dataLock;
+  // TODO: Serialize and Deserialize
   private final DataPartitionInfo dataPartition;
 
   public PartitionTable() {
@@ -157,6 +163,9 @@ public class PartitionTable {
   private void regionAllocation(StorageGroupSchema schema) {
     // TODO: 2PL may cause deadlock, remember to optimize
     dataNodeLock.writeLock().lock();
+    schemaLock.writeLock().lock();
+    dataLock.writeLock().lock();
+
     // TODO: Use CopySet algorithm to optimize region allocation policy
     for (int i = 0; i < schemaRegionCount; i++) {
       List<Integer> dataNodeList = new ArrayList<>(dataNodesMap.keySet());
@@ -164,6 +173,8 @@ public class PartitionTable {
       for (int j = 0; j < regionReplicaCount; j++) {
         dataNodesMap.get(dataNodeList.get(j)).addSchemaRegionGroup(nextSchemaRegionGroup);
       }
+      schemaPartition.createSchemaRegion(
+          nextSchemaRegionGroup, dataNodeList.subList(0, regionReplicaCount));
       schema.addSchemaRegionGroup(nextSchemaRegionGroup);
       nextSchemaRegionGroup += 1;
     }
@@ -173,9 +184,14 @@ public class PartitionTable {
       for (int j = 0; j < regionReplicaCount; j++) {
         dataNodesMap.get(dataNodeList.get(j)).addDataRegionGroup(nextDataRegionGroup);
       }
+      dataPartition.createDataRegion(
+          nextDataRegionGroup, dataNodeList.subList(0, regionReplicaCount));
       schema.addDataRegionGroup(nextDataRegionGroup);
       nextDataRegionGroup += 1;
     }
+
+    dataLock.writeLock().unlock();
+    schemaLock.writeLock().unlock();
     dataNodeLock.writeLock().lock();
   }
 

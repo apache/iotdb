@@ -28,6 +28,7 @@ public class DataPartitionInfo {
   // TODO: Serialize and Deserialize
   // Map<StorageGroup, Map<DeviceGroupID, Map<TimeInterval, List<DataRegionID>>>>
   private final Map<String, Map<Integer, Map<Long, List<Integer>>>> dataPartitionTable;
+  // TODO: Serialize and Deserialize
   // Map<DataRegionID, List<DataNodeID>>
   private final Map<Integer, List<Integer>> dataRegionDataNodesMap;
 
@@ -55,12 +56,25 @@ public class DataPartitionInfo {
     dataPartitionTable.get(storageGroup).get(deviceGroup).get(timeInterval).add(dataRegionGroup);
   }
 
-  public void createDataRegion(int dataRegionGroup, List<Integer> dataNodeList) {
-    if (!dataRegionDataNodesMap.containsKey(dataRegionGroup)) {
-      dataRegionDataNodesMap.put(dataRegionGroup, dataNodeList);
+  public List<Integer> getDataPartition(String storageGroup, int deviceGroup, long timeInterval) {
+    if (dataPartitionTable.containsKey(storageGroup)) {
+      if (dataPartitionTable.get(storageGroup).containsKey(deviceGroup)) {
+        return dataPartitionTable.get(storageGroup).get(deviceGroup).get(timeInterval);
+      }
     }
+    return null;
+  }
+
+  public void createDataRegion(int dataRegionGroup, List<Integer> dataNodeList) {
+    dataRegionDataNodesMap.put(dataRegionGroup, dataNodeList);
+  }
+
+  public List<Integer> getDataRegionLocation(int dataRegionGroup) {
+    return dataRegionDataNodesMap.get(dataRegionGroup);
   }
 
   public void updateDataPartitionRule(
-      String StorageGroup, int deviceGroup, DataPartitionRule rule) {}
+      String StorageGroup, int deviceGroup, DataPartitionRule rule) {
+    // TODO: Data partition policy by @YongzaoDan
+  }
 }

@@ -109,10 +109,12 @@ public class ConfigManager {
                 new Endpoint(config.getRpcAddress(), config.getInternalPort()))));
   }
 
+  /** Transmit PhysicalPlan to confignode.consensus.statemachine */
   public ConsensusWriteResponse write(PhysicalPlan plan) {
     return this.consensusImpl.write(this.consensusGroupId, plan);
   }
 
+  /** Transmit PhysicalPlan to confignode.consensus.statemachine */
   public ConsensusReadResponse read(PhysicalPlan plan) {
     return this.consensusImpl.read(this.consensusGroupId, plan);
   }
