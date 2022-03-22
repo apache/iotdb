@@ -204,6 +204,19 @@ public class IoTDB implements IoTDBMBean {
 
   private void initSchemaEngine() {
     long time = System.currentTimeMillis();
+    try {
+      if (IoTDBDescriptor.getInstance().getConfig().getMetadataManagerType()
+          == MetadataManagerType.ROCKSDB_MANAGER) {
+        metaManager = new MRocksDBManager();
+        logger.info("Use MRocksDBManager to manage metadata");
+      } else {
+        metaManager = SchemaEngine.getInstance();
+        logger.info("Use MManager to manage metadata");
+      }
+    } catch (Exception e) {
+      logger.error("create meta manager fail", e);
+      System.exit(1);
+    }
     IoTDB.metaManager.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
