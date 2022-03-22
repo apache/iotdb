@@ -43,6 +43,7 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
@@ -2183,23 +2184,23 @@ public class TSServiceImpl implements TSIService.Iface {
       LOGGER.error("double write deserialization failed.", e);
     }
 
-    if (physicalPlan instanceof InsertTabletPlan) {
-      LOGGER.info(
-          "DoubleWrite receive: {}, count: {}",
-          physicalPlan.getPaths().get(0),
-          ((InsertTabletPlan) physicalPlan).getRowCount());
+    if (physicalPlan instanceof InsertPlan) {
+      LOGGER.info("DoubleWrite receive: {}", physicalPlan.getPaths().get(0));
     }
 
-    return executeNonQueryPlan(physicalPlan);
+    try {
+      return serviceProvider.executeNonQuery(physicalPlan)
+          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
+          : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } catch (Exception e) {
+      return onNonQueryException(e, OperationType.EXECUTE_NON_QUERY_PLAN);
+    }
   }
 
   private void transmitDoubleWrite(PhysicalPlan physicalPlan) {
 
-    if (physicalPlan instanceof InsertTabletPlan) {
-      LOGGER.info(
-          "DoubleWrite transmit: {}, count: {}",
-          physicalPlan.getPaths().get(0),
-          ((InsertTabletPlan) physicalPlan).getRowCount());
+    if (physicalPlan instanceof InsertPlan) {
+      LOGGER.info("DoubleWrite transmit: {}", physicalPlan.getPaths().get(0));
     } else {
       return;
     }
