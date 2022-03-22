@@ -45,11 +45,10 @@ public class PartitionTable {
   private static final int dataRegionCount =
       ConfigNodeDescriptor.getInstance().getConf().getDataRegionCount();
 
-  private final ReentrantReadWriteLock storageGroupLock;
+  private final ReentrantReadWriteLock lock;
   // TODO: Serialize and Deserialize
   private final Map<String, StorageGroupSchema> storageGroupsMap;
 
-  private final ReentrantReadWriteLock dataNodeLock;
   // TODO: Serialize and Deserialize
   private int nextDataNode = 0;
   // TODO: Serialize and Deserialize
@@ -59,32 +58,24 @@ public class PartitionTable {
   // TODO: Serialize and Deserialize
   private final Map<Integer, DataNodeInfo> dataNodesMap; // Map<DataNodeID, DataNodeInfo>
 
-  private final ReentrantReadWriteLock schemaLock;
   // TODO: Serialize and Deserialize
   private final SchemaPartitionInfo schemaPartition;
 
-  private final ReentrantReadWriteLock dataLock;
   // TODO: Serialize and Deserialize
   private final DataPartitionInfo dataPartition;
 
   public PartitionTable() {
-    this.storageGroupLock = new ReentrantReadWriteLock();
+    this.lock = new ReentrantReadWriteLock();
     this.storageGroupsMap = new HashMap<>();
-
-    this.dataNodeLock = new ReentrantReadWriteLock();
     this.dataNodesMap = new HashMap<>();
-
-    this.schemaLock = new ReentrantReadWriteLock();
     this.schemaPartition = new SchemaPartitionInfo();
-
-    this.dataLock = new ReentrantReadWriteLock();
     this.dataPartition = new DataPartitionInfo();
   }
 
   public TSStatus registerDataNode(RegisterDataNodePlan plan) {
     TSStatus result;
     DataNodeInfo info = plan.getInfo();
-    dataNodeLock.writeLock().lock();
+    lock.writeLock().lock();
 
     if (dataNodesMap.containsValue(info)) {
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
@@ -99,13 +90,13 @@ public class PartitionTable {
       nextDataNode += 1;
     }
 
-    dataNodeLock.writeLock().unlock();
+    lock.writeLock().unlock();
     return result;
   }
 
   public Map<Integer, DataNodeInfo> getDataNodeInfo(QueryDataNodeInfoPlan plan) {
     Map<Integer, DataNodeInfo> result = new HashMap<>();
-    dataNodeLock.readLock().lock();
+    lock.readLock().lock();
 
     if (plan.getDataNodeID() == -1) {
       result.putAll(dataNodesMap);
@@ -117,13 +108,13 @@ public class PartitionTable {
       }
     }
 
-    dataNodeLock.readLock().unlock();
+    lock.readLock().unlock();
     return result;
   }
 
   public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
     TSStatus result;
-    storageGroupLock.writeLock().lock();
+    lock.writeLock().lock();
 
     if (dataNodesMap.size() < regionReplicaCount) {
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
@@ -141,16 +132,11 @@ public class PartitionTable {
       }
     }
 
-    storageGroupLock.writeLock().unlock();
+    lock.writeLock().unlock();
     return result;
   }
 
   private void regionAllocation(StorageGroupSchema schema) {
-    // TODO: 2PL may cause deadlock, remember to optimize
-    dataNodeLock.writeLock().lock();
-    schemaLock.writeLock().lock();
-    dataLock.writeLock().lock();
-
     // TODO: Use CopySet algorithm to optimize region allocation policy
     for (int i = 0; i < schemaRegionCount; i++) {
       List<Integer> dataNodeList = new ArrayList<>(dataNodesMap.keySet());
@@ -174,13 +160,12 @@ public class PartitionTable {
       schema.addDataRegionGroup(nextDataRegionGroup);
       nextDataRegionGroup += 1;
     }
-
-    dataLock.writeLock().unlock();
-    schemaLock.writeLock().unlock();
-    dataNodeLock.writeLock().lock();
   }
 
   public List<StorageGroupSchema> getStorageGroupSchema() {
-    return new ArrayList<>(storageGroupsMap.values());
+    lock.readLock().lock();
+    List<StorageGroupSchema> result = new ArrayList<>(storageGroupsMap.values());
+    lock.readLock().unlock();
+    return result;
   }
 }

@@ -32,7 +32,6 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.standalone.StandAloneConsensus;
-import org.apache.iotdb.consensus.statemachine.EmptyStateMachine;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,15 +88,7 @@ public class ConfigManager {
   /** Build ConfigNodeGroup ConsensusLayer */
   private void setConsensusLayer(ConfigNodeConf config) {
     // TODO: Support other consensus protocol
-    this.consensusImpl =
-        new StandAloneConsensus(
-            id -> {
-              if (id.getType() == GroupType.PartitionRegion) {
-                return new StandAloneStateMachine();
-              } else {
-                return new EmptyStateMachine();
-              }
-            });
+    this.consensusImpl = new StandAloneConsensus(id -> new StandAloneStateMachine());
     this.consensusImpl.start();
 
     this.consensusGroupId = new ConsensusGroupId(GroupType.PartitionRegion, 0);

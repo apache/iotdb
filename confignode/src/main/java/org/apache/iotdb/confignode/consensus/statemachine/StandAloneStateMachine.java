@@ -60,4 +60,14 @@ public class StandAloneStateMachine extends BaseStateMachine {
     }
     return result;
   }
+
+  @Override
+  public void start() {
+    // do nothing
+  }
+
+  @Override
+  public void stop() {
+    // do nothing
+  }
 }

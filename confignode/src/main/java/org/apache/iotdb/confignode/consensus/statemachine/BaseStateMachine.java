@@ -36,16 +36,6 @@ public abstract class BaseStateMachine implements IStateMachine {
   private static final Logger LOGGER = LoggerFactory.getLogger(BaseStateMachine.class);
 
   @Override
-  public void start() {
-    // do nothing
-  }
-
-  @Override
-  public void stop() {
-    // do nothing
-  }
-
-  @Override
   public TSStatus write(IConsensusRequest request) {
     PhysicalPlan plan;
     if (request instanceof ByteBufferConsensusRequest) {

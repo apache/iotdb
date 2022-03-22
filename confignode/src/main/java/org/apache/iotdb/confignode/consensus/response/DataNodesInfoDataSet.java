@@ -39,12 +39,4 @@ public class DataNodesInfoDataSet implements DataSet {
   public Map<Integer, DataNodeInfo> getInfoMap() {
     return this.infoMap;
   }
-
-  public DataNodeInfo getInfoWithMaximumID() {
-    int maxKey = Integer.MIN_VALUE;
-    for (int key : infoMap.keySet()) {
-      maxKey = Math.max(maxKey, key);
-    }
-    return infoMap.get(maxKey);
-  }
 }
