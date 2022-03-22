@@ -22,16 +22,23 @@ import org.apache.iotdb.commons.hash.DeviceGroupHashExecutor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.partition.PartitionTable;
-import org.apache.iotdb.confignode.service.balancer.LoadBalancer;
+import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
+import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.common.ConsensusGroupId;
+import org.apache.iotdb.consensus.common.Endpoint;
+import org.apache.iotdb.consensus.common.GroupType;
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.standalone.StandAloneConsensus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.Collections;
 
 /**
  * ConfigManager maintains consistency between PartitionTables in the ConfigNodeGroup. Expose the
@@ -41,12 +48,10 @@ public class ConfigManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
 
+  private IConsensus consensusImpl;
+  private ConsensusGroupId consensusGroupId;
+
   private DeviceGroupHashExecutor hashExecutor;
-
-  private Lock partitionTableLock;
-  private PartitionTable partitionTable;
-
-  private LoadBalancer loadBalancer;
 
   @TestOnly
   public ConfigManager(String hashExecutorClass, int deviceGroupCount) {
@@ -57,13 +62,10 @@ public class ConfigManager {
     ConfigNodeConf config = ConfigNodeDescriptor.getInstance().getConf();
 
     setHashExecutor(config.getDeviceGroupHashExecutorClass(), config.getDeviceGroupCount());
-
-    this.partitionTableLock = new ReentrantLock();
-    this.partitionTable = new PartitionTable();
-
-    this.loadBalancer = new LoadBalancer(partitionTableLock, partitionTable);
+    setConsensusLayer(config);
   }
 
+  /** Build DeviceGroupHashExecutor */
   private void setHashExecutor(String hashExecutorClass, int deviceGroupCount) {
     try {
       Class<?> executor = Class.forName(hashExecutorClass);
@@ -83,9 +85,30 @@ public class ConfigManager {
     return hashExecutor.getDeviceGroupID(device);
   }
 
-  // TODO: Interfaces for metadata operations
+  /** Build ConfigNodeGroup ConsensusLayer */
+  private void setConsensusLayer(ConfigNodeConf config) {
+    // TODO: Support other consensus protocol
+    this.consensusImpl = new StandAloneConsensus(id -> new PartitionRegionStateMachine());
+    this.consensusImpl.start();
 
-  // TODO: Interfaces for data operations
+    this.consensusGroupId = new ConsensusGroupId(GroupType.PartitionRegion, 0);
+    this.consensusImpl.addConsensusGroup(
+        this.consensusGroupId,
+        Collections.singletonList(
+            new Peer(
+                this.consensusGroupId,
+                new Endpoint(config.getRpcAddress(), config.getInternalPort()))));
+  }
+
+  /** Transmit PhysicalPlan to confignode.consensus.statemachine */
+  public ConsensusWriteResponse write(PhysicalPlan plan) {
+    return this.consensusImpl.write(this.consensusGroupId, plan);
+  }
+
+  /** Transmit PhysicalPlan to confignode.consensus.statemachine */
+  public ConsensusReadResponse read(PhysicalPlan plan) {
+    return this.consensusImpl.read(this.consensusGroupId, plan);
+  }
 
   // TODO: Interfaces for LoadBalancer control
 }
