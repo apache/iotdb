@@ -107,7 +107,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
@@ -1768,8 +1767,7 @@ public class MTree implements Serializable {
     List<String> resSet = new ArrayList<>();
     for (PartialPath sgPath : initPath) {
       CollectorTraverser<Set<String>> setTemplatePaths =
-          new CollectorTraverser<Set<String>>(
-              this.root, sgPath.concatNode(MULTI_LEVEL_PATH_WILDCARD)) {
+          new CollectorTraverser<Set<String>>(this.root, sgPath) {
             @Override
             protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
                 throws MetadataException {
@@ -1798,6 +1796,7 @@ public class MTree implements Serializable {
               return false;
             }
           };
+      setTemplatePaths.setPrefixMatch(true);
       setTemplatePaths.traverse();
     }
     return resSet;
@@ -1813,8 +1812,7 @@ public class MTree implements Serializable {
 
     for (PartialPath sgPath : initPath) {
       CollectorTraverser<Set<String>> usingTemplatePaths =
-          new CollectorTraverser<Set<String>>(
-              this.root, sgPath.concatNode(MULTI_LEVEL_PATH_WILDCARD)) {
+          new CollectorTraverser<Set<String>>(this.root, sgPath) {
             @Override
             protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
                 throws MetadataException {
@@ -1845,7 +1843,7 @@ public class MTree implements Serializable {
               return false;
             }
           };
-
+      usingTemplatePaths.setPrefixMatch(true);
       usingTemplatePaths.traverse();
     }
     return result;

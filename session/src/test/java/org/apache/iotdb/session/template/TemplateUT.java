@@ -151,6 +151,12 @@ public class TemplateUT {
         new HashSet<>(Arrays.asList("root.sg.v1", "root.sg.v2", "root.sg.v3")),
         new HashSet<>(session.showPathsTemplateSetOn("template1")));
 
+    session.setStorageGroup("root.test.sgt");
+    session.setSchemaTemplate("template1", "root.test.sgt");
+    assertEquals(
+        new HashSet<>(Arrays.asList("root.test.sgt", "root.sg.v1", "root.sg.v2", "root.sg.v3")),
+        new HashSet<>(session.showPathsTemplateSetOn("template1")));
+
     assertEquals(
         new HashSet<>(Arrays.asList()),
         new HashSet<>(session.showPathsTemplateUsingOn("template1")));
@@ -171,7 +177,8 @@ public class TemplateUT {
                 "root.sg.v3",
                 "root.sg.v4",
                 "root.sg.v5",
-                "root.sg.v6")),
+                "root.sg.v6",
+                "root.test.sgt")),
         new HashSet<>(session.showPathsTemplateSetOn("*")));
 
     session.insertRecord(
@@ -195,6 +202,21 @@ public class TemplateUT {
     assertEquals(
         new HashSet<>(Arrays.asList("root.sg.v1", "root.sg.v5")),
         new HashSet<>(session.showPathsTemplateUsingOn("*")));
+
+    session.insertRecord(
+        "root.test.sgt.GPS",
+        110L,
+        Arrays.asList("x"),
+        Arrays.asList(TSDataType.FLOAT),
+        Arrays.asList(1.0f));
+
+    assertEquals(
+        new HashSet<>(Arrays.asList("root.sg.v1", "root.sg.v5", "root.test.sgt")),
+        new HashSet<>(session.showPathsTemplateUsingOn("*")));
+
+    assertEquals(
+        new HashSet<>(Arrays.asList("root.test.sgt", "root.sg.v1")),
+        new HashSet<>(session.showPathsTemplateUsingOn("template1")));
   }
 
   @Test
