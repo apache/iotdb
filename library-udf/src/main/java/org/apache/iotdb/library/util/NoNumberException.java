@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,32 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.library.util;
 
-package org.apache.iotdb.db.metrics.micrometer.registry;
-
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-
-import io.micrometer.core.instrument.step.StepRegistryConfig;
-
-import java.time.Duration;
-
-public interface IoTDBRegistryConfig extends StepRegistryConfig {
-  IoTDBRegistryConfig DEFAULT =
-      new IoTDBRegistryConfig() {
-        @Override
-        public String get(String key) {
-          return null;
-        }
-
-        @Override
-        public Duration step() {
-          return Duration.ofSeconds(
-              MetricConfigDescriptor.getInstance().getMetricConfig().getPushPeriodInSecond());
-        }
-      };
+/** throw when the value got is not numeric. */
+public class NoNumberException extends Exception {
 
   @Override
-  default String prefix() {
-    return "iotdb";
+  public String toString() {
+    String s = "The value of the input time series is not numeric.\n";
+    return s + super.toString();
   }
 }
