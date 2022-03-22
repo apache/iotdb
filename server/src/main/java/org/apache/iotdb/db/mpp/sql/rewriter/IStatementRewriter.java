@@ -21,13 +21,13 @@ package org.apache.iotdb.db.mpp.sql.rewriter;
 
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.mpp.sql.analyze.AnalysisContext;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 
 /** provide a statement, rewriter it. */
 @FunctionalInterface
 public interface IStatementRewriter {
 
-  Statement rewrite(Statement statement, AnalysisContext context)
+  Statement rewrite(Statement statement, MPPQueryContext context)
       throws StatementAnalyzeException, PathNumOverLimitException;
 }
