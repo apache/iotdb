@@ -90,13 +90,11 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   @Override
   public int write(Tablet tablet) throws WriteProcessException {
     int maxPointCount = 0, pointCount;
-    boolean needCountPoints;
     List<MeasurementSchema> timeseries = tablet.getSchemas();
     for (int column = 0; column < timeseries.size(); column++) {
       String measurementId = timeseries.get(column).getMeasurementId();
       TSDataType tsDataType = timeseries.get(column).getType();
       pointCount = 0;
-      needCountPoints = maxPointCount < tablet.rowSize;
       for (int row = 0; row < tablet.rowSize; row++) {
         // check isNull in tablet
         if (tablet.bitMaps != null
@@ -106,7 +104,7 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
         }
         long time = tablet.timestamps[row];
         checkIsHistoryData(measurementId, time);
-        if (needCountPoints) pointCount++;
+        pointCount++;
         switch (tsDataType) {
           case INT32:
             chunkWriters.get(measurementId).write(time, ((int[]) tablet.values[column])[row]);
@@ -132,7 +130,7 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
         }
         lastTimeMap.put(measurementId, time);
       }
-      if (maxPointCount < pointCount) maxPointCount = pointCount;
+      maxPointCount = Math.max(pointCount, maxPointCount);
     }
     return maxPointCount;
   }
