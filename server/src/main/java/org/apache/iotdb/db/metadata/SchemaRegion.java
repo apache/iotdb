@@ -140,6 +140,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *   <li>Interfaces only for Cluster module usage
  *   <li>Interfaces and Implementation for InsertPlan process
  *   <li>Interfaces and Implementation for Template operations
+ *   <li>Interfaces for Trigger
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos

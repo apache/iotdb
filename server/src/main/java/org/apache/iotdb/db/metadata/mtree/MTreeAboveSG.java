@@ -65,6 +65,8 @@ import java.util.TreeSet;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 
+// Since the MTreeAboveSG is all stored in memory, thus it is not restricted to manage MNode through
+// MTreeStore.
 public class MTreeAboveSG {
 
   private static final Logger logger = LoggerFactory.getLogger(MTreeAboveSG.class);

@@ -134,6 +134,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *   <li>Interfaces for lastCache operations
  *   <li>Interfaces and Implementation for InsertPlan process
  *   <li>Interfaces and Implementation for Template operations
+ *   <li>Interfaces for Trigger
  *   <li>TestOnly Interfaces
  * </ol>
  */
