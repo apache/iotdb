@@ -31,7 +31,7 @@
             <td rowspan="3">0.13.0</td>
             <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.0/apache-iotdb-0.13.0-all-bin.zip">All-in-one</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-all-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.2/apache-iotdb-0.13.0-all-bin.zip.asc">ASC</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-all-bin.zip.asc">ASC</a></td>
             <td rowspan="3"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.0/apache-iotdb-0.13.0-source-release.zip">源代码</a></td>
             <td rowspan="3"><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-source-release.zip.sha512">SHA512</a></td>
             <td rowspan="3"><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-source-release.zip.asc">ASC</a></td>
@@ -100,6 +100,8 @@
   * 我们推荐提前备份整个 data 目录，以备回滚。
   * 下载最新 0.13 版本，解压并修改配置文件，尤其是 **<font color=red>时间戳精度等首次启动后不可修改的配置参数 </font>**。并将各数据目录都指向备份的或者 v0.12 原来使用的数据目录。
   * 停止 v0.12 的实例，启动 v0.13 的实例。
+  * **<font color=red>执行上述步骤后, 请确认`data/system/schema/system.properties`文件中的 `iotdb_version` 是 `0.13.x`.
+如果不是，请手动修改为`0.13.x`。</font>**
   * __注意：0.13 的配置文件进行了较大改动，因此不要直接将 0.12 的配置文件用于 0.13__
 
 - 如何从 v0.11.x 或 v0.10.x 升级到 v0.12.x? 

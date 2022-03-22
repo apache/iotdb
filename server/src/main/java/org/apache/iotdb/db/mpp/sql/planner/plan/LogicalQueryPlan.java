@@ -26,8 +26,9 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
  * plan node tree.
  */
 public class LogicalQueryPlan {
-  private MPPQueryContext context;
-  private PlanNode rootNode;
+
+  private final MPPQueryContext context;
+  private final PlanNode rootNode;
 
   public LogicalQueryPlan(MPPQueryContext context, PlanNode rootNode) {
     this.context = context;
