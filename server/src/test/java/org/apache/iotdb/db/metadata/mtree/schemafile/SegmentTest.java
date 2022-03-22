@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.*;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
@@ -38,6 +39,7 @@ public class SegmentTest {
 
   @Before
   public void setUp() {
+    IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(true);
     // EnvironmentUtils.envSetUp();
   }
 

@@ -132,14 +132,24 @@ public class MTreeBelowSG implements Serializable {
   private int levelOfSG;
 
   // region MTree initialization, clear and serialization
-  public MTreeBelowSG(PartialPath storageGroup) throws MetadataException, IOException {
+  public MTreeBelowSG(IStorageGroupMNode storageGroupMNode) throws MetadataException, IOException {
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePersistentSchema()) {
-      store = new CachedMTreeStore();
+      store = new CachedMTreeStore(storageGroupMNode);
     } else {
-      store = new MemMTreeStore();
+      store = new MemMTreeStore(storageGroupMNode);
     }
 
-    store.init(storageGroup, true);
+    this.storageGroupMNode = storageGroupMNode;
+    levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
+  }
+
+  public MTreeBelowSG(PartialPath storageGroup) throws MetadataException, IOException {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnablePersistentSchema()) {
+      store = new CachedMTreeStore(storageGroup);
+    } else {
+      store = new MemMTreeStore(storageGroup, true);
+    }
+
     storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
     levelOfSG = storageGroup.getNodeLength() - 1;
   }

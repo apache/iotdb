@@ -22,9 +22,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-
-import java.io.IOException;
 
 /**
  * This interface defines the basic access methods of an MTreeStore.
@@ -32,8 +29,6 @@ import java.io.IOException;
  * <p>MTreeStore could be implemented as memory-based or disk-based for different scenarios.
  */
 public interface IMTreeStore {
-
-  void init(PartialPath rootPath, boolean isStorageGroup) throws MetadataException, IOException;
 
   IMNode getRoot();
 

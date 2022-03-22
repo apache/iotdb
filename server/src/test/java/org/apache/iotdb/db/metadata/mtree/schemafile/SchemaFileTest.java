@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -56,6 +57,7 @@ public class SchemaFileTest {
 
   @Before
   public void setUp() {
+    IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(true);
     EnvironmentUtils.envSetUp();
   }
 

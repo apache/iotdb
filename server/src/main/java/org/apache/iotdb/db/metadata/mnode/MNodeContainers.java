@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
 
 import org.jetbrains.annotations.NotNull;
@@ -30,8 +31,6 @@ import java.util.Set;
 import static java.util.Collections.emptySet;
 
 public class MNodeContainers {
-
-  public static boolean IS_DISK_MODE = true;
 
   @SuppressWarnings("rawtypes")
   private static final IMNodeContainer EMPTY_CONTAINER = new EmptyContainer();
@@ -46,7 +45,7 @@ public class MNodeContainers {
   }
 
   public static IMNodeContainer getNewMNodeContainer() {
-    if (IS_DISK_MODE) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnablePersistentSchema()) {
       return new CachedMNodeContainer();
     } else {
       return new MNodeContainerMapImpl();
