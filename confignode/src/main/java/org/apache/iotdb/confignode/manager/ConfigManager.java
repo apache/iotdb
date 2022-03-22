@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.hash.DeviceGroupHashExecutor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.statemachine.StandAloneStateMachine;
+import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.ConsensusGroupId;
@@ -88,7 +88,7 @@ public class ConfigManager {
   /** Build ConfigNodeGroup ConsensusLayer */
   private void setConsensusLayer(ConfigNodeConf config) {
     // TODO: Support other consensus protocol
-    this.consensusImpl = new StandAloneConsensus(id -> new StandAloneStateMachine());
+    this.consensusImpl = new StandAloneConsensus(id -> new PartitionRegionStateMachine());
     this.consensusImpl.start();
 
     this.consensusGroupId = new ConsensusGroupId(GroupType.PartitionRegion, 0);

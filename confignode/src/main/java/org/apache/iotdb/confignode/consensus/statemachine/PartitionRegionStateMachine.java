@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.confignode.consensus.statemachine;
 
+import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.service.executor.PlanExecutor;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
@@ -31,9 +33,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public abstract class BaseStateMachine implements IStateMachine {
+/** The StandAlone version StateMachine for ConfigNode, mainly used in development */
+public class PartitionRegionStateMachine implements IStateMachine {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(BaseStateMachine.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
+
+  private final PlanExecutor executor = new PlanExecutor();
 
   @Override
   public TSStatus write(IConsensusRequest request) {
@@ -54,7 +59,17 @@ public abstract class BaseStateMachine implements IStateMachine {
     return write(plan);
   }
 
-  protected abstract TSStatus write(PhysicalPlan plan);
+  /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
+  protected TSStatus write(PhysicalPlan plan) {
+    TSStatus result;
+    try {
+      result = executor.executorNonQueryPlan(plan);
+    } catch (UnknownPhysicalPlanTypeException e) {
+      LOGGER.error(e.getMessage());
+      result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
+    return result;
+  }
 
   @Override
   public DataSet read(IConsensusRequest request) {
@@ -68,5 +83,25 @@ public abstract class BaseStateMachine implements IStateMachine {
     return read(plan);
   }
 
-  protected abstract DataSet read(PhysicalPlan plan);
+  /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
+  protected DataSet read(PhysicalPlan plan) {
+    DataSet result;
+    try {
+      result = executor.executorQueryPlan(plan);
+    } catch (UnknownPhysicalPlanTypeException e) {
+      LOGGER.error(e.getMessage());
+      result = null;
+    }
+    return result;
+  }
+
+  @Override
+  public void start() {
+    // do nothing
+  }
+
+  @Override
+  public void stop() {
+    // do nothing
+  }
 }
