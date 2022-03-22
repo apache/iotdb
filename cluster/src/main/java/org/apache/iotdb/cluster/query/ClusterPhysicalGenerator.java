@@ -51,7 +51,7 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   private static final Logger logger = LoggerFactory.getLogger(ClusterPhysicalGenerator.class);
 
   private CSchemaEngine getCSchemaEngine() {
-    return ((CSchemaEngine) IoTDB.metaManager);
+    return ((CSchemaEngine) IoTDB.schemaEngine);
   }
 
   @Override

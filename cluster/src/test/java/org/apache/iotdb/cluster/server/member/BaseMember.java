@@ -147,7 +147,7 @@ public class BaseMember {
       getDataGroupMember(node);
     }
 
-    IoTDB.setMetaManager(CSchemaEngine.getInstance());
+    IoTDB.setSchemaEngine(CSchemaEngine.getInstance());
     CSchemaEngine.getInstance().setMetaGroupMember(testMetaMember);
     CSchemaEngine.getInstance().setCoordinator(coordinator);
 
@@ -162,7 +162,7 @@ public class BaseMember {
 
     for (int i = 0; i < 10; i++) {
       try {
-        IoTDB.metaManager.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
+        IoTDB.schemaEngine.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
         for (int j = 0; j < 20; j++) {
           SchemaUtils.registerTimeseries(TestUtils.getTestTimeSeriesSchema(i, j));
         }

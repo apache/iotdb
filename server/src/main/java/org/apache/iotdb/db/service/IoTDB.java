@@ -36,7 +36,7 @@ import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.IMetaManager;
+import org.apache.iotdb.db.metadata.ISchemaEngine;
 import org.apache.iotdb.db.metadata.MetadataManagerType;
 import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.rocksdb.RSchemaEngine;
@@ -65,7 +65,7 @@ public class IoTDB implements IoTDBMBean {
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
   private static final RegisterManager registerManager = new RegisterManager();
   public static ServiceProvider serviceProvider;
-  public static IMetaManager metaManager;
+  public static ISchemaEngine schemaEngine;
   private static boolean clusterMode = false;
 
   public static IoTDB getInstance() {
@@ -84,8 +84,8 @@ public class IoTDB implements IoTDBMBean {
     daemon.active();
   }
 
-  public static void setMetaManager(SchemaEngine metaManager) {
-    IoTDB.metaManager = metaManager;
+  public static void setSchemaEngine(SchemaEngine schemaEngine) {
+    IoTDB.schemaEngine = schemaEngine;
   }
 
   public static void setServiceProvider(ServiceProvider serviceProvider) {
@@ -209,17 +209,17 @@ public class IoTDB implements IoTDBMBean {
     try {
       if (IoTDBDescriptor.getInstance().getConfig().getMetadataManagerType()
           == MetadataManagerType.ROCKSDB_MANAGER) {
-        metaManager = new RSchemaEngine();
+        schemaEngine = new RSchemaEngine();
         logger.info("Use MRocksDBManager to manage metadata");
       } else {
-        metaManager = SchemaEngine.getInstance();
+        schemaEngine = SchemaEngine.getInstance();
         logger.info("Use MManager to manage metadata");
       }
     } catch (Exception e) {
       logger.error("create meta manager fail", e);
       System.exit(1);
     }
-    IoTDB.metaManager.init();
+    IoTDB.schemaEngine.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
     logger.info(

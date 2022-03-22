@@ -90,7 +90,7 @@ public class MetadataUpgradeTest {
     prepareTagFile();
     prepareMLog();
 
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+    SchemaEngine schemaEngine = (SchemaEngine) IoTDB.schemaEngine;
     schemaEngine.clear();
     MetadataUpgrader.upgrade();
     schemaEngine.init();

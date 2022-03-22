@@ -72,7 +72,7 @@ public class ClusterPlanRouter {
   }
 
   private SchemaEngine SchemaEngine() {
-    return IoTDB.metaManager;
+    return IoTDB.schemaEngine;
   }
 
   @TestOnly
@@ -218,7 +218,7 @@ public class ClusterPlanRouter {
         InsertTabletPlan tmpPlan = (InsertTabletPlan) entry.getKey();
         PartitionGroup tmpPg = entry.getValue();
         // 1.1 the sg that the plan(actually calculated based on device) belongs to
-        PartialPath tmpSgPath = IoTDB.metaManager.getBelongedStorageGroup(tmpPlan.getDevicePath());
+        PartialPath tmpSgPath = IoTDB.schemaEngine.getBelongedStorageGroup(tmpPlan.getDevicePath());
         Map<PartialPath, InsertMultiTabletPlan> sgPathPlanMap = pgSgPathPlanMap.get(tmpPg);
         if (sgPathPlanMap == null) {
           // 2.1 construct the InsertMultiTabletPlan

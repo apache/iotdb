@@ -120,7 +120,7 @@ public abstract class QueryPlan extends PhysicalPlan {
     for (int i = 0; i < resultColumns.size(); ++i) {
       if (isJdbcQuery) {
         // Separate sgName from the name of resultColumn to reduce the network IO
-        String sgName = IoTDB.metaManager.getBelongedStorageGroup(getPaths().get(i)).getFullPath();
+        String sgName = IoTDB.schemaEngine.getBelongedStorageGroup(getPaths().get(i)).getFullPath();
         respSgColumns.add(sgName);
         if (resultColumns.get(i).getAlias() == null) {
           respColumns.add(

@@ -179,7 +179,7 @@ public abstract class DataSnapshotTest {
     dataGroupMember.setLogManager(new TestLogManager(0));
     EnvironmentUtils.envSetUp();
     for (int i = 0; i < 10; i++) {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
+      IoTDB.schemaEngine.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
     }
     addNetFailure = false;
   }

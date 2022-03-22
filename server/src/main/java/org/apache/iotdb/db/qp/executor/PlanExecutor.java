@@ -408,7 +408,7 @@ public class PlanExecutor implements IPlanExecutor {
   private boolean createTemplate(CreateTemplatePlan createTemplatePlan)
       throws QueryProcessException {
     try {
-      IoTDB.metaManager.createSchemaTemplate(createTemplatePlan);
+      IoTDB.schemaEngine.createSchemaTemplate(createTemplatePlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -417,7 +417,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean dropTemplate(DropTemplatePlan dropTemplatePlan) throws QueryProcessException {
     try {
-      IoTDB.metaManager.dropSchemaTemplate(dropTemplatePlan);
+      IoTDB.schemaEngine.dropSchemaTemplate(dropTemplatePlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -426,7 +426,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean appendTemplate(AppendTemplatePlan plan) throws QueryProcessException {
     try {
-      IoTDB.metaManager.appendSchemaTemplate(plan);
+      IoTDB.schemaEngine.appendSchemaTemplate(plan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -435,7 +435,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean pruneTemplate(PruneTemplatePlan plan) throws QueryProcessException {
     try {
-      IoTDB.metaManager.pruneSchemaTemplate(plan);
+      IoTDB.schemaEngine.pruneSchemaTemplate(plan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -444,7 +444,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean setTemplate(SetTemplatePlan setTemplatePlan) throws QueryProcessException {
     try {
-      IoTDB.metaManager.setSchemaTemplate(setTemplatePlan);
+      IoTDB.schemaEngine.setSchemaTemplate(setTemplatePlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -454,7 +454,7 @@ public class PlanExecutor implements IPlanExecutor {
   private boolean activateTemplate(ActivateTemplatePlan activateTemplatePlan)
       throws QueryProcessException {
     try {
-      IoTDB.metaManager.setUsingSchemaTemplate(activateTemplatePlan);
+      IoTDB.schemaEngine.setUsingSchemaTemplate(activateTemplatePlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -463,7 +463,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean unsetTemplate(UnsetTemplatePlan unsetTemplatePlan) throws QueryProcessException {
     try {
-      IoTDB.metaManager.unsetSchemaTemplate(unsetTemplatePlan);
+      IoTDB.schemaEngine.unsetSchemaTemplate(unsetTemplatePlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -770,34 +770,34 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected int getDevicesNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
-    return IoTDB.metaManager.getDevicesNum(path, isPrefixMatch);
+    return IoTDB.schemaEngine.getDevicesNum(path, isPrefixMatch);
   }
 
   private int getStorageGroupNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
-    return IoTDB.metaManager.getStorageGroupNum(path, isPrefixMatch);
+    return IoTDB.schemaEngine.getStorageGroupNum(path, isPrefixMatch);
   }
 
   protected int getPathsNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesCount(path, isPrefixMatch);
+    return IoTDB.schemaEngine.getAllTimeseriesCount(path, isPrefixMatch);
   }
 
   protected int getNodesNumInGivenLevel(PartialPath path, int level, boolean isPrefixMatch)
       throws MetadataException {
-    return IoTDB.metaManager.getNodesCountInGivenLevel(path, level, isPrefixMatch);
+    return IoTDB.schemaEngine.getNodesCountInGivenLevel(path, level, isPrefixMatch);
   }
 
   protected List<MeasurementPath> getPathsName(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getMeasurementPaths(path);
+    return IoTDB.schemaEngine.getMeasurementPaths(path);
   }
 
   protected List<PartialPath> getNodesList(PartialPath schemaPattern, int level)
       throws MetadataException {
-    return IoTDB.metaManager.getNodesListInGivenLevel(schemaPattern, level);
+    return IoTDB.schemaEngine.getNodesListInGivenLevel(schemaPattern, level);
   }
 
   private Map<PartialPath, Integer> getTimeseriesCountGroupByLevel(CountPlan countPlan)
       throws MetadataException {
-    return IoTDB.metaManager.getMeasurementCountGroupByLevel(
+    return IoTDB.schemaEngine.getMeasurementCountGroupByLevel(
         countPlan.getPath(), countPlan.getLevel(), countPlan.isPrefixMatch());
   }
 
@@ -829,7 +829,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected Set<String> getPathNextChildren(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getChildNodePathInNextLevel(path);
+    return IoTDB.schemaEngine.getChildNodePathInNextLevel(path);
   }
 
   private QueryDataSet processShowChildNodes(ShowChildNodesPlan showChildNodesPlan)
@@ -851,12 +851,12 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected Set<String> getNodeNextChildren(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getChildNodeNameInNextLevel(path);
+    return IoTDB.schemaEngine.getChildNodeNameInNextLevel(path);
   }
 
   protected List<PartialPath> getStorageGroupNames(PartialPath path, boolean isPrefixMatch)
       throws MetadataException {
-    return IoTDB.metaManager.getMatchedStorageGroups(path, isPrefixMatch);
+    return IoTDB.schemaEngine.getMatchedStorageGroups(path, isPrefixMatch);
   }
 
   private QueryDataSet processShowStorageGroup(ShowStorageGroupPlan showStorageGroupPlan)
@@ -920,7 +920,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected List<IStorageGroupMNode> getAllStorageGroupNodes() {
-    return IoTDB.metaManager.getAllStorageGroupNodes();
+    return IoTDB.schemaEngine.getAllStorageGroupNodes();
   }
 
   private QueryDataSet processShowTTLQuery(ShowTTLPlan showTTLPlan) {
@@ -1089,7 +1089,7 @@ public class PlanExecutor implements IPlanExecutor {
         new ListDataSet(
             Collections.singletonList(new PartialPath(COLUMN_SCHEMA_TEMPLATE, false)),
             Collections.singletonList(TSDataType.TEXT));
-    Set<String> allTemplates = IoTDB.metaManager.getAllTemplates();
+    Set<String> allTemplates = IoTDB.schemaEngine.getAllTemplates();
     for (String templateName : allTemplates) {
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
       rowRecord.addField(Binary.valueOf(templateName), TSDataType.TEXT);
@@ -1110,7 +1110,7 @@ public class PlanExecutor implements IPlanExecutor {
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
     try {
       List<Pair<String, IMeasurementSchema>> measurements =
-          IoTDB.metaManager.getSchemasInTemplate(showPlan.getTemplateName(), "");
+          IoTDB.schemaEngine.getSchemasInTemplate(showPlan.getTemplateName(), "");
       for (Pair<String, IMeasurementSchema> measurement : measurements) {
         RowRecord rowRecord = new RowRecord(0); // ignore timestamp
         rowRecord.addField(Binary.valueOf(measurement.left), TSDataType.TEXT);
@@ -1136,7 +1136,7 @@ public class PlanExecutor implements IPlanExecutor {
             Collections.singletonList(new PartialPath(COLUMN_CHILD_PATHS, false)),
             Collections.singletonList(TSDataType.TEXT));
     try {
-      Set<String> paths = IoTDB.metaManager.getPathsUsingTemplate(showPlan.getTemplateName());
+      Set<String> paths = IoTDB.schemaEngine.getPathsUsingTemplate(showPlan.getTemplateName());
       for (String path : paths) {
         RowRecord rowRecord = new RowRecord(0); // ignore timestamp
         rowRecord.addField(Binary.valueOf(path), TSDataType.TEXT);
@@ -1155,7 +1155,7 @@ public class PlanExecutor implements IPlanExecutor {
             Collections.singletonList(new PartialPath(COLUMN_CHILD_PATHS, false)),
             Collections.singletonList(TSDataType.TEXT));
     try {
-      Set<String> paths = IoTDB.metaManager.getPathsSetTemplate(showPlan.getTemplateName());
+      Set<String> paths = IoTDB.schemaEngine.getPathsSetTemplate(showPlan.getTemplateName());
       for (String path : paths) {
         RowRecord rowRecord = new RowRecord(0); // ignore timestamp
         rowRecord.addField(Binary.valueOf(path), TSDataType.TEXT);
@@ -1334,11 +1334,11 @@ public class PlanExecutor implements IPlanExecutor {
     for (Map.Entry<String, List<TimeseriesMetadata>> entry : metadataSet.entrySet()) {
       String deviceId = entry.getKey();
       PartialPath devicePath = new PartialPath(deviceId);
-      if (!IoTDB.metaManager.isPathExist(devicePath)) {
+      if (!IoTDB.schemaEngine.isPathExist(devicePath)) {
         continue;
       }
       boolean isAlignedInIoTDB =
-          IoTDB.metaManager.getDeviceNode(devicePath).getAsEntityMNode().isAligned();
+          IoTDB.schemaEngine.getDeviceNode(devicePath).getAsEntityMNode().isAligned();
       boolean isAlignedInTsFile = false;
       for (TimeseriesMetadata metadata : entry.getValue()) {
         if ("".equals(metadata.getMeasurementId())) {
@@ -1347,8 +1347,8 @@ public class PlanExecutor implements IPlanExecutor {
         }
         PartialPath fullPath =
             new PartialPath(deviceId + TsFileConstant.PATH_SEPARATOR + metadata.getMeasurementId());
-        if (IoTDB.metaManager.isPathExist(fullPath)) {
-          TSDataType dataType = IoTDB.metaManager.getSeriesType(fullPath);
+        if (IoTDB.schemaEngine.isPathExist(fullPath)) {
+          TSDataType dataType = IoTDB.schemaEngine.getSeriesType(fullPath);
           if (dataType != metadata.getTSDataType()) {
             throw new QueryProcessException(
                 String.format(
@@ -1388,13 +1388,13 @@ public class PlanExecutor implements IPlanExecutor {
       PartialPath devicePath = new PartialPath(device);
       PartialPath storageGroupPath = MetaUtils.getStorageGroupPathByLevel(devicePath, sgLevel);
       try {
-        IoTDB.metaManager.setStorageGroup(storageGroupPath);
+        IoTDB.schemaEngine.setStorageGroup(storageGroupPath);
       } catch (StorageGroupAlreadySetException alreadySetException) {
         if (!alreadySetException.getStorageGroupPath().equals(storageGroupPath.getFullPath())) {
           throw alreadySetException;
         }
       }
-      for (PartialPath path : IoTDB.metaManager.getMeasurementPaths(devicePath, true)) {
+      for (PartialPath path : IoTDB.schemaEngine.getMeasurementPaths(devicePath, true)) {
         existSeriesSet.add(path.getMeasurement());
         existSeriesSet.add(path.getMeasurementAlias());
       }
@@ -1443,12 +1443,12 @@ public class PlanExecutor implements IPlanExecutor {
           compressors.add(schema.getCompressor());
         }
 
-        IoTDB.metaManager.createAlignedTimeSeries(
+        IoTDB.schemaEngine.createAlignedTimeSeries(
             devicePath, measurements, dataTypes, encodings, compressors);
       } else {
         for (int i = 0; i < size; i++) {
           IMeasurementSchema schema = needRegisterSchema.get(i);
-          IoTDB.metaManager.createTimeseries(
+          IoTDB.schemaEngine.createTimeseries(
               needRegisterSeries.get(i),
               schema.getType(),
               schema.getEncodingType(),
@@ -1493,9 +1493,9 @@ public class PlanExecutor implements IPlanExecutor {
   private void operateTTL(SetTTLPlan plan) throws QueryProcessException {
     try {
       List<PartialPath> storageGroupPaths =
-          IoTDB.metaManager.getMatchedStorageGroups(plan.getStorageGroup(), plan.isPrefixMatch());
+          IoTDB.schemaEngine.getMatchedStorageGroups(plan.getStorageGroup(), plan.isPrefixMatch());
       for (PartialPath storagePath : storageGroupPaths) {
-        IoTDB.metaManager.setTTL(storagePath, plan.getDataTTL());
+        IoTDB.schemaEngine.setTTL(storagePath, plan.getDataTTL());
         StorageEngine.getInstance().setTTL(storagePath, plan.getDataTTL());
       }
     } catch (MetadataException e) {
@@ -1842,7 +1842,7 @@ public class PlanExecutor implements IPlanExecutor {
   private boolean createTimeSeries(CreateTimeSeriesPlan createTimeSeriesPlan)
       throws QueryProcessException {
     try {
-      IoTDB.metaManager.createTimeseries(createTimeSeriesPlan);
+      IoTDB.schemaEngine.createTimeseries(createTimeSeriesPlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -1852,7 +1852,7 @@ public class PlanExecutor implements IPlanExecutor {
   private boolean createAlignedTimeSeries(CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan)
       throws QueryProcessException {
     try {
-      IoTDB.metaManager.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+      IoTDB.schemaEngine.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -1911,7 +1911,7 @@ public class PlanExecutor implements IPlanExecutor {
                   deleteTimeSeriesPlan.getPartitionFilter());
         }
         String failed =
-            IoTDB.metaManager.deleteTimeseries(path, deleteTimeSeriesPlan.isPrefixMatch());
+            IoTDB.schemaEngine.deleteTimeseries(path, deleteTimeSeriesPlan.isPrefixMatch());
         if (failed != null) {
           deleteTimeSeriesPlan
               .getResults()
@@ -1938,22 +1938,22 @@ public class PlanExecutor implements IPlanExecutor {
         case RENAME:
           String beforeName = alterMap.keySet().iterator().next();
           String currentName = alterMap.get(beforeName);
-          IoTDB.metaManager.renameTagOrAttributeKey(beforeName, currentName, path);
+          IoTDB.schemaEngine.renameTagOrAttributeKey(beforeName, currentName, path);
           break;
         case SET:
-          IoTDB.metaManager.setTagsOrAttributesValue(alterMap, path);
+          IoTDB.schemaEngine.setTagsOrAttributesValue(alterMap, path);
           break;
         case DROP:
-          IoTDB.metaManager.dropTagsOrAttributes(alterMap.keySet(), path);
+          IoTDB.schemaEngine.dropTagsOrAttributes(alterMap.keySet(), path);
           break;
         case ADD_TAGS:
-          IoTDB.metaManager.addTags(alterMap, path);
+          IoTDB.schemaEngine.addTags(alterMap, path);
           break;
         case ADD_ATTRIBUTES:
-          IoTDB.metaManager.addAttributes(alterMap, path);
+          IoTDB.schemaEngine.addAttributes(alterMap, path);
           break;
         case UPSERT:
-          IoTDB.metaManager.upsertTagsAndAttributes(
+          IoTDB.schemaEngine.upsertTagsAndAttributes(
               alterTimeSeriesPlan.getAlias(),
               alterTimeSeriesPlan.getTagsMap(),
               alterTimeSeriesPlan.getAttributesMap(),
@@ -1976,7 +1976,7 @@ public class PlanExecutor implements IPlanExecutor {
     AUDIT_LOGGER.info("set storage group to {}", setStorageGroupPlan.getPaths());
     PartialPath path = setStorageGroupPlan.getPath();
     try {
-      IoTDB.metaManager.setStorageGroup(path);
+      IoTDB.schemaEngine.setStorageGroup(path);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -1990,7 +1990,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       for (PartialPath storageGroupPath : deleteStorageGroupPlan.getPaths()) {
         List<PartialPath> allRelatedStorageGroupPath =
-            IoTDB.metaManager.getMatchedStorageGroups(
+            IoTDB.schemaEngine.getMatchedStorageGroups(
                 storageGroupPath, deleteStorageGroupPlan.isPrefixMatch());
         if (allRelatedStorageGroupPath.isEmpty()) {
           throw new PathNotExistException(storageGroupPath.getFullPath(), true);
@@ -2000,7 +2000,7 @@ public class PlanExecutor implements IPlanExecutor {
           deletePathList.add(path);
         }
       }
-      IoTDB.metaManager.deleteStorageGroups(deletePathList);
+      IoTDB.schemaEngine.deleteStorageGroups(deletePathList);
       operateClearCache();
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
@@ -2271,7 +2271,7 @@ public class PlanExecutor implements IPlanExecutor {
       return noExistSg;
     }
     for (PartialPath storageGroup : storageGroups) {
-      if (!IoTDB.metaManager.isStorageGroup(storageGroup)) {
+      if (!IoTDB.schemaEngine.isStorageGroup(storageGroup)) {
         noExistSg.add(storageGroup);
       }
     }

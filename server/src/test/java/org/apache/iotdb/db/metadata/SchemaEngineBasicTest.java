@@ -71,21 +71,18 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class SchemaEngineBasicTest {
 
   private CompressionType compressionType;
+  SchemaEngine schemaEngine;
 
   @Before
   public void setUp() {
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
     EnvironmentUtils.envSetUp();
+    schemaEngine = (SchemaEngine) IoTDB.schemaEngine;
   }
 
   @After
@@ -95,9 +92,8 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testAddPathAndExist() throws IllegalPathException {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
-    assertTrue(schemaEngine.isPathExist(new PartialPath("root")));
 
+    assertTrue(schemaEngine.isPathExist(new PartialPath("root")));
     assertFalse(schemaEngine.isPathExist(new PartialPath("root.laptop")));
 
     try {
@@ -297,7 +293,6 @@ public class SchemaEngineBasicTest {
    */
   @Test
   public void testDeleteNonExistentTimeseries() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       schemaEngine.deleteTimeseries(new PartialPath("root.non.existent"));
       fail();
@@ -312,7 +307,6 @@ public class SchemaEngineBasicTest {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Test
   public void testCreateAlignedTimeseries() throws MetadataException {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
     } catch (MetadataException e) {
@@ -393,7 +387,6 @@ public class SchemaEngineBasicTest {
   @Test
   @SuppressWarnings("squid:S5783")
   public void testGetAllTimeseriesCount() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
 
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
@@ -457,8 +450,6 @@ public class SchemaEngineBasicTest {
   @Test
   public void testSetStorageGroupAndExist() {
 
-    SchemaEngine schemaEngine = IoTDB.metaManager;
-
     try {
       assertFalse(schemaEngine.isStorageGroup(new PartialPath("root")));
       assertFalse(schemaEngine.isStorageGroup(new PartialPath("root1.laptop.d2")));
@@ -482,8 +473,6 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testRecover() throws Exception {
-
-    SchemaEngine schemaEngine = IoTDB.metaManager;
 
     try {
 
@@ -555,7 +544,6 @@ public class SchemaEngineBasicTest {
   @Test
   public void testGetAllFileNamesByPath() {
 
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop.d1"));
       schemaEngine.setStorageGroup(new PartialPath("root.laptop.d2"));
@@ -590,7 +578,6 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testCheckStorageExistOfPath() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
 
     try {
       assertTrue(schemaEngine.getMeasurementPaths(new PartialPath("root")).isEmpty());
@@ -638,7 +625,6 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testShowChildNodesWithGivenPrefix() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
       schemaEngine.createTimeseries(
@@ -714,7 +700,6 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testSetStorageGroupWithIllegalName() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       PartialPath path1 = new PartialPath("root.laptop\n");
       try {
@@ -739,7 +724,6 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testCreateTimeseriesWithIllegalName() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       PartialPath path1 = new PartialPath("root.laptop.d1\n.s1");
       try {
@@ -766,7 +750,6 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testGetDevicesWithGivenPrefix() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
 
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
@@ -813,7 +796,6 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testGetChildNodePathInNextLevel() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     String[] res =
         new String[] {
           "[root.laptop, root.vehicle]",
@@ -927,7 +909,6 @@ public class SchemaEngineBasicTest {
   public void testTemplate() throws MetadataException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     schemaEngine.createSchemaTemplate(plan);
 
     // set device template
@@ -998,7 +979,7 @@ public class SchemaEngineBasicTest {
       plan =
           new CreateTemplatePlan(
               "treeTemplate", measurementList, dataTypeList, encodingList, compressionTypes);
-      IoTDB.metaManager.createSchemaTemplate(plan);
+      schemaEngine.createSchemaTemplate(plan);
     } catch (MetadataException e) {
       assertEquals("encoding RLE does not support TEXT", e.getMessage());
     }
@@ -1008,8 +989,8 @@ public class SchemaEngineBasicTest {
         new CreateTemplatePlan(
             "treeTemplate", measurementList, dataTypeList, encodingList, compressionTypes);
 
-    IoTDB.metaManager.createSchemaTemplate(planb);
-    Template template = IoTDB.metaManager.getTemplate("treeTemplate");
+    schemaEngine.createSchemaTemplate(planb);
+    Template template = schemaEngine.getTemplate("treeTemplate");
     assertEquals("[d1.s1, GPS.x, GPS.y, s2]", template.getAllMeasurementsPaths().toString());
 
     List<String> appendMeasurements = Arrays.asList("a1", "a2");
@@ -1026,7 +1007,7 @@ public class SchemaEngineBasicTest {
             appendEncodings,
             appendCompressor);
     try {
-      IoTDB.metaManager.appendSchemaTemplate(plana);
+      schemaEngine.appendSchemaTemplate(plana);
     } catch (MetadataException e) {
       assertEquals("encoding RLE does not support TEXT", e.getMessage());
     }
@@ -1040,7 +1021,7 @@ public class SchemaEngineBasicTest {
             appendDataTypes,
             appendEncodings,
             appendCompressor);
-    IoTDB.metaManager.appendSchemaTemplate(planab);
+    schemaEngine.appendSchemaTemplate(planab);
     assertEquals(
         "[a1, a2, d1.s1, GPS.x, GPS.y, s2]", template.getAllMeasurementsPaths().toString());
   }
@@ -1049,7 +1030,6 @@ public class SchemaEngineBasicTest {
   public void testTemplateInnerTree() {
     CreateTemplatePlan plan = getTreeTemplatePlan();
     Template template;
-    SchemaEngine schemaEngine = IoTDB.metaManager;
 
     try {
       schemaEngine.createSchemaTemplate(plan);
@@ -1209,7 +1189,7 @@ public class SchemaEngineBasicTest {
             compressionTypes);
     SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg.1");
     UnsetTemplatePlan unsetTemplatePlan = new UnsetTemplatePlan("root.sg.1", "template1");
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     schemaEngine.createSchemaTemplate(createTemplatePlan);
 
     // path does not exist test
@@ -1239,7 +1219,7 @@ public class SchemaEngineBasicTest {
   @Test
   public void testTemplateAndTimeSeriesCompatibility() throws MetadataException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     schemaEngine.createSchemaTemplate(plan);
     schemaEngine.createSchemaTemplate(getTreeTemplatePlan());
 
@@ -1315,7 +1295,7 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testTemplateAndNodePathCompatibility() throws MetadataException {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     CreateTemplatePlan plan = getCreateTemplatePlan();
     schemaEngine.createSchemaTemplate(plan);
     schemaEngine.createSchemaTemplate(getTreeTemplatePlan());
@@ -1516,8 +1496,6 @@ public class SchemaEngineBasicTest {
 
     SetTemplatePlan setPlan5 = new SetTemplatePlan("template2", "root.sg1.d1");
 
-    SchemaEngine schemaEngine = IoTDB.metaManager;
-
     schemaEngine.createSchemaTemplate(plan1);
     schemaEngine.createSchemaTemplate(plan2);
 
@@ -1556,7 +1534,7 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testShowTimeseries() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     try {
       schemaEngine.createTimeseries(
           new PartialPath("root.laptop.d1.s0"),
@@ -1626,7 +1604,7 @@ public class SchemaEngineBasicTest {
             encodingList,
             compressionTypes);
     CreateTemplatePlan treePlan = getTreeTemplatePlan();
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     try {
       schemaEngine.createSchemaTemplate(plan);
       schemaEngine.createSchemaTemplate(treePlan);
@@ -1713,7 +1691,7 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void minimumTestForWildcardInTemplate() throws MetadataException {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     CreateTemplatePlan treePlan = getTreeTemplatePlan();
     schemaEngine.createSchemaTemplate(treePlan);
 
@@ -1761,7 +1739,7 @@ public class SchemaEngineBasicTest {
             dataTypeList,
             encodingList,
             compressionTypes);
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     try {
       schemaEngine.createSchemaTemplate(plan);
       schemaEngine.createSchemaTemplate(getTreeTemplatePlan());
@@ -1845,7 +1823,6 @@ public class SchemaEngineBasicTest {
             dataTypeList,
             encodingList,
             compressionTypes);
-    SchemaEngine schemaEngine = IoTDB.metaManager;
 
     try {
       schemaEngine.createSchemaTemplate(plan);
@@ -1912,7 +1889,6 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testTotalSeriesNumber() throws Exception {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
 
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
@@ -1968,7 +1944,7 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testStorageGroupNameWithHyphen() throws IllegalPathException {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     assertTrue(schemaEngine.isPathExist(new PartialPath("root")));
 
     assertFalse(schemaEngine.isPathExist(new PartialPath("root.group-with-hyphen")));
@@ -1985,7 +1961,7 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testCreateAlignedTimeseriesAndInsertWithMismatchDataType() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
       schemaEngine.createAlignedTimeSeries(
@@ -2032,7 +2008,7 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testCreateAlignedTimeseriesAndInsertWithNotAlignedData() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
       schemaEngine.createAlignedTimeSeries(
@@ -2101,7 +2077,7 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testCreateTimeseriesAndInsertWithMismatchDataType() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
       schemaEngine.createTimeseries(
@@ -2138,7 +2114,7 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testCreateTimeseriesAndInsertWithAlignedData() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
       schemaEngine.createTimeseries(
@@ -2207,7 +2183,7 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testCreateAlignedTimeseriesWithIllegalNames() throws Exception {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
     PartialPath deviceId = new PartialPath("root.laptop.d1");
     String[] measurementIds = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
@@ -2256,7 +2232,7 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testCreateAlignedTimeseriesWithAliasAndTags() throws Exception {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
     PartialPath devicePath = new PartialPath("root.laptop.device");
     List<String> measurements = Arrays.asList("s1", "s2", "s3", "s4", "s5");
@@ -2326,7 +2302,6 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testAutoCreateAlignedTimeseriesWhileInsert() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
 
     try {
       long time = 1L;
@@ -2371,7 +2346,7 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testGetStorageGroupNodeByPath() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     PartialPath partialPath = null;
 
     try {
@@ -2408,7 +2383,6 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testMeasurementIdWhileInsert() throws Exception {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
 
     PartialPath deviceId = new PartialPath("root.sg.d");
     InsertPlan insertPlan;
@@ -2450,7 +2424,7 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testTemplateSchemaNameCheckWhileCreate() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     String[] illegalSchemaNames = {"a+b", "time", "timestamp", "TIME", "TIMESTAMP"};
     for (String schemaName : illegalSchemaNames) {
       CreateTemplatePlan plan = getCreateTemplatePlan(schemaName);
@@ -2484,7 +2458,6 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testDeviceNodeAfterAutoCreateTimeseriesFailure() throws Exception {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
 
     PartialPath sg1 = new PartialPath("root.a.sg");
     schemaEngine.setStorageGroup(sg1);
@@ -2509,7 +2482,7 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testTimeseriesDeletionWithEntityUsingTemplate() throws MetadataException {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     schemaEngine.setStorageGroup(new PartialPath("root.sg"));
 
     CreateTemplatePlan plan = getCreateTemplatePlan("s1");
@@ -2538,7 +2511,7 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testTagIndexRecovery() throws Exception {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+
     PartialPath path = new PartialPath("root.sg.d.s");
     Map<String, String> tags = new HashMap<>();
     tags.put("description", "oldValue");
@@ -2597,7 +2570,6 @@ public class SchemaEngineBasicTest {
 
   @Test
   public void testTagCreationViaMLogPlanDuringMetadataSync() throws Exception {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
 
     PartialPath path = new PartialPath("root.sg.d.s");
     Map<String, String> tags = new HashMap<>();

@@ -297,7 +297,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       AsyncMethodCallback<GetAllPathsResult> resultHandler) {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      resultHandler.onComplete(((CSchemaEngine) IoTDB.metaManager).getAllPaths(paths, withAlias));
+      resultHandler.onComplete(((CSchemaEngine) IoTDB.schemaEngine).getAllPaths(paths, withAlias));
     } catch (MetadataException | CheckConsistencyException e) {
       resultHandler.onError(e);
     }
@@ -312,7 +312,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       resultHandler.onComplete(
-          ((CSchemaEngine) IoTDB.metaManager).getAllDevices(path, isPrefixMatch));
+          ((CSchemaEngine) IoTDB.schemaEngine).getAllDevices(path, isPrefixMatch));
     } catch (MetadataException | CheckConsistencyException e) {
       resultHandler.onError(e);
     }
@@ -336,7 +336,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       AsyncMethodCallback<List<String>> resultHandler) {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      resultHandler.onComplete(((CSchemaEngine) IoTDB.metaManager).getNodeList(path, nodeLevel));
+      resultHandler.onComplete(((CSchemaEngine) IoTDB.schemaEngine).getNodeList(path, nodeLevel));
     } catch (CheckConsistencyException | MetadataException e) {
       resultHandler.onError(e);
     }
@@ -347,7 +347,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       RaftNode header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      resultHandler.onComplete(((CSchemaEngine) IoTDB.metaManager).getChildNodeInNextLevel(path));
+      resultHandler.onComplete(((CSchemaEngine) IoTDB.schemaEngine).getChildNodeInNextLevel(path));
     } catch (CheckConsistencyException | MetadataException e) {
       resultHandler.onError(e);
     }
@@ -359,7 +359,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       resultHandler.onComplete(
-          ((CSchemaEngine) IoTDB.metaManager).getChildNodePathInNextLevel(path));
+          ((CSchemaEngine) IoTDB.schemaEngine).getChildNodePathInNextLevel(path));
     } catch (CheckConsistencyException | MetadataException e) {
       resultHandler.onError(e);
     }

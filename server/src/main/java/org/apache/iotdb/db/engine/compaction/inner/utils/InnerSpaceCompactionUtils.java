@@ -126,7 +126,7 @@ public class InnerSpaceCompactionUtils {
           measurementSchema =
               IDTableManager.getInstance().getSeriesSchema(device, p.getMeasurement());
         } else {
-          measurementSchema = IoTDB.metaManager.getSeriesSchema(p);
+          measurementSchema = IoTDB.schemaEngine.getSeriesSchema(p);
         }
       } catch (PathNotExistException e) {
         logger.info("A deleted path is skipped: {}", e.getMessage());

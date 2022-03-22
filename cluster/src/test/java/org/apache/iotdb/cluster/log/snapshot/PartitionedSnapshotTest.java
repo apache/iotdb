@@ -105,7 +105,7 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
     }
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+      assertTrue(IoTDB.schemaEngine.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
     VirtualStorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
@@ -181,7 +181,7 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
       }
 
       for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-        assertFalse(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+        assertFalse(IoTDB.schemaEngine.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
       }
       VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.ISchemaEngine;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -51,11 +51,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class IDTableTest {
 
@@ -67,6 +63,8 @@ public class IDTableTest {
 
   private boolean isEnableIDTableLogFile = false;
 
+  ISchemaEngine schemaEngine;
+
   @Before
   public void before() {
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
@@ -75,6 +73,7 @@ public class IDTableTest {
     originalDeviceIDTransformationMethod =
         IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
     isEnableIDTableLogFile = IoTDBDescriptor.getInstance().getConfig().isEnableIDTableLogFile();
+    schemaEngine = IoTDB.schemaEngine;
 
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
     IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
@@ -94,8 +93,6 @@ public class IDTableTest {
 
   @Test
   public void testCreateAlignedTimeseriesAndInsert() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
-
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
       CreateAlignedTimeSeriesPlan plan =
@@ -175,7 +172,6 @@ public class IDTableTest {
 
   @Test
   public void testCreateAlignedTimeseriesAndInsertNotAlignedData() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
 
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
@@ -240,7 +236,6 @@ public class IDTableTest {
 
   @Test
   public void testCreateTimeseriesAndInsert() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
       schemaEngine.createTimeseries(
@@ -295,7 +290,6 @@ public class IDTableTest {
 
   @Test
   public void testCreateTimeseriesAndInsertWithAlignedData() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.laptop"));
       schemaEngine.createTimeseries(
@@ -348,7 +342,6 @@ public class IDTableTest {
 
   @Test
   public void testInsertAndAutoCreate() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
@@ -432,7 +425,6 @@ public class IDTableTest {
 
   @Test
   public void testAlignedInsertAndAutoCreate() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
@@ -517,7 +509,6 @@ public class IDTableTest {
 
   @Test
   public void testTriggerAndInsert() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       long time = 1L;
 
@@ -594,7 +585,6 @@ public class IDTableTest {
 
   @Test
   public void testFlushTimeAndLastCache() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     try {
       long time = 1L;
 

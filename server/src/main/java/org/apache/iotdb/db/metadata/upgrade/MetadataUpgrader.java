@@ -85,7 +85,7 @@ public class MetadataUpgrader {
   private File snapshotFile = new File(mtreeSnapshotPath);
   private File snapshotTmpFile = new File(mtreeSnapshotTmpPath);
 
-  SchemaEngine schemaEngine = (SchemaEngine) IoTDB.metaManager;
+  SchemaEngine schemaEngine = (SchemaEngine) IoTDB.schemaEngine;
 
   /**
    * There are at most four files of old versions:
@@ -124,14 +124,14 @@ public class MetadataUpgrader {
       logger.info("Metadata files have already been upgraded.");
       return;
     }
-    IoTDB.metaManager.init();
+    IoTDB.schemaEngine.init();
     try {
       upgrader.reloadMetadataFromSnapshot();
       upgrader.redoMLog();
       upgrader.clearOldFiles();
       logger.info("Finish upgrading metadata files.");
     } finally {
-      IoTDB.metaManager.clear();
+      IoTDB.schemaEngine.clear();
     }
   }
 
