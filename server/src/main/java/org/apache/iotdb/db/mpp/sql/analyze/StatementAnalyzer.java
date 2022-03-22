@@ -65,7 +65,7 @@ public class StatementAnalyzer {
         // check for semantic errors
         queryStatement.selfCheck();
 
-        // concat path and remove wildcards
+        // concat path and remove wildcards (apply SLIMIT & SOFFSET at the same time)
         QueryStatement rewrittenStatement =
             (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, context);
 

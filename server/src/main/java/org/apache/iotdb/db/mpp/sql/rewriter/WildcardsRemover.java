@@ -75,7 +75,8 @@ public class WildcardsRemover {
       currentLimit -= pair.left.size();
       return pair.left;
     } catch (MetadataException e) {
-      throw new StatementAnalyzeException("error occurred when removing star: " + e.getMessage());
+      throw new StatementAnalyzeException(
+          "error occurred when removing wildcard: " + e.getMessage());
     }
   }
 

@@ -19,10 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.metadata;
 
-/**
- * This interface is used to fetch the metadata information required in execution plan generating.
- */
-public interface IMetadataFetcher {
+public class MetadataRequest {
 
-  MetadataResponse requestMetadata(MetadataRequest request);
+  PathPatternNode rootNode;
 }
