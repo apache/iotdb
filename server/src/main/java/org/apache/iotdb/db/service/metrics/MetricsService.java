@@ -20,12 +20,12 @@ package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FileUtils;
+import org.apache.iotdb.db.wal.node.WALNode;
 import org.apache.iotdb.metrics.MetricService;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -80,9 +80,13 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
   @Override
   public void collectFileSystemInfo() {
     logger.info("start collecting fileSize and fileCount of wal/seq/unseq");
-    String walDir = DirectoryManager.getInstance().getWALFolder();
+    String[] walDirs = IoTDBDescriptor.getInstance().getConfig().getWalDirs();
     metricManager.getOrCreateAutoGauge(
-        Metric.FILE_SIZE.toString(), walDir, FileUtils::getDirSize, Tag.NAME.toString(), "wal");
+        Metric.FILE_SIZE.toString(),
+        walDirs,
+        value -> Stream.of(value).mapToLong(dir -> FileUtils.getDirSize(dir)).sum(),
+        Tag.NAME.toString(),
+        "wal");
 
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     metricManager.getOrCreateAutoGauge(
@@ -113,14 +117,23 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "unseq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
-        walDir,
-        value -> {
-          File walFolder = new File(value);
-          if (walFolder.exists() && walFolder.isDirectory()) {
-            return org.apache.commons.io.FileUtils.listFiles(new File(value), null, true).size();
-          }
-          return 0L;
-        },
+        walDirs,
+        value ->
+            Stream.of(value)
+                .mapToLong(
+                    dir -> {
+                      File walFolder = new File(dir);
+                      File[] walNodeFolders = walFolder.listFiles(WALNode::walNodeFolderNameFilter);
+                      for (File walNodeFolder : walNodeFolders) {
+                        if (walNodeFolder.exists() && walNodeFolder.isDirectory()) {
+                          return org.apache.commons.io.FileUtils.listFiles(
+                                  walNodeFolder, null, true)
+                              .size();
+                        }
+                      }
+                      return 0L;
+                    })
+                .sum(),
         Tag.NAME.toString(),
         "wal");
     metricManager.getOrCreateAutoGauge(

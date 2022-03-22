@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.wal.buffer.WALEditValue;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -42,7 +43,7 @@ import java.util.Map;
  * i.e., Writing and querying operations must already have gotten writeLock and readLock
  * respectively.<br>
  */
-public interface IMemTable {
+public interface IMemTable extends WALEditValue {
 
   Map<IDeviceID, IWritableMemChunkGroup> getMemTableMap();
 
@@ -166,6 +167,8 @@ public interface IMemTable {
   long getMaxPlanIndex();
 
   long getMinPlanIndex();
+
+  int getMemTableId();
 
   long getCreatedTime();
 }

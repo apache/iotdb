@@ -478,16 +478,6 @@ public class StorageGroupManager {
     }
   }
 
-  /** release resource of direct wal buffer */
-  public void releaseWalDirectByteBufferPool() {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.releaseWalDirectByteBufferPool();
-      }
-    }
-  }
-
   /** only for test */
   public void reset() {
     Arrays.fill(virtualStorageGroupProcessor, null);
@@ -498,7 +488,6 @@ public class StorageGroupManager {
       if (vsg != null) {
         ThreadUtils.stopThreadPool(
             vsg.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
-        ThreadUtils.stopThreadPool(vsg.getWALTrimScheduleTask(), ThreadName.WAL_TRIM);
       }
     }
   }

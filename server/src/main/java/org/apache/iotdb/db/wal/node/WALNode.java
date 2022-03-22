@@ -64,6 +64,11 @@ public class WALNode implements IWALNode {
     this.checkpointManager = new CheckpointManager(identifier, logDirectory);
   }
 
+  /** Return true when this folder wal node folder */
+  public static boolean walNodeFolderNameFilter(File dir, String name) {
+    return WAL_NODE_FOLDER_PATTERN.matcher(name).find();
+  }
+
   @Override
   public WALFlushListener log(int memTableId, InsertPlan insertPlan) {
     WALEdit walEdit = new WALEdit(memTableId, insertPlan);

@@ -63,9 +63,7 @@ public class WALRecoverManager {
       List<File> walNodeDirs = new ArrayList<>();
       for (String walDir : config.getWalDirs()) {
         File walDirFile = SystemFileFactory.INSTANCE.getFile(walDir);
-        File[] nodeDirs =
-            walDirFile.listFiles(
-                (dir, name) -> WALNode.WAL_NODE_FOLDER_PATTERN.matcher(name).find());
+        File[] nodeDirs = walDirFile.listFiles(WALNode::walNodeFolderNameFilter);
         if (nodeDirs == null) {
           continue;
         }

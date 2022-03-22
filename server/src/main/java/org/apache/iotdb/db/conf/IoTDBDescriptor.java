@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -227,8 +228,6 @@ public class IoTDBDescriptor {
       conf.setTracingDir(properties.getProperty("tracing_dir", conf.getTracingDir()));
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
-
-      conf.setWalDir(properties.getProperty("wal_dir", conf.getWalDir()));
 
       int mlogBufferSize =
           Integer.parseInt(
@@ -872,66 +871,63 @@ public class IoTDBDescriptor {
   }
 
   private void loadWALProps(Properties properties) {
-    conf.setEnableWal(
-        Boolean.parseBoolean(
-            properties.getProperty("enable_wal", Boolean.toString(conf.isEnableWal()))));
-
-    conf.setFlushWalThreshold(
-        Integer.parseInt(
-            properties.getProperty(
-                "flush_wal_threshold", Integer.toString(conf.getFlushWalThreshold()))));
-
-    conf.setForceWalPeriodInMs(
-        Long.parseLong(
-            properties.getProperty(
-                "force_wal_period_in_ms", Long.toString(conf.getForceWalPeriodInMs()))));
-
     conf.setEnableDiscardOutOfOrderData(
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_discard_out_of_order_data",
                 Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
 
+    conf.setWalMode(
+        WALMode.valueOf((properties.getProperty("wal_mode", conf.getWalMode().toString()))));
+
+    conf.setWalDirs(properties.getProperty("wal_dirs", conf.getWalDirs()[0]).split(","));
+
+    long syncWalDelayInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "sync_wal_delay_in_ms", Long.toString(conf.getSyncWalDelayInMs())));
+    if (syncWalDelayInMs > 0) {
+      conf.setSyncWalDelayInMs(syncWalDelayInMs);
+    }
+
+    int maxWalNum =
+        Integer.parseInt(
+            properties.getProperty("max_wal_num", Integer.toString(conf.getMaxWalNum())));
+    if (maxWalNum > 0) {
+      conf.setMaxWalNum(maxWalNum);
+    }
+
     int walBufferSize =
         Integer.parseInt(
-            properties.getProperty("wal_buffer_size", Integer.toString(conf.getWalBufferSize())));
+            properties.getProperty(
+                "wal_buffer_size_in_byte", Integer.toString(conf.getWalBufferSize())));
     if (walBufferSize > 0) {
       conf.setWalBufferSize(walBufferSize);
     }
 
-    int maxWalBytebufferNumForEachPartition =
+    int walBufferEntrySize =
         Integer.parseInt(
             properties.getProperty(
-                "max_wal_bytebuffer_num_for_each_partition",
-                Integer.toString(conf.getMaxWalBytebufferNumForEachPartition())));
-    if (maxWalBytebufferNumForEachPartition > 0) {
-      conf.setMaxWalBytebufferNumForEachPartition(maxWalBytebufferNumForEachPartition);
+                "wal_buffer_entry_size_in_byte", Integer.toString(conf.getWalBufferEntrySize())));
+    if (walBufferEntrySize > 0) {
+      conf.setWalBufferEntrySize(walBufferEntrySize);
     }
 
-    long poolTrimIntervalInMS =
-        Long.parseLong(
+    int walStorageSpace =
+        Integer.parseInt(
             properties.getProperty(
-                "wal_pool_trim_interval_ms", Long.toString(conf.getWalPoolTrimIntervalInMS())));
-    if (poolTrimIntervalInMS > 0) {
-      conf.setWalPoolTrimIntervalInMS(poolTrimIntervalInMS);
+                "wal_storage_space_in_mb", Integer.toString(conf.getWalStorageSpaceInMb())));
+    if (walStorageSpace > 0) {
+      conf.setWalStorageSpaceInMb(walStorageSpace);
     }
 
-    long registerBufferSleepIntervalInMs =
-        Long.parseLong(
+    int memtableSnapshotForWalThreshold =
+        Integer.parseInt(
             properties.getProperty(
-                "register_buffer_sleep_interval_in_ms",
-                Long.toString(conf.getRegisterBufferSleepIntervalInMs())));
-    if (registerBufferSleepIntervalInMs > 0) {
-      conf.setRegisterBufferSleepIntervalInMs(registerBufferSleepIntervalInMs);
-    }
-
-    long registerBufferRejectThresholdInMs =
-        Long.parseLong(
-            properties.getProperty(
-                "register_buffer_reject_threshold_in_ms",
-                Long.toString(conf.getRegisterBufferRejectThresholdInMs())));
-    if (registerBufferRejectThresholdInMs > 0) {
-      conf.setRegisterBufferRejectThresholdInMs(registerBufferRejectThresholdInMs);
+                "memtable_snapshot_for_wal_threshold_in_byte",
+                Integer.toString(conf.getMemtableSnapshotForWalThreshold())));
+    if (memtableSnapshotForWalThreshold > 0) {
+      conf.setMemtableSnapshotForWalThreshold(walStorageSpace);
     }
   }
 
@@ -1168,9 +1164,6 @@ public class IoTDBDescriptor {
         conf.setMultiDirStrategyClassName(multiDirStrategyClassName);
         DirectoryManager.getInstance().updateDirectoryStrategy();
       }
-
-      // update WAL conf
-      loadWALProps(properties);
 
       // update timed flush & close conf
       loadTimedService(properties);

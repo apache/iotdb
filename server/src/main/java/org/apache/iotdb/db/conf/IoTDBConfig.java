@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -67,6 +68,8 @@ public class IoTDBConfig {
       "([" + PATH_SEPARATOR + "])?" + NODE_NAME_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
+
+  private volatile boolean readOnly = false;
 
   /** whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
@@ -138,46 +141,39 @@ public class IoTDBConfig {
 
   /** When inserting rejected exceeds this, throw an exception. Unit: millisecond */
   private int maxWaitingTimeWhenInsertBlockedInMs = 10000;
-  /** Is the write ahead log enable. */
-  private boolean enableWal = true;
-
-  private volatile boolean readOnly = false;
-
-  private boolean enableDiscardOutOfOrderData = false;
-
-  /**
-   * When a certain amount of write ahead logs is reached, they will be flushed to the disk. It is
-   * possible to lose at most flush_wal_threshold operations.
-   */
-  private int flushWalThreshold = 10000;
 
   /** this variable set timestamp precision as millisecond, microsecond or nanosecond */
   private String timestampPrecision = "ms";
 
-  /**
-   * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If
-   * set this parameter to 0 it means call channel.force(true) after every each insert. Unit:
-   * millisecond
-   */
-  private long forceWalPeriodInMs = 100;
+  // region Write Ahead Log Configuration
+  /** Write mode of wal */
+  private WALMode walMode = WALMode.SYNC;
 
-  /**
-   * The size of the log buffer in each log node (in bytes). Due to the double buffer mechanism, if
-   * WAL is enabled and the size of the inserted plan is greater than one-half of this parameter,
-   * then the insert plan will be rejected by WAL. Unit: byte
-   */
+  /** WAL directories */
+  private String[] walDirs = {DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME};
+
+  /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
+  private long syncWalDelayInMs = 0;
+
+  /** Max number of wal nodes, each node corresponds to one wal directory */
+  private int maxWalNum = 0;
+
+  /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 16 * 1024 * 1024;
 
-  private int maxWalBytebufferNumForEachPartition = 6;
+  /** Buffer entry size of each wal buffer. Unit: byte */
+  private int walBufferEntrySize = 16 * 1024;
 
-  /** Unit: millisecond */
-  private long walPoolTrimIntervalInMS = 10_000;
+  /** Max storage space for wal. Unit: MB */
+  private int walStorageSpaceInMb = 0;
 
-  /** if OOM occurs when registering bytebuffer, system will sleep awhile and then try again. */
-  private long registerBufferSleepIntervalInMs = 200;
-
-  /** if total sleep time exceeds this, system will reject this write. */
-  private long registerBufferRejectThresholdInMs = 10_000;
+  /**
+   * MemTable size threshold for triggering MemTable snapshot in wal. When a memTable's size exceeds
+   * this, wal can flush this memtable to disk, otherwise wal will snapshot this memtable in wal.
+   * Unit: byte
+   */
+  private int memtableSnapshotForWalThreshold = 128 * 1024 * 1024;
+  // endregion
 
   /** Unit: byte */
   private int estimatedSeriesSize = 300;
@@ -241,14 +237,11 @@ public class IoTDBConfig {
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
 
-  /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
-  private String[] dataDirs = {"data" + File.separator + "data"};
+  /** Data directories. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
+  private String[] dataDirs = {DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME};
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
-
-  /** Wal directory. */
-  private String walDir = DEFAULT_BASE_DIR + File.separator + "wal";
 
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;
@@ -782,6 +775,8 @@ public class IoTDBConfig {
   /** the interval to log recover progress of each vsg when starting iotdb */
   private long recoveryLogIntervalInMs = 5_000L;
 
+  private boolean enableDiscardOutOfOrderData = false;
+
   private String adminName = "root";
 
   private String adminPassword = "root";
@@ -932,11 +927,13 @@ public class IoTDBConfig {
     schemaDir = addHomeDir(schemaDir);
     syncDir = addHomeDir(syncDir);
     tracingDir = addHomeDir(tracingDir);
-    walDir = addHomeDir(walDir);
     indexRootFolder = addHomeDir(indexRootFolder);
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
     triggerDir = addHomeDir(triggerDir);
+    for (int i = 0; i < walDirs.length; i++) {
+      walDirs[i] = addHomeDir(walDirs[i]);
+    }
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1057,36 +1054,12 @@ public class IoTDBConfig {
     this.timestampPrecision = timestampPrecision;
   }
 
-  public boolean isEnableWal() {
-    return enableWal;
-  }
-
-  public void setEnableWal(boolean enableWal) {
-    this.enableWal = enableWal;
-  }
-
   public boolean isEnableDiscardOutOfOrderData() {
     return enableDiscardOutOfOrderData;
   }
 
   public void setEnableDiscardOutOfOrderData(boolean enableDiscardOutOfOrderData) {
     this.enableDiscardOutOfOrderData = enableDiscardOutOfOrderData;
-  }
-
-  public int getFlushWalThreshold() {
-    return flushWalThreshold;
-  }
-
-  public void setFlushWalThreshold(int flushWalThreshold) {
-    this.flushWalThreshold = flushWalThreshold;
-  }
-
-  public long getForceWalPeriodInMs() {
-    return forceWalPeriodInMs;
-  }
-
-  public void setForceWalPeriodInMs(long forceWalPeriodInMs) {
-    this.forceWalPeriodInMs = forceWalPeriodInMs;
   }
 
   public String getSystemDir() {
@@ -1127,14 +1100,6 @@ public class IoTDBConfig {
 
   void setQueryDir(String queryDir) {
     this.queryDir = queryDir;
-  }
-
-  public String getWalDir() {
-    return walDir;
-  }
-
-  void setWalDir(String walDir) {
-    this.walDir = walDir;
   }
 
   public String getExtDir() {
@@ -1363,6 +1328,38 @@ public class IoTDBConfig {
     this.rpcImplClassName = rpcImplClassName;
   }
 
+  public WALMode getWalMode() {
+    return walMode;
+  }
+
+  public void setWalMode(WALMode walMode) {
+    this.walMode = walMode;
+  }
+
+  public String[] getWalDirs() {
+    return walDirs;
+  }
+
+  public void setWalDirs(String[] walDirs) {
+    this.walDirs = walDirs;
+  }
+
+  public long getSyncWalDelayInMs() {
+    return syncWalDelayInMs;
+  }
+
+  void setSyncWalDelayInMs(long syncWalDelayInMs) {
+    this.syncWalDelayInMs = syncWalDelayInMs;
+  }
+
+  public int getMaxWalNum() {
+    return maxWalNum;
+  }
+
+  void setMaxWalNum(int maxWalNum) {
+    this.maxWalNum = maxWalNum;
+  }
+
   public int getWalBufferSize() {
     return walBufferSize;
   }
@@ -1371,36 +1368,28 @@ public class IoTDBConfig {
     this.walBufferSize = walBufferSize;
   }
 
-  public int getMaxWalBytebufferNumForEachPartition() {
-    return maxWalBytebufferNumForEachPartition;
+  public int getWalBufferEntrySize() {
+    return walBufferEntrySize;
   }
 
-  public void setMaxWalBytebufferNumForEachPartition(int maxWalBytebufferNumForEachPartition) {
-    this.maxWalBytebufferNumForEachPartition = maxWalBytebufferNumForEachPartition;
+  void setWalBufferEntrySize(int walBufferEntrySize) {
+    this.walBufferEntrySize = walBufferEntrySize;
   }
 
-  public long getWalPoolTrimIntervalInMS() {
-    return walPoolTrimIntervalInMS;
+  public int getWalStorageSpaceInMb() {
+    return walStorageSpaceInMb;
   }
 
-  public void setWalPoolTrimIntervalInMS(long walPoolTrimIntervalInMS) {
-    this.walPoolTrimIntervalInMS = walPoolTrimIntervalInMS;
+  void setWalStorageSpaceInMb(int walStorageSpaceInMb) {
+    this.walStorageSpaceInMb = walStorageSpaceInMb;
   }
 
-  public long getRegisterBufferSleepIntervalInMs() {
-    return registerBufferSleepIntervalInMs;
+  public int getMemtableSnapshotForWalThreshold() {
+    return memtableSnapshotForWalThreshold;
   }
 
-  public void setRegisterBufferSleepIntervalInMs(long registerBufferSleepIntervalInMs) {
-    this.registerBufferSleepIntervalInMs = registerBufferSleepIntervalInMs;
-  }
-
-  public long getRegisterBufferRejectThresholdInMs() {
-    return registerBufferRejectThresholdInMs;
-  }
-
-  public void setRegisterBufferRejectThresholdInMs(long registerBufferRejectThresholdInMs) {
-    this.registerBufferRejectThresholdInMs = registerBufferRejectThresholdInMs;
+  void setMemtableSnapshotForWalThreshold(int memtableSnapshotForWalThreshold) {
+    this.memtableSnapshotForWalThreshold = memtableSnapshotForWalThreshold;
   }
 
   public int getEstimatedSeriesSize() {

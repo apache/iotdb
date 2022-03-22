@@ -61,6 +61,8 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.db.wal.exception.WALException;
+import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -87,6 +89,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -222,16 +225,27 @@ public class StorageEngine implements IService {
         IoTDBThreadPoolFactory.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
 
-    // recover all logic storage group processors
     List<IStorageGroupMNode> sgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
+    // init wal recover manager
+    WALRecoverManager.getInstance()
+        .setAllVsgScannedLatch(
+            new CountDownLatch(sgNodes.size() * config.getVirtualStorageGroupNum()));
+    // recover all logic storage groups
     List<Future<Void>> futures = new LinkedList<>();
     for (IStorageGroupMNode storageGroup : sgNodes) {
       StorageGroupManager storageGroupManager =
           processorMap.computeIfAbsent(
               storageGroup.getPartialPath(), id -> new StorageGroupManager(true));
 
-      // recover all virtual storage groups in one logic storage group
+      // recover all virtual storage groups in each logic storage group
       storageGroupManager.asyncRecover(storageGroup, recoveryThreadPool, futures);
+    }
+
+    // wait until wal is recovered
+    try {
+      WALRecoverManager.getInstance().recover();
+    } catch (WALException e) {
+      logger.error("Fail to recover wal.", e);
     }
 
     // operations after all virtual storage groups are recovered
@@ -377,9 +391,6 @@ public class StorageEngine implements IService {
         unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(tsFileTimedCloseCheckThread, ThreadName.TIMED_CLOSE_TSFILE);
     recoveryThreadPool.shutdownNow();
-    for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
-      this.releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroup);
-    }
     processorMap.clear();
   }
 
@@ -825,13 +836,6 @@ public class StorageEngine implements IService {
     processorMap.get(storageGroupPath).syncDeleteDataFiles();
   }
 
-  /** release all the allocated non-heap */
-  public void releaseWalDirectByteBufferPoolInOneStorageGroup(PartialPath storageGroupPath) {
-    if (processorMap.containsKey(storageGroupPath)) {
-      processorMap.get(storageGroupPath).releaseWalDirectByteBufferPool();
-    }
-  }
-
   /** delete all data of storage groups' timeseries. */
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
@@ -857,7 +861,6 @@ public class StorageEngine implements IService {
     }
 
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
-    releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroupPath);
     StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);
     storageGroupManager.deleteStorageGroupSystemFolder(
         systemDir + File.pathSeparator + storageGroupPath);

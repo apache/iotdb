@@ -45,6 +45,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -55,9 +56,11 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.db.writelog.WALFlushListener;
-import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
-import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.db.wal.WALManager;
+import org.apache.iotdb.db.wal.node.IWALNode;
+import org.apache.iotdb.db.wal.utils.WALSubmitter;
+import org.apache.iotdb.db.wal.utils.listener.IResultListener;
+import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -85,7 +88,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @SuppressWarnings("java:S1135") // ignore todos
-public class TsFileProcessor {
+public class TsFileProcessor implements WALSubmitter {
 
   /** logger fot this class */
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessor.class);
@@ -140,8 +143,8 @@ public class TsFileProcessor {
   /** this callback is called before the workMemtable is added into the flushingMemTables. */
   private final UpdateEndTimeCallBack updateLatestFlushTimeCallback;
 
-  /** Wal log node */
-  private WriteLogNode logNode;
+  /** wal node */
+  private final IWALNode walNode;
 
   /** whether it's a sequence file or not */
   private final boolean sequence;
@@ -174,9 +177,10 @@ public class TsFileProcessor {
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
-    logger.info("create a new tsfile processor {}", tsfile.getAbsolutePath());
-    flushListeners.add(new WALFlushListener(this));
+    this.walNode = WALManager.getInstance().applyForWALNode();
+    flushListeners.add(this.walNode);
     closeFileListeners.add(closeTsFileCallback);
+    logger.info("create a new tsfile processor {}", tsfile.getAbsolutePath());
   }
 
   @SuppressWarnings("java:S107") // ignore number of arguments
@@ -194,9 +198,10 @@ public class TsFileProcessor {
     this.writer = writer;
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
-    logger.info("reopen a tsfile processor {}", tsFileResource.getTsFile());
-    flushListeners.add(new WALFlushListener(this));
+    this.walNode = WALManager.getInstance().applyForWALNode();
+    flushListeners.add(this.walNode);
     closeFileListeners.add(closeUnsealedTsFileProcessor);
+    logger.info("reopen a tsfile processor {}", tsFileResource.getTsFile());
   }
 
   /**
@@ -207,12 +212,7 @@ public class TsFileProcessor {
   public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
 
     if (workMemTable == null) {
-      if (enableMemControl) {
-        workMemTable = new PrimitiveMemTable(enableMemControl);
-        MemTableManager.getInstance().addMemtableNumber();
-      } else {
-        workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
-      }
+      createNewWorkingMemTable();
     }
 
     long[] memIncrements = null;
@@ -224,19 +224,20 @@ public class TsFileProcessor {
       }
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-      try {
-        getLogNode().write(insertRowPlan);
-      } catch (Exception e) {
-        if (enableMemControl && memIncrements != null) {
-          rollbackMemoryInfo(memIncrements);
-        }
-        throw new WriteProcessException(
-            String.format(
-                "%s: %s write WAL failed",
-                storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
-            e);
+    try {
+      WALFlushListener walFlushListener = walNode.log(workMemTable.getMemTableId(), insertRowPlan);
+      if (walFlushListener.getResult() == IResultListener.Status.FAILURE) {
+        throw walFlushListener.getCause();
       }
+    } catch (Exception e) {
+      if (enableMemControl && memIncrements != null) {
+        rollbackMemoryInfo(memIncrements);
+      }
+      throw new WriteProcessException(
+          String.format(
+              "%s: %s write WAL failed",
+              storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
+          e);
     }
 
     if (insertRowPlan.isAligned()) {
@@ -272,12 +273,7 @@ public class TsFileProcessor {
       throws WriteProcessException {
 
     if (workMemTable == null) {
-      if (enableMemControl) {
-        workMemTable = new PrimitiveMemTable(enableMemControl);
-        MemTableManager.getInstance().addMemtableNumber();
-      } else {
-        workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
-      }
+      createNewWorkingMemTable();
     }
 
     long[] memIncrements = null;
@@ -297,10 +293,12 @@ public class TsFileProcessor {
     }
 
     try {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        insertTabletPlan.setStart(start);
-        insertTabletPlan.setEnd(end);
-        getLogNode().write(insertTabletPlan);
+      insertTabletPlan.setStart(start);
+      insertTabletPlan.setEnd(end);
+      WALFlushListener walFlushListener =
+          walNode.log(workMemTable.getMemTableId(), insertTabletPlan);
+      if (walFlushListener.getResult() == IResultListener.Status.FAILURE) {
+        throw walFlushListener.getCause();
       }
     } catch (Exception e) {
       for (int i = start; i < end; i++) {
@@ -338,6 +336,16 @@ public class TsFileProcessor {
           insertTabletPlan.getDeviceID().toStringID(), insertTabletPlan.getTimes()[end - 1]);
     }
     tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
+  }
+
+  private void createNewWorkingMemTable() throws WriteProcessException {
+    if (enableMemControl) {
+      workMemTable = new PrimitiveMemTable(enableMemControl);
+      MemTableManager.getInstance().addMemtableNumber();
+    } else {
+      workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
+    }
+    walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
@@ -662,6 +670,10 @@ public class TsFileProcessor {
             FLUSH_QUERY_WRITE_RELEASE, storageGroupName, tsFileResource.getTsFile().getName());
       }
     }
+  }
+
+  WALFlushListener logDeleteInWAL(DeletePlan deletePlan) {
+    return walNode.log(workMemTable.getMemTableId(), deletePlan);
   }
 
   public TsFileResource getTsFileResource() {
@@ -1219,31 +1231,11 @@ public class TsFileProcessor {
     this.managedByFlushManager = managedByFlushManager;
   }
 
-  /**
-   * get WAL log node
-   *
-   * @return WAL log node
-   */
-  public WriteLogNode getLogNode() {
-    if (logNode == null) {
-      logNode =
-          MultiFileLogNodeManager.getInstance()
-              .getNode(
-                  storageGroupName + "-" + tsFileResource.getTsFile().getName(),
-                  storageGroupInfo.getWalSupplier());
-    }
-    return logNode;
-  }
-
   /** close this tsfile */
   public void close() throws TsFileProcessorException {
     try {
       // when closing resource file, its corresponding mod file is also closed.
       tsFileResource.close();
-      MultiFileLogNodeManager.getInstance()
-          .deleteNode(
-              storageGroupName + "-" + tsFileResource.getTsFile().getName(),
-              storageGroupInfo.getWalConsumer());
     } catch (IOException e) {
       throw new TsFileProcessorException(e);
     }

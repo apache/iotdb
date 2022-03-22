@@ -138,6 +138,7 @@ public class IoTDBConstant {
   public static final String SDT_COMP_MAX_TIME = "compmaxtime";
 
   // data folder name
+  public static final String DATA_FOLDER_NAME = "data";
   public static final String SEQUENCE_FLODER_NAME = "sequence";
   public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
   public static final String FILE_NAME_SEPARATOR = "-";
@@ -153,6 +154,7 @@ public class IoTDBConstant {
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
+  public static final String WAL_FOLDER_NAME = "wal";
 
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
@@ -180,6 +182,10 @@ public class IoTDBConstant {
 
   // cross space compaction
   public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX = ".cross";
+
+  // write ahead log
+  public static final String WAL_FILE_SUFFIX = ".wal";
+  public static final String WAL_CHECKPOINT_FILE_SUFFIX = ".checkpoint";
 
   // client version number
   public enum ClientVersion {

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -46,8 +47,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractMemTable implements IMemTable {
+  private static final Logger logger = LoggerFactory.getLogger(AbstractMemTable.class);
+  /** each memTable node has a unique int value identifier */
+  private static final AtomicInteger memTableIdCounter = new AtomicInteger();
 
   /** DeviceId -> chunkGroup(MeasurementId -> chunk) */
   private final Map<IDeviceID, IWritableMemChunkGroup> memTableMap;
@@ -56,8 +61,6 @@ public abstract class AbstractMemTable implements IMemTable {
    * The initial value is true because we want calculate the text data size when recover memTable!!
    */
   protected boolean disableMemControl = true;
-
-  private static final Logger logger = LoggerFactory.getLogger(AbstractMemTable.class);
 
   private boolean shouldFlush = false;
   private final int avgSeriesPointNumThreshold =
@@ -80,7 +83,9 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long minPlanIndex = Long.MAX_VALUE;
 
-  private long createdTime = System.currentTimeMillis();
+  private final int memTableId = memTableIdCounter.getAndIncrement();
+
+  private final long createdTime = System.currentTimeMillis();
 
   private static final String METRIC_POINT_IN = "pointsIn";
 
@@ -478,11 +483,27 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public int getMemTableId() {
+    return memTableId;
+  }
+
+  @Override
   public long getCreatedTime() {
     return createdTime;
   }
 
   private IDeviceID getDeviceID(PartialPath deviceId) {
     return DeviceIDFactory.getInstance().getDeviceID(deviceId);
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    // TODO
+  }
+
+  @Override
+  public int serializedSize() {
+    // TODO
+    return 0;
   }
 }
