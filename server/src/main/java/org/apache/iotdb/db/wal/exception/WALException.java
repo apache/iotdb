@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.wal.exception;
 
-import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class WALException extends IoTDBException {

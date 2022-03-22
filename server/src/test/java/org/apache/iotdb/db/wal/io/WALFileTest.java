@@ -68,12 +68,12 @@ public class WALFileTest {
   public void testReadNormalFile() throws IOException, IllegalPathException {
     int fakeMemTableId = 1;
     List<WALEdit> expectedWALEdits = new ArrayList<>();
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowPlan()));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowsOfOneDevicePlan()));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowsPlan()));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertTabletPlan()));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertMultiTabletPlan()));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getDeletePlan()));
+    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowPlan(devicePath)));
+    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowsOfOneDevicePlan(devicePath)));
+    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowsPlan(devicePath)));
+    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertTabletPlan(devicePath)));
+    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertMultiTabletPlan(devicePath)));
+    expectedWALEdits.add(new WALEdit(fakeMemTableId, getDeletePlan(devicePath)));
     // test WALEdit.serializedSize
     int size = 0;
     for (WALEdit walEdit : expectedWALEdits) {
@@ -116,12 +116,12 @@ public class WALFileTest {
   public void testReadBrokenFile() throws IOException, IllegalPathException {
     int fakeMemTableId = 1;
     List<WALEdit> expectedWALEdits = new ArrayList<>();
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowPlan()));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowsOfOneDevicePlan()));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowsPlan()));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertTabletPlan()));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertMultiTabletPlan()));
-    expectedWALEdits.add(new WALEdit(fakeMemTableId, getDeletePlan()));
+    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowPlan(devicePath)));
+    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowsOfOneDevicePlan(devicePath)));
+    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertRowsPlan(devicePath)));
+    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertTabletPlan(devicePath)));
+    expectedWALEdits.add(new WALEdit(fakeMemTableId, getInsertMultiTabletPlan(devicePath)));
+    expectedWALEdits.add(new WALEdit(fakeMemTableId, getDeletePlan(devicePath)));
     // test WALEdit.serializedSize
     int size = Byte.BYTES;
     for (WALEdit walEdit : expectedWALEdits) {
@@ -149,7 +149,7 @@ public class WALFileTest {
     assertEquals(expectedWALEdits, actualWALEdits);
   }
 
-  private InsertRowPlan getInsertRowPlan() throws IllegalPathException {
+  public static InsertRowPlan getInsertRowPlan(String devicePath) throws IllegalPathException {
     long time = 110L;
     TSDataType[] dataTypes =
         new TSDataType[] {
@@ -177,26 +177,28 @@ public class WALFileTest {
         columns);
   }
 
-  private InsertRowsOfOneDevicePlan getInsertRowsOfOneDevicePlan() throws IllegalPathException {
-    InsertRowPlan insertRowPlan1 = getInsertRowPlan();
-    InsertRowPlan insertRowPlan2 = getInsertRowPlan();
+  public static InsertRowsOfOneDevicePlan getInsertRowsOfOneDevicePlan(String devicePath)
+      throws IllegalPathException {
+    InsertRowPlan insertRowPlan1 = getInsertRowPlan(devicePath);
+    InsertRowPlan insertRowPlan2 = getInsertRowPlan(devicePath);
     insertRowPlan2.setTime(200L);
     InsertRowPlan[] rowPlans = {insertRowPlan1, insertRowPlan2};
     return new InsertRowsOfOneDevicePlan(
         insertRowPlan1.getDevicePath(), rowPlans, new int[] {0, 1});
   }
 
-  private InsertRowsPlan getInsertRowsPlan() throws IllegalPathException {
+  public static InsertRowsPlan getInsertRowsPlan(String devicePath) throws IllegalPathException {
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
-    InsertRowPlan insertRowPlan1 = getInsertRowPlan();
+    InsertRowPlan insertRowPlan1 = getInsertRowPlan(devicePath);
     insertRowsPlan.addOneInsertRowPlan(insertRowPlan1, 0);
-    InsertRowPlan insertRowPlan2 = getInsertRowPlan();
+    InsertRowPlan insertRowPlan2 = getInsertRowPlan(devicePath);
     insertRowPlan2.setTime(200L);
     insertRowsPlan.addOneInsertRowPlan(insertRowPlan2, 1);
     return insertRowsPlan;
   }
 
-  private InsertTabletPlan getInsertTabletPlan() throws IllegalPathException {
+  public static InsertTabletPlan getInsertTabletPlan(String devicePath)
+      throws IllegalPathException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE.ordinal());
@@ -243,21 +245,22 @@ public class WALFileTest {
     return insertTabletPlan;
   }
 
-  private InsertMultiTabletPlan getInsertMultiTabletPlan() throws IllegalPathException {
+  public static InsertMultiTabletPlan getInsertMultiTabletPlan(String devicePath)
+      throws IllegalPathException {
     List<InsertTabletPlan> insertTabletPlans = new ArrayList<>();
-    InsertTabletPlan insertTabletPlan1 = getInsertTabletPlan();
+    InsertTabletPlan insertTabletPlan1 = getInsertTabletPlan(devicePath);
     insertTabletPlans.add(insertTabletPlan1);
-    InsertTabletPlan insertTabletPlan2 = getInsertTabletPlan();
+    InsertTabletPlan insertTabletPlan2 = getInsertTabletPlan(devicePath);
     insertTabletPlan2.setTimes(new long[] {114L, 115L, 116L, 117L});
     insertTabletPlans.add(insertTabletPlan2);
     return new InsertMultiTabletPlan(insertTabletPlans);
   }
 
-  private DeletePlan getDeletePlan() throws IllegalPathException {
+  public static DeletePlan getDeletePlan(String devicePath) throws IllegalPathException {
     return new DeletePlan(Long.MIN_VALUE, Long.MAX_VALUE, new PartialPath(devicePath));
   }
 
-  private static class WALByteBuffer implements IWALByteBufferView {
+  public static class WALByteBuffer implements IWALByteBufferView {
     private final ByteBuffer buffer;
 
     public WALByteBuffer(ByteBuffer buffer) {
@@ -302,6 +305,10 @@ public class WALFileTest {
     @Override
     public void putDouble(double value) {
       buffer.putDouble(value);
+    }
+
+    public ByteBuffer getBuffer() {
+      return buffer;
     }
   }
 }

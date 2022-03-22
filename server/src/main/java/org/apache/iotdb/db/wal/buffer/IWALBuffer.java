@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
-import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 /** Currently, there are 2 buffer types */
 public interface IWALBuffer extends AutoCloseable {

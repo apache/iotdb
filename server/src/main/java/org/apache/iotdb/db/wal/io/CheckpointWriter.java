@@ -1,6 +1,6 @@
 package org.apache.iotdb.db.wal.io;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.wal.checkpoint.Checkpoint;
 
 import java.io.File;

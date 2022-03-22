@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.wal.recover.file;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
@@ -76,7 +76,7 @@ public class TsFilePlanRedoer {
   void redoDelete(DeletePlan deletePlan) throws IOException, MetadataException {
     List<PartialPath> paths = deletePlan.getPaths();
     for (PartialPath path : paths) {
-      for (PartialPath device : IoTDB.metaManager.getBelongedDevices(path)) {
+      for (PartialPath device : IoTDB.schemaEngine.getBelongedDevices(path)) {
         recoveryMemTable.delete(
             path, device, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
       }
@@ -126,7 +126,7 @@ public class TsFilePlanRedoer {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
         vsgProcessor.getIdTable().getSeriesSchemas(plan);
       } else {
-        IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(plan);
+        IoTDB.schemaEngine.getSeriesSchemasAndReadLockDevice(plan);
         plan.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(plan.getDevicePath()));
       }
     } catch (IOException | MetadataException e) {

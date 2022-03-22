@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.db.wal.node.WALNode;
 import org.apache.iotdb.metrics.MetricService;
@@ -86,7 +85,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        walDir,
+        walDirs,
         value -> Stream.of(value).mapToLong(dir -> FileUtils.getDirSize(dir)).sum(),
         Tag.NAME.toString(),
         "wal");
@@ -123,7 +122,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        walDir,
+        walDirs,
         value ->
             Stream.of(value)
                 .mapToLong(

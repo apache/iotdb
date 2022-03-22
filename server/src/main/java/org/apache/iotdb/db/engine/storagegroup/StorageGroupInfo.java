@@ -18,10 +18,8 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.utils.MmapUtil;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
