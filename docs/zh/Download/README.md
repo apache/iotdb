@@ -31,7 +31,7 @@
             <td rowspan="3">0.13.0</td>
             <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.0/apache-iotdb-0.13.0-all-bin.zip">All-in-one</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-all-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.2/apache-iotdb-0.13.0-all-bin.zip.asc">ASC</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-all-bin.zip.asc">ASC</a></td>
             <td rowspan="3"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.0/apache-iotdb-0.13.0-source-release.zip">源代码</a></td>
             <td rowspan="3"><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-source-release.zip.sha512">SHA512</a></td>
             <td rowspan="3"><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-source-release.zip.asc">ASC</a></td>
