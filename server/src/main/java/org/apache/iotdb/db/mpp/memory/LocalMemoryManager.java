@@ -32,8 +32,8 @@ public class LocalMemoryManager {
     long maxMemory = Runtime.getRuntime().maxMemory();
     // Save 20% memory for untracked allocations.
     maxBytes = (long) (maxMemory * 0.8);
-    // Allocate 50% memory for query execution.
-    queryPool = new MemoryPool("query", (long) (maxBytes * 0.5));
+    // Allocate 50% memory for query execution. Each query can allocate up to 30% memory.
+    queryPool = new MemoryPool("query", (long) (maxBytes * 0.5), (long) (maxMemory * 0.3));
   }
 
   public long getMaxBytes() {

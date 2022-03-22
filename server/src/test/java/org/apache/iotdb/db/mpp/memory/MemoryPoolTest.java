@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.memory;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -29,20 +30,19 @@ public class MemoryPoolTest {
 
   @Before
   public void before() {
-    pool = new MemoryPool("test", 1024L);
+    pool = new MemoryPool("test", 1024L, 512L);
   }
 
   @Test
-  public void testReserve() {
+  public void testTryReserve() {
     String queryId = "q0";
-    Assert.assertTrue(pool.tryReserve(queryId, 512L));
-    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
-    Assert.assertEquals(512L, pool.getReservedBytes());
-    Assert.assertEquals(1024L, pool.getMaxBytes());
+    Assert.assertTrue(pool.tryReserve(queryId, 256L));
+    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(queryId));
+    Assert.assertEquals(256L, pool.getReservedBytes());
   }
 
   @Test
-  public void testReserveZero() {
+  public void testTryReserveZero() {
     String queryId = "q0";
     try {
       pool.tryReserve(queryId, 0L);
@@ -52,7 +52,7 @@ public class MemoryPoolTest {
   }
 
   @Test
-  public void testReserveNegative() {
+  public void testTryReserveNegative() {
     String queryId = "q0";
     try {
       pool.tryReserve(queryId, -1L);
@@ -62,21 +62,90 @@ public class MemoryPoolTest {
   }
 
   @Test
+  public void testTryReserveAll() {
+    String queryId = "q0";
+    Assert.assertTrue(pool.tryReserve(queryId, 512L));
+    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
+    Assert.assertEquals(512L, pool.getReservedBytes());
+  }
+
+  @Test
+  public void testOverTryReserve() {
+    String queryId = "q0";
+    Assert.assertFalse(pool.tryReserve(queryId, 513L));
+    Assert.assertEquals(0L, pool.getQueryMemoryReservedBytes(queryId));
+    Assert.assertEquals(0L, pool.getReservedBytes());
+  }
+
+  @Test
+  public void testReserve() {
+    String queryId = "q0";
+    ListenableFuture<Void> future = pool.reserve(queryId, 256L);
+    Assert.assertTrue(future.isDone());
+    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(queryId));
+    Assert.assertEquals(256L, pool.getReservedBytes());
+  }
+
+  @Test
+  public void tesReserveZero() {
+    String queryId = "q0";
+    try {
+      pool.reserve(queryId, 0L);
+      Assert.fail("Expect IllegalArgumentException");
+    } catch (IllegalArgumentException ignore) {
+    }
+  }
+
+  @Test
+  public void testReserveNegative() {
+    String queryId = "q0";
+    try {
+      pool.reserve(queryId, -1L);
+      Assert.fail("Expect IllegalArgumentException");
+    } catch (IllegalArgumentException ignore) {
+    }
+  }
+
+  @Test
   public void testReserveAll() {
     String queryId = "q0";
-    Assert.assertTrue(pool.tryReserve(queryId, 1024L));
-    Assert.assertEquals(1024L, pool.getQueryMemoryReservedBytes(queryId));
-    Assert.assertEquals(1024L, pool.getReservedBytes());
-    Assert.assertEquals(1024L, pool.getMaxBytes());
+    ListenableFuture<Void> future = pool.reserve(queryId, 512L);
+    Assert.assertTrue(future.isDone());
+    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
+    Assert.assertEquals(512L, pool.getReservedBytes());
   }
 
   @Test
   public void testOverReserve() {
     String queryId = "q0";
-    Assert.assertFalse(pool.tryReserve(queryId, 1025L));
-    Assert.assertEquals(0L, pool.getQueryMemoryReservedBytes(queryId));
-    Assert.assertEquals(0L, pool.getReservedBytes());
-    Assert.assertEquals(1024L, pool.getMaxBytes());
+    ListenableFuture<Void> future = pool.reserve(queryId, 513L);
+    Assert.assertFalse(future.isDone());
+  }
+
+  @Test
+  public void testReserveAndFree() {
+    String queryId = "q0";
+    ListenableFuture<Void> future = pool.reserve(queryId, 512L);
+    Assert.assertTrue(future.isDone());
+    future = pool.reserve(queryId, 512L);
+    Assert.assertFalse(future.isDone());
+    pool.free(queryId, 512);
+    Assert.assertTrue(future.isDone());
+  }
+
+  @Test
+  public void testMultiReserveAndFree() {
+    String queryId = "q0";
+    ListenableFuture<Void> future = pool.reserve(queryId, 256L);
+    Assert.assertTrue(future.isDone());
+    future = pool.reserve(queryId, 256L);
+    Assert.assertTrue(future.isDone());
+    future = pool.reserve(queryId, 512L);
+    Assert.assertFalse(future.isDone());
+    pool.free(queryId, 256);
+    Assert.assertFalse(future.isDone());
+    pool.free(queryId, 256);
+    Assert.assertTrue(future.isDone());
   }
 
   @Test
@@ -85,7 +154,6 @@ public class MemoryPoolTest {
     Assert.assertTrue(pool.tryReserve(queryId, 512L));
     Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
     Assert.assertEquals(512L, pool.getReservedBytes());
-    Assert.assertEquals(1024L, pool.getMaxBytes());
 
     pool.free(queryId, 256L);
     Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(queryId));
@@ -98,7 +166,6 @@ public class MemoryPoolTest {
     Assert.assertTrue(pool.tryReserve(queryId, 512L));
     Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
     Assert.assertEquals(512L, pool.getReservedBytes());
-    Assert.assertEquals(1024L, pool.getMaxBytes());
 
     pool.free(queryId, 512L);
     Assert.assertEquals(0L, pool.getQueryMemoryReservedBytes(queryId));
@@ -111,11 +178,12 @@ public class MemoryPoolTest {
     Assert.assertTrue(pool.tryReserve(queryId, 512L));
     Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
     Assert.assertEquals(512L, pool.getReservedBytes());
-    Assert.assertEquals(1024L, pool.getMaxBytes());
 
-    pool.free(queryId, 256L);
-    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(queryId));
-    Assert.assertEquals(256L, pool.getReservedBytes());
+    try {
+      pool.free(queryId, 0L);
+      Assert.fail("Expect IllegalArgumentException");
+    } catch (IllegalArgumentException ignore) {
+    }
   }
 
   @Test
@@ -124,7 +192,6 @@ public class MemoryPoolTest {
     Assert.assertTrue(pool.tryReserve(queryId, 512L));
     Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
     Assert.assertEquals(512L, pool.getReservedBytes());
-    Assert.assertEquals(1024L, pool.getMaxBytes());
 
     try {
       pool.free(queryId, -1L);
@@ -139,7 +206,6 @@ public class MemoryPoolTest {
     Assert.assertTrue(pool.tryReserve(queryId, 512L));
     Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
     Assert.assertEquals(512L, pool.getReservedBytes());
-    Assert.assertEquals(1024L, pool.getMaxBytes());
 
     try {
       pool.free(queryId, 513L);
