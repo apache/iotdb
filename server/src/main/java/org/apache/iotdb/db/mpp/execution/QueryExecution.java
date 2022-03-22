@@ -23,6 +23,8 @@ import org.apache.iotdb.db.mpp.execution.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.mpp.execution.scheduler.IScheduler;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
+import org.apache.iotdb.db.mpp.sql.planner.DistributionPlanner;
+import org.apache.iotdb.db.mpp.sql.planner.LogicalQueryPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.*;
 
 import java.nio.ByteBuffer;
@@ -71,8 +73,8 @@ public class QueryExecution {
 
   // Use LogicalPlanner to do the logical query plan and logical optimization
   public void doLogicalPlan() {
-    LogicalPlanner planner = new LogicalPlanner(this.analysis, this.context, this.planOptimizers);
-    this.logicalPlan = planner.plan();
+    LogicalQueryPlanner planner = new LogicalQueryPlanner(this.context, this.planOptimizers);
+    this.logicalPlan = planner.plan(this.analysis);
   }
 
   // Generate the distributed plan and split it into fragments
