@@ -196,12 +196,6 @@ public class SchemaFileTest {
   }
 
   @Test
-  public void readSF() throws MetadataException, IOException {
-    ISchemaFile sf = SchemaFile.loadSchemaFile("sgRoot");
-    printSF(sf);
-  }
-
-  @Test
   public void test10KDevices() throws MetadataException, IOException {
     int i = 10000;
     IMNode sgNode = new StorageGroupMNode(null, "sgRoot", 11111111L);
