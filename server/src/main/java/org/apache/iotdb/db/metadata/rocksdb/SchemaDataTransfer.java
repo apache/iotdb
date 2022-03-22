@@ -58,9 +58,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class MetaDataTransfer {
+/** Use the class to transfer data from mlog.bin and mtree-*.snapshot to rocksdb based manager */
+public class SchemaDataTransfer {
 
-  private static final Logger logger = LoggerFactory.getLogger(MetaDataTransfer.class);
+  private static final Logger logger = LoggerFactory.getLogger(SchemaDataTransfer.class);
 
   private static int DEFAULT_TRANSFER_THREAD_POOL_SIZE = 200;
   private static int DEFAULT_TRANSFER_PLANS_BUFFER_SIZE = 100_000;
@@ -68,7 +69,7 @@ public class MetaDataTransfer {
   private ForkJoinPool forkJoinPool = new ForkJoinPool(DEFAULT_TRANSFER_THREAD_POOL_SIZE);
 
   private String mtreeSnapshotPath;
-  private MRocksDBManager rocksDBManager;
+  private RSchemaEngine rocksDBManager;
   private MLogWriter mLogWriter;
   private String failedMLogPath =
       IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
@@ -77,18 +78,18 @@ public class MetaDataTransfer {
           + ".transfer_failed";
 
   private String idxFilePath =
-      RocksDBReadWriteHandler.ROCKSDB_PATH + File.separator + "transfer_mlog.idx";
+      RSchemaReadWriteHandler.ROCKSDB_PATH + File.separator + "transfer_mlog.idx";
 
   private AtomicInteger failedPlanCount = new AtomicInteger(0);
   private List<PhysicalPlan> retryPlans = new ArrayList<>();
 
-  MetaDataTransfer() throws MetadataException {
-    rocksDBManager = new MRocksDBManager();
+  SchemaDataTransfer() throws MetadataException {
+    rocksDBManager = new RSchemaEngine();
   }
 
   public static void main(String[] args) {
     try {
-      MetaDataTransfer transfer = new MetaDataTransfer();
+      SchemaDataTransfer transfer = new SchemaDataTransfer();
       transfer.doTransfer();
     } catch (MetadataException | IOException | ExecutionException | InterruptedException e) {
       logger.error(e.getMessage());

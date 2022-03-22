@@ -20,6 +20,8 @@ package org.apache.iotdb.db.metadata.rocksdb;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.rocksdb.mnode.RMNodeType;
+import org.apache.iotdb.db.metadata.rocksdb.mnode.RMNodeValueType;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -27,8 +29,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.lang3.ArrayUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -40,47 +40,19 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ALIAS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ATTRIBUTES;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_TAGS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_TTL;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_VERSION;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_FLAG;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ESCAPE_PATH_SEPARATOR;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_ALIAS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_ATTRIBUTES;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_SCHEMA;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_HAS_TAGS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_IS_ALIGNED;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.FLAG_SET_TTL;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ALIAS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_INTERNAL;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_SG;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.PATH_SEPARATOR;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT_CHAR;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT_STRING;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.*;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.PATH_SEPARATOR;
 
-public class RocksDBUtils {
-
-  private static final Logger logger = LoggerFactory.getLogger(RocksDBUtils.class);
-
-  protected static RocksDBMNodeType[] NODE_TYPE_ARRAY = new RocksDBMNodeType[NODE_TYPE_ALIAS + 1];
+public class RSchemaUtils {
+  public static RMNodeType[] NODE_TYPE_ARRAY = new RMNodeType[NODE_TYPE_ALIAS + 1];
 
   static {
-    NODE_TYPE_ARRAY[NODE_TYPE_INTERNAL] = RocksDBMNodeType.INTERNAL;
-    NODE_TYPE_ARRAY[NODE_TYPE_SG] = RocksDBMNodeType.STORAGE_GROUP;
-    NODE_TYPE_ARRAY[NODE_TYPE_ENTITY] = RocksDBMNodeType.ENTITY;
-    NODE_TYPE_ARRAY[NODE_TYPE_MEASUREMENT] = RocksDBMNodeType.MEASUREMENT;
-    NODE_TYPE_ARRAY[NODE_TYPE_ALIAS] = RocksDBMNodeType.ALISA;
+    NODE_TYPE_ARRAY[NODE_TYPE_INTERNAL] = RMNodeType.INTERNAL;
+    NODE_TYPE_ARRAY[NODE_TYPE_SG] = RMNodeType.STORAGE_GROUP;
+    NODE_TYPE_ARRAY[NODE_TYPE_ENTITY] = RMNodeType.ENTITY;
+    NODE_TYPE_ARRAY[NODE_TYPE_MEASUREMENT] = RMNodeType.MEASUREMENT;
+    NODE_TYPE_ARRAY[NODE_TYPE_ALIAS] = RMNodeType.ALISA;
   }
 
   protected static byte[] toInternalNodeKey(String levelPath) {
@@ -230,7 +202,7 @@ public class RocksDBUtils {
   }
 
   public static int indexOfDataBlockType(byte[] data, RMNodeValueType valueType) {
-    if (valueType.flag != null && (data[1] & valueType.flag) == 0) {
+    if (valueType.getFlag() != null && (data[1] & valueType.getFlag()) == 0) {
       return -1;
     }
 
@@ -265,7 +237,7 @@ public class RocksDBUtils {
           break;
       }
       // got the data we need,don't need to read any more
-      if (valueType.type == blockType) {
+      if (valueType.getType() == blockType) {
         typeExist = true;
         break;
       }
@@ -303,7 +275,7 @@ public class RocksDBUtils {
     // get block type
     byte filter = ReadWriteIOUtils.readByte(byteBuffer);
     Object obj = null;
-    if (valueType.flag != null && (filter & valueType.flag) == 0) {
+    if (valueType.getFlag() != null && (filter & valueType.getFlag()) == 0) {
       return obj;
     }
 
@@ -331,7 +303,7 @@ public class RocksDBUtils {
           break;
       }
       // got the data we need,don't need to read any more
-      if (valueType.type == blockType) {
+      if (valueType.getType() == blockType) {
         break;
       }
     }
@@ -471,7 +443,7 @@ public class RocksDBUtils {
   public static String replaceWildcard(int num) {
     StringBuilder stringBuilder = new StringBuilder();
     for (int i = 0; i < num; i++) {
-      stringBuilder.append(RockDBConstants.PATH_SEPARATOR).append(ONE_LEVEL_PATH_WILDCARD);
+      stringBuilder.append(RSchemaConstants.PATH_SEPARATOR).append(ONE_LEVEL_PATH_WILDCARD);
     }
     return stringBuilder.substring(1);
   }
@@ -513,7 +485,7 @@ public class RocksDBUtils {
       for (int i = 1; i <= maxLevel - nodes.length + 2; i++) {
         String[] clone = nodes.clone();
         clone[multiWildcardPosition.get(0)] = replaceWildcard(i);
-        allNodesArray.add(RocksDBUtils.newStringArray(clone));
+        allNodesArray.add(RSchemaUtils.newStringArray(clone));
       }
     } else {
       for (int sum = multiWildcardPosition.size();
@@ -525,7 +497,7 @@ public class RocksDBUtils {
           for (int i = 0; i < value.length; i++) {
             clone[multiWildcardPosition.get(i)] = replaceWildcard(value[i]);
           }
-          allNodesArray.add(RocksDBUtils.newStringArray(clone));
+          allNodesArray.add(RSchemaUtils.newStringArray(clone));
         }
       }
     }

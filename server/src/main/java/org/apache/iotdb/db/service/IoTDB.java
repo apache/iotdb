@@ -39,7 +39,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.IMetaManager;
 import org.apache.iotdb.db.metadata.MetadataManagerType;
 import org.apache.iotdb.db.metadata.SchemaEngine;
-import org.apache.iotdb.db.metadata.rocksdb.MRocksDBManager;
+import org.apache.iotdb.db.metadata.rocksdb.RSchemaEngine;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
@@ -209,7 +209,7 @@ public class IoTDB implements IoTDBMBean {
     try {
       if (IoTDBDescriptor.getInstance().getConfig().getMetadataManagerType()
           == MetadataManagerType.ROCKSDB_MANAGER) {
-        metaManager = new MRocksDBManager();
+        metaManager = new RSchemaEngine();
         logger.info("Use MRocksDBManager to manage metadata");
       } else {
         metaManager = SchemaEngine.getInstance();

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.rocksdb;
 
-public class RockDBConstants {
+public class RSchemaConstants {
 
   public static final char ZERO = '0';
   public static final char ROOT_CHAR = 'r';

@@ -26,10 +26,9 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.rocksdb.RockDBConstants;
-import org.apache.iotdb.db.metadata.rocksdb.RocksDBMNodeType;
-import org.apache.iotdb.db.metadata.rocksdb.RocksDBReadWriteHandler;
-import org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils;
+import org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants;
+import org.apache.iotdb.db.metadata.rocksdb.RSchemaReadWriteHandler;
+import org.apache.iotdb.db.metadata.rocksdb.RSchemaUtils;
 
 import org.rocksdb.RocksDBException;
 import org.slf4j.Logger;
@@ -41,7 +40,7 @@ public abstract class RMNode implements IMNode {
   /** from root to this node, only be set when used once for InternalMNode */
   protected String fullPath;
 
-  protected RocksDBReadWriteHandler readWriteHandler;
+  protected RSchemaReadWriteHandler readWriteHandler;
 
   protected IMNode parent;
 
@@ -52,9 +51,9 @@ public abstract class RMNode implements IMNode {
   /** Constructor of MNode. */
   public RMNode(String fullPath) {
     this.fullPath = fullPath.intern();
-    this.name = fullPath.substring(fullPath.lastIndexOf(RockDBConstants.PATH_SEPARATOR) + 1);
+    this.name = fullPath.substring(fullPath.lastIndexOf(RSchemaConstants.PATH_SEPARATOR) + 1);
     try {
-      readWriteHandler = RocksDBReadWriteHandler.getInstance();
+      readWriteHandler = RSchemaReadWriteHandler.getInstance();
     } catch (RocksDBException e) {
       logger.error("create RocksDBReadWriteHandler fail", e);
     }
@@ -75,7 +74,8 @@ public abstract class RMNode implements IMNode {
     if (parent != null) {
       return parent;
     }
-    String parentName = fullPath.substring(0, fullPath.lastIndexOf(RockDBConstants.PATH_SEPARATOR));
+    String parentName =
+        fullPath.substring(0, fullPath.lastIndexOf(RSchemaConstants.PATH_SEPARATOR));
     parent = getNodeBySpecifiedPath(parentName);
     return parent;
   }
@@ -83,10 +83,10 @@ public abstract class RMNode implements IMNode {
   protected IMNode getNodeBySpecifiedPath(String keyName) {
     byte[] value = null;
     IMNode node;
-    int nodeNameMaxLevel = RocksDBUtils.getLevelByPartialPath(keyName);
-    for (RocksDBMNodeType type : RocksDBMNodeType.values()) {
+    int nodeNameMaxLevel = RSchemaUtils.getLevelByPartialPath(keyName);
+    for (RMNodeType type : RMNodeType.values()) {
       String parentInnerName =
-          RocksDBUtils.convertPartialPathToInner(keyName, nodeNameMaxLevel, type.getValue());
+          RSchemaUtils.convertPartialPathToInner(keyName, nodeNameMaxLevel, type.getValue());
       try {
         value = readWriteHandler.get(null, parentInnerName.getBytes());
       } catch (RocksDBException e) {
@@ -94,16 +94,16 @@ public abstract class RMNode implements IMNode {
       }
       if (value != null) {
         switch (type.getValue()) {
-          case RockDBConstants.NODE_TYPE_SG:
+          case RSchemaConstants.NODE_TYPE_SG:
             node = new RStorageGroupMNode(keyName, value);
             return node;
-          case RockDBConstants.NODE_TYPE_INTERNAL:
+          case RSchemaConstants.NODE_TYPE_INTERNAL:
             node = new RInternalMNode(keyName);
             return node;
-          case RockDBConstants.NODE_TYPE_ENTITY:
+          case RSchemaConstants.NODE_TYPE_ENTITY:
             node = new REntityMNode(keyName, value);
             return node;
-          case RockDBConstants.NODE_TYPE_MEASUREMENT:
+          case RSchemaConstants.NODE_TYPE_MEASUREMENT:
             node = new RMeasurementMNode(keyName, value);
             return node;
         }

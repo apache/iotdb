@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.rocksdb.mnode.RMNodeType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -69,21 +70,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_BLOCK_TYPE_SCHEMA;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DATA_VERSION;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.DEFAULT_FLAG;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ENTITY;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_MEASUREMENT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.NODE_TYPE_ROOT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.PATH_SEPARATOR;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ROOT;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.TABLE_NAME_TAGS;
-import static org.apache.iotdb.db.metadata.rocksdb.RockDBConstants.ZERO;
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaConstants.*;
 
-public class RocksDBReadWriteHandler {
+public class RSchemaReadWriteHandler {
 
-  private static final Logger logger = LoggerFactory.getLogger(RocksDBReadWriteHandler.class);
+  private static final Logger logger = LoggerFactory.getLogger(RSchemaReadWriteHandler.class);
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -96,7 +87,7 @@ public class RocksDBReadWriteHandler {
 
   private RocksDB rocksDB;
 
-  private static volatile RocksDBReadWriteHandler readWriteHandler;
+  private static volatile RSchemaReadWriteHandler readWriteHandler;
 
   ConcurrentMap<String, ColumnFamilyHandle> columnFamilyHandleMap = new ConcurrentHashMap<>();
   List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>();
@@ -106,9 +97,9 @@ public class RocksDBReadWriteHandler {
     RocksDB.loadLibrary();
   }
 
-  public RocksDBReadWriteHandler() throws RocksDBException {
+  public RSchemaReadWriteHandler() throws RocksDBException {
     Options options = new Options();
-    org.rocksdb.Logger rocksDBLogger = new RockDBLogger(options, logger);
+    org.rocksdb.Logger rocksDBLogger = new RSchemaLogger(options, logger);
     rocksDBLogger.setInfoLogLevel(InfoLogLevel.ERROR_LEVEL);
 
     options
@@ -177,7 +168,7 @@ public class RocksDBReadWriteHandler {
   }
 
   private void initRootKey() throws RocksDBException {
-    byte[] rootKey = RocksDBUtils.toRocksDBKey(ROOT, NODE_TYPE_ROOT);
+    byte[] rootKey = RSchemaUtils.toRocksDBKey(ROOT, NODE_TYPE_ROOT);
     if (!keyExist(rootKey)) {
       rocksDB.put(rootKey, new byte[] {DATA_VERSION, DEFAULT_FLAG});
     }
@@ -200,9 +191,8 @@ public class RocksDBReadWriteHandler {
     rocksDB.put(key, value);
   }
 
-  public void createNode(String levelKey, RocksDBMNodeType type, byte[] value)
-      throws RocksDBException {
-    byte[] nodeKey = RocksDBUtils.toRocksDBKey(levelKey, type.value);
+  public void createNode(String levelKey, RMNodeType type, byte[] value) throws RocksDBException {
+    byte[] nodeKey = RSchemaUtils.toRocksDBKey(levelKey, type.getValue());
     rocksDB.put(nodeKey, value);
   }
 
@@ -212,8 +202,8 @@ public class RocksDBReadWriteHandler {
 
   public void convertToEntityNode(String levelPath, byte[] value) throws RocksDBException {
     WriteBatch batch = new WriteBatch();
-    byte[] internalKey = RocksDBUtils.toInternalNodeKey(levelPath);
-    byte[] entityKey = RocksDBUtils.toEntityNodeKey(levelPath);
+    byte[] internalKey = RSchemaUtils.toInternalNodeKey(levelPath);
+    byte[] entityKey = RSchemaUtils.toEntityNodeKey(levelPath);
     batch.delete(internalKey);
     batch.put(entityKey, value);
     executeBatch(batch);
@@ -221,7 +211,7 @@ public class RocksDBReadWriteHandler {
 
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     String[] nodes = fullPath.getNodes();
-    String key = RocksDBUtils.getLevelPath(nodes, nodes.length - 1);
+    String key = RSchemaUtils.getLevelPath(nodes, nodes.length - 1);
     try {
       byte[] value = rocksDB.get(key.getBytes());
       if (value == null) {
@@ -245,29 +235,29 @@ public class RocksDBReadWriteHandler {
     return count;
   }
 
-  public boolean keyExistByType(String levelKey, RocksDBMNodeType type) throws RocksDBException {
+  public boolean keyExistByType(String levelKey, RMNodeType type) throws RocksDBException {
     return keyExistByType(levelKey, type, new Holder<>());
   }
 
-  public boolean keyExistByType(String levelKey, RocksDBMNodeType type, Holder<byte[]> holder)
+  public boolean keyExistByType(String levelKey, RMNodeType type, Holder<byte[]> holder)
       throws RocksDBException {
-    byte[] key = RocksDBUtils.toRocksDBKey(levelKey, type.value);
+    byte[] key = RSchemaUtils.toRocksDBKey(levelKey, type.getValue());
     return keyExist(key, holder);
   }
 
   public CheckKeyResult keyExistByAllTypes(String levelKey) throws RocksDBException {
-    RocksDBMNodeType[] types =
-        new RocksDBMNodeType[] {
-          RocksDBMNodeType.ALISA,
-          RocksDBMNodeType.ENTITY,
-          RocksDBMNodeType.INTERNAL,
-          RocksDBMNodeType.MEASUREMENT,
-          RocksDBMNodeType.STORAGE_GROUP
+    RMNodeType[] types =
+        new RMNodeType[] {
+          RMNodeType.ALISA,
+          RMNodeType.ENTITY,
+          RMNodeType.INTERNAL,
+          RMNodeType.MEASUREMENT,
+          RMNodeType.STORAGE_GROUP
         };
     return keyExistByTypes(levelKey, types);
   }
 
-  public CheckKeyResult keyExistByTypes(String levelKey, RocksDBMNodeType... types)
+  public CheckKeyResult keyExistByTypes(String levelKey, RMNodeType... types)
       throws RocksDBException {
     CheckKeyResult result = new CheckKeyResult();
     try {
@@ -275,12 +265,12 @@ public class RocksDBReadWriteHandler {
           //          .parallel()
           .forEach(
               x -> {
-                byte[] key = Bytes.concat(new byte[] {(byte) x.value}, levelKey.getBytes());
+                byte[] key = Bytes.concat(new byte[] {(byte) x.getValue()}, levelKey.getBytes());
                 try {
                   Holder<byte[]> holder = new Holder<>();
                   boolean keyExisted = keyExist(key, holder);
                   if (keyExisted) {
-                    result.setExistType(x.value);
+                    result.setExistType(x.getValue());
                     result.setValue(holder.getValue());
                   }
                 } catch (RocksDBException e) {
@@ -337,7 +327,7 @@ public class RocksDBReadWriteHandler {
             x -> {
               if (op.apply(x)) {
                 // x is not leaf node
-                String childrenPrefix = RocksDBUtils.getNextLevelOfPath(x, level);
+                String childrenPrefix = RSchemaUtils.getNextLevelOfPath(x, level);
                 children.addAll(getAllByPrefix(childrenPrefix));
               }
             });
@@ -473,7 +463,7 @@ public class RocksDBReadWriteHandler {
   public void traverseByPrefix(byte[] prefix, BiConsumer<byte[], byte[]> consumer) {
     RocksIterator iterator = rocksDB.newIterator();
     for (iterator.seek(prefix); iterator.isValid(); iterator.next()) {
-      if (RocksDBUtils.startWith(iterator.key(), prefix))
+      if (RSchemaUtils.startWith(iterator.key(), prefix))
         consumer.accept(iterator.key(), iterator.value());
     }
   }
@@ -482,7 +472,7 @@ public class RocksDBReadWriteHandler {
     String innerPathName;
     for (int level = nodes.length; level > 0; level--) {
       String[] copy = Arrays.copyOf(nodes, level);
-      innerPathName = RocksDBUtils.convertPartialPathToInnerByNodes(copy, level, nodeType);
+      innerPathName = RSchemaUtils.convertPartialPathToInnerByNodes(copy, level, nodeType);
       boolean isBelongToType = rocksDB.keyMayExist(innerPathName.getBytes(), new Holder<>());
       if (isBelongToType) {
         return innerPathName;
@@ -495,10 +485,10 @@ public class RocksDBReadWriteHandler {
     rocksDB.write(new WriteOptions(), batch);
   }
 
-  public void deleteNode(String[] nodes, RocksDBMNodeType type) throws RocksDBException {
+  public void deleteNode(String[] nodes, RMNodeType type) throws RocksDBException {
     byte[] key =
-        RocksDBUtils.toRocksDBKey(
-            RocksDBUtils.getLevelPath(nodes, nodes.length - 1), type.getValue());
+        RSchemaUtils.toRocksDBKey(
+            RSchemaUtils.getLevelPath(nodes, nodes.length - 1), type.getValue());
     rocksDB.delete(key);
   }
 
@@ -539,7 +529,7 @@ public class RocksDBReadWriteHandler {
       while (byteBuffer.hasRemaining()) {
         byte blockType = ReadWriteIOUtils.readByte(byteBuffer);
         switch (blockType) {
-          case RockDBConstants.DATA_BLOCK_TYPE_TTL:
+          case RSchemaConstants.DATA_BLOCK_TYPE_TTL:
             long l = ReadWriteIOUtils.readLong(byteBuffer);
             outputStream.write(String.valueOf(l).getBytes());
             outputStream.write(" ".getBytes());
@@ -549,18 +539,18 @@ public class RocksDBReadWriteHandler {
             outputStream.write(schema.toString().getBytes());
             outputStream.write(" ".getBytes());
             break;
-          case RockDBConstants.DATA_BLOCK_TYPE_ALIAS:
+          case RSchemaConstants.DATA_BLOCK_TYPE_ALIAS:
             String str = ReadWriteIOUtils.readString(byteBuffer);
             outputStream.write(str.getBytes());
             outputStream.write(" ".getBytes());
             break;
           case DATA_BLOCK_TYPE_ORIGIN_KEY:
-            byte[] originKey = RocksDBUtils.readOriginKey(byteBuffer);
+            byte[] originKey = RSchemaUtils.readOriginKey(byteBuffer);
             outputStream.write(originKey);
             outputStream.write(" ".getBytes());
             break;
-          case RockDBConstants.DATA_BLOCK_TYPE_TAGS:
-          case RockDBConstants.DATA_BLOCK_TYPE_ATTRIBUTES:
+          case RSchemaConstants.DATA_BLOCK_TYPE_TAGS:
+          case RSchemaConstants.DATA_BLOCK_TYPE_ATTRIBUTES:
             Map<String, String> map = ReadWriteIOUtils.readMap(byteBuffer);
             for (Map.Entry<String, String> entry : map.entrySet()) {
               outputStream.write(("<" + entry.getKey() + "," + entry.getValue() + ">").getBytes());
@@ -583,9 +573,9 @@ public class RocksDBReadWriteHandler {
     rocksDB.close();
   }
 
-  public static RocksDBReadWriteHandler getInstance() throws RocksDBException {
+  public static RSchemaReadWriteHandler getInstance() throws RocksDBException {
     if (readWriteHandler == null) {
-      readWriteHandler = new RocksDBReadWriteHandler();
+      readWriteHandler = new RSchemaReadWriteHandler();
     }
     return readWriteHandler;
   }

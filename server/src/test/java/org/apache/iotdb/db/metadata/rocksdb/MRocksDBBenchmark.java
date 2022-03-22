@@ -16,9 +16,9 @@ import java.util.Set;
 
 public class MRocksDBBenchmark {
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private MRocksDBManager rocksDBManager;
+  private RSchemaEngine rocksDBManager;
 
-  public MRocksDBBenchmark(MRocksDBManager rocksDBManager) {
+  public MRocksDBBenchmark(RSchemaEngine rocksDBManager) {
     this.rocksDBManager = rocksDBManager;
   }
 

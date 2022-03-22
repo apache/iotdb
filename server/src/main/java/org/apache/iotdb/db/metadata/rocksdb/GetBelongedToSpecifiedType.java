@@ -37,13 +37,13 @@ public class GetBelongedToSpecifiedType {
 
   private String fullPath;
   private String[] nodes;
-  private RocksDBReadWriteHandler readWriteHandler;
+  private RSchemaReadWriteHandler readWriteHandler;
   protected List<String> contextNodes = new ArrayList<>();
   private Set<PartialPath> allResult = new HashSet<>();
   private char nodeType;
 
   public GetBelongedToSpecifiedType(
-      PartialPath partialPath, RocksDBReadWriteHandler readWriteHandler, char nodeType)
+      PartialPath partialPath, RSchemaReadWriteHandler readWriteHandler, char nodeType)
       throws RocksDBException, IllegalPathException {
     this.nodes = partialPath.getNodes();
     this.readWriteHandler = readWriteHandler;
@@ -76,18 +76,18 @@ public class GetBelongedToSpecifiedType {
   private void processNameMatch(int idx) throws RocksDBException, IllegalPathException {
     contextNodes.add(nodes[idx]);
     String innerName =
-        RocksDBUtils.convertPartialPathToInnerByNodes(
+        RSchemaUtils.convertPartialPathToInnerByNodes(
             contextNodes.toArray(new String[0]), contextNodes.size() - 1, nodeType);
     byte[] queryResult = readWriteHandler.get(null, innerName.getBytes());
     if (queryResult != null) {
-      allResult.add(new PartialPath(RocksDBUtils.concatNodesName(nodes, 0, idx)));
+      allResult.add(new PartialPath(RSchemaUtils.concatNodesName(nodes, 0, idx)));
     }
   }
 
   private void processOneLevelWildcard(int idx) throws IllegalPathException {
     // The current node name contains wildcards, all possible values queried from the previous node
     String innerName =
-        RocksDBUtils.convertPartialPathToInnerByNodes(
+        RSchemaUtils.convertPartialPathToInnerByNodes(
             contextNodes.toArray(new String[0]), contextNodes.size(), nodeType);
     // prefixed match
     Set<String> matchedResult = readWriteHandler.getAllByPrefix(innerName);
@@ -100,7 +100,7 @@ public class GetBelongedToSpecifiedType {
       String patternNodeName = nodes[idx].replace("*", ".*");
       // if the match is successful, the path is valid
       if (Pattern.matches(patternNodeName, matchedNodeName)) {
-        allResult.add(RocksDBUtils.getPartialPathFromInnerPath(str, matchedKeyNodes.length));
+        allResult.add(RSchemaUtils.getPartialPathFromInnerPath(str, matchedKeyNodes.length));
       }
     }
   }
@@ -108,7 +108,7 @@ public class GetBelongedToSpecifiedType {
   private void processMultiLevelWildcard(int idx) {
     // The current node name contains wildcards, all possible values queried from the previous node
     String innerName =
-        RocksDBUtils.convertPartialPathToInnerByNodes(
+        RSchemaUtils.convertPartialPathToInnerByNodes(
             contextNodes.toArray(new String[0]), contextNodes.size(), nodeType);
     // prefixed match
     Set<String> matchedResult = readWriteHandler.getAllByPrefix(innerName);

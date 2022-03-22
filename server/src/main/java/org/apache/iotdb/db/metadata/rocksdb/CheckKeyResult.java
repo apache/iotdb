@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.metadata.rocksdb;
 
-import static org.apache.iotdb.db.metadata.rocksdb.RocksDBUtils.NODE_TYPE_ARRAY;
+import org.apache.iotdb.db.metadata.rocksdb.mnode.RMNodeType;
+
+import static org.apache.iotdb.db.metadata.rocksdb.RSchemaUtils.NODE_TYPE_ARRAY;
 
 public class CheckKeyResult {
 
   private byte[] value;
-  private RocksDBMNodeType nodeType;
+  private RMNodeType nodeType;
 
   public boolean existAnyKey() {
     return nodeType != null;
@@ -42,11 +44,11 @@ public class CheckKeyResult {
     nodeType = NODE_TYPE_ARRAY[type];
   }
 
-  public RocksDBMNodeType getExistType() {
+  public RMNodeType getExistType() {
     return nodeType;
   }
 
-  public boolean getResult(RocksDBMNodeType type) {
+  public boolean getResult(RMNodeType type) {
     if (type == nodeType) {
       return true;
     }
