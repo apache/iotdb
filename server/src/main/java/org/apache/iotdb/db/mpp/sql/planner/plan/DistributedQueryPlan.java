@@ -19,15 +19,18 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 
 import java.util.List;
 
 public class DistributedQueryPlan {
   private MPPQueryContext context;
-  private PlanNode rootNode;
-  private PlanFragment rootFragment;
-
-  // TODO: consider whether this field is necessary when do the implementation
+  private SubPlan rootSubPlan;
   private List<PlanFragment> fragments;
+
+  public DistributedQueryPlan(
+      MPPQueryContext context, SubPlan rootSubPlan, List<PlanFragment> fragments) {
+    this.context = context;
+    this.rootSubPlan = rootSubPlan;
+    this.fragments = fragments;
+  }
 }

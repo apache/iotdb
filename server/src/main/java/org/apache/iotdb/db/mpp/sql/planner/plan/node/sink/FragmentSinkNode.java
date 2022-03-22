@@ -20,17 +20,23 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
+
+import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 
 public class FragmentSinkNode extends SinkNode {
+  private PlanNode child;
+  private ExchangeNode remoteDestinationNode;
+
   public FragmentSinkNode(PlanNodeId id) {
     super(id);
   }
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return ImmutableList.of(child);
   }
 
   @Override
@@ -53,4 +59,24 @@ public class FragmentSinkNode extends SinkNode {
 
   @Override
   public void close() throws Exception {}
+
+  public PlanNode getChild() {
+    return child;
+  }
+
+  public void setChild(PlanNode child) {
+    this.child = child;
+  }
+
+  public String toString() {
+    return String.format("FragmentSinkNode-%s", getId());
+  }
+
+  public ExchangeNode getRemoteDestinationNode() {
+    return remoteDestinationNode;
+  }
+
+  public void setRemoteDestinationNode(ExchangeNode remoteDestinationNode) {
+    this.remoteDestinationNode = remoteDestinationNode;
+  }
 }

@@ -24,4 +24,19 @@ public class PlanFragmentId {
   public PlanFragmentId(String id) {
     this.id = id;
   }
+
+  public static int initialId = 0;
+
+  public static synchronized PlanFragmentId generateId() {
+    initialId++;
+    return new PlanFragmentId(String.valueOf(initialId));
+  }
+
+  public String getId() {
+    return id;
+  }
+
+  public String toString() {
+    return id;
+  }
 }

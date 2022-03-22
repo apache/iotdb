@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.common.DataRegion;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 
@@ -50,8 +51,17 @@ public class DistributionPlanner {
     return adder.visit(root, new NodeGroupContext());
   }
 
+  public SubPlan splitFragment(PlanNode root) {
+    FragmentBuilder fragmentBuilder = new FragmentBuilder();
+    return fragmentBuilder.splitToSubPlan(root);
+  }
+
   public DistributedQueryPlan planFragments() {
-    return null;
+    PlanNode rootAfterRewrite = rewriteSource();
+    PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
+    SubPlan subPlan = splitFragment(rootWithExchange);
+    return new DistributedQueryPlan(
+        logicalPlan.getContext(), subPlan, subPlan.getPlanFragmentList());
   }
 
   private class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
@@ -185,7 +195,7 @@ public class DistributionPlanner {
           child -> {
             if (!dataRegion.equals(context.getNodeDistribution(child.getId()).dataRegion)) {
               ExchangeNode exchangeNode = new ExchangeNode(PlanNodeIdAllocator.generateId());
-              exchangeNode.setSourceNode(child);
+              exchangeNode.setChild(child);
               newNode.addChild(exchangeNode);
             } else {
               newNode.addChild(child);
@@ -249,6 +259,44 @@ public class DistributionPlanner {
     private NodeDistribution(NodeDistributionType type, DataRegion dataRegion) {
       this.type = type;
       this.dataRegion = dataRegion;
+    }
+  }
+
+  private class FragmentBuilder {
+    public SubPlan splitToSubPlan(PlanNode root) {
+      SubPlan rootSubPlan = createSubPlan(root);
+      splitToSubPlan(root, rootSubPlan);
+      return rootSubPlan;
+    }
+
+    private void splitToSubPlan(PlanNode root, SubPlan subPlan) {
+      if (root instanceof ExchangeNode) {
+        // We add a FragmentSinkNode for newly created PlanFragment
+        ExchangeNode exchangeNode = (ExchangeNode) root;
+        FragmentSinkNode sinkNode = new FragmentSinkNode(PlanNodeIdAllocator.generateId());
+        sinkNode.setChild(exchangeNode.getChild());
+        sinkNode.setRemoteDestinationNode(exchangeNode);
+        // Record the source node info in the ExchangeNode so that we can keep the connection of
+        // these nodes/fragments
+        exchangeNode.setRemoteSourceNode(sinkNode);
+        // We cut off the subtree to make the ExchangeNode as the leaf node of current PlanFragment
+        exchangeNode.cleanChildren();
+
+        // Build the child SubPlan Tree
+        SubPlan childSubPlan = createSubPlan(sinkNode);
+        splitToSubPlan(sinkNode, childSubPlan);
+
+        subPlan.addChild(childSubPlan);
+        return;
+      }
+      for (PlanNode child : root.getChildren()) {
+        splitToSubPlan(child, subPlan);
+      }
+    }
+
+    private SubPlan createSubPlan(PlanNode root) {
+      PlanFragment fragment = new PlanFragment(PlanFragmentId.generateId(), root);
+      return new SubPlan(fragment);
     }
   }
 }

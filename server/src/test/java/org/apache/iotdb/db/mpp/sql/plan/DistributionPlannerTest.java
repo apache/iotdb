@@ -24,8 +24,11 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.*;
 import org.apache.iotdb.db.mpp.sql.planner.plan.DistributionPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
+import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
@@ -102,6 +105,38 @@ public class DistributionPlannerTest {
     assertTrue(rootWithExchange.getChildren().get(0).getChildren().get(2) instanceof ExchangeNode);
     assertEquals(
         rootWithExchange.getChildren().get(0).getChildren().get(2).getChildren().size(), 1);
+  }
+
+  @Test
+  public void TestSplitFragment() throws IllegalPathException {
+    TimeJoinNode timeJoinNode =
+        new TimeJoinNode(
+            PlanNodeIdAllocator.generateId(), OrderBy.TIMESTAMP_ASC, FilterNullPolicy.NO_FILTER);
+
+    timeJoinNode.addChild(
+        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s1")));
+    timeJoinNode.addChild(
+        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d1.s2")));
+    timeJoinNode.addChild(
+        new SeriesScanNode(PlanNodeIdAllocator.generateId(), new PartialPath("root.sg.d2.s1")));
+
+    LimitNode root = new LimitNode(PlanNodeIdAllocator.generateId(), 10, timeJoinNode);
+
+    Analysis analysis = constructAnalysis();
+
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(), root));
+    PlanNode rootAfterRewrite = planner.rewriteSource();
+    PlanNode rootWithExchange = planner.addExchangeNode(rootAfterRewrite);
+    PlanNodeUtil.printPlanNode(rootWithExchange);
+    SubPlan subPlan = planner.splitFragment(rootWithExchange);
+    System.out.println(subPlan);
+    List<PlanFragment> fragments = subPlan.getPlanFragmentList();
+    fragments.forEach(
+        f -> {
+          System.out.println(f);
+          PlanNodeUtil.printPlanNode(f.getRoot());
+        });
   }
 
   private Analysis constructAnalysis() {

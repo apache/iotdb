@@ -19,17 +19,23 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import org.apache.iotdb.db.mpp.common.FragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 
 public class ExchangeNode extends PlanNode {
-  private PlanNode sourceNode;
-  private FragmentId sourceFragmentId;
+  private PlanNode child;
+  private FragmentSinkNode remoteSourceNode;
+
+  // In current version, one ExchangeNode will only have one source.
+  // And the fragment which the sourceNode belongs to will only have one instance.
+  // Thus, by nodeId and endpoint, the ExchangeNode can know where its source from.
+  private PlanNodeId sourceNodeId; // sourceNodeId is the same as the child's PlanNodeId
+  private String sourceEndpoint; // The endpoint where the sourceNode will be distributed
 
   public ExchangeNode(PlanNodeId id) {
     super(id);
@@ -37,7 +43,10 @@ public class ExchangeNode extends PlanNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return ImmutableList.of(sourceNode);
+    if (this.child == null) {
+      return ImmutableList.of();
+    }
+    return ImmutableList.of(child);
   }
 
   @Override
@@ -48,7 +57,7 @@ public class ExchangeNode extends PlanNode {
   @Override
   public PlanNode cloneWithChildren(List<PlanNode> children) {
     ExchangeNode node = new ExchangeNode(getId());
-    node.setSourceNode(children.get(0));
+    node.setChild(children.get(0));
     return node;
   }
 
@@ -57,23 +66,27 @@ public class ExchangeNode extends PlanNode {
     return null;
   }
 
-  public void setSourceFragmentId(FragmentId sourceFragmentId) {
-    this.sourceFragmentId = sourceFragmentId;
+  public PlanNode getChild() {
+    return child;
   }
 
-  public FragmentId getSourceFragmentId() {
-    return sourceFragmentId;
-  }
-
-  public PlanNode getSourceNode() {
-    return sourceNode;
-  }
-
-  public void setSourceNode(PlanNode sourceNode) {
-    this.sourceNode = sourceNode;
+  public void setChild(PlanNode child) {
+    this.child = child;
   }
 
   public String toString() {
-    return String.format("ExchangeNode-%s", getId());
+    return String.format("ExchangeNode-%s: [Source: %s]", getId(), remoteSourceNode);
+  }
+
+  public FragmentSinkNode getRemoteSourceNode() {
+    return remoteSourceNode;
+  }
+
+  public void setRemoteSourceNode(FragmentSinkNode remoteSourceNode) {
+    this.remoteSourceNode = remoteSourceNode;
+  }
+
+  public void cleanChildren() {
+    this.child = null;
   }
 }

@@ -25,4 +25,21 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 public class PlanFragment {
   private PlanFragmentId id;
   private PlanNode root;
+
+  public PlanFragment(PlanFragmentId id, PlanNode root) {
+    this.id = id;
+    this.root = root;
+  }
+
+  public PlanFragmentId getId() {
+    return id;
+  }
+
+  public PlanNode getRoot() {
+    return root;
+  }
+
+  public String toString() {
+    return String.format("PlanFragment-%s", getId());
+  }
 }
