@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
+import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricsService;
@@ -48,6 +49,9 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 
 public class IoTDBDescriptor {
@@ -131,7 +135,14 @@ public class IoTDBDescriptor {
       properties.load(inputStream);
 
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
-      replaceHostnameWithIP();
+
+      loadClusterProps(properties);
+
+      try {
+        replaceHostnameWithIP();
+      } catch (Exception e) {
+        logger.info(String.format("replace hostname with ip failed, %s", e.getMessage()));
+      }
 
       conf.setRpcThriftCompressionEnable(
           Boolean.parseBoolean(
@@ -841,6 +852,8 @@ public class IoTDBDescriptor {
       // CQ
       loadCQProps(properties);
 
+      // cluster
+      loadClusterProps(properties);
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
     } catch (IOException e) {
@@ -854,13 +867,38 @@ public class IoTDBDescriptor {
   }
 
   // to keep consistent with the cluster module.
-  private void replaceHostnameWithIP() throws UnknownHostException {
+  private void replaceHostnameWithIP() throws UnknownHostException, BadNodeUrlFormatException {
     boolean isInvalidRpcIp = InetAddresses.isInetAddress(conf.getRpcAddress());
     if (!isInvalidRpcIp) {
-      InetAddress address = InetAddress.getByName(getConfig().getRpcAddress());
-      getConfig().setRpcAddress(address.getHostAddress());
+      conf.setRpcAddress(InetAddress.getByName(conf.getRpcAddress()).getHostAddress());
     }
-    logger.debug("after replace, the rpc_address={},", conf.getRpcAddress());
+
+    boolean isInvalidInternalIp = InetAddresses.isInetAddress(conf.getInternalIp());
+    if (!isInvalidInternalIp) {
+      conf.setInternalIp(InetAddress.getByName(conf.getInternalIp()).getHostAddress());
+    }
+
+    List<String> newConfigNodeUrls = new ArrayList<>();
+    for (String nodeUrl : conf.getConfigNodeUrls()) {
+      String[] splits = nodeUrl.split(":");
+      if (splits.length != 2) {
+        throw new BadNodeUrlFormatException(nodeUrl);
+      }
+      String nodeIP = splits[0];
+      boolean isInvalidNodeIp = InetAddresses.isInetAddress(nodeIP);
+      if (!isInvalidNodeIp) {
+        String newNodeIP = InetAddress.getByName(nodeIP).getHostAddress();
+        newConfigNodeUrls.add(newNodeIP + ":" + splits[1]);
+      } else {
+        newConfigNodeUrls.add(nodeUrl);
+      }
+    }
+    conf.setConfigNodeUrls(newConfigNodeUrls);
+    logger.debug(
+        "after replace, the rpcIP={}, internalIP={}, configNodeUrls={}",
+        conf.getRpcAddress(),
+        conf.getInternalIp(),
+        conf.getConfigNodeUrls());
   }
 
   private void loadWALProps(Properties properties) {
@@ -1410,6 +1448,20 @@ public class IoTDBDescriptor {
                 "cqlog_buffer_size", Integer.toString(conf.getCqlogBufferSize()))));
   }
 
+  public void loadClusterProps(Properties properties) {
+    String configNodeUrls = properties.getProperty("config_nodes");
+    if (configNodeUrls != null) {
+      List<String> urlList = getNodeUrlList(configNodeUrls);
+      conf.setConfigNodeUrls(urlList);
+    }
+
+    conf.setInternalIp(properties.getProperty("internal_ip", conf.getInternalIp()));
+
+    conf.setInternalPort(
+        Integer.parseInt(
+            properties.getProperty("internal_port", Integer.toString(conf.getInternalPort()))));
+  }
+
   /** Get default encode algorithm by data type */
   public TSEncoding getDefaultEncodingByType(TSDataType dataType) {
     switch (dataType) {
@@ -1426,6 +1478,28 @@ public class IoTDBDescriptor {
       default:
         return conf.getDefaultTextEncoding();
     }
+  }
+
+  /**
+   * Split the node urls as one list.
+   *
+   * @param nodeUrls the config node urls.
+   * @return the node urls as a list.
+   */
+  public static List<String> getNodeUrlList(String nodeUrls) {
+    if (nodeUrls == null) {
+      return Collections.emptyList();
+    }
+    List<String> urlList = new ArrayList<>();
+    String[] split = nodeUrls.split(",");
+    for (String nodeUrl : split) {
+      nodeUrl = nodeUrl.trim();
+      if ("".equals(nodeUrl)) {
+        continue;
+      }
+      urlList.add(nodeUrl);
+    }
+    return urlList;
   }
 
   private static class IoTDBDescriptorHolder {
