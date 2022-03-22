@@ -28,5 +28,10 @@ public abstract class MTreeDiskModeTest extends MTreeBelowSGTest {
     setMemSize();
   }
 
+  @Override
+  protected void rollBackConfig() {
+    IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(false);
+  }
+
   protected abstract void setMemSize();
 }

@@ -26,4 +26,7 @@ public class SchemaEngineMemoryModeTest extends SchemaEngineBasicTest {
   protected void setConfig() {
     IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(false);
   }
+
+  @Override
+  protected void rollBackConfig() {}
 }

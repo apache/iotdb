@@ -91,9 +91,12 @@ public abstract class SchemaEngineBasicTest {
 
   protected abstract void setConfig();
 
+  protected abstract void rollBackConfig();
+
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    rollBackConfig();
   }
 
   @Test

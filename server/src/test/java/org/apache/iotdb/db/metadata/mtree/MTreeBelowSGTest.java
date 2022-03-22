@@ -57,6 +57,8 @@ public abstract class MTreeBelowSGTest {
 
   protected abstract void setConfig();
 
+  protected abstract void rollBackConfig();
+
   @Before
   public void setUp() throws Exception {
     setConfig();
@@ -69,6 +71,7 @@ public abstract class MTreeBelowSGTest {
     root.clear();
     root = null;
     EnvironmentUtils.cleanEnv();
+    rollBackConfig();
   }
 
   private MTreeBelowSG getStorageGroup(PartialPath path) throws MetadataException {

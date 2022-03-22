@@ -64,6 +64,7 @@ public class SchemaFileTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(false);
   }
 
   @Test

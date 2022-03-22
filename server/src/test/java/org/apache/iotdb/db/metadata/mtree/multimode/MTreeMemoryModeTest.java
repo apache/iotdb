@@ -26,4 +26,7 @@ public class MTreeMemoryModeTest extends MTreeBelowSGTest {
   protected void setConfig() {
     IoTDBDescriptor.getInstance().getConfig().setEnablePersistentSchema(false);
   }
+
+  @Override
+  protected void rollBackConfig() {}
 }

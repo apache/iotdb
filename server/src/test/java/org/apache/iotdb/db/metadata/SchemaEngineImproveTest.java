@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -56,7 +55,6 @@ public class SchemaEngineImproveTest {
 
   @Before
   public void setUp() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setSyncMlogPeriodInMs(10);
     EnvironmentUtils.envSetUp();
     schemaEngine = IoTDB.schemaEngine;
     schemaEngine.setStorageGroup(new PartialPath("root.t1.v2"));
