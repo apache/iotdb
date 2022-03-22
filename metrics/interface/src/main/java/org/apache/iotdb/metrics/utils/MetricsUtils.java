@@ -22,8 +22,6 @@ package org.apache.iotdb.metrics.utils;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 public class MetricsUtils {
@@ -54,15 +52,5 @@ public class MetricsUtils {
           .append("\"");
     }
     return stringBuilder.toString();
-  }
-
-  public static Map<String, String> emptyMap() {
-    return Collections.emptyMap();
-  }
-
-  public static Map<String, String> mapOf(String key, String value) {
-    HashMap<String, String> result = new HashMap<>();
-    result.put(key, value);
-    return result;
   }
 }

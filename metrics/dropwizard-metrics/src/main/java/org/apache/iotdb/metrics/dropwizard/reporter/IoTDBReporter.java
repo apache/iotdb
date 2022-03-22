@@ -21,6 +21,7 @@ package org.apache.iotdb.metrics.dropwizard.reporter;
 
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.dropwizard.MetricName;
 import org.apache.iotdb.metrics.utils.MetricsUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -163,54 +164,64 @@ public class IoTDBReporter extends ScheduledReporter {
     }
   }
 
-  private void sendTimer(String name, Timer timer) {
-    writeSnapshotAndCount(
-        prefixed(name), timer.getSnapshot(), timer.getCount(), 1.0D / TimeUnit.SECONDS.toNanos(1L));
-  }
-
-  private void sendMeter(String name, Meter meter) {
-    double value = meter.getCount();
-    updateValue(prefixed(name), MetricsUtils.emptyMap(), value);
-  }
-
-  private void sendHistogram(String name, Histogram histogram) {
-    writeSnapshotAndCount(prefixed(name), histogram.getSnapshot(), histogram.getCount(), 1.0);
-  }
-
-  private void sendCounter(String name, Counter counter) {
-    double value = counter.getCount();
-    updateValue(prefixed(name), MetricsUtils.emptyMap(), value);
-  }
-
   private void sendGauge(String name, Gauge gauge) {
+    MetricName metricName = new MetricName(name);
     Object obj = gauge.getValue();
     double value;
     if (obj instanceof Number) {
       value = ((Number) obj).doubleValue();
-      updateValue(prefixed(name), MetricsUtils.emptyMap(), value);
+      updateValue(prefixed(metricName.getName()), metricName.getTags(), value);
     } else if (obj instanceof Boolean) {
-      updateValue(prefixed(name), MetricsUtils.emptyMap(), obj);
+      updateValue(prefixed(metricName.getName()), metricName.getTags(), obj);
     }
   }
 
-  private void writeSnapshotAndCount(String name, Snapshot snapshot, long count, double factor) {
-    updateValue(name, MetricsUtils.mapOf("quantile", "0.5"), snapshot.getMedian() * factor);
-    updateValue(
-        name, MetricsUtils.mapOf("quantile", "0.75"), snapshot.get75thPercentile() * factor);
-    updateValue(
-        name, MetricsUtils.mapOf("quantile", "0.95"), snapshot.get95thPercentile() * factor);
-    updateValue(
-        name, MetricsUtils.mapOf("quantile", "0.98"), snapshot.get98thPercentile() * factor);
-    updateValue(
-        name, MetricsUtils.mapOf("quantile", "0.99"), snapshot.get99thPercentile() * factor);
-    updateValue(
-        name, MetricsUtils.mapOf("quantile", "0.999"), snapshot.get999thPercentile() * factor);
-    updateValue(name + "_min", MetricsUtils.emptyMap(), snapshot.getMin());
-    updateValue(name + "_max", MetricsUtils.emptyMap(), snapshot.getMax());
-    updateValue(name + "_median", MetricsUtils.emptyMap(), snapshot.getMedian());
-    updateValue(name + "_mean", MetricsUtils.emptyMap(), snapshot.getMean());
-    updateValue(name + "_stddev", MetricsUtils.emptyMap(), snapshot.getStdDev());
-    updateValue(name + "_count", MetricsUtils.emptyMap(), count);
+  private void sendCounter(String name, Counter counter) {
+    MetricName metricName = new MetricName(name);
+    double value = counter.getCount();
+    updateValue(prefixed(metricName.getName()), metricName.getTags(), value);
+  }
+
+  private void sendHistogram(String name, Histogram histogram) {
+    MetricName metricName = new MetricName(name);
+    writeSnapshotAndCount(
+        prefixed(metricName.getName()),
+        metricName.getTags(),
+        histogram.getSnapshot(),
+        histogram.getCount(),
+        1.0);
+  }
+
+  private void sendMeter(String name, Meter meter) {
+    MetricName metricName = new MetricName(name);
+    double value = meter.getCount();
+    updateValue(prefixed(metricName.getName()), metricName.getTags(), value);
+  }
+
+  private void sendTimer(String name, Timer timer) {
+    MetricName metricName = new MetricName(name);
+    writeSnapshotAndCount(
+        prefixed(metricName.getName()),
+        metricName.getTags(),
+        timer.getSnapshot(),
+        timer.getCount(),
+        1.0D / TimeUnit.SECONDS.toNanos(1L));
+  }
+
+  private void writeSnapshotAndCount(
+      String name, Map<String, String> tags, Snapshot snapshot, long count, double factor) {
+    updateValue(name, addTags(tags, "quantile", "0.5"), snapshot.getMedian() * factor);
+    updateValue(name, addTags(tags, "quantile", "0.75"), snapshot.get75thPercentile() * factor);
+    updateValue(name, addTags(tags, "quantile", "0.95"), snapshot.get95thPercentile() * factor);
+    updateValue(name, addTags(tags, "quantile", "0.98"), snapshot.get98thPercentile() * factor);
+    updateValue(name, addTags(tags, "quantile", "0.99"), snapshot.get99thPercentile() * factor);
+    updateValue(name, addTags(tags, "quantile", "0.999"), snapshot.get999thPercentile() * factor);
+    updateValue(name + "_min", tags, snapshot.getMin());
+    updateValue(name + "_max", tags, snapshot.getMax());
+    updateValue(name + "_median", tags, snapshot.getMedian());
+    updateValue(name + "_mean", tags, snapshot.getMean());
+    updateValue(name + "_stddev", tags, snapshot.getStdDev());
+    updateValue(name + "_count", tags, count);
   }
 
   private void updateValue(String name, Map<String, String> labels, Object value) {
@@ -242,6 +253,12 @@ public class IoTDBReporter extends ScheduledReporter {
 
   private String prefixed(String name) {
     return prefix == null ? name : (prefix + name);
+  }
+
+  private Map<String, String> addTags(Map<String, String> tags, String key, String value) {
+    HashMap<String, String> result = new HashMap<>(tags);
+    result.put(key, value);
+    return result;
   }
 
   public static Builder forRegistry(MetricRegistry metricRegistry) {
