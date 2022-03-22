@@ -30,7 +30,7 @@ struct DataNodeRegisterResp {
     2: optional i32 dataNodeID
 }
 
-struct DataNodeInfo {
+struct DataNodeMessage {
   1: required i32 dataNodeID
   2: required rpc.EndPoint endPoint
 }
@@ -43,7 +43,7 @@ struct DeleteStorageGroupReq {
     1: required string storageGroup
 }
 
-struct StorageGroupSchema {
+struct StorageGroupMessage {
     1: required string storageGroup
 }
 
@@ -81,13 +81,13 @@ service ConfigIService {
   // Otherwise, return TSStatusCode.INTERNAL_SERVER_ERROR
   DataNodeRegisterResp registerDataNode(DataNodeRegisterReq req)
 
-  map<i32, DataNodeInfo> getDataNodesInfo(i32 dataNodeID)
+  map<i32, DataNodeMessage> getDataNodesMessage(i32 dataNodeID)
 
   rpc.TSStatus setStorageGroup(SetStorageGroupReq req)
 
   rpc.TSStatus deleteStorageGroup(DeleteStorageGroupReq req)
 
-  map<string, StorageGroupSchema> getStorageGroupSchemas()
+  map<string, StorageGroupMessage> getStorageGroupsMessage()
 
   // Gets SchemaRegions for DeviceGroups in a StorageGroup
   SchemaPartitionInfo getSchemaPartition(GetSchemaPartitionReq req)

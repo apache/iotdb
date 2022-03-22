@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.confignode.service.thrift.server;
 
-import org.apache.iotdb.confignode.rpc.thrift.DataNodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.DataNodeMessage;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.StorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessage;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -69,21 +69,21 @@ public class ConfigNodeRPCServerProcessorTest {
         "DataNode 0.0.0.0:6667 is already registered.", resp.getRegisterResult().getMessage());
 
     // test query DataNodeInfo
-    Map<Integer, DataNodeInfo> infoMap = processor.getDataNodesInfo(-1);
-    Assert.assertEquals(3, infoMap.size());
-    List<Map.Entry<Integer, DataNodeInfo>> infoList = new ArrayList<>(infoMap.entrySet());
-    infoList.sort(Comparator.comparingInt(Map.Entry::getKey));
+    Map<Integer, DataNodeMessage> messageMap = processor.getDataNodesMessage(-1);
+    Assert.assertEquals(3, messageMap.size());
+    List<Map.Entry<Integer, DataNodeMessage>> messageList = new ArrayList<>(messageMap.entrySet());
+    messageList.sort(Comparator.comparingInt(Map.Entry::getKey));
     for (int i = 0; i < 3; i++) {
-      Assert.assertEquals(i, infoList.get(i).getValue().getDataNodeID());
-      Assert.assertEquals("0.0.0.0", infoList.get(i).getValue().getEndPoint().getIp());
-      Assert.assertEquals(6667 + i, infoList.get(i).getValue().getEndPoint().getPort());
+      Assert.assertEquals(i, messageList.get(i).getValue().getDataNodeID());
+      Assert.assertEquals("0.0.0.0", messageList.get(i).getValue().getEndPoint().getIp());
+      Assert.assertEquals(6667 + i, messageList.get(i).getValue().getEndPoint().getPort());
     }
 
-    infoMap = processor.getDataNodesInfo(1);
-    Assert.assertEquals(1, infoMap.size());
-    Assert.assertNotNull(infoMap.get(1));
-    Assert.assertEquals("0.0.0.0", infoMap.get(1).getEndPoint().getIp());
-    Assert.assertEquals(6668, infoMap.get(1).getEndPoint().getPort());
+    messageMap = processor.getDataNodesMessage(1);
+    Assert.assertEquals(1, messageMap.size());
+    Assert.assertNotNull(messageMap.get(1));
+    Assert.assertEquals("0.0.0.0", messageMap.get(1).getEndPoint().getIp());
+    Assert.assertEquals(6668, messageMap.get(1).getEndPoint().getPort());
   }
 
   @Test
@@ -115,9 +115,9 @@ public class ConfigNodeRPCServerProcessorTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // query StorageGroupSchema
-    Map<String, StorageGroupSchema> schemaMap = processor.getStorageGroupSchemas();
-    Assert.assertEquals(1, schemaMap.size());
-    Assert.assertNotNull(schemaMap.get(sg));
-    Assert.assertEquals(sg, schemaMap.get(sg).getStorageGroup());
+    Map<String, StorageGroupMessage> messageMap = processor.getStorageGroupsMessage();
+    Assert.assertEquals(1, messageMap.size());
+    Assert.assertNotNull(messageMap.get(sg));
+    Assert.assertEquals(sg, messageMap.get(sg).getStorageGroup());
   }
 }

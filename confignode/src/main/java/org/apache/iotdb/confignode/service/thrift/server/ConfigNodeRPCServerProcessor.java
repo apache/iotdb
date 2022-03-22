@@ -21,12 +21,14 @@ package org.apache.iotdb.confignode.service.thrift.server;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.partition.DataNodeInfo;
+import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
-import org.apache.iotdb.confignode.rpc.thrift.DataNodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.DataNodeMessage;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.DataPartitionInfo;
@@ -36,7 +38,7 @@ import org.apache.iotdb.confignode.rpc.thrift.GetDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.SetStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.StorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.StorageGroupMessage;
 import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
@@ -74,24 +76,20 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public Map<Integer, DataNodeInfo> getDataNodesInfo(int dataNodeID) throws TException {
+  public Map<Integer, DataNodeMessage> getDataNodesMessage(int dataNodeID) throws TException {
     QueryDataNodeInfoPlan plan = new QueryDataNodeInfoPlan(dataNodeID);
     ConsensusReadResponse resp = configManager.read(plan);
     DataNodesInfoDataSet dataSet = (DataNodesInfoDataSet) resp.getDataset();
 
-    Map<Integer, DataNodeInfo> result = null;
+    Map<Integer, DataNodeMessage> result = null;
     if (dataSet != null) {
       result = new HashMap<>();
-      Map<Integer, org.apache.iotdb.confignode.partition.DataNodeInfo> infoMap =
-          dataSet.getInfoMap();
-      for (int key : infoMap.keySet()) {
+      for (DataNodeInfo info : dataSet.getInfoMap().values()) {
         result.put(
-            key,
-            new DataNodeInfo(
-                key,
-                new EndPoint(
-                    infoMap.get(key).getEndPoint().getIp(),
-                    infoMap.get(key).getEndPoint().getPort())));
+            info.getDataNodeID(),
+            new DataNodeMessage(
+                info.getDataNodeID(),
+                new EndPoint(info.getEndPoint().getIp(), info.getEndPoint().getPort())));
       }
     }
     return result;
@@ -111,16 +109,15 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public Map<String, org.apache.iotdb.confignode.rpc.thrift.StorageGroupSchema>
-      getStorageGroupSchemas() throws TException {
+  public Map<String, StorageGroupMessage> getStorageGroupsMessage() throws TException {
     ConsensusReadResponse resp = configManager.read(new QueryStorageGroupSchemaPlan());
     if (resp.getDataset() == null) {
       return null;
     } else {
-      Map<String, StorageGroupSchema> result = new HashMap<>();
-      for (org.apache.iotdb.confignode.partition.StorageGroupSchema schema :
+      Map<String, StorageGroupMessage> result = new HashMap<>();
+      for (StorageGroupSchema schema :
           ((StorageGroupSchemaDataSet) resp.getDataset()).getSchemaList()) {
-        result.put(schema.getName(), new StorageGroupSchema(schema.getName()));
+        result.put(schema.getName(), new StorageGroupMessage(schema.getName()));
       }
       return result;
     }
