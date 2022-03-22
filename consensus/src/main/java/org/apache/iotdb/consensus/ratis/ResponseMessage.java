@@ -18,34 +18,45 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
-import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.ratis.protocol.Message;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
+import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class RequestMessage implements Message {
+public class ResponseMessage implements Message {
 
-  private final IConsensusRequest actualRequest;
-  private ByteString serializedContent;
+  /**
+   * This content holder may hold 1. TSStatus, which may be serialized when called getContent() 2.
+   * DataSet, which never need to be serialized
+   */
+  private final Object contentHolder;
 
-  public RequestMessage(IConsensusRequest request) {
-    this.actualRequest = request;
-    serializedContent = null;
+  private ByteString serializedData;
+  private final Logger logger = LoggerFactory.getLogger(ResponseMessage.class);
+
+  public ResponseMessage(Object content) {
+    this.contentHolder = content;
+    this.serializedData = null;
   }
 
-  public IConsensusRequest getActualRequest() {
-    return actualRequest;
+  public Object getContentHolder() {
+    return contentHolder;
   }
 
   @Override
   public ByteString getContent() {
-    if (serializedContent == null) {
-      assert actualRequest instanceof ByteBufferConsensusRequest;
-      ByteBufferConsensusRequest req = (ByteBufferConsensusRequest) actualRequest;
-      serializedContent = ByteString.copyFrom(req.getContent());
-      req.getContent().flip(); // so that it can be read from other sources
+    if (serializedData == null) {
+      assert contentHolder instanceof TSStatus;
+      TSStatus status = (TSStatus) contentHolder;
+      try {
+        serializedData = ByteString.copyFrom(Utils.serializeTSStatus(status));
+      } catch (TException e) {
+        logger.warn("serialize TSStatus failed {}", status);
+      }
     }
-    return serializedContent;
+    return serializedData;
   }
 }

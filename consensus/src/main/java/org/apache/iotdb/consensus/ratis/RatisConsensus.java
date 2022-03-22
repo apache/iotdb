@@ -21,9 +21,9 @@ package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.ConsensusGroupId;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
@@ -33,7 +33,6 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
-import org.apache.iotdb.consensus.exception.RatisSerializationException;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -53,7 +52,6 @@ import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
-import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.apache.ratis.util.NetUtils;
 import org.apache.thrift.TException;
 
@@ -155,13 +153,8 @@ public class RatisConsensus implements IConsensus {
       return failedWrite(new ConsensusGroupNotExistException(groupId));
     }
 
-    if (!(IConsensusRequest instanceof ByteBufferConsensusRequest)) {
-      return failedWrite(new RatisSerializationException(IConsensusRequest));
-    }
-
     // serialize request into Message
-    ByteBufferConsensusRequest request = (ByteBufferConsensusRequest) IConsensusRequest;
-    Message message = Message.valueOf(ByteString.copyFrom(request.getContent()));
+    Message message = new RequestMessage(IConsensusRequest);
 
     // 1. first try the local server
     RaftClientRequest clientRequest =
@@ -179,9 +172,8 @@ public class RatisConsensus implements IConsensus {
     try {
       localServerReply = server.submitClientRequest(clientRequest);
       if (localServerReply.isSuccess()) {
-        TSStatus writeStatus =
-            Utils.deserializeFrom(
-                localServerReply.getMessage().getContent().asReadOnlyByteBuffer());
+        ResponseMessage responseMessage = (ResponseMessage) localServerReply.getMessage();
+        TSStatus writeStatus = (TSStatus) responseMessage.getContentHolder();
         return ConsensusWriteResponse.newBuilder().setStatus(writeStatus).build();
       }
 
@@ -189,10 +181,8 @@ public class RatisConsensus implements IConsensus {
       if (ex != null) { // local server is not leader
         suggestedLeader = ex.getSuggestedLeader();
       }
-    } catch (IOException | TException e) {
-      return ConsensusWriteResponse.newBuilder()
-          .setException(new RatisRequestFailedException(e))
-          .build();
+    } catch (IOException e) {
+      return failedWrite(new RatisRequestFailedException(e));
     }
 
     // 2. try raft client
@@ -246,10 +236,11 @@ public class RatisConsensus implements IConsensus {
     }
 
     Message ret = reply.getMessage();
-    assert ret instanceof ReadLocalMessage;
-    ReadLocalMessage readLocalMessage = (ReadLocalMessage) ret;
+    assert ret instanceof ResponseMessage;
+    ResponseMessage readResponseMessage = (ResponseMessage) ret;
+    DataSet dataSet = (DataSet) readResponseMessage.getContentHolder();
 
-    return ConsensusReadResponse.newBuilder().setDataSet(readLocalMessage.getDataSet()).build();
+    return ConsensusReadResponse.newBuilder().setDataSet(dataSet).build();
   }
 
   /**

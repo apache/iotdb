@@ -28,13 +28,10 @@ import org.apache.ratis.proto.RaftProtos;
 import org.apache.ratis.protocol.Message;
 import org.apache.ratis.statemachine.TransactionContext;
 import org.apache.ratis.statemachine.impl.BaseStateMachine;
-import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 
 public class ApplicationStateMachineProxy extends BaseStateMachine {
@@ -57,19 +54,24 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     RaftProtos.LogEntryProto log = trx.getLogEntry();
     updateLastAppliedTermIndex(log.getTerm(), log.getIndex());
 
-    IConsensusRequest request =
-        new ByteBufferConsensusRequest(
-            log.getStateMachineLogEntry().getLogData().asReadOnlyByteBuffer());
-    TSStatus result = applicationStateMachine.write(request);
+    IConsensusRequest applicationRequest = null;
 
-    Message ret = null;
-    try {
-      // TODO use method call instead of RPC & serialization when server&IConsensus in same process
-      ByteBuffer serializedStatus = Utils.serializeTSStatus(result);
-      ret = Message.valueOf(ByteString.copyFrom(serializedStatus));
-    } catch (TException exception) {
-      logger.warn("serialize TSStatus failed", exception);
+    // if this server is leader
+    // it will first try to obtain applicationRequest from transaction context
+    if (trx.getClientRequest() != null
+        && trx.getClientRequest().getMessage() instanceof RequestMessage) {
+      RequestMessage requestMessage = (RequestMessage) trx.getClientRequest().getMessage();
+      applicationRequest = requestMessage.getActualRequest();
+    } else {
+      applicationRequest =
+          new ByteBufferConsensusRequest(
+              log.getStateMachineLogEntry().getLogData().asReadOnlyByteBuffer());
     }
+
+    assert applicationRequest != null;
+
+    TSStatus result = applicationStateMachine.write(applicationRequest);
+    Message ret = new ResponseMessage(result);
 
     return CompletableFuture.completedFuture(ret);
   }
@@ -79,6 +81,6 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     assert request instanceof RequestMessage;
     RequestMessage requestMessage = (RequestMessage) request;
     DataSet result = applicationStateMachine.read(requestMessage.getActualRequest());
-    return CompletableFuture.completedFuture(new ReadLocalMessage(result));
+    return CompletableFuture.completedFuture(new ResponseMessage(result));
   }
 }
