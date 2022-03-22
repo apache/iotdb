@@ -152,7 +152,7 @@ public class CachedMTreeStore implements IMTreeStore {
         throw new MetadataException(e);
       }
       if (node != null) {
-        loadChildFromDiskToParent(parent, node);
+        node = loadChildFromDiskToParent(parent, node);
       }
     }
     return node;
