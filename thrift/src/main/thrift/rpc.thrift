@@ -416,7 +416,7 @@ struct TSDropSchemaTemplateReq {
   2: required string templateName
 }
 
-struct TSExecuteDoubleWriteReq {
+struct TSInternalSyncWriteReq {
   1: required i64 sessionId
   2: required byte doubleWriteType
   3: required binary physicalPlan
@@ -513,5 +513,5 @@ service TSIService {
 
   TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
 
-  TSStatus executeDoubleWrite(1:TSExecuteDoubleWriteReq req);
+  TSStatus executeDoubleWrite(1:TSInternalSyncWriteReq req);
 }

@@ -94,7 +94,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteDoubleWriteReq;
+import org.apache.iotdb.service.rpc.thrift.TSInternalSyncWriteReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
@@ -2173,7 +2173,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   @Override
-  public TSStatus executeDoubleWrite(TSExecuteDoubleWriteReq req) {
+  public TSStatus executeDoubleWrite(TSInternalSyncWriteReq req) {
     PhysicalPlan physicalPlan = null;
     try {
       ByteBuffer planBuffer = req.physicalPlan;
