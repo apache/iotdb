@@ -2200,6 +2200,8 @@ public class TSServiceImpl implements TSIService.Iface {
           "DoubleWrite transmit: {}, count: {}",
           physicalPlan.getPaths().get(0),
           ((InsertTabletPlan) physicalPlan).getRowCount());
+    } else {
+      return;
     }
 
     // serialize physical plan
@@ -2226,21 +2228,7 @@ public class TSServiceImpl implements TSIService.Iface {
         LOGGER.error("SyncDoubleWrite error", e);
       }
     } else {
-      if (physicalPlan instanceof CreateTimeSeriesPlan) {
-        // create timeseries is important, which couldn't be async
-        DoubleWriteTask doubleWriteTask =
-            new DoubleWriteTask(doubleWriteProtectorService, buffer, doubleWriteSessionPool);
-        Thread doubleWriteThread = new Thread(doubleWriteTask);
-        doubleWriteThread.start();
-        try {
-          doubleWriteThread.join();
-        } catch (InterruptedException e) {
-          LOGGER.error("DoubleWrite CreateTimeSeriesPlan error.", e);
-        }
-      } else {
-        // otherwise, put the ByteBuffer into DoubleWriteProducer
-        doubleWriteProducer.put(buffer);
-      }
+      doubleWriteProducer.put(buffer);
     }
   }
 
