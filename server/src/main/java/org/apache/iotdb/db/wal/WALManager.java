@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.wal.node.IWALNode;
 import org.apache.iotdb.db.wal.node.WALFakeNode;
 import org.apache.iotdb.db.wal.node.WALNode;
@@ -54,7 +55,6 @@ public class WALManager implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final WALMode WAL_MODE = config.getWalMode();
   private static final int MAX_WAL_NUM =
       config.getMaxWalNum() > 0 ? config.getMaxWalNum() : config.getWalDirs().length * 2;
 
@@ -77,7 +77,7 @@ public class WALManager implements IService {
 
   /** Apply for a wal node */
   public IWALNode applyForWALNode() {
-    if (WAL_MODE == WALMode.DISABLE) {
+    if (config.getWalMode() == WALMode.DISABLE) {
       return WALFakeNode.getSuccessInstance();
     }
 
@@ -118,7 +118,7 @@ public class WALManager implements IService {
 
   @Override
   public void start() throws StartupException {
-    if (WAL_MODE == WALMode.DISABLE) {
+    if (config.getWalMode() == WALMode.DISABLE) {
       return;
     }
 
@@ -182,7 +182,7 @@ public class WALManager implements IService {
 
   @Override
   public void stop() {
-    if (WAL_MODE == WALMode.DISABLE) {
+    if (config.getWalMode() == WALMode.DISABLE) {
       return;
     }
     if (checkpointThread != null) {
@@ -210,6 +210,21 @@ public class WALManager implements IService {
     } catch (InterruptedException e) {
       logger.warn("Thread {} still doesn't exit after 30s", threadName.getName());
       Thread.currentThread().interrupt();
+    }
+  }
+
+  @TestOnly
+  public void clear() {
+    nodesLock.lock();
+    try {
+      nodeCursor = -1;
+      nodeIdCounter = -1;
+      for (WALNode walNode : walNodes) {
+        walNode.close();
+      }
+      walNodes.clear();
+    } finally {
+      nodesLock.unlock();
     }
   }
 

@@ -20,8 +20,8 @@ package org.apache.iotdb.db.wal.recover;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -90,7 +90,7 @@ public class WALRecoverManagerTest {
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 0, 1);
   private static final String FILE_WITHOUT_WAL_NAME =
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 1, 1);
-  private static final String WAL_NODE_IDENTIFIER = "10";
+  private static final String WAL_NODE_IDENTIFIER = String.valueOf(Integer.MAX_VALUE);
   private static final String WAL_NODE_FOLDER =
       config.getWalDirs()[0].concat(File.separator + WAL_NODE_IDENTIFIER);
   private static final WALRecoverManager recoverManager = WALRecoverManager.getInstance();
@@ -219,7 +219,7 @@ public class WALRecoverManagerTest {
     List<Future<Void>> futures = new ArrayList<>();
     int firstWALVersionId = walBuffer.getCurrentLogVersion();
     for (int i = 0; i < threadsNum; ++i) {
-      IMemTable fakeMemTable = new NotifyFlushMemTable();
+      IMemTable fakeMemTable = new PrimitiveMemTable();
       int memTableId = fakeMemTable.getMemTableId();
       Callable<Void> writeTask =
           () -> {
@@ -252,7 +252,7 @@ public class WALRecoverManagerTest {
     Thread.sleep(1_000);
     // write normal .wal files
     int firstValidVersionId = walBuffer.getCurrentLogVersion();
-    IMemTable targetMemTable = new NotifyFlushMemTable();
+    IMemTable targetMemTable = new PrimitiveMemTable();
     WALEdit walEdit =
         new WALEdit(targetMemTable.getMemTableId(), getInsertRowPlan(DEVICE2_NAME, 4L));
     walBuffer.write(walEdit);

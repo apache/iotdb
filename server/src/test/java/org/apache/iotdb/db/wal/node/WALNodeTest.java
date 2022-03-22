@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.wal.node;
 
-import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -52,7 +52,7 @@ import java.util.concurrent.Future;
 import static org.junit.Assert.*;
 
 public class WALNodeTest {
-  private static final String identifier = "1";
+  private static final String identifier = String.valueOf(Integer.MAX_VALUE);
   private static final String logDirectory = "wal-test";
   private static final String devicePath = "root.test_sg.test_d";
   private WALNode walNode;
@@ -192,7 +192,7 @@ public class WALNodeTest {
     for (int i = 0; i < memTablesNum; ++i) {
       Callable<Void> writeTask =
           () -> {
-            IMemTable memTable = new NotifyFlushMemTable();
+            IMemTable memTable = new PrimitiveMemTable();
             int memTableId = memTable.getMemTableId();
             String tsFilePath = logDirectory + File.separator + memTableId + ".tsfile";
             int firstFileVersionId = walNode.getCurrentLogVersion();
@@ -227,7 +227,7 @@ public class WALNodeTest {
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
     // write until log is rolled
     long time = 0;
-    IMemTable memTable = new NotifyFlushMemTable();
+    IMemTable memTable = new PrimitiveMemTable();
     int memTableId = memTable.getMemTableId();
     String tsFilePath = logDirectory + File.separator + memTableId + ".tsfile";
     walNode.onMemTableCreated(memTable, tsFilePath);

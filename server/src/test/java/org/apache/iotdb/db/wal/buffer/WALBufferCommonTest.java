@@ -46,7 +46,7 @@ import static org.junit.Assert.*;
 
 public abstract class WALBufferCommonTest {
   protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  protected static final String identifier = "1";
+  protected static final String identifier = String.valueOf(Integer.MAX_VALUE);
   protected static final String logDirectory = "wal-test";
   protected static final String devicePath = "root.test_sg.test_d";
   protected IWALBuffer walBuffer;

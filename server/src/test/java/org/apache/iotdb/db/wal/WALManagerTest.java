@@ -38,7 +38,7 @@ import static org.junit.Assert.*;
 
 public class WALManagerTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private final String[] walDirs = new String[] {"wal1", "wal2", "wal3"};
+  private final String[] walDirs = new String[] {"wal_test1", "wal_test2", "wal_test3"};
   private String[] prevWalDirs;
 
   @Before
@@ -51,6 +51,9 @@ public class WALManagerTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    for (String walDir : walDirs) {
+      EnvironmentUtils.cleanDir(walDir);
+    }
     config.setWalDirs(prevWalDirs);
   }
 

@@ -48,6 +48,7 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
@@ -134,6 +135,9 @@ public class EnvironmentUtils {
         }
       }
     }
+
+    // clean wal manager
+    WALManager.getInstance().clear();
 
     // clean storage group manager
     if (!StorageEngine.getInstance().deleteAll()) {

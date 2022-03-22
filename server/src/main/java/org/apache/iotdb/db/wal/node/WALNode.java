@@ -99,6 +99,9 @@ public class WALNode implements IWALNode {
 
   @Override
   public void onFlushEnd(IMemTable memTable) {
+    if (memTable.isSignalMemTable()) {
+      return;
+    }
     checkpointManager.makeFlushMemTableCP(memTable.getMemTableId());
   }
 

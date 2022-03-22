@@ -115,6 +115,9 @@ public class CheckpointManager implements AutoCloseable {
     infoLock.lock();
     try {
       MemTableInfo memTableInfo = memTableId2Info.remove(memTableId);
+      if (memTableInfo == null) {
+        return;
+      }
       Checkpoint checkpoint =
           new Checkpoint(
               CheckpointType.FLUSH_MEMORY_TABLE, Collections.singletonList(memTableInfo));

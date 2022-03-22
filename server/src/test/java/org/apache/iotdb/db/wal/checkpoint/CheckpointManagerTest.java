@@ -41,7 +41,7 @@ import java.util.concurrent.Future;
 import static org.junit.Assert.*;
 
 public class CheckpointManagerTest {
-  private static final String identifier = "1";
+  private static final String identifier = String.valueOf(Integer.MAX_VALUE);
   private static final String logDirectory = "wal-test";
   private CheckpointManager checkpointManager;
 
