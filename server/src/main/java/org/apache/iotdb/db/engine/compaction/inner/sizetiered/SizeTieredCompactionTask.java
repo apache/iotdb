@@ -21,9 +21,9 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -200,13 +200,29 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       if (sizeTieredCompactionLogger != null) {
         sizeTieredCompactionLogger.close();
       }
-      InnerSpaceCompactionExceptionHandler.handleException(
-          fullStorageGroupName,
-          logFile,
-          targetTsFileResource,
-          selectedTsFileResourceList,
-          tsFileManager,
-          tsFileResourceList);
+      if (isSequence()) {
+        CompactionExceptionHandler.handleException(
+            fullStorageGroupName,
+            logFile,
+            Collections.singletonList(targetTsFileResource),
+            selectedTsFileResourceList,
+            Collections.emptyList(),
+            tsFileManager,
+            timePartition,
+            true,
+            isSequence());
+      } else {
+        CompactionExceptionHandler.handleException(
+            fullStorageGroupName,
+            logFile,
+            Collections.singletonList(targetTsFileResource),
+            Collections.emptyList(),
+            selectedTsFileResourceList,
+            tsFileManager,
+            timePartition,
+            true,
+            isSequence());
+      }
     } finally {
       releaseFileLocksAndResetMergingStatus(true);
     }

@@ -175,7 +175,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
     tsFileManager.addForRecover(targetTsFileResource, true);
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -274,7 +275,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)));
     compactionLogger.close();
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -392,7 +394,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     targetTsFileResource.remove();
     compactionLogger.close();
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -511,7 +514,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     seqResources.get(0).remove();
     compactionLogger.close();
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -597,7 +601,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.close();
 
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -672,7 +677,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.close();
 
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -751,7 +757,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.close();
 
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -860,7 +867,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     tsFileManager.add(targetTsFileResource, true);
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -967,7 +975,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     }
     tsFileManager.add(targetTsFileResource, true);
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -1074,7 +1083,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     }
     tsFileManager.add(targetTsFileResource, true);
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,

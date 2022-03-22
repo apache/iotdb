@@ -121,12 +121,7 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
 
     TsFileManager tsFileManager = new TsFileManager(TEST_SG, "0", SEQ_DIRS.getPath());
     new CompactionRecoverTask(
-            TEST_SG + "-" + "0",
-            0,
-            tsFileManager,
-            CompactionTaskManager.currentTaskNum,
-            logFile,
-            false)
+            TEST_SG, "0", 0, tsFileManager, CompactionTaskManager.currentTaskNum, logFile, false)
         .call();
 
     for (TsFileResource resource : seqResources) {
@@ -207,12 +202,7 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
 
     TsFileManager tsFileManager = new TsFileManager(TEST_SG, "0", SEQ_DIRS.getPath());
     new CompactionRecoverTask(
-            TEST_SG + "-" + "0",
-            0,
-            tsFileManager,
-            CompactionTaskManager.currentTaskNum,
-            logFile,
-            false)
+            TEST_SG, "0", 0, tsFileManager, CompactionTaskManager.currentTaskNum, logFile, false)
         .call();
 
     for (TsFileResource resource : seqResources) {
@@ -302,12 +292,7 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
 
     TsFileManager tsFileManager = new TsFileManager(TEST_SG, "0", SEQ_DIRS.getPath());
     new CompactionRecoverTask(
-            TEST_SG + "-" + "0",
-            0,
-            tsFileManager,
-            CompactionTaskManager.currentTaskNum,
-            logFile,
-            false)
+            TEST_SG, "0", 0, tsFileManager, CompactionTaskManager.currentTaskNum, logFile, false)
         .call();
 
     for (TsFileResource resource : seqResources) {
@@ -391,12 +376,7 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
 
     TsFileManager tsFileManager = new TsFileManager(TEST_SG, "0", SEQ_DIRS.getPath());
     new CompactionRecoverTask(
-            TEST_SG + "-" + "0",
-            0,
-            tsFileManager,
-            CompactionTaskManager.currentTaskNum,
-            logFile,
-            false)
+            TEST_SG, "0", 0, tsFileManager, CompactionTaskManager.currentTaskNum, logFile, false)
         .call();
 
     for (TsFileResource resource : seqResources) {

@@ -21,8 +21,6 @@ package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossCompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
@@ -75,8 +73,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
     } finally {
-      if (!(this instanceof RewriteCrossCompactionRecoverTask)
-          && !(this instanceof SizeTieredCompactionRecoverTask)) {
+      if (!(this instanceof CompactionRecoverTask)) {
         CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
       }
       this.currentTaskNum.decrementAndGet();

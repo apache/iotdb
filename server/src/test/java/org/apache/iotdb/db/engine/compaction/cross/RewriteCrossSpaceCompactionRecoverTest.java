@@ -91,7 +91,8 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     compactionLogger.close();
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -165,7 +166,8 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     }
     compactionLogger.close();
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -232,7 +234,8 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     compactionLogger.close();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -300,7 +303,8 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     seqResources.get(0).getTsFile().delete();
     compactionLogger.close();
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -386,7 +390,8 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     seqResources.get(0).remove();
 
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -486,7 +491,8 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     CompactionUtils.combineModsInCompaction(seqResources, unseqResources, targetResources);
 
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -605,7 +611,8 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     }
 
     new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,

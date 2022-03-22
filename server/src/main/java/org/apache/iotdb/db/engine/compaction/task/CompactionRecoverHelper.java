@@ -36,17 +36,18 @@ import java.util.regex.Pattern;
 import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD;
 
 /**
- * CompactionRecoverTask execute the recover process for all compaction task sequentially, including
- * InnerCompactionTask in sequence/unsequence space, CrossSpaceCompaction.
+ * CompactionRecoverHelper searches compaction log and call {@link CompactionRecoverTask} to execute
+ * the recover process for all compaction task sequentially, including InnerCompactionTask in
+ * sequence/unsequence space, CrossSpaceCompaction.
  */
-public class CompactionRecover {
+public class CompactionRecoverHelper {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private TsFileManager tsFileManager;
   private String logicalStorageGroupName;
   private String virtualStorageGroupId;
 
-  public CompactionRecover(
+  public CompactionRecoverHelper(
       TsFileManager tsFileManager, String logicalStorageGroupName, String virtualStorageGroupId) {
     this.tsFileManager = tsFileManager;
     this.logicalStorageGroupName = logicalStorageGroupName;

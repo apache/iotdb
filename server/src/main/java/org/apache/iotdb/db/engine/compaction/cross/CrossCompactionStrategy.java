@@ -70,7 +70,8 @@ public enum CrossCompactionStrategy {
       case REWRITE_COMPACTION:
       default:
         return new CompactionRecoverTask(
-            logicalStorageGroupName + "-" + virtualStorageGroupName,
+            logicalStorageGroupName,
+            virtualStorageGroupName,
             timePartitionId,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,

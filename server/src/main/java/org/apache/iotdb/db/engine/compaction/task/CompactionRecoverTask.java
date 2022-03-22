@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -27,19 +45,25 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/** CompactionRecoverTask executes the recover process for all compaction tasks. */
 public class CompactionRecoverTask extends AbstractCompactionTask {
   private final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private File compactionLogFile;
+  private final File compactionLogFile;
   private final boolean isInnerSpace;
 
   public CompactionRecoverTask(
-      String fullStorageGroupName,
+      String logicalStorageGroupName,
+      String virtualStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
       AtomicInteger currentTaskNum,
       File logFile,
       boolean isInnerSpace) {
-    super(fullStorageGroupName, timePartition, tsFileManager, currentTaskNum);
+    super(
+        logicalStorageGroupName + "-" + virtualStorageGroupName,
+        timePartition,
+        tsFileManager,
+        currentTaskNum);
     this.compactionLogFile = logFile;
     this.isInnerSpace = isInnerSpace;
   }
@@ -85,6 +109,7 @@ public class CompactionRecoverTask extends AbstractCompactionTask {
             break;
           }
         }
+
         if (isAllSourcesFileExisted) {
           if (!isInnerSpace && logAnalyzer.isLogFromOld()) {
             handleSuccess =
@@ -106,11 +131,11 @@ public class CompactionRecoverTask extends AbstractCompactionTask {
         }
       }
     } catch (IOException e) {
-      LOGGER.error("recover cross space compaction error", e);
+      LOGGER.error("Recover compaction error", e);
     } finally {
       if (!handleSuccess) {
         LOGGER.error(
-            "{} [Compaction][Recover] Failed to recover cross space compaction, set allowCompaction to false",
+            "{} [Compaction][Recover] Failed to recover compaction, set allowCompaction to false",
             fullStorageGroupName);
         tsFileManager.setAllowCompaction(false);
       } else {
@@ -281,12 +306,19 @@ public class CompactionRecoverTask extends AbstractCompactionTask {
   }
 
   @Override
-  public void setSourceFilesToCompactionCandidate() {}
+  public void setSourceFilesToCompactionCandidate() {
+    // do nothing
+  }
 
   @Override
-  public void resetCompactionCandidateStatusForAllSourceFiles() {}
+  public void resetCompactionCandidateStatusForAllSourceFiles() {
+    // do nothing
+  }
 
-  /** Used to check whether it is recoverd from last version and perform corresponding process. */
+  /**
+   * Used to check whether it is recoverd from last version (<0.13) and perform corresponding
+   * process.
+   */
   private class CompactionRecoverFromOld {
 
     /** Return whether cross compaction log file is from previous version (<0.13). */

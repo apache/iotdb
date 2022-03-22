@@ -239,7 +239,8 @@ public class SizeTieredCompactionRecoverTest {
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     CompactionRecoverTask recoverTask =
         new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -298,7 +299,8 @@ public class SizeTieredCompactionRecoverTest {
     channel.close();
     CompactionRecoverTask recoverTask =
         new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -354,7 +356,8 @@ public class SizeTieredCompactionRecoverTest {
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     CompactionRecoverTask recoverTask =
         new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -413,7 +416,8 @@ public class SizeTieredCompactionRecoverTest {
     channel.close();
     CompactionRecoverTask recoverTask =
         new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -477,7 +481,8 @@ public class SizeTieredCompactionRecoverTest {
       setDataDirs(new String[] {TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"});
       CompactionRecoverTask recoverTask =
           new CompactionRecoverTask(
-              COMPACTION_TEST_SG + "-" + "0",
+              COMPACTION_TEST_SG,
+              "0",
               0,
               tsFileManager,
               CompactionTaskManager.currentTaskNum,
@@ -581,7 +586,8 @@ public class SizeTieredCompactionRecoverTest {
       setDataDirs(new String[] {TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"});
       CompactionRecoverTask recoverTask =
           new CompactionRecoverTask(
-              COMPACTION_TEST_SG + "-" + "0",
+              COMPACTION_TEST_SG,
+              "0",
               0,
               tsFileManager,
               CompactionTaskManager.currentTaskNum,
@@ -676,7 +682,8 @@ public class SizeTieredCompactionRecoverTest {
       setDataDirs(new String[] {TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"});
       CompactionRecoverTask recoverTask =
           new CompactionRecoverTask(
-              COMPACTION_TEST_SG + "-" + "0",
+              COMPACTION_TEST_SG,
+              "0",
               0,
               tsFileManager,
               CompactionTaskManager.currentTaskNum,
@@ -780,7 +787,8 @@ public class SizeTieredCompactionRecoverTest {
       setDataDirs(new String[] {TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"});
       CompactionRecoverTask recoverTask =
           new CompactionRecoverTask(
-              COMPACTION_TEST_SG + "-" + "0",
+              COMPACTION_TEST_SG,
+              "0",
               0,
               tsFileManager,
               CompactionTaskManager.currentTaskNum,

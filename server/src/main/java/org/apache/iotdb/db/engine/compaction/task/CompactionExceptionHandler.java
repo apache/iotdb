@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -22,7 +23,7 @@ public class CompactionExceptionHandler {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   public static void handleException(
-      String storageGroup,
+      String fullStorageGroupName,
       File logFile,
       List<TsFileResource> targetResourceList,
       List<TsFileResource> seqResourceList,
@@ -41,7 +42,7 @@ public class CompactionExceptionHandler {
       }
       LOGGER.info(
           "{} [Compaction][ExceptionHandler] {} space compaction start handling exception, source seqFiles is {}, source unseqFiles is {}.",
-          storageGroup,
+          fullStorageGroupName,
           compactionType,
           seqResourceList,
           unseqResourceList);
@@ -63,7 +64,7 @@ public class CompactionExceptionHandler {
                 tsFileManager,
                 timePartition,
                 isTargetSequence,
-                storageGroup);
+                fullStorageGroupName);
       } else {
         handleSuccess =
             handleWhenSomeSourceFilesLost(
@@ -71,14 +72,14 @@ public class CompactionExceptionHandler {
                 seqResourceList,
                 unseqResourceList,
                 lostSourceFiles,
-                storageGroup);
+                fullStorageGroupName);
       }
 
       if (!handleSuccess) {
         LOGGER.error(
             "[Compaction][ExceptionHandler] Fail to handle {} space compaction exception, set allowCompaction to false in {}",
             compactionType,
-            storageGroup);
+            fullStorageGroupName);
         tsFileManager.setAllowCompaction(false);
       } else {
         FileUtils.delete(logFile);
@@ -89,7 +90,7 @@ public class CompactionExceptionHandler {
       LOGGER.error(
           "[Compaction][ExceptionHandler] exception occurs when handling exception in {} space compaction. Set allowCompaction to false in {}",
           compactionType,
-          storageGroup,
+          fullStorageGroupName,
           throwable);
       tsFileManager.setAllowCompaction(false);
     }
@@ -173,11 +174,11 @@ public class CompactionExceptionHandler {
   }
 
   /**
-   * Some source files are lost, check if the compaction has finished. If the compaction has
-   * finished, delete the remaining source files and compaction mods files. If the compaction has
-   * not finished, set the allowCompaction in tsFileManager to false and print some error logs.
+   * Some source files are lost, check if all target files are complete. If all target files are
+   * complete, delete the remaining source files and compaction mods files. If some target files are
+   * not complete, set the allowCompaction in tsFileManager to false and print some error logs.
    */
-  public static boolean handleWhenSomeSourceFilesLost(
+  private static boolean handleWhenSomeSourceFilesLost(
       List<TsFileResource> targetResourceList,
       List<TsFileResource> sourceSeqResourceList,
       List<TsFileResource> sourceUnseqResourceList,
@@ -218,6 +219,7 @@ public class CompactionExceptionHandler {
             fullStorageGroupName,
             targetResource,
             lostSourceResources);
+        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         return false;
       }
     }

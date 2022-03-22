@@ -21,8 +21,8 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -87,14 +87,16 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     } catch (Throwable throwable) {
       // catch throwable instead of exception to handle OOM errors
       logger.error("Meet errors in cross space compaction, {}", throwable.getMessage());
-      CrossSpaceCompactionExceptionHandler.handleException(
+      CompactionExceptionHandler.handleException(
           fullStorageGroupName,
           logFile,
           targetTsfileResourceList,
           selectedSeqTsFileResourceList,
           selectedUnSeqTsFileResourceList,
           tsFileManager,
-          timePartition);
+          timePartition,
+          false,
+          true);
       throw throwable;
     } finally {
       releaseAllLock();

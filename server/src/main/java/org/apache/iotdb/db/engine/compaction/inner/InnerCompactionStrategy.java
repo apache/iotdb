@@ -73,7 +73,8 @@ public enum InnerCompactionStrategy {
       case SIZE_TIERED_COMPACTION:
       default:
         return new CompactionRecoverTask(
-            logicalStorageGroupName + "-" + virtualStorageGroup,
+            logicalStorageGroupName,
+            virtualStorageGroup,
             timePartition,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,

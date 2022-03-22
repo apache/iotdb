@@ -105,7 +105,8 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     tsFileManager.addAll(seqResources, true);
     CompactionRecoverTask recoverTask =
         new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -168,7 +169,8 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     tsFileManager.addAll(seqResources, true);
     CompactionRecoverTask recoverTask =
         new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -214,7 +216,8 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     tsFileManager.addAll(seqResources, true);
     CompactionRecoverTask recoverTask =
         new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
@@ -265,7 +268,8 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
     CompactionRecoverTask recoverTask =
         new CompactionRecoverTask(
-            COMPACTION_TEST_SG + "-" + "0",
+            COMPACTION_TEST_SG,
+            "0",
             0,
             tsFileManager,
             CompactionTaskManager.currentTaskNum,
