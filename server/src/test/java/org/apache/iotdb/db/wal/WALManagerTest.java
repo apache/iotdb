@@ -57,13 +57,13 @@ public class WALManagerTest {
   @Test
   public void testAllocateWALNode() throws IllegalPathException {
     WALManager walManager = WALManager.getInstance();
-    IWALNode[] walNodes = new IWALNode[3];
-    for (int i = 0; i < 6; i++) {
+    IWALNode[] walNodes = new IWALNode[6];
+    for (int i = 0; i < 12; i++) {
       IWALNode walNode = walManager.applyForWALNode();
-      if (i < 3) {
+      if (i < 6) {
         walNodes[i] = walNode;
       } else {
-        assertEquals(walNodes[i % 3], walNode);
+        assertEquals(walNodes[i % 6], walNode);
       }
       walNode.log(i, getInsertRowPlan());
     }

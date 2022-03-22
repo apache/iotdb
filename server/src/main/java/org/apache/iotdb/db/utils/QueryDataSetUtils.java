@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -179,6 +180,14 @@ public class QueryDataSetUtils {
     return times;
   }
 
+  public static long[] readTimesFromBuffer(DataInputStream stream, int size) throws IOException {
+    long[] times = new long[size];
+    for (int i = 0; i < size; i++) {
+      times[i] = stream.readLong();
+    }
+    return times;
+  }
+
   public static BitMap[] readBitMapsFromBuffer(ByteBuffer buffer, int columns, int size) {
     if (!buffer.hasRemaining()) {
       return null;
@@ -197,6 +206,25 @@ public class QueryDataSetUtils {
     return bitMaps;
   }
 
+  public static BitMap[] readBitMapsFromBuffer(DataInputStream stream, int columns, int size)
+      throws IOException {
+    if (stream.available() <= 0) {
+      return null;
+    }
+    BitMap[] bitMaps = new BitMap[columns];
+    for (int i = 0; i < columns; i++) {
+      boolean hasBitMap = BytesUtils.byteToBool(stream.readByte());
+      if (hasBitMap) {
+        byte[] bytes = new byte[size / Byte.SIZE + 1];
+        for (int j = 0; j < bytes.length; j++) {
+          bytes[j] = stream.readByte();
+        }
+        bitMaps[i] = new BitMap(size, bytes);
+      }
+    }
+    return bitMaps;
+  }
+
   public static Object[] readValuesFromBuffer(
       ByteBuffer buffer, List<Integer> types, int columns, int size) {
     TSDataType[] dataTypes = new TSDataType[types.size()];
@@ -204,6 +232,15 @@ public class QueryDataSetUtils {
       dataTypes[i] = TSDataType.values()[types.get(i)];
     }
     return readValuesFromBuffer(buffer, dataTypes, columns, size);
+  }
+
+  public static Object[] readValuesFromBuffer(
+      DataInputStream stream, List<Integer> types, int columns, int size) throws IOException {
+    TSDataType[] dataTypes = new TSDataType[types.size()];
+    for (int i = 0; i < dataTypes.length; i++) {
+      dataTypes[i] = TSDataType.values()[types.get(i)];
+    }
+    return readValuesFromBuffer(stream, dataTypes, columns, size);
   }
 
   /**
@@ -258,6 +295,64 @@ public class QueryDataSetUtils {
             int binarySize = buffer.getInt();
             byte[] binaryValue = new byte[binarySize];
             buffer.get(binaryValue);
+            binaryValues[index] = new Binary(binaryValue);
+          }
+          values[i] = binaryValues;
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("data type %s is not supported when convert data at client", types[i]));
+      }
+    }
+    return values;
+  }
+
+  public static Object[] readValuesFromBuffer(
+      DataInputStream stream, TSDataType[] types, int columns, int size) throws IOException {
+    Object[] values = new Object[columns];
+    for (int i = 0; i < columns; i++) {
+      switch (types[i]) {
+        case BOOLEAN:
+          boolean[] boolValues = new boolean[size];
+          for (int index = 0; index < size; index++) {
+            boolValues[index] = BytesUtils.byteToBool(stream.readByte());
+          }
+          values[i] = boolValues;
+          break;
+        case INT32:
+          int[] intValues = new int[size];
+          for (int index = 0; index < size; index++) {
+            intValues[index] = stream.readInt();
+          }
+          values[i] = intValues;
+          break;
+        case INT64:
+          long[] longValues = new long[size];
+          for (int index = 0; index < size; index++) {
+            longValues[index] = stream.readLong();
+          }
+          values[i] = longValues;
+          break;
+        case FLOAT:
+          float[] floatValues = new float[size];
+          for (int index = 0; index < size; index++) {
+            floatValues[index] = stream.readFloat();
+          }
+          values[i] = floatValues;
+          break;
+        case DOUBLE:
+          double[] doubleValues = new double[size];
+          for (int index = 0; index < size; index++) {
+            doubleValues[index] = stream.readDouble();
+          }
+          values[i] = doubleValues;
+          break;
+        case TEXT:
+          Binary[] binaryValues = new Binary[size];
+          for (int index = 0; index < size; index++) {
+            int binarySize = stream.readInt();
+            byte[] binaryValue = new byte[binarySize];
+            stream.read(binaryValue);
             binaryValues[index] = new Binary(binaryValue);
           }
           values[i] = binaryValues;

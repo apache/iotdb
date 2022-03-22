@@ -239,8 +239,6 @@ public class EnvironmentUtils {
     }
     // delete system info
     cleanDir(config.getSystemDir());
-    // delete wal
-    cleanDir(config.getWalDir());
     // delete query
     cleanDir(config.getQueryDir());
     // delete tracing
@@ -249,6 +247,10 @@ public class EnvironmentUtils {
     cleanDir(config.getUdfDir());
     // delete tlog
     cleanDir(config.getTriggerDir());
+    // delete wal
+    for (String walDir : config.getWalDirs()) {
+      cleanDir(walDir);
+    }
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
@@ -334,11 +336,13 @@ public class EnvironmentUtils {
     // create sg dir
     String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
     createDir(sgDir);
-    // create wal
-    createDir(config.getWalDir());
     // create query
     createDir(config.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);
+    // create wal
+    for (String walDir : config.getWalDirs()) {
+      createDir(walDir);
+    }
     // create data
     for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);

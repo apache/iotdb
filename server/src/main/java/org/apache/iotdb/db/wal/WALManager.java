@@ -56,7 +56,7 @@ public class WALManager implements IService {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final WALMode WAL_MODE = config.getWalMode();
   private static final int MAX_WAL_NUM =
-      Math.max(config.getMaxWalNum(), config.getWalDirs().length);
+      config.getMaxWalNum() > 0 ? config.getMaxWalNum() : config.getWalDirs().length * 2;
 
   /** manage wal folders */
   private FolderManager folderManager;
