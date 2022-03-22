@@ -33,7 +33,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.IMetaManager;
+import org.apache.iotdb.db.metadata.ISchemaEngine;
 import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -163,7 +163,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *   <li>TestOnly Interfaces
  * </ol>
  */
-public class RSchemaEngine implements IMetaManager {
+public class RSchemaEngine implements ISchemaEngine {
 
   private static final Logger logger = LoggerFactory.getLogger(RSchemaEngine.class);
 

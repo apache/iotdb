@@ -95,7 +95,7 @@ import java.util.Set;
  *   <li>TestOnly Interfaces
  * </ol>
  */
-public interface IMetaManager {
+public interface ISchemaEngine {
 
   // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
   void init();

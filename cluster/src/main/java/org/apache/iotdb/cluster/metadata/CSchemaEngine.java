@@ -568,7 +568,7 @@ public class CSchemaEngine extends SchemaEngine {
         if (ready[i]) {
           continue;
         }
-        if (IoTDB.metaManager.isStorageGroup(storageGroups.get(i))) {
+        if (IoTDB.schemaEngine.isStorageGroup(storageGroups.get(i))) {
           ready[i] = true;
         } else {
           allReady = false;

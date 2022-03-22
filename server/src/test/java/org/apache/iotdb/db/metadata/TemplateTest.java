@@ -57,15 +57,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class TemplateTest {
+
+  SchemaEngine schemaEngine;
+
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
+    schemaEngine = (SchemaEngine) IoTDB.schemaEngine;
   }
 
   @After
@@ -77,7 +78,6 @@ public class TemplateTest {
   public void testTemplate() throws MetadataException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     schemaEngine.createSchemaTemplate(plan);
 
     // set device template
@@ -121,7 +121,6 @@ public class TemplateTest {
   public void testTemplateInnerTree() {
     CreateTemplatePlan plan = getTreeTemplatePlan();
     Template template;
-    SchemaEngine schemaEngine = IoTDB.metaManager;
 
     try {
       schemaEngine.createSchemaTemplate(plan);
@@ -299,7 +298,6 @@ public class TemplateTest {
    */
   @Test
   public void testShowTemplates() throws MetadataException, QueryProcessException {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     assertEquals(0, schemaEngine.getAllTemplates().size());
     CreateTemplatePlan plan1 = getTreeTemplatePlan();
     CreateTemplatePlan plan2 = getCreateTemplatePlan();
@@ -366,7 +364,6 @@ public class TemplateTest {
 
   @Test
   public void testShowAllSchemas() throws MetadataException {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     CreateTemplatePlan plan1 = getTreeTemplatePlan();
     CreateTemplatePlan plan2 = getCreateTemplatePlan();
     schemaEngine.createSchemaTemplate(plan1);
@@ -379,7 +376,6 @@ public class TemplateTest {
 
   @Test
   public void testDropTemplate() throws MetadataException {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     CreateTemplatePlan plan1 = getTreeTemplatePlan();
     CreateTemplatePlan plan2 = getCreateTemplatePlan();
     schemaEngine.createSchemaTemplate(plan1);
@@ -418,7 +414,6 @@ public class TemplateTest {
 
   @Test
   public void testTemplateAlignment() throws MetadataException {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
     schemaEngine.createTimeseries(
         new PartialPath("root.laptop.d0"),
         TSDataType.INT32,

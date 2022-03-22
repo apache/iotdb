@@ -111,7 +111,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
     TSDataType dataType;
     ManagedSeriesReader mergeReader;
     try {
-      dataType = IoTDB.metaManager.getSeriesType(path);
+      dataType = IoTDB.schemaEngine.getSeriesType(path);
       mergeReader =
           readerFactory.getSeriesReader(
               path,
@@ -173,7 +173,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
     PartialPath path = (PartialPath) expression.getSeriesPath();
     TSDataType dataType;
     try {
-      dataType = IoTDB.metaManager.getSeriesType(path);
+      dataType = IoTDB.schemaEngine.getSeriesType(path);
 
       List<PartitionGroup> partitionGroups = metaGroupMember.routeFilter(null, path);
       for (PartitionGroup partitionGroup : partitionGroups) {

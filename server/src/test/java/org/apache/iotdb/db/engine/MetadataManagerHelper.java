@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.engine;
 
+import org.apache.iotdb.db.metadata.ISchemaEngine;
 import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,7 +31,7 @@ import java.util.Collections;
 public class MetadataManagerHelper {
 
   public static void initMetadata() {
-    SchemaEngine schemaEngine = IoTDB.metaManager;
+    ISchemaEngine schemaEngine = SchemaEngine.getInstance();
     schemaEngine.init();
     try {
       schemaEngine.setStorageGroup(new PartialPath("root.vehicle.d0"));

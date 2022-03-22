@@ -115,7 +115,7 @@ public class DataLogApplierTest extends IoTDBTest {
         public boolean syncLeader(RaftMember.CheckConsistency checkConsistency) {
           try {
             // for testApplyCreateMultiTimeseiresWithPulling()
-            IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg2"));
+            IoTDB.schemaEngine.setStorageGroup(new PartialPath("root.sg2"));
           } catch (StorageGroupAlreadySetException e) {
             logger.warn("[may ignore me in tests] {}", e.getMessage(), e);
           } catch (MetadataException e) {
@@ -158,7 +158,7 @@ public class DataLogApplierTest extends IoTDBTest {
   @Override
   @Before
   public void setUp() throws StartupException, QueryProcessException, IllegalPathException {
-    IoTDB.setMetaManager(CSchemaEngine.getInstance());
+    IoTDB.setSchemaEngine(CSchemaEngine.getInstance());
     testMetaGroupMember.setCoordinator(new Coordinator());
     MetaPuller.getInstance().init(testMetaGroupMember);
     super.setUp();
@@ -276,7 +276,7 @@ public class DataLogApplierTest extends IoTDBTest {
               public void returnSyncClient(
                   RaftService.Client client, Node node, ClientCategory category) {}
             });
-    ((CSchemaEngine) IoTDB.metaManager).setMetaGroupMember(testMetaGroupMember);
+    ((CSchemaEngine) IoTDB.schemaEngine).setMetaGroupMember(testMetaGroupMember);
     testDataGroupMember.setMetaGroupMember(testMetaGroupMember);
     applier = new DataLogApplier(testMetaGroupMember, testDataGroupMember);
   }
@@ -439,7 +439,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyCreateMultiTimeseiresWithPulling() throws MetadataException {
-    IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg1"));
+    IoTDB.schemaEngine.setStorageGroup(new PartialPath("root.sg1"));
     CreateMultiTimeSeriesPlan multiTimeSeriesPlan = new CreateMultiTimeSeriesPlan();
     multiTimeSeriesPlan.setIndexes(Collections.emptyList());
     multiTimeSeriesPlan.setPaths(
@@ -455,7 +455,7 @@ public class DataLogApplierTest extends IoTDBTest {
     PhysicalPlanLog log = new PhysicalPlanLog(multiTimeSeriesPlan);
     // the applier should sync meta leader to get root.sg2 and report no error
     applier.apply(log);
-    assertTrue(IoTDB.metaManager.getAllStorageGroupPaths().contains(new PartialPath("root.sg2")));
+    assertTrue(IoTDB.schemaEngine.getAllStorageGroupPaths().contains(new PartialPath("root.sg2")));
     assertNull(log.getException());
   }
 

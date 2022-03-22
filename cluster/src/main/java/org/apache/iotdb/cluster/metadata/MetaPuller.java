@@ -149,7 +149,7 @@ public class MetaPuller {
       }
       int preSize = results.size();
       for (PartialPath prefixPath : prefixPaths) {
-        IoTDB.metaManager.collectMeasurementSchema(prefixPath, results);
+        IoTDB.schemaEngine.collectMeasurementSchema(prefixPath, results);
       }
       if (logger.isDebugEnabled()) {
         logger.debug(
